@@ -1,0 +1,6425 @@
+{
+  "scope": "completed-session fixed snapshot; diagnostics only",
+  "totals": {
+    "draws": 12957,
+    "successful_draws": 12957,
+    "missing_or_duplicate_motion_record": 0,
+    "missing_or_duplicate_scope_record": 0,
+    "missing_or_duplicate_lifetime_record": 0,
+    "vertex_finite_verified": 0,
+    "vertex_finite_unverified": 12957,
+    "scoped_valid": 12753,
+    "lifetime_verified_flag": 12753,
+    "local_metadata_candidate": 9246,
+    "candidate_with_finite_payload_attestation": 0,
+    "frames": 28,
+    "initial_color_only_pattern_rejection_frames": 4,
+    "local_metadata_candidate_before_selected_clear": 7202,
+    "selected_depth_boundary_frames": 24
+  },
+  "frames": [
+    {
+      "device": "1",
+      "frame": 120,
+      "complete_successful_capture": true,
+      "classification": "initial_color_only_pattern_rejection",
+      "depth_validation_errors": [
+        "unique_copy_or_boundary_missing",
+        "copy_boundary_generation_or_event_mismatch",
+        "copy_result_or_source_epoch_invalid",
+        "boundary_confirmation_or_epoch_increment_invalid",
+        "frame_end_does_not_retain_selection",
+        "copy_before_confirmation_before_matching_clear_log_not_proven",
+        "matching_full_depth_only_clear_missing",
+        "clear_surfaces_not_matching_copy_source_and_main_color",
+        "matching_clear_viewport_unknown_or_partial",
+        "clear_detail_order_invalid"
+      ],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "120",
+        "generation": "1",
+        "_line": 421
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "120",
+        "generation": "1",
+        "events": "655",
+        "attempted": "0",
+        "copied": "0",
+        "confirmed": "0",
+        "state": "9",
+        "rejection": "5",
+        "rejection_event": "1",
+        "present": "00000000",
+        "_line": 203401
+      },
+      "copy": null,
+      "boundary": null,
+      "first_rejection": {
+        "device": "1",
+        "frame": "120",
+        "event": "1",
+        "operation": "Clear",
+        "prior_state": "0",
+        "rejection": "5",
+        "reason": "Pattern",
+        "result": "00000000",
+        "rt": "1",
+        "depth": "2",
+        "destination_known": "0",
+        "destination": "0",
+        "destination_container": "0",
+        "destination_format": "0",
+        "destination_width": "0",
+        "destination_height": "0",
+        "destination_msaa": "0",
+        "_line": 425
+      },
+      "capture_events": 655,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": null,
+      "counts": {
+        "draws": 641,
+        "successful_draws": 641,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 641,
+        "scoped_valid": 637,
+        "lifetime_verified_flag": 637,
+        "local_metadata_candidate": 511,
+        "candidate_with_finite_payload_attestation": 0
+      },
+      "blocker_masks": {
+        "00000040": 126,
+        "00000000": 511,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 126,
+        "31": 511,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 4,
+        "PositionLayout": 4,
+        "RasterState": 130,
+        "TargetLayout": 4,
+        "SubmittedRows": 4,
+        "ObjectScope": 4,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 637,
+        "GeometryUnchanged": 637,
+        "PositionReviewed": 637,
+        "CoverageSupported": 511,
+        "SubmissionSucceeded": 641
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 511
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 126
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 121,
+      "complete_successful_capture": true,
+      "classification": "initial_color_only_pattern_rejection",
+      "depth_validation_errors": [
+        "unique_copy_or_boundary_missing",
+        "copy_boundary_generation_or_event_mismatch",
+        "copy_result_or_source_epoch_invalid",
+        "boundary_confirmation_or_epoch_increment_invalid",
+        "frame_end_does_not_retain_selection",
+        "copy_before_confirmation_before_matching_clear_log_not_proven",
+        "matching_full_depth_only_clear_missing",
+        "clear_surfaces_not_matching_copy_source_and_main_color",
+        "matching_clear_viewport_unknown_or_partial",
+        "clear_detail_order_invalid"
+      ],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "121",
+        "generation": "1",
+        "_line": 203404
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "121",
+        "generation": "1",
+        "events": "655",
+        "attempted": "0",
+        "copied": "0",
+        "confirmed": "0",
+        "state": "9",
+        "rejection": "5",
+        "rejection_event": "1",
+        "present": "00000000",
+        "_line": 405632
+      },
+      "copy": null,
+      "boundary": null,
+      "first_rejection": {
+        "device": "1",
+        "frame": "121",
+        "event": "1",
+        "operation": "Clear",
+        "prior_state": "0",
+        "rejection": "5",
+        "reason": "Pattern",
+        "result": "00000000",
+        "rt": "1",
+        "depth": "2",
+        "destination_known": "0",
+        "destination": "0",
+        "destination_container": "0",
+        "destination_format": "0",
+        "destination_width": "0",
+        "destination_height": "0",
+        "destination_msaa": "0",
+        "_line": 203406
+      },
+      "capture_events": 655,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": null,
+      "counts": {
+        "draws": 641,
+        "successful_draws": 641,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 641,
+        "scoped_valid": 637,
+        "lifetime_verified_flag": 637,
+        "local_metadata_candidate": 511,
+        "candidate_with_finite_payload_attestation": 0
+      },
+      "blocker_masks": {
+        "00000040": 126,
+        "00000000": 511,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 126,
+        "31": 511,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 4,
+        "PositionLayout": 4,
+        "RasterState": 130,
+        "TargetLayout": 4,
+        "SubmittedRows": 4,
+        "ObjectScope": 4,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 637,
+        "GeometryUnchanged": 637,
+        "PositionReviewed": 637,
+        "CoverageSupported": 511,
+        "SubmissionSucceeded": 641
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 511
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 126
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 122,
+      "complete_successful_capture": true,
+      "classification": "initial_color_only_pattern_rejection",
+      "depth_validation_errors": [
+        "unique_copy_or_boundary_missing",
+        "copy_boundary_generation_or_event_mismatch",
+        "copy_result_or_source_epoch_invalid",
+        "boundary_confirmation_or_epoch_increment_invalid",
+        "frame_end_does_not_retain_selection",
+        "copy_before_confirmation_before_matching_clear_log_not_proven",
+        "matching_full_depth_only_clear_missing",
+        "clear_surfaces_not_matching_copy_source_and_main_color",
+        "matching_clear_viewport_unknown_or_partial",
+        "clear_detail_order_invalid"
+      ],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "122",
+        "generation": "1",
+        "_line": 405635
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "122",
+        "generation": "1",
+        "events": "655",
+        "attempted": "0",
+        "copied": "0",
+        "confirmed": "0",
+        "state": "9",
+        "rejection": "5",
+        "rejection_event": "1",
+        "present": "00000000",
+        "_line": 607850
+      },
+      "copy": null,
+      "boundary": null,
+      "first_rejection": {
+        "device": "1",
+        "frame": "122",
+        "event": "1",
+        "operation": "Clear",
+        "prior_state": "0",
+        "rejection": "5",
+        "reason": "Pattern",
+        "result": "00000000",
+        "rt": "1",
+        "depth": "2",
+        "destination_known": "0",
+        "destination": "0",
+        "destination_container": "0",
+        "destination_format": "0",
+        "destination_width": "0",
+        "destination_height": "0",
+        "destination_msaa": "0",
+        "_line": 405637
+      },
+      "capture_events": 655,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": null,
+      "counts": {
+        "draws": 641,
+        "successful_draws": 641,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 641,
+        "scoped_valid": 637,
+        "lifetime_verified_flag": 637,
+        "local_metadata_candidate": 511,
+        "candidate_with_finite_payload_attestation": 0
+      },
+      "blocker_masks": {
+        "00000040": 126,
+        "00000000": 511,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 126,
+        "31": 511,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 4,
+        "PositionLayout": 4,
+        "RasterState": 130,
+        "TargetLayout": 4,
+        "SubmittedRows": 4,
+        "ObjectScope": 4,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 637,
+        "GeometryUnchanged": 637,
+        "PositionReviewed": 637,
+        "CoverageSupported": 511,
+        "SubmissionSucceeded": 641
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 511
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 126
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 123,
+      "complete_successful_capture": true,
+      "classification": "initial_color_only_pattern_rejection",
+      "depth_validation_errors": [
+        "unique_copy_or_boundary_missing",
+        "copy_boundary_generation_or_event_mismatch",
+        "copy_result_or_source_epoch_invalid",
+        "boundary_confirmation_or_epoch_increment_invalid",
+        "frame_end_does_not_retain_selection",
+        "copy_before_confirmation_before_matching_clear_log_not_proven",
+        "matching_full_depth_only_clear_missing",
+        "clear_surfaces_not_matching_copy_source_and_main_color",
+        "matching_clear_viewport_unknown_or_partial",
+        "clear_detail_order_invalid"
+      ],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "123",
+        "generation": "1",
+        "_line": 607853
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "123",
+        "generation": "1",
+        "events": "655",
+        "attempted": "0",
+        "copied": "0",
+        "confirmed": "0",
+        "state": "9",
+        "rejection": "5",
+        "rejection_event": "1",
+        "present": "00000000",
+        "_line": 810087
+      },
+      "copy": null,
+      "boundary": null,
+      "first_rejection": {
+        "device": "1",
+        "frame": "123",
+        "event": "1",
+        "operation": "Clear",
+        "prior_state": "0",
+        "rejection": "5",
+        "reason": "Pattern",
+        "result": "00000000",
+        "rt": "1",
+        "depth": "2",
+        "destination_known": "0",
+        "destination": "0",
+        "destination_container": "0",
+        "destination_format": "0",
+        "destination_width": "0",
+        "destination_height": "0",
+        "destination_msaa": "0",
+        "_line": 607855
+      },
+      "capture_events": 655,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": null,
+      "counts": {
+        "draws": 641,
+        "successful_draws": 641,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 641,
+        "scoped_valid": 637,
+        "lifetime_verified_flag": 637,
+        "local_metadata_candidate": 511,
+        "candidate_with_finite_payload_attestation": 0
+      },
+      "blocker_masks": {
+        "00000040": 126,
+        "00000000": 511,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 126,
+        "31": 511,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 4,
+        "PositionLayout": 4,
+        "RasterState": 130,
+        "TargetLayout": 4,
+        "SubmittedRows": 4,
+        "ObjectScope": 4,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 637,
+        "GeometryUnchanged": 637,
+        "PositionReviewed": 637,
+        "CoverageSupported": 511,
+        "SubmissionSucceeded": 641
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 511
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 126
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1794,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 714,
+          "after_draw": 701,
+          "flags": 2
+        },
+        {
+          "event": 729,
+          "after_draw": 715,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "1794",
+        "generation": "1",
+        "_line": 810993
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "1794",
+        "generation": "1",
+        "events": "814",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 1068167
+      },
+      "copy": {
+        "device": "1",
+        "frame": "1794",
+        "event": "714",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "4087",
+        "copy_epoch": "4087",
+        "color": "1",
+        "depth": "2",
+        "_line": 1035476
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "1794",
+        "event": "714",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "4087",
+        "source_epoch": "4088",
+        "_line": 1035477
+      },
+      "first_rejection": null,
+      "capture_events": 814,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "1794",
+          "seq": "714",
+          "after_draw": "701",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066296765632",
+          "_line": 1035478
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 1035479
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 1035480
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 1035481
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 1035482
+        }
+      },
+      "counts": {
+        "draws": 800,
+        "successful_draws": 800,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 800,
+        "scoped_valid": 792,
+        "lifetime_verified_flag": 792,
+        "local_metadata_candidate": 569,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 569
+      },
+      "blocker_masks": {
+        "00000040": 223,
+        "00000000": 569,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 223,
+        "31": 569,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 231,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 792,
+        "GeometryUnchanged": 796,
+        "PositionReviewed": 793,
+        "CoverageSupported": 569,
+        "SubmissionSucceeded": 800
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 569
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 223
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1795,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 714,
+          "after_draw": 701,
+          "flags": 2
+        },
+        {
+          "event": 729,
+          "after_draw": 715,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "1795",
+        "generation": "1",
+        "_line": 1068169
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "1795",
+        "generation": "1",
+        "events": "814",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 1324010
+      },
+      "copy": {
+        "device": "1",
+        "frame": "1795",
+        "event": "714",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "4091",
+        "copy_epoch": "4091",
+        "color": "1",
+        "depth": "2",
+        "_line": 1291374
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "1795",
+        "event": "714",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "4091",
+        "source_epoch": "4092",
+        "_line": 1291375
+      },
+      "first_rejection": null,
+      "capture_events": 814,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "1795",
+          "seq": "714",
+          "after_draw": "701",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066304559723",
+          "_line": 1291376
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 1291377
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 1291378
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 1291379
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 1291380
+        }
+      },
+      "counts": {
+        "draws": 800,
+        "successful_draws": 800,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 800,
+        "scoped_valid": 792,
+        "lifetime_verified_flag": 792,
+        "local_metadata_candidate": 569,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 569
+      },
+      "blocker_masks": {
+        "00000040": 223,
+        "00000000": 569,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 223,
+        "31": 569,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 231,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 792,
+        "GeometryUnchanged": 796,
+        "PositionReviewed": 793,
+        "CoverageSupported": 569,
+        "SubmissionSucceeded": 800
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 569
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 223
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1796,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 714,
+          "after_draw": 701,
+          "flags": 2
+        },
+        {
+          "event": 729,
+          "after_draw": 715,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "1796",
+        "generation": "1",
+        "_line": 1324013
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "1796",
+        "generation": "1",
+        "events": "814",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 1579854
+      },
+      "copy": {
+        "device": "1",
+        "frame": "1796",
+        "event": "714",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "4095",
+        "copy_epoch": "4095",
+        "color": "1",
+        "depth": "2",
+        "_line": 1547218
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "1796",
+        "event": "714",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "4095",
+        "source_epoch": "4096",
+        "_line": 1547219
+      },
+      "first_rejection": null,
+      "capture_events": 814,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "1796",
+          "seq": "714",
+          "after_draw": "701",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066313407028",
+          "_line": 1547220
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 1547221
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 1547222
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 1547223
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 1547224
+        }
+      },
+      "counts": {
+        "draws": 800,
+        "successful_draws": 800,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 800,
+        "scoped_valid": 792,
+        "lifetime_verified_flag": 792,
+        "local_metadata_candidate": 569,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 569
+      },
+      "blocker_masks": {
+        "00000040": 223,
+        "00000000": 569,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 223,
+        "31": 569,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 231,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 792,
+        "GeometryUnchanged": 796,
+        "PositionReviewed": 793,
+        "CoverageSupported": 569,
+        "SubmissionSucceeded": 800
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 569
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 223
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1797,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 714,
+          "after_draw": 701,
+          "flags": 2
+        },
+        {
+          "event": 729,
+          "after_draw": 715,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "1797",
+        "generation": "1",
+        "_line": 1579857
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "1797",
+        "generation": "1",
+        "events": "814",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 1835698
+      },
+      "copy": {
+        "device": "1",
+        "frame": "1797",
+        "event": "714",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "4099",
+        "copy_epoch": "4099",
+        "color": "1",
+        "depth": "2",
+        "_line": 1803062
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "1797",
+        "event": "714",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "4099",
+        "source_epoch": "4100",
+        "_line": 1803063
+      },
+      "first_rejection": null,
+      "capture_events": 814,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "1797",
+          "seq": "714",
+          "after_draw": "701",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066321948803",
+          "_line": 1803064
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 1803065
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 1803066
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 1803067
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 1803068
+        }
+      },
+      "counts": {
+        "draws": 800,
+        "successful_draws": 800,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 800,
+        "scoped_valid": 792,
+        "lifetime_verified_flag": 792,
+        "local_metadata_candidate": 569,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 569
+      },
+      "blocker_masks": {
+        "00000040": 223,
+        "00000000": 569,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 223,
+        "31": 569,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 231,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 792,
+        "GeometryUnchanged": 796,
+        "PositionReviewed": 793,
+        "CoverageSupported": 569,
+        "SubmissionSucceeded": 800
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 569
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 223
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1975,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 288,
+          "after_draw": 275,
+          "flags": 2
+        },
+        {
+          "event": 300,
+          "after_draw": 286,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "1975",
+        "generation": "1",
+        "_line": 1835870
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "1975",
+        "generation": "1",
+        "events": "417",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 1965798
+      },
+      "copy": {
+        "device": "1",
+        "frame": "1975",
+        "event": "288",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "4811",
+        "copy_epoch": "4811",
+        "color": "1",
+        "depth": "2",
+        "_line": 1923461
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "1975",
+        "event": "288",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "4811",
+        "source_epoch": "4812",
+        "_line": 1923462
+      },
+      "first_rejection": null,
+      "capture_events": 417,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "1975",
+          "seq": "288",
+          "after_draw": "275",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066424901688",
+          "_line": 1923463
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 1923464
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 1923465
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 1923466
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 1923467
+        }
+      },
+      "counts": {
+        "draws": 403,
+        "successful_draws": 403,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 403,
+        "scoped_valid": 395,
+        "lifetime_verified_flag": 395,
+        "local_metadata_candidate": 222,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 222
+      },
+      "blocker_masks": {
+        "00000040": 173,
+        "00000000": 222,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 173,
+        "31": 222,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 181,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 395,
+        "GeometryUnchanged": 399,
+        "PositionReviewed": 396,
+        "CoverageSupported": 222,
+        "SubmissionSucceeded": 403
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 222
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 173
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1976,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 289,
+          "after_draw": 276,
+          "flags": 2
+        },
+        {
+          "event": 301,
+          "after_draw": 287,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "1976",
+        "generation": "1",
+        "_line": 1965800
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "1976",
+        "generation": "1",
+        "events": "418",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 2095855
+      },
+      "copy": {
+        "device": "1",
+        "frame": "1976",
+        "event": "289",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "4815",
+        "copy_epoch": "4815",
+        "color": "1",
+        "depth": "2",
+        "_line": 2053521
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "1976",
+        "event": "289",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "4815",
+        "source_epoch": "4816",
+        "_line": 2053522
+      },
+      "first_rejection": null,
+      "capture_events": 418,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "1976",
+          "seq": "289",
+          "after_draw": "276",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066429222767",
+          "_line": 2053523
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 2053524
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2053525
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2053526
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 2053527
+        }
+      },
+      "counts": {
+        "draws": 404,
+        "successful_draws": 404,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 404,
+        "scoped_valid": 396,
+        "lifetime_verified_flag": 396,
+        "local_metadata_candidate": 222,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 222
+      },
+      "blocker_masks": {
+        "00000040": 174,
+        "00000000": 222,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 174,
+        "31": 222,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 182,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 396,
+        "GeometryUnchanged": 400,
+        "PositionReviewed": 397,
+        "CoverageSupported": 222,
+        "SubmissionSucceeded": 404
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 222
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 174
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1977,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 290,
+          "after_draw": 277,
+          "flags": 2
+        },
+        {
+          "event": 302,
+          "after_draw": 288,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "1977",
+        "generation": "1",
+        "_line": 2095857
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "1977",
+        "generation": "1",
+        "events": "419",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 2226254
+      },
+      "copy": {
+        "device": "1",
+        "frame": "1977",
+        "event": "290",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "4819",
+        "copy_epoch": "4819",
+        "color": "1",
+        "depth": "2",
+        "_line": 2183913
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "1977",
+        "event": "290",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "4819",
+        "source_epoch": "4820",
+        "_line": 2183914
+      },
+      "first_rejection": null,
+      "capture_events": 419,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "1977",
+          "seq": "290",
+          "after_draw": "277",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066433745694",
+          "_line": 2183915
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 2183916
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2183917
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2183918
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 2183919
+        }
+      },
+      "counts": {
+        "draws": 405,
+        "successful_draws": 405,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 405,
+        "scoped_valid": 397,
+        "lifetime_verified_flag": 397,
+        "local_metadata_candidate": 222,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 222
+      },
+      "blocker_masks": {
+        "00000040": 175,
+        "00000000": 222,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 175,
+        "31": 222,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 183,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 397,
+        "GeometryUnchanged": 401,
+        "PositionReviewed": 398,
+        "CoverageSupported": 222,
+        "SubmissionSucceeded": 405
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 222
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 175
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1978,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 290,
+          "after_draw": 277,
+          "flags": 2
+        },
+        {
+          "event": 302,
+          "after_draw": 288,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "1978",
+        "generation": "1",
+        "_line": 2226256
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "1978",
+        "generation": "1",
+        "events": "419",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 2356638
+      },
+      "copy": {
+        "device": "1",
+        "frame": "1978",
+        "event": "290",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "4823",
+        "copy_epoch": "4823",
+        "color": "1",
+        "depth": "2",
+        "_line": 2314304
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "1978",
+        "event": "290",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "4823",
+        "source_epoch": "4824",
+        "_line": 2314305
+      },
+      "first_rejection": null,
+      "capture_events": 419,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "1978",
+          "seq": "290",
+          "after_draw": "277",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066438005246",
+          "_line": 2314306
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 2314307
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2314308
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2314309
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 2314310
+        }
+      },
+      "counts": {
+        "draws": 405,
+        "successful_draws": 405,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 405,
+        "scoped_valid": 397,
+        "lifetime_verified_flag": 397,
+        "local_metadata_candidate": 222,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 222
+      },
+      "blocker_masks": {
+        "00000040": 175,
+        "00000000": 222,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 175,
+        "31": 222,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 183,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 397,
+        "GeometryUnchanged": 401,
+        "PositionReviewed": 398,
+        "CoverageSupported": 222,
+        "SubmissionSucceeded": 405
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 222
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 175
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2435,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 392,
+          "after_draw": 379,
+          "flags": 2
+        },
+        {
+          "event": 400,
+          "after_draw": 386,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "2435",
+        "generation": "1",
+        "_line": 2356970
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "2435",
+        "generation": "1",
+        "events": "433",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 2491266
+      },
+      "copy": {
+        "device": "1",
+        "frame": "2435",
+        "event": "392",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "6651",
+        "copy_epoch": "6651",
+        "color": "1",
+        "depth": "2",
+        "_line": 2478100
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "2435",
+        "event": "392",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "6651",
+        "source_epoch": "6652",
+        "_line": 2478101
+      },
+      "first_rejection": null,
+      "capture_events": 433,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "2435",
+          "seq": "392",
+          "after_draw": "379",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066670118722",
+          "_line": 2478102
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 2478103
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2478104
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2478105
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 2478106
+        }
+      },
+      "counts": {
+        "draws": 419,
+        "successful_draws": 419,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 419,
+        "scoped_valid": 411,
+        "lifetime_verified_flag": 411,
+        "local_metadata_candidate": 307,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 307
+      },
+      "blocker_masks": {
+        "00000040": 104,
+        "00000000": 307,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 104,
+        "31": 307,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 112,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 411,
+        "GeometryUnchanged": 415,
+        "PositionReviewed": 412,
+        "CoverageSupported": 307,
+        "SubmissionSucceeded": 419
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 307
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 104
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2436,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 392,
+          "after_draw": 379,
+          "flags": 2
+        },
+        {
+          "event": 400,
+          "after_draw": 386,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "2436",
+        "generation": "1",
+        "_line": 2491268
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "2436",
+        "generation": "1",
+        "events": "433",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 2625515
+      },
+      "copy": {
+        "device": "1",
+        "frame": "2436",
+        "event": "392",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "6655",
+        "copy_epoch": "6655",
+        "color": "1",
+        "depth": "2",
+        "_line": 2612349
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "2436",
+        "event": "392",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "6655",
+        "source_epoch": "6656",
+        "_line": 2612350
+      },
+      "first_rejection": null,
+      "capture_events": 433,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "2436",
+          "seq": "392",
+          "after_draw": "379",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066674588613",
+          "_line": 2612351
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 2612352
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2612353
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2612354
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 2612355
+        }
+      },
+      "counts": {
+        "draws": 419,
+        "successful_draws": 419,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 419,
+        "scoped_valid": 411,
+        "lifetime_verified_flag": 411,
+        "local_metadata_candidate": 307,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 307
+      },
+      "blocker_masks": {
+        "00000040": 104,
+        "00000000": 307,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 104,
+        "31": 307,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 112,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 411,
+        "GeometryUnchanged": 415,
+        "PositionReviewed": 412,
+        "CoverageSupported": 307,
+        "SubmissionSucceeded": 419
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 307
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 104
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2437,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 392,
+          "after_draw": 379,
+          "flags": 2
+        },
+        {
+          "event": 400,
+          "after_draw": 386,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "2437",
+        "generation": "1",
+        "_line": 2625517
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "2437",
+        "generation": "1",
+        "events": "433",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 2759768
+      },
+      "copy": {
+        "device": "1",
+        "frame": "2437",
+        "event": "392",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "6659",
+        "copy_epoch": "6659",
+        "color": "1",
+        "depth": "2",
+        "_line": 2746602
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "2437",
+        "event": "392",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "6659",
+        "source_epoch": "6660",
+        "_line": 2746603
+      },
+      "first_rejection": null,
+      "capture_events": 433,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "2437",
+          "seq": "392",
+          "after_draw": "379",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066678899600",
+          "_line": 2746604
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 2746605
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2746606
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2746607
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 2746608
+        }
+      },
+      "counts": {
+        "draws": 419,
+        "successful_draws": 419,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 419,
+        "scoped_valid": 411,
+        "lifetime_verified_flag": 411,
+        "local_metadata_candidate": 307,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 307
+      },
+      "blocker_masks": {
+        "00000040": 104,
+        "00000000": 307,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 104,
+        "31": 307,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 112,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 411,
+        "GeometryUnchanged": 415,
+        "PositionReviewed": 412,
+        "CoverageSupported": 307,
+        "SubmissionSucceeded": 419
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 307
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 104
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2438,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 392,
+          "after_draw": 379,
+          "flags": 2
+        },
+        {
+          "event": 400,
+          "after_draw": 386,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "2438",
+        "generation": "1",
+        "_line": 2759770
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "2438",
+        "generation": "1",
+        "events": "429",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 2892693
+      },
+      "copy": {
+        "device": "1",
+        "frame": "2438",
+        "event": "392",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "6663",
+        "copy_epoch": "6663",
+        "color": "1",
+        "depth": "2",
+        "_line": 2880847
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "2438",
+        "event": "392",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "6663",
+        "source_epoch": "6664",
+        "_line": 2880848
+      },
+      "first_rejection": null,
+      "capture_events": 429,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "2438",
+          "seq": "392",
+          "after_draw": "379",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066683446878",
+          "_line": 2880849
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 2880850
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2880851
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2880852
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 2880853
+        }
+      },
+      "counts": {
+        "draws": 415,
+        "successful_draws": 415,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 415,
+        "scoped_valid": 407,
+        "lifetime_verified_flag": 407,
+        "local_metadata_candidate": 307,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 307
+      },
+      "blocker_masks": {
+        "00000040": 100,
+        "00000000": 307,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 100,
+        "31": 307,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 108,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 407,
+        "GeometryUnchanged": 411,
+        "PositionReviewed": 408,
+        "CoverageSupported": 307,
+        "SubmissionSucceeded": 415
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 307
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 100
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2806,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 273,
+          "after_draw": 260,
+          "flags": 2
+        },
+        {
+          "event": 281,
+          "after_draw": 267,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "2806",
+        "generation": "1",
+        "_line": 2892856
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "2806",
+        "generation": "1",
+        "events": "282",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 2978507
+      },
+      "copy": {
+        "device": "1",
+        "frame": "2806",
+        "event": "273",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "8135",
+        "copy_epoch": "8135",
+        "color": "1",
+        "depth": "2",
+        "_line": 2975901
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "2806",
+        "event": "273",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "8135",
+        "source_epoch": "8136",
+        "_line": 2975902
+      },
+      "first_rejection": null,
+      "capture_events": 282,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "2806",
+          "seq": "273",
+          "after_draw": "260",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066828852800",
+          "_line": 2975903
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 2975904
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2975905
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 2975906
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 2975907
+        }
+      },
+      "counts": {
+        "draws": 268,
+        "successful_draws": 268,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 268,
+        "scoped_valid": 260,
+        "lifetime_verified_flag": 260,
+        "local_metadata_candidate": 213,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 213
+      },
+      "blocker_masks": {
+        "00000040": 47,
+        "00000000": 213,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 47,
+        "31": 213,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 55,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 260,
+        "GeometryUnchanged": 264,
+        "PositionReviewed": 261,
+        "CoverageSupported": 213,
+        "SubmissionSucceeded": 268
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 213
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 47
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2807,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 273,
+          "after_draw": 260,
+          "flags": 2
+        },
+        {
+          "event": 281,
+          "after_draw": 267,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "2807",
+        "generation": "1",
+        "_line": 2978509
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "2807",
+        "generation": "1",
+        "events": "282",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 3064104
+      },
+      "copy": {
+        "device": "1",
+        "frame": "2807",
+        "event": "273",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "8139",
+        "copy_epoch": "8139",
+        "color": "1",
+        "depth": "2",
+        "_line": 3061498
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "2807",
+        "event": "273",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "8139",
+        "source_epoch": "8140",
+        "_line": 3061499
+      },
+      "first_rejection": null,
+      "capture_events": 282,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "2807",
+          "seq": "273",
+          "after_draw": "260",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066831766950",
+          "_line": 3061500
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 3061501
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3061502
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3061503
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 3061504
+        }
+      },
+      "counts": {
+        "draws": 268,
+        "successful_draws": 268,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 268,
+        "scoped_valid": 260,
+        "lifetime_verified_flag": 260,
+        "local_metadata_candidate": 213,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 213
+      },
+      "blocker_masks": {
+        "00000040": 47,
+        "00000000": 213,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 47,
+        "31": 213,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 55,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 260,
+        "GeometryUnchanged": 264,
+        "PositionReviewed": 261,
+        "CoverageSupported": 213,
+        "SubmissionSucceeded": 268
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 213
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 47
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2808,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 273,
+          "after_draw": 260,
+          "flags": 2
+        },
+        {
+          "event": 281,
+          "after_draw": 267,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "2808",
+        "generation": "1",
+        "_line": 3064106
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "2808",
+        "generation": "1",
+        "events": "282",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 3149710
+      },
+      "copy": {
+        "device": "1",
+        "frame": "2808",
+        "event": "273",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "8143",
+        "copy_epoch": "8143",
+        "color": "1",
+        "depth": "2",
+        "_line": 3147104
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "2808",
+        "event": "273",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "8143",
+        "source_epoch": "8144",
+        "_line": 3147105
+      },
+      "first_rejection": null,
+      "capture_events": 282,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "2808",
+          "seq": "273",
+          "after_draw": "260",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066834951164",
+          "_line": 3147106
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 3147107
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3147108
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3147109
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 3147110
+        }
+      },
+      "counts": {
+        "draws": 268,
+        "successful_draws": 268,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 268,
+        "scoped_valid": 260,
+        "lifetime_verified_flag": 260,
+        "local_metadata_candidate": 213,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 213
+      },
+      "blocker_masks": {
+        "00000040": 47,
+        "00000000": 213,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 47,
+        "31": 213,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 55,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 260,
+        "GeometryUnchanged": 264,
+        "PositionReviewed": 261,
+        "CoverageSupported": 213,
+        "SubmissionSucceeded": 268
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 213
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 47
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2809,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 273,
+          "after_draw": 260,
+          "flags": 2
+        },
+        {
+          "event": 281,
+          "after_draw": 267,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "2809",
+        "generation": "1",
+        "_line": 3149712
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "2809",
+        "generation": "1",
+        "events": "282",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 3235313
+      },
+      "copy": {
+        "device": "1",
+        "frame": "2809",
+        "event": "273",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "8147",
+        "copy_epoch": "8147",
+        "color": "1",
+        "depth": "2",
+        "_line": 3232707
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "2809",
+        "event": "273",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "8147",
+        "source_epoch": "8148",
+        "_line": 3232708
+      },
+      "first_rejection": null,
+      "capture_events": 282,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "2809",
+          "seq": "273",
+          "after_draw": "260",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066838093825",
+          "_line": 3232709
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 3232710
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3232711
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3232712
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 3232713
+        }
+      },
+      "counts": {
+        "draws": 268,
+        "successful_draws": 268,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 268,
+        "scoped_valid": 260,
+        "lifetime_verified_flag": 260,
+        "local_metadata_candidate": 213,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 213
+      },
+      "blocker_masks": {
+        "00000040": 47,
+        "00000000": 213,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 47,
+        "31": 213,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 55,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 260,
+        "GeometryUnchanged": 264,
+        "PositionReviewed": 261,
+        "CoverageSupported": 213,
+        "SubmissionSucceeded": 268
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 213
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 47
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 3047,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 264,
+          "after_draw": 251,
+          "flags": 2
+        },
+        {
+          "event": 272,
+          "after_draw": 258,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "3047",
+        "generation": "1",
+        "_line": 3235399
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "3047",
+        "generation": "1",
+        "events": "273",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 3318214
+      },
+      "copy": {
+        "device": "1",
+        "frame": "3047",
+        "event": "264",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "9099",
+        "copy_epoch": "9099",
+        "color": "1",
+        "depth": "2",
+        "_line": 3315624
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "3047",
+        "event": "264",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "9099",
+        "source_epoch": "9100",
+        "_line": 3315625
+      },
+      "first_rejection": null,
+      "capture_events": 273,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "3047",
+          "seq": "264",
+          "after_draw": "251",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066920874945",
+          "_line": 3315626
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 3315627
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3315628
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3315629
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 3315630
+        }
+      },
+      "counts": {
+        "draws": 259,
+        "successful_draws": 259,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 259,
+        "scoped_valid": 251,
+        "lifetime_verified_flag": 251,
+        "local_metadata_candidate": 203,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 203
+      },
+      "blocker_masks": {
+        "00000040": 48,
+        "00000000": 203,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 48,
+        "31": 203,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 56,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 251,
+        "GeometryUnchanged": 255,
+        "PositionReviewed": 252,
+        "CoverageSupported": 203,
+        "SubmissionSucceeded": 259
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 203
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 48
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 3048,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 262,
+          "after_draw": 249,
+          "flags": 2
+        },
+        {
+          "event": 270,
+          "after_draw": 256,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "3048",
+        "generation": "1",
+        "_line": 3318216
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "3048",
+        "generation": "1",
+        "events": "271",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 3400326
+      },
+      "copy": {
+        "device": "1",
+        "frame": "3048",
+        "event": "262",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "9103",
+        "copy_epoch": "9103",
+        "color": "1",
+        "depth": "2",
+        "_line": 3397736
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "3048",
+        "event": "262",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "9103",
+        "source_epoch": "9104",
+        "_line": 3397737
+      },
+      "first_rejection": null,
+      "capture_events": 271,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "3048",
+          "seq": "262",
+          "after_draw": "249",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066923787787",
+          "_line": 3397738
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 3397739
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3397740
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3397741
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 3397742
+        }
+      },
+      "counts": {
+        "draws": 257,
+        "successful_draws": 257,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 257,
+        "scoped_valid": 249,
+        "lifetime_verified_flag": 249,
+        "local_metadata_candidate": 201,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 201
+      },
+      "blocker_masks": {
+        "00000040": 48,
+        "00000000": 201,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 48,
+        "31": 201,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 56,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 249,
+        "GeometryUnchanged": 253,
+        "PositionReviewed": 250,
+        "CoverageSupported": 201,
+        "SubmissionSucceeded": 257
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 201
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 48
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 3049,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 227,
+          "after_draw": 214,
+          "flags": 2
+        },
+        {
+          "event": 235,
+          "after_draw": 221,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "3049",
+        "generation": "1",
+        "_line": 3400328
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "3049",
+        "generation": "1",
+        "events": "236",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 3471296
+      },
+      "copy": {
+        "device": "1",
+        "frame": "3049",
+        "event": "227",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "9107",
+        "copy_epoch": "9107",
+        "color": "1",
+        "depth": "2",
+        "_line": 3468706
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "3049",
+        "event": "227",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "9107",
+        "source_epoch": "9108",
+        "_line": 3468707
+      },
+      "first_rejection": null,
+      "capture_events": 236,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "3049",
+          "seq": "227",
+          "after_draw": "214",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066926308995",
+          "_line": 3468708
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 3468709
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3468710
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3468711
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 3468712
+        }
+      },
+      "counts": {
+        "draws": 222,
+        "successful_draws": 222,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 222,
+        "scoped_valid": 214,
+        "lifetime_verified_flag": 214,
+        "local_metadata_candidate": 173,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 173
+      },
+      "blocker_masks": {
+        "00000040": 41,
+        "00000000": 173,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 41,
+        "31": 173,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 49,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 214,
+        "GeometryUnchanged": 218,
+        "PositionReviewed": 215,
+        "CoverageSupported": 173,
+        "SubmissionSucceeded": 222
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 173
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 41
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 3050,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 227,
+          "after_draw": 214,
+          "flags": 2
+        },
+        {
+          "event": 235,
+          "after_draw": 221,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "3050",
+        "generation": "1",
+        "_line": 3471298
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "3050",
+        "generation": "1",
+        "events": "236",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 3542272
+      },
+      "copy": {
+        "device": "1",
+        "frame": "3050",
+        "event": "227",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "9111",
+        "copy_epoch": "9111",
+        "color": "1",
+        "depth": "2",
+        "_line": 3539682
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "3050",
+        "event": "227",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "9111",
+        "source_epoch": "9112",
+        "_line": 3539683
+      },
+      "first_rejection": null,
+      "capture_events": 236,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "3050",
+          "seq": "227",
+          "after_draw": "214",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8066928832657",
+          "_line": 3539684
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 3539685
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3539686
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3539687
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 3539688
+        }
+      },
+      "counts": {
+        "draws": 222,
+        "successful_draws": 222,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 222,
+        "scoped_valid": 214,
+        "lifetime_verified_flag": 214,
+        "local_metadata_candidate": 173,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 173
+      },
+      "blocker_masks": {
+        "00000040": 41,
+        "00000000": 173,
+        "00000341": 3,
+        "00000240": 1,
+        "00000bc5": 4
+      },
+      "proof_masks": {
+        "23": 41,
+        "31": 173,
+        "18": 3,
+        "22": 1,
+        "16": 4
+      },
+      "blocker_bits": {
+        "PositionProgram": 7,
+        "PositionLayout": 4,
+        "RasterState": 49,
+        "TargetLayout": 4,
+        "SubmittedRows": 7,
+        "ObjectScope": 8,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 214,
+        "GeometryUnchanged": 218,
+        "PositionReviewed": 215,
+        "CoverageSupported": 173,
+        "SubmissionSucceeded": 222
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 173
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 41
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 3
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 4096,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 469,
+          "after_draw": 456,
+          "flags": 2
+        },
+        {
+          "event": 481,
+          "after_draw": 467,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "4096",
+        "generation": "1",
+        "_line": 3543029
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "4096",
+        "generation": "1",
+        "events": "482",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 3694017
+      },
+      "copy": {
+        "device": "1",
+        "frame": "4096",
+        "event": "469",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "13291",
+        "copy_epoch": "13291",
+        "color": "1",
+        "depth": "2",
+        "_line": 3690054
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "4096",
+        "event": "469",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "13291",
+        "source_epoch": "13292",
+        "_line": 3690055
+      },
+      "first_rejection": null,
+      "capture_events": 482,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "4096",
+          "seq": "469",
+          "after_draw": "456",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8068605272502",
+          "_line": 3690056
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 3690057
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3690058
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3690059
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 3690060
+        }
+      },
+      "counts": {
+        "draws": 468,
+        "successful_draws": 468,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 468,
+        "scoped_valid": 461,
+        "lifetime_verified_flag": 461,
+        "local_metadata_candidate": 302,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 302
+      },
+      "blocker_masks": {
+        "00000040": 159,
+        "00000000": 302,
+        "00000240": 1,
+        "00000bc5": 4,
+        "00000341": 2
+      },
+      "proof_masks": {
+        "23": 159,
+        "31": 302,
+        "22": 1,
+        "16": 4,
+        "18": 2
+      },
+      "blocker_bits": {
+        "PositionProgram": 6,
+        "PositionLayout": 4,
+        "RasterState": 166,
+        "TargetLayout": 4,
+        "SubmittedRows": 6,
+        "ObjectScope": 7,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 461,
+        "GeometryUnchanged": 464,
+        "PositionReviewed": 462,
+        "CoverageSupported": 302,
+        "SubmissionSucceeded": 468
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 302
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 159
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 2
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 4097,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 469,
+          "after_draw": 456,
+          "flags": 2
+        },
+        {
+          "event": 481,
+          "after_draw": 467,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "4097",
+        "generation": "1",
+        "_line": 3694019
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "4097",
+        "generation": "1",
+        "events": "482",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 3844531
+      },
+      "copy": {
+        "device": "1",
+        "frame": "4097",
+        "event": "469",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "13295",
+        "copy_epoch": "13295",
+        "color": "1",
+        "depth": "2",
+        "_line": 3840580
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "4097",
+        "event": "469",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "13295",
+        "source_epoch": "13296",
+        "_line": 3840581
+      },
+      "first_rejection": null,
+      "capture_events": 482,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "4097",
+          "seq": "469",
+          "after_draw": "456",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8068610352055",
+          "_line": 3840582
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 3840583
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3840584
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3840585
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 3840586
+        }
+      },
+      "counts": {
+        "draws": 468,
+        "successful_draws": 468,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 468,
+        "scoped_valid": 461,
+        "lifetime_verified_flag": 461,
+        "local_metadata_candidate": 302,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 302
+      },
+      "blocker_masks": {
+        "00000040": 159,
+        "00000000": 302,
+        "00000240": 1,
+        "00000bc5": 4,
+        "00000341": 2
+      },
+      "proof_masks": {
+        "23": 159,
+        "31": 302,
+        "22": 1,
+        "16": 4,
+        "18": 2
+      },
+      "blocker_bits": {
+        "PositionProgram": 6,
+        "PositionLayout": 4,
+        "RasterState": 166,
+        "TargetLayout": 4,
+        "SubmittedRows": 6,
+        "ObjectScope": 7,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 461,
+        "GeometryUnchanged": 464,
+        "PositionReviewed": 462,
+        "CoverageSupported": 302,
+        "SubmissionSucceeded": 468
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 302
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 159
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 2
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 4098,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 469,
+          "after_draw": 456,
+          "flags": 2
+        },
+        {
+          "event": 481,
+          "after_draw": 467,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "4098",
+        "generation": "1",
+        "_line": 3844533
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "4098",
+        "generation": "1",
+        "events": "482",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 3995023
+      },
+      "copy": {
+        "device": "1",
+        "frame": "4098",
+        "event": "469",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "13299",
+        "copy_epoch": "13299",
+        "color": "1",
+        "depth": "2",
+        "_line": 3991083
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "4098",
+        "event": "469",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "13299",
+        "source_epoch": "13300",
+        "_line": 3991084
+      },
+      "first_rejection": null,
+      "capture_events": 482,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "4098",
+          "seq": "469",
+          "after_draw": "456",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8068615416141",
+          "_line": 3991085
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 3991086
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3991087
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 3991088
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 3991089
+        }
+      },
+      "counts": {
+        "draws": 468,
+        "successful_draws": 468,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 468,
+        "scoped_valid": 461,
+        "lifetime_verified_flag": 461,
+        "local_metadata_candidate": 302,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 302
+      },
+      "blocker_masks": {
+        "00000040": 159,
+        "00000000": 302,
+        "00000240": 1,
+        "00000bc5": 4,
+        "00000341": 2
+      },
+      "proof_masks": {
+        "23": 159,
+        "31": 302,
+        "22": 1,
+        "16": 4,
+        "18": 2
+      },
+      "blocker_bits": {
+        "PositionProgram": 6,
+        "PositionLayout": 4,
+        "RasterState": 166,
+        "TargetLayout": 4,
+        "SubmittedRows": 6,
+        "ObjectScope": 7,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 461,
+        "GeometryUnchanged": 464,
+        "PositionReviewed": 462,
+        "CoverageSupported": 302,
+        "SubmissionSucceeded": 468
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 302
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 159
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 2
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 4099,
+      "complete_successful_capture": true,
+      "classification": "selected_depth_boundary",
+      "depth_validation_errors": [],
+      "generation": "1",
+      "source_description": {
+        "phase": "create_after",
+        "device": "1",
+        "result": "00000000",
+        "status": "00000000",
+        "requested": "1",
+        "available": "1",
+        "source_bound": "1",
+        "copy_valid": "0",
+        "generation": "1",
+        "source_epoch": "0",
+        "copy_epoch": "0",
+        "source_width": "1280",
+        "source_height": "768",
+        "source_format": "77",
+        "source_type": "1",
+        "source_usage": "2",
+        "source_pool": "0",
+        "source_msaa": "0",
+        "source_quality": "0",
+        "_line": 49
+      },
+      "source_depth_clears": [
+        {
+          "event": 1,
+          "after_draw": 0,
+          "flags": 3
+        },
+        {
+          "event": 7,
+          "after_draw": 5,
+          "flags": 2
+        },
+        {
+          "event": 469,
+          "after_draw": 456,
+          "flags": 2
+        },
+        {
+          "event": 481,
+          "after_draw": 467,
+          "flags": 2
+        }
+      ],
+      "scene_begin": {
+        "phase": "begin",
+        "device": "1",
+        "frame": "4099",
+        "generation": "1",
+        "_line": 3995026
+      },
+      "scene_end": {
+        "phase": "end",
+        "device": "1",
+        "frame": "4099",
+        "generation": "1",
+        "events": "482",
+        "attempted": "1",
+        "copied": "1",
+        "confirmed": "1",
+        "state": "8",
+        "rejection": "0",
+        "rejection_event": "0",
+        "present": "00000000",
+        "_line": 4145536
+      },
+      "copy": {
+        "device": "1",
+        "frame": "4099",
+        "event": "469",
+        "result": "00000000",
+        "valid": "1",
+        "generation": "1",
+        "source_epoch": "13303",
+        "copy_epoch": "13303",
+        "color": "1",
+        "depth": "2",
+        "_line": 4141596
+      },
+      "boundary": {
+        "device": "1",
+        "frame": "4099",
+        "event": "469",
+        "confirmed": "1",
+        "generation": "1",
+        "copy_epoch": "13303",
+        "source_epoch": "13304",
+        "_line": 4141597
+      },
+      "first_rejection": null,
+      "capture_events": 482,
+      "event_sequence_valid": true,
+      "records_inside_frame": true,
+      "all_draw_results_valid": true,
+      "selected_clear": {
+        "event": {
+          "device": "1",
+          "frame": "4099",
+          "seq": "469",
+          "after_draw": "456",
+          "op": "clear",
+          "result": "00000000",
+          "qpc": "8068620493372",
+          "_line": 4141598
+        },
+        "clear": {
+          "flags": "2",
+          "color": "00000000",
+          "z": "1",
+          "stencil": "0",
+          "rect_count": "0",
+          "rect_ptr": "00000000",
+          "_line": 4141599
+        },
+        "color": {
+          "role": "clear_rt0",
+          "ptr": "023027c8",
+          "identity": "1",
+          "width": "1280",
+          "height": "768",
+          "format": "21",
+          "usage": "1",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 4141600
+        },
+        "depth": {
+          "role": "clear_depth",
+          "ptr": "023027f8",
+          "identity": "2",
+          "width": "1280",
+          "height": "768",
+          "format": "77",
+          "usage": "2",
+          "msaa": "0",
+          "container": "0",
+          "container_type": "0",
+          "container_result": "80004002",
+          "_line": 4141601
+        },
+        "viewport": {
+          "result": "00000000",
+          "x": "0",
+          "y": "0",
+          "w": "1280",
+          "h": "768",
+          "minz": "0",
+          "maxz": "1",
+          "_line": 4141602
+        }
+      },
+      "counts": {
+        "draws": 468,
+        "successful_draws": 468,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 468,
+        "scoped_valid": 461,
+        "lifetime_verified_flag": 461,
+        "local_metadata_candidate": 302,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 302
+      },
+      "blocker_masks": {
+        "00000040": 159,
+        "00000000": 302,
+        "00000240": 1,
+        "00000bc5": 4,
+        "00000341": 2
+      },
+      "proof_masks": {
+        "23": 159,
+        "31": 302,
+        "22": 1,
+        "16": 4,
+        "18": 2
+      },
+      "blocker_bits": {
+        "PositionProgram": 6,
+        "PositionLayout": 4,
+        "RasterState": 166,
+        "TargetLayout": 4,
+        "SubmittedRows": 6,
+        "ObjectScope": 7,
+        "QueryFailure": 4
+      },
+      "proof_bits": {
+        "LifetimeVerified": 461,
+        "GeometryUnchanged": 464,
+        "PositionReviewed": 462,
+        "CoverageSupported": 302,
+        "SubmissionSucceeded": 468
+      },
+      "blocker_proof_pairs": [
+        {
+          "blockers": "00000000",
+          "proofs": 31,
+          "draws": 302
+        },
+        {
+          "blockers": "00000040",
+          "proofs": 23,
+          "draws": 159
+        },
+        {
+          "blockers": "00000240",
+          "proofs": 22,
+          "draws": 1
+        },
+        {
+          "blockers": "00000341",
+          "proofs": 18,
+          "draws": 2
+        },
+        {
+          "blockers": "00000bc5",
+          "proofs": 16,
+          "draws": 4
+        }
+      ]
+    }
+  ],
+  "adjacent_selected_frame_epoch_checks": [
+    {
+      "device": "1",
+      "previous_frame": 1794,
+      "frame": 1795,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 1795,
+      "frame": 1796,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 1796,
+      "frame": 1797,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 1975,
+      "frame": 1976,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 1976,
+      "frame": 1977,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 1977,
+      "frame": 1978,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 2435,
+      "frame": 2436,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 2436,
+      "frame": 2437,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 2437,
+      "frame": 2438,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 2806,
+      "frame": 2807,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 2807,
+      "frame": 2808,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 2808,
+      "frame": 2809,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 3047,
+      "frame": 3048,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 3048,
+      "frame": 3049,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 3049,
+      "frame": 3050,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 4096,
+      "frame": 4097,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 4097,
+      "frame": 4098,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    },
+    {
+      "device": "1",
+      "previous_frame": 4098,
+      "frame": 4099,
+      "expected_source_epoch_delta": 4,
+      "observed_source_epoch_delta": 4,
+      "consistent": true
+    }
+  ],
+  "groups": {
+    "initial_color_only_pattern_rejection": {
+      "counts": {
+        "draws": 2564,
+        "successful_draws": 2564,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 2564,
+        "scoped_valid": 2548,
+        "lifetime_verified_flag": 2548,
+        "local_metadata_candidate": 2044,
+        "candidate_with_finite_payload_attestation": 0
+      },
+      "blocker_masks": {
+        "00000040": 504,
+        "00000000": 2044,
+        "00000bc5": 16
+      },
+      "proof_masks": {
+        "23": 504,
+        "31": 2044,
+        "16": 16
+      }
+    },
+    "selected_depth_boundary": {
+      "counts": {
+        "draws": 10393,
+        "successful_draws": 10393,
+        "missing_or_duplicate_motion_record": 0,
+        "missing_or_duplicate_scope_record": 0,
+        "missing_or_duplicate_lifetime_record": 0,
+        "vertex_finite_verified": 0,
+        "vertex_finite_unverified": 10393,
+        "scoped_valid": 10205,
+        "lifetime_verified_flag": 10205,
+        "local_metadata_candidate": 7202,
+        "candidate_with_finite_payload_attestation": 0,
+        "local_metadata_candidate_before_selected_clear": 7202
+      },
+      "blocker_masks": {
+        "00000040": 3003,
+        "00000000": 7202,
+        "00000341": 68,
+        "00000240": 24,
+        "00000bc5": 96
+      },
+      "proof_masks": {
+        "23": 3003,
+        "31": 7202,
+        "18": 68,
+        "22": 24,
+        "16": 96
+      }
+    }
+  },
+  "blocker_enum": {
+    "1": "PositionProgram",
+    "2": "PixelCoverage",
+    "4": "PositionLayout",
+    "8": "BufferDescription",
+    "16": "BufferRevision",
+    "32": "DrawRange",
+    "64": "RasterState",
+    "128": "TargetLayout",
+    "256": "SubmittedRows",
+    "512": "ObjectScope",
+    "1024": "UserMemory",
+    "2048": "QueryFailure",
+    "4096": "SubmissionFailure"
+  },
+  "proof_enum": {
+    "1": "LifetimeVerified",
+    "2": "GeometryUnchanged",
+    "4": "PositionReviewed",
+    "8": "CoverageSupported",
+    "16": "SubmissionSucceeded"
+  },
+  "numeric_depth_readback_proven": false,
+  "live_taa_eligibility_proven": false,
+  "limitations": [
+    "copy success/epochs are API bookkeeping, not numerical depth sampling",
+    "local proof bits exclude finite vertex payload and whole-scene/replay/history proof",
+    "initial color-only rejection is a pattern classification, not a universal menu detector"
+  ],
+  "provenance": {
+    "snapshot": "/tmp/x3-iteration05-completed-snapshot.log",
+    "size": 216605445,
+    "sha256": "e5beaa861d04659fe9c7df05a01845bd05d656a33c643f4b484ff379cf3ccaf8",
+    "local_interpretation_source_sha256": {
+      "tools/analysis/analyze_iteration05_depth_motion.py": "b380920bec5dfe096649645745fdb28f3d9b3da18611c1ac09f5d1cb9b1ab0b0",
+      "src/proxy/scene_capture.cpp": "8d851227dec960dd762f550ba824206f1bfb059b5235bed637dc2df533f86554",
+      "src/proxy/capture.cpp": "13fe7bc0b8b08aee60edcded9a3e73e4facfecc355054bc699169e615c57eda4",
+      "src/proxy/draw_input.cpp": "e74fe4393701c585f509bd5da9aaa64aacac41343dd86fb802d40729a35adae4",
+      "src/proxy/draw_input.h": "9ac14602982d557dc0d79cd0f5a61b838218837b553040c114a6689aef2f1826",
+      "src/renderer/scene_boundary.h": "4c28908bd51c4e0d25269088d91d02e23994089320288ffa161b8afee7c5ace9",
+      "src/renderer/motion_history.h": "4704a480ce47f9a93f063f42f7b667d8a380b328af5d1692453d00623b64bea0",
+      "src/ownership/d3d9_ownership.cpp": "42d94a3419208700b1fb7e4482fae8398418b8b3b3337de8e67bf06851f7ed2b"
+    }
+  }
+}

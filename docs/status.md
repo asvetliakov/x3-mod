@@ -1,8 +1,11 @@
 # Project status
 
-Updated 2026-09-11. **Iteration 5 is verified and installed, awaiting the
-[user-managed combined test](verification/iteration-05.md). Iteration 4 gameplay
-analysis is complete. The overall renderer modernization objective is not complete.** No HDR/TAA/AgX/material/clustered-lighting
+Updated 2026-09-11. **The iteration-5 user-managed run is complete. Its captured
+gameplay frames preserve scene depth, and every scoped draw has consistent
+observed storage lifetimes. The installed build remains unchanged while follow-up
+source work is reviewed. See [iteration 5](verification/iteration-05.md).
+The overall renderer modernization objective is not complete.**
+No HDR/TAA/AgX/material/clustered-lighting
 visual enhancement is enabled yet. See the [full user objective](user-objective.md)
 and [roadmap](architecture/roadmap.md).
 
@@ -10,7 +13,7 @@ and [roadmap](architecture/roadmap.md).
 
 Detached rigid-motion production now has bounded CPU correspondence (3,210
 checks), exact position profiles and a GPU producer (102 numerical samples,
-106 checks and 30 state comparisons). The GPU output feeds the production
+117 checks and 30 state comparisons). The GPU output feeds the production
 temporal resolve in verification; perspective checks also pass at 1280×768 and
 5120×1440. See [motion history](verification/motion-history.md) and
 [GPU motion](verification/rigid-motion.md). These modules are compiled into the
@@ -26,10 +29,15 @@ single-word mutation controls. The other five captured
 programs require explicit separate handling; they are not excluded from final
 TAA/composition scope. Particle RGB blending and missing prior particle identity
 are documented in [particle inputs](reverse-engineering/particle-motion-inputs.md).
-The full Python analysis suite passes **215 tests**.
+The full Python analysis suite passes **246 tests**.
 The post-install source registry also retains original shader model, constructor
 and position-write order, independently verified for all 234 row-dot profiles.
-This metadata extension has not replaced the installed iteration-5 DLL.
+The detached rigid-motion pass now creates the reviewed fixed SM3 replay program
+internally and requires a cached exact-source qualification token plus an explicit
+finite-position attestation. The 32-profile program passes 1,573,392 covered
+component comparisons and 134 bilateral raster/depth cases; independent review
+checks its evidence limits. These source changes have not replaced the installed
+iteration-5 DLL.
 
 The [live draw-input reader](verification/draw-input.md) passes 167 checks,
 48 caller-state comparisons and seven failed-getter controls. It reads exact
@@ -50,9 +58,11 @@ reviewed central insertion, removal, bulk destruction and renderer-load paths.
 The opt-in [observer](verification/object-lifetime-observer.md) passes 533 checks
 and 72 original backend calls, including baseline adoption, reuse, foreign
 unwind, hook ownership loss and retirement. Six runner-provenance tests pass.
-Live baseline usefulness and mutation coverage still need game validation;
-camera cuts remain a separate policy. The installed DLL exposes the opt-in observer;
-activation and useful coverage await the user-managed run.
+The completed iteration-5 run verifies consistent lifetimes for all 12,753 scoped
+draws out of 12,957 successful draws. The observer started without an installation
+baseline, then obtained useful identities from observed insertions. Load epoch
+1→2 distinguishes 17 handles reused with different storage and serials.
+Camera cuts remain a separate policy; see [live lifetime evidence](reverse-engineering/iteration05-lifetimes.md).
 
 The current combined DLL passes all 15 integration cases and the forced native
 fallback with all 15 compiled proxy/renderer objects. It is **installed**:
@@ -65,10 +75,15 @@ The [detached adjacency cache](verification/mesh-adjacency-cache.md) passes
 721 checks using real native mesh acquisition, exact byte keys, bounded storage,
 native downstream cleaning/optimization and computational FP-state parity.
 Repeated original synthetic meshes show a large hit-time reduction including
-acquisition/lookup cost. Game mesh eligibility and hit rate remain unmeasured;
-the cache is now linked behind an off-by-default switch. Independently reviewed
-[native/wrapped hook integration](verification/mesh-cache-hook.md) passes 5,757
-checks across six cases; the existing loading regressions pass 68 + 123 checks.
+acquisition/lookup cost. The iteration-5 run recorded 7,199 gate rejections and
+no cache calls or hits.
+Static analysis identifies dynamic SYSTEMMEM mesh options excluded by the installed
+gate; the narrow four-option extension now passes 12,781 actual native/wrapped checks
+and 733 core checks, with 68 + 123 loading regressions and independent review.
+It is a source change, not an installed game speedup.
+The cache remains behind an off-by-default switch. Independently reviewed
+[native/wrapped hook integration](verification/mesh-cache-hook.md) exercises
+all four game option variants across six cases.
 Known wrapper state stays truthful to the actual cache/native lock path; existing
 uncertainty never becomes known through a cache hit. Acquisition
 cleanup failure explicitly disables cache admission and rejects only subsequent
@@ -80,9 +95,14 @@ draws, including a final third-person burst. The then-installed selector rejecte
 frames and attempted no depth copy: planet haze was unnecessarily mandatory,
 and later ColorFill invalidation masked the first cause. Source corrections
 remove the haze requirement while retaining verified background/binding rules,
-check scratch-fill targets, and preserve the first rejection. The revised
-adapter is synthetically verified, but game acceptance is not yet established.
-These corrections are now installed and await live validation.
+check scratch-fill targets, and preserve the first rejection. The installed
+corrections now report successful pre-clear copies and confirmed
+boundaries in all 24 captured iteration-5 gameplay frames, including the different
+planet save; the four menu frames remain rejected. This is live copy/epoch/boundary
+evidence, not numerical readback of the game depth texture. The
+[depth/motion audit](reverse-engineering/iteration05-depth-motion.md) finds 7,202
+gameplay draws pass the current local input checks, all before the selected Clear;
+finite vertex payload, replay stability and complete scene coverage remain unproved.
 
 New [camera/object evidence](reverse-engineering/iteration04-camera-motion.md)
 shows independent object motion with a stationary camera; camera-only history is
@@ -150,9 +170,11 @@ presentation and the requested visual features remain unfinished.
 
 ## Concrete next work
 
-1. Complete the consolidated iteration-5 user-managed run. Obtain target identities
-   for the observed ColorFill calls, prove successful pre-clear depth preservation,
-   and measure lifetime coverage and exact mesh reuse across reload.
+1. Finish combined verification of the follow-up source build. Add the finite
+   POSITION producer under the reviewed managed-buffer upload contract before
+   consolidating the next user-managed diagnostic run. The game's dynamic
+   SYSTEMMEM mesh configuration now passes native tests; its actual cache hit rate
+   still needs a future run.
 2. Connect the verified correspondence and GPU motion modules to lifecycle-safe
    draw records, with reload/reuse generations, camera cuts and geometry revision
    gates. Account separately for CPU-changing particles/stardust and overlays.

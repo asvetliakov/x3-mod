@@ -1,7 +1,8 @@
 # Iteration 5: depth, lifetime and loading-cache integration
 
-The reviewed combined build is installed. Gameplay validation is pending and
-remains user-managed. No game was launched by the agent.
+The reviewed combined build is installed, and the user completed the gameplay
+run. The installed DLL has not been replaced by follow-up source work.
+No gameplay was launched by the agent.
 
 DLL SHA256: `ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5`.
 The [installation record](../../verification/results/iteration-05-install.json)
@@ -28,9 +29,26 @@ The motion producer and temporal resolve are still detached. This build does not
 enable gameplay TAA, HDR, new materials, or a cursor/presentation fix. Any loading
 improvement must be measured from actual accepted cache hits and their total cost.
 
-## User-managed test
+## Completed user-managed test
 
-Run from the repository when ready:
+The user captured stationary first-person, turning/steering first-person,
+third-person stationary and moving views, then loaded a different planet save.
+The different save supplies a real load discontinuity; repeating the same region
+is not currently required. The completed trace has 28 captured frames in seven
+bursts, so exact burst-to-action correspondence is not inferred from five labels.
+
+All 24 captured gameplay frames report successful pre-clear scene-depth copies
+and confirmed boundaries. All 12,753 scoped draws have consistent observed
+lifetimes; 204 draws are unscoped. Load epoch advances from 1 to 2, distinguishing
+17 reused handles. See [lifetime analysis](../reverse-engineering/iteration05-lifetimes.md)
+and [depth/motion analysis](../reverse-engineering/iteration05-depth-motion.md).
+The loading cache rejected all 7,199 candidate calls before acquisition and
+recorded no hits. The follow-up dynamic SYSTEMMEM source extension is reviewed
+and passes native/wrapped fixtures, but is not installed. See the
+[gate diagnosis](../reverse-engineering/iteration05-cache-gate.md). This run does
+not demonstrate a loading speedup. The current analysis suite passes 246 tests.
+
+The command and original combined test plan are retained for reproduction:
 
 ```sh
 python3 tools/manage.py launch --direct --telemetry --ownership --depth-copy --scene-depth-capture --object-trace --object-lifetime --mesh-cache --capture-frames 4
