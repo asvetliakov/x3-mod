@@ -1,0 +1,6992 @@
+{
+  "frames": {
+    "1:120": {
+      "draws": 638,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 634
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 4
+        }
+      ],
+      "node_candidates": 441,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1272
+        }
+      ],
+      "buffer_allocations": 649,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 633,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 626,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 626,
+          "maximum": 1.0,
+          "above_1e_5": 626
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 626,
+          "maximum": 5.960464477539041e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 626,
+          "maximum": 5.5722970690034754e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 626,
+          "maximum": 0.030010327696800232,
+          "above_1e_5": 625
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 8
+      },
+      "unscoped_draws": [
+        {
+          "draw": 601,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 602,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 603,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 604,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "036e1750",
+          "handle": "21924",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "0f5ed310",
+          "handle": "21925",
+          "draws": 595,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "0f10e238",
+          "handle": "21926",
+          "draws": 32,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "0f0ea5d0",
+          "handle": "21927",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "28866b58",
+          "handle": "23477",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "0f5ed310",
+        "handle": "21925",
+        "view_rows": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            -0.0,
+            -0.0,
+            -0.0,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 526,
+        "node_pointer_handle_pairs": 374
+      },
+      "pass_observations": {
+        "initial_clear_flags": 1,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              601,
+              602,
+              603,
+              604
+            ],
+            "next_depth_clear": 604
+          }
+        ]
+      }
+    },
+    "1:121": {
+      "draws": 638,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 634
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 4
+        }
+      ],
+      "node_candidates": 441,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1272
+        }
+      ],
+      "buffer_allocations": 649,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 633,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 626,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 626,
+          "maximum": 1.0,
+          "above_1e_5": 626
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 626,
+          "maximum": 5.960464477539041e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 626,
+          "maximum": 5.5722970690034754e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 626,
+          "maximum": 0.030010327696800232,
+          "above_1e_5": 625
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 8
+      },
+      "unscoped_draws": [
+        {
+          "draw": 601,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 602,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 603,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 604,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "036e1750",
+          "handle": "21924",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "0f5ed310",
+          "handle": "21925",
+          "draws": 595,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "0f10e238",
+          "handle": "21926",
+          "draws": 32,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "0f0ea5d0",
+          "handle": "21927",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "28866b58",
+          "handle": "23477",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "0f5ed310",
+        "handle": "21925",
+        "view_rows": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            -0.0,
+            -0.0,
+            -0.0,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 526,
+        "node_pointer_handle_pairs": 374
+      },
+      "pass_observations": {
+        "initial_clear_flags": 1,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              601,
+              602,
+              603,
+              604
+            ],
+            "next_depth_clear": 604
+          }
+        ]
+      }
+    },
+    "1:122": {
+      "draws": 638,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 634
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 4
+        }
+      ],
+      "node_candidates": 441,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1272
+        }
+      ],
+      "buffer_allocations": 649,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 633,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 626,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 626,
+          "maximum": 1.0,
+          "above_1e_5": 626
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 626,
+          "maximum": 5.960464477539041e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 626,
+          "maximum": 5.5722970690034754e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 626,
+          "maximum": 0.030010327696800232,
+          "above_1e_5": 625
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 8
+      },
+      "unscoped_draws": [
+        {
+          "draw": 601,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 602,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 603,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 604,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "036e1750",
+          "handle": "21924",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "0f5ed310",
+          "handle": "21925",
+          "draws": 595,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "0f10e238",
+          "handle": "21926",
+          "draws": 32,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "0f0ea5d0",
+          "handle": "21927",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "28866b58",
+          "handle": "23477",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "0f5ed310",
+        "handle": "21925",
+        "view_rows": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            -0.0,
+            -0.0,
+            -0.0,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 526,
+        "node_pointer_handle_pairs": 374
+      },
+      "pass_observations": {
+        "initial_clear_flags": 1,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              601,
+              602,
+              603,
+              604
+            ],
+            "next_depth_clear": 604
+          }
+        ]
+      }
+    },
+    "1:123": {
+      "draws": 638,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 634
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 4
+        }
+      ],
+      "node_candidates": 441,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1272
+        }
+      ],
+      "buffer_allocations": 649,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 633,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 626,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 626,
+          "maximum": 1.0,
+          "above_1e_5": 626
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 626,
+          "maximum": 5.960464477539041e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 626,
+          "maximum": 5.5722970690034754e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 626,
+          "maximum": 0.030010327696800232,
+          "above_1e_5": 625
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 8
+      },
+      "unscoped_draws": [
+        {
+          "draw": 601,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 602,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 603,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 604,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "036e1750",
+          "handle": "21924",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "0f5ed310",
+          "handle": "21925",
+          "draws": 595,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "0f10e238",
+          "handle": "21926",
+          "draws": 32,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "0f0ea5d0",
+          "handle": "21927",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "28866b58",
+          "handle": "23477",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "0f5ed310",
+        "handle": "21925",
+        "view_rows": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            -0.0,
+            -0.0,
+            -0.0,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 526,
+        "node_pointer_handle_pairs": 374
+      },
+      "pass_observations": {
+        "initial_clear_flags": 1,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              601,
+              602,
+              603,
+              604
+            ],
+            "next_depth_clear": 604
+          }
+        ]
+      }
+    },
+    "1:2775": {
+      "draws": 465,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 457
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 83,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 923
+        }
+      ],
+      "buffer_allocations": 697,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 447,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 412,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 412,
+          "maximum": 1.0,
+          "above_1e_5": 412
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 412,
+          "maximum": 8.408923915046127e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 412,
+          "maximum": 0.00019315157083453583,
+          "above_1e_5": 5
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 412,
+          "maximum": 0.01569809840293601,
+          "above_1e_5": 412
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 45
+      },
+      "unscoped_draws": [
+        {
+          "draw": 448,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "1354"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 449,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "1354"
+            }
+          ]
+        },
+        {
+          "draw": 450,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 451,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 452,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 453,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 454,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "1354"
+            }
+          ]
+        },
+        {
+          "draw": 458,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "1354"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 442,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2583a0",
+          "handle": "30888",
+          "draws": 3,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6be75208",
+          "handle": "31820",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.0727691650390625,
+            -0.5467681884765625,
+            -0.8340911865234375,
+            0.0
+          ],
+          [
+            -0.2403106689453125,
+            0.8212890625,
+            -0.5174102783203125,
+            0.0
+          ],
+          [
+            0.9679412841796875,
+            0.1627960205078125,
+            -0.1911773681640625,
+            0.0
+          ],
+          [
+            -88516.1328125,
+            -63274.6171875,
+            83512.140625,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 419,
+        "node_pointer_handle_pairs": 70
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              450,
+              451,
+              452,
+              453
+            ],
+            "next_depth_clear": 453
+          }
+        ]
+      }
+    },
+    "1:2776": {
+      "draws": 451,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 443
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 84,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 895
+        }
+      ],
+      "buffer_allocations": 667,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 433,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 398,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 398,
+          "maximum": 1.0,
+          "above_1e_5": 398
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 398,
+          "maximum": 4.53917051951853e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 398,
+          "maximum": 0.00013128189753598872,
+          "above_1e_5": 5
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 398,
+          "maximum": 0.01932695964933373,
+          "above_1e_5": 398
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 45
+      },
+      "unscoped_draws": [
+        {
+          "draw": 434,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "1355"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 435,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "1355"
+            }
+          ]
+        },
+        {
+          "draw": 436,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 437,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 438,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 439,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 440,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "1355"
+            }
+          ]
+        },
+        {
+          "draw": 444,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "1355"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 428,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2583a0",
+          "handle": "30888",
+          "draws": 3,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6be75208",
+          "handle": "31820",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.0977325439453125,
+            -0.5671844482421875,
+            -0.8177642822265625,
+            0.0
+          ],
+          [
+            -0.2556915283203125,
+            0.80841064453125,
+            -0.530120849609375,
+            0.0
+          ],
+          [
+            0.9617767333984375,
+            0.1573028564453125,
+            -0.2240447998046875,
+            0.0
+          ],
+          [
+            -86024.2265625,
+            -61164.34765625,
+            87510.890625,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 405,
+        "node_pointer_handle_pairs": 71
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              436,
+              437,
+              438,
+              439
+            ],
+            "next_depth_clear": 439
+          }
+        ]
+      }
+    },
+    "1:2777": {
+      "draws": 489,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 481
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 90,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 971
+        }
+      ],
+      "buffer_allocations": 669,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 471,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 436,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 436,
+          "maximum": 1.0,
+          "above_1e_5": 436
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 436,
+          "maximum": 1.1250673300577859e-07,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 436,
+          "maximum": 0.00012650760382319404,
+          "above_1e_5": 5
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 436,
+          "maximum": 0.01881053697434254,
+          "above_1e_5": 436
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 45
+      },
+      "unscoped_draws": [
+        {
+          "draw": 472,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "1356"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 473,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "1356"
+            }
+          ]
+        },
+        {
+          "draw": 474,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 475,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 476,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 477,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 478,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "1356"
+            }
+          ]
+        },
+        {
+          "draw": 482,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "1356"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 466,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2583a0",
+          "handle": "30888",
+          "draws": 3,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6be75208",
+          "handle": "31820",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.1222076416015625,
+            -0.5871429443359375,
+            -0.8001861572265625,
+            0.0
+          ],
+          [
+            -0.271484375,
+            0.795257568359375,
+            -0.54205322265625,
+            0.0
+          ],
+          [
+            0.954620361328125,
+            0.1510009765625,
+            -0.2565765380859375,
+            0.0
+          ],
+          [
+            -83409.203125,
+            -58959.89453125,
+            91381.5234375,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 443,
+        "node_pointer_handle_pairs": 77
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              474,
+              475,
+              476,
+              477
+            ],
+            "next_depth_clear": 477
+          }
+        ]
+      }
+    },
+    "1:2778": {
+      "draws": 487,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 479
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 88,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 967
+        }
+      ],
+      "buffer_allocations": 665,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 469,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 433,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 433,
+          "maximum": 1.0,
+          "above_1e_5": 433
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 433,
+          "maximum": 3.682417334694021e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 433,
+          "maximum": 0.00018514171140171685,
+          "above_1e_5": 5
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 433,
+          "maximum": 0.017368475790135562,
+          "above_1e_5": 433
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 46
+      },
+      "unscoped_draws": [
+        {
+          "draw": 470,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "1357"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 471,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "1357"
+            }
+          ]
+        },
+        {
+          "draw": 472,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 473,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 474,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 475,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 476,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "1357"
+            }
+          ]
+        },
+        {
+          "draw": 480,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "1357"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 464,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2583a0",
+          "handle": "30888",
+          "draws": 3,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6be75208",
+          "handle": "31820",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.1461181640625,
+            -0.6066436767578125,
+            -0.7814178466796875,
+            0.0
+          ],
+          [
+            -0.287567138671875,
+            0.781829833984375,
+            -0.5531768798828125,
+            0.0
+          ],
+          [
+            0.946533203125,
+            0.143890380859375,
+            -0.2886962890625,
+            0.0
+          ],
+          [
+            -80689.03125,
+            -56661.21484375,
+            95115.171875,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 441,
+        "node_pointer_handle_pairs": 75
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              472,
+              473,
+              474,
+              475
+            ],
+            "next_depth_clear": 475
+          }
+        ]
+      }
+    },
+    "1:2878": {
+      "draws": 933,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 925
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 121,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1859
+        }
+      ],
+      "buffer_allocations": 1105,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 916,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 892,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 892,
+          "maximum": 1.0,
+          "above_1e_5": 892
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 892,
+          "maximum": 3.156847932206554e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 892,
+          "maximum": 0.00010261978690719521,
+          "above_1e_5": 5
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 892,
+          "maximum": 0.018144696252420545,
+          "above_1e_5": 892
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 33
+      },
+      "unscoped_draws": [
+        {
+          "draw": 917,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "1457"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 918,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "1457"
+            }
+          ]
+        },
+        {
+          "draw": 919,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 920,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 921,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 922,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 923,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "1457"
+            }
+          ]
+        },
+        {
+          "draw": 927,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "1457"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 911,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2583a0",
+          "handle": "30888",
+          "draws": 3,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.476226806640625,
+            -0.8784942626953125,
+            0.0375823974609375,
+            0.0
+          ],
+          [
+            -0.75958251953125,
+            0.3894805908203125,
+            -0.5208740234375,
+            0.0
+          ],
+          [
+            0.4429473876953125,
+            -0.2765960693359375,
+            -0.8527984619140625,
+            0.0
+          ],
+          [
+            17182.794921875,
+            24835.654296875,
+            129895.9921875,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 885,
+        "node_pointer_handle_pairs": 106
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              919,
+              920,
+              921,
+              922
+            ],
+            "next_depth_clear": 922
+          }
+        ]
+      }
+    },
+    "1:2879": {
+      "draws": 912,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 904
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 123,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1817
+        }
+      ],
+      "buffer_allocations": 1059,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 895,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 871,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 871,
+          "maximum": 1.0,
+          "above_1e_5": 871
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 871,
+          "maximum": 6.708913160474276e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 871,
+          "maximum": 7.725598859717955e-05,
+          "above_1e_5": 5
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 871,
+          "maximum": 0.015499677392654121,
+          "above_1e_5": 871
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 33
+      },
+      "unscoped_draws": [
+        {
+          "draw": 896,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "1458"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 897,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "1458"
+            }
+          ]
+        },
+        {
+          "draw": 898,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 899,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 900,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 901,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 902,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "1458"
+            }
+          ]
+        },
+        {
+          "draw": 906,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "1458"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 890,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2583a0",
+          "handle": "30888",
+          "draws": 3,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.47528076171875,
+            -0.8774261474609375,
+            0.0646820068359375,
+            0.0
+          ],
+          [
+            -0.7707366943359375,
+            0.3797760009765625,
+            -0.5115509033203125,
+            0.0
+          ],
+          [
+            0.424285888671875,
+            -0.2929840087890625,
+            -0.8567962646484375,
+            0.0
+          ],
+          [
+            19962.62890625,
+            27265.951171875,
+            128839.015625,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 865,
+        "node_pointer_handle_pairs": 109
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              898,
+              899,
+              900,
+              901
+            ],
+            "next_depth_clear": 901
+          }
+        ]
+      }
+    },
+    "1:2880": {
+      "draws": 856,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 848
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 124,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1705
+        }
+      ],
+      "buffer_allocations": 941,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 839,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 815,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 815,
+          "maximum": 1.0,
+          "above_1e_5": 815
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 815,
+          "maximum": 1.5533690352558895e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 815,
+          "maximum": 0.00010296765437195992,
+          "above_1e_5": 5
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 815,
+          "maximum": 0.019063404441112652,
+          "above_1e_5": 815
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 33
+      },
+      "unscoped_draws": [
+        {
+          "draw": 840,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "1459"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 841,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "1459"
+            }
+          ]
+        },
+        {
+          "draw": 842,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 843,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 844,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 845,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 846,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "1459"
+            }
+          ]
+        },
+        {
+          "draw": 850,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "1459"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 834,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2583a0",
+          "handle": "30888",
+          "draws": 3,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.473724365234375,
+            -0.8758392333984375,
+            0.0917205810546875,
+            0.0
+          ],
+          [
+            -0.7816925048828125,
+            0.370269775390625,
+            -0.5018157958984375,
+            0.0
+          ],
+          [
+            0.4055633544921875,
+            -0.309417724609375,
+            -0.860076904296875,
+            0.0
+          ],
+          [
+            22717.154296875,
+            29671.759765625,
+            127676.578125,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 809,
+        "node_pointer_handle_pairs": 110
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              842,
+              843,
+              844,
+              845
+            ],
+            "next_depth_clear": 845
+          }
+        ]
+      }
+    },
+    "1:2881": {
+      "draws": 844,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 836
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 116,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1681
+        }
+      ],
+      "buffer_allocations": 967,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 827,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 821,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 821,
+          "maximum": 1.0,
+          "above_1e_5": 821
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 821,
+          "maximum": 4.3141926745304085e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 821,
+          "maximum": 9.077474176060294e-05,
+          "above_1e_5": 5
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 821,
+          "maximum": 0.016124118264997378,
+          "above_1e_5": 821
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 15
+      },
+      "unscoped_draws": [
+        {
+          "draw": 828,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "1460"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 829,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "1460"
+            }
+          ]
+        },
+        {
+          "draw": 830,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 831,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 832,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 833,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 834,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "1460"
+            }
+          ]
+        },
+        {
+          "draw": 838,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "1460"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 822,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2583a0",
+          "handle": "30888",
+          "draws": 3,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.47161865234375,
+            -0.873748779296875,
+            0.1186676025390625,
+            0.0
+          ],
+          [
+            -0.79241943359375,
+            0.3609466552734375,
+            -0.491668701171875,
+            0.0
+          ],
+          [
+            0.386749267578125,
+            -0.3259124755859375,
+            -0.862640380859375,
+            0.0
+          ],
+          [
+            25449.021484375,
+            32056.185546875,
+            126409.5390625,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 815,
+        "node_pointer_handle_pairs": 102
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              830,
+              831,
+              832,
+              833
+            ],
+            "next_depth_clear": 833
+          }
+        ]
+      }
+    },
+    "1:3241": {
+      "draws": 676,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 668
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 133,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1345
+        }
+      ],
+      "buffer_allocations": 751,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 662,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 657,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 657,
+          "maximum": 1.0,
+          "above_1e_5": 657
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 657,
+          "maximum": 9.238159092662601e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 657,
+          "maximum": 3.5328246771411835e-05,
+          "above_1e_5": 9
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 657,
+          "maximum": 0.013601942686364055,
+          "above_1e_5": 657
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 11
+      },
+      "unscoped_draws": [
+        {
+          "draw": 663,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "1820"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 664,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "1820"
+            }
+          ]
+        },
+        {
+          "draw": 665,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 666,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 667,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 668,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 669,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "1820"
+            }
+          ]
+        },
+        {
+          "draw": 670,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "1820"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 657,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.5447998046875,
+            -0.7938690185546875,
+            0.2700347900390625,
+            0.0
+          ],
+          [
+            -0.65386962890625,
+            0.2005615234375,
+            -0.729522705078125,
+            0.0
+          ],
+          [
+            0.524993896484375,
+            -0.5740509033203125,
+            -0.62835693359375,
+            0.0
+          ],
+          [
+            3164.845947265625,
+            66381.265625,
+            101290.8671875,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 652,
+        "node_pointer_handle_pairs": 124
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              665,
+              666,
+              667,
+              668
+            ],
+            "next_depth_clear": 668
+          }
+        ]
+      }
+    },
+    "1:3242": {
+      "draws": 676,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 668
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 133,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1345
+        }
+      ],
+      "buffer_allocations": 751,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 662,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 657,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 657,
+          "maximum": 1.0,
+          "above_1e_5": 657
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 657,
+          "maximum": 5.377516461882807e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 657,
+          "maximum": 3.0139841362821014e-05,
+          "above_1e_5": 7
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 657,
+          "maximum": 0.015984517871402204,
+          "above_1e_5": 657
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 11
+      },
+      "unscoped_draws": [
+        {
+          "draw": 663,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "1821"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 664,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "1821"
+            }
+          ]
+        },
+        {
+          "draw": 665,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 666,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 667,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 668,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 669,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "1821"
+            }
+          ]
+        },
+        {
+          "draw": 670,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "1821"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 657,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.5447998046875,
+            -0.7938690185546875,
+            0.2700347900390625,
+            0.0
+          ],
+          [
+            -0.65386962890625,
+            0.2005615234375,
+            -0.729522705078125,
+            0.0
+          ],
+          [
+            0.524993896484375,
+            -0.5740509033203125,
+            -0.62835693359375,
+            0.0
+          ],
+          [
+            3160.666015625,
+            66376.1875,
+            101119.1484375,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 652,
+        "node_pointer_handle_pairs": 124
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              665,
+              666,
+              667,
+              668
+            ],
+            "next_depth_clear": 668
+          }
+        ]
+      }
+    },
+    "1:3243": {
+      "draws": 676,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 668
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 133,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1345
+        }
+      ],
+      "buffer_allocations": 751,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 662,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 657,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 657,
+          "maximum": 1.0,
+          "above_1e_5": 657
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 657,
+          "maximum": 1.1108093692407272e-07,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 657,
+          "maximum": 4.30396637429136e-05,
+          "above_1e_5": 6
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 657,
+          "maximum": 0.015049014589749277,
+          "above_1e_5": 657
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 11
+      },
+      "unscoped_draws": [
+        {
+          "draw": 663,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "1822"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 664,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "1822"
+            }
+          ]
+        },
+        {
+          "draw": 665,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 666,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 667,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 668,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 669,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "1822"
+            }
+          ]
+        },
+        {
+          "draw": 670,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "1822"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 657,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.5447998046875,
+            -0.7938690185546875,
+            0.2700347900390625,
+            0.0
+          ],
+          [
+            -0.65386962890625,
+            0.2005615234375,
+            -0.729522705078125,
+            0.0
+          ],
+          [
+            0.524993896484375,
+            -0.5740509033203125,
+            -0.62835693359375,
+            0.0
+          ],
+          [
+            3156.908203125,
+            66371.6171875,
+            100947.359375,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 652,
+        "node_pointer_handle_pairs": 124
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              665,
+              666,
+              667,
+              668
+            ],
+            "next_depth_clear": 668
+          }
+        ]
+      }
+    },
+    "1:3244": {
+      "draws": 678,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 670
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 135,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1349
+        }
+      ],
+      "buffer_allocations": 755,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 664,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 659,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 659,
+          "maximum": 1.0,
+          "above_1e_5": 659
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 659,
+          "maximum": 6.264276091044263e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 659,
+          "maximum": 1.990044635754885e-05,
+          "above_1e_5": 6
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 659,
+          "maximum": 0.013764962030109018,
+          "above_1e_5": 659
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 11
+      },
+      "unscoped_draws": [
+        {
+          "draw": 665,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "1823"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 666,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "1823"
+            }
+          ]
+        },
+        {
+          "draw": 667,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 668,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 669,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 670,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 671,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "1823"
+            }
+          ]
+        },
+        {
+          "draw": 672,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "1823"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 659,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.5447998046875,
+            -0.7938690185546875,
+            0.2700347900390625,
+            0.0
+          ],
+          [
+            -0.65386962890625,
+            0.2005615234375,
+            -0.729522705078125,
+            0.0
+          ],
+          [
+            0.524993896484375,
+            -0.5740509033203125,
+            -0.62835693359375,
+            0.0
+          ],
+          [
+            3153.521240234375,
+            66367.5,
+            100775.5,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 654,
+        "node_pointer_handle_pairs": 126
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              667,
+              668,
+              669,
+              670
+            ],
+            "next_depth_clear": 670
+          }
+        ]
+      }
+    },
+    "1:3462": {
+      "draws": 684,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 676
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 141,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1361
+        }
+      ],
+      "buffer_allocations": 815,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 670,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 665,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 665,
+          "maximum": 1.0,
+          "above_1e_5": 665
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 665,
+          "maximum": 1.8484308182447748e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 665,
+          "maximum": 4.0949272587922195e-05,
+          "above_1e_5": 7
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 665,
+          "maximum": 0.0165957695862744,
+          "above_1e_5": 665
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 11
+      },
+      "unscoped_draws": [
+        {
+          "draw": 671,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "2041"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 672,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "2041"
+            }
+          ]
+        },
+        {
+          "draw": 673,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 674,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 675,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 676,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 677,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "2041"
+            }
+          ]
+        },
+        {
+          "draw": 678,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "2041"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 665,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.5447998046875,
+            -0.7938690185546875,
+            0.2700347900390625,
+            0.0
+          ],
+          [
+            -0.65386962890625,
+            0.2005615234375,
+            -0.729522705078125,
+            0.0
+          ],
+          [
+            0.524993896484375,
+            -0.5740509033203125,
+            -0.62835693359375,
+            0.0
+          ],
+          [
+            3122.340087890625,
+            66328.109375,
+            95811.5703125,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 660,
+        "node_pointer_handle_pairs": 132
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              673,
+              674,
+              675,
+              676
+            ],
+            "next_depth_clear": 676
+          }
+        ]
+      }
+    },
+    "1:3463": {
+      "draws": 684,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 676
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 141,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1361
+        }
+      ],
+      "buffer_allocations": 815,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 670,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 665,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 665,
+          "maximum": 1.0,
+          "above_1e_5": 665
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 665,
+          "maximum": 1.8484308182447748e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 665,
+          "maximum": 4.0949272587922195e-05,
+          "above_1e_5": 7
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 665,
+          "maximum": 0.012703818589216098,
+          "above_1e_5": 665
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 11
+      },
+      "unscoped_draws": [
+        {
+          "draw": 671,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "2042"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 672,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "2042"
+            }
+          ]
+        },
+        {
+          "draw": 673,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 674,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 675,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 676,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 677,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "2042"
+            }
+          ]
+        },
+        {
+          "draw": 678,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "2042"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 665,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.5447998046875,
+            -0.7938690185546875,
+            0.2700347900390625,
+            0.0
+          ],
+          [
+            -0.65386962890625,
+            0.2005615234375,
+            -0.729522705078125,
+            0.0
+          ],
+          [
+            0.524993896484375,
+            -0.5740509033203125,
+            -0.62835693359375,
+            0.0
+          ],
+          [
+            3122.340087890625,
+            66328.109375,
+            95811.5703125,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 660,
+        "node_pointer_handle_pairs": 132
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              673,
+              674,
+              675,
+              676
+            ],
+            "next_depth_clear": 676
+          }
+        ]
+      }
+    },
+    "1:3464": {
+      "draws": 684,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 676
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 141,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1361
+        }
+      ],
+      "buffer_allocations": 815,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 670,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 665,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 665,
+          "maximum": 1.0,
+          "above_1e_5": 665
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 665,
+          "maximum": 1.8484308182447748e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 665,
+          "maximum": 4.0949272587922195e-05,
+          "above_1e_5": 7
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 665,
+          "maximum": 0.016040138842072338,
+          "above_1e_5": 665
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 11
+      },
+      "unscoped_draws": [
+        {
+          "draw": 671,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "2043"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 672,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "2043"
+            }
+          ]
+        },
+        {
+          "draw": 673,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 674,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 675,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 676,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 677,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "2043"
+            }
+          ]
+        },
+        {
+          "draw": 678,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "2043"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 665,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.5447998046875,
+            -0.7938690185546875,
+            0.2700347900390625,
+            0.0
+          ],
+          [
+            -0.65386962890625,
+            0.2005615234375,
+            -0.729522705078125,
+            0.0
+          ],
+          [
+            0.524993896484375,
+            -0.5740509033203125,
+            -0.62835693359375,
+            0.0
+          ],
+          [
+            3122.340087890625,
+            66328.109375,
+            95811.5703125,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 660,
+        "node_pointer_handle_pairs": 132
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              673,
+              674,
+              675,
+              676
+            ],
+            "next_depth_clear": 676
+          }
+        ]
+      }
+    },
+    "1:3465": {
+      "draws": 684,
+      "complete_successful": true,
+      "context_status": [
+        {
+          "scoped": "1",
+          "valid": "127",
+          "coordinates_match": "True",
+          "draws": 676
+        },
+        {
+          "scoped": "0",
+          "valid": "0",
+          "coordinates_match": "True",
+          "draws": 8
+        }
+      ],
+      "node_candidates": 141,
+      "conflicting_world_candidates": 0,
+      "buffer_status": [
+        {
+          "result": "00000000",
+          "status": "00000000",
+          "requested": "1",
+          "known": "1",
+          "ambiguous": "0",
+          "pending": "0",
+          "observations": 1361
+        }
+      ],
+      "buffer_allocations": 815,
+      "buffers_changing_within_frame": 0,
+      "matrix_checks": {
+        "ordinary_node_basis_fixed16_absolute": {
+          "observations": 670,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "engine_world_transpose_vs_shader_relative": {
+          "observations": 665,
+          "maximum": 0.0,
+          "above_1e_5": 0
+        },
+        "wrong_untransposed_world_relative": {
+          "observations": 665,
+          "maximum": 1.0,
+          "above_1e_5": 665
+        },
+        "engine_view_transpose_vs_inverse_shader_camera_relative": {
+          "observations": 665,
+          "maximum": 1.8484308182447748e-08,
+          "above_1e_5": 0
+        },
+        "transpose_engine_WVP_vs_shader_relative": {
+          "observations": 665,
+          "maximum": 4.0949272587922195e-05,
+          "above_1e_5": 7
+        },
+        "transpose_engine_WVP_vs_shader_absolute": {
+          "observations": 665,
+          "maximum": 0.013281616556923836,
+          "above_1e_5": 665
+        }
+      },
+      "unavailable": {
+        "no_named_factor": 11
+      },
+      "unscoped_draws": [
+        {
+          "draw": 671,
+          "vs": "36f98d151fd6b0c6",
+          "ps": "222bee0defcb1852",
+          "z_enable": 1,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1659",
+              "revision": "2044"
+            },
+            {
+              "kind": "index",
+              "identity": "1657",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 672,
+          "vs": "5e484a06672e28fb",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1661",
+              "revision": "2044"
+            }
+          ]
+        },
+        {
+          "draw": 673,
+          "vs": "cbbf26102694c961",
+          "ps": "1c90e79667bdaddf",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 674,
+          "vs": "6059306306203243",
+          "ps": "f3172baa8dd19a40",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 675,
+          "vs": "6059306306203243",
+          "ps": "241c3fa33270f58e",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 676,
+          "vs": "1279d081455f5815",
+          "ps": "ff6eed5a5ddf3a3a",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "659",
+              "revision": "1"
+            }
+          ]
+        },
+        {
+          "draw": 677,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1663",
+              "revision": "2044"
+            }
+          ]
+        },
+        {
+          "draw": 678,
+          "vs": "f36fc43f30b19d71",
+          "ps": "0a523f33ac47ae05",
+          "z_enable": 0,
+          "z_write": 0,
+          "buffers": [
+            {
+              "kind": "vertex",
+              "identity": "1667",
+              "revision": "2044"
+            }
+          ]
+        }
+      ],
+      "cameras": [
+        {
+          "session": "1",
+          "pointer": "6b259e60",
+          "handle": "30907",
+          "draws": 5,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2596c8",
+          "handle": "30906",
+          "draws": 665,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "18649e80",
+          "handle": "26235",
+          "draws": 4,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b248030",
+          "handle": "30837",
+          "draws": 1,
+          "unique_view_matrices": 1
+        },
+        {
+          "session": "1",
+          "pointer": "6b2474a0",
+          "handle": "30835",
+          "draws": 1,
+          "unique_view_matrices": 1
+        }
+      ],
+      "dominant_camera": {
+        "pointer": "6b2596c8",
+        "handle": "30906",
+        "view_rows": [
+          [
+            -0.5447998046875,
+            -0.7938690185546875,
+            0.2700347900390625,
+            0.0
+          ],
+          [
+            -0.65386962890625,
+            0.2005615234375,
+            -0.729522705078125,
+            0.0
+          ],
+          [
+            0.524993896484375,
+            -0.5740509033203125,
+            -0.62835693359375,
+            0.0
+          ],
+          [
+            3122.340087890625,
+            66328.109375,
+            95811.5703125,
+            1.0
+          ]
+        ]
+      },
+      "ordinary_dominant_camera_depth_writers": {
+        "draws": 660,
+        "node_pointer_handle_pairs": 132
+      },
+      "pass_observations": {
+        "initial_clear_flags": 3,
+        "background_draws_before_depth_clear": 5,
+        "background_pairs": [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ]
+        ],
+        "bloom_chains": [
+          {
+            "draws": [
+              673,
+              674,
+              675,
+              676
+            ],
+            "next_depth_clear": 676
+          }
+        ]
+      }
+    }
+  },
+  "adjacent_frames": [
+    {
+      "previous": "1:120",
+      "current": "1:121",
+      "shared_node_candidates": 441,
+      "unambiguous_world_candidates": 441,
+      "changed_world_candidates": 106,
+      "newly_seen_candidates": 0,
+      "missing_candidates": 0,
+      "changed_first_draw_index": 2,
+      "shared_buffer_allocations": 649,
+      "changed_buffer_revisions": [],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "translation_distance": 0.0,
+        "forward_axis_angle_degrees": 0.0,
+        "rotation_max_element_delta": 0.0
+      }
+    },
+    {
+      "previous": "1:121",
+      "current": "1:122",
+      "shared_node_candidates": 441,
+      "unambiguous_world_candidates": 441,
+      "changed_world_candidates": 106,
+      "newly_seen_candidates": 0,
+      "missing_candidates": 0,
+      "changed_first_draw_index": 0,
+      "shared_buffer_allocations": 649,
+      "changed_buffer_revisions": [],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "translation_distance": 0.0,
+        "forward_axis_angle_degrees": 0.0,
+        "rotation_max_element_delta": 0.0
+      }
+    },
+    {
+      "previous": "1:122",
+      "current": "1:123",
+      "shared_node_candidates": 440,
+      "unambiguous_world_candidates": 440,
+      "changed_world_candidates": 106,
+      "newly_seen_candidates": 1,
+      "missing_candidates": 1,
+      "changed_first_draw_index": 12,
+      "shared_buffer_allocations": 647,
+      "changed_buffer_revisions": [],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "translation_distance": 0.0,
+        "forward_axis_angle_degrees": 0.0,
+        "rotation_max_element_delta": 0.0
+      }
+    },
+    {
+      "previous": "1:2775",
+      "current": "1:2776",
+      "shared_node_candidates": 82,
+      "unambiguous_world_candidates": 82,
+      "changed_world_candidates": 50,
+      "newly_seen_candidates": 2,
+      "missing_candidates": 1,
+      "changed_first_draw_index": 55,
+      "shared_buffer_allocations": 627,
+      "changed_buffer_revisions": [
+        {
+          "kind": "vertex",
+          "identity": "1659",
+          "previous_last": 1354,
+          "current_first": 1355
+        },
+        {
+          "kind": "vertex",
+          "identity": "1661",
+          "previous_last": 1354,
+          "current_first": 1355
+        },
+        {
+          "kind": "vertex",
+          "identity": "1663",
+          "previous_last": 1354,
+          "current_first": 1355
+        },
+        {
+          "kind": "vertex",
+          "identity": "1667",
+          "previous_last": 1354,
+          "current_first": 1355
+        }
+      ],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          -152.90854625439533,
+          -60.68974404799519,
+          19.64567902426643
+        ],
+        "translation_distance": 165.68108297137675,
+        "forward_axis_angle_degrees": 2.2268472697783697,
+        "rotation_max_element_delta": 0.032877648358542816
+      }
+    },
+    {
+      "previous": "1:2776",
+      "current": "1:2777",
+      "shared_node_candidates": 83,
+      "unambiguous_world_candidates": 83,
+      "changed_world_candidates": 49,
+      "newly_seen_candidates": 7,
+      "missing_candidates": 1,
+      "changed_first_draw_index": 55,
+      "shared_buffer_allocations": 631,
+      "changed_buffer_revisions": [
+        {
+          "kind": "vertex",
+          "identity": "1659",
+          "previous_last": 1355,
+          "current_first": 1356
+        },
+        {
+          "kind": "vertex",
+          "identity": "1661",
+          "previous_last": 1355,
+          "current_first": 1356
+        },
+        {
+          "kind": "vertex",
+          "identity": "1663",
+          "previous_last": 1355,
+          "current_first": 1356
+        },
+        {
+          "kind": "vertex",
+          "identity": "1667",
+          "previous_last": 1355,
+          "current_first": 1356
+        }
+      ],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          -151.97535145165602,
+          -63.82231360435253,
+          13.91793375731504
+        ],
+        "translation_distance": 165.4191767684137,
+        "forward_axis_angle_degrees": 2.226949399821083,
+        "rotation_max_element_delta": 0.032558289332599244
+      }
+    },
+    {
+      "previous": "1:2777",
+      "current": "1:2778",
+      "shared_node_candidates": 87,
+      "unambiguous_world_candidates": 87,
+      "changed_world_candidates": 50,
+      "newly_seen_candidates": 1,
+      "missing_candidates": 3,
+      "changed_first_draw_index": 64,
+      "shared_buffer_allocations": 665,
+      "changed_buffer_revisions": [
+        {
+          "kind": "vertex",
+          "identity": "1659",
+          "previous_last": 1356,
+          "current_first": 1357
+        },
+        {
+          "kind": "vertex",
+          "identity": "1661",
+          "previous_last": 1356,
+          "current_first": 1357
+        },
+        {
+          "kind": "vertex",
+          "identity": "1663",
+          "previous_last": 1356,
+          "current_first": 1357
+        },
+        {
+          "kind": "vertex",
+          "identity": "1667",
+          "previous_last": 1356,
+          "current_first": 1357
+        }
+      ],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          -150.84607157023493,
+          -66.84556969747064,
+          8.220669355388964
+        ],
+        "translation_distance": 165.1982048964288,
+        "forward_axis_angle_degrees": 2.224109152378696,
+        "rotation_max_element_delta": 0.03209847501034779
+      }
+    },
+    {
+      "previous": "1:2878",
+      "current": "1:2879",
+      "shared_node_candidates": 119,
+      "unambiguous_world_candidates": 119,
+      "changed_world_candidates": 60,
+      "newly_seen_candidates": 4,
+      "missing_candidates": 2,
+      "changed_first_draw_index": 70,
+      "shared_buffer_allocations": 1037,
+      "changed_buffer_revisions": [
+        {
+          "kind": "vertex",
+          "identity": "1659",
+          "previous_last": 1457,
+          "current_first": 1458
+        },
+        {
+          "kind": "vertex",
+          "identity": "1661",
+          "previous_last": 1457,
+          "current_first": 1458
+        },
+        {
+          "kind": "vertex",
+          "identity": "1663",
+          "previous_last": 1457,
+          "current_first": 1458
+        },
+        {
+          "kind": "vertex",
+          "identity": "1667",
+          "previous_last": 1457,
+          "current_first": 1458
+        }
+      ],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          -41.27958168103942,
+          -97.72274774128164,
+          -124.29522673606698
+        ],
+        "translation_distance": 163.41065656571504,
+        "forward_axis_angle_degrees": 1.658085411156105,
+        "rotation_max_element_delta": 0.02710446919445609
+      }
+    },
+    {
+      "previous": "1:2879",
+      "current": "1:2880",
+      "shared_node_candidates": 120,
+      "unambiguous_world_candidates": 120,
+      "changed_world_candidates": 59,
+      "newly_seen_candidates": 4,
+      "missing_candidates": 3,
+      "changed_first_draw_index": 71,
+      "shared_buffer_allocations": 911,
+      "changed_buffer_revisions": [
+        {
+          "kind": "vertex",
+          "identity": "1659",
+          "previous_last": 1458,
+          "current_first": 1459
+        },
+        {
+          "kind": "vertex",
+          "identity": "1661",
+          "previous_last": 1458,
+          "current_first": 1459
+        },
+        {
+          "kind": "vertex",
+          "identity": "1663",
+          "previous_last": 1458,
+          "current_first": 1459
+        },
+        {
+          "kind": "vertex",
+          "identity": "1667",
+          "previous_last": 1458,
+          "current_first": 1459
+        }
+      ],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          -36.16974909284909,
+          -96.87752728941268,
+          -126.72387650798191
+        ],
+        "translation_distance": 163.56175262071756,
+        "forward_axis_angle_degrees": 1.656617446971473,
+        "rotation_max_element_delta": 0.02702466124060604
+      }
+    },
+    {
+      "previous": "1:2880",
+      "current": "1:2881",
+      "shared_node_candidates": 106,
+      "unambiguous_world_candidates": 106,
+      "changed_world_candidates": 45,
+      "newly_seen_candidates": 10,
+      "missing_candidates": 18,
+      "changed_first_draw_index": 104,
+      "shared_buffer_allocations": 937,
+      "changed_buffer_revisions": [
+        {
+          "kind": "vertex",
+          "identity": "1659",
+          "previous_last": 1459,
+          "current_first": 1460
+        },
+        {
+          "kind": "vertex",
+          "identity": "1661",
+          "previous_last": 1459,
+          "current_first": 1460
+        },
+        {
+          "kind": "vertex",
+          "identity": "1663",
+          "previous_last": 1459,
+          "current_first": 1460
+        },
+        {
+          "kind": "vertex",
+          "identity": "1667",
+          "previous_last": 1459,
+          "current_first": 1460
+        }
+      ],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          -31.100289643251017,
+          -95.97025821323041,
+          -128.99245765496744
+        ],
+        "translation_distance": 163.75766427644476,
+        "forward_axis_angle_degrees": 1.6574989606237271,
+        "rotation_max_element_delta": 0.026964201183685615
+      }
+    },
+    {
+      "previous": "1:3241",
+      "current": "1:3242",
+      "shared_node_candidates": 133,
+      "unambiguous_world_candidates": 133,
+      "changed_world_candidates": 68,
+      "newly_seen_candidates": 0,
+      "missing_candidates": 0,
+      "changed_first_draw_index": 0,
+      "shared_buffer_allocations": 751,
+      "changed_buffer_revisions": [
+        {
+          "kind": "vertex",
+          "identity": "1659",
+          "previous_last": 1820,
+          "current_first": 1821
+        },
+        {
+          "kind": "vertex",
+          "identity": "1661",
+          "previous_last": 1820,
+          "current_first": 1821
+        },
+        {
+          "kind": "vertex",
+          "identity": "1663",
+          "previous_last": 1820,
+          "current_first": 1821
+        },
+        {
+          "kind": "vertex",
+          "identity": "1667",
+          "previous_last": 1820,
+          "current_first": 1821
+        }
+      ],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          40.067690772943024,
+          -126.99221314703755,
+          -108.62516672731726
+        ],
+        "translation_distance": 171.8483892574972,
+        "forward_axis_angle_degrees": 0.0,
+        "rotation_max_element_delta": 0.0
+      }
+    },
+    {
+      "previous": "1:3242",
+      "current": "1:3243",
+      "shared_node_candidates": 133,
+      "unambiguous_world_candidates": 133,
+      "changed_world_candidates": 68,
+      "newly_seen_candidates": 0,
+      "missing_candidates": 0,
+      "changed_first_draw_index": 0,
+      "shared_buffer_allocations": 751,
+      "changed_buffer_revisions": [
+        {
+          "kind": "vertex",
+          "identity": "1659",
+          "previous_last": 1821,
+          "current_first": 1822
+        },
+        {
+          "kind": "vertex",
+          "identity": "1661",
+          "previous_last": 1821,
+          "current_first": 1822
+        },
+        {
+          "kind": "vertex",
+          "identity": "1663",
+          "previous_last": 1821,
+          "current_first": 1822
+        },
+        {
+          "kind": "vertex",
+          "identity": "1667",
+          "previous_last": 1821,
+          "current_first": 1822
+        }
+      ],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          40.71981271889672,
+          -126.86934880927583,
+          -108.59946351971303
+        ],
+        "translation_distance": 171.89467208706967,
+        "forward_axis_angle_degrees": 0.0,
+        "rotation_max_element_delta": 0.0
+      }
+    },
+    {
+      "previous": "1:3243",
+      "current": "1:3244",
+      "shared_node_candidates": 133,
+      "unambiguous_world_candidates": 133,
+      "changed_world_candidates": 68,
+      "newly_seen_candidates": 2,
+      "missing_candidates": 0,
+      "changed_first_draw_index": 18,
+      "shared_buffer_allocations": 751,
+      "changed_buffer_revisions": [
+        {
+          "kind": "vertex",
+          "identity": "1659",
+          "previous_last": 1822,
+          "current_first": 1823
+        },
+        {
+          "kind": "vertex",
+          "identity": "1661",
+          "previous_last": 1822,
+          "current_first": 1823
+        },
+        {
+          "kind": "vertex",
+          "identity": "1663",
+          "previous_last": 1822,
+          "current_first": 1823
+        },
+        {
+          "kind": "vertex",
+          "identity": "1667",
+          "previous_last": 1822,
+          "current_first": 1823
+        }
+      ],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          41.30058540200844,
+          -126.76903963286168,
+          -108.57823592262866
+        ],
+        "translation_distance": 171.94580855623278,
+        "forward_axis_angle_degrees": 0.0,
+        "rotation_max_element_delta": 0.0
+      }
+    },
+    {
+      "previous": "1:3462",
+      "current": "1:3463",
+      "shared_node_candidates": 141,
+      "unambiguous_world_candidates": 141,
+      "changed_world_candidates": 58,
+      "newly_seen_candidates": 0,
+      "missing_candidates": 0,
+      "changed_first_draw_index": 0,
+      "shared_buffer_allocations": 815,
+      "changed_buffer_revisions": [
+        {
+          "kind": "vertex",
+          "identity": "1659",
+          "previous_last": 2041,
+          "current_first": 2042
+        },
+        {
+          "kind": "vertex",
+          "identity": "1661",
+          "previous_last": 2041,
+          "current_first": 2042
+        },
+        {
+          "kind": "vertex",
+          "identity": "1663",
+          "previous_last": 2041,
+          "current_first": 2042
+        },
+        {
+          "kind": "vertex",
+          "identity": "1667",
+          "previous_last": 2041,
+          "current_first": 2042
+        }
+      ],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "translation_distance": 0.0,
+        "forward_axis_angle_degrees": 0.0,
+        "rotation_max_element_delta": 0.0
+      }
+    },
+    {
+      "previous": "1:3463",
+      "current": "1:3464",
+      "shared_node_candidates": 141,
+      "unambiguous_world_candidates": 141,
+      "changed_world_candidates": 57,
+      "newly_seen_candidates": 0,
+      "missing_candidates": 0,
+      "changed_first_draw_index": 0,
+      "shared_buffer_allocations": 815,
+      "changed_buffer_revisions": [
+        {
+          "kind": "vertex",
+          "identity": "1659",
+          "previous_last": 2042,
+          "current_first": 2043
+        },
+        {
+          "kind": "vertex",
+          "identity": "1661",
+          "previous_last": 2042,
+          "current_first": 2043
+        },
+        {
+          "kind": "vertex",
+          "identity": "1663",
+          "previous_last": 2042,
+          "current_first": 2043
+        },
+        {
+          "kind": "vertex",
+          "identity": "1667",
+          "previous_last": 2042,
+          "current_first": 2043
+        }
+      ],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "translation_distance": 0.0,
+        "forward_axis_angle_degrees": 0.0,
+        "rotation_max_element_delta": 0.0
+      }
+    },
+    {
+      "previous": "1:3464",
+      "current": "1:3465",
+      "shared_node_candidates": 141,
+      "unambiguous_world_candidates": 141,
+      "changed_world_candidates": 59,
+      "newly_seen_candidates": 0,
+      "missing_candidates": 0,
+      "changed_first_draw_index": 0,
+      "shared_buffer_allocations": 815,
+      "changed_buffer_revisions": [
+        {
+          "kind": "vertex",
+          "identity": "1659",
+          "previous_last": 2043,
+          "current_first": 2044
+        },
+        {
+          "kind": "vertex",
+          "identity": "1661",
+          "previous_last": 2043,
+          "current_first": 2044
+        },
+        {
+          "kind": "vertex",
+          "identity": "1663",
+          "previous_last": 2043,
+          "current_first": 2044
+        },
+        {
+          "kind": "vertex",
+          "identity": "1667",
+          "previous_last": 2043,
+          "current_first": 2044
+        }
+      ],
+      "dominant_camera_delta": {
+        "translation_delta": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "translation_distance": 0.0,
+        "forward_axis_angle_degrees": 0.0,
+        "rotation_max_element_delta": 0.0
+      }
+    }
+  ],
+  "burst_camera_changes": [
+    {
+      "previous": "1:2778",
+      "current": "1:2878",
+      "interpretation": "Same observed camera pointer/handle across gap; no lifetime inference",
+      "delta": {
+        "translation_delta": [
+          -3042.4418650008556,
+          -2675.780089698572,
+          -1954.2877578140033
+        ],
+        "translation_distance": 4498.3877368095855,
+        "forward_axis_angle_degrees": 59.669800568551096,
+        "rotation_max_element_delta": 0.8190198767479733
+      }
+    },
+    {
+      "previous": "1:2881",
+      "current": "1:3241",
+      "interpretation": "Same observed camera pointer/handle across gap; no lifetime inference",
+      "delta": {
+        "translation_delta": [
+          2055.9015349748333,
+          -8095.73075282792,
+          -9562.538391687602
+        ],
+        "translation_distance": 12696.83929315855,
+        "forward_axis_angle_degrees": 21.124352739845435,
+        "rotation_max_element_delta": 0.2480947774201529
+      }
+    },
+    {
+      "previous": "1:3244",
+      "current": "1:3462",
+      "interpretation": "Same observed camera pointer/handle across gap; no lifetime inference",
+      "delta": {
+        "translation_delta": [
+          1292.3611795306788,
+          -3633.9277602655566,
+          -3125.475813199344
+        ],
+        "translation_distance": 4964.295261573457,
+        "forward_axis_angle_degrees": 0.0,
+        "rotation_max_element_delta": 0.0
+      }
+    }
+  ],
+  "limits": [
+    "Node/handle/model/camera tuples are adjacent-frame candidates, not lifetime proof.",
+    "No correspondence is inferred across nonconsecutive captures or reloads.",
+    "Equal buffer revisions cover observed wrapper writes, not arbitrary native writes.",
+    "Double-precision matrix recomposition is a hypothesis test, not exact engine arithmetic."
+  ],
+  "observed_handle_collisions": {
+    "unique_node_pointers": 655,
+    "unique_node_handles": 655,
+    "pointers_with_multiple_handles": 0,
+    "handles_with_multiple_pointers": 0,
+    "interpretation": "Absence of observed collisions is not a lifetime or reload guarantee."
+  },
+  "scene_depth_diagnostics": {
+    "1:120": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "120",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 600,
+          "preceding_capture_sequence": 603
+        },
+        {
+          "device": "1",
+          "frame": "120",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 600,
+          "preceding_capture_sequence": 603
+        },
+        {
+          "device": "1",
+          "frame": "120",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 600,
+          "preceding_capture_sequence": 603
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "120",
+          "generation": "1",
+          "events": "649",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:121": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "121",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 600,
+          "preceding_capture_sequence": 603
+        },
+        {
+          "device": "1",
+          "frame": "121",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 600,
+          "preceding_capture_sequence": 603
+        },
+        {
+          "device": "1",
+          "frame": "121",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 600,
+          "preceding_capture_sequence": 603
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "121",
+          "generation": "1",
+          "events": "649",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:122": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "122",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 600,
+          "preceding_capture_sequence": 603
+        },
+        {
+          "device": "1",
+          "frame": "122",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 600,
+          "preceding_capture_sequence": 603
+        },
+        {
+          "device": "1",
+          "frame": "122",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 600,
+          "preceding_capture_sequence": 603
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "122",
+          "generation": "1",
+          "events": "649",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:123": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "123",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 600,
+          "preceding_capture_sequence": 603
+        },
+        {
+          "device": "1",
+          "frame": "123",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 600,
+          "preceding_capture_sequence": 603
+        },
+        {
+          "device": "1",
+          "frame": "123",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 600,
+          "preceding_capture_sequence": 603
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "123",
+          "generation": "1",
+          "events": "649",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:2775": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "2775",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 449,
+          "preceding_capture_sequence": 452
+        },
+        {
+          "device": "1",
+          "frame": "2775",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 449,
+          "preceding_capture_sequence": 452
+        },
+        {
+          "device": "1",
+          "frame": "2775",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 449,
+          "preceding_capture_sequence": 452
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "2775",
+          "generation": "1",
+          "events": "476",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:2776": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "2776",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 435,
+          "preceding_capture_sequence": 438
+        },
+        {
+          "device": "1",
+          "frame": "2776",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 435,
+          "preceding_capture_sequence": 438
+        },
+        {
+          "device": "1",
+          "frame": "2776",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 435,
+          "preceding_capture_sequence": 438
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "2776",
+          "generation": "1",
+          "events": "462",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:2777": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "2777",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 473,
+          "preceding_capture_sequence": 476
+        },
+        {
+          "device": "1",
+          "frame": "2777",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 473,
+          "preceding_capture_sequence": 476
+        },
+        {
+          "device": "1",
+          "frame": "2777",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 473,
+          "preceding_capture_sequence": 476
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "2777",
+          "generation": "1",
+          "events": "500",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:2778": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "2778",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 471,
+          "preceding_capture_sequence": 474
+        },
+        {
+          "device": "1",
+          "frame": "2778",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 471,
+          "preceding_capture_sequence": 474
+        },
+        {
+          "device": "1",
+          "frame": "2778",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 471,
+          "preceding_capture_sequence": 474
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "2778",
+          "generation": "1",
+          "events": "498",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:2878": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "2878",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 918,
+          "preceding_capture_sequence": 921
+        },
+        {
+          "device": "1",
+          "frame": "2878",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 918,
+          "preceding_capture_sequence": 921
+        },
+        {
+          "device": "1",
+          "frame": "2878",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 918,
+          "preceding_capture_sequence": 921
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "2878",
+          "generation": "1",
+          "events": "944",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:2879": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "2879",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 897,
+          "preceding_capture_sequence": 900
+        },
+        {
+          "device": "1",
+          "frame": "2879",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 897,
+          "preceding_capture_sequence": 900
+        },
+        {
+          "device": "1",
+          "frame": "2879",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 897,
+          "preceding_capture_sequence": 900
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "2879",
+          "generation": "1",
+          "events": "923",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:2880": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "2880",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 841,
+          "preceding_capture_sequence": 844
+        },
+        {
+          "device": "1",
+          "frame": "2880",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 841,
+          "preceding_capture_sequence": 844
+        },
+        {
+          "device": "1",
+          "frame": "2880",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 841,
+          "preceding_capture_sequence": 844
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "2880",
+          "generation": "1",
+          "events": "867",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:2881": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "2881",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 829,
+          "preceding_capture_sequence": 832
+        },
+        {
+          "device": "1",
+          "frame": "2881",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 829,
+          "preceding_capture_sequence": 832
+        },
+        {
+          "device": "1",
+          "frame": "2881",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 829,
+          "preceding_capture_sequence": 832
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "2881",
+          "generation": "1",
+          "events": "855",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:3241": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "3241",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 664,
+          "preceding_capture_sequence": 667
+        },
+        {
+          "device": "1",
+          "frame": "3241",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 664,
+          "preceding_capture_sequence": 667
+        },
+        {
+          "device": "1",
+          "frame": "3241",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 664,
+          "preceding_capture_sequence": 667
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "3241",
+          "generation": "1",
+          "events": "687",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:3242": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "3242",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 664,
+          "preceding_capture_sequence": 667
+        },
+        {
+          "device": "1",
+          "frame": "3242",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 664,
+          "preceding_capture_sequence": 667
+        },
+        {
+          "device": "1",
+          "frame": "3242",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 664,
+          "preceding_capture_sequence": 667
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "3242",
+          "generation": "1",
+          "events": "687",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:3243": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "3243",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 664,
+          "preceding_capture_sequence": 667
+        },
+        {
+          "device": "1",
+          "frame": "3243",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 664,
+          "preceding_capture_sequence": 667
+        },
+        {
+          "device": "1",
+          "frame": "3243",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 664,
+          "preceding_capture_sequence": 667
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "3243",
+          "generation": "1",
+          "events": "687",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:3244": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "3244",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 666,
+          "preceding_capture_sequence": 669
+        },
+        {
+          "device": "1",
+          "frame": "3244",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 666,
+          "preceding_capture_sequence": 669
+        },
+        {
+          "device": "1",
+          "frame": "3244",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 666,
+          "preceding_capture_sequence": 669
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "3244",
+          "generation": "1",
+          "events": "689",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:3462": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "3462",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 672,
+          "preceding_capture_sequence": 675
+        },
+        {
+          "device": "1",
+          "frame": "3462",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 672,
+          "preceding_capture_sequence": 675
+        },
+        {
+          "device": "1",
+          "frame": "3462",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 672,
+          "preceding_capture_sequence": 675
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "3462",
+          "generation": "1",
+          "events": "695",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:3463": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "3463",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 672,
+          "preceding_capture_sequence": 675
+        },
+        {
+          "device": "1",
+          "frame": "3463",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 672,
+          "preceding_capture_sequence": 675
+        },
+        {
+          "device": "1",
+          "frame": "3463",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 672,
+          "preceding_capture_sequence": 675
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "3463",
+          "generation": "1",
+          "events": "695",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:3464": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "3464",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 672,
+          "preceding_capture_sequence": 675
+        },
+        {
+          "device": "1",
+          "frame": "3464",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 672,
+          "preceding_capture_sequence": 675
+        },
+        {
+          "device": "1",
+          "frame": "3464",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 672,
+          "preceding_capture_sequence": 675
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "3464",
+          "generation": "1",
+          "events": "695",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    },
+    "1:3465": {
+      "unsupported": [
+        {
+          "device": "1",
+          "frame": "3465",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 672,
+          "preceding_capture_sequence": 675
+        },
+        {
+          "device": "1",
+          "frame": "3465",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 672,
+          "preceding_capture_sequence": 675
+        },
+        {
+          "device": "1",
+          "frame": "3465",
+          "operation": "ColorFill",
+          "result": "00000000",
+          "after_draw": 672,
+          "preceding_capture_sequence": 675
+        }
+      ],
+      "ends": [
+        {
+          "phase": "end",
+          "device": "1",
+          "frame": "3465",
+          "generation": "1",
+          "events": "695",
+          "attempted": "0",
+          "copied": "0",
+          "confirmed": "0",
+          "state": "9",
+          "rejection": "2",
+          "present": "00000000"
+        }
+      ]
+    }
+  },
+  "source": {
+    "trace": "session-20260910-234001-212.log",
+    "sha256": "f8a9f43e18c16d132e5337ba9dd3f69aabc54343c71b4ef57532d8125d9e5196",
+    "bytes": 214204690
+  },
+  "sources_sha256": {
+    "tools/analysis/analyze_object_capture.py": "868c968f9f8401a45f9cd228359899402779312e3d7f39f2726f35c953ad5071",
+    "tools/analysis/summarize_capture.py": "794561f3c1a0f5013c697bc663745aadec840b54f9b44432825c41704342514c",
+    "tools/analysis/analyze_camera.py": "41fe275a824d116318dc118f57ce4ef4e23a2b383b8805f42e48ba953ef28af0",
+    "tools/analysis/analyze_motion.py": "578a63d003655bfa967fd3b3e5fbc9f91b51a6721958345813ea05caa5d37f9c",
+    "tools/analysis/analyze_pass_boundaries.py": "dca70c594e4d800d4fea3fb845faabfe899db3160320f3bb66bbe2568f84e8dc",
+    "verification/results/shader-registers.json": "5c78f49db7aa4732cc6dcc46c59d98cf7e4fc3978cfaf17558d61d44cdb8051a",
+    "verification/results/game-docking-shader-registers.json": "8cc51815f2e29911e1c0615333e647e8ce9c292cbe42f778cac0834d87a79eef"
+  }
+}

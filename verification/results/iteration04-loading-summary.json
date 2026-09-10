@@ -1,0 +1,1790 @@
+{
+  "source": {
+    "name": "session-20260910-234001-212.log",
+    "bytes": 214204690,
+    "sha256": "f8a9f43e18c16d132e5337ba9dd3f69aabc54343c71b4ef57532d8125d9e5196",
+    "mtime_ns": 1789069507251872427,
+    "stable_during_read": true,
+    "newline_complete": true,
+    "lines": 4263229,
+    "filtered_lines": 2819,
+    "stable_on_later_stat": true
+  },
+  "completed_user_run": true,
+  "process_check": "No X3AP/X3TC/X3Steam match in native ps command names before and after analysis.",
+  "terminal_device_destroy_present": false,
+  "user_context": "User says last capture was third-person; no timestamped phase labels inferred.",
+  "clock": {
+    "frequency": 10000000,
+    "anchor": "proxy_initialize",
+    "start_qpc": 7986425912745
+  },
+  "last_report_seconds": 305.2165576,
+  "loading_coverage_begin_seconds": 0.0049234,
+  "process_report_windows": 193,
+  "markers": [],
+  "rejected_records": [],
+  "installed_imports": [
+    {
+      "name": "CreateFileA",
+      "installed": "1"
+    },
+    {
+      "name": "ReadFile",
+      "installed": "1"
+    },
+    {
+      "name": "SetFilePointer",
+      "installed": "1"
+    },
+    {
+      "name": "D3DXCreateEffect",
+      "installed": "1"
+    },
+    {
+      "name": "D3DXCreateTextureFromFileInMemoryEx",
+      "installed": "1"
+    },
+    {
+      "name": "D3DXCreateCubeTextureFromFileInMemoryEx",
+      "installed": "1"
+    },
+    {
+      "name": "D3DXLoadSurfaceFromFileInMemory",
+      "installed": "1"
+    },
+    {
+      "name": "SetCursor",
+      "installed": "1"
+    },
+    {
+      "name": "SetCursorPos",
+      "installed": "1"
+    },
+    {
+      "name": "gzopen",
+      "installed": "1"
+    },
+    {
+      "name": "gzread",
+      "installed": "1"
+    },
+    {
+      "name": "gzseek",
+      "installed": "1"
+    },
+    {
+      "name": "inflate",
+      "installed": "1"
+    },
+    {
+      "name": "xmlReadMemory",
+      "installed": "1"
+    },
+    {
+      "name": "D3DXCreateMesh",
+      "installed": "1"
+    },
+    {
+      "name": "D3DXCleanMesh",
+      "installed": "1"
+    }
+  ],
+  "mesh_module_events": [
+    {
+      "module_verified": "1",
+      "pinned": "1",
+      "hash": "49cc52632ef762d4",
+      "bytes": "3786760",
+      "scope": "shared_native_vtables",
+      "table_limit": "8",
+      "objects_retained": "0"
+    }
+  ],
+  "mesh_table_events": [
+    {
+      "table": "0",
+      "installed": "1",
+      "owned_slots": "3",
+      "scope": "shared_native_vtable"
+    },
+    {
+      "table": "1",
+      "installed": "1",
+      "owned_slots": "3",
+      "scope": "shared_native_vtable"
+    }
+  ],
+  "loading_totals": {
+    "CreateFileA": {
+      "count": 4268,
+      "failures": 2,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 0,
+      "inclusive_us": 4169773.2,
+      "exclusive_us": 4169773.2,
+      "max_us": 58120.4,
+      "wrapper_tail_us": 2922.3
+    },
+    "ReadFile": {
+      "count": 235225,
+      "failures": 0,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 974085716,
+      "inclusive_us": 1475033.7,
+      "exclusive_us": 1475033.7,
+      "max_us": 5182.2,
+      "wrapper_tail_us": 40684.2
+    },
+    "SetFilePointer": {
+      "count": 11986,
+      "failures": 0,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 0,
+      "inclusive_us": 20202.8,
+      "exclusive_us": 20202.8,
+      "max_us": 134.4,
+      "wrapper_tail_us": 3555.8
+    },
+    "D3DXCreateTextureFromFileInMemoryEx": {
+      "count": 2091,
+      "failures": 0,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 1597010005,
+      "inclusive_us": 13975814.2,
+      "exclusive_us": 13975814.2,
+      "max_us": 3150713.5,
+      "wrapper_tail_us": 851.6
+    },
+    "D3DXCreateCubeTextureFromFileInMemoryEx": {
+      "count": 41,
+      "failures": 0,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 8658136,
+      "inclusive_us": 59471.4,
+      "exclusive_us": 59471.4,
+      "max_us": 3059.3,
+      "wrapper_tail_us": 26.6
+    },
+    "D3DXLoadSurfaceFromFileInMemory": {
+      "count": 18,
+      "failures": 0,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 11665252,
+      "inclusive_us": 258832.3,
+      "exclusive_us": 258832.3,
+      "max_us": 52142.2,
+      "wrapper_tail_us": 18.9
+    },
+    "inflate": {
+      "count": 882627,
+      "failures": 0,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 0,
+      "inclusive_us": 9306534.8,
+      "exclusive_us": 9306534.8,
+      "max_us": 337.9,
+      "wrapper_tail_us": 148273.5
+    },
+    "D3DXCreateEffect": {
+      "count": 22,
+      "failures": 0,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 706744,
+      "inclusive_us": 339940.1,
+      "exclusive_us": 339940.1,
+      "max_us": 64244.2,
+      "wrapper_tail_us": 16.6
+    },
+    "xmlReadMemory": {
+      "count": 809,
+      "failures": 0,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 43513663,
+      "inclusive_us": 406268.6,
+      "exclusive_us": 406268.6,
+      "max_us": 25264.8,
+      "wrapper_tail_us": 1263.1
+    },
+    "D3DXCreateMesh": {
+      "count": 6588,
+      "failures": 0,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 0,
+      "inclusive_us": 144373.9,
+      "exclusive_us": 144373.9,
+      "max_us": 2885.3,
+      "wrapper_tail_us": 37906.2
+    },
+    "D3DXCleanMesh": {
+      "count": 6610,
+      "failures": 44,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 0,
+      "inclusive_us": 704509.7,
+      "exclusive_us": 704509.7,
+      "max_us": 6598.9,
+      "wrapper_tail_us": 33949.4
+    },
+    "ID3DXMesh::GenerateAdjacency": {
+      "count": 6588,
+      "failures": 0,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 0,
+      "inclusive_us": 21286826.8,
+      "exclusive_us": 21286826.8,
+      "max_us": 311174.5,
+      "wrapper_tail_us": 2726.5
+    },
+    "ID3DXMesh::OptimizeInplace": {
+      "count": 6588,
+      "failures": 0,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 0,
+      "inclusive_us": 1495947.2,
+      "exclusive_us": 1495947.2,
+      "max_us": 18246.1,
+      "wrapper_tail_us": 2811.2
+    },
+    "gzopen": {
+      "count": 26,
+      "failures": 24,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 0,
+      "inclusive_us": 14524.1,
+      "exclusive_us": 14524.1,
+      "max_us": 7008.8,
+      "wrapper_tail_us": 9.4
+    },
+    "gzread": {
+      "count": 18,
+      "failures": 0,
+      "pending": 0,
+      "ambiguous": 0,
+      "bytes": 184,
+      "inclusive_us": 220.8,
+      "exclusive_us": 220.8,
+      "max_us": 114.6,
+      "wrapper_tail_us": 3.6
+    }
+  },
+  "not_observed_loading_categories": [
+    "ID3DXMesh::ConvertPointRepsToAdjacency",
+    "gzseek",
+    "SetCursor",
+    "SetCursorPos"
+  ],
+  "graphics_totals": {
+    "0:lock_wait": {
+      "count": 1400398,
+      "failures": 0,
+      "total_us": 285383.00000000023,
+      "max_us": 107.0,
+      "bytes": 0
+    },
+    "0:log_flush": {
+      "count": 192,
+      "failures": 0,
+      "total_us": 145.09999999999985,
+      "max_us": 22.8,
+      "bytes": 0
+    },
+    "0:create_device": {
+      "count": 1,
+      "failures": 0,
+      "total_us": 33519.5,
+      "max_us": 33519.5,
+      "bytes": 0
+    },
+    "0:shader_inspect": {
+      "count": 26812,
+      "failures": 0,
+      "total_us": 549750.6,
+      "max_us": 24077.7,
+      "bytes": 0
+    },
+    "0:shader_getfunction": {
+      "count": 26812,
+      "failures": 0,
+      "total_us": 10240.4,
+      "max_us": 29.0,
+      "bytes": 0
+    },
+    "0:shader_hash": {
+      "count": 26812,
+      "failures": 0,
+      "total_us": 180477.39999999997,
+      "max_us": 30.9,
+      "bytes": 98977888
+    },
+    "0:shader_dump": {
+      "count": 57,
+      "failures": 0,
+      "total_us": 326234.8,
+      "max_us": 24038.2,
+      "bytes": 172568
+    },
+    "1:present_normal": {
+      "count": 4094,
+      "failures": 0,
+      "total_us": 41133.19999999999,
+      "max_us": 325.1,
+      "bytes": 0
+    },
+    "1:frame_normal": {
+      "count": 4088,
+      "failures": 0,
+      "total_us": 288158885.5000001,
+      "max_us": 87045373.6,
+      "bytes": 0
+    },
+    "1:shader_vs_backend": {
+      "count": 53,
+      "failures": 0,
+      "total_us": 1192.4999999999998,
+      "max_us": 204.8,
+      "bytes": 0
+    },
+    "1:shader_ps_backend": {
+      "count": 52,
+      "failures": 0,
+      "total_us": 2080.1,
+      "max_us": 939.0,
+      "bytes": 0
+    },
+    "1:texture": {
+      "count": 2126,
+      "failures": 0,
+      "total_us": 57489.6,
+      "max_us": 269.6,
+      "bytes": 0
+    },
+    "1:cube_texture": {
+      "count": 42,
+      "failures": 0,
+      "total_us": 982.6000000000001,
+      "max_us": 138.7,
+      "bytes": 0
+    },
+    "1:vertex_buffer": {
+      "count": 14466,
+      "failures": 0,
+      "total_us": 106303.29999999999,
+      "max_us": 692.8,
+      "bytes": 1187246192
+    },
+    "1:log_flush": {
+      "count": 4301,
+      "failures": 0,
+      "total_us": 2855.6,
+      "max_us": 13.6,
+      "bytes": 0
+    },
+    "1:draw_backend": {
+      "count": 1168487,
+      "failures": 0,
+      "total_us": 3267659.9999999995,
+      "max_us": 2930.5,
+      "bytes": 0
+    },
+    "1:index_buffer": {
+      "count": 14457,
+      "failures": 0,
+      "total_us": 35482.099999999984,
+      "max_us": 346.7,
+      "bytes": 87195510
+    },
+    "1:present_capture": {
+      "count": 20,
+      "failures": 0,
+      "total_us": 366.6,
+      "max_us": 24.9,
+      "bytes": 0
+    },
+    "1:frame_capture": {
+      "count": 25,
+      "failures": 0,
+      "total_us": 12955286.3,
+      "max_us": 892633.4,
+      "bytes": 0
+    },
+    "1:capture_cpu": {
+      "count": 13651,
+      "failures": 0,
+      "total_us": 11603662.8,
+      "max_us": 5828.3,
+      "bytes": 0
+    },
+    "1:snapshot": {
+      "count": 13431,
+      "failures": 0,
+      "total_us": 11224396.100000001,
+      "max_us": 5801.5,
+      "bytes": 0
+    },
+    "1:depth_stencil": {
+      "count": 1,
+      "failures": 0,
+      "total_us": 60.0,
+      "max_us": 60.0,
+      "bytes": 0
+    }
+  },
+  "first_presents": [
+    {
+      "device": "1",
+      "frame": "0",
+      "qpc": "7986466674057",
+      "since_start_us": "4076131.200",
+      "capture": "0",
+      "reset_count": "0"
+    }
+  ],
+  "startup_spans": [
+    {
+      "name": "backend_load",
+      "qpc_begin": "7986425963535",
+      "qpc_end": "7986425984594",
+      "thread": "216",
+      "success": "1",
+      "error": "0",
+      "duration_us": 2105.9
+    },
+    {
+      "name": "direct3d_create9",
+      "qpc_begin": "7986426483198",
+      "qpc_end": "7986439245313",
+      "thread": "216",
+      "success": "1",
+      "duration_us": 1276211.5
+    },
+    {
+      "name": "direct3d_create9",
+      "qpc_begin": "7986458771705",
+      "qpc_end": "7986459914335",
+      "thread": "216",
+      "success": "1",
+      "duration_us": 114263.0
+    },
+    {
+      "name": "direct3d_create9",
+      "qpc_begin": "7986460173973",
+      "qpc_end": "7986461294793",
+      "thread": "216",
+      "success": "1",
+      "duration_us": 112082.0
+    }
+  ],
+  "long_normal_frame_intervals": [
+    {
+      "reported_at_seconds": 22.6476364,
+      "reported_frame": 4,
+      "samples_in_delta": 2,
+      "max_interval_seconds": 1.0480264
+    },
+    {
+      "reported_at_seconds": 36.4249695,
+      "reported_frame": 5,
+      "samples_in_delta": 1,
+      "max_interval_seconds": 30.293038199999998
+    },
+    {
+      "reported_at_seconds": 44.6277834,
+      "reported_frame": 139,
+      "samples_in_delta": 1,
+      "max_interval_seconds": 1.0730146
+    },
+    {
+      "reported_at_seconds": 74.2964627,
+      "reported_frame": 145,
+      "samples_in_delta": 6,
+      "max_interval_seconds": 29.5847764
+    },
+    {
+      "reported_at_seconds": 183.9359357,
+      "reported_frame": 1458,
+      "samples_in_delta": 36,
+      "max_interval_seconds": 87.04537359999999
+    },
+    {
+      "reported_at_seconds": 303.2145558,
+      "reported_frame": 4056,
+      "samples_in_delta": 7,
+      "max_interval_seconds": 29.864570399999998
+    }
+  ],
+  "unchanged_reported_frames": [
+    {
+      "device": 1,
+      "frame": 1422,
+      "begin_qpc": 7987431488248,
+      "end_qpc": 7988255256163,
+      "reports": 27,
+      "begin_seconds": 100.5575503,
+      "end_seconds": 182.9343418,
+      "observed_duration_seconds": 82.3767915
+    },
+    {
+      "device": 1,
+      "frame": 4049,
+      "begin_qpc": 7989159135367,
+      "end_qpc": 7989447982061,
+      "reports": 13,
+      "begin_seconds": 273.3222622,
+      "end_seconds": 302.2069316,
+      "observed_duration_seconds": 28.8846694
+    },
+    {
+      "device": 1,
+      "frame": 139,
+      "begin_qpc": 7986872190579,
+      "end_qpc": 7987158877113,
+      "reports": 13,
+      "begin_seconds": 44.6277834,
+      "end_seconds": 73.2964368,
+      "observed_duration_seconds": 28.6686534
+    },
+    {
+      "device": 1,
+      "frame": 4,
+      "begin_qpc": 7986652389109,
+      "end_qpc": 7986779949445,
+      "reports": 12,
+      "begin_seconds": 22.6476364,
+      "end_seconds": 35.40367,
+      "observed_duration_seconds": 12.7560336
+    }
+  ],
+  "largest_report_gaps": [
+    {
+      "begin_seconds": 129.1986277,
+      "end_seconds": 157.8089261,
+      "duration_seconds": 28.6102984,
+      "metrics": {
+        "CreateFileA": {
+          "count": 320,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0309439
+        },
+        "D3DXCleanMesh": {
+          "count": 4,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 7.12e-05
+        },
+        "D3DXCreateMesh": {
+          "count": 4,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 9.24e-05
+        },
+        "ID3DXMesh::GenerateAdjacency": {
+          "count": 4,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0002237
+        },
+        "ID3DXMesh::OptimizeInplace": {
+          "count": 4,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0001576
+        },
+        "ReadFile": {
+          "count": 38234,
+          "failures": 0,
+          "bytes": 154389788,
+          "inclusive_seconds": 0.2751381
+        },
+        "SetFilePointer": {
+          "count": 960,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.001344
+        },
+        "inflate": {
+          "count": 148722,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 1.7199497
+        },
+        "xmlReadMemory": {
+          "count": 94,
+          "failures": 0,
+          "bytes": 7647306,
+          "inclusive_seconds": 0.0733679
+        }
+      }
+    },
+    {
+      "begin_seconds": 101.07795,
+      "end_seconds": 129.1986277,
+      "duration_seconds": 28.1206777,
+      "metrics": {
+        "CreateFileA": {
+          "count": 763,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 3.7133601
+        },
+        "D3DXCreateTextureFromFileInMemoryEx": {
+          "count": 4,
+          "failures": 0,
+          "bytes": 644258,
+          "inclusive_seconds": 0.6829482
+        },
+        "ReadFile": {
+          "count": 4016,
+          "failures": 0,
+          "bytes": 7774819,
+          "inclusive_seconds": 0.0245855
+        },
+        "SetFilePointer": {
+          "count": 1592,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0091782
+        },
+        "inflate": {
+          "count": 3082,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0420337
+        },
+        "xmlReadMemory": {
+          "count": 700,
+          "failures": 0,
+          "bytes": 13712061,
+          "inclusive_seconds": 0.1956855
+        }
+      }
+    },
+    {
+      "begin_seconds": 5.8864436,
+      "end_seconds": 22.6474091,
+      "duration_seconds": 16.7609655,
+      "metrics": {
+        "CreateFileA": {
+          "count": 71,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0104599
+        },
+        "D3DXCleanMesh": {
+          "count": 59,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0011322
+        },
+        "D3DXCreateMesh": {
+          "count": 59,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0014136
+        },
+        "D3DXCreateTextureFromFileInMemoryEx": {
+          "count": 18,
+          "failures": 0,
+          "bytes": 12854412,
+          "inclusive_seconds": 0.0345936
+        },
+        "D3DXLoadSurfaceFromFileInMemory": {
+          "count": 3,
+          "failures": 0,
+          "bytes": 2480817,
+          "inclusive_seconds": 0.0544906
+        },
+        "ID3DXMesh::GenerateAdjacency": {
+          "count": 59,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0049541
+        },
+        "ID3DXMesh::OptimizeInplace": {
+          "count": 59,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0033934
+        },
+        "ReadFile": {
+          "count": 6296,
+          "failures": 0,
+          "bytes": 35874953,
+          "inclusive_seconds": 0.042159
+        },
+        "SetFilePointer": {
+          "count": 208,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0002139
+        },
+        "inflate": {
+          "count": 24329,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.2761124
+        },
+        "xmlReadMemory": {
+          "count": 2,
+          "failures": 0,
+          "bytes": 3688819,
+          "inclusive_seconds": 0.0254038
+        }
+      }
+    },
+    {
+      "begin_seconds": 273.347421,
+      "end_seconds": 289.382912,
+      "duration_seconds": 16.035491,
+      "metrics": {
+        "CreateFileA": {
+          "count": 45,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0031972
+        },
+        "D3DXCleanMesh": {
+          "count": 54,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0007923
+        },
+        "D3DXCreateMesh": {
+          "count": 54,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0008659
+        },
+        "D3DXCreateTextureFromFileInMemoryEx": {
+          "count": 11,
+          "failures": 0,
+          "bytes": 8361676,
+          "inclusive_seconds": 0.0163685
+        },
+        "ID3DXMesh::GenerateAdjacency": {
+          "count": 54,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0042982
+        },
+        "ID3DXMesh::OptimizeInplace": {
+          "count": 54,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0029824
+        },
+        "ReadFile": {
+          "count": 5968,
+          "failures": 0,
+          "bytes": 27465728,
+          "inclusive_seconds": 0.0192571
+        },
+        "SetFilePointer": {
+          "count": 135,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0001313
+        },
+        "inflate": {
+          "count": 23326,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.2604423
+        }
+      }
+    },
+    {
+      "begin_seconds": 44.6276574,
+      "end_seconds": 60.4837317,
+      "duration_seconds": 15.8560743,
+      "metrics": {
+        "CreateFileA": {
+          "count": 53,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.003564
+        },
+        "D3DXCleanMesh": {
+          "count": 59,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0008643
+        },
+        "D3DXCreateMesh": {
+          "count": 59,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.000903
+        },
+        "D3DXCreateTextureFromFileInMemoryEx": {
+          "count": 15,
+          "failures": 0,
+          "bytes": 10625716,
+          "inclusive_seconds": 0.0238457
+        },
+        "ID3DXMesh::GenerateAdjacency": {
+          "count": 59,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0047767
+        },
+        "ID3DXMesh::OptimizeInplace": {
+          "count": 59,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0030149
+        },
+        "ReadFile": {
+          "count": 5995,
+          "failures": 0,
+          "bytes": 29900800,
+          "inclusive_seconds": 0.0149582
+        },
+        "SetFilePointer": {
+          "count": 159,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0001437
+        },
+        "inflate": {
+          "count": 23332,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.2576269
+        }
+      }
+    }
+  ],
+  "selected_report_regions": [
+    {
+      "label": "sparse_coverage_gap",
+      "begin_seconds": 101.07795,
+      "end_seconds": 157.8089261,
+      "report_windows": 2,
+      "metrics": {
+        "CreateFileA": {
+          "count": 1083,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 3.744304
+        },
+        "D3DXCleanMesh": {
+          "count": 4,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 7.12e-05
+        },
+        "D3DXCreateMesh": {
+          "count": 4,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 9.24e-05
+        },
+        "D3DXCreateTextureFromFileInMemoryEx": {
+          "count": 4,
+          "failures": 0,
+          "bytes": 644258,
+          "inclusive_seconds": 0.6829482
+        },
+        "ID3DXMesh::GenerateAdjacency": {
+          "count": 4,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0002237
+        },
+        "ID3DXMesh::OptimizeInplace": {
+          "count": 4,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0001576
+        },
+        "ReadFile": {
+          "count": 42250,
+          "failures": 0,
+          "bytes": 162164607,
+          "inclusive_seconds": 0.2997236
+        },
+        "SetFilePointer": {
+          "count": 2552,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.010522199999999999
+        },
+        "inflate": {
+          "count": 151804,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 1.7619833999999999
+        },
+        "xmlReadMemory": {
+          "count": 794,
+          "failures": 0,
+          "bytes": 21359367,
+          "inclusive_seconds": 0.2690534
+        }
+      }
+    },
+    {
+      "label": "later_mesh_work",
+      "begin_seconds": 157.8089261,
+      "end_seconds": 182.9342391,
+      "report_windows": 24,
+      "metrics": {
+        "CreateFileA": {
+          "count": 632,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.13242740000000003
+        },
+        "D3DXCleanMesh": {
+          "count": 3439,
+          "failures": 8,
+          "bytes": 0,
+          "inclusive_seconds": 0.42224149999999994
+        },
+        "D3DXCreateCubeTextureFromFileInMemoryEx": {
+          "count": 12,
+          "failures": 0,
+          "bytes": 3082248,
+          "inclusive_seconds": 0.017488
+        },
+        "D3DXCreateMesh": {
+          "count": 3435,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0766747
+        },
+        "D3DXCreateTextureFromFileInMemoryEx": {
+          "count": 614,
+          "failures": 0,
+          "bytes": 505724431,
+          "inclusive_seconds": 1.9092154
+        },
+        "ID3DXMesh::GenerateAdjacency": {
+          "count": 3435,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 11.444258599999998
+        },
+        "ID3DXMesh::OptimizeInplace": {
+          "count": 3435,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.8462912
+        },
+        "ReadFile": {
+          "count": 51656,
+          "failures": 0,
+          "bytes": 207549440,
+          "inclusive_seconds": 0.27169070000000006
+        },
+        "SetFilePointer": {
+          "count": 1896,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 0.0020342999999999993
+        },
+        "inflate": {
+          "count": 198569,
+          "failures": 0,
+          "bytes": 0,
+          "inclusive_seconds": 2.0438567
+        }
+      }
+    }
+  ],
+  "repeated_activity_sequence": {
+    "window_count": 5,
+    "occurrences": [
+      {
+        "begin_seconds": 22.6474091,
+        "end_seconds": 28.8697505,
+        "metrics": {
+          "CreateFileA": {
+            "count": 80,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.0064410000000000005
+          },
+          "D3DXCleanMesh": {
+            "count": 349,
+            "failures": 10,
+            "bytes": 0,
+            "inclusive_seconds": 0.040810400000000004
+          },
+          "D3DXCreateCubeTextureFromFileInMemoryEx": {
+            "count": 3,
+            "failures": 0,
+            "bytes": 1114560,
+            "inclusive_seconds": 0.0035335
+          },
+          "D3DXCreateMesh": {
+            "count": 344,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.0076738
+          },
+          "D3DXCreateTextureFromFileInMemoryEx": {
+            "count": 62,
+            "failures": 0,
+            "bytes": 53823944,
+            "inclusive_seconds": 1.4536558000000002
+          },
+          "ID3DXMesh::GenerateAdjacency": {
+            "count": 344,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 1.9220749000000001
+          },
+          "ID3DXMesh::OptimizeInplace": {
+            "count": 344,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.11065100000000001
+          },
+          "ReadFile": {
+            "count": 8212,
+            "failures": 0,
+            "bytes": 33140736,
+            "inclusive_seconds": 0.06955549999999999
+          },
+          "SetFilePointer": {
+            "count": 240,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.0002942
+          },
+          "inflate": {
+            "count": 31805,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.3080004
+          }
+        }
+      },
+      {
+        "begin_seconds": 60.4837317,
+        "end_seconds": 66.7086018,
+        "metrics": {
+          "CreateFileA": {
+            "count": 80,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.006180399999999999
+          },
+          "D3DXCleanMesh": {
+            "count": 349,
+            "failures": 10,
+            "bytes": 0,
+            "inclusive_seconds": 0.0400781
+          },
+          "D3DXCreateCubeTextureFromFileInMemoryEx": {
+            "count": 3,
+            "failures": 0,
+            "bytes": 1114560,
+            "inclusive_seconds": 0.0036054
+          },
+          "D3DXCreateMesh": {
+            "count": 344,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.006607299999999999
+          },
+          "D3DXCreateTextureFromFileInMemoryEx": {
+            "count": 62,
+            "failures": 0,
+            "bytes": 53823944,
+            "inclusive_seconds": 1.4821632
+          },
+          "ID3DXMesh::GenerateAdjacency": {
+            "count": 344,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 1.9312765
+          },
+          "ID3DXMesh::OptimizeInplace": {
+            "count": 344,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.1096455
+          },
+          "ReadFile": {
+            "count": 8212,
+            "failures": 0,
+            "bytes": 33140736,
+            "inclusive_seconds": 0.0349796
+          },
+          "SetFilePointer": {
+            "count": 240,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.00024370000000000001
+          },
+          "inflate": {
+            "count": 31805,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.3033766
+          }
+        }
+      },
+      {
+        "begin_seconds": 289.382912,
+        "end_seconds": 295.6521018,
+        "metrics": {
+          "CreateFileA": {
+            "count": 80,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.0063311
+          },
+          "D3DXCleanMesh": {
+            "count": 349,
+            "failures": 10,
+            "bytes": 0,
+            "inclusive_seconds": 0.0399821
+          },
+          "D3DXCreateCubeTextureFromFileInMemoryEx": {
+            "count": 3,
+            "failures": 0,
+            "bytes": 1114560,
+            "inclusive_seconds": 0.0034343
+          },
+          "D3DXCreateMesh": {
+            "count": 344,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.007018900000000001
+          },
+          "D3DXCreateTextureFromFileInMemoryEx": {
+            "count": 62,
+            "failures": 0,
+            "bytes": 53823944,
+            "inclusive_seconds": 1.4871718
+          },
+          "ID3DXMesh::GenerateAdjacency": {
+            "count": 344,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 1.9189817999999998
+          },
+          "ID3DXMesh::OptimizeInplace": {
+            "count": 344,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.10917690000000001
+          },
+          "ReadFile": {
+            "count": 8212,
+            "failures": 0,
+            "bytes": 33140736,
+            "inclusive_seconds": 0.0613325
+          },
+          "SetFilePointer": {
+            "count": 240,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.0002938
+          },
+          "inflate": {
+            "count": 31805,
+            "failures": 0,
+            "bytes": 0,
+            "inclusive_seconds": 0.3112831
+          }
+        }
+      }
+    ],
+    "signature_fields": [
+      "operation",
+      "count",
+      "failures",
+      "pending",
+      "ambiguous",
+      "bytes"
+    ],
+    "signature": [
+      [
+        [
+          "CreateFileA",
+          42,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "D3DXCleanMesh",
+          31,
+          6,
+          0,
+          0,
+          0
+        ],
+        [
+          "D3DXCreateCubeTextureFromFileInMemoryEx",
+          2,
+          0,
+          0,
+          0,
+          590152
+        ],
+        [
+          "D3DXCreateMesh",
+          28,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "D3DXCreateTextureFromFileInMemoryEx",
+          41,
+          0,
+          0,
+          0,
+          8136712
+        ],
+        [
+          "ID3DXMesh::GenerateAdjacency",
+          28,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "ID3DXMesh::OptimizeInplace",
+          28,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "ReadFile",
+          601,
+          0,
+          0,
+          0,
+          2160640
+        ],
+        [
+          "SetFilePointer",
+          126,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "inflate",
+          1862,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          "D3DXCleanMesh",
+          253,
+          4,
+          0,
+          0,
+          0
+        ],
+        [
+          "D3DXCreateMesh",
+          251,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "ID3DXMesh::GenerateAdjacency",
+          251,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "ID3DXMesh::OptimizeInplace",
+          251,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          "CreateFileA",
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "D3DXCleanMesh",
+          49,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "D3DXCreateMesh",
+          49,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "ID3DXMesh::GenerateAdjacency",
+          49,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "ID3DXMesh::OptimizeInplace",
+          49,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "ReadFile",
+          871,
+          0,
+          0,
+          0,
+          3560448
+        ],
+        [
+          "SetFilePointer",
+          3,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "inflate",
+          3469,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          "CreateFileA",
+          15,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "D3DXCleanMesh",
+          5,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "D3DXCreateCubeTextureFromFileInMemoryEx",
+          1,
+          0,
+          0,
+          0,
+          524408
+        ],
+        [
+          "D3DXCreateMesh",
+          5,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "D3DXCreateTextureFromFileInMemoryEx",
+          13,
+          0,
+          0,
+          0,
+          39350928
+        ],
+        [
+          "ID3DXMesh::GenerateAdjacency",
+          5,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "ID3DXMesh::OptimizeInplace",
+          5,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "ReadFile",
+          4722,
+          0,
+          0,
+          0,
+          19233792
+        ],
+        [
+          "SetFilePointer",
+          45,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "inflate",
+          18699,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          "CreateFileA",
+          22,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "D3DXCleanMesh",
+          11,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "D3DXCreateMesh",
+          11,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "D3DXCreateTextureFromFileInMemoryEx",
+          8,
+          0,
+          0,
+          0,
+          6336304
+        ],
+        [
+          "ID3DXMesh::GenerateAdjacency",
+          11,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "ID3DXMesh::OptimizeInplace",
+          11,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "ReadFile",
+          2018,
+          0,
+          0,
+          0,
+          8185856
+        ],
+        [
+          "SetFilePointer",
+          66,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          "inflate",
+          7775,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    ],
+    "interpretation": "Exact report-level repetition of activity, not proof of identical mesh/texture content or cache hits."
+  },
+  "window_events": [
+    {
+      "device": "1",
+      "frame": "0",
+      "qpc": "7986466680259",
+      "window": "000a0064",
+      "foreground": "000a0064",
+      "thread_focus": "000a0064",
+      "iconic": "0",
+      "visible": "1",
+      "style": "14ca0000",
+      "exstyle": "00000100",
+      "window_rect": "1917,82,3203,882",
+      "client_rect": "0,0,1280,768"
+    },
+    {
+      "device": "1",
+      "frame": "1",
+      "qpc": "7986474297841",
+      "window": "000a0064",
+      "foreground": "000a0064",
+      "thread_focus": "000a0064",
+      "iconic": "0",
+      "visible": "1",
+      "style": "14ca0000",
+      "exstyle": "00000100",
+      "window_rect": "1917,82,3203,882",
+      "client_rect": "0,0,1280,768"
+    }
+  ],
+  "window_context_events": [
+    {
+      "device": "1",
+      "frame": "0",
+      "render_thread": "216",
+      "window_thread": "216",
+      "gui_ok": "1",
+      "gui_active": "000a0064",
+      "gui_focus": "000a0064",
+      "gui_capture": "00000000",
+      "clip_ok": "1",
+      "clip": "-1512,0,5120,1440",
+      "monitor_ok": "1",
+      "monitor": "0,0,5120,1440",
+      "work": "0,31,5120,1440"
+    },
+    {
+      "device": "1",
+      "frame": "1",
+      "render_thread": "216",
+      "window_thread": "216",
+      "gui_ok": "1",
+      "gui_active": "000a0064",
+      "gui_focus": "000a0064",
+      "gui_capture": "00000000",
+      "clip_ok": "1",
+      "clip": "1920,111,3200,879",
+      "monitor_ok": "1",
+      "monitor": "0,0,5120,1440",
+      "work": "0,31,5120,1440"
+    }
+  ],
+  "presentation_events": [
+    {
+      "phase": "create_before",
+      "device": "0",
+      "thread": "216",
+      "focus_window": "000a0064",
+      "device_window": "000a0064",
+      "width": "1280",
+      "height": "768",
+      "format": "21",
+      "count": "1",
+      "msaa": "0",
+      "quality": "0",
+      "swap_effect": "1",
+      "windowed": "1",
+      "auto_depth": "1",
+      "depth_format": "77",
+      "flags": "00000003",
+      "refresh": "0",
+      "interval": "1"
+    },
+    {
+      "phase": "create_after",
+      "device": "0",
+      "thread": "216",
+      "focus_window": "000a0064",
+      "device_window": "000a0064",
+      "width": "1280",
+      "height": "768",
+      "format": "21",
+      "count": "1",
+      "msaa": "0",
+      "quality": "0",
+      "swap_effect": "1",
+      "windowed": "1",
+      "auto_depth": "1",
+      "depth_format": "77",
+      "flags": "00000003",
+      "refresh": "0",
+      "interval": "1"
+    }
+  ],
+  "present_window_events": [
+    {
+      "device": "1",
+      "frame": "0",
+      "override": "00000000",
+      "device_window": "000a0064",
+      "result": "00000000"
+    }
+  ],
+  "cursor": {
+    "poll_count": 224,
+    "flags_counts": {
+      "1": 1,
+      "0": 223
+    },
+    "handle_counts": {
+      "00000000": 224
+    },
+    "state_transitions": [
+      {
+        "device": "1",
+        "frame": "0",
+        "qpc": "7986466680259",
+        "flags": "1",
+        "cursor": "00000000",
+        "x": "0",
+        "y": "0",
+        "seconds": 4.0767514
+      },
+      {
+        "device": "1",
+        "frame": "1",
+        "qpc": "7986474297841",
+        "flags": "0",
+        "cursor": "00000000",
+        "x": "1920",
+        "y": "878",
+        "seconds": 4.8385096
+      }
+    ],
+    "d3d_cursor_api_events": 0,
+    "position_suppressed": 0,
+    "change_suppressed": 0
+  },
+  "comparison03": {
+    "source": {
+      "name": "session-20260910-214701-212.log",
+      "bytes": 42007138,
+      "size_before": 42007138,
+      "size_after": 42007138,
+      "dropped_tail_bytes": 0,
+      "sha256": "81cd598428312b709889b0fb892c6243a20818f20d0a3bf400eacdc33af017f0"
+    },
+    "last_report_seconds": 357.0452783,
+    "loading_totals": {
+      "CreateFileA": {
+        "count": 3393,
+        "inclusive_us": 4019222.5
+      },
+      "ReadFile": {
+        "count": 163626,
+        "inclusive_us": 1199441.9
+      },
+      "SetFilePointer": {
+        "count": 9362,
+        "inclusive_us": 17104.5
+      },
+      "D3DXCreateTextureFromFileInMemoryEx": {
+        "count": 1452,
+        "inclusive_us": 16381859.3
+      },
+      "D3DXCreateCubeTextureFromFileInMemoryEx": {
+        "count": 33,
+        "inclusive_us": 36745.3
+      },
+      "D3DXLoadSurfaceFromFileInMemory": {
+        "count": 12,
+        "inclusive_us": 196416.1
+      },
+      "inflate": {
+        "count": 607534,
+        "inclusive_us": 7108906.2
+      },
+      "D3DXCreateEffect": {
+        "count": 18,
+        "inclusive_us": 67631.4
+      },
+      "xmlReadMemory": {
+        "count": 810,
+        "inclusive_us": 406248.1
+      },
+      "gzopen": {
+        "count": 14,
+        "inclusive_us": 11285.1
+      },
+      "gzread": {
+        "count": 9,
+        "inclusive_us": 111.1
+      }
+    },
+    "interpretation": "Different workloads, duration, capture volume and instrumentation; not a controlled before/after performance comparison. Mesh methods were unmeasured in 0.3, not zero."
+  },
+  "optimization_candidate": {
+    "name": "Bounded exact-key adjacency reuse",
+    "evidence": "Largest measured loading span and three identical five-report activity signatures.",
+    "remaining_gate": "Exact input identity, attainable hit rate under x86 memory budget and net lookup/buffer-read/copy cost are unmeasured; count/byte repetition is not a content hash. Preserve epsilon/options/runtime identity and native failures; keep cleaning/optimization on current inputs."
+  },
+  "limits": [
+    "CPU-side wall-clock spans, not GPU execution time.",
+    "Metrics can overlap or nest; do not sum totals across names or devices.",
+    "Captured frame intervals include diagnostic disturbance.",
+    "Observed post-initialization hooks do not cover the whole process.",
+    "Summary windows flush on observed calls; no events does not prove idle time.",
+    "Loading deltas use per-field atomics; concurrent calls may straddle adjacent reports.",
+    "Windows contain report-time deltas; calls may start before a window or remain in flight.",
+    "An unchanged reported frame is evidence only between its observed summary timestamps.",
+    "No phase labels are inferred without user/marker evidence.",
+    "No process CPU statistics exist in this log; low traced time is not proof of CPU-bound engine work.",
+    "A completed process can retain unflushed tail counters; completed_as_declared is external metadata.",
+    "Filtered analysis retains every telemetry/loading/mesh record; raw full-file SHA and event counts are independent of payload filtering.",
+    "No mesh or texture content identity is recorded in loading telemetry.",
+    "Cursor/focus polling runs only on observed graphics calls and cannot establish behavior during gaps or outside Wine cursor APIs."
+  ]
+}
