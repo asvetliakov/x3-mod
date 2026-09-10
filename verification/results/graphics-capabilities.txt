@@ -1,0 +1,42 @@
+X3 modern renderer capability probe (32-bit); physical HDR not validated
+D3D9 GetAdapterIdentifier: 0x00000000 OK
+D3D9 adapter: NVIDIA GeForce 8800 GTX; driver nvd3dum.dll; vendor=0x10de device=0x191
+D3D9 GetDeviceCaps: 0x00000000 OK
+D3D9 shader versions: VS=fffe0300 PS=ffff0300; MRT=4; maxTexture=16384x16384
+D3D9 GetAdapterDisplayMode: 0x00000000 OK
+D3D9 RGBA16F usage=0x1: 0x00000000 OK
+D3D9 RGBA16F usage=0x20000: 0x00000000 OK
+D3D9 RGBA16F usage=0x80000: 0x00000000 OK
+D3D9 INTZ depth texture: 0x00000000 OK
+D3D9 CreateDevice: 0x00000000 OK
+D3D9 create FP16 RT texture: 0x00000000 OK
+D3D9 Clear: 0x00000000 OK
+D3D9 Present: 0x00000000 OK
+D3D11CreateDevice: 0x00000000 OK
+D3D11 feature level: 0xb000
+D3D11 RGBA16F CheckFormatSupport: 0x00000000 OK
+D3D11 RGBA16F support: 0x2fef3f3 (RT=1 blend=1 shaderSample=1)
+D3D11 QI IDXGIDevice: 0x00000000 OK
+DXGI GetAdapter: 0x00000000 OK
+DXGI adapter: Apple M5 Pro; vendor=0x106b device=0x0
+DXGI factory2: 0x00000000 OK
+DXGI output 0: \\.\DISPLAY1 attached=1
+DXGI QI Output6: 0x00000000 OK
+DXGI Output6 GetDesc1: 0x00000000 OK
+output bits=10 colorSpace=12 minLum=0.000000 maxLum=400.000000 fullFrameLum=400.000000
+DXGI output 1: \\.\DISPLAY2 attached=1
+DXGI QI Output6: 0x00000000 OK
+DXGI Output6 GetDesc1: 0x00000000 OK
+output bits=10 colorSpace=12 minLum=0.000000 maxLum=1600.000000 fullFrameLum=1600.000000
+DXGI FP16 flip-discard CreateSwapChainForHwnd: 0x00000000 OK
+DXGI QI SwapChain3: 0x00000000 OK
+DXGI scRGB CheckColorSpaceSupport: 0x00000000 OK
+scRGB support flags: 0x1
+DXGI scRGB SetColorSpace1: 0x00000000 OK
+DXGI FP16 Present: 0x00000000 OK
+module d3d9.dll: C:\windows\system32\d3d9.dll
+module d3d11.dll: C:\windows\system32\d3d11.dll
+module dxgi.dll: C:\windows\system32\DXGI.DLL
+module wined3d.dll: C:\windows\system32\wined3d.dll
+module d3dshared.dll: not loaded
+module winevulkan.dll: not loaded

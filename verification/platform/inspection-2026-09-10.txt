@@ -1,0 +1,13 @@
+Read-only host inspection, macOS 26.6.2 build 25G83, CrossOver Preview bottle version 27.0.0.40921.
+AppKit NSScreen probe captured with no game launch for this inspection:
+display=Odyssey G95SD frame=(0.0, 0.0, 5120.0, 1440.0) scale=1.0 EDR_current=1.0 EDR_potential=4.0 EDR_reference=0.0
+display=Built-in Retina Display frame=(-1512.0, 458.0, 1512.0, 982.0) scale=2.0 EDR_current=1.0 EDR_potential=16.0 EDR_reference=0.0
+
+file results:
+X3AP.exe: PE32 executable (GUI) Intel 80386, for MS Windows
+CrossOver lib/dxmt/i386-windows/d3d11.dll: PE32 executable (DLL) (GUI) Intel 80386, for MS Windows
+
+SHA-256 (baseline; later deployment can legitimately change these):
+58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf bottle drive_c/windows/syswow64/d3d9.dll
+58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf CrossOver lib/wine/i386-windows/d3d9.dll
+78a5f2104bbaecc563949b795b91006d5cce5d88593ee95e7fde3e2da3bdf5da CrossOver lib/dxvk/i386-windows/d3d9.dll

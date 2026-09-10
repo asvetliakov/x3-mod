@@ -1,0 +1,11 @@
+/build/
+/artifacts/
+**/__pycache__/
+*.pyc
+verification/results/raw/
+verification/probe/build/
+
+# Generated shader dumps and transient game-launch diagnostics stay local.
+verification/results/*.bin
+verification/results/*-game-launch.log
+verification/results/shortcut-launch.log
