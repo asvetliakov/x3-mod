@@ -6,6 +6,8 @@
 #include "object_trace.h"
 #include "object_lifetime.h"
 #include "draw_input.h"
+#include "motion_capture.h"
+#include "cpu_state.h"
 #include "../ownership/d3d9_ownership.h"
 #include <array>
 #include <cstdarg>
@@ -28,6 +30,12 @@ unsigned capture_start = 120;
 unsigned capture_count = 1;
 bool scene_depth_capture_requested = false;
 bool finite_positions_requested = false;
+bool motion_capture_requested = false;
+// Component fixtures serialize every write and replay. The live capture mutex
+// does not cover worker-thread VB/IB Lock/Unlock or mapped writes. No production
+// exclusion token is available yet: do not turn a requested diagnostic into an
+// unsafe GPU replay merely because the latest revisions looked unchanged.
+constexpr bool motion_live_replay_available = false;
 std::set<uint64_t> dumped;
 uint64_t next_device_id = 1;
 
@@ -58,6 +66,7 @@ struct Device : Hooks {
     telemetry::State stats;
     SceneCapture scene_depth;
     DrawInputReader draw_inputs;
+    MotionCapture motion;
     unsigned remaining = 0;
     bool capture = false;
     bool key_down = false;
@@ -98,13 +107,16 @@ struct ObservedDraw {
     object_lifetime::Snapshot lifetime{};
     std::uintptr_t registry = 0;
     bool lifetime_observed = false;
+    bool scene_draw = false;
 };
 ObservedDraw read_draw_input(Device& ctx,IDirect3DDevice9* device,const DrawArguments& arguments) {
     if(!ctx.capture)return {};
     ObservedDraw draw{};
     object_trace::Snapshot scope{};
     const bool scoped=object_trace::current(&scope);
-    draw.input=ctx.draw_inputs.read(device,arguments,scoped?&scope:nullptr);
+    draw.scene_draw=ctx.scene_depth.collecting_scene();
+    draw.input=ctx.draw_inputs.read(device,arguments,scoped?&scope:nullptr,
+        draw.scene_draw?ctx.motion.geometry_frame():ownership::GeometryFrameHandle{});
     draw.lifetime_observed=object_lifetime::active();
     if(draw.lifetime_observed)draw.lifetime.reason=object_lifetime::Reason::LookupUnavailable;
     if(scoped&&!(draw.input.blockers&ObjectScope)) {
@@ -132,6 +144,7 @@ void record_draw_input(Device& ctx,ObservedDraw& draw,HRESULT result) {
            after.node_serial!=draw.lifetime.node_serial||after.camera_serial!=draw.lifetime.camera_serial)
             input.observation.proofs&=~renderer::LifetimeVerified;
     } else after=draw.lifetime;
+    if(draw.scene_draw)ctx.motion.observe(input,draw.registry,draw.lifetime);
     log("motion_input device=%llu frame=%llu index=%llu blockers=%08lx proofs=%lu position_path=%u vs=%016llx ps=%016llx declaration=%016llx rows_hash=%016llx color=%llu depth=%llu width=%u height=%u cull=%u vb=%llu vb_revision=%llu ib=%llu ib_revision=%llu position_offset=%u position_type=%u lifetime_verified=%u vertex_finite_verified=%u",
         ctx.id,ctx.frame,ctx.draws,static_cast<DWORD>(input.blockers),static_cast<DWORD>(o.proofs),unsigned(input.position_path),
         input.vertex_program,input.pixel_program,k.declaration,hash_bytes(o.submitted_wvp.data(),sizeof(o.submitted_wvp)),
@@ -337,7 +350,11 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     auto fn=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,const RECT*,const RECT*,HWND,const RGNDATA*)>(17);
     const auto begin=telemetry::now();
     const HRESULT hr=fn(d,a,b,w,r);
-    ctx.scene_depth.end_frame(hr);
+    const bool scene_confirmed=ctx.scene_depth.end_frame(hr);
+    const bool motion_committed=ctx.motion.end_frame(scene_confirmed,hr);
+    if(ctx.capture && motion_capture_requested)
+        log("motion_frame device=%llu frame=%llu scene_confirmed=%u storage_history_committed=%u present=%08lx temporal_history_committed=0",
+            ctx.id,ctx.frame,scene_confirmed,motion_committed,hr);
     const auto end=telemetry::now();
     telemetry::present(ctx.stats,ctx.frame,ctx.capture,begin,end,hr);
     if(telemetry::enabled()&&(!ctx.stats.present_override_known||ctx.stats.present_override!=w)){
@@ -352,6 +369,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     if ((down&&!ctx.key_down) || (capture_count && ctx.frame==capture_start)) ctx.remaining=capture_count ? capture_count : 1;
     ctx.key_down=down; ctx.capture=ctx.remaining>0;
     ctx.scene_depth.begin_frame(d,ctx.id,ctx.frame,ctx.capture);
+    ctx.motion.begin_frame(d,ctx.frame,ctx.capture && motion_capture_requested && motion_live_replay_available &&
+        object_trace::active() && object_lifetime::active());
     if (ctx.capture) log("frame_begin device=%llu frame=%llu",ctx.id,ctx.frame);
     if (logfile) { const auto begin=telemetry::now(); fflush(logfile); telemetry::record(ctx.stats,telemetry::Metric::LogFlush,telemetry::now()-begin); }
     return hr;
@@ -362,6 +381,7 @@ HRESULT WINAPI reset(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p) {
     auto fn=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRESENT_PARAMETERS*)>(16);
     ctx.capture=false; ctx.remaining=0;ctx.stats.had_present=false;ctx.stats.last_frame_capture=false;++ctx.stats.resets;
     ctx.scene_depth.invalidate();
+    ctx.motion.invalidate();
     presentation_parameters("reset_before",ctx.id,ctx.stats.focus_window,p);
     log("reset_begin ptr=%p device=%llu",d,ctx.id);
     finite_upload_metrics(d,ctx,"reset_before");
@@ -435,12 +455,25 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT m,UIN
     return result;
 }
 HRESULT WINAPI clear(IDirect3DDevice9* d,DWORD n,const D3DRECT* r,DWORD f,D3DCOLOR c,float z,DWORD s) {
+    CpuCallBoundary cpu;
     HookGuard lock;auto& ctx=*devices.at(d);CallTimer timer(ctx);
-    ctx.scene_depth.before_clear(d,n,r,f,z);
+    const auto motion_boundary=ctx.scene_depth.before_clear(d,n,r,f,z);
+    if(motion_boundary.valid && motion_capture_requested && motion_live_replay_available){
+        const auto begin=telemetry::now();
+        const auto motion=ctx.motion.before_clear(d,motion_boundary);
+        log("motion_replay device=%llu frame=%llu event=%llu attempted=%u candidate_produced=%u observations=%llu eligible=%llu matched=%llu rejected=%llu completed=%llu operation=%08lx restoration=%08lx cpu_ticks=%llu execution_known=%u execution_reason=%u active_queries=%llu continuity_known=%u color_coverage_known=%u temporal_consumed=0",
+            ctx.id,ctx.frame,motion_boundary.sequence,motion.attempted,motion.produced,motion.observations,
+            motion.eligible,motion.matched,motion.rejected,motion.completed,motion.operation,motion.restoration,
+            telemetry::now()-begin,motion.execution.known,unsigned(motion.execution.reason),motion.execution.active_queries,
+            motion.continuity_known,motion.color_coverage_known);
+    }
     timer.begin();
+    cpu.before_original();
     const HRESULT result=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,DWORD,const D3DRECT*,DWORD,D3DCOLOR,float,DWORD)>(43)(d,n,r,f,c,z,s);
+    cpu.after_original();
     timer.end();
-    ctx.scene_depth.after_clear(d,result);
+    const bool motion_confirmed=ctx.scene_depth.after_clear(d,result);
+    if(motion_boundary.valid)ctx.motion.after_clear(motion_confirmed);
     if(ctx.capture){
         capture_event(ctx,"clear",result);
         log("clear flags=%lu color=%08lx z=%g stencil=%lu rect_count=%lu rect_ptr=%p",f,c,z,s,n,r);
@@ -682,6 +715,9 @@ void initialize_log(HMODULE module) {
     if(capture_count>8) capture_count=8;
     scene_depth_capture_requested=GetEnvironmentVariableW(L"X3M_SCENE_DEPTH_CAPTURE",setting,32)==1 && setting[0]==L'1';
     finite_positions_requested=GetEnvironmentVariableW(L"X3M_FINITE_POSITIONS",setting,32)==1 && setting[0]==L'1';
+    motion_capture_requested=GetEnvironmentVariableW(L"X3M_MOTION_CAPTURE",setting,32)==1 && setting[0]==L'1' &&
+        scene_depth_capture_requested && finite_positions_requested;
+    log("motion_capture_mode requested=%u enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0",motion_capture_requested);
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     if(telemetry::enabled())loading_trace::initialize();

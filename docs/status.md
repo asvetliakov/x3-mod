@@ -11,23 +11,35 @@ and [roadmap](architecture/roadmap.md).
 
 ## Latest checkpoint
 
-The finite-position source path now includes a reviewed compact classification
-core (214,651 optimized and sanitizer checks), exact Preview managed VB/IB
-qualification (461 native checks), and an allocation-owned upload observer
-(385 native/wrapped checks). The extended draw reader passes 219 checks and 63
-caller-state comparisons. It obtains finite XYZ and actual index bounds from
-the game's existing writes, with no extra buffer Lock or GPU readback. The
-installed iteration-5 DLL is unchanged. All affected regressions, 18 combined-DLL
-cases and the forced native fallback pass. See [finite upload evidence](verification/finite-upload-observer.md)
-and [review 6](verification/review-06.md).
+A private motion producer now connects main-scene draw observations to
+bounded native geometry leases, CPU storage correspondence and an actual
+pre-Clear GPU replay. It releases the motion target and replay resources within
+the boundary callback. Its synthetic integration passes, but **live GPU dispatch
+is refused until buffer-write/replay exclusion is implemented**: the capture
+mutex alone does not serialize worker VB/IB mappings. Only a successful Clear, surviving scene selection and
+successful Present can commit CPU matrix history. Camera-cut continuity and
+complete scene-color coverage remain explicitly unknown; no temporal-color
+consumer is enabled. See [motion capture](verification/motion-capture.md),
+[geometry leases](verification/geometry-leases.md),
+[execution scopes](verification/execution-state.md) and
+[review 7](verification/review-07.md). The combined DLL and forced native fallback verification pass;
+the installed iteration-5 DLL remains unchanged.
 
-Detached rigid-motion production now has bounded CPU correspondence (3,210
-checks), exact position profiles and a GPU producer (102 numerical samples,
-117 checks and 30 state comparisons). The GPU output feeds the production
-temporal resolve in verification; perspective checks also pass at 1280×768 and
-5120×1440. See [motion history](verification/motion-history.md) and
-[GPU motion](verification/rigid-motion.md). These modules are compiled into the
-current source build but have no live game callsites.
+The finite-position source path includes the reviewed compact classification
+core, exact Preview managed VB/IB qualification and allocation-owned upload
+observer. It obtains finite XYZ and actual index bounds from existing writes,
+with no extra buffer Lock or game-pixel readback. The new reader can acquire a
+native geometry lease while the actual getter references remain alive, then
+revalidate the immutable requests at replay. See
+[finite upload evidence](verification/finite-upload-observer.md) and
+[draw inputs](verification/draw-input.md).
+
+CPU correspondence now distinguishes diagnostic storage pairs from temporal
+continuity; its 3,404 checks pass. The embedded motion PS is compiled from our
+original HLSL and needs no runtime compiler. Detached numerical verification
+also feeds the production temporal resolve, but the live diagnostic output is
+not consumed by that resolve. See [motion history](verification/motion-history.md)
+and [GPU motion](verification/rigid-motion.md).
 
 The [archive position review](reverse-engineering/archive-position-paths.md)
 accounts for all 256 VS: 234 homogeneous row-dot paths, 18 direct-clip bloom paths,
@@ -39,7 +51,7 @@ single-word mutation controls. The other five captured
 programs require explicit separate handling; they are not excluded from final
 TAA/composition scope. Particle RGB blending and missing prior particle identity
 are documented in [particle inputs](reverse-engineering/particle-motion-inputs.md).
-The full Python analysis suite passes **279 tests**.
+The full Python analysis suite passes **289 tests**.
 The post-install source registry also retains original shader model, constructor
 and position-write order, independently verified for all 234 row-dot profiles.
 The detached rigid-motion pass now creates the reviewed fixed SM3 replay program
@@ -81,12 +93,15 @@ SHA256 `ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5`.
 The [installation record](../verification/results/iteration-05-install.json) verifies
 unchanged game EXE and bottle configuration. The prior 0.4 DLL is preserved in
 `artifacts/rollback/d3d9-iteration04.dll`; the older 0.3 rollback also remains intact.
-The latest source DLL separately passes 18 integration cases and the forced
-native fallback with all 16 current proxy/renderer objects. Its SHA256 is
-`6e21f29a57e97018753212759392ef0b79bd9fc120aa5121f30dd62f70ed3083`; it is
-**not installed**. See [review 6](verification/review-06.md). The earlier source
-checkpoint and its 15-case evidence remain recorded in [review 5](verification/review-05.md)
-and commit `437e95b`.
+The latest source DLL passes 20 actual-DLL integration cases, including native
+Clear CPU-state witnesses and explicit refusal of unsafe live motion dispatch.
+Its SHA256 is
+`feb1aa9142d7609fdb540ee6da6cda5983bccc7112f989fd8c9ff91ee12831ec`; it is
+**not installed**. The 18-object forced native fallback also passes.
+See [review 7](verification/review-07.md). Earlier source evidence remains in
+[review 6](verification/review-06.md) at `c4f3d45` and
+[review 5](verification/review-05.md) at `437e95b`. Shared result paths now refer
+to the latest verified source; historical commits preserve their prior reports.
 
 The [detached adjacency cache](verification/mesh-adjacency-cache.md) passes
 721 checks using real native mesh acquisition, exact byte keys, bounded storage,
@@ -195,9 +210,11 @@ presentation and the requested visual features remain unfinished.
    The game's dynamic
    SYSTEMMEM mesh configuration now passes native tests; its actual cache hit rate
    still needs a future run.
-2. Connect the verified correspondence and GPU motion modules to lifecycle-safe
-   draw records, with reload/reuse generations, camera cuts and geometry revision
-   gates. Account separately for CPU-changing particles/stardust and overlays.
+2. Establish explicit buffer-write/replay exclusion before enabling the private
+   GPU motion diagnostic on live finite uploads. Complete
+   camera-cut policy and scene-color/reactive masks before consuming its output
+   in temporal resolve. Account separately for CPU-changing particles/stardust
+   and overlays; storage correspondence alone does not prove temporal continuity.
 3. Validate live jitter placement and position/raster equivalence using the full
    archive registry, then connect matched color/depth/motion inputs to temporal resolve.
    Camera-only reprojection cannot satisfy the observed scene; TAA remains required.

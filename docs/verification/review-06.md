@@ -1,5 +1,9 @@
 # Finite upload evidence review
 
+Historical checkpoint `c4f3d45`. Shared native/DLL result paths are subsequently
+refreshed by [review 7](review-07.md); use that commit to inspect the original
+18-case source and evidence described below.
+
 This source checkpoint prepares the next consolidated diagnostic build. The
 installed iteration-5 DLL remains unchanged; no gameplay launch or visual
 HDR/TAA change is part of this work. The classification core, native mapping

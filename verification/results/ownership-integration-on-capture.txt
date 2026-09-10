@@ -27,6 +27,16 @@ BeginScene: 00000000 PASS
 indexed draw: 00000000 PASS
 EndScene: 00000000 PASS
 Present: 00000000 PASS
+Clear native incoming x87 MXCSR LastError: PASS
+Clear native outgoing x87 MXCSR LastError: PASS
+Clear exact native arguments: PASS
+Clear exact native HRESULT: PASS
+CPU_CLEAR case=success incoming=1 outgoing=1 args=1 result=00000000
+Clear native incoming x87 MXCSR LastError: PASS
+Clear native outgoing x87 MXCSR LastError: PASS
+Clear exact native arguments: PASS
+Clear exact native HRESULT: PASS
+CPU_CLEAR case=failure incoming=1 outgoing=1 args=1 result=8876086c
 BeginScene: 00000000 PASS
 indexed draw: 00000000 PASS
 EndScene: 00000000 PASS
@@ -103,6 +113,16 @@ BeginScene: 00000000 PASS
 indexed draw: 00000000 PASS
 EndScene: 00000000 PASS
 Present: 00000000 PASS
+Clear native incoming x87 MXCSR LastError: PASS
+Clear native outgoing x87 MXCSR LastError: PASS
+Clear exact native arguments: PASS
+Clear exact native HRESULT: PASS
+CPU_CLEAR case=success incoming=1 outgoing=1 args=1 result=00000000
+Clear native incoming x87 MXCSR LastError: PASS
+Clear native outgoing x87 MXCSR LastError: PASS
+Clear exact native arguments: PASS
+Clear exact native HRESULT: PASS
+CPU_CLEAR case=failure incoming=1 outgoing=1 args=1 result=8876086c
 BeginScene: 00000000 PASS
 indexed draw: 00000000 PASS
 EndScene: 00000000 PASS
@@ -150,5 +170,6 @@ sample texture released: PASS
 target released: PASS
 Reset after capture: 00000000 PASS
 device released: PASS
+restore backend factory page: PASS
 API released: PASS
 CAPTURE STATE RESULT: 0 failures

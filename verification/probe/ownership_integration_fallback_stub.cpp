@@ -17,4 +17,24 @@ HRESULT get_finite_position_view(IDirect3DVertexBuffer9*,const FinitePositionReq
 HRESULT get_index_range_view(IDirect3DIndexBuffer9*,const IndexRangeRequest&,IndexRangeView*) noexcept {return E_INVALIDARG;}
 HRESULT get_finite_upload_statistics(IDirect3DDevice9*,FiniteUploadStatistics*) noexcept {return E_INVALIDARG;}
 const char* finite_evidence_reason_name(FiniteEvidenceReason) noexcept {return "unavailable";}
+HRESULT get_execution_view(IDirect3DDevice9*,ExecutionView* out) noexcept {
+    if(out)*out={}; // In particular, never claim known/query-idle on native fallback.
+    return E_INVALIDARG;
+}
+HRESULT invalidate_execution_state(IDirect3DDevice9*) noexcept {return E_INVALIDARG;}
+HRESULT begin_geometry_frame(IDirect3DDevice9*,GeometryFrameHandle* out) noexcept {
+    if(out)*out={};
+    return E_INVALIDARG;
+}
+HRESULT acquire_geometry_lease(GeometryFrameHandle,IDirect3DVertexBuffer9*,
+    IDirect3DIndexBuffer9*,const GeometryLeaseRequest&,GeometryLeaseHandle* out) noexcept {
+    if(out)*out={};
+    return E_INVALIDARG;
+}
+HRESULT inspect_geometry_lease(GeometryFrameHandle,GeometryLeaseHandle,GeometryLeaseView* out) noexcept {
+    if(out){*out={};out->status=E_INVALIDARG;}
+    return E_INVALIDARG;
+}
+HRESULT release_geometry_lease(GeometryFrameHandle,GeometryLeaseHandle) noexcept {return E_INVALIDARG;}
+HRESULT end_geometry_frame(GeometryFrameHandle) noexcept {return E_INVALIDARG;}
 }

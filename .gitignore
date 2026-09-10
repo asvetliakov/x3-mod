@@ -11,3 +11,9 @@ verification/results/*.bin
 verification/results/*-game-launch.log
 verification/results/shortcut-launch.log
 verification/results/game-turning-capture-summary.json
+
+# Transient backend stderr/build diagnostics; scoped result manifests stay tracked.
+verification/results/execution-ownership-wine.log
+verification/results/geometry-lease-wine.log
+verification/results/motion-capture-wine.log
+verification/results/geometry-lease-build.txt

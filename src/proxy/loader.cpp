@@ -75,6 +75,10 @@ extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
         options.capture_auto_depth = depth_copy_enabled;
         options.track_buffer_writes = x3m::object_trace::active() || finite_positions_enabled;
         options.capture_finite_positions = finite_positions_enabled;
+        // Live application-call admission is not yet serialized with replay.
+        // Keep execution observation off too; its core requires serialized
+        // transitions/snapshots. Native component fixtures opt in explicitly.
+        options.track_execution_state = false;
         const HRESULT adopted = x3m::ownership::wrap_factory(result, &wrapped, options);
         if (SUCCEEDED(adopted)) {
             // Successful adoption consumes the native factory reference. Capture

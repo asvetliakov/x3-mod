@@ -10,4 +10,4 @@ i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -static-libgcc -static-libstdc
 i686-w64-mingw32-g++ -std=c++17 -Wall -Wextra -c abi_check.cpp -o build/abi_check.o
 
 # Extended capture fixture; runs independently of X3.
-i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -static-libgcc -static-libstdc++ capture_state_fixture.cpp -o build/capture_state_fixture.exe -ldxguid -luser32
+i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -static -static-libgcc -static-libstdc++ capture_state_fixture.cpp -o build/capture_state_fixture.exe -ldxguid -luser32

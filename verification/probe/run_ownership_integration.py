@@ -18,16 +18,17 @@ fixtures = [('smoke', 'd3d9_smoke.exe', '1'), ('capture', 'capture_state_fixture
             ('contracts', 'ownership_integration_baseline.exe', '0'),
             ('auto', 'ownership_integration_auto_depth.exe', '0')]
 MODES = ('off', 'on', 'depth_only', 'copy_depth', 'scene_depth', 'scene_only',
-         'object_requested', 'finite_on', 'finite_without_ownership')
+         'object_requested', 'finite_on', 'finite_without_ownership',
+         'motion_requested', 'motion_without_prereqs')
 
 def selected_fixtures(mode):
     if mode in ('depth_only', 'scene_only', 'object_requested'):
         return fixtures[:1]
-    if mode in ('copy_depth', 'scene_depth'):
+    if mode in ('copy_depth', 'scene_depth', 'motion_requested'):
         return fixtures[-1:]
     if mode == 'finite_on':
         return fixtures[:2]
-    if mode == 'finite_without_ownership':
+    if mode in ('finite_without_ownership', 'motion_without_prereqs'):
         return fixtures[1:2]
     return fixtures
 
@@ -92,7 +93,7 @@ def main():
         for mode in MODES:
             selected = selected_fixtures(mode)
             for name, exe, frames in selected:
-                if mode == 'scene_depth':
+                if mode in ('scene_depth', 'motion_requested'):
                     frames = '1'  # Exercise the requested-frame gate, not only allocation.
                 case = f'ownership-integration-{mode}-{name}'
                 directory = probe / (case + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
@@ -101,13 +102,14 @@ def main():
                 shutil.copy(probe / exe, directory)
                 shutil.copy(dll, directory / 'd3d9.dll')
                 env = dict(os.environ, X3M_TELEMETRY='1', X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES=frames,
-                           X3M_DEPTH_COPY='1' if mode in ('depth_only', 'copy_depth', 'scene_depth') else '0',
-                           X3M_SCENE_DEPTH_CAPTURE='1' if mode in ('scene_depth', 'scene_only') else '0',
-                           X3M_OBJECT_TRACE='1' if mode == 'object_requested' else '0',
-                           X3M_OBJECT_LIFETIME='1' if mode == 'object_requested' else '0',
+                           X3M_DEPTH_COPY='1' if mode in ('depth_only', 'copy_depth', 'scene_depth', 'motion_requested') else '0',
+                           X3M_SCENE_DEPTH_CAPTURE='1' if mode in ('scene_depth', 'scene_only', 'motion_requested') else '0',
+                           X3M_OBJECT_TRACE='1' if mode in ('object_requested', 'motion_requested') else '0',
+                           X3M_OBJECT_LIFETIME='1' if mode in ('object_requested', 'motion_requested') else '0',
                            X3M_MESH_CACHE='0',
-                           X3M_FINITE_POSITIONS='1' if mode in ('finite_on', 'finite_without_ownership') else '0')
-                if mode in ('on', 'copy_depth', 'scene_depth', 'finite_on'):
+                           X3M_FINITE_POSITIONS='1' if mode in ('finite_on', 'finite_without_ownership', 'motion_requested') else '0',
+                           X3M_MOTION_CAPTURE='1' if mode in ('motion_requested', 'motion_without_prereqs') else '0')
+                if mode in ('on', 'copy_depth', 'scene_depth', 'finite_on', 'motion_requested'):
                     env['X3M_OWNERSHIP'] = '1'
                 else:
                     env.pop('X3M_OWNERSHIP', None)
@@ -119,14 +121,17 @@ def main():
                 with stdout_path.open('w') as stdout, (results / (case + '-wine.log')).open('w') as stderr:
                     require_no_game()
                     completed = subprocess.run(command, env=env, stdout=stdout, stderr=stderr, timeout=120)
-                traces = list((directory / 'x3-modern-captures').glob('session-*.log'))
-                assert traces, f'{case}: missing current-run capture log'
-                shutil.copy(max(traces, key=lambda p: p.stat().st_mtime), trace_path)
+                # Keep the child exit/provenance even if it fails before logging.
                 manifest['cases'][case] = {'exit': completed.returncode, 'exe_sha256': sha(directory / exe),
-                    'dll_sha256': sha(directory / 'd3d9.dll'), 'report_sha256': sha(stdout_path), 'trace_sha256': sha(trace_path)}
+                    'dll_sha256': sha(directory / 'd3d9.dll'), 'report_sha256': sha(stdout_path)}
                 save()
                 print(f'{case}: exit={completed.returncode}', flush=True)
                 assert completed.returncode == 0, f'{case}: nonzero exit'
+                traces = list((directory / 'x3-modern-captures').glob('session-*.log'))
+                assert traces, f'{case}: missing current-run capture log'
+                shutil.copy(max(traces, key=lambda p: p.stat().st_mtime), trace_path)
+                manifest['cases'][case]['trace_sha256'] = sha(trace_path)
+                save()
         manifest['sources'] = sources()
         manifest['binaries_at_end'] = binaries()
         manifest['source_tree_unchanged_during_run'] = manifest['sources_at_start'] == manifest['sources']

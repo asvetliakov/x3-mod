@@ -230,3 +230,24 @@ Timers, counters and reporting themselves add CPU overhead. `capture_cpu`
 excludes backend time and lock acquisition, and does not include its own final
 counter update. Overlapping metrics and synthetic run durations are diagnostic
 observations, not a measurement of zero overhead or a gameplay speedup.
+
+## Private motion production
+
+`--motion-capture --capture-frames 4` requests private GPU motion diagnostics;
+**live dispatch currently refuses with `enabled=0 reason=write_exclusion_unavailable`.**
+The component is verified under explicit caller serialization, but the proxy has
+not yet excluded worker buffer writes across validation and replay. The option
+requires `--scene-depth-capture --depth-copy --finite-positions --object-lifetime
+--object-trace --ownership --telemetry`. The launch tool rejects fewer than two
+consecutive captured frames because the first frame only seeds correspondence.
+No setting is enabled in an installed build by changing these source files.
+
+`motion_replay` records the pre-Clear candidate, observed/eligible/matched/rejected
+and completed draw counts, native operation/restoration HRESULTs, inclusive CPU
+cost and observed execution/query refusal. `candidate_produced=1` is provisional:
+it precedes the application's Clear and Present. `motion_frame` separately records
+`storage_history_committed` after successful boundaries and presentation.
+`continuity_known=0`, `color_coverage_known=0`, `temporal_consumed=0` and
+`temporal_history_committed=0` retain the distinction from gameplay TAA.
+The private RGBA32F target and replay shader resources are released inside the
+boundary callback. Captures do not read back game pixels or retain buffer payloads.

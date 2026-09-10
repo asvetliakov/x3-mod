@@ -40,6 +40,7 @@ def main():
     parser.add_argument('--object-lifetime', action='store_true', help='Observe verified render-registry lifetimes (requires --object-trace --ownership)')
     parser.add_argument('--mesh-cache', action='store_true', help='Enable experimental verified native adjacency reuse (requires --telemetry)')
     parser.add_argument('--finite-positions', action='store_true', help='Validate positions from verified existing buffer uploads (requires --ownership --telemetry)')
+    parser.add_argument('--motion-capture', action='store_true', help='Produce private rigid-motion diagnostics during capture (requires scene depth, finite positions and object lifetime)')
     args = parser.parse_args()
     if args.depth_copy and not args.ownership:
         parser.error('--depth-copy requires --ownership.')
@@ -51,6 +52,10 @@ def main():
         parser.error('--mesh-cache requires --telemetry.')
     if args.finite_positions and not (args.ownership and args.telemetry):
         parser.error('--finite-positions requires --ownership and --telemetry.')
+    if args.motion_capture and not (args.scene_depth_capture and args.finite_positions and args.object_lifetime):
+        parser.error('--motion-capture requires --scene-depth-capture, --finite-positions and --object-lifetime.')
+    if args.motion_capture and args.capture_frames < 2:
+        parser.error('--motion-capture requires --capture-frames between 2 and 8 for adjacent-frame correspondence.')
     game = args.game_dir.resolve()
     dll = game / 'd3d9.dll'
     manifest = game / 'x3-modern-install.json'
@@ -99,6 +104,7 @@ def main():
         env['X3M_OBJECT_LIFETIME'] = '1' if args.object_lifetime else '0'
         env['X3M_MESH_CACHE'] = '1' if args.mesh_cache else '0'
         env['X3M_FINITE_POSITIONS'] = '1' if args.finite_positions else '0'
+        env['X3M_MOTION_CAPTURE'] = '1' if args.motion_capture else '0'
         # --dll applies to this child only, preserving the user's other overrides.
         command = [str(WINE), '--bottle', args.bottle, '--no-update',
                    '--dll', 'd3d9=b' if args.vanilla else 'd3d9=n,b',
