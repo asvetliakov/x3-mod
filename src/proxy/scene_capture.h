@@ -37,6 +37,8 @@ public:
     void after_stretch(IDirect3DDevice9* device, IDirect3DSurface9* source,
                        const RECT* source_rect, IDirect3DSurface9* destination,
                        const RECT* destination_rect, HRESULT result) noexcept;
+    void after_color_fill(IDirect3DDevice9* device, IDirect3DSurface9* destination,
+                          const RECT* rect, HRESULT result) noexcept;
 
 private:
     struct Impl;

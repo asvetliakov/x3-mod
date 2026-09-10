@@ -165,6 +165,63 @@ class SceneBoundaryTests(unittest.TestCase):
         self.assertEqual(len(result['selections']),1)
         self.assertEqual(result['selections'][0]['confirmed'],1)
 
+    def fill(self, target=None, result=0):
+        return dict(kind=6,result_known=True,result=result,
+                    destination=deepcopy(target or self.events[self.copy]['destination']),
+                    destination_rect_null=True)
+
+    def test_verified_background_does_not_require_haze(self):
+        for e in self.events[1:self.clear_indices[1]]:
+            if e['kind']==1:e['vs'],e['ps']=0x7b6393fe2d3e1d85,0x6109cf64c03529dd
+        result=self.run_events()
+        self.assertEqual((result['state'],len(result['selections'])),(8,1))
+        self.assertEqual(result['selections'][0]['confirmed'],1)
+
+    def test_await_copy_accepts_known_distinct_scratch_fills_full_and_partial(self):
+        fills=[self.fill() for _ in range(3)];fills[1]['destination_rect_null']=False
+        self.events[self.copy:self.copy]=fills;self.renumber(self.events)
+        result=self.run_events();self.assertEqual(result['state'],8)
+        self.assertEqual(result['selections'][0]['confirmed'],1)
+
+    def test_color_fill_rejects_main_depth_unknown_standalone_and_invalid_descriptor(self):
+        for field,value in [('known',False),('identity',0),('identity',self.events[0]['rt']['identity']),
+                            ('identity',self.events[0]['depth']['identity']),('container',0),
+                            ('width',0),('height',0),('format',77),('format',113),('msaa',2)]:
+            events=deepcopy(self.events);fill=self.fill();fill['destination'][field]=value
+            events.insert(self.copy,fill);self.renumber(events)
+            result=self.run_events(events)
+            self.assertEqual((result['state'],result['selections'],result['rejection_sequence']),(9,[],self.copy+1),(field,value))
+
+    def test_color_fill_shared_container_alias_is_rejected(self):
+        for role in ('rt','depth'):
+            events=deepcopy(self.events);protected=events[0][role]['identity'];container=self.fill()['destination']['container']
+            for e in events:
+                for field in ('rt','depth','source','destination'):
+                    if e.get(field,{}).get('identity')==protected:e[field]['container']=container
+            events.insert(self.copy,self.fill());self.renumber(events)
+            result=self.run_events(events)
+            self.assertEqual((result['state'],result['selections'],result['rejection_sequence']),(9,[],self.copy+1))
+
+    def test_color_fill_failure_and_unknown_result_reject(self):
+        for result_known,result_code in ((True,0x8876086c),(False,0)):
+            events=deepcopy(self.events);fill=self.fill(result=result_code);fill['result_known']=result_known
+            events.insert(self.copy,fill);self.renumber(events);result=self.run_events(events)
+            self.assertEqual((result['rejection'],result['rejection_sequence'],result['selections']),(4,self.copy+1,[]))
+
+    def test_color_fill_rejected_in_every_other_phase_including_selected(self):
+        for index in (0,1,self.clear_indices[1]+1,self.copy+1,self.bloom[0],
+                      self.bloom[-1]+1,self.boundary,len(self.events)):
+            events=deepcopy(self.events);events.insert(index,self.fill());self.renumber(events)
+            result=self.run_events(events);self.assertEqual(result['state'],9,index)
+            self.assertEqual(result['rejection_sequence'],index+1,index)
+
+    def test_first_pattern_rejection_survives_later_unsupported_and_invalidation(self):
+        self.events[0]['clear_flags']=1
+        self.events.insert(self.copy,self.fill());unsupported=self.fill();unsupported['kind']=5
+        self.events.insert(self.copy+1,unsupported);self.renumber(self.events)
+        result=self.run_events(extra={len(self.events)-1:['I']})
+        self.assertEqual((result['rejection'],result['rejection_sequence'],result['selections']),(5,1,[]))
+
     def test_truncation_cannot_confirm_future_clear(self):
         for end in (self.copy,self.bloom[-1]+1,self.boundary):
             self.assertEqual(self.run_events(self.events[:end])['selections'],[])

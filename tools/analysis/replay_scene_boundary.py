@@ -14,7 +14,7 @@ import tempfile
 from summarize_capture import summarize
 
 ROOT = Path(__file__).resolve().parents[2]
-KINDS = dict(clear=0, draw_begin=1, set_rt=2, set_depth=3, stretch_rect=4)
+KINDS = dict(clear=0, draw_begin=1, set_rt=2, set_depth=3, stretch_rect=4, color_fill=6)
 SURFACE_FIELDS = ('known', 'identity', 'container', 'width', 'height', 'format', 'msaa')
 
 
@@ -75,6 +75,9 @@ def derive(raw, name):
             elif op=='set_depth':
                 out['depth']=surface(role('depth_binding'))
                 if good(e.get('result')):bound_depth=out['depth']
+            elif op=='color_fill':
+                out.update(destination=surface(role('color_fill_target')),
+                           destination_rect_null=detail('color_fill').get('rect_null')=='1')
             elif op=='stretch_rect':
                 c=detail('stretch_rect');out.update(source=surface(role('stretch_source')),destination=surface(role('stretch_dest')),
                     source_rect_null=c.get('source_rect_null')=='1',destination_rect_null=c.get('dest_rect_null')=='1')
@@ -130,8 +133,8 @@ def replay(executable, frame, events, extra_commands=None, signature_profile=Non
     for line in p.stdout.splitlines():
         words=line.split()
         if words[0]=='S':selections.append(dict(zip(('sequence','candidate','confirmed','color','depth','epoch'),map(int,words[1:]))))
-        elif words[0]=='Q':state,rejection=map(int,words[1:])
-    return dict(selections=selections,state=state,rejection=rejection)
+        elif words[0]=='Q':state,rejection,rejection_sequence=map(int,words[1:])
+    return dict(selections=selections,state=state,rejection=rejection,rejection_sequence=rejection_sequence)
 
 
 def main():

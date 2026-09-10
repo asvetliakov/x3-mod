@@ -15,7 +15,8 @@
       "observed_only": {
         "selections": [],
         "state": 9,
-        "rejection": 5
+        "rejection": 5,
+        "rejection_sequence": 1
       },
       "with_explicit_assumptions": {
         "selections": [
@@ -30,7 +31,8 @@
           }
         ],
         "state": 8,
-        "rejection": 0
+        "rejection": 0,
+        "rejection_sequence": 0
       }
     },
     {
@@ -40,7 +42,8 @@
       "observed_only": {
         "selections": [],
         "state": 9,
-        "rejection": 5
+        "rejection": 5,
+        "rejection_sequence": 1
       },
       "with_explicit_assumptions": {
         "selections": [
@@ -55,7 +58,8 @@
           }
         ],
         "state": 8,
-        "rejection": 0
+        "rejection": 0,
+        "rejection_sequence": 0
       }
     },
     {
@@ -65,7 +69,8 @@
       "observed_only": {
         "selections": [],
         "state": 9,
-        "rejection": 5
+        "rejection": 5,
+        "rejection_sequence": 1
       },
       "with_explicit_assumptions": {
         "selections": [
@@ -80,7 +85,8 @@
           }
         ],
         "state": 8,
-        "rejection": 0
+        "rejection": 0,
+        "rejection_sequence": 0
       }
     },
     {
@@ -90,7 +96,8 @@
       "observed_only": {
         "selections": [],
         "state": 9,
-        "rejection": 5
+        "rejection": 5,
+        "rejection_sequence": 1
       },
       "with_explicit_assumptions": {
         "selections": [
@@ -105,7 +112,8 @@
           }
         ],
         "state": 8,
-        "rejection": 0
+        "rejection": 0,
+        "rejection_sequence": 0
       }
     },
     {
@@ -115,7 +123,8 @@
       "observed_only": {
         "selections": [],
         "state": 9,
-        "rejection": 5
+        "rejection": 5,
+        "rejection_sequence": 1
       },
       "with_explicit_assumptions": {
         "selections": [
@@ -130,7 +139,8 @@
           }
         ],
         "state": 8,
-        "rejection": 0
+        "rejection": 0,
+        "rejection_sequence": 0
       }
     },
     {
@@ -140,7 +150,8 @@
       "observed_only": {
         "selections": [],
         "state": 9,
-        "rejection": 5
+        "rejection": 5,
+        "rejection_sequence": 1
       },
       "with_explicit_assumptions": {
         "selections": [
@@ -155,7 +166,8 @@
           }
         ],
         "state": 8,
-        "rejection": 0
+        "rejection": 0,
+        "rejection_sequence": 0
       }
     },
     {
@@ -165,7 +177,8 @@
       "observed_only": {
         "selections": [],
         "state": 9,
-        "rejection": 5
+        "rejection": 5,
+        "rejection_sequence": 1
       },
       "with_explicit_assumptions": {
         "selections": [
@@ -180,7 +193,8 @@
           }
         ],
         "state": 8,
-        "rejection": 0
+        "rejection": 0,
+        "rejection_sequence": 0
       }
     },
     {
@@ -190,7 +204,8 @@
       "observed_only": {
         "selections": [],
         "state": 9,
-        "rejection": 5
+        "rejection": 5,
+        "rejection_sequence": 1
       },
       "with_explicit_assumptions": {
         "selections": [
@@ -205,7 +220,8 @@
           }
         ],
         "state": 8,
-        "rejection": 0
+        "rejection": 0,
+        "rejection_sequence": 0
       }
     },
     {
@@ -215,7 +231,8 @@
       "observed_only": {
         "selections": [],
         "state": 9,
-        "rejection": 5
+        "rejection": 5,
+        "rejection_sequence": 1
       },
       "with_explicit_assumptions": {
         "selections": [
@@ -230,7 +247,8 @@
           }
         ],
         "state": 8,
-        "rejection": 0
+        "rejection": 0,
+        "rejection_sequence": 0
       }
     },
     {
@@ -240,7 +258,8 @@
       "observed_only": {
         "selections": [],
         "state": 9,
-        "rejection": 5
+        "rejection": 5,
+        "rejection_sequence": 1
       },
       "with_explicit_assumptions": {
         "selections": [
@@ -255,7 +274,8 @@
           }
         ],
         "state": 8,
-        "rejection": 0
+        "rejection": 0,
+        "rejection_sequence": 0
       }
     },
     {
@@ -265,7 +285,8 @@
       "observed_only": {
         "selections": [],
         "state": 9,
-        "rejection": 5
+        "rejection": 5,
+        "rejection_sequence": 1
       },
       "with_explicit_assumptions": {
         "selections": [
@@ -280,7 +301,8 @@
           }
         ],
         "state": 8,
-        "rejection": 0
+        "rejection": 0,
+        "rejection_sequence": 0
       }
     },
     {
@@ -290,7 +312,8 @@
       "observed_only": {
         "selections": [],
         "state": 9,
-        "rejection": 5
+        "rejection": 5,
+        "rejection_sequence": 1
       },
       "with_explicit_assumptions": {
         "selections": [
@@ -305,14 +328,15 @@
           }
         ],
         "state": 8,
-        "rejection": 0
+        "rejection": 0,
+        "rejection_sequence": 0
       }
     }
   ],
   "sources_sha256": {
-    "src/renderer/scene_boundary.h": "14da317d222da448e6829b851f51fef067f227641edd14e5cb2cd09702ec865d",
-    "verification/probe/scene_boundary_replay.cpp": "55880f12a8596d6e8f5ae530a42e70d9f45404acac02f561f5fc909119c99b58",
-    "tools/analysis/replay_scene_boundary.py": "c766da3d7f5a6fb8dca1e6076da0d73ddb775b1e7da6f0bf9cd6a52a6a893d1d",
+    "src/renderer/scene_boundary.h": "4c28908bd51c4e0d25269088d91d02e23994089320288ffa161b8afee7c5ace9",
+    "verification/probe/scene_boundary_replay.cpp": "ea9b2f2e2b549b0ece3b72233f0dc19f5ad52aca06e9ef18ff8eafa6d5e5edd8",
+    "tools/analysis/replay_scene_boundary.py": "bd7ad700bf2b972b22672b0498672fe889ab361d94a5c7f5944f0ed2f76aad6a",
     "verification/fixtures/station-scene-boundaries.json": "a41f83e3f425aad05598021c141083eadff6a0724fa17b9427056ac6bd34d030"
   }
 }

@@ -59,6 +59,23 @@ void bindings(IDirect3DDevice9* device, renderer::Event& event, DWORD target_cou
     if (SUCCEEDED(device->GetViewport(&vp)))
         event.viewport = {true, vp.X, vp.Y, vp.Width, vp.Height, vp.MinZ, vp.MaxZ};
 }
+const char* event_name(renderer::EventKind kind) {
+    using K = renderer::EventKind;
+    switch (kind) {
+    case K::Clear: return "Clear"; case K::Draw: return "Draw";
+    case K::SetRenderTarget: return "SetRenderTarget"; case K::SetDepth: return "SetDepth";
+    case K::Copy: return "StretchRect"; case K::ColorFill: return "ColorFill";
+    default: return "Unsupported";
+    }
+}
+const char* rejection_name(renderer::BoundaryRejection reason) {
+    using R = renderer::BoundaryRejection;
+    switch (reason) {
+    case R::InvalidFrame: return "InvalidFrame"; case R::Invalidated: return "Invalidated";
+    case R::Sequence: return "Sequence"; case R::FailedCall: return "FailedCall";
+    case R::Pattern: return "Pattern"; default: return "None";
+    }
+}
 } // namespace
 
 struct SceneCapture::Impl {
@@ -74,9 +91,18 @@ struct SceneCapture::Impl {
     renderer::Event event(renderer::EventKind kind) {
         renderer::Event result{}; result.kind = kind; result.sequence = ++sequence; return result;
     }
-    void complete(renderer::Event event, HRESULT hr) {
+    renderer::Selection complete(renderer::Event event, HRESULT hr, const char* operation = nullptr) {
         event.result_known = true; event.result = static_cast<std::uint32_t>(hr);
-        selector.observe(event);
+        const auto prior = selector.state();
+        const auto selection = selector.observe(event);
+        if (prior != renderer::BoundaryState::Rejected && selector.state() == renderer::BoundaryState::Rejected)
+            log("scene_depth_reject device=%llu frame=%llu event=%llu operation=%s prior_state=%u rejection=%u reason=%s result=%08lx rt=%llu depth=%llu destination_known=%u destination=%llu destination_container=%llu destination_format=%u destination_width=%u destination_height=%u destination_msaa=%u",
+                device_id, frame, selector.rejection_sequence(), operation ? operation : event_name(event.kind),
+                unsigned(prior), unsigned(selector.rejection()), rejection_name(selector.rejection()), hr,
+                event.rt.identity, event.depth.identity, event.destination.known, event.destination.identity,
+                event.destination.container, event.destination.format, event.destination.width,
+                event.destination.height, event.destination.msaa);
+        return selection;
     }
 };
 
@@ -87,7 +113,8 @@ void SceneCapture::configure(bool requested) noexcept { requested_ = requested; 
 void SceneCapture::invalidate() noexcept { if (impl_) impl_->stop(); }
 void SceneCapture::unsupported(const char* operation, HRESULT result) noexcept {
     if (!impl_ || !impl_->active) return;
-    impl_->selector.invalidate(); impl_->confirmed = false;
+    impl_->complete(impl_->event(renderer::EventKind::Unsupported), result, operation);
+    impl_->confirmed = false;
     log("scene_depth_unsupported device=%llu frame=%llu operation=%s result=%08lx",
         impl_->device_id, impl_->frame, operation, result);
 }
@@ -115,10 +142,10 @@ void SceneCapture::end_frame(HRESULT result) noexcept {
     auto& state = *impl_;
     if (FAILED(result)) state.selector.invalidate();
     state.confirmed = state.confirmed && state.selector.state() == renderer::BoundaryState::Selected;
-    log("scene_depth_frame phase=end device=%llu frame=%llu generation=%llu events=%llu attempted=%u copied=%u confirmed=%u state=%u rejection=%u present=%08lx",
+    log("scene_depth_frame phase=end device=%llu frame=%llu generation=%llu events=%llu attempted=%u copied=%u confirmed=%u state=%u rejection=%u rejection_event=%llu present=%08lx",
         state.device_id, state.frame, state.generation, state.sequence, state.attempted,
         state.copied, state.confirmed, unsigned(state.selector.state()),
-        unsigned(state.selector.rejection()), result);
+        unsigned(state.selector.rejection()), state.selector.rejection_sequence(), result);
     state.active = false;
 }
 void SceneCapture::before_draw(IDirect3DDevice9* device, D3DPRIMITIVETYPE topology, UINT primitives) noexcept {
@@ -179,7 +206,7 @@ void SceneCapture::after_clear(IDirect3DDevice9* device, HRESULT result) noexcep
     if (!impl_->pending_clear) { invalidate(); return; }
     auto& state = *impl_; state.pending_clear = false;
     state.pending.result_known = true; state.pending.result = static_cast<std::uint32_t>(result);
-    const auto selection = state.selector.observe(state.pending);
+    const auto selection = state.complete(state.pending, result);
     if (!selection.valid) return;
     ownership::CopyDepthView view{};
     const HRESULT hr = ownership::get_copy_depth_view(device, &view);
@@ -217,9 +244,29 @@ void SceneCapture::after_stretch(IDirect3DDevice9*, IDirect3DSurface9* source,
     if (!impl_ || !impl_->active) return;
     try {
         auto event = impl_->event(renderer::EventKind::Copy);
-        event.source = describe(source); event.destination = describe(destination);
+        // A failed call may not have validated either surface pointer.
+        if (SUCCEEDED(result)) { event.source = describe(source); event.destination = describe(destination); }
         event.source_rect_null = source_rect == nullptr;
         event.destination_rect_null = destination_rect == nullptr;
+        impl_->complete(event, result);
+    } catch (...) { invalidate(); }
+}
+void SceneCapture::after_color_fill(IDirect3DDevice9*, IDirect3DSurface9* destination,
+                                     const RECT* rect, HRESULT result) noexcept {
+    if (!impl_ || !impl_->active) return;
+    try {
+        auto event = impl_->event(renderer::EventKind::ColorFill);
+        // Native failure may precede pointer validation. Preserve that boundary:
+        // describe/read arguments only after success, while still rejecting the event.
+        if (SUCCEEDED(result)) event.destination = describe(destination);
+        event.destination_rect_null = rect == nullptr;
+        const RECT* verified_rect = SUCCEEDED(result) ? rect : nullptr;
+        log("scene_depth_color_fill device=%llu frame=%llu event=%llu result=%08lx target_ptr=%p rect_ptr=%p target_known=%u target=%llu container=%llu width=%u height=%u format=%u msaa=%u rect_null=%u left=%ld top=%ld right=%ld bottom=%ld",
+            impl_->device_id, impl_->frame, event.sequence, result, destination, rect, event.destination.known,
+            event.destination.identity, event.destination.container, event.destination.width,
+            event.destination.height, event.destination.format, event.destination.msaa, rect == nullptr,
+            verified_rect ? verified_rect->left : 0L, verified_rect ? verified_rect->top : 0L,
+            verified_rect ? verified_rect->right : 0L, verified_rect ? verified_rect->bottom : 0L);
         impl_->complete(event, result);
     } catch (...) { invalidate(); }
 }

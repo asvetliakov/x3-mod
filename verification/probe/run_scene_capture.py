@@ -15,7 +15,9 @@ def main():
     results = root / 'verification/results'
     names = ('positive', 'unsupported', 'failed-color-copy', 'failed-final-clear',
              'rejected-depth-copy', 'generation-mismatch', 'failed-draw-after-selection',
-             'failed-present-after-selection', 'inactive-capture', 'post-clear-binding-query-failure')
+             'failed-present-after-selection', 'inactive-capture', 'post-clear-binding-query-failure', 'scratch-color-fills',
+             'main-color-fill', 'depth-color-fill', 'unknown-color-fill', 'failed-color-fill',
+             'wrong-phase-color-fill', 'standalone-color-fill', 'first-rejection-preserved')
     files = ('verification/probe/scene_capture_fixture.cpp',
              'verification/probe/build_scene_capture.sh', 'verification/probe/run_scene_capture.py',
              'src/ownership/d3d9_ownership.cpp', 'src/ownership/d3d9_ownership.h',
@@ -56,7 +58,7 @@ def main():
                       source_unchanged_during_run=hashes() == before,
                       executable_unchanged_during_run=hashlib.sha256(executable.read_bytes()).hexdigest() == report['executable_sha256'])
         report['passed'] = (report['exit_code'] == 0 and not report['failed_checks']
-                            and len(samples) == 8 and len(scenarios) == 20 and set(scenarios) == expected
+                            and len(samples) == 16 and len(scenarios) == 36 and set(scenarios) == expected
                             and report['source_unchanged_during_run'] and report['executable_unchanged_during_run']
                             and 'RESULT PASS ' in text)
     (results / 'scene-capture-summary.json').write_text(json.dumps(report, indent=2) + '\n')

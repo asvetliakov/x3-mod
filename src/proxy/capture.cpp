@@ -407,7 +407,18 @@ HRESULT WINAPI update_texture(IDirect3DDevice9* d,IDirect3DBaseTexture9* source,
 HRESULT WINAPI color_fill(IDirect3DDevice9* d,IDirect3DSurface9* surface,const RECT* rect,D3DCOLOR color){
     HookGuard lock;auto& ctx=*devices.at(d);
     const auto hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*,const RECT*,D3DCOLOR)>(35)(d,surface,rect,color);
-    ctx.scene_depth.unsupported("ColorFill",hr);return hr;
+    ctx.scene_depth.after_color_fill(d,surface,rect,hr);
+    if(ctx.capture){
+        capture_event(ctx,"color_fill",hr);
+        log("color_fill target=%p rect=%p result=%08lx color=%08lx rect_null=%u",surface,rect,hr,color,rect==nullptr);
+        // A failed native call may reject before reading either pointer. Logging
+        // must not make a previously untouched invalid argument observable.
+        if(SUCCEEDED(hr)){
+            if(rect)log("color_fill_rect left=%ld top=%ld right=%ld bottom=%ld",rect->left,rect->top,rect->right,rect->bottom);
+            if(surface)surface_info("color_fill_target",surface);
+        }
+    }
+    return hr;
 }
 HRESULT WINAPI draw_rect_patch(IDirect3DDevice9* d,UINT handle,const float* segments,const D3DRECTPATCH_INFO* info){
     HookGuard lock;auto& ctx=*devices.at(d);

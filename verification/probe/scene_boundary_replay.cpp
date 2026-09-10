@@ -44,7 +44,7 @@ int main() {
                           << ' ' << candidate.depth_epoch << '\n';
         } else if (operation == 'Q') {
             std::cout << "Q " << static_cast<unsigned>(selector.state()) << ' '
-                      << static_cast<unsigned>(selector.rejection()) << '\n';
+                      << static_cast<unsigned>(selector.rejection()) << ' ' << selector.rejection_sequence() << '\n';
         } else return 2;
     }
 }

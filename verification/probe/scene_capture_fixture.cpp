@@ -157,6 +157,14 @@ static std::uint64_t hash(ID3DXBuffer* code) {
     for(unsigned i=0;i<code->GetBufferSize();++i){result^=bytes[i];result*=1099511628211ull;}
     return result;
 }
+struct SurfaceDescFault {
+    static HRESULT WINAPI fail(IDirect3DSurface9*,D3DSURFACE_DESC*){return E_FAIL;}
+    IDirect3DSurface9* surface;void** original;std::array<void*,17> table{};
+    explicit SurfaceDescFault(IDirect3DSurface9* s):surface(s),original(*reinterpret_cast<void***>(s)){
+        std::copy(original,original+17,table.begin());auto fn=&fail;std::memcpy(&table[12],&fn,sizeof fn);*reinterpret_cast<void***>(surface)=table.data();
+    }
+    ~SurfaceDescFault(){*reinterpret_cast<void***>(surface)=original;}
+};
 struct Scene {
     IDirect3DDevice9* d;
     Com<IDirect3DSurface9> main,depth,copySurface,aSurface,bSurface;
@@ -178,7 +186,8 @@ struct Scene {
         const auto bh=hash(pc.p);ok("background PS",d->CreatePixelShader(static_cast<DWORD*>(pc->GetBufferPointer()),&background.p));pc.reset();
         compile(compiler,"float4 main():COLOR0{return float4(.8,.2,.1,1);}","ps_3_0",&pc.p);
         ok("material PS",d->CreatePixelShader(static_cast<DWORD*>(pc->GetBufferPointer()),&material.p));pc.reset();
-        for(auto& pair:signatures.background)pair={vh,bh};
+        for(auto& pair:signatures.background)pair={};
+        signatures.background[0]={vh,bh}; // No haze profile: primary background alone is verified.
         for(unsigned i=0;i<4;++i){
             const std::string ps="sampler2D color:register(s0);float4 main(float2 uv:TEXCOORD0):COLOR0{return tex2D(color,uv)*"+std::to_string(.5f+i*.125f)+";}";
             compile(compiler,ps.c_str(),"ps_3_0",&pc.p);signatures.bloom[i]={vh,hash(pc.p)};
@@ -217,14 +226,37 @@ struct Scene {
         const HRESULT hr=d->DrawPrimitiveUP(kind,primitives,geometry?triangles:quad,sizeof(V));capture.after_draw(hr);
         ok("draw result",hr);ok("draw EndScene",d->EndScene());
     }
-    void prefix(x3m::SceneCapture& capture,bool failCopy){
-        clear(capture,D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER);
-        draw(capture,background.p,true);clear(capture,D3DCLEAR_ZBUFFER);draw(capture,material.p,true,true);
+    void fill(x3m::SceneCapture& capture,IDirect3DSurface9* target,const RECT* rect=nullptr,bool callbackFailure=false,bool queryFailure=false){
+        const HRESULT hr=d->ColorFill(target,rect,0);ok("actual ColorFill",hr);
+        if(queryFailure){SurfaceDescFault fault(target);capture.after_color_fill(d,target,rect,hr);std::puts("INJECT ColorFill target GetDesc E_FAIL");}
+        else if(callbackFailure){
+            // Callback-only fault: never submit these invalid arguments to D3D.
+            capture.after_color_fill(d,nullptr,reinterpret_cast<const RECT*>(std::uintptr_t(1)),E_FAIL);
+            std::puts("INJECT failed ColorFill callback with null target and unreadable RECT sentinel");
+        }else capture.after_color_fill(d,target,rect,hr);
+    }
+    void prefix(x3m::SceneCapture& capture,bool failCopy,unsigned fillMode=0,bool badInitial=false){
+        clear(capture,badInitial?D3DCLEAR_TARGET:D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER);
+        for(unsigned i=0;i<5;++i)draw(capture,background.p,true);
+        clear(capture,D3DCLEAR_ZBUFFER);draw(capture,material.p,true,true);
+        if(fillMode==6)fill(capture,aSurface.p); // Still in Scene: prohibited phase.
         HRESULT hr=d->SetDepthStencilSurface(nullptr);capture.after_set_depth(d,hr);ok("depth unbind",hr);
+        if(fillMode==1){const RECT partial={0,0,16,16};fill(capture,copySurface.p);fill(capture,aSurface.p,&partial);fill(capture,bSurface.p);}
+        else if(fillMode==2)fill(capture,main.p);
+        else if(fillMode==3){hr=d->ColorFill(depth.p,nullptr,0);capture.after_color_fill(d,depth.p,nullptr,hr);std::printf("OBS depth ColorFill=%08lx\n",static_cast<unsigned long>(hr));}
+        else if(fillMode==4)fill(capture,aSurface.p,nullptr,false,true);
+        else if(fillMode==5)fill(capture,aSurface.p,nullptr,true);
+        else if(fillMode==7){Com<IDirect3DSurface9> ordinary;ok("standalone scratch",d->CreateRenderTarget(32,32,D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&ordinary.p,nullptr));fill(capture,ordinary.p);}
         const RECT outside={0,0,65,64};const RECT* sourceRect=failCopy?&outside:nullptr;
         hr=d->StretchRect(main.p,sourceRect,copySurface.p,nullptr,D3DTEXF_NONE);
-        capture.after_stretch(d,main.p,sourceRect,copySurface.p,nullptr,hr);
-        if(failCopy)expect("actual color copy failure",FAILED(hr));else ok("full color copy",hr);
+        if(failCopy){
+            expect("actual color copy failure",FAILED(hr));
+            // Only the callback sees unreadable surface sentinels; the backend
+            // received the valid source/destination above and rejected its RECT.
+            capture.after_stretch(d,reinterpret_cast<IDirect3DSurface9*>(std::uintptr_t(1)),sourceRect,
+                                  reinterpret_cast<IDirect3DSurface9*>(std::uintptr_t(3)),nullptr,hr);
+            std::puts("INJECT failed StretchRect callback with unreadable source/destination surfaces");
+        }else{capture.after_stretch(d,main.p,sourceRect,copySurface.p,nullptr,hr);ok("full color copy",hr);}
         IDirect3DSurface9* surfaces[]={aSurface.p,bSurface.p,aSurface.p,main.p};
         IDirect3DTexture9* textures[]={copied.p,a.p,b.p,a.p};
         for(unsigned i=0;i<4;++i){
@@ -235,8 +267,8 @@ struct Scene {
         hr=d->SetDepthStencilSurface(depth.p);capture.after_set_depth(d,hr);ok("scene depth rebind",hr);
     }
 };
-enum class Case {Positive,Unsupported,FailedColorCopy,FailedFinalClear,RejectedDepthCopy,GenerationMismatch,FailedDrawAfter,FailedPresentAfter,Inactive,PostClearQueryFailure};
-static const char* names[]={"positive","unsupported","failed-color-copy","failed-final-clear","rejected-depth-copy","generation-mismatch","failed-draw-after-selection","failed-present-after-selection","inactive-capture","post-clear-binding-query-failure"};
+enum class Case {Positive,Unsupported,FailedColorCopy,FailedFinalClear,RejectedDepthCopy,GenerationMismatch,FailedDrawAfter,FailedPresentAfter,Inactive,PostClearQueryFailure,ScratchFills,FillMain,FillDepth,FillUnknown,FillFailed,FillWrongPhase,FillStandalone,FirstRejection};
+static const char* names[]={"positive","unsupported","failed-color-copy","failed-final-clear","rejected-depth-copy","generation-mismatch","failed-draw-after-selection","failed-present-after-selection","inactive-capture","post-clear-binding-query-failure","scratch-color-fills","main-color-fill","depth-color-fill","unknown-color-fill","failed-color-fill","wrong-phase-color-fill","standalone-color-fill","first-rejection-preserved"};
 static void exercise(IDirect3D9* api,HWND window,Compiler compiler,DWORD flags,Case test,std::uint64_t frame){
     trace.clear();std::printf("CASE name=%s flags=%08lx frame=%llu\n",names[unsigned(test)],static_cast<unsigned long>(flags),frame);
     D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;
@@ -246,7 +278,9 @@ static void exercise(IDirect3D9* api,HWND window,Compiler compiler,DWORD flags,C
     {
         Scene scene(d.p,compiler);x3m::SceneCapture capture(scene.signatures);capture.configure(true);
         capture.begin_frame(d.p,frame,frame,test!=Case::Inactive);
-        scene.prefix(capture,test==Case::FailedColorCopy);
+        const unsigned fillMode=test>=Case::ScratchFills&&test<=Case::FillStandalone?unsigned(test)-unsigned(Case::ScratchFills)+1:0;
+        scene.prefix(capture,test==Case::FailedColorCopy,fillMode,test==Case::FirstRejection);
+        if(test==Case::FirstRejection)capture.unsupported("later-unsupported-after-pattern",S_OK);
         if(test==Case::Unsupported)capture.unsupported("fixture-untracked-operation",S_OK);
         Com<IDirect3DStateBlock9> block;
         if(test==Case::RejectedDepthCopy)ok("begin blocking state recording",d->BeginStateBlock());
@@ -283,7 +317,7 @@ static void exercise(IDirect3D9* api,HWND window,Compiler compiler,DWORD flags,C
             expect("ordinary query failure preserves copied storage and epochs",after.available&&after.copy_valid&&after.source_bound&&SUCCEEDED(after.status)&&after.texture==before.texture&&after.generation==before.generation&&after.copy_epoch==before.copy_epoch&&after.source_epoch==before.source_epoch);
         }else capture.after_clear(d.p,clearResult);
         if(test==Case::RejectedDepthCopy)ok("end blocking state recording",d->EndStateBlock(&block.p));
-        if(test==Case::Positive){
+        if(test==Case::Positive||test==Case::ScratchFills){
             ok("final Clear",clearResult);own::CopyDepthView view{};ok("preserved view",own::get_copy_depth_view(d.p,&view));
             expect("real pre-clear copy and advanced source epoch",view.copy_valid&&view.copy_epoch+1==view.source_epoch);
             auto* native=own::borrowed_native_device(d.p);Snapshot saved(native,64,64);
@@ -307,11 +341,11 @@ static void exercise(IDirect3D9* api,HWND window,Compiler compiler,DWORD flags,C
             if(line.find("scene_depth_copy ")!=std::string::npos){++copies;if(line.find("valid=1")!=std::string::npos)++validCopies;}
             if(line.find("scene_depth_boundary ")!=std::string::npos){++boundaries;if(line.find("confirmed=1")!=std::string::npos)++boundaryConfirmed;}
         }
-        const bool positive=test==Case::Positive;
+        const bool positive=test==Case::Positive||test==Case::ScratchFills;
         expect("end confirmation matches scenario",confirmed==(positive?1u:0u));
         expect("bounded frame end",ends==(test==Case::Inactive?0u:1u));
         if(positive)expect("exactly one successful copy and boundary",copies==1&&validCopies==1&&boundaries==1);
-        if(test==Case::Unsupported||test==Case::FailedColorCopy||test==Case::Inactive){
+        if(test==Case::Unsupported||test==Case::FailedColorCopy||test==Case::Inactive||test>=Case::FillMain){
             own::CopyDepthView untouched{};ok("inactive copy view",own::get_copy_depth_view(d.p,&untouched));
             expect("rejected prefix never copies",copies==0&&!untouched.copy_valid);
         }
@@ -320,6 +354,15 @@ static void exercise(IDirect3D9* api,HWND window,Compiler compiler,DWORD flags,C
         if(test==Case::PostClearQueryFailure)expect("query failure rejects otherwise selected copy",copies==1&&validCopies==1&&boundaries==1&&boundaryConfirmed==0);
         if(test==Case::FailedFinalClear)expect("failed Clear does not publish boundary",validCopies==1&&boundaries==0);
         if(test==Case::FailedDrawAfter||test==Case::FailedPresentAfter)expect("postselection failure tested after actual copy",validCopies==1&&boundaries==1);
+        if(test==Case::FirstRejection){
+            unsigned firstLogs=0;bool firstEvent=false,endFirst=false;
+            for(const auto& line:trace){if(line.find("scene_depth_reject ")!=std::string::npos){++firstLogs;firstEvent=line.find("event=1 operation=Clear")!=std::string::npos&&line.find("reason=Pattern")!=std::string::npos;}
+                if(line.find("scene_depth_frame phase=end")!=std::string::npos)endFirst=line.find("rejection=5 rejection_event=1")!=std::string::npos;}
+            expect("first Pattern rejection logged once and preserved",firstLogs==1&&firstEvent&&endFirst);
+        }
+        if(test==Case::FailedColorCopy){bool unqueried=false;for(const auto& line:trace)if(line.find("scene_depth_reject ")!=std::string::npos&&line.find("operation=StretchRect")!=std::string::npos&&line.find("reason=FailedCall")!=std::string::npos&&line.find("destination_known=0")!=std::string::npos)unqueried=true;expect("failed StretchRect surface arguments remain unqueried",unqueried);}
+        if(test==Case::FillFailed){bool unknown=false;for(const auto& line:trace)if(line.find("scene_depth_color_fill ")!=std::string::npos&&line.find("result=80004005")!=std::string::npos&&line.find("target_known=0")!=std::string::npos)unknown=true;expect("failed ColorFill arguments remain unqueried",unknown);}
+        if(test>=Case::FillMain&&test<=Case::FillStandalone){bool logged=false;for(const auto& line:trace)if(line.find("scene_depth_reject ")!=std::string::npos&&line.find("operation=ColorFill")!=std::string::npos)logged=true;expect("unsafe ColorFill first rejection logged",logged);}
         std::printf("SCENARIO %s flags=%08lx confirmed=%u copies=%u valid_copies=%u PASS\n",names[unsigned(test)],static_cast<unsigned long>(flags),confirmed,copies,validCopies);
     }
     expect("case device final logical release",d.p->Release()==0);d.p=nullptr;
@@ -337,8 +380,8 @@ int main(int argc,char** argv){
         own::Options options;options.capture_auto_depth=true;const HRESULT hr=own::wrap_factory(native,&factory.p,options);if(FAILED(hr))native->Release();ok("copy factory",hr);
         std::uint64_t frame=0;
         for(DWORD flags:{DWORD(D3DCREATE_HARDWARE_VERTEXPROCESSING),DWORD(D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE)})
-            for(unsigned test=0;test<10;++test)exercise(factory.p,window,compiler,flags,Case(test),++frame);
-        std::printf("RESULT PASS checks=%u samples=%u scenarios=20\n",checks,samples);result=0;
+            for(unsigned test=0;test<18;++test)exercise(factory.p,window,compiler,flags,Case(test),++frame);
+        std::printf("RESULT PASS checks=%u samples=%u scenarios=36\n",checks,samples);result=0;
     }catch(const std::exception& e){std::printf("RESULT FAIL %s checks=%u samples=%u\n",e.what(),checks,samples);}
     if(window)DestroyWindow(window);
     return result;

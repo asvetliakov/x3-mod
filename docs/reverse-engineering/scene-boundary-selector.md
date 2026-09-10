@@ -25,15 +25,16 @@ that rejected prefix.
 
 1. A full-viewport color-and-depth Clear, depth value one, no explicit rectangles:
    single-sampled A8R8G8B8 main color and same-size D24X8 depth.
-2. A nonempty background region drawn with the three observed shader pairs below,
-   including the planet-haze pair, followed by a successful full-viewport
-   depth-only Clear of those same surfaces. This begins local depth epoch two.
+2. A nonempty background region drawn only with the three verified shader pairs
+   below; any one pair suffices and planet haze is optional. A successful full-viewport
+   depth-only Clear of those same surfaces follows. This begins local depth epoch two.
 3. A scene region on the same color/depth allocations and full viewport, including
    at least one successful draw with depth test and writes enabled. Draw count,
    primitive count and resource lifetime IDs can vary. No intervening clear,
    copy or target change is accepted.
-4. Successful unbinding of depth, then one successful full-source/full-destination
-   StretchRect from main color into a distinct same-size A8R8G8B8 texture surface.
+4. Successful unbinding of depth, zero or more successful ColorFill operations on
+   positively identified, nonaliasing scratch color textures, then one successful
+   full-source/full-destination StretchRect from main color into a distinct same-size A8R8G8B8 texture surface.
 5. Four consecutive bloom draws, separated only by the expected RT0 binds.
    Shader pairs, sampler-zero inputs and targets must follow the table below.
    Every draw has a full target viewport, triangle-strip topology, two primitives,
@@ -72,7 +73,7 @@ it does not promise that every pixel was overwritten by each bloom draw.
 ## Adapter contract
 
 Call `begin_frame(device, generation, frame)` before the first relevant call, then
-feed every completed application Draw, Clear, RT bind, depth bind and StretchRect
+feed every completed application Draw, Clear, RT bind, depth bind, ColorFill and StretchRect
 through `observe(Event)`. Sequences start at one and remain contiguous. Draw
 snapshots describe the state used by that draw. Successful binds carry the new
 binding. Injected renderer operations must not be fed back into this stream.
@@ -90,7 +91,7 @@ the ownership layer's source-content epoch.
 `invalidate()` is mandatory on device loss, Reset, resource-generation change,
 or uncertain resource identity. Start again with current generation metadata.
 Resource lifetime IDs must not be raw COM addresses. An adapter must also observe
-or invalidate on unsupported writes into tracked resources, such as ColorFill,
+or invalidate on unsupported writes into tracked resources, such as
 UpdateSurface or UpdateTexture; a gap-free counter over only a subset of content
 mutations cannot prove continuity. Shader/state setters need no individual events
 when the required Draw/Clear state is reliably queried at the actual call.
@@ -100,11 +101,36 @@ history image for a later frame. The adapter still owns copied-resource lifetime
 copy failures, later device loss, Reset and any temporal-history policy.
 
 `SceneSignatures` stores three background pairs and four bloom pairs by value;
-background slot two is the required haze marker. The default is the exact
-observed profile above. An explicit constructor profile permits a separately
+none of the background slots is individually mandatory. The default is the exact
+verified profile above. An explicit constructor profile permits a separately
 verified game version or original synthetic integration shaders. `begin_frame`
 clears per-frame state while retaining that profile. Runtime auto-discovery or
 loosening hashes from observed mismatches is not supported.
+
+## Capture-only correction after iteration 0.4
+
+The 0.4 trace contains five initial background draws with the verified
+`7b6393fe2d3e1d85` / `6109cf64c03529dd` pair and no planet haze. Sixteen gameplay
+frames passed the full initial Clear gate but were rejected at the second Clear
+because haze had incorrectly been mandatory. Removing that requirement retains
+all other original clear, dimensions, depth writer, color-copy and bloom checks.
+Four earlier frames have initial target-only Clears and remain rejected.
+
+The trace also contains three ColorFill calls per frame between the depth unbind
+and main-color StretchRect, but it records no fill target descriptors. Their safety
+cannot be established retrospectively. The updated adapter records each target's
+lifetime ID, texture container, dimensions, format, sample count and rectangle.
+Only successful fills of known A8R8G8B8, single-sample texture surfaces whose IDs
+and nonzero container IDs do not alias main color or original depth are allowed,
+and only in `AwaitCopy`. Standalone surfaces remain rejected until separate
+evidence establishes their role. Full and partial rectangles are both safe under
+this distinct-target condition; no arbitrary format or shader acceptance expands.
+
+`scene_depth_reject` records the first rejecting event, operation, prior phase,
+HRESULT, reason and target descriptors. The first reason and sequence remain
+unchanged when later unsupported calls or invalidations occur. Frame-end records
+also include `rejection_event`. No claim is made that the 0.4 frames would now pass:
+a future capture-only build must supply the missing ColorFill target proof.
 
 ## Replay and adversarial verification
 
@@ -116,14 +142,17 @@ remain available. Those labels are used only to compare the answer with the
 independent pass report, never as classifier inputs. Generation one is an
 original test argument; the old trace did not expose the new ownership generation.
 
-The native C++ replay compiles the actual production header. Seventeen test methods
+The native C++ replay compiles the actual production header. Twenty-four test methods
 cover twelve positive conditional replays, strict rejection of missing evidence,
 changed draw counts and resource IDs, failed/unknown results, failed pending
 Clear, sequence gaps/reordering, incorrect background/scene epochs, no depth
 writers, copy/parent/target aliases, all four shader and texture links, wrong
 quad state, partial/unknown viewports, depth mismatch, interposed operations,
 truncation, device-generation invalidation and custom signature profiles that
-survive frame resets. The failed-Clear case specifically
+survive frame resets. Additional tests cover the no-haze background, full/partial
+scratch fills, unknown/main/depth/standalone/format/MSAA/container aliases, fills
+in every other phase, failed fill results, and preserving the first rejection
+reason/sequence through later unsupported events or invalidation. The failed-Clear case specifically
 requires a candidate with no confirmation. A later overlay clear never emits a
 second selection.
 
