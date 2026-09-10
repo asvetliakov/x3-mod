@@ -13,7 +13,7 @@ and [roadmap](architecture/roadmap.md).
   configuration preserved. User test setting: 1280×768 windowed (was 5120×1440
   borderless). No unused launcher is intentionally left open.
 - Independent FP16/depth/D3D11-scRGB capabilities; baseline/proxy smoke passes;
-  31 analysis tests and compile-time ABI guards pass.
+  45 analysis tests and compile-time ABI guards pass.
 - Static archive/PE analysis, targeted Ghidra renderer map, shader index and CTAB
   register mapping, documented separately in `docs/reverse-engineering/`.
 - Animated menu capture: 690 draws; user-assisted flight: two complete 122-draw
@@ -29,11 +29,23 @@ and [roadmap](architecture/roadmap.md).
 - INTZ numeric rendering/sampling: 16 pixel checks pass across 8-bit/FP16 outputs
   and reset. This is sampleable synthetic depth, not game depth substitution.
 - Common shader point-light array decoded as eight pos/color/atten structures.
+- User turning capture: eight complete frames, 762 successful draws, 45/45 shader
+  matches. Camera convention holds through all six adjacent turns (max residual
+  2.67e-7). Unique resource/range candidates include changed world transforms;
+  repeated keys and reordered draws prohibit naive object matching.
+- All 550 named point-light shader-stage observations have explicit count zero;
+  stale float array entries are not active light evidence. See turning-camera.md
+  and turning-lights.md in reverse-engineering.
+- Baseline lifetime probe proves persistent native resources can prevent device
+  teardown. Canonical logical COM ownership is required before depth/history.
+- User reports double cursor after alt-tab and requests loading-time investigation.
+  Both are tracked; flip presentation has not been shown to fix cursor behavior.
 
 ## Concrete next work
 
-1. Finish analyzing the received eight v2 turning frames for typed light count and
-   draw-slice continuity. Allocation identity is not engine object identity.
+1. Complete one consolidated telemetry build covering loading CPU spans, render
+   boundaries, capture overhead and cursor/focus transitions. Avoid asking for
+   separate load/test cycles for each hook. No speedup or cursor fix is claimed.
 2. Map camera conventions and object identity across controlled motion; correlate
    world/WVP/view-inverse values to depth and projection. The capture has useful
    names/registers, not yet validated motion vectors.

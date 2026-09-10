@@ -1,10 +1,10 @@
 # CrossOver/macOS platform architecture
 
-Inspected 2026-09-10. This document records host/bottle observations and platform decisions, independently of executable disassembly and render-pass identification. Inspection was read-only: no game launch, registry edit, graphics-backend switch, or system preference change was performed for these findings.
+Inspected 2026-09-10. This document records host/bottle observations and platform decisions, independently of executable disassembly and render-pass identification. Initial platform inspection was read-only. The subsequent runtime section incorporates the separate standalone probe's saved results; this document's author did not launch the game, edit the registry, switch graphics backends or change system preferences.
 
 ## Recommended route and confidence
 
-Start with a **32-bit D3D9 interception/measurement layer forwarding to the existing runtime**. Retain a reversible baseline. The most promising eventual modern API on this installation is **32-bit D3D11 through DXMT to Metal**, with an FP16/scRGB compositor. That is a candidate architecture, not a verified working X3 renderer. It needs an independent 32-bit presentation test and a resource-interoperability test before it becomes a dependency.
+Start with a **32-bit D3D9 interception/measurement layer forwarding to the existing runtime**. Retain a reversible baseline. The most promising eventual modern API on this installation is **32-bit D3D11 through DXMT to Metal**, with an FP16/scRGB compositor. The standalone x86 capability probe now passes device/swapchain/scRGB API checks. This remains a candidate architecture, not a verified working X3 renderer: physical HDR, rendered ramp correctness and resource interoperability are unproven.
 
 The DXMT bottle switch does not convert an application's D3D9 calls to D3D11. DXMT describes itself as D3D10/11, and CodeWeavers separately documents its available backends. Current D3D9 calls still need a D3D9 implementation. [DXMT README](https://raw.githubusercontent.com/3Shain/dxmt/main/README.md), [CrossOver 26 settings](https://support.codeweavers.com/miscellanous/advanced-settings-in-crossover-mac-26).
 
@@ -29,9 +29,23 @@ Do not equate API translation with scene modernization. FP16 lighting requires i
 | Installed D3DMetal | `lib/apple_gptk*/wine/x86_64-windows/` graphics DLLs; no i386 counterpart found | Installed GPTK is not a direct drop-in x86 D3D11 dependency for X3. |
 | Installed DXMT NGX | `nvngx.dll`/`nvapi64.dll` found in x86_64/aarch64 DXMT directories, not i386 | No packaged x86 NGX route was established. |
 
-The bottle's `windows/syswow64/d3d9.dll` matches the installed Wine i386 D3D9 DLL byte-for-byte (SHA-256 `58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf`). The installed DXVK i386 D3D9 hash differs. This strongly supports Wine D3D9 as the baseline file, **but a running process module/load trace is still required** to establish the actual selected implementation and its backend. Native-load override behavior and wrapper self-loading must also be verified rather than inferred from filenames.
+The bottle's `windows/syswow64/d3d9.dll` matches the installed Wine i386 D3D9 DLL byte-for-byte (SHA-256 `58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf`). The installed DXVK i386 D3D9 hash differs. The subsequent standalone probe loads `wined3d.dll`, supporting Wine D3D9 as its active implementation. X3's own module trace must establish game-specific behavior; a standalone probe is not proof of every game's backend selection.
 
 Evidence inputs: the bottle's `cxbottle.conf` and selected graphics sections of `user.reg`; installed CrossOver directory inventory; `file`, `shasum -a 256`, `sw_vers`, `system_profiler SPHardwareDataType SPDisplaysDataType`; and the AppKit probe below. Hardware serial/UUID identifiers are intentionally not retained here.
+
+## Standalone runtime results and backend identification
+
+The saved [capability results](../../verification/results/graphics-capabilities.txt), [stderr](../../verification/results/graphics-capabilities-wine.log) and [probe documentation](../../verification/probe/README.md) add these observations:
+
+- D3D9 reports shader model 3, four MRTs, FP16 render-target/filter/blend query support and INTZ format support. FP16 texture allocation succeeds; clear/present apply to the ordinary backbuffer, so this is not an FP16 lighting demonstration. The emulated NVIDIA GeForce 8800 GTX name is not the physical GPU.
+- D3D11 creates a feature-level 11.0 device on an adapter named Apple M5 Pro. RGBA16F render-target, blend and sample flags are supported.
+- DXGI exposes two Output6 descriptors with 10-bit/PQ metadata and reported peak values of 400/1600 nits. FP16 flip-discard swapchain creation, SwapChain3, scRGB present-support query, color-space selection and Present all succeed.
+- The source creates and presents the FP16 swapchain without drawing a test ramp to it. Successful Present is therefore an API test only, not validation of even a rendered HDR pattern.
+- Windows module paths appear under `C:\\windows\\system32` for `d3d9`, `d3d11` and `dxgi`. Such aliases do not identify the packaged host implementation or contradict the x86 process architecture. `wined3d.dll` is loaded; `d3dshared.dll` and `winevulkan.dll` are not.
+
+The stderr message `Failed to set Metal cache path` must **not** be attributed to D3DMetal simply because it mentions Metal. Read-only searches of the installed binaries found that exact string in DXMT's `dxgi.dll`, while `Maximum supported feature level:` and `Using feature level` occur in DXMT's `d3d11.dll`, for all packaged architectures. None of these exact strings occurred in the scanned Wine/GPTK DLL, `.so`, or D3DMetal framework binaries. Together with the bottle configuration and packaged x86 DXMT implementation, this is strong evidence that **the probe's D3D11 calls use DXMT**. A native-module mapping or full loader trace would be the direct final attribution; the current evidence does not support switching the diagnosis to D3DMetal.
+
+Successful creation of D3D9 and D3D11 in one process establishes coexistence only. The probe shares no texture, handle or synchronization primitive between them. In particular, the FP16 D3D9 texture is not the DXGI backbuffer. GPU sharing, depth transfer and ownership across WineD3D/DXMT remain an explicit integration gate.
 
 ## Display and actual HDR output
 
@@ -46,7 +60,7 @@ Apple's EDR path uses an extended-range layer, an appropriate extended linear co
 
 DXMT upstream merged color-space and HDR support in June 2025. That work includes scRGB, FP16 presentation, EDR integration, and conversion of scRGB unit white to 80 nits. It establishes a plausible implementation route; it does not prove this packaged build or our future swapchain is working. [DXMT HDR implementation PR](https://github.com/3Shain/dxmt/pull/70).
 
-A future presentation probe should create an x86 D3D11 device, record feature level and module paths, create `R16G16B16A16_FLOAT`, query `IDXGISwapChain3::CheckColorSpaceSupport`, and select `DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709` when supported. These are the standard FP16/linear HDR pairing. Record every HRESULT and the output descriptor. [Microsoft HDR rendering guide](https://github.com/microsoft/DirectXTK/wiki/Using-HDR-rendering).
+The standalone presentation probe has now created an x86 D3D11 device, recorded feature level and module paths, created `R16G16B16A16_FLOAT`, queried `IDXGISwapChain3::CheckColorSpaceSupport`, and selected `DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709`. These are the standard FP16/linear HDR pairing. Its saved HRESULTs and output descriptors establish the API gate; rendered-pattern and physical-output validation remain. [Microsoft HDR rendering guide](https://github.com/microsoft/DirectXTK/wiki/Using-HDR-rendering).
 
 Verify a ramp containing 0.18, 1, 2, 4 and higher scene/display values, moving the window between displays and changing SDR/HDR output modes. Preserve distinguishable highlight steps and controlled UI white. An ordinary SDR screenshot alone is insufficient proof of HDR luminance. Record EDR/API evidence and obtain visible comparison on the actual display; instrumented luminance measurement is the stronger acceptance method if available.
 
@@ -58,7 +72,7 @@ AgX and HDR output should have separate implementations/validation. A convention
 | --- | --- | --- |
 | D3D9 proxy → existing D3D9 runtime | Best first milestone; low intervention | Correct exports/COM forwarding, no recursive loading, baseline image and device-reset parity. |
 | D3D9 hooks with D3D9 FP16 effects | Useful early experiments | Runtime render-target, blend, filter, depth and sample-format support. Does not establish HDR presentation. |
-| D3D9 → D3D11 translation → DXMT | Preferred modern candidate | x86 device/presentation test; shader/resource translation and reset parity; retained interception visibility. |
+| D3D9 → D3D11 translation → DXMT | Preferred modern candidate; x86 device/scRGB API probe passes | Rendered HDR verification; shader/resource translation and reset parity; retained interception visibility. |
 | Existing Wine D3D9 plus separate D3D11 compositor | Conditional | Demonstrate GPU resource sharing between these actual implementations, including format, ownership and synchronization. |
 | D3D9 → DXVK → MoltenVK | Alternative compatibility path | Test supported features, presentation, performance and resource access on packaged macOS build. No assumption of upstream Linux parity. |
 | Native Metal renderer/bridge | Technically possible, larger platform-specific work | Wine/native ABI bridge, texture interop, native window ownership, lifetime/synchronization and x86 compatibility. |
@@ -95,7 +109,7 @@ A borderless Windows popup is not evidence of AppKit fullscreen mode. Apple's pr
 ## Next verification milestones
 
 1. Baseline: module trace and D3D9 capture in a small window, then a loaded sector; confirm capture stability and reset/resize behavior.
-2. Capability probe: x86 D3D9 FP16/depth/MSAA matrix and independent x86 D3D11/DXMT HDR presentation; keep output under `verification/`.
+2. Capability probe: x86 FP16/depth queries and independent D3D11/scRGB API presentation pass. Extend with actual FP16/depth sampling/blending, MSAA matrix and rendered HDR pattern; keep output under `verification/`.
 3. Render semantics: classify scene, particles and HUD; identify camera constants and depth; show debug visualizations and repeat across scenes.
 4. Early AA: test windowed MSAA accurately; then jitter and temporal input validation, including moving ships and unjittered HUD.
 5. HDR integration gate: prove GPU interop or adopt a coherent translation backend; only then commit to the compositor architecture.

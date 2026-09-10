@@ -1,0 +1,4491 @@
+{
+  "meaning": "Per-draw shader inputs; not persistent engine light identities.",
+  "frames": {
+    "1:3021": {
+      "complete": true,
+      "total_draws": 67,
+      "counts": {
+        "0": 47
+      },
+      "observations": [
+        {
+          "draw": 2,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 3,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 4,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 5,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 6,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 7,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 9,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 10,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 11,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 12,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 13,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 14,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 15,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 16,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 17,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 18,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 19,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 20,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 21,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 22,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 23,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 24,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 25,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 26,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 27,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 28,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 29,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 30,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 31,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 32,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 33,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 34,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 35,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 36,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 37,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 38,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 39,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 40,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 41,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 42,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 43,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 44,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 45,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 46,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 47,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 48,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 51,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        }
+      ],
+      "rejected": []
+    },
+    "1:3022": {
+      "complete": true,
+      "total_draws": 68,
+      "counts": {
+        "0": 48
+      },
+      "observations": [
+        {
+          "draw": 2,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 3,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 4,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 5,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 6,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 7,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 9,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 10,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 11,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 12,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 13,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 14,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 15,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 16,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 17,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 18,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 19,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 20,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 21,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 22,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 23,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 24,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 25,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 26,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 27,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 28,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 29,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 30,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 31,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 32,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 33,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 34,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 35,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 36,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 37,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 38,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 39,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 40,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 41,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 42,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 43,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 44,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 45,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 46,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 47,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 48,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 49,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 52,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        }
+      ],
+      "rejected": []
+    },
+    "1:3023": {
+      "complete": true,
+      "total_draws": 69,
+      "counts": {
+        "0": 49
+      },
+      "observations": [
+        {
+          "draw": 2,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 3,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 4,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 5,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 6,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 7,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 9,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 10,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 11,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 12,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 13,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 14,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 15,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 16,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 17,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 18,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 19,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 20,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 21,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 22,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 23,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 24,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 25,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 26,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 27,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 28,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 29,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 30,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 31,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 32,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 33,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 34,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 35,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 36,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 37,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 38,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 39,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 40,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 41,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 42,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 43,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 44,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 45,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 46,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 47,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 48,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 49,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 52,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 53,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        }
+      ],
+      "rejected": []
+    },
+    "1:3024": {
+      "complete": true,
+      "total_draws": 69,
+      "counts": {
+        "0": 49
+      },
+      "observations": [
+        {
+          "draw": 2,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 3,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 4,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 5,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 6,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 7,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 9,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 10,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 11,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 12,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 13,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 14,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 15,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 16,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 17,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 18,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 19,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 20,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 21,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 22,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 23,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 24,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 25,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 26,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 27,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 28,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 29,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 30,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 31,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 32,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 33,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 34,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 35,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 36,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 37,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 38,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 39,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 40,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 41,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 42,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 43,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 44,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 45,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 46,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 47,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 48,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 50,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 52,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 53,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        }
+      ],
+      "rejected": []
+    },
+    "1:3398": {
+      "complete": true,
+      "total_draws": 111,
+      "counts": {
+        "0": 78
+      },
+      "observations": [
+        {
+          "draw": 2,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 3,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 4,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 5,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 6,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 7,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 9,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 10,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 11,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 12,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 13,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 14,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 15,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 16,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 17,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 18,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 19,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 20,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 21,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 22,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 23,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 24,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 25,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 26,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 27,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 28,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 29,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 30,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 31,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 32,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 33,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 34,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 35,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 36,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 37,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 38,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 39,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 40,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 41,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 42,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 43,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 44,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 45,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 46,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 47,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 48,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 49,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 50,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 51,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 52,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 53,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 54,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 55,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 56,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 57,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 58,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 59,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 60,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 61,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 62,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 63,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 64,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 65,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 66,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 67,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 68,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 69,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 70,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 71,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 72,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 73,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 74,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 75,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 76,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 77,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 78,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 79,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 80,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        }
+      ],
+      "rejected": []
+    },
+    "1:3399": {
+      "complete": true,
+      "total_draws": 121,
+      "counts": {
+        "0": 88
+      },
+      "observations": [
+        {
+          "draw": 2,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 3,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 4,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 5,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 6,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 7,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 9,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 10,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 11,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 12,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 13,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 14,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 15,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 16,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 17,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 18,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 19,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 20,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 21,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 22,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 23,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 24,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 25,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 26,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 27,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 28,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 29,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 30,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 31,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 32,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 33,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 34,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 35,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 36,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 37,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 38,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 39,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 40,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 41,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 42,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 43,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 44,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 45,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 46,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 47,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 48,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 49,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 50,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 51,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 52,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 53,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 54,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 55,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 56,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 57,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 58,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 59,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 60,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 61,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 62,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 63,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 64,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 65,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 66,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 67,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 68,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 69,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 70,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 71,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 72,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 73,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 74,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 75,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 76,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 77,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 78,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 79,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 80,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 81,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 82,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 83,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 84,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 85,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 86,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 87,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 88,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 89,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 90,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        }
+      ],
+      "rejected": []
+    },
+    "1:3400": {
+      "complete": true,
+      "total_draws": 126,
+      "counts": {
+        "0": 93
+      },
+      "observations": [
+        {
+          "draw": 2,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 3,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 4,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 5,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 6,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 7,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 9,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 10,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 11,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 12,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 13,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 14,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 15,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 16,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 17,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 18,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 19,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 20,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 21,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 22,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 23,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 24,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 25,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 26,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 27,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 28,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 29,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 30,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 31,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 32,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 33,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 34,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 35,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 36,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 37,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 38,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 39,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 40,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 41,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 42,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 43,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 44,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 45,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 46,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 47,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 48,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 49,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 50,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 51,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 52,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 53,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 54,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 55,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 56,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 57,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 58,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 59,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 60,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 61,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 62,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 63,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 64,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 65,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 66,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 67,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 68,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 69,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 70,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 71,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 72,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 73,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 74,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 75,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 76,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 77,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 78,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 79,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 80,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 81,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 82,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 83,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 84,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 85,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 86,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 87,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 88,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 89,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 90,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 91,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 92,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 93,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 94,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 95,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        }
+      ],
+      "rejected": []
+    },
+    "1:3401": {
+      "complete": true,
+      "total_draws": 131,
+      "counts": {
+        "0": 98
+      },
+      "observations": [
+        {
+          "draw": 2,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 3,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 4,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 5,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 6,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 7,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 9,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 10,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 11,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 12,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 13,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 14,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 15,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 16,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 17,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 18,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 19,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 20,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 21,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 22,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 23,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 24,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 25,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 26,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 27,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 28,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 29,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 30,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 31,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 32,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 33,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 34,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 35,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 36,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 37,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 38,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 39,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 40,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 41,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 42,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 43,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 44,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 45,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 46,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 47,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 48,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 49,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 50,
+          "stage": "vs",
+          "shader": "37c34a7478544c14",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 51,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 52,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 53,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 54,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 55,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 56,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 57,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 58,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 59,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 60,
+          "stage": "vs",
+          "shader": "53a0a641107ed76c",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 61,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 62,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 63,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 64,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 65,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 66,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 67,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 68,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 69,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 70,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 71,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 72,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 73,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 74,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 75,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 76,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 77,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 78,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 79,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 80,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 81,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 82,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 83,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 84,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 85,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 86,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 87,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 88,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 89,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 90,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 91,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 92,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 93,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 94,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 95,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 96,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 97,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 98,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 99,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        },
+        {
+          "draw": 100,
+          "stage": "vs",
+          "shader": "494fe349b8bc12ec",
+          "active_count": 0,
+          "capacity": 8,
+          "lights": []
+        }
+      ],
+      "rejected": []
+    }
+  },
+  "source": {
+    "trace": "session-20260910-210505-212.log",
+    "sha256": "71e0a99b98a4b5d65fbb6f565c1218f720f811dea832e03060ecb94d790eb69d",
+    "metadata": "shader-registers.json",
+    "metadata_sha256": "5c78f49db7aa4732cc6dcc46c59d98cf7e4fc3978cfaf17558d61d44cdb8051a"
+  }
+}

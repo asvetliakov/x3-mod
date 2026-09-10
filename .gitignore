@@ -9,3 +9,4 @@ verification/probe/build/
 verification/results/*.bin
 verification/results/*-game-launch.log
 verification/results/shortcut-launch.log
+verification/results/game-turning-capture-summary.json

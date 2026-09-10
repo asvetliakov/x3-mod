@@ -10,6 +10,10 @@ User preferences recorded 2026-09-10:
 - Work in testable iterations. TAA is required; spatial AA alone does not satisfy it.
 - Commit after each logical checkpoint, including relevant documentation and
   verification evidence. Keep generated build products and raw captures untracked.
+- Batch tracing needs into a consolidated diagnostic build before asking for
+  another load/test cycle. Use targeted disassembly where needed. Investigate
+  loading time alongside rendering; track the double cursor after alt-tab and
+  verify it explicitly when changing window/presentation behavior.
 - Keep logically grouped disassembly/architecture findings in separate documents.
 - Document source. Keep verification/probes/test assets separate from production.
 - Subagents may be used when helpful for independent research/context management.

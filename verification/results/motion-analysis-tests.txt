@@ -1,0 +1,10 @@
+test_duplicate_instance_keys_are_excluded (test_motion_analysis.MotionAnalysisTests) ... ok
+test_reordered_draws_match_without_index_identity (test_motion_analysis.MotionAnalysisTests) ... ok
+test_resource_range_device_and_topology_distinguish_keys (test_motion_analysis.MotionAnalysisTests) ... ok
+test_up_and_failed_stream_queries_are_not_candidates (test_motion_analysis.MotionAnalysisTests) ... ok
+test_world_change_is_separate_from_camera_motion (test_motion_analysis.MotionAnalysisTests) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+OK
