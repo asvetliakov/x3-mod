@@ -1,0 +1,72 @@
+{
+  "started_utc": "2026-09-10T19:35:13.922702+00:00",
+  "sources_before": {
+    "tools/ownership/generate_d3d9_forwarders.py": "b84a0cc06c3f176e47ff9e4d141c9719c9909a4f2a3bf8f8345e9f1990160b3b",
+    "verification/probe/buffer_content.cpp": "2e078d19e058f68b42d928d256fee1c55a42345a24baa3ea60ecea976192268e",
+    "verification/probe/build_buffer_content.sh": "486ece78acbe51e97991b2e3a606f3f6bde866c94c732d1cb397706f84a7a215",
+    "verification/probe/run_buffer_content.py": "a34c13eb71efccc7dfd3493bc3dbff4e5c6889b5e7569ded0dd43492a0b8b1a3",
+    "src/ownership/d3d9_ownership.cpp": "fa3ebaed46e0a6beb0b82b3aaadbb71dc1a0ba852d5efeb965e4d58a78ec45b4",
+    "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
+    "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
+    "src/ownership/d3d9_ownership.h": "ebe6f4f9d48841dae5a9845a3e9aac552f150b33f0544b052a78bc53f3674302"
+  },
+  "game_launched": false,
+  "fresh_build": true,
+  "build_exit": 0,
+  "sources_after_build": {
+    "tools/ownership/generate_d3d9_forwarders.py": "b84a0cc06c3f176e47ff9e4d141c9719c9909a4f2a3bf8f8345e9f1990160b3b",
+    "verification/probe/buffer_content.cpp": "2e078d19e058f68b42d928d256fee1c55a42345a24baa3ea60ecea976192268e",
+    "verification/probe/build_buffer_content.sh": "486ece78acbe51e97991b2e3a606f3f6bde866c94c732d1cb397706f84a7a215",
+    "verification/probe/run_buffer_content.py": "a34c13eb71efccc7dfd3493bc3dbff4e5c6889b5e7569ded0dd43492a0b8b1a3",
+    "src/ownership/d3d9_ownership.cpp": "fa3ebaed46e0a6beb0b82b3aaadbb71dc1a0ba852d5efeb965e4d58a78ec45b4",
+    "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
+    "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
+    "src/ownership/d3d9_ownership.h": "ebe6f4f9d48841dae5a9845a3e9aac552f150b33f0544b052a78bc53f3674302"
+  },
+  "executable_sha256": "06e087841cb330bab02d38c20c6c2ce920f09d1614dbad3bb3a12ac52b69e02e",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/buffer_content.exe"
+  ],
+  "process_local_override": "d3d9=b",
+  "timeout_seconds": 90,
+  "exit_code": 0,
+  "cases": [
+    {
+      "pure": "0"
+    },
+    {
+      "pure": "1"
+    },
+    {
+      "kind": "0"
+    },
+    {
+      "kind": "1"
+    },
+    {
+      "kind": "2"
+    },
+    {
+      "kind": "3"
+    }
+  ],
+  "sources_after_run": {
+    "tools/ownership/generate_d3d9_forwarders.py": "b84a0cc06c3f176e47ff9e4d141c9719c9909a4f2a3bf8f8345e9f1990160b3b",
+    "verification/probe/buffer_content.cpp": "2e078d19e058f68b42d928d256fee1c55a42345a24baa3ea60ecea976192268e",
+    "verification/probe/build_buffer_content.sh": "486ece78acbe51e97991b2e3a606f3f6bde866c94c732d1cb397706f84a7a215",
+    "verification/probe/run_buffer_content.py": "a34c13eb71efccc7dfd3493bc3dbff4e5c6889b5e7569ded0dd43492a0b8b1a3",
+    "src/ownership/d3d9_ownership.cpp": "fa3ebaed46e0a6beb0b82b3aaadbb71dc1a0ba852d5efeb965e4d58a78ec45b4",
+    "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
+    "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
+    "src/ownership/d3d9_ownership.h": "ebe6f4f9d48841dae5a9845a3e9aac552f150b33f0544b052a78bc53f3674302"
+  },
+  "executable_sha256_after_run": "06e087841cb330bab02d38c20c6c2ce920f09d1614dbad3bb3a12ac52b69e02e",
+  "passed": true,
+  "report_sha256": "6231af950fa5db6d96dc71a881d3aefb56d81a91eb470860ae5f6315feb9c2e4"
+}

@@ -183,3 +183,52 @@ Review standalone ownership, actual-DLL integration, copied-depth numeric and
 loss-injection fixture results before opting into a game test. Actual game
 compatibility, concurrent lifecycle calls, snapshot boundary selection, Ex and
 visual acceptance remain separate gates. Generated build products and raw runtime captures stay untracked.
+
+## Diagnostic buffer write revisions
+
+`Options::track_buffer_writes` enables fixed-size POD metadata on native vertex
+and index buffers through a dedicated private-data GUID and flags zero. It stores
+no COM pointer, resource payload, hash or ownership edge. Default-off calls perform
+normal backend forwarding without private-data reads or writes. The loader selects
+this option only for active object tracing under ownership.
+
+`get_buffer_content_view(application_resource, out)` accepts canonical application
+VB/IB wrappers. It returns `S_OK` for a recognized buffer even when tracking is off
+or uncertain; consumers must inspect `requested`, `known`, `ambiguous` and `status`.
+Native pointers and other resource types return `E_INVALIDARG`. A known revision
+zero is established only by a successful wrapped CreateVertexBuffer or
+CreateIndexBuffer. An untagged buffer obtained through a getter is unknown; later
+observed writes cannot retroactively establish its earlier history.
+
+Every successful writable Lock conservatively advances revision before returning
+the pointer, even if the application ultimately writes no bytes. READONLY does not
+advance it. Successful Lock calls increment `pending_locks`; all pending records
+are unknown until Unlock succeeds. Successful nested locks and failed Unlock calls
+make ambiguity sticky for that resource because lock ordering/content safety cannot
+be inferred. Successful ProcessVertices advances the destination revision, and a
+write into a pending buffer makes it ambiguous. Failed Lock/ProcessVertices leaves
+the revision unchanged. DISCARD and NOOVERWRITE are recorded as ordinary successful
+write events with their flags; neither proves equality or an immutable asset.
+
+The native private-data record survives wrapper external-zero/recreation. A failed
+metadata read/write or invalid record latches the whole logical device unknown, so
+old records cannot silently become trusted after a bookkeeping failure. This latch
+survives Reset, including for managed buffers, and clears only with a new logical
+device. Successful application modification/removal of the reserved GUID forwards
+unchanged and trips the same latch. A missing preexisting record is resource-local
+uncertainty. All original Lock/Unlock/ProcessVertices/private-data arguments,
+HRESULTs and output-slot behavior remain backend-owned; diagnostic failure never
+replaces an application result. When unknown, counters are diagnostic context and
+must not be used as a stable-content key.
+
+The caller must serialize buffer operations, content views and the draw snapshots
+using those views. The registry mutex protects metadata/registry bookkeeping; it
+does not make a native write plus revision update transactional for concurrent
+callers. A view taken concurrently with another buffer operation can be stale, so
+`known` is meaningful only under this serialization contract.
+
+This observes only operations crossing the wrapper. Borrowed-native writes and
+other external modifications are outside the contract. Revisions identify observed
+write events, not content equality, asset identity, semantic object identity or
+proof that geometry is immutable. The fixture and failure-output comparisons are
+recorded in [buffer-content verification](../../docs/verification/buffer-content.md).

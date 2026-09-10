@@ -66,7 +66,7 @@ def generate(parsed, directory):
             classes.append("    Options options;\n")
         if kind == "Device":
             classes.append("    std::vector<IUnknown*> renderer_resources;\n    bool retiring = false, resetting = false, lost = false;\n")
-            classes.append("    CopyDepth copy_depth;\n    bool recording_state_block = false;\n")
+            classes.append("    CopyDepth copy_depth;\n    bool recording_state_block = false;\n    HRESULT buffer_tracking_status = S_OK;\n")
         classes.append(f"    {kind}({interface}* native, Node* owner)\n        : Node(Kind::{kind}, native, owner), native_(native) {{ application = static_cast<{interface}*>(this); }}\n")
         for ret, name, params in methods:
             count += 1
@@ -92,6 +92,14 @@ def generate(parsed, directory):
                 body = f"return reset_device(this, {args[0]});"
             elif kind == "Device" and name == "Clear":
                 body = f"return clear_device(this, {', '.join(args)});"
+            elif kind in {"VertexBuffer", "IndexBuffer"} and name == "Lock":
+                body = f"return buffer_lock(this, {', '.join(args)});"
+            elif kind in {"VertexBuffer", "IndexBuffer"} and name == "Unlock":
+                body = "return buffer_unlock(this);"
+            elif kind in {"VertexBuffer", "IndexBuffer"} and name in {"SetPrivateData", "FreePrivateData"}:
+                body = f"return buffer_private_result(this, {args[0]}, native_->{name}({', '.join(args)}));"
+            elif kind == "Device" and name == "ProcessVertices":
+                body = f"return process_vertices(this, {', '.join(args)});"
             elif kind == "Device" and name == "BeginStateBlock":
                 body = "return begin_state_block(this);"
             elif kind == "Device" and name == "EndStateBlock":
@@ -109,6 +117,8 @@ def generate(parsed, directory):
                     body = (f"{interface_out}* owned = untouched_output<{interface_out}>();\n"
                             f"    const HRESULT hr = native_->{name}({', '.join(actual)});\n"
                             f"    return output(device_of(this), hr, owned, {arg});")
+                    if kind == "Device" and name in {"CreateVertexBuffer", "CreateIndexBuffer"}:
+                        body = body.replace("    return output", f"    if (SUCCEEDED(hr) && owned && owned != untouched_output<{interface_out}>())\n        initialize_buffer(this, owned);\n    return output")
                 elif name in {"Present", "TestCooperativeLevel"}:
                     body = f"return observe_result(device_of(this), native_->{name}({', '.join(actual)}));"
                 else:

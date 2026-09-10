@@ -30,6 +30,7 @@ struct Device final : IDirect3DDevice9, Node {
     bool retiring = false, resetting = false, lost = false;
     CopyDepth copy_depth;
     bool recording_state_block = false;
+    HRESULT buffer_tracking_status = S_OK;
     Device(IDirect3DDevice9* native, Node* owner)
         : Node(Kind::Device, native, owner), native_(native) { application = static_cast<IDirect3DDevice9*>(this); }
     HRESULT WINAPI QueryInterface(REFIID riid, void** ppvObject) override;

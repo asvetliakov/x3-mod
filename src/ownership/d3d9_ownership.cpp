@@ -1,5 +1,7 @@
 #include "d3d9_ownership.h"
 #include <mutex>
+#include <limits>
+#include <type_traits>
 #include <new>
 #include <unordered_map>
 #include <utility>
@@ -59,6 +61,12 @@ void retire_copy_depth(Device* node, HRESULT status);
 bool copy_source_bound(Device* node, HRESULT* query_status = nullptr);
 HRESULT begin_state_block(Device* node);
 HRESULT end_state_block(Device* node, IDirect3DStateBlock9** out);
+void initialize_buffer(Device* device, IDirect3DResource9* native);
+HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags);
+HRESULT buffer_unlock(Node* node);
+HRESULT buffer_private_result(Node* node, REFGUID guid, HRESULT hr);
+HRESULT process_vertices(Device* node, UINT first, UINT destination, UINT count,
+    IDirect3DVertexBuffer9* buffer, IDirect3DVertexDeclaration9* declaration, DWORD flags);
 Device* device_of(Node* node);
 template<class T> T* unwrap(Device* owner, T* value);
 template<class T> HRESULT output(Device* owner, HRESULT hr, T* owned, T** out);
@@ -218,7 +226,8 @@ HRESULT adopt(Node* parent, Kind kind, IUnknown* owned, REFIID iid, void** out,
             existing = found->second;
             if (!supports(existing->kind, iid) || existing->parent != parent) return E_NOINTERFACE;
             if (kind == Kind::Factory && options &&
-                static_cast<Factory*>(existing)->options.capture_auto_depth != options->capture_auto_depth)
+                (static_cast<Factory*>(existing)->options.capture_auto_depth != options->capture_auto_depth ||
+                 static_cast<Factory*>(existing)->options.track_buffer_writes != options->track_buffer_writes))
                 return E_INVALIDARG; // Never silently reconfigure a live factory.
             ++existing->refs;
             *out = existing->application;
@@ -243,6 +252,101 @@ HRESULT adopt(Node* parent, Kind kind, IUnknown* owned, REFIID iid, void** out,
     }
     if (existing) owned->Release(); // redundant getter reference is consumed
     return S_OK;
+}
+
+// Native-resource private bytes hold no interface pointers or ownership edges.
+// A failure latches the DEVICE unknown for its whole lifetime (including Reset),
+// so stale managed-resource records can never silently regain a known revision.
+const GUID buffer_content_guid = {0x0cdb7df1,0xd3ca,0x4c69,{0x9a,0x4f,0x6e,0x28,0x33,0xf2,0x95,0x68}};
+struct BufferMetadata {
+    std::uint32_t magic = 0x58334252, version = 1;
+    std::uint64_t revision = 0;
+    std::uint32_t pending = 0;
+    DWORD flags = 0;
+    std::uint32_t ambiguous = 0;
+};
+static_assert(std::is_trivially_copyable_v<BufferMetadata>);
+
+void fail_buffer_tracking(Device* device, HRESULT status) {
+    if (SUCCEEDED(device->buffer_tracking_status))
+        device->buffer_tracking_status = FAILED(status) ? status : E_FAIL;
+}
+HRESULT read_buffer_metadata(Device* device, IDirect3DResource9* native, BufferMetadata& value) {
+    if (FAILED(device->buffer_tracking_status)) return device->buffer_tracking_status;
+    DWORD size = sizeof(value);
+    const HRESULT hr = native->GetPrivateData(buffer_content_guid, &value, &size);
+    if (hr == D3DERR_NOTFOUND) return hr;
+    if (FAILED(hr)) { fail_buffer_tracking(device, hr); return hr; }
+    if (size != sizeof(value) || value.magic != 0x58334252 || value.version != 1 || value.ambiguous > 1) {
+        fail_buffer_tracking(device, E_FAIL); return E_FAIL;
+    }
+    return S_OK;
+}
+void write_buffer_metadata(Device* device, IDirect3DResource9* native, const BufferMetadata& value) {
+    const HRESULT hr = native->SetPrivateData(buffer_content_guid, &value, sizeof(value), 0);
+    if (FAILED(hr)) fail_buffer_tracking(device, hr);
+}
+void initialize_buffer(Device* device, IDirect3DResource9* native) {
+    if (!device->options.track_buffer_writes) return;
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    if (FAILED(device->buffer_tracking_status)) return;
+    // Only a successfully created new buffer establishes a known revision zero.
+    // Getters/adoption of an untagged pre-existing resource never do so.
+    write_buffer_metadata(device, native, BufferMetadata{});
+}
+enum class BufferEvent { Lock, Unlock, FailedUnlock, ProcessVertices };
+void record_buffer_event(Device* device, IDirect3DResource9* native, BufferEvent event, DWORD flags = 0) {
+    if (!device->options.track_buffer_writes) return;
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    BufferMetadata value{};
+    const HRESULT hr = read_buffer_metadata(device, native, value);
+    if (hr == D3DERR_NOTFOUND) { value = {}; value.ambiguous = 1; }
+    else if (FAILED(hr)) return;
+    if (event == BufferEvent::Lock) {
+        if (value.pending) value.ambiguous = 1; // Nested order/access is not inferred.
+        if (value.pending == std::numeric_limits<std::uint32_t>::max()) value.ambiguous = 1;
+        else ++value.pending;
+        value.flags = flags;
+    } else if (event == BufferEvent::Unlock) {
+        if (value.pending) --value.pending;
+        else value.ambiguous = 1; // Successful unlock without an observed lock.
+    } else if (event == BufferEvent::FailedUnlock) value.ambiguous = 1;
+    else if (value.pending) value.ambiguous = 1;
+    if ((event == BufferEvent::Lock && !(flags & D3DLOCK_READONLY)) || event == BufferEvent::ProcessVertices) {
+        if (value.revision == std::numeric_limits<std::uint64_t>::max()) value.ambiguous = 1;
+        else ++value.revision;
+    }
+    write_buffer_metadata(device, native, value);
+}
+HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags) {
+    const HRESULT hr = node->kind == Kind::VertexBuffer
+        ? static_cast<IDirect3DVertexBuffer9*>(node->backend)->Lock(offset, size, data, flags)
+        : static_cast<IDirect3DIndexBuffer9*>(node->backend)->Lock(offset, size, data, flags);
+    if (SUCCEEDED(hr)) record_buffer_event(device_of(node), static_cast<IDirect3DResource9*>(node->backend), BufferEvent::Lock, flags);
+    return hr;
+}
+HRESULT buffer_unlock(Node* node) {
+    const HRESULT hr = node->kind == Kind::VertexBuffer
+        ? static_cast<IDirect3DVertexBuffer9*>(node->backend)->Unlock()
+        : static_cast<IDirect3DIndexBuffer9*>(node->backend)->Unlock();
+    record_buffer_event(device_of(node), static_cast<IDirect3DResource9*>(node->backend),
+        SUCCEEDED(hr) ? BufferEvent::Unlock : BufferEvent::FailedUnlock);
+    return hr;
+}
+HRESULT buffer_private_result(Node* node, REFGUID guid, HRESULT hr) {
+    Device* device = device_of(node);
+    if (device->options.track_buffer_writes && SUCCEEDED(hr) && guid == buffer_content_guid) {
+        std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+        fail_buffer_tracking(device, E_FAIL);
+    }
+    return hr;
+}
+HRESULT process_vertices(Device* node, UINT first, UINT destination, UINT count,
+    IDirect3DVertexBuffer9* buffer, IDirect3DVertexDeclaration9* declaration, DWORD flags) {
+    auto native = unwrap(node, buffer);
+    const HRESULT hr = node->native_->ProcessVertices(first, destination, count, native, unwrap(node, declaration), flags);
+    if (SUCCEEDED(hr) && native) record_buffer_event(node, native, BufferEvent::ProcessVertices);
+    return hr;
 }
 
 // Factory/device wrappers deliberately do not advertise Ex or backend-private
@@ -596,6 +700,30 @@ IDirect3DDevice9* borrowed_native_device(IDirect3DDevice9* wrapped) noexcept {
     const auto found = application_nodes.find(wrapped);
     return found != application_nodes.end() && found->second->kind == Kind::Device
         ? static_cast<IDirect3DDevice9*>(found->second->backend) : nullptr;
+}
+
+HRESULT get_buffer_content_view(IDirect3DResource9* application, BufferContentView* out) noexcept {
+    if (!out) return E_POINTER;
+    *out = {};
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    const auto found = application_nodes.find(application);
+    if (found == application_nodes.end() ||
+        (found->second->kind != Kind::VertexBuffer && found->second->kind != Kind::IndexBuffer)) return E_INVALIDARG;
+    Node* node = found->second;
+    Device* device = device_of(node);
+    out->requested = device->options.track_buffer_writes;
+    if (!out->requested) return S_OK;
+    BufferMetadata value{};
+    const HRESULT hr = read_buffer_metadata(device, static_cast<IDirect3DResource9*>(node->backend), value);
+    out->status = hr;
+    if (FAILED(hr)) { out->ambiguous = true; return S_OK; }
+    out->revision = value.revision;
+    out->pending_locks = value.pending;
+    out->last_lock_flags = value.flags;
+    out->ambiguous = value.ambiguous != 0;
+    out->known = !out->ambiguous && !value.pending;
+    out->status = out->known ? S_OK : S_FALSE;
+    return S_OK;
 }
 
 HRESULT get_copy_depth_view(IDirect3DDevice9* wrapped, CopyDepthView* out) noexcept {

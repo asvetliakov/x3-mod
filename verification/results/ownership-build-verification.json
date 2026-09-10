@@ -4,21 +4,21 @@
   "game_launched": false,
   "fixtures": {
     "baseline": {
-      "exe_sha256": "5ec156a8514a555ee28c15791ba5222a8f7ee730b0d4e545b7cb0bb4f7f2d590",
+      "exe_sha256": "b14533d2160ccd3ab5c662a367ac4ff7eca6a611ea492a178fc33ecdea74b863",
       "report_sha256": "37c55d1f8719ccc87faf3686c2176e598205f0dec1c88868fa95a25526078d37",
       "exit": 0
     },
     "wrapped": {
-      "exe_sha256": "e7bcd0ed3b75376da9bfd4193ef4c209e9df6e7af35913b595bfb12f6174d89b",
+      "exe_sha256": "d3650abf9dddf6f47aba6f216b51f5d2183b4fc6ad71437ab7b7ee19819caeee",
       "report_sha256": "df18b641a153b19bba413cec62947f70b51b4cf4090e233182a7cb82dcfa9295",
       "exit": 0
     }
   },
   "sources": {
-    "src/ownership/d3d9_classes_inc.h": "5f33e9124174a6a3b79f8b091243bf38edfa4829d4b826620ad92b14c5264de0",
-    "src/ownership/d3d9_forwarders_inc.h": "f518025bd4a7f830505c0cdbf428604f18be7136661e1c6ebf5421177c5aae70",
-    "src/ownership/d3d9_ownership.cpp": "485281da1a7be9533684de296d65f73d0cde0cdb3e0c44afeb63789db35f4497",
-    "src/ownership/d3d9_ownership.h": "ee465e6d1a95a6a907722b756a56b981df34e5ee091ab07757dc0750d749df91"
+    "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
+    "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
+    "src/ownership/d3d9_ownership.cpp": "fa3ebaed46e0a6beb0b82b3aaadbb71dc1a0ba852d5efeb965e4d58a78ec45b4",
+    "src/ownership/d3d9_ownership.h": "ebe6f4f9d48841dae5a9845a3e9aac552f150b33f0544b052a78bc53f3674302"
   },
-  "source_sha256": "485281da1a7be9533684de296d65f73d0cde0cdb3e0c44afeb63789db35f4497"
+  "source_sha256": "fa3ebaed46e0a6beb0b82b3aaadbb71dc1a0ba852d5efeb965e4d58a78ec45b4"
 }

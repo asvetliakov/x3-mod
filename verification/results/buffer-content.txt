@@ -1,0 +1,545 @@
+CHECK hidden fixture initialized PASS
+CHECK factory entrypoint PASS
+CHECK native factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK bind VB PASS
+CHECK get VB PASS
+CHECK Lock arguments preserved PASS
+CHECK Lock arguments preserved PASS
+CHECK parity writable Lock PASS
+CHECK parity Unlock PASS
+CHECK tracking off performs no private calls PASS
+CHECK bind VB PASS
+CHECK create IB PASS
+CHECK bind IB PASS
+CHECK get IB PASS
+CHECK Lock arguments preserved PASS
+CHECK Lock arguments preserved PASS
+CHECK parity writable Lock PASS
+CHECK parity Unlock PASS
+CHECK tracking off performs no private calls PASS
+CHECK bind IB PASS
+CHECK native factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK bind VB PASS
+CHECK get VB PASS
+CHECK Lock arguments preserved PASS
+CHECK Lock arguments preserved PASS
+CHECK parity writable Lock PASS
+CHECK parity Unlock PASS
+CHECK tracking off performs no private calls PASS
+CHECK bind VB PASS
+CHECK VB failure outputs match baseline PASS
+CHECK create IB PASS
+CHECK bind IB PASS
+CHECK get IB PASS
+CHECK Lock arguments preserved PASS
+CHECK Lock arguments preserved PASS
+CHECK parity writable Lock PASS
+CHECK parity Unlock PASS
+CHECK tracking off performs no private calls PASS
+CHECK bind IB PASS
+CHECK IB failure outputs match baseline PASS
+CHECK native factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK bind VB PASS
+CHECK get VB PASS
+CHECK Lock arguments preserved PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK failed Lock leaves revision PASS
+CHECK Lock arguments preserved PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK failed Lock leaves revision PASS
+CHECK parity writable Lock PASS
+CHECK parity Unlock PASS
+CHECK bind VB PASS
+CHECK VB failure outputs match baseline PASS
+CHECK create IB PASS
+CHECK bind IB PASS
+CHECK get IB PASS
+CHECK Lock arguments preserved PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK failed Lock leaves revision PASS
+CHECK Lock arguments preserved PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK failed Lock leaves revision PASS
+CHECK parity writable Lock PASS
+CHECK parity Unlock PASS
+CHECK bind IB PASS
+CHECK IB failure outputs match baseline PASS
+CASE normal_tracking pure=0
+CHECK native factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK content view PASS
+CHECK created buffer known zero PASS
+CHECK readonly Lock PASS
+CHECK content view PASS
+CHECK readonly pending no revision PASS
+CHECK readonly Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK readonly closed unchanged PASS
+CHECK writable Lock PASS
+CHECK content view PASS
+CHECK writable advances before return PASS
+CHECK writable Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK write closed known PASS
+CHECK bind VB PASS
+CHECK get VB PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK revision survives wrapper recreation PASS
+CHECK Lock before wrapper recreation PASS
+CHECK get VB PASS
+CHECK content view PASS
+CHECK pending write survives wrapper recreation PASS
+CHECK Unlock after wrapper recreation PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK recreated pending write closes PASS
+CHECK outer Lock PASS
+OBS nested=00000000
+CHECK content view PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK nested Lock explicitly ambiguous PASS
+CHECK nested Unlock PASS
+CHECK outer Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK nested uncertainty stays sticky PASS
+CHECK bind VB PASS
+CHECK create VB PASS
+CHECK content view PASS
+CHECK dynamic Lock PASS
+CHECK content view PASS
+CHECK dynamic write revision PASS
+CHECK dynamic Unlock PASS
+CHECK content view PASS
+CHECK dynamic write closes PASS
+CHECK content view PASS
+CHECK dynamic Lock PASS
+CHECK content view PASS
+CHECK dynamic write revision PASS
+CHECK dynamic Unlock PASS
+CHECK content view PASS
+CHECK dynamic write closes PASS
+CHECK create VB PASS
+CHECK bind VB PASS
+CHECK get VB PASS
+CHECK lock before failed Unlock PASS
+CHECK failed Unlock HRESULT preserved PASS
+CHECK content view PASS
+CHECK failed Unlock remains unknown pending PASS
+CHECK actual recovery Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK failed Unlock ambiguity sticky PASS
+CHECK bind VB PASS
+CHECK create IB PASS
+CHECK content view PASS
+CHECK created buffer known zero PASS
+CHECK readonly Lock PASS
+CHECK content view PASS
+CHECK readonly pending no revision PASS
+CHECK readonly Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK readonly closed unchanged PASS
+CHECK writable Lock PASS
+CHECK content view PASS
+CHECK writable advances before return PASS
+CHECK writable Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK write closed known PASS
+CHECK bind IB PASS
+CHECK get IB PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK revision survives wrapper recreation PASS
+CHECK Lock before wrapper recreation PASS
+CHECK get IB PASS
+CHECK content view PASS
+CHECK pending write survives wrapper recreation PASS
+CHECK Unlock after wrapper recreation PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK recreated pending write closes PASS
+CHECK outer Lock PASS
+OBS nested=00000000
+CHECK content view PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK nested Lock explicitly ambiguous PASS
+CHECK nested Unlock PASS
+CHECK outer Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK nested uncertainty stays sticky PASS
+CHECK bind IB PASS
+CHECK create IB PASS
+CHECK content view PASS
+CHECK dynamic Lock PASS
+CHECK content view PASS
+CHECK dynamic write revision PASS
+CHECK dynamic Unlock PASS
+CHECK content view PASS
+CHECK dynamic write closes PASS
+CHECK content view PASS
+CHECK dynamic Lock PASS
+CHECK content view PASS
+CHECK dynamic write revision PASS
+CHECK dynamic Unlock PASS
+CHECK content view PASS
+CHECK dynamic write closes PASS
+CHECK create IB PASS
+CHECK bind IB PASS
+CHECK get IB PASS
+CHECK lock before failed Unlock PASS
+CHECK failed Unlock HRESULT preserved PASS
+CHECK content view PASS
+CHECK failed Unlock remains unknown pending PASS
+CHECK actual recovery Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK failed Unlock ambiguity sticky PASS
+CHECK bind IB PASS
+CHECK ProcessVertices source PASS
+CHECK ProcessVertices destination PASS
+CHECK process source Lock PASS
+CHECK process source Unlock PASS
+CHECK process stream PASS
+CHECK process FVF PASS
+CHECK process fixed vertex PASS
+CHECK process lighting PASS
+CHECK process matrix PASS
+CHECK process matrix PASS
+CHECK process matrix PASS
+OBS ProcessVertices=00000000
+CHECK ProcessVertices succeeds PASS
+CHECK content view PASS
+CHECK ProcessVertices destination revision PASS
+CHECK failed ProcessVertices result preserved PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK failed ProcessVertices no revision PASS
+CHECK pending ProcessVertices Lock PASS
+OBS pending_ProcessVertices=00000000
+CHECK pending ProcessVertices succeeds PASS
+CHECK content view PASS
+CHECK pending ProcessVertices marks ambiguity PASS
+CHECK pending ProcessVertices Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK pending ProcessVertices ambiguity persists PASS
+CHECK process unbind PASS
+CASE normal_tracking pure=1
+CHECK native factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK content view PASS
+CHECK created buffer known zero PASS
+CHECK readonly Lock PASS
+CHECK content view PASS
+CHECK readonly pending no revision PASS
+CHECK readonly Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK readonly closed unchanged PASS
+CHECK writable Lock PASS
+CHECK content view PASS
+CHECK writable advances before return PASS
+CHECK writable Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK write closed known PASS
+CHECK bind VB PASS
+CHECK get VB PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK revision survives wrapper recreation PASS
+CHECK Lock before wrapper recreation PASS
+CHECK get VB PASS
+CHECK content view PASS
+CHECK pending write survives wrapper recreation PASS
+CHECK Unlock after wrapper recreation PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK recreated pending write closes PASS
+CHECK outer Lock PASS
+OBS nested=00000000
+CHECK content view PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK nested Lock explicitly ambiguous PASS
+CHECK nested Unlock PASS
+CHECK outer Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK nested uncertainty stays sticky PASS
+CHECK bind VB PASS
+CHECK create VB PASS
+CHECK content view PASS
+CHECK dynamic Lock PASS
+CHECK content view PASS
+CHECK dynamic write revision PASS
+CHECK dynamic Unlock PASS
+CHECK content view PASS
+CHECK dynamic write closes PASS
+CHECK content view PASS
+CHECK dynamic Lock PASS
+CHECK content view PASS
+CHECK dynamic write revision PASS
+CHECK dynamic Unlock PASS
+CHECK content view PASS
+CHECK dynamic write closes PASS
+CHECK create VB PASS
+CHECK bind VB PASS
+CHECK get VB PASS
+CHECK lock before failed Unlock PASS
+CHECK failed Unlock HRESULT preserved PASS
+CHECK content view PASS
+CHECK failed Unlock remains unknown pending PASS
+CHECK actual recovery Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK failed Unlock ambiguity sticky PASS
+CHECK bind VB PASS
+CHECK create IB PASS
+CHECK content view PASS
+CHECK created buffer known zero PASS
+CHECK readonly Lock PASS
+CHECK content view PASS
+CHECK readonly pending no revision PASS
+CHECK readonly Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK readonly closed unchanged PASS
+CHECK writable Lock PASS
+CHECK content view PASS
+CHECK writable advances before return PASS
+CHECK writable Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK write closed known PASS
+CHECK bind IB PASS
+CHECK get IB PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK revision survives wrapper recreation PASS
+CHECK Lock before wrapper recreation PASS
+CHECK get IB PASS
+CHECK content view PASS
+CHECK pending write survives wrapper recreation PASS
+CHECK Unlock after wrapper recreation PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK recreated pending write closes PASS
+CHECK outer Lock PASS
+OBS nested=00000000
+CHECK content view PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK nested Lock explicitly ambiguous PASS
+CHECK nested Unlock PASS
+CHECK outer Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK nested uncertainty stays sticky PASS
+CHECK bind IB PASS
+CHECK create IB PASS
+CHECK content view PASS
+CHECK dynamic Lock PASS
+CHECK content view PASS
+CHECK dynamic write revision PASS
+CHECK dynamic Unlock PASS
+CHECK content view PASS
+CHECK dynamic write closes PASS
+CHECK content view PASS
+CHECK dynamic Lock PASS
+CHECK content view PASS
+CHECK dynamic write revision PASS
+CHECK dynamic Unlock PASS
+CHECK content view PASS
+CHECK dynamic write closes PASS
+CHECK create IB PASS
+CHECK bind IB PASS
+CHECK get IB PASS
+CHECK lock before failed Unlock PASS
+CHECK failed Unlock HRESULT preserved PASS
+CHECK content view PASS
+CHECK failed Unlock remains unknown pending PASS
+CHECK actual recovery Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK failed Unlock ambiguity sticky PASS
+CHECK bind IB PASS
+CHECK ProcessVertices source PASS
+CHECK ProcessVertices destination PASS
+CHECK process source Lock PASS
+CHECK process source Unlock PASS
+CHECK process stream PASS
+CHECK process FVF PASS
+CHECK process fixed vertex PASS
+CHECK process lighting PASS
+CHECK process matrix PASS
+CHECK process matrix PASS
+CHECK process matrix PASS
+OBS ProcessVertices=00000000
+CHECK ProcessVertices succeeds PASS
+CHECK content view PASS
+CHECK ProcessVertices destination revision PASS
+CHECK failed ProcessVertices result preserved PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK failed ProcessVertices no revision PASS
+CHECK pending ProcessVertices Lock PASS
+OBS pending_ProcessVertices=00000000
+CHECK pending ProcessVertices succeeds PASS
+CHECK content view PASS
+CHECK pending ProcessVertices marks ambiguity PASS
+CHECK pending ProcessVertices Unlock PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK pending ProcessVertices ambiguity persists PASS
+CHECK process unbind PASS
+CASE bookkeeping_fault kind=0
+CHECK native factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK bind VB PASS
+CHECK get VB PASS
+CHECK metadata failure preserves Lock success PASS
+CHECK metadata failure preserves Unlock success PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK bookkeeping failure device unknown PASS
+CHECK get VB PASS
+CHECK content view PASS
+CHECK unknown survives wrapper recreation PASS
+CHECK create VB PASS
+CHECK content view PASS
+CHECK device latch includes new buffers PASS
+CHECK bind VB PASS
+CHECK managed buffers Reset PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK unknown latch survives Reset PASS
+CASE bookkeeping_fault kind=1
+CHECK native factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK bind VB PASS
+CHECK get VB PASS
+CHECK metadata failure preserves Lock success PASS
+CHECK metadata failure preserves Unlock success PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK bookkeeping failure device unknown PASS
+CHECK get VB PASS
+CHECK content view PASS
+CHECK unknown survives wrapper recreation PASS
+CHECK create VB PASS
+CHECK content view PASS
+CHECK device latch includes new buffers PASS
+CHECK bind VB PASS
+CHECK managed buffers Reset PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK unknown latch survives Reset PASS
+CASE bookkeeping_fault kind=2
+CHECK native factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK bind VB PASS
+CHECK get VB PASS
+CHECK reserved metadata removal forwarded PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK bookkeeping failure device unknown PASS
+CHECK get VB PASS
+CHECK content view PASS
+CHECK unknown survives wrapper recreation PASS
+CHECK create VB PASS
+CHECK content view PASS
+CHECK device latch includes new buffers PASS
+CHECK bind VB PASS
+CHECK managed buffers Reset PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK unknown latch survives Reset PASS
+CASE bookkeeping_fault kind=3
+CHECK native factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK bind VB PASS
+CHECK get VB PASS
+CHECK reserved metadata replacement forwarded PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK bookkeeping failure device unknown PASS
+CHECK get VB PASS
+CHECK content view PASS
+CHECK unknown survives wrapper recreation PASS
+CHECK create VB PASS
+CHECK content view PASS
+CHECK device latch includes new buffers PASS
+CHECK bind VB PASS
+CHECK managed buffers Reset PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK unknown latch survives Reset PASS
+CHECK native factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK native preexisting buffer PASS
+CHECK native preexisting binding PASS
+CHECK get VB PASS
+CHECK content view PASS
+CHECK untagged adoption unknown PASS
+CHECK untagged write Lock PASS
+CHECK untagged write Unlock PASS
+CHECK content view PASS
+CHECK untagged write cannot fabricate known PASS
+CHECK bind VB PASS
+CHECK native factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK creation metadata failure preserves buffer output PASS
+CHECK native factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK managed beforeReset Lock PASS
+CHECK managed beforeReset Unlock PASS
+CHECK known managed Reset PASS
+CHECK content view PASS
+CHECK content view PASS
+CHECK known managed revision persists Reset PASS
+RESULT PASS checks=530

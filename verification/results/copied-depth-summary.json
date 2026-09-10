@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-10T19:00:50.067553+00:00",
+  "started_utc": "2026-09-10T19:34:32.064247+00:00",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -17,13 +17,13 @@
     "verification/probe/copied_depth_fixture.cpp": "cc12b0ab2089f7c6c46bc18c2e29ac3d994754a41267f0109f1881b329675c88",
     "verification/probe/build_copied_depth.sh": "e37a54dbe40607239b3ac71923e87c6940e1e09bc7c8fdc9eef86bd7cd5b79a6",
     "verification/probe/run_copied_depth.py": "5a7a5e050abd2c7e0831a26d7e4d0aadbe1b21e20ada9d85dd20015e0d38d874",
-    "src/ownership/d3d9_ownership.cpp": "c71dbe311c76d2dfa8b1a71ad22941cd46757c9ee77f7b730cc93261f19deb14",
-    "src/ownership/d3d9_ownership.h": "bd577a058ee79a0031d0ab94546b99a3a13e001a181ade37681c9dd535d74930",
-    "src/ownership/d3d9_classes_inc.h": "bf8869f7e7121f7fe6c5a90d24ead19451f03c3607ae505aa92900af720d9cb0",
-    "src/ownership/d3d9_forwarders_inc.h": "93889251ea09626b8844c4bcf802658b77f6291dc2192a03216b7143060ee656",
+    "src/ownership/d3d9_ownership.cpp": "fa3ebaed46e0a6beb0b82b3aaadbb71dc1a0ba852d5efeb965e4d58a78ec45b4",
+    "src/ownership/d3d9_ownership.h": "6be9bf693bfa847690550f8d4a28b59c22433a2ebe354e5db304c02c994c78c4",
+    "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
+    "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5"
   },
-  "executable_sha256": "3d74b733819d45273b38d9639b1525904a5bba9ccecaffe927c4eba810f19d3b",
+  "executable_sha256": "097c7d4ab848f56d7aecbe3a3f26ae596adeca0323b5b11cf5d03442b714ad59",
   "exit_code": 0,
   "checks": 634,
   "samples": 32,

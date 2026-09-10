@@ -144,11 +144,15 @@ HRESULT WINAPI Device::CreateCubeTexture(UINT EdgeLength, UINT Levels, DWORD Usa
 HRESULT WINAPI Device::CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, IDirect3DVertexBuffer9** ppVertexBuffer, HANDLE* pSharedHandle) {
     IDirect3DVertexBuffer9* owned = untouched_output<IDirect3DVertexBuffer9>();
     const HRESULT hr = native_->CreateVertexBuffer(Length, Usage, FVF, Pool, ppVertexBuffer ? &owned : nullptr, pSharedHandle);
+    if (SUCCEEDED(hr) && owned && owned != untouched_output<IDirect3DVertexBuffer9>())
+        initialize_buffer(this, owned);
     return output(device_of(this), hr, owned, ppVertexBuffer);
 }
 HRESULT WINAPI Device::CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DIndexBuffer9** ppIndexBuffer, HANDLE* pSharedHandle) {
     IDirect3DIndexBuffer9* owned = untouched_output<IDirect3DIndexBuffer9>();
     const HRESULT hr = native_->CreateIndexBuffer(Length, Usage, Format, Pool, ppIndexBuffer ? &owned : nullptr, pSharedHandle);
+    if (SUCCEEDED(hr) && owned && owned != untouched_output<IDirect3DIndexBuffer9>())
+        initialize_buffer(this, owned);
     return output(device_of(this), hr, owned, ppIndexBuffer);
 }
 HRESULT WINAPI Device::CreateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, WINBOOL Lockable, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) {
@@ -337,7 +341,7 @@ HRESULT WINAPI Device::DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE primitive_type, U
     return native_->DrawIndexedPrimitiveUP(primitive_type, min_vertex_idx, vertex_count, primitive_count, index_data, index_format, data, stride);
 }
 HRESULT WINAPI Device::ProcessVertices(UINT SrcStartIndex, UINT DestIndex, UINT VertexCount, IDirect3DVertexBuffer9* pDestBuffer, IDirect3DVertexDeclaration9* pVertexDecl, DWORD Flags) {
-    return native_->ProcessVertices(SrcStartIndex, DestIndex, VertexCount, unwrap(device_of(this), pDestBuffer), unwrap(device_of(this), pVertexDecl), Flags);
+    return process_vertices(this, SrcStartIndex, DestIndex, VertexCount, pDestBuffer, pVertexDecl, Flags);
 }
 HRESULT WINAPI Device::CreateVertexDeclaration(const D3DVERTEXELEMENT9 * elements, IDirect3DVertexDeclaration9 ** declaration) {
     IDirect3DVertexDeclaration9* owned = untouched_output<IDirect3DVertexDeclaration9>();
@@ -757,13 +761,13 @@ HRESULT WINAPI VertexBuffer::GetDevice(IDirect3DDevice9** ppDevice) {
     return get_device(this, ppDevice);
 }
 HRESULT WINAPI VertexBuffer::SetPrivateData(REFGUID guid, const void * data, DWORD data_size, DWORD flags) {
-    return native_->SetPrivateData(guid, data, data_size, flags);
+    return buffer_private_result(this, guid, native_->SetPrivateData(guid, data, data_size, flags));
 }
 HRESULT WINAPI VertexBuffer::GetPrivateData(REFGUID refguid, void* pData, DWORD* pSizeOfData) {
     return native_->GetPrivateData(refguid, pData, pSizeOfData);
 }
 HRESULT WINAPI VertexBuffer::FreePrivateData(REFGUID refguid) {
-    return native_->FreePrivateData(refguid);
+    return buffer_private_result(this, refguid, native_->FreePrivateData(refguid));
 }
 DWORD WINAPI VertexBuffer::SetPriority(DWORD PriorityNew) {
     return native_->SetPriority(PriorityNew);
@@ -778,10 +782,10 @@ D3DRESOURCETYPE WINAPI VertexBuffer::GetType() {
     return native_->GetType();
 }
 HRESULT WINAPI VertexBuffer::Lock(UINT OffsetToLock, UINT SizeToLock, void** ppbData, DWORD Flags) {
-    return native_->Lock(OffsetToLock, SizeToLock, ppbData, Flags);
+    return buffer_lock(this, OffsetToLock, SizeToLock, ppbData, Flags);
 }
 HRESULT WINAPI VertexBuffer::Unlock() {
-    return native_->Unlock();
+    return buffer_unlock(this);
 }
 HRESULT WINAPI VertexBuffer::GetDesc(D3DVERTEXBUFFER_DESC* pDesc) {
     return native_->GetDesc(pDesc);
@@ -799,13 +803,13 @@ HRESULT WINAPI IndexBuffer::GetDevice(IDirect3DDevice9** ppDevice) {
     return get_device(this, ppDevice);
 }
 HRESULT WINAPI IndexBuffer::SetPrivateData(REFGUID guid, const void * data, DWORD data_size, DWORD flags) {
-    return native_->SetPrivateData(guid, data, data_size, flags);
+    return buffer_private_result(this, guid, native_->SetPrivateData(guid, data, data_size, flags));
 }
 HRESULT WINAPI IndexBuffer::GetPrivateData(REFGUID refguid, void* pData, DWORD* pSizeOfData) {
     return native_->GetPrivateData(refguid, pData, pSizeOfData);
 }
 HRESULT WINAPI IndexBuffer::FreePrivateData(REFGUID refguid) {
-    return native_->FreePrivateData(refguid);
+    return buffer_private_result(this, refguid, native_->FreePrivateData(refguid));
 }
 DWORD WINAPI IndexBuffer::SetPriority(DWORD PriorityNew) {
     return native_->SetPriority(PriorityNew);
@@ -820,10 +824,10 @@ D3DRESOURCETYPE WINAPI IndexBuffer::GetType() {
     return native_->GetType();
 }
 HRESULT WINAPI IndexBuffer::Lock(UINT OffsetToLock, UINT SizeToLock, void** ppbData, DWORD Flags) {
-    return native_->Lock(OffsetToLock, SizeToLock, ppbData, Flags);
+    return buffer_lock(this, OffsetToLock, SizeToLock, ppbData, Flags);
 }
 HRESULT WINAPI IndexBuffer::Unlock() {
-    return native_->Unlock();
+    return buffer_unlock(this);
 }
 HRESULT WINAPI IndexBuffer::GetDesc(D3DINDEXBUFFER_DESC* pDesc) {
     return native_->GetDesc(pDesc);
