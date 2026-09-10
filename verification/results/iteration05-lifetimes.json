@@ -1,0 +1,3912 @@
+{
+  "handle_reappearances_across_load_epochs": 17,
+  "handle_reappearance_examples": [
+    {
+      "role": "camera",
+      "observer_epoch": "1",
+      "registry": "021fb3c0",
+      "handle": "24613",
+      "occurrences": [
+        {
+          "load_epoch": "1",
+          "registry_epoch": "2",
+          "pointer": "20c876d8",
+          "serial": "24612"
+        },
+        {
+          "load_epoch": "2",
+          "registry_epoch": "2",
+          "pointer": "0f74b640",
+          "serial": "33678"
+        }
+      ]
+    },
+    {
+      "role": "node",
+      "observer_epoch": "1",
+      "registry": "021fb3c0",
+      "handle": "24614",
+      "occurrences": [
+        {
+          "load_epoch": "1",
+          "registry_epoch": "2",
+          "pointer": "0efdfc40",
+          "serial": "24613"
+        },
+        {
+          "load_epoch": "2",
+          "registry_epoch": "2",
+          "pointer": "3ec927c0",
+          "serial": "33675"
+        }
+      ]
+    },
+    {
+      "role": "node",
+      "observer_epoch": "1",
+      "registry": "021fb3c0",
+      "handle": "24615",
+      "occurrences": [
+        {
+          "load_epoch": "1",
+          "registry_epoch": "2",
+          "pointer": "0efdfec0",
+          "serial": "24614"
+        },
+        {
+          "load_epoch": "2",
+          "registry_epoch": "2",
+          "pointer": "3ec92a40",
+          "serial": "33676"
+        }
+      ]
+    },
+    {
+      "role": "node",
+      "observer_epoch": "1",
+      "registry": "021fb3c0",
+      "handle": "24616",
+      "occurrences": [
+        {
+          "load_epoch": "1",
+          "registry_epoch": "2",
+          "pointer": "0efe0140",
+          "serial": "24615"
+        },
+        {
+          "load_epoch": "2",
+          "registry_epoch": "2",
+          "pointer": "3ec92cc0",
+          "serial": "33677"
+        }
+      ]
+    },
+    {
+      "role": "node",
+      "observer_epoch": "1",
+      "registry": "021fb3c0",
+      "handle": "24942",
+      "occurrences": [
+        {
+          "load_epoch": "1",
+          "registry_epoch": "2",
+          "pointer": "2f47fa08",
+          "serial": "24941"
+        },
+        {
+          "load_epoch": "2",
+          "registry_epoch": "2",
+          "pointer": "3d3ac618",
+          "serial": "33794"
+        }
+      ]
+    },
+    {
+      "role": "node",
+      "observer_epoch": "1",
+      "registry": "021fb3c0",
+      "handle": "24980",
+      "occurrences": [
+        {
+          "load_epoch": "1",
+          "registry_epoch": "2",
+          "pointer": "2f485d18",
+          "serial": "24979"
+        },
+        {
+          "load_epoch": "2",
+          "registry_epoch": "2",
+          "pointer": "3d751bd8",
+          "serial": "33832"
+        }
+      ]
+    },
+    {
+      "role": "node",
+      "observer_epoch": "1",
+      "registry": "021fb3c0",
+      "handle": "24998",
+      "occurrences": [
+        {
+          "load_epoch": "1",
+          "registry_epoch": "2",
+          "pointer": "2f488a18",
+          "serial": "24997"
+        },
+        {
+          "load_epoch": "2",
+          "registry_epoch": "2",
+          "pointer": "267d4050",
+          "serial": "34212"
+        }
+      ]
+    },
+    {
+      "role": "node",
+      "observer_epoch": "1",
+      "registry": "021fb3c0",
+      "handle": "25004",
+      "occurrences": [
+        {
+          "load_epoch": "1",
+          "registry_epoch": "2",
+          "pointer": "2db0c4c8",
+          "serial": "25003"
+        },
+        {
+          "load_epoch": "2",
+          "registry_epoch": "2",
+          "pointer": "267d4f50",
+          "serial": "34218"
+        }
+      ]
+    },
+    {
+      "role": "node",
+      "observer_epoch": "1",
+      "registry": "021fb3c0",
+      "handle": "25005",
+      "occurrences": [
+        {
+          "load_epoch": "1",
+          "registry_epoch": "2",
+          "pointer": "2db0c748",
+          "serial": "25004"
+        },
+        {
+          "load_epoch": "2",
+          "registry_epoch": "2",
+          "pointer": "267d51d0",
+          "serial": "34219"
+        }
+      ]
+    },
+    {
+      "role": "node",
+      "observer_epoch": "1",
+      "registry": "021fb3c0",
+      "handle": "25026",
+      "occurrences": [
+        {
+          "load_epoch": "1",
+          "registry_epoch": "2",
+          "pointer": "2db0fbc8",
+          "serial": "25025"
+        },
+        {
+          "load_epoch": "2",
+          "registry_epoch": "2",
+          "pointer": "267d60d0",
+          "serial": "34225"
+        }
+      ]
+    }
+  ],
+  "scope": "completed-session fixed snapshot",
+  "activations": [
+    {
+      "active": "1",
+      "status": "active_without_baseline",
+      "recovery_required": "0",
+      "baseline_complete": "0",
+      "baseline_entries": "0"
+    }
+  ],
+  "frames": [
+    {
+      "device": "1",
+      "frame": 120,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 641,
+      "reported_draws": "641",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 637,
+        "unscoped": 4,
+        "successful_draws": 641,
+        "lifetime_records": 641,
+        "motion_lifetime_verified": 637,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 637
+      },
+      "reasons": {
+        "0/0": 637,
+        "8/8": 4
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        45475
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 45475,
+          "first_draw": 1,
+          "last_draw": 641
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "0f14a9c8",
+          "handle": "21925",
+          "serial": "21924",
+          "draws": 595,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "dd08d948f11d7f26"
+          ]
+        },
+        {
+          "pointer": "0f49bf78",
+          "handle": "21926",
+          "serial": "21925",
+          "draws": 35,
+          "view_hashes": [
+            "2ec4e58386efce7a"
+          ],
+          "projection_hashes": [
+            "d8b0d855533a0b70"
+          ]
+        },
+        {
+          "pointer": "0f16e630",
+          "handle": "21924",
+          "serial": "21923",
+          "draws": 5,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "0f64d118",
+          "handle": "21927",
+          "serial": "21926",
+          "draws": 1,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "289053b0",
+          "handle": "23477",
+          "serial": "23476",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 121,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 641,
+      "reported_draws": "641",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 637,
+        "unscoped": 4,
+        "successful_draws": 641,
+        "lifetime_records": 641,
+        "motion_lifetime_verified": 637,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 637
+      },
+      "reasons": {
+        "0/0": 637,
+        "8/8": 4
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        45475
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 45475,
+          "first_draw": 1,
+          "last_draw": 641
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "0f14a9c8",
+          "handle": "21925",
+          "serial": "21924",
+          "draws": 595,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "dd08d948f11d7f26"
+          ]
+        },
+        {
+          "pointer": "0f49bf78",
+          "handle": "21926",
+          "serial": "21925",
+          "draws": 35,
+          "view_hashes": [
+            "2ec4e58386efce7a"
+          ],
+          "projection_hashes": [
+            "d8b0d855533a0b70"
+          ]
+        },
+        {
+          "pointer": "0f16e630",
+          "handle": "21924",
+          "serial": "21923",
+          "draws": 5,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "0f64d118",
+          "handle": "21927",
+          "serial": "21926",
+          "draws": 1,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "289053b0",
+          "handle": "23477",
+          "serial": "23476",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 122,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 641,
+      "reported_draws": "641",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 637,
+        "unscoped": 4,
+        "successful_draws": 641,
+        "lifetime_records": 641,
+        "motion_lifetime_verified": 637,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 637
+      },
+      "reasons": {
+        "0/0": 637,
+        "8/8": 4
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        45475
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 45475,
+          "first_draw": 1,
+          "last_draw": 641
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "0f14a9c8",
+          "handle": "21925",
+          "serial": "21924",
+          "draws": 595,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "dd08d948f11d7f26"
+          ]
+        },
+        {
+          "pointer": "0f49bf78",
+          "handle": "21926",
+          "serial": "21925",
+          "draws": 35,
+          "view_hashes": [
+            "2ec4e58386efce7a"
+          ],
+          "projection_hashes": [
+            "d8b0d855533a0b70"
+          ]
+        },
+        {
+          "pointer": "0f16e630",
+          "handle": "21924",
+          "serial": "21923",
+          "draws": 5,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "0f64d118",
+          "handle": "21927",
+          "serial": "21926",
+          "draws": 1,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "289053b0",
+          "handle": "23477",
+          "serial": "23476",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 123,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 641,
+      "reported_draws": "641",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 637,
+        "unscoped": 4,
+        "successful_draws": 641,
+        "lifetime_records": 641,
+        "motion_lifetime_verified": 637,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 637
+      },
+      "reasons": {
+        "0/0": 637,
+        "8/8": 4
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        45475
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 45475,
+          "first_draw": 1,
+          "last_draw": 641
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "0f14a9c8",
+          "handle": "21925",
+          "serial": "21924",
+          "draws": 595,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "dd08d948f11d7f26"
+          ]
+        },
+        {
+          "pointer": "0f49bf78",
+          "handle": "21926",
+          "serial": "21925",
+          "draws": 35,
+          "view_hashes": [
+            "2ec4e58386efce7a"
+          ],
+          "projection_hashes": [
+            "d8b0d855533a0b70"
+          ]
+        },
+        {
+          "pointer": "0f16e630",
+          "handle": "21924",
+          "serial": "21923",
+          "draws": 5,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "0f64d118",
+          "handle": "21927",
+          "serial": "21926",
+          "draws": 1,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "289053b0",
+          "handle": "23477",
+          "serial": "23476",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1794,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 800,
+      "reported_draws": "800",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 792,
+        "unscoped": 8,
+        "successful_draws": 800,
+        "lifetime_records": 800,
+        "motion_lifetime_verified": 792,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 792
+      },
+      "reasons": {
+        "0/0": 792,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        56480
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 56480,
+          "first_draw": 1,
+          "last_draw": 800
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 690,
+          "view_hashes": [
+            "310f563bfa2b72f9"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f486250",
+          "handle": "30863",
+          "serial": "30862",
+          "draws": 84,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 6,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "e9d8c25b2207caa0"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f029638",
+          "handle": "29904",
+          "serial": "29903",
+          "draws": 3,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f446dc8",
+          "handle": "30522",
+          "serial": "30521",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f805818",
+          "handle": "31231",
+          "serial": "31230",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1795,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 800,
+      "reported_draws": "800",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 792,
+        "unscoped": 8,
+        "successful_draws": 800,
+        "lifetime_records": 800,
+        "motion_lifetime_verified": 792,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 792
+      },
+      "reasons": {
+        "0/0": 792,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        56488
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 56488,
+          "first_draw": 1,
+          "last_draw": 800
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 690,
+          "view_hashes": [
+            "310f563bfa2b72f9"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f486250",
+          "handle": "30863",
+          "serial": "30862",
+          "draws": 84,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 6,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "e9d8c25b2207caa0"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f029638",
+          "handle": "29904",
+          "serial": "29903",
+          "draws": 3,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f446dc8",
+          "handle": "30522",
+          "serial": "30521",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f805818",
+          "handle": "31231",
+          "serial": "31230",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1796,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 800,
+      "reported_draws": "800",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 792,
+        "unscoped": 8,
+        "successful_draws": 800,
+        "lifetime_records": 800,
+        "motion_lifetime_verified": 792,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 792
+      },
+      "reasons": {
+        "0/0": 792,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        56514
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 56514,
+          "first_draw": 1,
+          "last_draw": 800
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 690,
+          "view_hashes": [
+            "310f563bfa2b72f9"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f486250",
+          "handle": "30863",
+          "serial": "30862",
+          "draws": 84,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 6,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "e9d8c25b2207caa0"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f029638",
+          "handle": "29904",
+          "serial": "29903",
+          "draws": 3,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f446dc8",
+          "handle": "30522",
+          "serial": "30521",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f805818",
+          "handle": "31231",
+          "serial": "31230",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1797,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 800,
+      "reported_draws": "800",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 792,
+        "unscoped": 8,
+        "successful_draws": 800,
+        "lifetime_records": 800,
+        "motion_lifetime_verified": 792,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 792
+      },
+      "reasons": {
+        "0/0": 792,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        56522
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 56522,
+          "first_draw": 1,
+          "last_draw": 800
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 690,
+          "view_hashes": [
+            "310f563bfa2b72f9"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f486250",
+          "handle": "30863",
+          "serial": "30862",
+          "draws": 84,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 6,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "e9d8c25b2207caa0"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f029638",
+          "handle": "29904",
+          "serial": "29903",
+          "draws": 3,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f446dc8",
+          "handle": "30522",
+          "serial": "30521",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f805818",
+          "handle": "31231",
+          "serial": "31230",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1975,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 403,
+      "reported_draws": "403",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 395,
+        "unscoped": 8,
+        "successful_draws": 403,
+        "lifetime_records": 403,
+        "motion_lifetime_verified": 395,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 395
+      },
+      "reasons": {
+        "0/0": 395,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        58359
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 58359,
+          "first_draw": 1,
+          "last_draw": 403
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 264,
+          "view_hashes": [
+            "72531fe5ebd554f0"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f486250",
+          "handle": "30863",
+          "serial": "30862",
+          "draws": 116,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "ecdcec18d85e50ef"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f029638",
+          "handle": "29904",
+          "serial": "29903",
+          "draws": 3,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6fcfba70",
+          "handle": "32409",
+          "serial": "32408",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1976,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 404,
+      "reported_draws": "404",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 396,
+        "unscoped": 8,
+        "successful_draws": 404,
+        "lifetime_records": 404,
+        "motion_lifetime_verified": 396,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 396
+      },
+      "reasons": {
+        "0/0": 396,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        58361
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 58361,
+          "first_draw": 1,
+          "last_draw": 404
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 265,
+          "view_hashes": [
+            "74116f212fa7d5e7"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f486250",
+          "handle": "30863",
+          "serial": "30862",
+          "draws": 116,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "c9ad8b6c27e5d6a6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f029638",
+          "handle": "29904",
+          "serial": "29903",
+          "draws": 3,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6fcfba70",
+          "handle": "32409",
+          "serial": "32408",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1977,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 405,
+      "reported_draws": "405",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 397,
+        "unscoped": 8,
+        "successful_draws": 405,
+        "lifetime_records": 405,
+        "motion_lifetime_verified": 397,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 397
+      },
+      "reasons": {
+        "0/0": 397,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        58363
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 58363,
+          "first_draw": 1,
+          "last_draw": 405
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 266,
+          "view_hashes": [
+            "5fc3496aa29c8912"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f486250",
+          "handle": "30863",
+          "serial": "30862",
+          "draws": 116,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "a89fd436731ef2bd"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f029638",
+          "handle": "29904",
+          "serial": "29903",
+          "draws": 3,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6fcfba70",
+          "handle": "32409",
+          "serial": "32408",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 1978,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 405,
+      "reported_draws": "405",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 397,
+        "unscoped": 8,
+        "successful_draws": 405,
+        "lifetime_records": 405,
+        "motion_lifetime_verified": 397,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 397
+      },
+      "reasons": {
+        "0/0": 397,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        58364
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 58364,
+          "first_draw": 1,
+          "last_draw": 405
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 266,
+          "view_hashes": [
+            "b2db0e36629a83d9"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f486250",
+          "handle": "30863",
+          "serial": "30862",
+          "draws": 116,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "69b09e84dbc1c6a8"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f029638",
+          "handle": "29904",
+          "serial": "29903",
+          "draws": 3,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6fcfba70",
+          "handle": "32409",
+          "serial": "32408",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2435,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 419,
+      "reported_draws": "419",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 411,
+        "unscoped": 8,
+        "successful_draws": 419,
+        "lifetime_records": 419,
+        "motion_lifetime_verified": 411,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 411
+      },
+      "reasons": {
+        "0/0": 411,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        59690
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 59690,
+          "first_draw": 1,
+          "last_draw": 419
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 368,
+          "view_hashes": [
+            "351552bbf79d40a0"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f486250",
+          "handle": "30863",
+          "serial": "30862",
+          "draws": 32,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "d2f8dc6f6b98c941"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2436,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 419,
+      "reported_draws": "419",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 411,
+        "unscoped": 8,
+        "successful_draws": 419,
+        "lifetime_records": 419,
+        "motion_lifetime_verified": 411,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 411
+      },
+      "reasons": {
+        "0/0": 411,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        59694
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 59694,
+          "first_draw": 1,
+          "last_draw": 419
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 368,
+          "view_hashes": [
+            "351552bbf79d40a0"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f486250",
+          "handle": "30863",
+          "serial": "30862",
+          "draws": 32,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "d2f8dc6f6b98c941"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2437,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 419,
+      "reported_draws": "419",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 411,
+        "unscoped": 8,
+        "successful_draws": 419,
+        "lifetime_records": 419,
+        "motion_lifetime_verified": 411,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 411
+      },
+      "reasons": {
+        "0/0": 411,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        59698
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 59698,
+          "first_draw": 1,
+          "last_draw": 419
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 368,
+          "view_hashes": [
+            "351552bbf79d40a0"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f486250",
+          "handle": "30863",
+          "serial": "30862",
+          "draws": 32,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "d2f8dc6f6b98c941"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2438,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 415,
+      "reported_draws": "415",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 407,
+        "unscoped": 8,
+        "successful_draws": 415,
+        "lifetime_records": 415,
+        "motion_lifetime_verified": 407,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 407
+      },
+      "reasons": {
+        "0/0": 407,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        59702,
+        59706
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 59702,
+          "first_draw": 1,
+          "last_draw": 387
+        },
+        {
+          "revision": 59706,
+          "first_draw": 388,
+          "last_draw": 415
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 368,
+          "view_hashes": [
+            "351552bbf79d40a0"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f486250",
+          "handle": "30863",
+          "serial": "30862",
+          "draws": 28,
+          "view_hashes": [
+            "42a4001055b7a865"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "d2f8dc6f6b98c941"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2806,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 268,
+      "reported_draws": "268",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 260,
+        "unscoped": 8,
+        "successful_draws": 268,
+        "lifetime_records": 268,
+        "motion_lifetime_verified": 260,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 260
+      },
+      "reasons": {
+        "0/0": 260,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        59849
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 59849,
+          "first_draw": 1,
+          "last_draw": 268
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 249,
+          "view_hashes": [
+            "76710318de338434"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "c5bbf7a96f14375e"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2807,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 268,
+      "reported_draws": "268",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 260,
+        "unscoped": 8,
+        "successful_draws": 268,
+        "lifetime_records": 268,
+        "motion_lifetime_verified": 260,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 260
+      },
+      "reasons": {
+        "0/0": 260,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        59849
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 59849,
+          "first_draw": 1,
+          "last_draw": 268
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 249,
+          "view_hashes": [
+            "bc100f24bf8d978b"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "297a2dc6da4fad16"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2808,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 268,
+      "reported_draws": "268",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 260,
+        "unscoped": 8,
+        "successful_draws": 268,
+        "lifetime_records": 268,
+        "motion_lifetime_verified": 260,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 260
+      },
+      "reasons": {
+        "0/0": 260,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        59849
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 59849,
+          "first_draw": 1,
+          "last_draw": 268
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 249,
+          "view_hashes": [
+            "e17a73de890581ff"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "d2877f92313d7909"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 2809,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 268,
+      "reported_draws": "268",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 260,
+        "unscoped": 8,
+        "successful_draws": 268,
+        "lifetime_records": 268,
+        "motion_lifetime_verified": 260,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 260
+      },
+      "reasons": {
+        "0/0": 260,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        59849
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 59849,
+          "first_draw": 1,
+          "last_draw": 268
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 249,
+          "view_hashes": [
+            "bca2c170ec7d4ee2"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "41639f6245794da6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 3047,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 259,
+      "reported_draws": "259",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 251,
+        "unscoped": 8,
+        "successful_draws": 259,
+        "lifetime_records": 259,
+        "motion_lifetime_verified": 251,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 251
+      },
+      "reasons": {
+        "0/0": 251,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        59854
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 59854,
+          "first_draw": 1,
+          "last_draw": 259
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 240,
+          "view_hashes": [
+            "501af8404c25f30f"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "2e4cc63bbe5167d8"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 3048,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 257,
+      "reported_draws": "257",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 249,
+        "unscoped": 8,
+        "successful_draws": 257,
+        "lifetime_records": 257,
+        "motion_lifetime_verified": 249,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 249
+      },
+      "reasons": {
+        "0/0": 249,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        59854
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 59854,
+          "first_draw": 1,
+          "last_draw": 257
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 238,
+          "view_hashes": [
+            "4d3eaca22bf559ce"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "81bed6a1f78cf1ff"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 3049,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 222,
+      "reported_draws": "222",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 214,
+        "unscoped": 8,
+        "successful_draws": 222,
+        "lifetime_records": 222,
+        "motion_lifetime_verified": 214,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 214
+      },
+      "reasons": {
+        "0/0": 214,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        59854
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 59854,
+          "first_draw": 1,
+          "last_draw": 222
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 203,
+          "view_hashes": [
+            "897a633614f1c807"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "d798dc688769d963"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 3050,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 222,
+      "reported_draws": "222",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 214,
+        "unscoped": 8,
+        "successful_draws": 222,
+        "lifetime_records": 222,
+        "motion_lifetime_verified": 214,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 214
+      },
+      "reasons": {
+        "0/0": 214,
+        "8/8": 8
+      },
+      "known_epochs": [
+        [
+          "1",
+          "1",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        59854
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 59854,
+          "first_draw": 1,
+          "last_draw": 222
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "6f02f300",
+          "handle": "29922",
+          "serial": "29921",
+          "draws": 203,
+          "view_hashes": [
+            "a602b91bf63562a5"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f02fa98",
+          "handle": "29923",
+          "serial": "29922",
+          "draws": 5,
+          "view_hashes": [
+            "725a4092530c1e2a"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "20c876d8",
+          "handle": "24613",
+          "serial": "24612",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01aab8",
+          "handle": "29851",
+          "serial": "29850",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "6f01b250",
+          "handle": "29853",
+          "serial": "29852",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 4096,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 468,
+      "reported_draws": "468",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 461,
+        "unscoped": 7,
+        "successful_draws": 468,
+        "lifetime_records": 468,
+        "motion_lifetime_verified": 461,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 461
+      },
+      "reasons": {
+        "0/0": 461,
+        "8/8": 7
+      },
+      "known_epochs": [
+        [
+          "1",
+          "2",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        113780
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 113780,
+          "first_draw": 1,
+          "last_draw": 468
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "378dabf0",
+          "handle": "28878",
+          "serial": "35766",
+          "draws": 446,
+          "view_hashes": [
+            "43109c70b9816223"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "379fccc0",
+          "handle": "28879",
+          "serial": "35772",
+          "draws": 5,
+          "view_hashes": [
+            "306099550e5199a9"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "0f74b640",
+          "handle": "24613",
+          "serial": "33678",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "37a56c78",
+          "handle": "28860",
+          "serial": "36297",
+          "draws": 3,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "0f6bdc18",
+          "handle": "55092",
+          "serial": "58367",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "37a54a20",
+          "handle": "27043",
+          "serial": "36289",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "37a555b0",
+          "handle": "27045",
+          "serial": "36291",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 4097,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 468,
+      "reported_draws": "468",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 461,
+        "unscoped": 7,
+        "successful_draws": 468,
+        "lifetime_records": 468,
+        "motion_lifetime_verified": 461,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 461
+      },
+      "reasons": {
+        "0/0": 461,
+        "8/8": 7
+      },
+      "known_epochs": [
+        [
+          "1",
+          "2",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        113782
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 113782,
+          "first_draw": 1,
+          "last_draw": 468
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "378dabf0",
+          "handle": "28878",
+          "serial": "35766",
+          "draws": 446,
+          "view_hashes": [
+            "e2448b80bb0f12ca"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "379fccc0",
+          "handle": "28879",
+          "serial": "35772",
+          "draws": 5,
+          "view_hashes": [
+            "e5ab2fff6c672307"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "0f74b640",
+          "handle": "24613",
+          "serial": "33678",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "37a56c78",
+          "handle": "28860",
+          "serial": "36297",
+          "draws": 3,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "0f6bdc18",
+          "handle": "55092",
+          "serial": "58367",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "37a54a20",
+          "handle": "27043",
+          "serial": "36289",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "37a555b0",
+          "handle": "27045",
+          "serial": "36291",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 4098,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 468,
+      "reported_draws": "468",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 461,
+        "unscoped": 7,
+        "successful_draws": 468,
+        "lifetime_records": 468,
+        "motion_lifetime_verified": 461,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 461
+      },
+      "reasons": {
+        "0/0": 461,
+        "8/8": 7
+      },
+      "known_epochs": [
+        [
+          "1",
+          "2",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        113784
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 113784,
+          "first_draw": 1,
+          "last_draw": 468
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "378dabf0",
+          "handle": "28878",
+          "serial": "35766",
+          "draws": 446,
+          "view_hashes": [
+            "f2b9372b9621b8f3"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "379fccc0",
+          "handle": "28879",
+          "serial": "35772",
+          "draws": 5,
+          "view_hashes": [
+            "c329c3a1d4f333b0"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "0f74b640",
+          "handle": "24613",
+          "serial": "33678",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "37a56c78",
+          "handle": "28860",
+          "serial": "36297",
+          "draws": 3,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "0f6bdc18",
+          "handle": "55092",
+          "serial": "58367",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "37a54a20",
+          "handle": "27043",
+          "serial": "36289",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "37a555b0",
+          "handle": "27045",
+          "serial": "36291",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    },
+    {
+      "device": "1",
+      "frame": 4099,
+      "complete": true,
+      "successful_complete_capture": true,
+      "draws": 468,
+      "reported_draws": "468",
+      "present": "00000000",
+      "duplicate_frame_end": false,
+      "counts": {
+        "scoped_valid": 461,
+        "unscoped": 7,
+        "successful_draws": 468,
+        "lifetime_records": 468,
+        "motion_lifetime_verified": 461,
+        "missing_lifetime": 0,
+        "duplicate_records": 0,
+        "known_consistent_successful": 461
+      },
+      "reasons": {
+        "0/0": 461,
+        "8/8": 7
+      },
+      "known_epochs": [
+        [
+          "1",
+          "2",
+          "2"
+        ]
+      ],
+      "mutation_revisions": [
+        113786
+      ],
+      "mutation_revision_runs": [
+        {
+          "revision": 113786,
+          "first_draw": 1,
+          "last_draw": 468
+        }
+      ],
+      "cameras": [
+        {
+          "pointer": "378dabf0",
+          "handle": "28878",
+          "serial": "35766",
+          "draws": 446,
+          "view_hashes": [
+            "01bd97e6cd822410"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "379fccc0",
+          "handle": "28879",
+          "serial": "35772",
+          "draws": 5,
+          "view_hashes": [
+            "8579617b9c8b9ace"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "0f74b640",
+          "handle": "24613",
+          "serial": "33678",
+          "draws": 4,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "37a56c78",
+          "handle": "28860",
+          "serial": "36297",
+          "draws": 3,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "0f6bdc18",
+          "handle": "55092",
+          "serial": "58367",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "37a54a20",
+          "handle": "27043",
+          "serial": "36289",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        },
+        {
+          "pointer": "37a555b0",
+          "handle": "27045",
+          "serial": "36291",
+          "draws": 1,
+          "view_hashes": [
+            "cdf8dee776ec31c6"
+          ],
+          "projection_hashes": [
+            "2ffd57732b9c6619"
+          ]
+        }
+      ]
+    }
+  ],
+  "totals_successful_complete_frames": {
+    "scoped_valid": 12753,
+    "unscoped": 204,
+    "successful_draws": 12957,
+    "lifetime_records": 12957,
+    "motion_lifetime_verified": 12753,
+    "missing_lifetime": 0,
+    "duplicate_records": 0,
+    "known_consistent_successful": 12753,
+    "draws": 12957,
+    "frames": 28
+  },
+  "known_epochs": [
+    [
+      "1",
+      "1",
+      "2"
+    ],
+    [
+      "1",
+      "2",
+      "2"
+    ]
+  ],
+  "before_after_mismatches": {},
+  "duplicate_diagnostic_records": {},
+  "observed_node_serials": 943,
+  "observed_camera_serials": 22,
+  "serial_to_multiple_entities": 0,
+  "entity_to_multiple_serials": 0,
+  "neighboring_captured_frame_storage_relations": [
+    {
+      "device": "1",
+      "previous_frame": 120,
+      "frame": 121,
+      "adjacent": true,
+      "shared_entities": 449,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 121,
+      "frame": 122,
+      "adjacent": true,
+      "shared_entities": 449,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 122,
+      "frame": 123,
+      "adjacent": true,
+      "shared_entities": 448,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 123,
+      "frame": 1794,
+      "adjacent": false,
+      "shared_entities": 0,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 1794,
+      "frame": 1795,
+      "adjacent": true,
+      "shared_entities": 246,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 1795,
+      "frame": 1796,
+      "adjacent": true,
+      "shared_entities": 246,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 1796,
+      "frame": 1797,
+      "adjacent": true,
+      "shared_entities": 246,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 1797,
+      "frame": 1975,
+      "adjacent": false,
+      "shared_entities": 67,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 1975,
+      "frame": 1976,
+      "adjacent": true,
+      "shared_entities": 210,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 1976,
+      "frame": 1977,
+      "adjacent": true,
+      "shared_entities": 211,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 1977,
+      "frame": 1978,
+      "adjacent": true,
+      "shared_entities": 212,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 1978,
+      "frame": 2435,
+      "adjacent": false,
+      "shared_entities": 54,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 2435,
+      "frame": 2436,
+      "adjacent": true,
+      "shared_entities": 130,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 2436,
+      "frame": 2437,
+      "adjacent": true,
+      "shared_entities": 130,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 2437,
+      "frame": 2438,
+      "adjacent": true,
+      "shared_entities": 126,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 2438,
+      "frame": 2806,
+      "adjacent": false,
+      "shared_entities": 61,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 2806,
+      "frame": 2807,
+      "adjacent": true,
+      "shared_entities": 61,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 2807,
+      "frame": 2808,
+      "adjacent": true,
+      "shared_entities": 61,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 2808,
+      "frame": 2809,
+      "adjacent": true,
+      "shared_entities": 61,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 2809,
+      "frame": 3047,
+      "adjacent": false,
+      "shared_entities": 60,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 3047,
+      "frame": 3048,
+      "adjacent": true,
+      "shared_entities": 61,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 3048,
+      "frame": 3049,
+      "adjacent": true,
+      "shared_entities": 59,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 3049,
+      "frame": 3050,
+      "adjacent": true,
+      "shared_entities": 59,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 3050,
+      "frame": 4096,
+      "adjacent": false,
+      "shared_entities": 0,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 4096,
+      "frame": 4097,
+      "adjacent": true,
+      "shared_entities": 58,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 4097,
+      "frame": 4098,
+      "adjacent": true,
+      "shared_entities": 58,
+      "serial_changes": 0
+    },
+    {
+      "device": "1",
+      "previous_frame": 4098,
+      "frame": 4099,
+      "adjacent": true,
+      "shared_entities": 58,
+      "serial_changes": 0
+    }
+  ],
+  "unknown_paths": [
+    {
+      "scoped": "0",
+      "before_reason": "8",
+      "vs": "f36fc43f30b19d71",
+      "ps": "0a523f33ac47ae05",
+      "draws": 48
+    },
+    {
+      "scoped": "0",
+      "before_reason": "8",
+      "vs": "cbbf26102694c961",
+      "ps": "1c90e79667bdaddf",
+      "draws": 28
+    },
+    {
+      "scoped": "0",
+      "before_reason": "8",
+      "vs": "6059306306203243",
+      "ps": "f3172baa8dd19a40",
+      "draws": 28
+    },
+    {
+      "scoped": "0",
+      "before_reason": "8",
+      "vs": "6059306306203243",
+      "ps": "241c3fa33270f58e",
+      "draws": 28
+    },
+    {
+      "scoped": "0",
+      "before_reason": "8",
+      "vs": "1279d081455f5815",
+      "ps": "ff6eed5a5ddf3a3a",
+      "draws": 28
+    },
+    {
+      "scoped": "0",
+      "before_reason": "8",
+      "vs": "5e484a06672e28fb",
+      "ps": "0a523f33ac47ae05",
+      "draws": 24
+    },
+    {
+      "scoped": "0",
+      "before_reason": "8",
+      "vs": "36f98d151fd6b0c6",
+      "ps": "222bee0defcb1852",
+      "draws": 20
+    }
+  ],
+  "reason_enum": {
+    "0": "Known",
+    "1": "Disabled",
+    "2": "MutationInProgress",
+    "3": "RegistryUnavailable",
+    "4": "RegistryMismatch",
+    "5": "UnknownNodeBirth",
+    "6": "UnknownCameraBirth",
+    "7": "PointerMismatch",
+    "8": "LookupUnavailable",
+    "9": "RegistryChanged",
+    "10": "CapacityExhausted",
+    "11": "CounterExhausted",
+    "12": "ObserverFailure"
+  },
+  "provenance": {
+    "snapshot": "/tmp/x3-iteration05-completed-snapshot.log",
+    "size": 216605445,
+    "sha256": "e5beaa861d04659fe9c7df05a01845bd05d656a33c643f4b484ff379cf3ccaf8",
+    "source_sha256": {
+      "tools/analysis/analyze_iteration05_lifetimes.py": "19bf5b74c5b70375902a628f1c799898cba2efd8036d447ecf047939e65f6d5e",
+      "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+      "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+      "src/proxy/capture.cpp": "13fe7bc0b8b08aee60edcded9a3e73e4facfecc355054bc699169e615c57eda4"
+    }
+  }
+}
