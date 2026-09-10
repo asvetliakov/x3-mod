@@ -15,10 +15,10 @@ def verify():
     assert build['result']=='PASS' and build['sources_before_build']==build['sources_at_start']==build['sources'],'Source provenance mismatch'
     assert build['binaries_at_start']==build['binaries_at_end'],'Binary provenance mismatch'
     assert build['source_tree_unchanged_during_run'] and build['binaries_unchanged_during_run']
-    assert len(build['cases'])==12 and all(c['exit']==0 for c in build['cases'].values()),'Incomplete integration run'
+    assert len(build['cases'])==15 and all(c['exit']==0 for c in build['cases'].values()),'Incomplete integration run'
     report={'result':'PASS','dll_sha256':build['dll_sha256'],'cases':{}}
-    for mode in ('off','on','depth_only','copy_depth'):
-        names=('smoke',) if mode=='depth_only' else ('auto',) if mode=='copy_depth' else ('smoke','capture','lifetime','contracts','auto')
+    for mode in ('off','on','depth_only','copy_depth','scene_depth','scene_only','object_requested'):
+        names=('smoke',) if mode in ('depth_only','scene_only','object_requested') else ('auto',) if mode in ('copy_depth','scene_depth') else ('smoke','capture','lifetime','contracts','auto')
         for name in names:
             prefix=f'ownership-integration-{mode}-{name}'
             import hashlib
@@ -35,12 +35,12 @@ def verify():
             assert {h['device'] for h in hooks}=={h['device'] for h in destroyed}
             assert len({h['device'] for h in hooks})==expected
             wrapped=[line for line in trace.splitlines() if line.startswith('ownership_factory mode=wrapped ')]
-            if mode in ('on','copy_depth'):assert len(wrapped)==(16 if name=='lifetime' else 1),(mode,name,wrapped)
+            if mode in ('on','copy_depth','scene_depth'):assert len(wrapped)==(16 if name=='lifetime' else 1),(mode,name,wrapped)
             else:assert not wrapped,(mode,name)
             assert 'mode=native_fallback' not in trace,(mode,name)
             if mode=='depth_only':assert 'requested=0 depth_copy_requested=1 depth_copy_enabled=0' in trace
             depth=[fields(line) for line in trace.splitlines() if line.startswith('ownership_copy_depth ')]
-            if mode in ('on','copy_depth'):
+            if mode in ('on','copy_depth','scene_depth'):
                 assert len([d for d in depth if d['phase']=='create_after'])==expected
                 if mode=='on':assert all(d['requested']=='0' and d['available']=='0' for d in depth)
                 else:
@@ -49,10 +49,21 @@ def verify():
                     assert int(depth[-1]['generation'])>int(depth[0]['generation']),'Reset must replace copy storage'
                 if name=='auto':assert len([d for d in depth if d['phase']=='reset_after'])==1
             else:assert not depth
+            if mode=='object_requested':assert 'object_trace active=0 status=executable_mismatch' in trace
+            if mode=='scene_depth':
+                assert 'scene_depth_frame phase=begin ' in trace
+                assert 'scene_depth_copy ' not in trace, 'Unrecognized synthetic frame must not select game boundary'
+            else:assert 'scene_depth_frame phase=begin ' not in trace
             if name in ('smoke','capture'):
                 states={int(fields(line)['id']) for line in trace.splitlines() if line.startswith('state ')}
                 assert {52,53,54,55,56,57,58,59,185,186,187,188,189}<=states,'Missing stencil capture state'
-            if name=='capture':verify_capture(trace)
+            if name=='capture':
+                verify_capture(trace)
+                buffers=[fields(line) for line in trace.splitlines() if line.startswith('buffer_content ')]
+                assert {b['kind'] for b in buffers}=={'vertex','index'}, 'Missing buffer revision diagnostics'
+                assert all(b['requested']=='0' and b['known']=='0' for b in buffers), 'Disabled tracking must not claim stable content'
+                expected_result='00000000' if mode=='on' else '80070057'
+                assert all(b['result']==expected_result for b in buffers), 'Native and wrapper metadata query paths differ'
             if name=='lifetime':assert 'INTEGRATION LIFETIME RESULT failures=0' in text
             if name=='contracts':assert 'OWNERSHIP RESULT checks=' in text and 'failures=0' in text
             reused=expected-len({h['ptr'] for h in hooks})
@@ -65,6 +76,7 @@ def verify():
         normalize=lambda value:[line for line in value.splitlines() if not line.startswith('OBSERVE device_release_with_child=')]
         assert normalize(a)==normalize(b),(name,'API report differs')
     assert (results/'ownership-integration-off-auto.txt').read_text()==(results/'ownership-integration-copy_depth-auto.txt').read_text(),'Auto-depth loader smoke changes app-visible outcomes'
+    assert (results/'ownership-integration-off-auto.txt').read_text()==(results/'ownership-integration-scene_depth-auto.txt').read_text(),'Scene observer changes app-visible outcomes'
     report['limits']=['Synthetic DLL integration, not gameplay validation.','Direct3D9Ex remains native and uninstrumented.','Original-preserving depth-copy allocation smoke only; numerical/content behavior has a separate fixture.']
     (results/'ownership-integration-verification.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(report))

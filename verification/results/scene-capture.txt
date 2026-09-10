@@ -1,0 +1,4616 @@
+CHECK production decoder source PASS
+CHECK hidden window PASS
+CHECK native factory PASS
+API copy factory result=00000000
+CHECK copy factory PASS
+CASE name=positive flags=00000040 frame=1
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=1 frame=1 generation=1
+TRACE resource identity=1 ptr=01649240 type=1
+TRACE resource identity=2 ptr=01649270 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=3 ptr=01708f48 type=1
+TRACE resource identity=4 ptr=01708eb8 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=5 ptr=01708f78 type=1
+TRACE resource identity=6 ptr=01708ee8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=7 ptr=01708fa8 type=1
+TRACE resource identity=8 ptr=01708f18 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+TRACE scene_depth_copy device=1 frame=1 event=16 result=00000000 valid=1 generation=1 source_epoch=2 copy_epoch=2 color=1 depth=2
+TRACE scene_depth_boundary device=1 frame=1 event=16 confirmed=1 generation=1 copy_epoch=2 source_epoch=3
+API final Clear result=00000000
+CHECK final Clear PASS
+API preserved view result=00000000
+CHECK preserved view PASS
+CHECK real pre-clear copy and advanced source epoch PASS
+API snapshot target result=00000000
+CHECK snapshot target PASS
+API snapshot readback result=00000000
+CHECK snapshot readback PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=adapter-preserved-before-clear xy=8,8 expected=0.250000 actual=0.250000 PASS
+SAMPLE epoch=adapter-preserved-before-clear xy=56,8 expected=0.750000 actual=0.750000 PASS
+SAMPLE epoch=adapter-preserved-before-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=adapter-preserved-before-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK adapter-preserved-before-clear PASS
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=1 frame=1 generation=1 events=16 attempted=1 copied=1 confirmed=1 state=8 rejection=0 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+CHECK exactly one successful copy and boundary PASS
+SCENARIO positive flags=00000040 confirmed=1 copies=1 valid_copies=1 PASS
+CHECK case device final logical release PASS
+CASE name=unsupported flags=00000040 frame=2
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=2 frame=2 generation=1
+TRACE resource identity=9 ptr=017107f8 type=1
+TRACE resource identity=10 ptr=01710828 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=11 ptr=017108e8 type=1
+TRACE resource identity=12 ptr=01710858 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=13 ptr=01710918 type=1
+TRACE resource identity=14 ptr=01710888 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=15 ptr=01710948 type=1
+TRACE resource identity=16 ptr=017108b8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+TRACE scene_depth_unsupported device=2 frame=2 operation=fixture-untracked-operation result=00000000
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=2 frame=2 generation=1 events=16 attempted=0 copied=0 confirmed=0 state=9 rejection=2 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+API inactive copy view result=00000000
+CHECK inactive copy view PASS
+CHECK rejected prefix never copies PASS
+SCENARIO unsupported flags=00000040 confirmed=0 copies=0 valid_copies=0 PASS
+CHECK case device final logical release PASS
+CASE name=failed-color-copy flags=00000040 frame=3
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=3 frame=3 generation=1
+TRACE resource identity=17 ptr=01708f18 type=1
+TRACE resource identity=18 ptr=01708f48 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=19 ptr=01709008 type=1
+TRACE resource identity=20 ptr=01708f78 type=3
+CHECK actual color copy failure PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=21 ptr=01709038 type=1
+TRACE resource identity=22 ptr=01708fa8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=23 ptr=01709068 type=1
+TRACE resource identity=24 ptr=01708fd8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=3 frame=3 generation=1 events=16 attempted=0 copied=0 confirmed=0 state=9 rejection=4 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+API inactive copy view result=00000000
+CHECK inactive copy view PASS
+CHECK rejected prefix never copies PASS
+SCENARIO failed-color-copy flags=00000040 confirmed=0 copies=0 valid_copies=0 PASS
+CHECK case device final logical release PASS
+CASE name=failed-final-clear flags=00000040 frame=4
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=4 frame=4 generation=1
+TRACE resource identity=25 ptr=017107f8 type=1
+TRACE resource identity=26 ptr=01710828 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=27 ptr=017108e8 type=1
+TRACE resource identity=28 ptr=01710858 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=29 ptr=01710918 type=1
+TRACE resource identity=30 ptr=01710888 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=31 ptr=01710948 type=1
+TRACE resource identity=32 ptr=017108b8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+TRACE scene_depth_copy device=4 frame=4 event=16 result=00000000 valid=1 generation=1 source_epoch=2 copy_epoch=2 color=25 depth=26
+API real Clear for failed callback test result=00000000
+CHECK real Clear for failed callback test PASS
+INJECT final Clear callback D3DERR_INVALIDCALL
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=4 frame=4 generation=1 events=16 attempted=1 copied=1 confirmed=0 state=9 rejection=4 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+CHECK failed Clear does not publish boundary PASS
+SCENARIO failed-final-clear flags=00000040 confirmed=0 copies=1 valid_copies=1 PASS
+CHECK case device final logical release PASS
+CASE name=rejected-depth-copy flags=00000040 frame=5
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=5 frame=5 generation=1
+TRACE resource identity=33 ptr=01708f18 type=1
+TRACE resource identity=34 ptr=01708f48 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=35 ptr=01709008 type=1
+TRACE resource identity=36 ptr=01708f78 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=37 ptr=01709038 type=1
+TRACE resource identity=38 ptr=01708fa8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=39 ptr=01709068 type=1
+TRACE resource identity=40 ptr=01708fd8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+API begin blocking state recording result=00000000
+CHECK begin blocking state recording PASS
+TRACE scene_depth_copy device=5 frame=5 event=16 result=8876086c valid=0 generation=1 source_epoch=2 copy_epoch=0 color=33 depth=34
+TRACE scene_depth_boundary device=5 frame=5 event=16 confirmed=0 generation=1 copy_epoch=0 source_epoch=3
+API end blocking state recording result=00000000
+CHECK end blocking state recording PASS
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=5 frame=5 generation=1 events=16 attempted=1 copied=0 confirmed=0 state=8 rejection=0 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+CHECK candidate copy failure not confirmed PASS
+SCENARIO rejected-depth-copy flags=00000040 confirmed=0 copies=1 valid_copies=0 PASS
+CHECK case device final logical release PASS
+CASE name=generation-mismatch flags=00000040 frame=6
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=6 frame=6 generation=1
+TRACE resource identity=41 ptr=017107f8 type=1
+TRACE resource identity=42 ptr=01710828 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=43 ptr=017108e8 type=1
+TRACE resource identity=44 ptr=01710858 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=45 ptr=01710918 type=1
+TRACE resource identity=46 ptr=01710888 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=47 ptr=01710948 type=1
+TRACE resource identity=48 ptr=017108b8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+TRACE scene_depth_copy device=6 frame=6 event=16 result=00000000 valid=1 generation=1 source_epoch=2 copy_epoch=2 color=41 depth=42
+API prior generation result=00000000
+CHECK prior generation PASS
+CHECK actual held-resource Reset failure PASS
+API retired generation result=00000000
+CHECK retired generation PASS
+CHECK generation actually advanced PASS
+INJECT Clear callback S_OK after real generation retirement; actual=8876086c
+TRACE scene_depth_boundary device=6 frame=6 event=16 confirmed=0 generation=2 copy_epoch=0 source_epoch=0
+INJECT Present callback S_OK after real generation retirement; actual=88760868
+TRACE scene_depth_frame phase=end device=6 frame=6 generation=1 events=16 attempted=1 copied=1 confirmed=0 state=8 rejection=0 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+CHECK retired successful copy never confirmed PASS
+SCENARIO generation-mismatch flags=00000040 confirmed=0 copies=1 valid_copies=1 PASS
+CHECK case device final logical release PASS
+CASE name=failed-draw-after-selection flags=00000040 frame=7
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=7 frame=7 generation=1
+TRACE resource identity=49 ptr=01708f18 type=1
+TRACE resource identity=50 ptr=01708f48 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=51 ptr=01709008 type=1
+TRACE resource identity=52 ptr=01708f78 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=53 ptr=01709038 type=1
+TRACE resource identity=54 ptr=01708fa8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=55 ptr=01709068 type=1
+TRACE resource identity=56 ptr=01708fd8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+TRACE scene_depth_copy device=7 frame=7 event=16 result=00000000 valid=1 generation=1 source_epoch=2 copy_epoch=2 color=49 depth=50
+TRACE scene_depth_boundary device=7 frame=7 event=16 confirmed=1 generation=1 copy_epoch=2 source_epoch=3
+API negative draw BeginScene result=00000000
+CHECK negative draw BeginScene PASS
+CHECK actual postselection indexed draw failed PASS
+API negative draw EndScene result=00000000
+CHECK negative draw EndScene PASS
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=7 frame=7 generation=1 events=17 attempted=1 copied=1 confirmed=0 state=9 rejection=4 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+CHECK postselection failure tested after actual copy PASS
+SCENARIO failed-draw-after-selection flags=00000040 confirmed=0 copies=1 valid_copies=1 PASS
+CHECK case device final logical release PASS
+CASE name=failed-present-after-selection flags=00000040 frame=8
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=8 frame=8 generation=1
+TRACE resource identity=57 ptr=017107f8 type=1
+TRACE resource identity=58 ptr=01710828 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=59 ptr=017108e8 type=1
+TRACE resource identity=60 ptr=01710858 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=61 ptr=01710918 type=1
+TRACE resource identity=62 ptr=01710888 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=63 ptr=01710948 type=1
+TRACE resource identity=64 ptr=017108b8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+TRACE scene_depth_copy device=8 frame=8 event=16 result=00000000 valid=1 generation=1 source_epoch=2 copy_epoch=2 color=57 depth=58
+TRACE scene_depth_boundary device=8 frame=8 event=16 confirmed=1 generation=1 copy_epoch=2 source_epoch=3
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=8 frame=8 generation=1 events=16 attempted=1 copied=1 confirmed=0 state=9 rejection=2 present=88760868
+INJECT Present callback DEVICELOST after successful native Present
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+CHECK postselection failure tested after actual copy PASS
+SCENARIO failed-present-after-selection flags=00000040 confirmed=0 copies=1 valid_copies=1 PASS
+CHECK case device final logical release PASS
+CASE name=inactive-capture flags=00000040 frame=9
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+API actual Present result=00000000
+CHECK actual Present PASS
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+API inactive copy view result=00000000
+CHECK inactive copy view PASS
+CHECK rejected prefix never copies PASS
+SCENARIO inactive-capture flags=00000040 confirmed=0 copies=0 valid_copies=0 PASS
+CHECK case device final logical release PASS
+CASE name=post-clear-binding-query-failure flags=00000040 frame=10
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=10 frame=10 generation=1
+TRACE resource identity=65 ptr=017107f8 type=1
+TRACE resource identity=66 ptr=01710828 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=67 ptr=017108e8 type=1
+TRACE resource identity=68 ptr=01710858 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=69 ptr=01710918 type=1
+TRACE resource identity=70 ptr=01710888 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=71 ptr=01710948 type=1
+TRACE resource identity=72 ptr=017108b8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+TRACE scene_depth_copy device=10 frame=10 event=16 result=00000000 valid=1 generation=1 source_epoch=2 copy_epoch=2 color=65 depth=66
+API real Clear before source-query fault result=00000000
+CHECK real Clear before source-query fault PASS
+API pre-fault complete copy view result=00000000
+CHECK pre-fault complete copy view PASS
+CHECK query fault starts from otherwise confirmable copy PASS
+CHECK post-Clear native seam PASS
+CHECK post-Clear fault is not nested PASS
+TRACE scene_depth_boundary device=10 frame=10 event=16 confirmed=0 generation=1 copy_epoch=2 source_epoch=3
+CHECK only adapter post-Clear source query was faulted PASS
+INJECT native GetDepthStencilSurface E_FAIL for adapter post-Clear view query only
+CHECK native query vtable restored PASS
+API post-fault live copy view result=00000000
+CHECK post-fault live copy view PASS
+CHECK ordinary query failure preserves copied storage and epochs PASS
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=10 frame=10 generation=1 events=16 attempted=1 copied=1 confirmed=0 state=8 rejection=0 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+CHECK query failure rejects otherwise selected copy PASS
+SCENARIO post-clear-binding-query-failure flags=00000040 confirmed=0 copies=1 valid_copies=1 PASS
+CHECK case device final logical release PASS
+CASE name=positive flags=00000050 frame=11
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=11 frame=11 generation=1
+TRACE resource identity=73 ptr=01708f18 type=1
+TRACE resource identity=74 ptr=01708f48 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=75 ptr=01709008 type=1
+TRACE resource identity=76 ptr=01708f78 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=77 ptr=01709038 type=1
+TRACE resource identity=78 ptr=01708fa8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=79 ptr=01709068 type=1
+TRACE resource identity=80 ptr=01708fd8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+TRACE scene_depth_copy device=11 frame=11 event=16 result=00000000 valid=1 generation=1 source_epoch=2 copy_epoch=2 color=73 depth=74
+TRACE scene_depth_boundary device=11 frame=11 event=16 confirmed=1 generation=1 copy_epoch=2 source_epoch=3
+API final Clear result=00000000
+CHECK final Clear PASS
+API preserved view result=00000000
+CHECK preserved view PASS
+CHECK real pre-clear copy and advanced source epoch PASS
+API snapshot target result=00000000
+CHECK snapshot target PASS
+API snapshot readback result=00000000
+CHECK snapshot readback PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=adapter-preserved-before-clear xy=8,8 expected=0.250000 actual=0.250000 PASS
+SAMPLE epoch=adapter-preserved-before-clear xy=56,8 expected=0.750000 actual=0.750000 PASS
+SAMPLE epoch=adapter-preserved-before-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=adapter-preserved-before-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK adapter-preserved-before-clear PASS
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=11 frame=11 generation=1 events=16 attempted=1 copied=1 confirmed=1 state=8 rejection=0 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+CHECK exactly one successful copy and boundary PASS
+SCENARIO positive flags=00000050 confirmed=1 copies=1 valid_copies=1 PASS
+CHECK case device final logical release PASS
+CASE name=unsupported flags=00000050 frame=12
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=12 frame=12 generation=1
+TRACE resource identity=81 ptr=01714620 type=1
+TRACE resource identity=82 ptr=01714650 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=83 ptr=01714710 type=1
+TRACE resource identity=84 ptr=01714680 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=85 ptr=01714740 type=1
+TRACE resource identity=86 ptr=017146b0 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=87 ptr=01714770 type=1
+TRACE resource identity=88 ptr=017146e0 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+TRACE scene_depth_unsupported device=12 frame=12 operation=fixture-untracked-operation result=00000000
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=12 frame=12 generation=1 events=16 attempted=0 copied=0 confirmed=0 state=9 rejection=2 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+API inactive copy view result=00000000
+CHECK inactive copy view PASS
+CHECK rejected prefix never copies PASS
+SCENARIO unsupported flags=00000050 confirmed=0 copies=0 valid_copies=0 PASS
+CHECK case device final logical release PASS
+CASE name=failed-color-copy flags=00000050 frame=13
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=13 frame=13 generation=1
+TRACE resource identity=89 ptr=01708f18 type=1
+TRACE resource identity=90 ptr=01708f48 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=91 ptr=01709008 type=1
+TRACE resource identity=92 ptr=01708f78 type=3
+CHECK actual color copy failure PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=93 ptr=01709038 type=1
+TRACE resource identity=94 ptr=01708fa8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=95 ptr=01709068 type=1
+TRACE resource identity=96 ptr=01708fd8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=13 frame=13 generation=1 events=16 attempted=0 copied=0 confirmed=0 state=9 rejection=4 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+API inactive copy view result=00000000
+CHECK inactive copy view PASS
+CHECK rejected prefix never copies PASS
+SCENARIO failed-color-copy flags=00000050 confirmed=0 copies=0 valid_copies=0 PASS
+CHECK case device final logical release PASS
+CASE name=failed-final-clear flags=00000050 frame=14
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=14 frame=14 generation=1
+TRACE resource identity=97 ptr=01714620 type=1
+TRACE resource identity=98 ptr=01714650 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=99 ptr=01714710 type=1
+TRACE resource identity=100 ptr=01714680 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=101 ptr=01714740 type=1
+TRACE resource identity=102 ptr=017146b0 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=103 ptr=01714770 type=1
+TRACE resource identity=104 ptr=017146e0 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+TRACE scene_depth_copy device=14 frame=14 event=16 result=00000000 valid=1 generation=1 source_epoch=2 copy_epoch=2 color=97 depth=98
+API real Clear for failed callback test result=00000000
+CHECK real Clear for failed callback test PASS
+INJECT final Clear callback D3DERR_INVALIDCALL
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=14 frame=14 generation=1 events=16 attempted=1 copied=1 confirmed=0 state=9 rejection=4 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+CHECK failed Clear does not publish boundary PASS
+SCENARIO failed-final-clear flags=00000050 confirmed=0 copies=1 valid_copies=1 PASS
+CHECK case device final logical release PASS
+CASE name=rejected-depth-copy flags=00000050 frame=15
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=15 frame=15 generation=1
+TRACE resource identity=105 ptr=01708f18 type=1
+TRACE resource identity=106 ptr=01708f48 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=107 ptr=01709008 type=1
+TRACE resource identity=108 ptr=01708f78 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=109 ptr=01709038 type=1
+TRACE resource identity=110 ptr=01708fa8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=111 ptr=01709068 type=1
+TRACE resource identity=112 ptr=01708fd8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+API begin blocking state recording result=00000000
+CHECK begin blocking state recording PASS
+TRACE scene_depth_copy device=15 frame=15 event=16 result=8876086c valid=0 generation=1 source_epoch=2 copy_epoch=0 color=105 depth=106
+TRACE scene_depth_boundary device=15 frame=15 event=16 confirmed=0 generation=1 copy_epoch=0 source_epoch=3
+API end blocking state recording result=00000000
+CHECK end blocking state recording PASS
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=15 frame=15 generation=1 events=16 attempted=1 copied=0 confirmed=0 state=8 rejection=0 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+CHECK candidate copy failure not confirmed PASS
+SCENARIO rejected-depth-copy flags=00000050 confirmed=0 copies=1 valid_copies=0 PASS
+CHECK case device final logical release PASS
+CASE name=generation-mismatch flags=00000050 frame=16
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=16 frame=16 generation=1
+TRACE resource identity=113 ptr=01714620 type=1
+TRACE resource identity=114 ptr=01714650 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=115 ptr=01714710 type=1
+TRACE resource identity=116 ptr=01714680 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=117 ptr=01714740 type=1
+TRACE resource identity=118 ptr=017146b0 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=119 ptr=01714770 type=1
+TRACE resource identity=120 ptr=017146e0 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+TRACE scene_depth_copy device=16 frame=16 event=16 result=00000000 valid=1 generation=1 source_epoch=2 copy_epoch=2 color=113 depth=114
+API prior generation result=00000000
+CHECK prior generation PASS
+CHECK actual held-resource Reset failure PASS
+API retired generation result=00000000
+CHECK retired generation PASS
+CHECK generation actually advanced PASS
+INJECT Clear callback S_OK after real generation retirement; actual=8876086c
+TRACE scene_depth_boundary device=16 frame=16 event=16 confirmed=0 generation=2 copy_epoch=0 source_epoch=0
+INJECT Present callback S_OK after real generation retirement; actual=88760868
+TRACE scene_depth_frame phase=end device=16 frame=16 generation=1 events=16 attempted=1 copied=1 confirmed=0 state=8 rejection=0 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+CHECK retired successful copy never confirmed PASS
+SCENARIO generation-mismatch flags=00000050 confirmed=0 copies=1 valid_copies=1 PASS
+CHECK case device final logical release PASS
+CASE name=failed-draw-after-selection flags=00000050 frame=17
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=17 frame=17 generation=1
+TRACE resource identity=121 ptr=01708f18 type=1
+TRACE resource identity=122 ptr=01708f48 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=123 ptr=01709008 type=1
+TRACE resource identity=124 ptr=01708f78 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=125 ptr=01709038 type=1
+TRACE resource identity=126 ptr=01708fa8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=127 ptr=01709068 type=1
+TRACE resource identity=128 ptr=01708fd8 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+TRACE scene_depth_copy device=17 frame=17 event=16 result=00000000 valid=1 generation=1 source_epoch=2 copy_epoch=2 color=121 depth=122
+TRACE scene_depth_boundary device=17 frame=17 event=16 confirmed=1 generation=1 copy_epoch=2 source_epoch=3
+API negative draw BeginScene result=00000000
+CHECK negative draw BeginScene PASS
+CHECK actual postselection indexed draw failed PASS
+API negative draw EndScene result=00000000
+CHECK negative draw EndScene PASS
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=17 frame=17 generation=1 events=17 attempted=1 copied=1 confirmed=0 state=9 rejection=4 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+CHECK postselection failure tested after actual copy PASS
+SCENARIO failed-draw-after-selection flags=00000050 confirmed=0 copies=1 valid_copies=1 PASS
+CHECK case device final logical release PASS
+CASE name=failed-present-after-selection flags=00000050 frame=18
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=18 frame=18 generation=1
+TRACE resource identity=129 ptr=01714620 type=1
+TRACE resource identity=130 ptr=01714650 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=131 ptr=01714710 type=1
+TRACE resource identity=132 ptr=01714680 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=133 ptr=01714740 type=1
+TRACE resource identity=134 ptr=017146b0 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=135 ptr=01714770 type=1
+TRACE resource identity=136 ptr=017146e0 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+TRACE scene_depth_copy device=18 frame=18 event=16 result=00000000 valid=1 generation=1 source_epoch=2 copy_epoch=2 color=129 depth=130
+TRACE scene_depth_boundary device=18 frame=18 event=16 confirmed=1 generation=1 copy_epoch=2 source_epoch=3
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=18 frame=18 generation=1 events=16 attempted=1 copied=1 confirmed=0 state=9 rejection=2 present=88760868
+INJECT Present callback DEVICELOST after successful native Present
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+CHECK postselection failure tested after actual copy PASS
+SCENARIO failed-present-after-selection flags=00000050 confirmed=0 copies=1 valid_copies=1 PASS
+CHECK case device final logical release PASS
+CASE name=inactive-capture flags=00000050 frame=19
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+API actual Present result=00000000
+CHECK actual Present PASS
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+API inactive copy view result=00000000
+CHECK inactive copy view PASS
+CHECK rejected prefix never copies PASS
+SCENARIO inactive-capture flags=00000050 confirmed=0 copies=0 valid_copies=0 PASS
+CHECK case device final logical release PASS
+CASE name=post-clear-binding-query-failure flags=00000050 frame=20
+API create case device result=00000000
+CHECK create case device PASS
+API scene main result=00000000
+CHECK scene main PASS
+API scene depth result=00000000
+CHECK scene depth PASS
+API copy color texture result=00000000
+CHECK copy color texture PASS
+API A texture result=00000000
+CHECK A texture PASS
+API B texture result=00000000
+CHECK B texture PASS
+API copy surface result=00000000
+CHECK copy surface PASS
+API A surface result=00000000
+CHECK A surface PASS
+API B surface result=00000000
+CHECK B surface PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API scene VS result=00000000
+CHECK scene VS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API background PS result=00000000
+CHECK background PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API material PS result=00000000
+CHECK material PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API bloom PS result=00000000
+CHECK bloom PS PASS
+API scene declaration result=00000000
+CHECK scene declaration PASS
+API scene VS bind result=00000000
+CHECK scene VS bind PASS
+API scene declaration bind result=00000000
+CHECK scene declaration bind PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene render state result=00000000
+CHECK scene render state PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene sampler result=00000000
+CHECK scene sampler PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+TRACE scene_depth_frame phase=begin device=20 frame=20 generation=1
+TRACE resource identity=137 ptr=01714620 type=1
+TRACE resource identity=138 ptr=01714650 type=1
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene clear result=00000000
+CHECK scene clear PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API depth unbind result=00000000
+CHECK depth unbind PASS
+TRACE resource identity=139 ptr=01714710 type=1
+TRACE resource identity=140 ptr=01714680 type=3
+API full color copy result=00000000
+CHECK full color copy PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=141 ptr=01714740 type=1
+TRACE resource identity=142 ptr=017146b0 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+TRACE resource identity=143 ptr=01714770 type=1
+TRACE resource identity=144 ptr=017146e0 type=3
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API unbind sampled target result=00000000
+CHECK unbind sampled target PASS
+API bloom target result=00000000
+CHECK bloom target PASS
+API scene viewport result=00000000
+CHECK scene viewport PASS
+API bloom input result=00000000
+CHECK bloom input PASS
+API draw PS result=00000000
+CHECK draw PS PASS
+API draw depth enable result=00000000
+CHECK draw depth enable PASS
+API draw depth write result=00000000
+CHECK draw depth write PASS
+API draw BeginScene result=00000000
+CHECK draw BeginScene PASS
+API draw result result=00000000
+CHECK draw result PASS
+API draw EndScene result=00000000
+CHECK draw EndScene PASS
+API scene depth rebind result=00000000
+CHECK scene depth rebind PASS
+TRACE scene_depth_copy device=20 frame=20 event=16 result=00000000 valid=1 generation=1 source_epoch=2 copy_epoch=2 color=137 depth=138
+API real Clear before source-query fault result=00000000
+CHECK real Clear before source-query fault PASS
+API pre-fault complete copy view result=00000000
+CHECK pre-fault complete copy view PASS
+CHECK query fault starts from otherwise confirmable copy PASS
+CHECK post-Clear native seam PASS
+CHECK post-Clear fault is not nested PASS
+TRACE scene_depth_boundary device=20 frame=20 event=16 confirmed=0 generation=1 copy_epoch=2 source_epoch=3
+CHECK only adapter post-Clear source query was faulted PASS
+INJECT native GetDepthStencilSurface E_FAIL for adapter post-Clear view query only
+CHECK native query vtable restored PASS
+API post-fault live copy view result=00000000
+CHECK post-fault live copy view PASS
+CHECK ordinary query failure preserves copied storage and epochs PASS
+API actual Present result=00000000
+CHECK actual Present PASS
+TRACE scene_depth_frame phase=end device=20 frame=20 generation=1 events=16 attempted=1 copied=1 confirmed=0 state=8 rejection=0 present=00000000
+CHECK end confirmation matches scenario PASS
+CHECK bounded frame end PASS
+CHECK query failure rejects otherwise selected copy PASS
+SCENARIO post-clear-binding-query-failure flags=00000050 confirmed=0 copies=1 valid_copies=1 PASS
+CHECK case device final logical release PASS
+RESULT PASS checks=2228 samples=8 scenarios=20

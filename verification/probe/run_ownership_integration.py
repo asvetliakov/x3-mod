@@ -24,8 +24,8 @@ def sha(path):
 
 
 def sources():
-    paths = [p for folder in ('src/ownership', 'src/proxy', 'cmake')
-             for p in (root / folder).glob('*') if p.suffix in ('.cpp', '.h', '.def', '.cmake')]
+    paths = [p for folder in ('src/ownership', 'src/proxy', 'src/renderer', 'src/temporal', 'cmake')
+             for p in (root / folder).glob('*') if p.suffix in ('.cpp', '.h', '.hlsl', '.def', '.cmake')]
     paths += [root / 'CMakeLists.txt']
     fixture_inputs = ('capability_probe.cpp', 'd3d9_smoke.cpp', 'capture_state_fixture.cpp', 'abi_check.cpp',
                       'ownership_fixture.cpp', 'ownership_integration_lifetime.cpp', 'ownership_integration_auto_depth.cpp',
@@ -67,9 +67,11 @@ def main():
         manifest['binaries_at_start'] = binaries()
         manifest['dll_sha256'] = sha(dll)
         save()
-        for mode in ('off', 'on', 'depth_only', 'copy_depth'):
-            selected = fixtures[:1] if mode == 'depth_only' else fixtures[-1:] if mode == 'copy_depth' else fixtures
+        for mode in ('off', 'on', 'depth_only', 'copy_depth', 'scene_depth', 'scene_only', 'object_requested'):
+            selected = fixtures[:1] if mode in ('depth_only', 'scene_only', 'object_requested') else fixtures[-1:] if mode in ('copy_depth', 'scene_depth') else fixtures
             for name, exe, frames in selected:
+                if mode == 'scene_depth':
+                    frames = '1'  # Exercise the requested-frame gate, not only allocation.
                 case = f'ownership-integration-{mode}-{name}'
                 directory = probe / (case + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
                 assert binaries() == manifest['binaries_at_start'], 'Built binary changed during run'
@@ -77,8 +79,10 @@ def main():
                 shutil.copy(probe / exe, directory)
                 shutil.copy(dll, directory / 'd3d9.dll')
                 env = dict(os.environ, X3M_TELEMETRY='1', X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES=frames,
-                           X3M_DEPTH_COPY='1' if mode in ('depth_only', 'copy_depth') else '0')
-                if mode in ('on', 'copy_depth'):
+                           X3M_DEPTH_COPY='1' if mode in ('depth_only', 'copy_depth', 'scene_depth') else '0',
+                           X3M_SCENE_DEPTH_CAPTURE='1' if mode in ('scene_depth', 'scene_only') else '0',
+                           X3M_OBJECT_TRACE='1' if mode == 'object_requested' else '0')
+                if mode in ('on', 'copy_depth', 'scene_depth'):
                     env['X3M_OWNERSHIP'] = '1'
                 else:
                     env.pop('X3M_OWNERSHIP', None)

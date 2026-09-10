@@ -1,5 +1,6 @@
 #include "capture.h"
 #include "capture_state.h"
+#include "../ownership/d3d9_ownership.h"
 #include <algorithm>
 #include <cstring>
 
@@ -9,6 +10,15 @@ namespace {
 // adds no ownership cycle and resource destruction automatically removes the tag.
 const GUID resource_guid = {0xaf21a9ad,0x728e,0x487c,{0xa2,0x37,0x06,0xb1,0x8d,0xec,0xa2,0x78}};
 uint64_t next_resource_id = 1;
+// Revision zero is not evidence of stability unless requested/known are true.
+// Native-only capture explicitly reports unavailable tracking without reading bytes.
+void capture_buffer_content(IDirect3DResource9* resource, uint64_t id, const char* kind) {
+    ownership::BufferContentView view{};
+    const HRESULT hr = ownership::get_buffer_content_view(resource, &view);
+    log("buffer_content kind=%s identity=%llu result=%08lx status=%08lx requested=%u known=%u ambiguous=%u revision=%llu pending=%u flags=%08lx",
+        kind,id,hr,view.status,view.requested,view.known,view.ambiguous,
+        static_cast<unsigned long long>(view.revision),view.pending_locks,view.last_lock_flags);
+}
 }
 uint64_t resource_id(IDirect3DResource9* resource) {
     if (!resource) return 0;
@@ -81,6 +91,7 @@ void capture_geometry(IDirect3DDevice9* d, bool user_memory, const D3DCAPS9& cap
         hr = buffer->GetDesc(&desc);
         if (SUCCEEDED(hr))
             log("vertex_buffer identity=%llu bytes=%u usage=%lu pool=%u fvf=%lu",id,desc.Size,desc.Usage,desc.Pool,desc.FVF);
+        capture_buffer_content(buffer,id,"vertex");
         buffer->Release(); // GetStreamSource adds a reference, including in pure devices.
     }
     IDirect3DIndexBuffer9* indices = nullptr;
@@ -92,6 +103,7 @@ void capture_geometry(IDirect3DDevice9* d, bool user_memory, const D3DCAPS9& cap
         D3DINDEXBUFFER_DESC desc{};
         if (SUCCEEDED(indices->GetDesc(&desc)))
             log("index_buffer identity=%llu bytes=%u usage=%lu pool=%u format=%u",id,desc.Size,desc.Usage,desc.Pool,desc.Format);
+        capture_buffer_content(indices,id,"index");
         indices->Release();
     }
 }

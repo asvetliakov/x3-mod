@@ -42,3 +42,42 @@ polling and do not establish game frame cost. No review result establishes game
 object correspondence, complete scene/HUD boundaries, full-resolution performance,
 or final TAA/HDR visual quality. Those still require implementation and a later
 user-coordinated game test.
+
+## Continued review: runtime and consolidated diagnostics
+
+The following independent passes cover subsequent 0.4 source checkpoints; they
+do not broaden the earlier installed-game evidence.
+
+| Component | Finding and correction |
+| --- | --- |
+| Detached production temporal pass | Reject unknown motion-policy values; preserve device-loss priority when state restoration follows an earlier failure. The fixture checks caller-state restoration, failure publication, output aliasing, queries and stateblock recording. |
+| Engine submission trace | Preserve owned patch/protection recovery records before mutation, including partial installation failure; disable observation when TLS setup fails. Exact executable fingerprint, call ABI and nested/foreign-SEH restoration are separately verified. |
+| Scene-depth adapter | A recognized wrapper can return S_OK while its internal source-binding query fails. Confirmation now requires successful view status and a confirmed bound source, not just valid storage/epochs. A real copied-and-cleared snapshot plus one injected query failure distinguishes this from a failed Clear or stale resource. |
+| Buffer content revisions | No blocking implementation finding. Document required serialization between buffer operations and snapshot queries: metadata locking alone does not make the native mutation and subsequent bookkeeping transactional. Disabled or ambiguous tracking never establishes stable content. |
+| Loader, capture wiring and installer | No further blocking findings in option gating, buffer query lifetime/status logging, or explicit DLL-source selection. The installer retains checksum ownership and temporary-file replacement safeguards. |
+| Mesh loading hooks | Keep original page-protection recovery records until restoration succeeds, including partial installation and shutdown failure. Refuse IAT reinstallation after teardown so a foreign interceptor cannot form a recursion cycle through an overwritten original. Independent review accepted both fixes and their fault regressions. |
+
+The scene-adapter review also required explicit documentation of unobserved
+resource CPU writes and alternate presentation paths. The supported callbacks
+are not proof of every possible D3D9 content mutation. Buffer revisions currently
+remain in raw capture records; the existing general summary parser does not yet
+derive motion correspondence from them.
+
+Standalone scene and buffer fixtures are linked from their respective
+[adapter](scene-capture.md) and [buffer](buffer-content.md) verification notes.
+The scene fixture invokes adapter callbacks explicitly; actual proxy-hook
+wiring is a separate DLL integration gate.
+
+The final combined build passed all 15 DLL integration cases and the forced
+adoption-failure native fallback. The scene fixture passes 20 scenarios, 2,228
+checks and eight GPU samples; buffer diagnostics pass 530 checks. Mesh timing
+passes 68 ABI/IAT and 123 actual native-mesh checks. Existing ownership contracts
+remain at 370 native / 431 wrapped checks; copied-depth and loss regressions pass
+634 checks / 32 samples and 357 checks / 33 cases respectively. The copied-depth
+run preceded only the buffer header's serialization-comment clarification; runtime
+ownership code was identical. The analysis suite passes all 87 tests.
+
+Final experimental DLL SHA256:
+`81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516`.
+This identifies the combined standalone-verified artifact, not a completed
+gameplay visual acceptance test.

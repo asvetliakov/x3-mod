@@ -1,6 +1,6 @@
 {
   "result": "PASS",
-  "dll_sha256": "c6ade9b9d9835c628556895fc9dcff20b08247e14f78ff7a1d676ae5e0d3f08e",
+  "dll_sha256": "81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516",
   "cases": {
     "off-smoke": {
       "devices": 2,
@@ -15,12 +15,12 @@
     "off-lifetime": {
       "devices": 16,
       "destroyed": 16,
-      "reused_device_addresses": 14
+      "reused_device_addresses": 15
     },
     "off-contracts": {
       "devices": 3,
       "destroyed": 3,
-      "reused_device_addresses": 1
+      "reused_device_addresses": 2
     },
     "off-auto": {
       "devices": 1,
@@ -40,12 +40,12 @@
     "on-lifetime": {
       "devices": 16,
       "destroyed": 16,
-      "reused_device_addresses": 12
+      "reused_device_addresses": 9
     },
     "on-contracts": {
       "devices": 3,
       "destroyed": 3,
-      "reused_device_addresses": 0
+      "reused_device_addresses": 1
     },
     "on-auto": {
       "devices": 1,
@@ -61,6 +61,21 @@
       "devices": 1,
       "destroyed": 1,
       "reused_device_addresses": 0
+    },
+    "scene_depth-auto": {
+      "devices": 1,
+      "destroyed": 1,
+      "reused_device_addresses": 0
+    },
+    "scene_only-smoke": {
+      "devices": 2,
+      "destroyed": 2,
+      "reused_device_addresses": 0
+    },
+    "object_requested-smoke": {
+      "devices": 2,
+      "destroyed": 2,
+      "reused_device_addresses": 1
     }
   },
   "limits": [

@@ -1,5 +1,6 @@
 #include "capture.h"
 #include "telemetry.h"
+#include "object_trace.h"
 #include "../ownership/d3d9_ownership.h"
 #include <string>
 
@@ -37,6 +38,8 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     if (backend) {
         GetModuleFileNameW(backend, path, 32768);
         x3m::log("backend path=%ls", path);
+        x3m::object_trace::initialize();
+        x3m::log("object_trace active=%u status=%s recovery_required=%u",x3m::object_trace::active(),x3m::object_trace::status(),x3m::object_trace::recovery_required());
     } else {
         x3m::log("ERROR backend load failed error=%lu", load_error);
     }
@@ -59,6 +62,7 @@ extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
         IDirect3D9* wrapped = nullptr;
         x3m::ownership::Options options{};
         options.capture_auto_depth = depth_copy_enabled;
+        options.track_buffer_writes = x3m::object_trace::active();
         const HRESULT adopted = x3m::ownership::wrap_factory(result, &wrapped, options);
         if (SUCCEEDED(adopted)) {
             // Successful adoption consumes the native factory reference. Capture

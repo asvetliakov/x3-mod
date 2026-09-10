@@ -1,0 +1,43 @@
+{
+  "started_utc": "2026-09-10T19:35:26.687615+00:00",
+  "source_sha256": {
+    "verification/probe/scene_capture_fixture.cpp": "c8cb88db35d34cd98953af95a0363197c3ffe98b86a57a4494de63bda965e177",
+    "verification/probe/build_scene_capture.sh": "e269f2f232dfd5a946cb0e0f1050757623cc2de48f6e999586e635cbdc7f9492",
+    "verification/probe/run_scene_capture.py": "7a8d1d8714d9fca7926870fbd3460624293d751cd48ae7f39b496573dd5bb31c",
+    "src/ownership/d3d9_ownership.cpp": "fa3ebaed46e0a6beb0b82b3aaadbb71dc1a0ba852d5efeb965e4d58a78ec45b4",
+    "src/ownership/d3d9_ownership.h": "ebe6f4f9d48841dae5a9845a3e9aac552f150b33f0544b052a78bc53f3674302",
+    "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
+    "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
+    "src/proxy/scene_capture.cpp": "be98e8f8477304144c3ca5478e7cfc5b67664fc5667dc3ac5fc3c04b888b4ea8",
+    "src/proxy/scene_capture.h": "09635c9cc7182aee81947eab724674977c80c7e5094f60e6a3fc3326d5fec382",
+    "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
+    "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
+    "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
+    "src/renderer/scene_boundary.h": "14da317d222da448e6829b851f51fef067f227641edd14e5cb2cd09702ec865d",
+    "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5"
+  },
+  "process_local_override": "d3d9=b",
+  "timeout_seconds": 90,
+  "build_exit_code": 0,
+  "fresh_build": true,
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/scene_capture_fixture.exe",
+    "C:\\X3\\d3dx9_37.dll",
+    "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl"
+  ],
+  "executable_sha256": "9e2d190e8b87a817473555c45b4ae0aeda89ee9fb023bb9d8d5078da3354b69a",
+  "exit_code": 0,
+  "checks": 2228,
+  "samples": 8,
+  "scenarios": 20,
+  "failed_checks": [],
+  "source_unchanged_during_run": true,
+  "executable_unchanged_during_run": true,
+  "passed": true
+}

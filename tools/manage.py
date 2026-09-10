@@ -26,6 +26,8 @@ def main():
     parser.add_argument('action', choices=['install', 'uninstall', 'launch', 'status'])
     parser.add_argument('--game-dir', type=Path, default=GAME)
     parser.add_argument('--bottle', default='Steam')
+    parser.add_argument('--dll-source', type=Path, default=ROOT / 'build/d3d9.dll',
+                        help='DLL to install (defaults to build/d3d9.dll; other actions do not use it)')
     parser.add_argument('--capture-start', type=int, default=120)
     parser.add_argument('--capture-frames', type=int, choices=range(0, 9), default=1)
     parser.add_argument('--direct', action='store_true', help='Skip launcher and intro using X3 command-line switches')
@@ -33,9 +35,13 @@ def main():
     parser.add_argument('--telemetry', action='store_true', help='Enable bounded loading, presentation and cursor diagnostics')
     parser.add_argument('--ownership', action='store_true', help='Enable the experimental normal-D3D9 ownership wrapper')
     parser.add_argument('--depth-copy', action='store_true', help='Enable experimental original-preserving depth copy (requires --ownership)')
+    parser.add_argument('--scene-depth-capture', action='store_true', help='Preserve identified scene depth in requested capture frames (requires --ownership --depth-copy)')
+    parser.add_argument('--object-trace', action='store_true', help='Capture verified engine submission identity (exact executable only)')
     args = parser.parse_args()
     if args.depth_copy and not args.ownership:
         parser.error('--depth-copy requires --ownership.')
+    if args.scene_depth_capture and not (args.ownership and args.depth_copy):
+        parser.error('--scene-depth-capture requires --ownership and --depth-copy.')
     game = args.game_dir.resolve()
     dll = game / 'd3d9.dll'
     manifest = game / 'x3-modern-install.json'
@@ -48,7 +54,7 @@ def main():
                           'installation': owned}, indent=2))
         return
     if args.action == 'install':
-        source = ROOT / 'build/d3d9.dll'
+        source = args.dll_source.resolve()
         if not source.is_file():
             parser.error('Build the DLL first (see README.md).')
         if dll.exists() and (not owned or digest(dll) != owned['sha256']):
@@ -79,6 +85,8 @@ def main():
         env['X3M_TELEMETRY'] = '1' if args.telemetry else '0'
         env['X3M_OWNERSHIP'] = '1' if args.ownership else '0'
         env['X3M_DEPTH_COPY'] = '1' if args.depth_copy else '0'
+        env['X3M_SCENE_DEPTH_CAPTURE'] = '1' if args.scene_depth_capture else '0'
+        env['X3M_OBJECT_TRACE'] = '1' if args.object_trace else '0'
         # --dll applies to this child only, preserving the user's other overrides.
         command = [str(WINE), '--bottle', args.bottle, '--no-update',
                    '--dll', 'd3d9=b' if args.vanilla else 'd3d9=n,b',

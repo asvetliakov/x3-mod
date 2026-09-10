@@ -13,7 +13,7 @@ and [roadmap](architecture/roadmap.md).
   configuration preserved. User test setting: 1280×768 windowed (was 5120×1440
   borderless). No unused launcher is intentionally left open.
 - Independent FP16/depth/D3D11-scRGB capabilities; baseline/proxy smoke passes;
-  70 analysis tests and compile-time ABI guards pass.
+  87 analysis tests and compile-time ABI guards pass.
 - Static archive/PE analysis, targeted Ghidra renderer map, shader index and CTAB
   register mapping, documented separately in `docs/reverse-engineering/`.
 - Animated menu capture: 690 draws; user-assisted flight: two complete 122-draw
@@ -123,7 +123,7 @@ it is not a game HDR implementation.
 ## Experimental 0.4 checkpoint (not installed)
 
 The ownership layer is connected to the loader behind `X3M_OWNERSHIP=1` in the
-separate `build-ownership/` build. All 12 actual-DLL integration cases and a forced
+separate `build-ownership/` build. All 15 actual-DLL integration cases and a forced
 adoption-failure fallback pass. Child-induced final device/factory releases now
 reach the capture hooks; repeated device address reuse leaves no stale contexts.
 Stencil states and depth selection status are included in consolidated capture
@@ -136,7 +136,7 @@ numeric positive/negative controls establish why D24X8-to-INTZ fails despite a
 successful trigger HRESULT. See [RESZ verification](verification/depth-resolve.md)
 and [backend investigation](reverse-engineering/depth-resolve-backend.md).
 The opt-in `X3M_DEPTH_COPY=1` switch allocates storage and reports diagnostics;
-no game boundary currently invokes the explicit copy. See
+the optional scene adapter now invokes the explicit copy before a recognized destructive clear in requested capture frames. Game validation is still pending. See
 [copy verification](verification/copied-depth.md): 634 checks / 32 samples pass,
 with 357 additional loss-regression checks across 33 cases.
 
@@ -158,6 +158,22 @@ precision and cost limits are recorded in [decoder verification](verification/de
 Its isolated timings do not establish frame cost at the user's full resolution.
 Independent [code review findings and fixes](verification/review-04.md) are
 recorded with the checkpoint evidence.
+
+The consolidated 0.4 diagnostic build is verified and ready to install. It includes
+an exact-executable engine submission scope, buffer write revisions, scene-depth
+preservation during requested captures, and mesh loading timings. The standalone
+scene adapter passes 20 scenarios / 2,228 checks / eight samples; buffer tracking
+passes 530 checks, and mesh timing passes 68 ABI plus 123 native mesh checks.
+Independent reviews found and fixed post-clear query confirmation and hook
+recovery/foreign-chain defects. See [review](verification/review-04.md) and the
+[next coordinated run](verification/iteration-04.md).
+
+The detached production temporal runtime has paired FP16 color/R32F depth history,
+explicit motion policy, failure-safe publication and caller-state restoration;
+44 numeric checks and 40 complete state comparisons pass. It remains disconnected
+from game rendering. No camera jitter or motion producer is enabled. Verified
+engine handles are not yet lifetime-safe across reload/reuse, and post-bloom color
+is not a complete matched color/depth input for whole-frame TAA.
 
 No game was launched by the agent. No visual enhancement has been enabled.
 Commit each completed logical checkpoint.
