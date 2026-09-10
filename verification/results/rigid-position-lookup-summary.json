@@ -8,11 +8,11 @@
     "src/renderer/rigid_position.h": "be5a111d58f319a5ea5c247d7b507cceffe7a91d427e5925c158968bdf332775",
     "src/renderer/rigid_position.cpp": "47b2d7db3c87f036e460505e6229fa9f489a8ef80137beae2acbf1c8411f3be5",
     "src/renderer/rigid_position_profiles_inc.h": "6378ab11b40de547f9770277ed95dcf410469b60b07b48c09dd1635327618bcd",
-    "verification/probe/rigid_position_profiles.cpp": "4c3b87564675e8f9ff78184f447603d952231bd845b7e267d9bec62d7b9d151d",
-    "verification/probe/run_rigid_position_profiles.py": "eeea6fc01d7aa98eefef0af00dd9d02124fb824ccb2106dc55ac3756a9cdc7cc",
+    "verification/probe/rigid_position_profiles.cpp": "215e549320052ff1c5b2f119b6d35690254dc6d97bc8ed9655ecb3ff3f10ca14",
+    "verification/probe/run_rigid_position_profiles.py": "9a2a02278fb5fc6c8e293a15e5771fe7a7397f5a090934549c932299747e9327",
     "verification/results/rigid-position-profiles.json": "6e1adda42deb1591a17bee20fb0a7ff645a8d8b464a45c0bc94da78ef0f631fa"
   },
-  "executable_sha256": "1dc980c86d2a5fd2dc2969e874991a233d3c1a5728bbc9c8d62b748cbd891999",
+  "executable_sha256": "75d9e208df392bbdb46634056556ffe523a48bea139bce18d22b595967b80408",
   "build_command": [
     "i686-w64-mingw32-g++",
     "-std=c++17",
@@ -30,384 +30,184 @@
     "-o",
     "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe"
   ],
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_1279d081455f5815.bin",
+    "-1",
+    "0",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_167eb2d5629ab9d3.bin",
+    "24",
+    "1",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_36f98d151fd6b0c6.bin",
+    "-1",
+    "0",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_37c34a7478544c14.bin",
+    "24",
+    "1",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_41c960621d22671f.bin",
+    "0",
+    "1",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_4944d81dfe531b37.bin",
+    "24",
+    "1",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_494fe349b8bc12ec.bin",
+    "24",
+    "1",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_53a0a641107ed76c.bin",
+    "24",
+    "1",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_5e484a06672e28fb.bin",
+    "0",
+    "0",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_6059306306203243.bin",
+    "-1",
+    "0",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_7b6393fe2d3e1d85.bin",
+    "0",
+    "1",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_803ebfd17f79e413.bin",
+    "0",
+    "1",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_89193868c61c3846.bin",
+    "0",
+    "0",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_ac2319bc3953efc6.bin",
+    "0",
+    "1",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_b0602757fce6e870.bin",
+    "24",
+    "1",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_be199829a9bb78db.bin",
+    "0",
+    "1",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_c30104cb0efb6675.bin",
+    "24",
+    "1",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_c78b4c68a87fce74.bin",
+    "0",
+    "1",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_cbbf26102694c961.bin",
+    "-1",
+    "0",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_d5e1c75351ed3f04.bin",
+    "0",
+    "1",
+    "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_f36fc43f30b19d71.bin",
+    "-1",
+    "0"
+  ],
+  "exit_code": 0,
   "source_and_binary_unchanged": true,
   "cases": [
     {
       "hash": "1279d081455f5815",
       "sha256": "3d03781ab7129448b3a3cc694525a3f7ae95606e17c23267eedced0e475205cc",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_1279d081455f5815.bin",
-        "-1",
-        "0"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=0 words=168 matrix=-1 checks=8"
     },
     {
       "hash": "167eb2d5629ab9d3",
       "sha256": "fe2bc3e8b3a76315a4225d409fcf0a25b3d2eb456745dd3dd3bcf0da81e222c6",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_167eb2d5629ab9d3.bin",
-        "24",
-        "1"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=566 matrix=24 checks=8"
     },
     {
       "hash": "36f98d151fd6b0c6",
       "sha256": "c7b0605507c4cda6c1cb26afe98e6a5affa313a2f5c0aeaf6f88768fb270efaf",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_36f98d151fd6b0c6.bin",
-        "-1",
-        "0"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=0 words=128 matrix=-1 checks=8"
     },
     {
       "hash": "37c34a7478544c14",
       "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_37c34a7478544c14.bin",
-        "24",
-        "1"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=768 matrix=24 checks=8"
     },
     {
       "hash": "41c960621d22671f",
       "sha256": "9b207275fcead40af151c3b2d77e9f841d503a82e9569fcdba207ec207c51c5b",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_41c960621d22671f.bin",
-        "0",
-        "1"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=102 matrix=0 checks=8"
     },
     {
       "hash": "4944d81dfe531b37",
       "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_4944d81dfe531b37.bin",
-        "24",
-        "1"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=556 matrix=24 checks=8"
     },
     {
       "hash": "494fe349b8bc12ec",
       "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_494fe349b8bc12ec.bin",
-        "24",
-        "1"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=526 matrix=24 checks=8"
     },
     {
       "hash": "53a0a641107ed76c",
       "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_53a0a641107ed76c.bin",
-        "24",
-        "1"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=526 matrix=24 checks=8"
     },
     {
       "hash": "5e484a06672e28fb",
       "sha256": "2c5815b04b4797d6a9e2feb9192a140ab3a95843f2c438a7da8e5350ff16379f",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_5e484a06672e28fb.bin",
-        "0",
-        "0"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=101 matrix=0 checks=8"
     },
     {
       "hash": "6059306306203243",
       "sha256": "fb0ee43d316d3738e3134aa95d4efcb865e2689e96577ff3e5af98c8d591ee79",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_6059306306203243.bin",
-        "-1",
-        "0"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=0 words=164 matrix=-1 checks=8"
     },
     {
       "hash": "7b6393fe2d3e1d85",
       "sha256": "5efc6bda105f178cc9044047f3981e5b05b020ad96876021fb938d51daa46363",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_7b6393fe2d3e1d85.bin",
-        "0",
-        "1"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=128 matrix=0 checks=8"
     },
     {
       "hash": "803ebfd17f79e413",
       "sha256": "858a6003ce4fa82eef067f0379b910c4a2e78a6adfca808303ac0b095a73d2f3",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_803ebfd17f79e413.bin",
-        "0",
-        "1"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=95 matrix=0 checks=8"
     },
     {
       "hash": "89193868c61c3846",
       "sha256": "83e106b5cef3e814d095909adb55816f9fdac98723ee11bea209f2772557c8eb",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_89193868c61c3846.bin",
-        "0",
-        "0"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=221 matrix=0 checks=8"
     },
     {
       "hash": "ac2319bc3953efc6",
       "sha256": "47182f0137b4b944ecc4b5df56202183d5ea5b204e50ce50984ea29f419f6521",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_ac2319bc3953efc6.bin",
-        "0",
-        "1"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=128 matrix=0 checks=8"
     },
     {
       "hash": "b0602757fce6e870",
       "sha256": "33cef191db2668aadef869a140b2185b1576212535bdae7d607da49573d8d785",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_b0602757fce6e870.bin",
-        "24",
-        "1"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=520 matrix=24 checks=8"
     },
     {
       "hash": "be199829a9bb78db",
       "sha256": "7abd2ffa1bd3881de4ed395210c6241d9c594ebd99070cf1a65a487b4d65c72a",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_be199829a9bb78db.bin",
-        "0",
-        "1"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=281 matrix=0 checks=8"
     },
     {
       "hash": "c30104cb0efb6675",
       "sha256": "05a64b50c80704c0ef80ed818f790b1fabf3bb2ca8dbdee134ade54d6ec2fa8b",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_c30104cb0efb6675.bin",
-        "24",
-        "1"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=550 matrix=24 checks=8"
     },
     {
       "hash": "c78b4c68a87fce74",
       "sha256": "c200952c40506c880c897728bceea85208283715d76b951f082254edc5bc5a42",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_c78b4c68a87fce74.bin",
-        "0",
-        "1"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=89 matrix=0 checks=8"
     },
     {
       "hash": "cbbf26102694c961",
       "sha256": "4d3170630d0e27dfedbd14445845dcb2329a9d5fc7e76c284def8ac61e2bcd31",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_cbbf26102694c961.bin",
-        "-1",
-        "0"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=0 words=150 matrix=-1 checks=8"
     },
     {
       "hash": "d5e1c75351ed3f04",
       "sha256": "a1db7ff10b8a6c81a830a095417133e37571a055674914df09136cc91f454114",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_d5e1c75351ed3f04.bin",
-        "0",
-        "1"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=1 words=253 matrix=0 checks=8"
     },
     {
       "hash": "f36fc43f30b19d71",
       "sha256": "e27aa47ad706256380673c67eda5004498e24ce90b336461e9f7de61285d3fc6",
-      "command": [
-        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle",
-        "Steam",
-        "--no-update",
-        "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build",
-        "/Users/asvetl/x3-mod/verification/probe/build/rigid_position_profiles.exe",
-        "Z:\\private\\tmp\\x3-shader-sweep\\programs\\vs_f36fc43f30b19d71.bin",
-        "-1",
-        "0"
-      ],
-      "exit_code": 0,
       "output": "PASS qualified=0 words=55 matrix=-1 checks=8"
     }
   ]

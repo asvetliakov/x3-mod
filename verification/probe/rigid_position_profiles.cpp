@@ -5,8 +5,7 @@
 #include <fstream>
 #include <vector>
 using x3m::renderer::find_rigid_position;
-int main(int argc, char** argv) {
-    if (argc != 4) return 2;
+static int verify(char** argv) {
     std::ifstream file(argv[1], std::ios::binary | std::ios::ate);
     if (!file) return 3;
     const auto bytes = file.tellg();
@@ -34,4 +33,12 @@ int main(int argc, char** argv) {
     }
     std::printf("PASS qualified=%u words=%u matrix=%d checks=8\n",
         profile != nullptr, unsigned(code.size()), expected_register);
+    return 0;
+}
+int main(int argc, char** argv) {
+    if (argc < 4 || (argc-1)%3) return 2;
+    for (int i = 1; i < argc; i += 3) {
+        char* input[] = {argv[0], argv[i], argv[i+1], argv[i+2]};
+        if (const int result = verify(input)) return result;
+    }
 }

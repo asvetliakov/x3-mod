@@ -32,24 +32,30 @@ def main():
     binary = sha(exe)
     profiles = json.loads((ROOT/INPUTS[-1]).read_text())["programs"]
     observations = []
+    paths = []
+    launch = ["/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+              "--bottle", "Steam", "--no-update", "--workdir", str(build), str(exe)]
     for p in profiles:
         path = args.raw_directory/("vs_"+p["fnv1a64"]+".bin")
         assert sha(path) == p["sha256"], "local shader bytes changed"
+        paths.append(path)
         register = p["matrix_first_register"] if p["qualified_position_math"] else -1
         named = any("WorldViewProjection" in name for name in p.get("matrix_names_only", []))
-        launch = ["/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-                  "--bottle", "Steam", "--no-update", "--workdir", str(build), str(exe),
-                  "Z:"+str(path.resolve()).replace("/", "\\"), str(register), str(int(named))]
-        run = subprocess.run(launch, capture_output=True, timeout=45)
-        assert sources() == before and sha(exe) == binary and sha(path) == p["sha256"], "inputs changed during run"
-        text = run.stdout.decode().strip()
-        observations.append(dict(hash=p["fnv1a64"], sha256=p["sha256"], command=launch,
-                                 exit_code=run.returncode, output=text))
-        assert run.returncode == 0 and text.startswith("PASS ") and text.endswith("checks=8"), text
-    data = dict(passed=True, programs=len(observations), checks=8*len(observations),
+        launch += ["Z:"+str(path.resolve()).replace("/", "\\"), str(register), str(int(named))]
+    run = subprocess.run(launch, capture_output=True, timeout=45)
+    lines = run.stdout.decode().splitlines()
+    assert run.returncode == 0 and len(lines) == len(profiles), run.stdout.decode()
+    for p, path, text in zip(profiles, paths, lines):
+        assert sha(path) == p["sha256"], "shader changed during run"
+        register = p["matrix_first_register"] if p["qualified_position_math"] else -1
+        assert text == f"PASS qualified={int(p['qualified_position_math'])} words={p['word_count']} matrix={register} checks=8", text
+        observations.append(dict(hash=p["fnv1a64"], sha256=p["sha256"], output=text))
+    stable = sources() == before and sha(exe) == binary
+    assert stable, "sources or binary changed during run"
+    data = dict(passed=stable, programs=len(observations), checks=8*len(observations),
                 qualified=sum(p["qualified_position_math"] for p in profiles), game_launched=False,
-                source_hashes=before, executable_sha256=binary, build_command=command,
-                source_and_binary_unchanged=sources() == before and sha(exe) == binary, cases=observations)
+                source_hashes=before, executable_sha256=binary, build_command=command, command=launch,
+                exit_code=run.returncode, source_and_binary_unchanged=stable, cases=observations)
     output.write_text(json.dumps(data, indent=2)+"\n")
     print(json.dumps({k: data[k] for k in ("passed", "programs", "checks", "qualified")}))
 
