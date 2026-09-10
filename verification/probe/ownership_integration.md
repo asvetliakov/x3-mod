@@ -12,9 +12,9 @@ python3 verification/probe/verify_ownership_integration.py
 python3 verification/probe/run_ownership_integration_fallback.py
 ```
 
-The runner performs a clean CMake build and recompiles every consumed fixture before launching any case. Source hashes are recorded before compilation, after compilation and after execution. It rejects changes across those checkpoints and checks EXE/DLL hashes before and after execution, plus hashes of each isolated copy and report. The fallback run requires that fresh-build manifest still match current inputs and checks the eight linked proxy/renderer objects before and after execution. It copies the DLL and executables into disposable verification directories and uses `/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine --bottle Steam --no-update`, with app-local D3D9 override. It does not mutate bottle settings, launch X3, install a DLL, or replace `build/d3d9.dll`.
+The runner performs a clean CMake build and recompiles every consumed fixture before launching any case. Source hashes are recorded before compilation, after compilation and after execution. It rejects changes across those checkpoints and checks EXE/DLL hashes before and after execution, plus hashes of each isolated copy and report. The fallback run requires that fresh-build manifest still match current inputs and checks the twelve linked proxy/renderer objects before and after execution. It copies the DLL and executables into disposable verification directories and uses `/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine --bottle Steam --no-update`, with app-local D3D9 override. It does not mutate bottle settings, launch X3, install a DLL, or replace `build/d3d9.dll`.
 
-## Verified checkpoint
+## Historical installed 0.4 checkpoint
 
 Experimental DLL SHA256: `81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516`.
 Ownership source SHA256: `fa3ebaed46e0a6beb0b82b3aaadbb71dc1a0ba852d5efeb965e4d58a78ec45b4`.
@@ -39,10 +39,33 @@ Reports and exact per-file provenance are in `verification/results/ownership-int
 
 ## Adoption failure and ABI audit
 
-A separate verification DLL links the same eight compiled proxy/renderer objects against a test-only adoption stub that returns `E_OUTOFMEMORY` without consuming the native factory reference. It is kept outside the production build. The smoke passes, logs `mode=native_fallback result=8007000e`, and destroys both device contexts. Its separate DLL hash and production-object list are recorded in `ownership-integration-fallback.json`; it is never installed.
+A separate verification DLL links the same compiled proxy/renderer objects against a test-only adoption stub that returns `E_OUTOFMEMORY` without consuming the native factory reference. It is kept outside the production build. The smoke passes, logs `mode=native_fallback result=8007000e`, and destroys both device contexts. Its separate DLL hash and production-object list are recorded in `ownership-integration-fallback.json`; it is never installed.
 
 Capture replaces only the object's primary COM vptr. Ownership's internal `Node` has a separate C++ virtual destructor vptr. In the actual i686 DLL, both Factory and Device public `Release` add four bytes to obtain the `Node` subobject; the internal deletion dispatches via that secondary vptr's deleting-destructor entry. Disassembly is saved with the DLL hash in `ownership-integration-abi.txt`. This confirms that the capture COM table does not replace the destructor table in this build.
 
 Final child cleanup now releases its parent through `parent->application->Release()` after leaving the registry lock. That dispatch is essential: it reaches the capture Release hook for child-induced final device/factory destruction. Directly calling the internal ownership release helper would bypass hook cleanup. The compiled parent dispatch uses COM slot 2; the repeated lifecycle test exercises it with factory-first and device-first application release ordering.
 
 The imports audit shows ADVAPI32, KERNEL32, USER32 and UCRT dependencies; no external libstdc++, libgcc or libwinpthread DLL is needed. These are synthetic API/lifetime checks, not gameplay, visual-quality, frame-pacing or performance measurements.
+
+## Current source checkpoint: detached renderer modules
+
+Verified 2026-09-11. CMake now compiles the material-radiance transformer, motion
+history, exact rigid-position lookup and rigid-motion pass alongside the existing
+temporal pass. No live renderer callsites or visual features are enabled by this
+link change. The mesh-adjacency cache remains detached and is not compiled into
+this DLL.
+
+A fresh build passes all 15 integration cases, capture/lifetime verification and
+the forced adoption-failure fallback. The fallback links all **12** compiled
+proxy/renderer objects unchanged; only the ownership implementation is replaced
+by the test stub. Source and binary hashes match before and after both runs.
+The current result files describe this build; historical installed evidence is
+retained in Git history and the iteration notes.
+
+Uninstalled production DLL SHA256:
+`53d91a676ddb855ed936079d128ac47f06666c88b1ed6870b5453f7ea21cd9c4`.
+The installed diagnostic DLL remains
+`81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516`.
+This matrix verifies combined API/lifetime behavior; the numerical motion and
+material contracts have their own fixtures, and gameplay integration remains
+pending.

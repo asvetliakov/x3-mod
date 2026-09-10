@@ -1,6 +1,6 @@
 {
   "result": "PASS",
-  "dll_sha256": "b81af5d3c0c9c0fd7cbed54ee7fe613453f8309288b17d7602916e3fa0bd1896",
+  "dll_sha256": "53d91a676ddb855ed936079d128ac47f06666c88b1ed6870b5453f7ea21cd9c4",
   "cases": {
     "off-smoke": {
       "devices": 2,

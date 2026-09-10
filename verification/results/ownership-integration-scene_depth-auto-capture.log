@@ -1,49 +1,49 @@
 x3-modern-renderer version=0.4 schema=2 capture_start=1 capture_frames=1 pointer_bits=32
-telemetry_start schema=1 qpc_frequency=10000000 qpc=8006267642491 anchor=proxy_initialize cpu_only=1
-loading_trace disabled=fingerprint_mismatch hash=5e7a16f4ac8877f4 bytes=248766
+telemetry_start schema=1 qpc_frequency=10000000 qpc=8025778836812 anchor=proxy_initialize cpu_only=1
+loading_trace disabled=fingerprint_mismatch hash=8f2e449f964e81e3 bytes=248766
 ownership_mode requested=1 depth_copy_requested=1 depth_copy_enabled=1 scope=normal9 fallback=native
-telemetry_span name=backend_load qpc_begin=8006267653410 qpc_end=8006268488947 thread=812 success=1 error=0
+telemetry_span name=backend_load qpc_begin=8025778847181 qpc_end=8025779881783 thread=848 success=1 error=0
 backend path=C:\windows\system32\d3d9.dll
 object_trace active=0 status=disabled recovery_required=0
-telemetry_span name=direct3d_create9 qpc_begin=8006268491119 qpc_end=8006280758346 thread=812 success=1
+telemetry_span name=direct3d_create9 qpc_begin=8025779884195 qpc_end=8025791862136 thread=848 success=1
 ownership_factory mode=wrapped native=00118e80 public=00119390 result=00000000
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_summary device=0 frame=0 reason=interval qpc=8006280847380 since_start_us=1320488.900 interval_us=1320488.900 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=1 failures=0 total_us=1.600 min_us=1.600 max_us=1.600 bytes=0 buckets=1,0,0,0,0,0
-telemetry_presentation phase=create_before device=0 thread=812 focus_window=00160056 device_window=00160056 width=64 height=64 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
+telemetry_summary device=0 frame=0 reason=interval qpc=8025791980974 since_start_us=1314416.200 interval_us=1314416.200 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=1 failures=0 total_us=1.500 min_us=1.500 max_us=1.500 bytes=0 buckets=1,0,0,0,0,0
+telemetry_presentation phase=create_before device=0 thread=848 focus_window=00360066 device_window=00360066 width=64 height=64 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=0 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=812 focus_window=00160056 device_window=00160056 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=848 focus_window=00360066 device_window=00360066 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00d0b3f0 device=1 ex=0
 ownership_copy_depth phase=create_after device=1 result=00000000 status=00000000 requested=1 available=1 source_bound=1 copy_valid=0 generation=1 source_epoch=0 copy_epoch=0 source_width=64 source_height=64 source_format=77 source_type=1 source_usage=2 source_pool=0 source_msaa=0 source_quality=0
-telemetry_first_present device=1 frame=0 qpc=8006280973946 since_start_us=1333145.500 capture=0 reset_count=0
-telemetry_window_context device=1 frame=0 render_thread=812 window_thread=812 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
-telemetry_window device=1 frame=0 qpc=8006280980641 window=00160056 foreground=00000000 thread_focus=00000000 iconic=0 visible=0 style=04cf0000 exstyle=00000100 window_rect=80,80,240,240 client_rect=0,0,152,126
-telemetry_cursor_poll device=1 frame=0 qpc=8006280980641 flags=1 cursor=00000000 x=-488 y=602
-telemetry_summary device=1 frame=0 reason=periodic qpc=8006280984363 since_start_us=1334187.200 interval_us=979.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=179.800 min_us=179.800 max_us=179.800 bytes=0 buckets=0,0,1,0,0,0
-telemetry_summary device=0 frame=0 reason=periodic qpc=8006280984916 since_start_us=1334242.500 interval_us=13753.600 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=3 failures=0 total_us=1.900 min_us=0.500 max_us=0.700 bytes=0 buckets=3,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=9519.000 min_us=9519.000 max_us=9519.000 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=41.300 min_us=41.300 max_us=41.300 bytes=0 buckets=0,1,0,0,0,0
-telemetry_present_window device=1 frame=0 override=00000000 device_window=00160056 result=00000000
+telemetry_first_present device=1 frame=0 qpc=8025792119550 since_start_us=1328273.800 capture=0 reset_count=0
+telemetry_window_context device=1 frame=0 render_thread=848 window_thread=848 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
+telemetry_window device=1 frame=0 qpc=8025792126591 window=00360066 foreground=00000000 thread_focus=00000000 iconic=0 visible=0 style=04cf0000 exstyle=00000100 window_rect=80,80,240,240 client_rect=0,0,152,126
+telemetry_cursor_poll device=1 frame=0 qpc=8025792126591 flags=1 cursor=00000000 x=4103 y=320
+telemetry_summary device=1 frame=0 reason=periodic qpc=8025792130532 since_start_us=1329372.000 interval_us=1028.100 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=197.600 min_us=197.600 max_us=197.600 bytes=0 buckets=0,0,1,0,0,0
+telemetry_summary device=0 frame=0 reason=periodic qpc=8025792131131 since_start_us=1329431.900 interval_us=15015.700 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=3 failures=0 total_us=1.600 min_us=0.500 max_us=0.600 bytes=0 buckets=3,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=10715.400 min_us=10715.400 max_us=10715.400 bytes=0 buckets=0,0,0,0,1,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=30.300 min_us=30.300 max_us=30.300 bytes=0 buckets=0,1,0,0,0,0
+telemetry_present_window device=1 frame=0 override=00000000 device_window=00360066 result=00000000
 frame_end device=1 frame=0 draws=0 capture=0 present=00000000
 scene_depth_frame phase=begin device=1 frame=1 generation=1
 frame_begin device=1 frame=1
-telemetry_presentation phase=reset_before device=1 thread=812 focus_window=00160056 device_window=00160056 width=80 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=reset_before device=1 thread=848 focus_window=00360066 device_window=00360066 width=80 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
 reset_begin ptr=00d0b3f0 device=1
-telemetry_presentation phase=reset_after device=1 thread=812 focus_window=00160056 device_window=00160056 width=80 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=reset_after device=1 thread=848 focus_window=00360066 device_window=00360066 width=80 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
 ownership_copy_depth phase=reset_after device=1 result=00000000 status=00000000 requested=1 available=1 source_bound=1 copy_valid=0 generation=3 source_epoch=0 copy_epoch=0 source_width=80 source_height=64 source_format=77 source_type=1 source_usage=2 source_pool=0 source_msaa=0 source_quality=0
-telemetry_summary device=1 frame=1 reason=reset qpc=8006281032827 since_start_us=1339033.600 interval_us=4846.400 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=1 name=reset count=1 failures=0 total_us=4235.900 min_us=4235.900 max_us=4235.900 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=1 name=log_flush count=2 failures=0 total_us=1.500 min_us=0.600 max_us=0.900 bytes=0 buckets=2,0,0,0,0,0
+telemetry_summary device=1 frame=1 reason=reset qpc=8025792183591 since_start_us=1334677.900 interval_us=5305.900 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=reset count=1 failures=0 total_us=4322.300 min_us=4322.300 max_us=4322.300 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=1 name=log_flush count=2 failures=0 total_us=1.900 min_us=0.500 max_us=1.400 bytes=0 buckets=2,0,0,0,0,0
 reset_end device=1 result=00000000
-telemetry_first_present device=1 frame=1 qpc=8006281036310 since_start_us=1339381.900 capture=0 reset_count=1
-telemetry_summary device=1 frame=2 reason=device_destroy qpc=8006281049212 since_start_us=1340672.100 interval_us=1638.500 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=5.100 min_us=5.100 max_us=5.100 bytes=0 buckets=1,0,0,0,0,0
-telemetry_metric device=1 name=log_flush count=2 failures=0 total_us=0.700 min_us=0.300 max_us=0.400 bytes=0 buckets=2,0,0,0,0,0
-telemetry_summary device=0 frame=2 reason=device_destroy qpc=8006281049466 since_start_us=1340697.500 interval_us=6455.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=6 failures=0 total_us=2.500 min_us=0.100 max_us=1.000 bytes=0 buckets=6,0,0,0,0,0
-telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+telemetry_first_present device=1 frame=1 qpc=8025792186936 since_start_us=1335012.400 capture=0 reset_count=1
+telemetry_summary device=1 frame=2 reason=device_destroy qpc=8025792203521 since_start_us=1336670.900 interval_us=1993.000 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=4.900 min_us=4.900 max_us=4.900 bytes=0 buckets=1,0,0,0,0,0
+telemetry_metric device=1 name=log_flush count=2 failures=0 total_us=0.500 min_us=0.200 max_us=0.300 bytes=0 buckets=2,0,0,0,0,0
+telemetry_summary device=0 frame=2 reason=device_destroy qpc=8025792204034 since_start_us=1336722.200 interval_us=7290.300 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=6 failures=0 total_us=2.800 min_us=0.200 max_us=1.000 bytes=0 buckets=6,0,0,0,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.300 min_us=0.300 max_us=0.300 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00d0b3f0 device=1

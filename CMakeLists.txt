@@ -3,7 +3,13 @@ project(x3_modern_renderer VERSION 0.4.0 LANGUAGES CXX)
 if(NOT WIN32 OR NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
   message(FATAL_ERROR "Build for 32-bit Windows using cmake/mingw-i686.cmake")
 endif()
-add_library(d3d9 SHARED src/proxy/loader.cpp src/proxy/capture.cpp src/proxy/capture_state.cpp src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/telemetry.cpp src/proxy/loading_trace.cpp src/ownership/d3d9_ownership.cpp src/renderer/temporal_pass.cpp src/proxy/d3d9.def)
+add_library(d3d9 SHARED
+  src/proxy/loader.cpp src/proxy/capture.cpp src/proxy/capture_state.cpp
+  src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/telemetry.cpp
+  src/proxy/loading_trace.cpp src/ownership/d3d9_ownership.cpp
+  src/renderer/temporal_pass.cpp src/renderer/material_radiance.cpp
+  src/renderer/motion_history.cpp src/renderer/rigid_position.cpp
+  src/renderer/rigid_motion.cpp src/proxy/d3d9.def)
 target_compile_features(d3d9 PRIVATE cxx_std_17)
 target_compile_definitions(d3d9 PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 # Our arithmetic uses SSE2 while preserving the game's i686 Windows ABI.
