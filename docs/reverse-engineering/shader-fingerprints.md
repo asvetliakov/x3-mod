@@ -7,7 +7,17 @@ python3 tools/analysis/index_shaders.py '/path/to/X3' --output /tmp/x3-shader-in
 python3 -m unittest discover -s verification/analysis -v
 ```
 
-The inspected installation yielded 3,480 compiled effects, 11,431 parsed shader occurrences, and 523 distinct FNV hashes. 260 effects had no recognized streams; this may indicate different content or parser limitations, so the index is not asserted complete. Effects share shaders across profile directories and material variants. A hash can have several candidate labels.
+The expanded inspection yields **3,480 compiled effects, 13,407 shader occurrences,
+and 751 distinct full-program FNV hashes**. The original index found only 523
+programs and left 260 effects empty because it rejected version 2.1 tokens.
+Those are extended Shader Model 2 programs: the native D3DX disassembler identifies
+the added 200 pixel and 28 vertex programs as `ps_2_x` and `vs_2_x`. The corrected
+parser retains their ordinary encoded instruction lengths. All 3,480 effects now
+contain recognized streams, and all 751 programs have a successful disassembly.
+Successful disassembly alone does not prove shader creation or runtime use.
+Effects share shaders across profile directories and material variants; one hash
+can have several candidate labels. See the full archive sweep for purpose and
+coverage details.
 
 Selected `addon/01.cat` `shader/3_0/` fingerprints:
 
@@ -28,6 +38,11 @@ Selected `addon/01.cat` `shader/3_0/` fingerprints:
 | bloom | PS 3.0 | 920 | `1c90e79667bdaddf` |
 | bloom | PS 3.0 | 404 | `ff6eed5a5ddf3a3a` |
 
-**Runtime verification pending:** these are archive fingerprints, not observed live `GetFunction` matches. A D3DX implementation may transform a stream when creating the shader. Confirm byte counts and hashes against at least one runtime capture before using a fingerprint to replace or suppress a draw. HUD classification also requires checking geometry, render state and ordering; a shader family alone is not a complete UI mask.
+The current collection of 57 locally dumped runtime programs maps byte-exactly
+to archive programs. That verifies those programs only, not every archived variant
+or their draw purpose. A D3DX implementation may transform other streams when
+creating shaders. Confirm byte counts and hashes before using a fingerprint to
+replace or suppress a draw. HUD classification also requires checking geometry,
+render state and ordering; a shader family alone is not a complete UI mask.
 
 Seven synthetic verification cases cover known FNV vectors, comment payloads containing END tokens, SM1 immediate data containing END, truncated instruction rejection, adjacent streams and padding, stale catalogue header names, and invalid PE input. No test fixture contains game data.

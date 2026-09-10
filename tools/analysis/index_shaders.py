@@ -39,7 +39,10 @@ def shader_end(words, start):
     major, minor = (version >> 8) & 255, version & 255
     if version >> 16 not in (0xfffe, 0xffff) or not (1 <= major <= 3):
         return None
-    if (major == 1 and minor > 4) or (major > 1 and minor != 0):
+    # Extended SM2 programs in the game's 2_a effects use version 2.1 for
+    # both stages. They retain SM2 instruction lengths; rejecting this version
+    # silently omitted complete material effects from the original inventory.
+    if (major == 1 and minor > 4) or (major == 2 and minor > 1) or (major == 3 and minor != 0):
         return None
     pos = start + 1
     while pos < len(words):

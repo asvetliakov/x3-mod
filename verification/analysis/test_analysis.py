@@ -43,6 +43,21 @@ class ShaderParsingTests(unittest.TestCase):
         self.assertEqual([s['offset'] for s in found], [0, 12])
         self.assertEqual(found[0]['fnv1a64'], found[1]['fnv1a64'])
 
+    def test_extended_sm2_both_stages_preserve_comments_and_instruction_lengths(self):
+        for version, stage in ((0xffff0201, 'ps'), (0xfffe0201, 'vs')):
+            stream = tokens(version, 0x0002fffe, 0x0000ffff, version,
+                            0x02000001, 0x800f0000, 0x90e40000, 0x0000ffff)
+            found = list(embedded_shaders(stream))
+            self.assertEqual(len(found), 1)
+            self.assertEqual((found[0]['stage'], found[0]['model']), (stage, '2_1'))
+            self.assertEqual(found[0]['bytes'], len(stream))
+            self.assertEqual(found[0]['fnv1a64'], fnv1a64(stream))
+
+    def test_unsupported_extended_versions_and_truncated_sm2_are_rejected(self):
+        for version in (0xffff0202, 0xfffe0202, 0xffff0301, 0xfffe0301):
+            self.assertEqual(list(embedded_shaders(tokens(version, 0x0000ffff))), [])
+        self.assertEqual(list(embedded_shaders(tokens(0xffff0201, 0x02000001, 0x800f0000))), [])
+
 
 class CatalogueTests(unittest.TestCase):
     def test_stale_header_and_spaces_in_paths(self):
