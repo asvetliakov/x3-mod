@@ -1,7 +1,8 @@
 # Project status
 
-Updated 2026-09-11. **Iteration 4 gameplay analysis is complete; source corrections and the archive-wide shader review are verified separately from the installed build. The overall renderer
-modernization objective is not complete.** No HDR/TAA/AgX/material/clustered-lighting
+Updated 2026-09-11. **Iteration 5 is verified and installed, awaiting the
+[user-managed combined test](verification/iteration-05.md). Iteration 4 gameplay
+analysis is complete. The overall renderer modernization objective is not complete.** No HDR/TAA/AgX/material/clustered-lighting
 visual enhancement is enabled yet. See the [full user objective](user-objective.md)
 and [roadmap](architecture/roadmap.md).
 
@@ -47,12 +48,15 @@ The opt-in [observer](verification/object-lifetime-observer.md) passes 533 check
 and 72 original backend calls, including baseline adoption, reuse, foreign
 unwind, hook ownership loss and retirement. Six runner-provenance tests pass.
 Live baseline usefulness and mutation coverage still need game validation;
-camera cuts remain a separate policy. No lifecycle hook is installed in the game.
+camera cuts remain a separate policy. The installed DLL exposes the opt-in observer;
+activation and useful coverage await the user-managed run.
 
 The current combined DLL passes all 15 integration cases and the forced native
-fallback with all 15 compiled proxy/renderer objects. It is **not installed**:
+fallback with all 15 compiled proxy/renderer objects. It is **installed**:
 SHA256 `ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5`.
-The installed 0.4 diagnostic DLL retains its historical SHA below.
+The [installation record](../verification/results/iteration-05-install.json) verifies
+unchanged game EXE and bottle configuration. The prior 0.4 DLL is preserved in
+`artifacts/rollback/d3d9-iteration04.dll`; the older 0.3 rollback also remains intact.
 
 The [detached adjacency cache](verification/mesh-adjacency-cache.md) passes
 721 checks using real native mesh acquisition, exact byte keys, bounded storage,
@@ -69,13 +73,13 @@ preparation calls intercepted by our hooks; restart is required. It never claims
 to repair the native lock or contain calls outside those hooks.
 
 The user-run 0.4 session has 20 complete captured frames and 13,431 successful
-draws, including a final third-person burst. The installed selector rejected all
+draws, including a final third-person burst. The then-installed selector rejected all
 frames and attempted no depth copy: planet haze was unnecessarily mandatory,
 and later ColorFill invalidation masked the first cause. Source corrections
 remove the haze requirement while retaining verified background/binding rules,
 check scratch-fill targets, and preserve the first rejection. The revised
 adapter is synthetically verified, but game acceptance is not yet established.
-These corrections are not installed.
+These corrections are now installed and await live validation.
 
 New [camera/object evidence](reverse-engineering/iteration04-camera-motion.md)
 shows independent object motion with a stationary camera; camera-only history is
@@ -143,9 +147,9 @@ presentation and the requested visual features remain unfinished.
 
 ## Concrete next work
 
-1. Batch the corrected scene selector and any further required diagnostics before
-   another user-managed run. Obtain target identities for the observed ColorFill
-   calls and prove successful pre-clear depth preservation in the game.
+1. Complete the consolidated iteration-5 user-managed run. Obtain target identities
+   for the observed ColorFill calls, prove successful pre-clear depth preservation,
+   and measure lifetime coverage and exact mesh reuse across reload.
 2. Connect the verified correspondence and GPU motion modules to lifecycle-safe
    draw records, with reload/reuse generations, camera cuts and geometry revision
    gates. Account separately for CPU-changing particles/stardust and overlays.
@@ -214,7 +218,7 @@ still clips both paths. See [HDR varying verification](verification/vertex-color
 This supports targeted SM3 material changes once the FP16 scene path exists;
 it is not a game HDR implementation.
 
-## Experimental 0.4 checkpoint (installed; gameplay analyzed above)
+## Historical 0.4 checkpoint (gameplay analyzed above)
 
 The ownership layer is connected to the loader behind `X3M_OWNERSHIP=1` in the
 separate `build-ownership/` build. All 15 actual-DLL integration cases and a forced
@@ -253,7 +257,7 @@ Its isolated timings do not establish frame cost at the user's full resolution.
 Independent [code review findings and fixes](verification/review-04.md) are
 recorded with the checkpoint evidence.
 
-The consolidated 0.4 diagnostic build is verified and installed, with SHA256
+The consolidated 0.4 diagnostic build was verified and installed for that run, with SHA256
 `81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516`. It includes
 an exact-executable engine submission scope, buffer write revisions, scene-depth
 preservation during requested captures, and mesh loading timings. The standalone

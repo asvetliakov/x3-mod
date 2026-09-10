@@ -67,10 +67,12 @@ by the test stub. Source and binary hashes match before and after both runs.
 The current result files describe this build; historical installed evidence is
 retained in Git history and the iteration notes.
 
-Uninstalled production DLL SHA256:
+Verified production DLL SHA256:
 `ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5`.
-The installed diagnostic DLL remains
-`81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516`.
+This artifact was subsequently installed by the
+[iteration-5 checkpoint](../../docs/verification/iteration-05.md). The previous
+installed diagnostic DLL `81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516`
+is preserved as a local rollback.
 This matrix verifies combined API/lifetime behavior; the numerical motion and
 material contracts have their own fixtures, and gameplay integration remains
 pending.

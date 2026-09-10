@@ -1,0 +1,15 @@
+{
+  "installed_utc": "2026-09-10T21:48:30.900191+00:00",
+  "installed_dll_sha256": "ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5",
+  "previous_installed_sha256": "81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516",
+  "rollback_04_path": "artifacts/rollback/d3d9-iteration04.dll",
+  "rollback_04_sha256": "81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516",
+  "rollback_03_sha256": "71f59c8e6422d5bbf2f55c116e2c0388026d956ba45a3a03eee53c4d85a232a6",
+  "executable_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "bottle_config_sha256_before": "4fad12a7b9f38da119d99ac49851b101f14bcf2294c753ee83ff78279385ef8e",
+  "bottle_config_sha256_after": "4fad12a7b9f38da119d99ac49851b101f14bcf2294c753ee83ff78279385ef8e",
+  "game_launched": false,
+  "bottle_settings_changed": false,
+  "source": "build-ownership/d3d9.dll",
+  "integration_commit": "c8a3fb6309e616329f33d8536f6cd062e4c1f4e2"
+}

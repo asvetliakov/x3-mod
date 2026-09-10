@@ -3,8 +3,9 @@
 `X3M_MESH_CACHE=1` connects the reviewed production adjacency cache to the existing
 `loading_trace` shared native `ID3DXMesh::GenerateAdjacency` slot. It requires
 `X3M_TELEMETRY=1` and remains **off by default**. This checkpoint has only run
-standalone original-mesh fixtures in **CrossOver Preview / Steam**. It has not
-installed the DLL or launched X3. The game’s eligible mesh count, exact repetition
+standalone original-mesh fixtures in **CrossOver Preview / Steam**. Those fixtures
+do not install the DLL or launch X3; see [iteration 5](iteration-05.md) for the
+separate installation and pending game test. The game’s eligible mesh count, exact repetition
 rate and loading benefit still need a user-run trace.
 
 The [detached core](mesh-adjacency-cache.md) remains independently reusable. Its
