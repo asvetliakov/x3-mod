@@ -1,0 +1,55 @@
+{
+  "started_utc": "2026-09-10T18:36:39.769627+00:00",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/auto_depth_fixture.exe",
+    "C:\\X3\\d3dx9_37.dll"
+  ],
+  "timeout_seconds": 60,
+  "process_local_override": "d3d9=b",
+  "source_sha256": {
+    "verification/probe/auto_depth_fixture.cpp": "15ddcf623e8b8738d5b0fcce08c491fc28592c511f467b75176924934d8d2c2a",
+    "src/ownership/d3d9_ownership.cpp": "5262c47ed58152cb7f5a93a0a0aace970db5b723421ff4fd6fb479ef4d43f08c",
+    "src/ownership/d3d9_ownership.h": "6e8835b84c17f497765b497f8947fb736f73b4d7c026c09c68ba1b5cc64355e0",
+    "src/ownership/d3d9_classes_inc.h": "af1f6403cc1ac9937cbdc1d40eba29b7b5b033e173fab7cab49605060f0df35a",
+    "src/ownership/d3d9_forwarders_inc.h": "113ed2b05b81525436676b80c14a0b7cd9fd49fd77ce46357bfb2a6d5c55939b"
+  },
+  "executable_sha256": "a570d230b140aaa627ad9dec6fdc961de144833ce13f3f6f4d2eabaf180bab6b",
+  "exit_code": 0,
+  "checks": 758,
+  "samples": 48,
+  "failed_checks": [],
+  "compatibility": {
+    "observations": [
+      {
+        "mode": "original",
+        "stencil_clear": "00000000",
+        "copy_from": "00000000",
+        "copy_into": "00000000",
+        "stencil_enabled": "1",
+        "pixel": "ffff00ff"
+      },
+      {
+        "mode": "sampleable",
+        "stencil_clear": "00000000",
+        "copy_from": "8876086c",
+        "copy_into": "8876086c",
+        "stencil_enabled": "1",
+        "pixel": "ffff00ff"
+      }
+    ],
+    "depth_copy_parity": false,
+    "gameplay_ready": false,
+    "remaining_gates": [
+      "INTZ/D24X8 depth copies differ from original D24X8/D24X8 copies.",
+      "Scoped stencil masking during application BeginStateBlock recording is not equivalent.",
+      "Real device loss, multithreaded callers, and gameplay remain unverified."
+    ]
+  },
+  "passed": true
+}

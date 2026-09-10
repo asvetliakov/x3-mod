@@ -1,0 +1,71 @@
+{
+  "result": "PASS",
+  "dll_sha256": "ecdc8614a088e8c7f66a99b84df735ce06646580f89d97280649e8fbe65410e6",
+  "cases": {
+    "off-smoke": {
+      "devices": 2,
+      "destroyed": 2,
+      "reused_device_addresses": 1
+    },
+    "off-capture": {
+      "devices": 2,
+      "destroyed": 2,
+      "reused_device_addresses": 1
+    },
+    "off-lifetime": {
+      "devices": 16,
+      "destroyed": 16,
+      "reused_device_addresses": 15
+    },
+    "off-contracts": {
+      "devices": 3,
+      "destroyed": 3,
+      "reused_device_addresses": 2
+    },
+    "off-auto": {
+      "devices": 1,
+      "destroyed": 1,
+      "reused_device_addresses": 0
+    },
+    "on-smoke": {
+      "devices": 2,
+      "destroyed": 2,
+      "reused_device_addresses": 0
+    },
+    "on-capture": {
+      "devices": 2,
+      "destroyed": 2,
+      "reused_device_addresses": 0
+    },
+    "on-lifetime": {
+      "devices": 16,
+      "destroyed": 16,
+      "reused_device_addresses": 13
+    },
+    "on-contracts": {
+      "devices": 3,
+      "destroyed": 3,
+      "reused_device_addresses": 2
+    },
+    "on-auto": {
+      "devices": 1,
+      "destroyed": 1,
+      "reused_device_addresses": 0
+    },
+    "depth_only-smoke": {
+      "devices": 2,
+      "destroyed": 2,
+      "reused_device_addresses": 1
+    },
+    "sample_depth-auto": {
+      "devices": 1,
+      "destroyed": 1,
+      "reused_device_addresses": 0
+    }
+  },
+  "limits": [
+    "Synthetic DLL integration, not gameplay validation.",
+    "Direct3D9Ex remains native and uninstrumented.",
+    "Sampleable-depth loader wiring smoke only; numerical/content behavior has a separate fixture."
+  ]
+}

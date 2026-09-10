@@ -1,5 +1,16 @@
 # D3D9 resource ownership before persistent depth and temporal history
 
+Checkpoint update: the [canonical ownership layer](../../src/ownership/README.md)
+is now implemented and has passed [actual-DLL integration](../../verification/probe/ownership_integration.md)
+in an opt-in, uninstalled 0.4 build. It uses weak registries for live wrappers
+and lets native bindings/stateblocks retain native resources. The original
+capture-only hazard below still explains why this ownership boundary is needed.
+The later [automatic-depth experiment](../verification/auto-depth.md) uses the
+auto-depth allocation identified by the completed game trace; numeric success
+does not resolve its depth-copy and stateblock-recording compatibility gates.
+The remaining text preserves the design and acceptance requirements that led to
+this work; it is not a claim that substitution has passed all of them.
+
 Investigated 2026-09-10. **Do not add persistent COM resources to the current
 `Device` capture context and destroy them only after native `Release()` returns
 zero.** This creates an ownership cycle on the actual Preview backend. Attaching

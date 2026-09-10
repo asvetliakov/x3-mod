@@ -1,0 +1,1472 @@
+CHECK hidden window PASS
+CHECK fault native factory PASS
+API fault factory wrap result=00000000
+CHECK fault factory wrap PASS
+API device creation survives injected depth allocation failure result=00000000
+CHECK device creation survives injected depth allocation failure PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK injected operation reached exactly once PASS
+CHECK allocation failure is reported without replacement PASS
+API failure preserved native depth binding result=00000000
+CHECK failure preserved native depth binding PASS
+API failure depth descriptor result=00000000
+CHECK failure depth descriptor PASS
+CHECK failure original D24X8 retained PASS
+API failure original depth usable result=00000000
+CHECK failure original depth usable PASS
+API failed allocation Reset recovery result=00000000
+CHECK failed allocation Reset recovery PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK Reset retries allocation PASS
+ALLOCATION_FAILURE stage=1 rollback=1 reset_recovered=1
+CHECK fault native factory PASS
+API fault factory wrap result=00000000
+CHECK fault factory wrap PASS
+API device creation survives injected depth allocation failure result=00000000
+CHECK device creation survives injected depth allocation failure PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK injected operation reached exactly once PASS
+CHECK allocation failure is reported without replacement PASS
+API failure preserved native depth binding result=00000000
+CHECK failure preserved native depth binding PASS
+API failure depth descriptor result=00000000
+CHECK failure depth descriptor PASS
+CHECK failure original D24X8 retained PASS
+API failure original depth usable result=00000000
+CHECK failure original depth usable PASS
+API failed allocation Reset recovery result=00000000
+CHECK failed allocation Reset recovery PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK Reset retries allocation PASS
+ALLOCATION_FAILURE stage=2 rollback=1 reset_recovered=1
+CHECK fault native factory PASS
+API fault factory wrap result=00000000
+CHECK fault factory wrap PASS
+API device creation survives injected depth allocation failure result=00000000
+CHECK device creation survives injected depth allocation failure PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK injected operation reached exactly once PASS
+CHECK allocation failure is reported without replacement PASS
+API failure preserved native depth binding result=00000000
+CHECK failure preserved native depth binding PASS
+API failure depth descriptor result=00000000
+CHECK failure depth descriptor PASS
+CHECK failure original D24X8 retained PASS
+API failure original depth usable result=00000000
+CHECK failure original depth usable PASS
+API failed allocation Reset recovery result=00000000
+CHECK failed allocation Reset recovery PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK Reset retries allocation PASS
+ALLOCATION_FAILURE stage=3 rollback=1 reset_recovered=1
+CHECK native factory PASS
+API wrap factory enabled result=00000000
+CHECK wrap factory enabled PASS
+INELIGIBLE automatic=1 format=80 msaa=0
+API create ineligible device result=00000000
+CHECK create ineligible device PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK ineligible has no replacement PASS
+API ineligible depth getter result=00000000
+CHECK ineligible depth getter PASS
+API ineligible descriptor result=00000000
+CHECK ineligible descriptor PASS
+CHECK ineligible native format preserved PASS
+INELIGIBLE automatic=1 format=75 msaa=0
+API create ineligible device result=00000000
+CHECK create ineligible device PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK ineligible has no replacement PASS
+API ineligible depth getter result=00000000
+CHECK ineligible depth getter PASS
+API ineligible descriptor result=00000000
+CHECK ineligible descriptor PASS
+CHECK ineligible native format preserved PASS
+INELIGIBLE automatic=0 format=77 msaa=0
+API create ineligible device result=00000000
+CHECK create ineligible device PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK ineligible has no replacement PASS
+INELIGIBLE automatic=1 format=77 msaa=2
+API create ineligible device result=00000000
+CHECK create ineligible device PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK ineligible has no replacement PASS
+API ineligible depth getter result=00000000
+CHECK ineligible depth getter PASS
+API ineligible descriptor result=00000000
+CHECK ineligible descriptor PASS
+CHECK ineligible native format preserved PASS
+CHECK disabled native factory PASS
+API disabled wrapper result=00000000
+CHECK disabled wrapper PASS
+INELIGIBLE automatic=1 format=77 msaa=0
+API create ineligible device result=00000000
+CHECK create ineligible device PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK ineligible has no replacement PASS
+API ineligible depth getter result=00000000
+CHECK ineligible depth getter PASS
+API ineligible descriptor result=00000000
+CHECK ineligible descriptor PASS
+CHECK ineligible native format preserved PASS
+API compatibility device result=00000000
+CHECK compatibility device PASS
+API compatibility logical source result=00000000
+CHECK compatibility logical source PASS
+API compatibility other DS result=00000000
+CHECK compatibility other DS PASS
+API compatibility unbind result=00000000
+CHECK compatibility unbind PASS
+API compatibility rebind result=00000000
+CHECK compatibility rebind PASS
+API compatibility clear result=00000000
+CHECK compatibility clear PASS
+API enable logical stencil result=00000000
+CHECK enable logical stencil PASS
+API reject all if real stencil exists result=00000000
+CHECK reject all if real stencil exists PASS
+API geometry no VS result=00000000
+CHECK geometry no VS PASS
+API geometry no PS result=00000000
+CHECK geometry no PS PASS
+API geometry FVF result=00000000
+CHECK geometry FVF PASS
+API geometry no texture result=00000000
+CHECK geometry no texture PASS
+API geometry diffuse result=00000000
+CHECK geometry diffuse PASS
+API geometry diffuse arg result=00000000
+CHECK geometry diffuse arg PASS
+API geometry Z result=00000000
+CHECK geometry Z PASS
+API geometry write Z result=00000000
+CHECK geometry write Z PASS
+API geometry less result=00000000
+CHECK geometry less PASS
+API geometry cull result=00000000
+CHECK geometry cull PASS
+API geometry begin result=00000000
+CHECK geometry begin PASS
+API geometry draw result=00000000
+CHECK geometry draw PASS
+API geometry end result=00000000
+CHECK geometry end PASS
+API get logical stencil enabled result=00000000
+CHECK get logical stencil enabled PASS
+API compatibility get RT result=00000000
+CHECK compatibility get RT PASS
+API compatibility readback result=00000000
+CHECK compatibility readback PASS
+API compatibility read target result=00000000
+CHECK compatibility read target PASS
+API compatibility lock result=00000000
+CHECK compatibility lock PASS
+API compatibility unlock result=00000000
+CHECK compatibility unlock PASS
+COMPATIBILITY mode=original stencil_clear=00000000 copy_from=00000000 copy_into=00000000 stencil_enabled=1 pixel=ffff00ff
+API compatibility device result=00000000
+CHECK compatibility device PASS
+API compatibility logical source result=00000000
+CHECK compatibility logical source PASS
+API compatibility other DS result=00000000
+CHECK compatibility other DS PASS
+API compatibility unbind result=00000000
+CHECK compatibility unbind PASS
+API compatibility rebind result=00000000
+CHECK compatibility rebind PASS
+API compatibility clear result=00000000
+CHECK compatibility clear PASS
+API enable logical stencil result=00000000
+CHECK enable logical stencil PASS
+API reject all if real stencil exists result=00000000
+CHECK reject all if real stencil exists PASS
+API geometry no VS result=00000000
+CHECK geometry no VS PASS
+API geometry no PS result=00000000
+CHECK geometry no PS PASS
+API geometry FVF result=00000000
+CHECK geometry FVF PASS
+API geometry no texture result=00000000
+CHECK geometry no texture PASS
+API geometry diffuse result=00000000
+CHECK geometry diffuse PASS
+API geometry diffuse arg result=00000000
+CHECK geometry diffuse arg PASS
+API geometry Z result=00000000
+CHECK geometry Z PASS
+API geometry write Z result=00000000
+CHECK geometry write Z PASS
+API geometry less result=00000000
+CHECK geometry less PASS
+API geometry cull result=00000000
+CHECK geometry cull PASS
+API geometry begin result=00000000
+CHECK geometry begin PASS
+API geometry draw result=00000000
+CHECK geometry draw PASS
+API geometry end result=00000000
+CHECK geometry end PASS
+API get logical stencil enabled result=00000000
+CHECK get logical stencil enabled PASS
+API compatibility get RT result=00000000
+CHECK compatibility get RT PASS
+API compatibility readback result=00000000
+CHECK compatibility readback PASS
+API compatibility read target result=00000000
+CHECK compatibility read target PASS
+API compatibility lock result=00000000
+CHECK compatibility lock PASS
+API compatibility unlock result=00000000
+CHECK compatibility unlock PASS
+COMPATIBILITY mode=sampleable stencil_clear=00000000 copy_from=8876086c copy_into=8876086c stencil_enabled=1 pixel=ffff00ff
+CHECK logical stencil clear HRESULT parity PASS
+CHECK logical stencil getter parity PASS
+CHECK logical stencil pixel parity PASS
+DEPTH_COPY_PARITY matched=0
+API create wrapped auto-depth device result=00000000
+CHECK create wrapped auto-depth device PASS
+CHECK native seam available PASS
+CASE flags=00000040 generation=0 size=64x64
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK replacement available and bound PASS
+CHECK generation advances PASS
+API logical GetDepth result=00000000
+CHECK logical GetDepth PASS
+API logical GetDepth again result=00000000
+CHECK logical GetDepth again PASS
+CHECK canonical logical depth PASS
+API logical descriptor result=00000000
+CHECK logical descriptor PASS
+CHECK logical D24X8 dimensions PASS
+API physical GetDepth result=00000000
+CHECK physical GetDepth PASS
+API physical descriptor result=00000000
+CHECK physical descriptor PASS
+CHECK physical INTZ PASS
+CHECK logical source hides texture container PASS
+API logical source GetDevice result=00000000
+CHECK logical source GetDevice PASS
+CHECK logical parent canonical PASS
+API logical private data set result=00000000
+CHECK logical private data set PASS
+API logical private data get result=00000000
+CHECK logical private data get PASS
+CHECK private data retained PASS
+API stateblock create result=00000000
+CHECK stateblock create PASS
+API logical unbind result=00000000
+CHECK logical unbind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK view tracks unbind PASS
+API stateblock apply with no DS result=00000000
+CHECK stateblock apply with no DS PASS
+CHECK stateblock does not restore DS PASS
+API logical rebind result=00000000
+CHECK logical rebind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK view tracks rebind PASS
+API other depth create result=00000000
+CHECK other depth create PASS
+API other depth bind result=00000000
+CHECK other depth bind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK other source not selected PASS
+API other depth getter result=00000000
+CHECK other depth getter PASS
+CHECK other source identity PASS
+API source rebind result=00000000
+CHECK source rebind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+API background clear result=00000000
+CHECK background clear PASS
+API main epoch clear result=00000000
+CHECK main epoch clear PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK clear epochs tracked PASS
+API geometry no VS result=00000000
+CHECK geometry no VS PASS
+API geometry no PS result=00000000
+CHECK geometry no PS PASS
+API geometry FVF result=00000000
+CHECK geometry FVF PASS
+API geometry no texture result=00000000
+CHECK geometry no texture PASS
+API geometry diffuse result=00000000
+CHECK geometry diffuse PASS
+API geometry diffuse arg result=00000000
+CHECK geometry diffuse arg PASS
+API geometry Z result=00000000
+CHECK geometry Z PASS
+API geometry write Z result=00000000
+CHECK geometry write Z PASS
+API geometry less result=00000000
+CHECK geometry less PASS
+API geometry cull result=00000000
+CHECK geometry cull PASS
+API geometry begin result=00000000
+CHECK geometry begin PASS
+API geometry draw result=00000000
+CHECK geometry draw PASS
+API geometry end result=00000000
+CHECK geometry end PASS
+API snapshot target result=00000000
+CHECK snapshot target PASS
+API snapshot readback result=00000000
+CHECK snapshot readback PASS
+API snapshot target result=00000000
+CHECK snapshot target PASS
+API snapshot readback result=00000000
+CHECK snapshot readback PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=main-before-overlay-clear xy=8,8 expected=0.250000 actual=0.250000 PASS
+SAMPLE epoch=main-before-overlay-clear xy=56,8 expected=0.750000 actual=0.750000 PASS
+SAMPLE epoch=main-before-overlay-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=main-before-overlay-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK main-before-overlay-clear PASS
+API logical depth after snapshot result=00000000
+CHECK logical depth after snapshot PASS
+CHECK snapshot restores logical identity PASS
+API overlay destroys current depth result=00000000
+CHECK overlay destroys current depth PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=8,8 expected=0.250000 actual=0.250000 PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=56,8 expected=0.750000 actual=0.750000 PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK preserved-main-after-overlay-clear PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=8,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=56,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK live-depth-after-overlay-clear PASS
+OBSERVE reset_with_logical_source=8876086c
+CHECK retained source Reset fails PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK failed Reset disables depth PASS
+API reset retry resized result=00000000
+CHECK reset retry resized PASS
+CASE flags=00000040 generation=1 size=80x48
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK replacement available and bound PASS
+CHECK generation advances PASS
+API logical GetDepth result=00000000
+CHECK logical GetDepth PASS
+API logical GetDepth again result=00000000
+CHECK logical GetDepth again PASS
+CHECK canonical logical depth PASS
+API logical descriptor result=00000000
+CHECK logical descriptor PASS
+CHECK logical D24X8 dimensions PASS
+API physical GetDepth result=00000000
+CHECK physical GetDepth PASS
+API physical descriptor result=00000000
+CHECK physical descriptor PASS
+CHECK physical INTZ PASS
+CHECK logical source hides texture container PASS
+API logical source GetDevice result=00000000
+CHECK logical source GetDevice PASS
+CHECK logical parent canonical PASS
+API logical private data set result=00000000
+CHECK logical private data set PASS
+API logical private data get result=00000000
+CHECK logical private data get PASS
+CHECK private data retained PASS
+API stateblock create result=00000000
+CHECK stateblock create PASS
+API logical unbind result=00000000
+CHECK logical unbind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK view tracks unbind PASS
+API stateblock apply with no DS result=00000000
+CHECK stateblock apply with no DS PASS
+CHECK stateblock does not restore DS PASS
+API logical rebind result=00000000
+CHECK logical rebind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK view tracks rebind PASS
+API other depth create result=00000000
+CHECK other depth create PASS
+API other depth bind result=00000000
+CHECK other depth bind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK other source not selected PASS
+API other depth getter result=00000000
+CHECK other depth getter PASS
+CHECK other source identity PASS
+API source rebind result=00000000
+CHECK source rebind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+API background clear result=00000000
+CHECK background clear PASS
+API main epoch clear result=00000000
+CHECK main epoch clear PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK clear epochs tracked PASS
+API geometry no VS result=00000000
+CHECK geometry no VS PASS
+API geometry no PS result=00000000
+CHECK geometry no PS PASS
+API geometry FVF result=00000000
+CHECK geometry FVF PASS
+API geometry no texture result=00000000
+CHECK geometry no texture PASS
+API geometry diffuse result=00000000
+CHECK geometry diffuse PASS
+API geometry diffuse arg result=00000000
+CHECK geometry diffuse arg PASS
+API geometry Z result=00000000
+CHECK geometry Z PASS
+API geometry write Z result=00000000
+CHECK geometry write Z PASS
+API geometry less result=00000000
+CHECK geometry less PASS
+API geometry cull result=00000000
+CHECK geometry cull PASS
+API geometry begin result=00000000
+CHECK geometry begin PASS
+API geometry draw result=00000000
+CHECK geometry draw PASS
+API geometry end result=00000000
+CHECK geometry end PASS
+API snapshot target result=00000000
+CHECK snapshot target PASS
+API snapshot readback result=00000000
+CHECK snapshot readback PASS
+API snapshot target result=00000000
+CHECK snapshot target PASS
+API snapshot readback result=00000000
+CHECK snapshot readback PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=main-before-overlay-clear xy=8,8 expected=0.250000 actual=0.250000 PASS
+SAMPLE epoch=main-before-overlay-clear xy=56,8 expected=0.750000 actual=0.750000 PASS
+SAMPLE epoch=main-before-overlay-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=main-before-overlay-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK main-before-overlay-clear PASS
+API logical depth after snapshot result=00000000
+CHECK logical depth after snapshot PASS
+CHECK snapshot restores logical identity PASS
+API overlay destroys current depth result=00000000
+CHECK overlay destroys current depth PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=8,8 expected=0.250000 actual=0.250000 PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=56,8 expected=0.750000 actual=0.750000 PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK preserved-main-after-overlay-clear PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=8,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=56,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK live-depth-after-overlay-clear PASS
+CHECK final logical device release PASS
+API create wrapped auto-depth device result=00000000
+CHECK create wrapped auto-depth device PASS
+CHECK native seam available PASS
+CASE flags=00000050 generation=0 size=64x64
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK replacement available and bound PASS
+CHECK generation advances PASS
+API logical GetDepth result=00000000
+CHECK logical GetDepth PASS
+API logical GetDepth again result=00000000
+CHECK logical GetDepth again PASS
+CHECK canonical logical depth PASS
+API logical descriptor result=00000000
+CHECK logical descriptor PASS
+CHECK logical D24X8 dimensions PASS
+API physical GetDepth result=00000000
+CHECK physical GetDepth PASS
+API physical descriptor result=00000000
+CHECK physical descriptor PASS
+CHECK physical INTZ PASS
+CHECK logical source hides texture container PASS
+API logical source GetDevice result=00000000
+CHECK logical source GetDevice PASS
+CHECK logical parent canonical PASS
+API logical private data set result=00000000
+CHECK logical private data set PASS
+API logical private data get result=00000000
+CHECK logical private data get PASS
+CHECK private data retained PASS
+API stateblock create result=00000000
+CHECK stateblock create PASS
+API logical unbind result=00000000
+CHECK logical unbind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK view tracks unbind PASS
+API stateblock apply with no DS result=00000000
+CHECK stateblock apply with no DS PASS
+CHECK stateblock does not restore DS PASS
+API logical rebind result=00000000
+CHECK logical rebind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK view tracks rebind PASS
+API other depth create result=00000000
+CHECK other depth create PASS
+API other depth bind result=00000000
+CHECK other depth bind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK other source not selected PASS
+API other depth getter result=00000000
+CHECK other depth getter PASS
+CHECK other source identity PASS
+API source rebind result=00000000
+CHECK source rebind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+API background clear result=00000000
+CHECK background clear PASS
+API main epoch clear result=00000000
+CHECK main epoch clear PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK clear epochs tracked PASS
+API geometry no VS result=00000000
+CHECK geometry no VS PASS
+API geometry no PS result=00000000
+CHECK geometry no PS PASS
+API geometry FVF result=00000000
+CHECK geometry FVF PASS
+API geometry no texture result=00000000
+CHECK geometry no texture PASS
+API geometry diffuse result=00000000
+CHECK geometry diffuse PASS
+API geometry diffuse arg result=00000000
+CHECK geometry diffuse arg PASS
+API geometry Z result=00000000
+CHECK geometry Z PASS
+API geometry write Z result=00000000
+CHECK geometry write Z PASS
+API geometry less result=00000000
+CHECK geometry less PASS
+API geometry cull result=00000000
+CHECK geometry cull PASS
+API geometry begin result=00000000
+CHECK geometry begin PASS
+API geometry draw result=00000000
+CHECK geometry draw PASS
+API geometry end result=00000000
+CHECK geometry end PASS
+API snapshot target result=00000000
+CHECK snapshot target PASS
+API snapshot readback result=00000000
+CHECK snapshot readback PASS
+API snapshot target result=00000000
+CHECK snapshot target PASS
+API snapshot readback result=00000000
+CHECK snapshot readback PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=main-before-overlay-clear xy=8,8 expected=0.250000 actual=0.250000 PASS
+SAMPLE epoch=main-before-overlay-clear xy=56,8 expected=0.750000 actual=0.750000 PASS
+SAMPLE epoch=main-before-overlay-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=main-before-overlay-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK main-before-overlay-clear PASS
+API logical depth after snapshot result=00000000
+CHECK logical depth after snapshot PASS
+CHECK snapshot restores logical identity PASS
+API overlay destroys current depth result=00000000
+CHECK overlay destroys current depth PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=8,8 expected=0.250000 actual=0.250000 PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=56,8 expected=0.750000 actual=0.750000 PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK preserved-main-after-overlay-clear PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=8,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=56,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK live-depth-after-overlay-clear PASS
+OBSERVE reset_with_logical_source=8876086c
+CHECK retained source Reset fails PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK failed Reset disables depth PASS
+API reset retry resized result=00000000
+CHECK reset retry resized PASS
+CASE flags=00000050 generation=1 size=80x48
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK replacement available and bound PASS
+CHECK generation advances PASS
+API logical GetDepth result=00000000
+CHECK logical GetDepth PASS
+API logical GetDepth again result=00000000
+CHECK logical GetDepth again PASS
+CHECK canonical logical depth PASS
+API logical descriptor result=00000000
+CHECK logical descriptor PASS
+CHECK logical D24X8 dimensions PASS
+API physical GetDepth result=00000000
+CHECK physical GetDepth PASS
+API physical descriptor result=00000000
+CHECK physical descriptor PASS
+CHECK physical INTZ PASS
+CHECK logical source hides texture container PASS
+API logical source GetDevice result=00000000
+CHECK logical source GetDevice PASS
+CHECK logical parent canonical PASS
+API logical private data set result=00000000
+CHECK logical private data set PASS
+API logical private data get result=00000000
+CHECK logical private data get PASS
+CHECK private data retained PASS
+API stateblock create result=00000000
+CHECK stateblock create PASS
+API logical unbind result=00000000
+CHECK logical unbind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK view tracks unbind PASS
+API stateblock apply with no DS result=00000000
+CHECK stateblock apply with no DS PASS
+CHECK stateblock does not restore DS PASS
+API logical rebind result=00000000
+CHECK logical rebind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK view tracks rebind PASS
+API other depth create result=00000000
+CHECK other depth create PASS
+API other depth bind result=00000000
+CHECK other depth bind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK other source not selected PASS
+API other depth getter result=00000000
+CHECK other depth getter PASS
+CHECK other source identity PASS
+API source rebind result=00000000
+CHECK source rebind PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+API background clear result=00000000
+CHECK background clear PASS
+API main epoch clear result=00000000
+CHECK main epoch clear PASS
+API get renderer depth view result=00000000
+CHECK get renderer depth view PASS
+CHECK clear epochs tracked PASS
+API geometry no VS result=00000000
+CHECK geometry no VS PASS
+API geometry no PS result=00000000
+CHECK geometry no PS PASS
+API geometry FVF result=00000000
+CHECK geometry FVF PASS
+API geometry no texture result=00000000
+CHECK geometry no texture PASS
+API geometry diffuse result=00000000
+CHECK geometry diffuse PASS
+API geometry diffuse arg result=00000000
+CHECK geometry diffuse arg PASS
+API geometry Z result=00000000
+CHECK geometry Z PASS
+API geometry write Z result=00000000
+CHECK geometry write Z PASS
+API geometry less result=00000000
+CHECK geometry less PASS
+API geometry cull result=00000000
+CHECK geometry cull PASS
+API geometry begin result=00000000
+CHECK geometry begin PASS
+API geometry draw result=00000000
+CHECK geometry draw PASS
+API geometry end result=00000000
+CHECK geometry end PASS
+API snapshot target result=00000000
+CHECK snapshot target PASS
+API snapshot readback result=00000000
+CHECK snapshot readback PASS
+API snapshot target result=00000000
+CHECK snapshot target PASS
+API snapshot readback result=00000000
+CHECK snapshot readback PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=main-before-overlay-clear xy=8,8 expected=0.250000 actual=0.250000 PASS
+SAMPLE epoch=main-before-overlay-clear xy=56,8 expected=0.750000 actual=0.750000 PASS
+SAMPLE epoch=main-before-overlay-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=main-before-overlay-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK main-before-overlay-clear PASS
+API logical depth after snapshot result=00000000
+CHECK logical depth after snapshot PASS
+CHECK snapshot restores logical identity PASS
+API overlay destroys current depth result=00000000
+CHECK overlay destroys current depth PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=8,8 expected=0.250000 actual=0.250000 PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=56,8 expected=0.750000 actual=0.750000 PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=preserved-main-after-overlay-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK preserved-main-after-overlay-clear PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=8,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=56,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=live-depth-after-overlay-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK live-depth-after-overlay-clear PASS
+CHECK final logical device release PASS
+RESULT PASS checks=758 samples=48

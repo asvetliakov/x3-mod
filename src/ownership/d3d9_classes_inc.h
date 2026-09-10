@@ -2,6 +2,7 @@
 // Edit the generator or handwritten ownership rules, not this file.
 struct Factory final : IDirect3D9, Node {
     IDirect3D9* native_;
+    Options options;
     Factory(IDirect3D9* native, Node* owner)
         : Node(Kind::Factory, native, owner), native_(native) { application = static_cast<IDirect3D9*>(this); }
     HRESULT WINAPI QueryInterface(REFIID riid, void** ppvObject) override;
@@ -24,8 +25,10 @@ struct Factory final : IDirect3D9, Node {
 };
 struct Device final : IDirect3DDevice9, Node {
     IDirect3DDevice9* native_;
+    Options options;
     std::vector<IUnknown*> renderer_resources;
     bool retiring = false, resetting = false, lost = false;
+    AutoDepth auto_depth;
     Device(IDirect3DDevice9* native, Node* owner)
         : Node(Kind::Device, native, owner), native_(native) { application = static_cast<IDirect3DDevice9*>(this); }
     HRESULT WINAPI QueryInterface(REFIID riid, void** ppvObject) override;

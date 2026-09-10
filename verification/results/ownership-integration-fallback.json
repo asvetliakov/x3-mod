@@ -1,0 +1,16 @@
+{
+  "result": "PASS",
+  "fault": "wrap_factory E_OUTOFMEMORY without consuming native ref",
+  "production_objects": [
+    "src/proxy/capture.cpp.obj",
+    "src/proxy/capture_state.cpp.obj",
+    "src/proxy/loader.cpp.obj",
+    "src/proxy/loading_trace.cpp.obj",
+    "src/proxy/telemetry.cpp.obj"
+  ],
+  "verification_dll_sha256": "b90b3be2f2098a1c419366a2866b7106f6d802b380cbf2a7e3b9bb0e88d85907",
+  "production_dll_sha256": "ecdc8614a088e8c7f66a99b84df735ce06646580f89d97280649e8fbe65410e6",
+  "trace_sha256": "10e8fddfc5aae8f2c0ed402995418e5120a7e9da380678d35614d16e99e96122",
+  "stub_sha256": "a5873c3352b1d2153d9e6dd32826160f22d718753ef22980b84ecad7927e8902",
+  "installed": false
+}

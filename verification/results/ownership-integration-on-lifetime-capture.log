@@ -1,0 +1,280 @@
+x3-modern-renderer version=0.4 schema=2 capture_start=1 capture_frames=0 pointer_bits=32
+telemetry_start schema=1 qpc_frequency=10000000 qpc=7943910083465 anchor=proxy_initialize cpu_only=1
+loading_trace disabled=fingerprint_mismatch hash=768a3d6b52d5c252 bytes=248712
+ownership_mode requested=1 sampleable_depth_requested=0 sampleable_depth_enabled=0 scope=normal9 fallback=native
+telemetry_span name=backend_load qpc_begin=7943910092902 qpc_end=7943910146452 thread=712 success=1 error=0
+backend path=C:\windows\system32\d3d9.dll
+telemetry_span name=direct3d_create9 qpc_begin=7943910147578 qpc_end=7943921629063 thread=712 success=1
+ownership_factory mode=wrapped native=00115128 public=00115608 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_summary device=0 frame=0 reason=interval qpc=7943921642182 since_start_us=1155871.700 interval_us=1155871.700 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=1 failures=0 total_us=0.700 min_us=0.700 max_us=0.700 bytes=0 buckets=1,0,0,0,0,0
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=0 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=00d0ac60 device=1 ex=0
+ownership_depth phase=create_after device=1 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=1 frame=0 reason=device_destroy qpc=7943921804170 since_start_us=1172070.500 interval_us=4714.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=texture count=1 failures=0 total_us=298.300 min_us=298.300 max_us=298.300 bytes=0 buckets=0,0,1,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943921804572 since_start_us=1172110.750 interval_us=16239.000 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=7 failures=0 total_us=3.300 min_us=0.100 max_us=0.900 bytes=0 buckets=7,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=8318.600 min_us=8318.600 max_us=8318.600 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=19.600 min_us=19.600 max_us=19.600 bytes=0 buckets=0,1,0,0,0,0
+device_destroy ptr=00d0ac60 device=1
+telemetry_span name=direct3d_create9 qpc_begin=7943921813463 qpc_end=7943922788067 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8c8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011d008 device=2 ex=0
+ownership_depth phase=create_after device=2 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=2 frame=0 reason=device_destroy qpc=7943922826679 since_start_us=1274321.375 interval_us=1531.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=2 name=texture count=1 failures=0 total_us=7.100 min_us=7.100 max_us=7.100 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943922827120 since_start_us=1274365.500 interval_us=102254.797 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=2.100 min_us=0.100 max_us=0.600 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2077.200 min_us=2077.200 max_us=2077.200 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011d008 device=2
+telemetry_span name=direct3d_create9 qpc_begin=7943922832734 qpc_end=7943923796555 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8c8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011d008 device=3 ex=0
+ownership_depth phase=create_after device=3 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=3 frame=0 reason=device_destroy qpc=7943923835919 since_start_us=1375245.375 interval_us=1528.300 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=3 name=texture count=1 failures=0 total_us=7.100 min_us=7.100 max_us=7.100 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943923836324 since_start_us=1375285.875 interval_us=100920.398 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.900 min_us=0.100 max_us=0.600 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2181.900 min_us=2181.900 max_us=2181.900 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011d008 device=3
+telemetry_span name=direct3d_create9 qpc_begin=7943923866039 qpc_end=7943924899404 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8c8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011cf58 device=4 ex=0
+ownership_depth phase=create_after device=4 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=4 frame=0 reason=device_destroy qpc=7943924956720 since_start_us=1487325.500 interval_us=3995.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=4 name=texture count=1 failures=0 total_us=6.100 min_us=6.100 max_us=6.100 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943924957153 since_start_us=1487368.750 interval_us=112082.906 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.600 min_us=0.100 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1534.900 min_us=1534.900 max_us=1534.900 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011cf58 device=4
+telemetry_span name=direct3d_create9 qpc_begin=7943924965383 qpc_end=7943925967524 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8c8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011cf58 device=5 ex=0
+ownership_depth phase=create_after device=5 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=5 frame=0 reason=device_destroy qpc=7943926043337 since_start_us=1595987.250 interval_us=5310.300 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=5 name=texture count=1 failures=0 total_us=6.900 min_us=6.900 max_us=6.900 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943926043795 since_start_us=1596033.000 interval_us=108664.203 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=2.000 min_us=0.100 max_us=0.700 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2079.900 min_us=2079.900 max_us=2079.900 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011cf58 device=5
+telemetry_span name=direct3d_create9 qpc_begin=7943926053286 qpc_end=7943927060710 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8c8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011cf58 device=6 ex=0
+ownership_depth phase=create_after device=6 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=6 frame=0 reason=device_destroy qpc=7943927128410 since_start_us=1704494.500 interval_us=4931.100 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=6 name=texture count=1 failures=0 total_us=5.500 min_us=5.500 max_us=5.500 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943927128819 since_start_us=1704535.375 interval_us=108502.398 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.800 min_us=0.100 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1641.300 min_us=1641.300 max_us=1641.300 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011cf58 device=6
+telemetry_span name=direct3d_create9 qpc_begin=7943927138075 qpc_end=7943928120390 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8f8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011cf58 device=7 ex=0
+ownership_depth phase=create_after device=7 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=7 frame=0 reason=device_destroy qpc=7943928218238 since_start_us=1813477.375 interval_us=6344.200 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=7 name=texture count=1 failures=0 total_us=8.100 min_us=8.100 max_us=8.100 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943928244986 since_start_us=1816152.125 interval_us=111616.695 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.600 min_us=0.100 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1579.200 min_us=1579.200 max_us=1579.200 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.000 min_us=0.000 max_us=0.000 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011cf58 device=7
+telemetry_span name=direct3d_create9 qpc_begin=7943928247202 qpc_end=7943929235232 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8c8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011cf58 device=8 ex=0
+ownership_depth phase=create_after device=8 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=8 frame=0 reason=device_destroy qpc=7943929303914 since_start_us=1922044.875 interval_us=3946.500 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=8 name=texture count=1 failures=0 total_us=9.600 min_us=9.600 max_us=9.600 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943929304395 since_start_us=1922093.125 interval_us=105940.898 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=2.200 min_us=0.100 max_us=0.900 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2656.600 min_us=2656.600 max_us=2656.600 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011cf58 device=8
+telemetry_span name=direct3d_create9 qpc_begin=7943929313768 qpc_end=7943930309780 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8c8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011cf58 device=9 ex=0
+ownership_depth phase=create_after device=9 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=9 frame=0 reason=device_destroy qpc=7943930377398 since_start_us=2029393.250 interval_us=4864.400 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=9 name=texture count=1 failures=0 total_us=7.000 min_us=7.000 max_us=7.000 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943930377805 since_start_us=2029433.875 interval_us=107341.000 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.600 min_us=0.000 max_us=0.400 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1698.500 min_us=1698.500 max_us=1698.500 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011cf58 device=9
+telemetry_span name=direct3d_create9 qpc_begin=7943930386634 qpc_end=7943931375762 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8f8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011cf58 device=10 ex=0
+ownership_depth phase=create_after device=10 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=10 frame=0 reason=device_destroy qpc=7943931408740 since_start_us=2132527.500 interval_us=1488.900 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=10 name=texture count=1 failures=0 total_us=6.200 min_us=6.200 max_us=6.200 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943931409068 since_start_us=2132560.250 interval_us=103126.305 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.800 min_us=0.100 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1608.600 min_us=1608.600 max_us=1608.600 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011cf58 device=10
+telemetry_span name=direct3d_create9 qpc_begin=7943931414973 qpc_end=7943932374416 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8f8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011d008 device=11 ex=0
+ownership_depth phase=create_after device=11 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=11 frame=0 reason=device_destroy qpc=7943932409092 since_start_us=2232562.750 interval_us=1486.500 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=11 name=texture count=1 failures=0 total_us=6.500 min_us=6.500 max_us=6.500 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943932409417 since_start_us=2232595.250 interval_us=100034.898 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.900 min_us=0.100 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1754.200 min_us=1754.200 max_us=1754.200 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011d008 device=11
+telemetry_span name=direct3d_create9 qpc_begin=7943932415034 qpc_end=7943933374285 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8c8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011cf58 device=12 ex=0
+ownership_depth phase=create_after device=12 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=12 frame=0 reason=device_destroy qpc=7943933406708 since_start_us=2332324.250 interval_us=1471.300 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=12 name=texture count=1 failures=0 total_us=5.900 min_us=5.900 max_us=5.900 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943933407058 since_start_us=2332359.250 interval_us=99764.102 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.400 min_us=0.000 max_us=0.400 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1571.100 min_us=1571.100 max_us=1571.100 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011cf58 device=12
+telemetry_span name=direct3d_create9 qpc_begin=7943933412432 qpc_end=7943934398265 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8c8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011cf58 device=13 ex=0
+ownership_depth phase=create_after device=13 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=13 frame=0 reason=device_destroy qpc=7943934456145 since_start_us=2437268.000 interval_us=4066.500 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=13 name=texture count=1 failures=0 total_us=5.900 min_us=5.900 max_us=5.900 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943934456642 since_start_us=2437317.500 interval_us=104958.398 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.800 min_us=0.100 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1508.100 min_us=1508.100 max_us=1508.100 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011cf58 device=13
+telemetry_span name=direct3d_create9 qpc_begin=7943934464824 qpc_end=7943935459526 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8c8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011cf58 device=14 ex=0
+ownership_depth phase=create_after device=14 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=14 frame=0 reason=device_destroy qpc=7943935497239 since_start_us=2541377.500 interval_us=1909.400 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=14 name=texture count=1 failures=0 total_us=6.300 min_us=6.300 max_us=6.300 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943935497602 since_start_us=2541413.750 interval_us=104096.000 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.400 min_us=0.100 max_us=0.400 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1672.400 min_us=1672.400 max_us=1672.400 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011cf58 device=14
+telemetry_span name=direct3d_create9 qpc_begin=7943935503901 qpc_end=7943936485600 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8c8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011cf58 device=15 ex=0
+ownership_depth phase=create_after device=15 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=15 frame=0 reason=device_destroy qpc=7943936541675 since_start_us=2645821.000 interval_us=3840.900 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=15 name=texture count=1 failures=0 total_us=6.600 min_us=6.600 max_us=6.600 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943936542035 since_start_us=2645857.000 interval_us=104443.305 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=2.000 min_us=0.100 max_us=0.600 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1542.000 min_us=1542.000 max_us=1542.000 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011cf58 device=15
+telemetry_span name=direct3d_create9 qpc_begin=7943936552864 qpc_end=7943937540270 thread=712 success=1
+ownership_factory mode=wrapped native=0011c898 public=0011c8c8 result=00000000
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_presentation phase=create_before device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=712 focus_window=000b0060 device_window=000b0060 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=0011cf58 device=16 ex=0
+ownership_depth phase=create_after device=16 result=00000000 status=00000001 requested=0 available=0 bound=0 generation=0 clear_epoch=0 logical_width=0 logical_height=0 logical_format=0 logical_type=0 logical_usage=0 logical_pool=0 logical_msaa=0 logical_quality=0
+telemetry_summary device=16 frame=0 reason=device_destroy qpc=7943937574128 since_start_us=2749066.500 interval_us=1590.100 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=16 name=texture count=1 failures=0 total_us=7.100 min_us=7.100 max_us=7.100 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=7943937574499 since_start_us=2749103.500 interval_us=103246.398 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.700 min_us=0.100 max_us=0.600 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1568.400 min_us=1568.400 max_us=1568.400 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=0011cf58 device=16

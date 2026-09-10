@@ -31,7 +31,11 @@ def main():
     parser.add_argument('--direct', action='store_true', help='Skip launcher and intro using X3 command-line switches')
     parser.add_argument('--vanilla', action='store_true', help='Launch with builtin D3D9, ignoring the installed proxy')
     parser.add_argument('--telemetry', action='store_true', help='Enable bounded loading, presentation and cursor diagnostics')
+    parser.add_argument('--ownership', action='store_true', help='Enable the experimental normal-D3D9 ownership wrapper')
+    parser.add_argument('--sampleable-depth', action='store_true', help='Enable experimental sampleable auto-depth (requires --ownership)')
     args = parser.parse_args()
+    if args.sampleable_depth and not args.ownership:
+        parser.error('--sampleable-depth requires --ownership.')
     game = args.game_dir.resolve()
     dll = game / 'd3d9.dll'
     manifest = game / 'x3-modern-install.json'
@@ -73,6 +77,8 @@ def main():
         env['X3M_CAPTURE_START'] = str(max(1, args.capture_start))
         env['X3M_CAPTURE_FRAMES'] = str(args.capture_frames)
         env['X3M_TELEMETRY'] = '1' if args.telemetry else '0'
+        env['X3M_OWNERSHIP'] = '1' if args.ownership else '0'
+        env['X3M_SAMPLEABLE_DEPTH'] = '1' if args.sampleable_depth else '0'
         # --dll applies to this child only, preserving the user's other overrides.
         command = [str(WINE), '--bottle', args.bottle, '--no-update',
                    '--dll', 'd3d9=b' if args.vanilla else 'd3d9=n,b',

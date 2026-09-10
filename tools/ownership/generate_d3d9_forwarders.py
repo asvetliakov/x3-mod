@@ -62,8 +62,11 @@ def generate(parsed, directory):
     for interface, methods in parsed.items():
         kind = KINDS[interface]
         classes.append(f"struct {kind} final : {interface}, Node {{\n    {interface}* native_;\n")
+        if kind in {"Factory", "Device"}:
+            classes.append("    Options options;\n")
         if kind == "Device":
             classes.append("    std::vector<IUnknown*> renderer_resources;\n    bool retiring = false, resetting = false, lost = false;\n")
+            classes.append("    AutoDepth auto_depth;\n")
         classes.append(f"    {kind}({interface}* native, Node* owner)\n        : Node(Kind::{kind}, native, owner), native_(native) {{ application = static_cast<{interface}*>(this); }}\n")
         for ret, name, params in methods:
             count += 1
@@ -87,12 +90,22 @@ def generate(parsed, directory):
                 body = f"return create_device(this, {', '.join(args)});"
             elif kind == "Device" and name == "Reset":
                 body = f"return reset_device(this, {args[0]});"
+            elif kind == "Device" and name == "GetDepthStencilSurface":
+                body = f"return get_depth(this, {args[0]});"
+            elif kind == "Device" and name == "SetDepthStencilSurface":
+                body = f"return set_depth(this, {args[0]});"
+            elif kind == "Device" and name == "Clear":
+                body = f"return clear_device(this, {', '.join(args)});"
             else:
                 outputs = [(typ, arg) for typ, arg in params if re.fullmatch(r"IDirect3D\w+\s*\*\s*\*", typ)]
                 inputs = {arg for typ, arg in params if re.fullmatch(r"IDirect3D\w+\s*\*", typ)}
                 if len(outputs) > 1:
                     raise ValueError(f"Multiple interface outputs: {interface}::{name}")
                 actual = [f"unwrap(device_of(this), {arg})" if arg in inputs else arg for arg in args]
+                if name in {"UpdateSurface", "GetRenderTargetData", "GetFrontBufferData", "StretchRect", "ColorFill"}:
+                    for index, (typ, arg) in enumerate(params):
+                        if re.fullmatch(r"IDirect3DSurface9\s*\*", typ):
+                            actual[index] = f"unwrap_physical_surface(device_of(this), {arg})"
                 if outputs:
                     typ, arg = outputs[0]
                     interface_out = typ.replace("*", "").strip()
@@ -102,6 +115,8 @@ def generate(parsed, directory):
                             f"    return output(device_of(this), hr, owned, {arg});")
                 elif name in {"Present", "TestCooperativeLevel"}:
                     body = f"return observe_result(device_of(this), native_->{name}({', '.join(actual)}));"
+                elif kind == "Device" and name in {"DrawPrimitive", "DrawIndexedPrimitive", "DrawPrimitiveUP", "DrawIndexedPrimitiveUP", "DrawRectPatch", "DrawTriPatch"}:
+                    body = f"return draw_device(this, [&]() {{ return native_->{name}({', '.join(actual)}); }});"
                 else:
                     body = f"return native_->{name}({', '.join(actual)});"
             bodies.append("    " + body + "\n}\n")

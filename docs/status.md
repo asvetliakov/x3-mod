@@ -106,10 +106,10 @@ after focus changes. Win32 focus/clipping/hiding restore in the trace, but nativ
 cursor state was not sampled. See [cursor observations](reverse-engineering/cursor-observations.md)
 for a scoped synthetic investigation; no cursor fix is deployed.
 
-An independent canonical D3D9 ownership layer now passes 370 baseline / 431 wrapped
+An independent canonical D3D9 ownership layer passes 370 baseline / 431 wrapped
 fixture checks with matching shared HRESULTs and output mutations. It releases
 renderer-owned resources before Reset and native device teardown. It is not yet
-connected to the loader or installed DLL; see [ownership source](../src/ownership/README.md)
+enabled in the installed DLL; see [ownership source](../src/ownership/README.md)
 and [verification](../verification/probe/ownership.md). Generated fragments use
 `*_inc.h` per the user's editor preference.
 
@@ -119,6 +119,31 @@ FP16; SM2 COLOR0 clips before interpolation. Explicit pixel-shader saturation
 still clips both paths. See [HDR varying verification](verification/vertex-color-hdr.md).
 This supports targeted SM3 material changes once the FP16 scene path exists;
 it is not a game HDR implementation.
+
+## Experimental 0.4 checkpoint (not installed)
+
+The ownership layer is connected to the loader behind `X3M_OWNERSHIP=1` in the
+separate `build-ownership/` build. All 12 actual-DLL integration cases and a forced
+adoption-failure fallback pass. Child-induced final device/factory releases now
+reach the capture hooks; repeated device address reuse leaves no stale contexts.
+Stencil states and depth selection status are included in consolidated capture
+diagnostics. See [integration verification](../verification/probe/ownership_integration.md).
+
+Opt-in automatic D24X8-to-INTZ substitution passes 758 API/lifetime checks and 48
+numeric samples, including preservation before a destructive depth clear and
+three allocation-failure rollback cases. **It is not ready for gameplay:** depth
+copies between INTZ and ordinary D24X8 fail where the original copies succeed,
+and stencil handling during stateblock recording is unresolved. See
+[automatic-depth experiment](verification/auto-depth.md). Investigation of a
+compatible RESZ copy path continues before choosing the production depth route.
+
+The bounded original mesh-adjacency reuse fixture passes 1,218 checks and complete
+downstream mesh parity. It demonstrates a synthetic speed benefit for repeated
+identical meshes, not a game loading improvement; actual repetition/cost remains
+unmeasured. See [mesh preparation](verification/mesh-preparation.md).
+
+A standalone temporal resolve shader and GPU verification are in progress;
+camera/object-motion routing and gameplay TAA remain incomplete.
 
 No game was launched by the agent. No visual enhancement has been enabled.
 Commit each completed logical checkpoint.

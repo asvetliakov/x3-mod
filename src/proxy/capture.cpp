@@ -2,6 +2,7 @@
 #include "capture_state.h"
 #include "telemetry.h"
 #include "loading_trace.h"
+#include "../ownership/d3d9_ownership.h"
 #include <array>
 #include <cstdarg>
 #include <cstdio>
@@ -124,6 +125,18 @@ void surface_info(const char* name, IDirect3DSurface9* surface) {
             surface,id,desc.Width,desc.Height,desc.Format,desc.Usage,desc.MultiSampleType,parent_id,parent_type,container_result);
     else log("surface role=%s ptr=%p identity=%llu result=%08lx",name,surface,id,result);
 }
+void ownership_depth_info(IDirect3DDevice9* d, uint64_t device, const char* phase) {
+    // This is a borrowed diagnostic snapshot, never a resource adoption or a
+    // GPU allocation. Native/default mode must not query ownership internals.
+    if (!ownership::borrowed_native_device(d)) return;
+    ownership::DepthView view{};
+    const HRESULT result = ownership::get_depth_view(d, &view);
+    const auto& desc = view.logical_desc;
+    log("ownership_depth phase=%s device=%llu result=%08lx status=%08lx requested=%u available=%u bound=%u generation=%llu clear_epoch=%llu logical_width=%u logical_height=%u logical_format=%u logical_type=%u logical_usage=%lu logical_pool=%u logical_msaa=%u logical_quality=%lu",
+        phase,device,result,view.status,view.requested,view.available,view.bound,
+        view.generation,view.clear_epoch,desc.Width,desc.Height,desc.Format,desc.Type,
+        desc.Usage,desc.Pool,desc.MultiSampleType,desc.MultiSampleQuality);
+}
 void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT primitives, bool user_memory=false) {
     auto& ctx = *devices.at(d);
     ++ctx.draws;
@@ -150,7 +163,12 @@ void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT
     for (auto state : {D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ZFUNC,D3DRS_ALPHATESTENABLE,
                        D3DRS_ALPHAREF,D3DRS_ALPHAFUNC,D3DRS_ALPHABLENDENABLE,D3DRS_SRCBLEND,
                        D3DRS_DESTBLEND,D3DRS_BLENDOP,D3DRS_CULLMODE,D3DRS_COLORWRITEENABLE,
-                       D3DRS_SRGBWRITEENABLE,D3DRS_SEPARATEALPHABLENDENABLE}) {
+                       D3DRS_SRGBWRITEENABLE,D3DRS_SEPARATEALPHABLENDENABLE,
+                       D3DRS_STENCILENABLE,D3DRS_STENCILFUNC,D3DRS_STENCILREF,
+                       D3DRS_STENCILMASK,D3DRS_STENCILWRITEMASK,D3DRS_STENCILFAIL,
+                       D3DRS_STENCILZFAIL,D3DRS_STENCILPASS,D3DRS_TWOSIDEDSTENCILMODE,
+                       D3DRS_CCW_STENCILFUNC,D3DRS_CCW_STENCILFAIL,
+                       D3DRS_CCW_STENCILZFAIL,D3DRS_CCW_STENCILPASS}) {
         DWORD value = 0;
         HRESULT hr = d->GetRenderState(state,&value);
         if (SUCCEEDED(hr)) log("state id=%u value=%lu",state,value);
@@ -226,6 +244,7 @@ HRESULT WINAPI reset(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p) {
     const auto begin=telemetry::now();
     HRESULT hr=fn(d,p); telemetry::record(ctx.stats,telemetry::Metric::Reset,telemetry::now()-begin,FAILED(hr));
     presentation_parameters("reset_after",ctx.id,ctx.stats.focus_window,p);
+    ownership_depth_info(d,ctx.id,"reset_after");
     if(SUCCEEDED(hr)&&p&&p->hDeviceWindow)ctx.stats.window=p->hDeviceWindow;
     telemetry::summary(ctx.stats,"reset",ctx.frame);
     log("reset_end device=%llu result=%08lx",ctx.id,hr); return hr;
@@ -434,6 +453,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     auto entry=devices.emplace(d,std::move(ctx));
     entry.first->second->install(d);
     log("device_hooked ptr=%p device=%llu ex=%u",d,devices.at(d)->id,supports_ex);
+    ownership_depth_info(d,devices.at(d)->id,"create_after");
 }
 ULONG WINAPI release_factory(IDirect3D9* d) {
     HookGuard lock;
@@ -467,7 +487,7 @@ void initialize_log(HMODULE module) {
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_START",setting,32)>0) capture_start=wcstoul(setting,nullptr,10);
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_FRAMES",setting,32)>0) capture_count=wcstoul(setting,nullptr,10);
     if(capture_count>8) capture_count=8;
-    log("x3-modern-renderer version=0.3 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
+    log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     if(telemetry::enabled())loading_trace::initialize();
 }

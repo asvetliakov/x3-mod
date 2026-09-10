@@ -1,0 +1,113 @@
+{
+  "dll_sha256": "ecdc8614a088e8c7f66a99b84df735ce06646580f89d97280649e8fbe65410e6",
+  "runtime": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+  "bottle": "Steam",
+  "game_launched": false,
+  "sources_at_start": {
+    "src/ownership/d3d9_classes_inc.h": "af1f6403cc1ac9937cbdc1d40eba29b7b5b033e173fab7cab49605060f0df35a",
+    "src/ownership/d3d9_forwarders_inc.h": "113ed2b05b81525436676b80c14a0b7cd9fd49fd77ce46357bfb2a6d5c55939b",
+    "src/ownership/d3d9_ownership.cpp": "5262c47ed58152cb7f5a93a0a0aace970db5b723421ff4fd6fb479ef4d43f08c",
+    "src/ownership/d3d9_ownership.h": "6e8835b84c17f497765b497f8947fb736f73b4d7c026c09c68ba1b5cc64355e0",
+    "src/proxy/capture.cpp": "1aae6ffc4addd4017ca517e940df51d1996c0b5890cd503b2b40b0a307f110b7",
+    "src/proxy/capture.h": "609b232874932ca584ec259eb7eead463c9ed9bc3231cfb26467d393f95ec0f8",
+    "src/proxy/capture_state.cpp": "0c362a3d14ea3a18e7ba216fd08ab77fe5d812cf1edb8b95c14f32584aae061b",
+    "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
+    "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
+    "src/proxy/loader.cpp": "84b55d2fd4ddb0809b62a1a18ac409b76019f47b1475b85806ea606aa6ffcf92",
+    "src/proxy/loading_trace.cpp": "5a1e470d9e86b40814360a928fa2e6e35eb6fc7ccd08f2a4d0589c8d3fb36389",
+    "src/proxy/loading_trace.h": "a2cb9334f5fb2c3e1734de61fa76de33019cb29ead2e9cae0d7e9cdfa27e861e",
+    "src/proxy/telemetry.cpp": "0cae95895de6613c4d72db7e8ff5ea89250802c78b37469005e52c5ecc7074b5",
+    "src/proxy/telemetry.h": "88dd36aa1755c2b61175aa3060e9c1843294c69e9ddceaa7d2c0a8bbbb54da37"
+  },
+  "cases": {
+    "ownership-integration-off-smoke": {
+      "exit": 0,
+      "exe_sha256": "fe6fb4c8835979f271ac7ff15b5e2a252a6452b7cb7ff8235f61633ff29d7d13",
+      "report_sha256": "c602abf115a694d468cff40f86b1093fd01626a6e3b46880eae9367380c8e0b7",
+      "trace_sha256": "408d7d7122de0eaf6dce007549b0ee823564047de754db711fe2d410faace68b"
+    },
+    "ownership-integration-off-capture": {
+      "exit": 0,
+      "exe_sha256": "aeebe1946ec5e5e773d7796fbc6e4da31b66daeb40ba2a671e34e34819a03a2b",
+      "report_sha256": "94ca608fa2ba3eb35723ef995baac57de1d3df30d94bf7e99dcbf97ebfa72b85",
+      "trace_sha256": "c2ed8390786eb7813c7a2225496c8d6d2472160f25f81a2798ef13efbc6a4ccf"
+    },
+    "ownership-integration-off-lifetime": {
+      "exit": 0,
+      "exe_sha256": "2d90b82aa62485a9305de42013eca5a0d8dfc34823ae359dba7522e382cec5cb",
+      "report_sha256": "89ceaf9aba48d5ff2a086afb2fbb0951cc01bd4c2fba9057657c7ca2444d0ff6",
+      "trace_sha256": "2df75efdbdabe437ad91600525284069d05ee79f09b0891202ef9066f0603c44"
+    },
+    "ownership-integration-off-contracts": {
+      "exit": 0,
+      "exe_sha256": "5ec156a8514a555ee28c15791ba5222a8f7ee730b0d4e545b7cb0bb4f7f2d590",
+      "report_sha256": "37c55d1f8719ccc87faf3686c2176e598205f0dec1c88868fa95a25526078d37",
+      "trace_sha256": "7a7b4253a8829f71f2d93b043f4914a55d669a0d1b5653f7361f717055518d90"
+    },
+    "ownership-integration-off-auto": {
+      "exit": 0,
+      "exe_sha256": "fe4b4e0787cad9347e02d50f8447fac96c602f53ca55696c2cdd5dd6c2412d7d",
+      "report_sha256": "770aa6023e34ed92f9aad4d4fb46880aa2ef63386be345a5293c112f46ed8940",
+      "trace_sha256": "a315ca778230089664d8c01e4a1bc6015bf4d0b3a73e4fdaf55b1487c8ee1c48"
+    },
+    "ownership-integration-on-smoke": {
+      "exit": 0,
+      "exe_sha256": "fe6fb4c8835979f271ac7ff15b5e2a252a6452b7cb7ff8235f61633ff29d7d13",
+      "report_sha256": "8a2f57c3063b3986e1eff27666c431c0426717572a756f828794a805761f6e69",
+      "trace_sha256": "80f530e105a29a8ece407c349d66efe76a199086da739719cedfe25b3b3f2ba4"
+    },
+    "ownership-integration-on-capture": {
+      "exit": 0,
+      "exe_sha256": "aeebe1946ec5e5e773d7796fbc6e4da31b66daeb40ba2a671e34e34819a03a2b",
+      "report_sha256": "94ca608fa2ba3eb35723ef995baac57de1d3df30d94bf7e99dcbf97ebfa72b85",
+      "trace_sha256": "932cea840aae5b753aa85b3036ce67636b06b5e543212135a4150ad5a37ce0cf"
+    },
+    "ownership-integration-on-lifetime": {
+      "exit": 0,
+      "exe_sha256": "2d90b82aa62485a9305de42013eca5a0d8dfc34823ae359dba7522e382cec5cb",
+      "report_sha256": "89ceaf9aba48d5ff2a086afb2fbb0951cc01bd4c2fba9057657c7ca2444d0ff6",
+      "trace_sha256": "3fb8160f405ce537764c9510a2074370af743e7add82e56660f8124193aacbf1"
+    },
+    "ownership-integration-on-contracts": {
+      "exit": 0,
+      "exe_sha256": "5ec156a8514a555ee28c15791ba5222a8f7ee730b0d4e545b7cb0bb4f7f2d590",
+      "report_sha256": "37c55d1f8719ccc87faf3686c2176e598205f0dec1c88868fa95a25526078d37",
+      "trace_sha256": "f23c809b4fb3561fe16744acba03e0a51233d4060190095395b33668de1c0db0"
+    },
+    "ownership-integration-on-auto": {
+      "exit": 0,
+      "exe_sha256": "fe4b4e0787cad9347e02d50f8447fac96c602f53ca55696c2cdd5dd6c2412d7d",
+      "report_sha256": "770aa6023e34ed92f9aad4d4fb46880aa2ef63386be345a5293c112f46ed8940",
+      "trace_sha256": "e56474b9623dd578767fa3c50e8f9af98a0279d8c61ae9fa22d07f09b7c0df94"
+    },
+    "ownership-integration-depth_only-smoke": {
+      "exit": 0,
+      "exe_sha256": "fe6fb4c8835979f271ac7ff15b5e2a252a6452b7cb7ff8235f61633ff29d7d13",
+      "report_sha256": "0f89d506d5bf98d9c91ea994e6efb37b8c42dff83943426530294375d94b3945",
+      "trace_sha256": "48f0df0c062c7bf999d60d89e16f4a7608aa0a389220c0e0b6d2809a90f59e5c"
+    },
+    "ownership-integration-sample_depth-auto": {
+      "exit": 0,
+      "exe_sha256": "fe4b4e0787cad9347e02d50f8447fac96c602f53ca55696c2cdd5dd6c2412d7d",
+      "report_sha256": "770aa6023e34ed92f9aad4d4fb46880aa2ef63386be345a5293c112f46ed8940",
+      "trace_sha256": "46a3b060c2cb481ea3ed60faf6680aa19bbe768c16adf621c9b4d6dc12427e67"
+    }
+  },
+  "sources": {
+    "src/ownership/d3d9_classes_inc.h": "af1f6403cc1ac9937cbdc1d40eba29b7b5b033e173fab7cab49605060f0df35a",
+    "src/ownership/d3d9_forwarders_inc.h": "113ed2b05b81525436676b80c14a0b7cd9fd49fd77ce46357bfb2a6d5c55939b",
+    "src/ownership/d3d9_ownership.cpp": "5262c47ed58152cb7f5a93a0a0aace970db5b723421ff4fd6fb479ef4d43f08c",
+    "src/ownership/d3d9_ownership.h": "6e8835b84c17f497765b497f8947fb736f73b4d7c026c09c68ba1b5cc64355e0",
+    "src/proxy/capture.cpp": "1aae6ffc4addd4017ca517e940df51d1996c0b5890cd503b2b40b0a307f110b7",
+    "src/proxy/capture.h": "609b232874932ca584ec259eb7eead463c9ed9bc3231cfb26467d393f95ec0f8",
+    "src/proxy/capture_state.cpp": "0c362a3d14ea3a18e7ba216fd08ab77fe5d812cf1edb8b95c14f32584aae061b",
+    "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
+    "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
+    "src/proxy/loader.cpp": "84b55d2fd4ddb0809b62a1a18ac409b76019f47b1475b85806ea606aa6ffcf92",
+    "src/proxy/loading_trace.cpp": "5a1e470d9e86b40814360a928fa2e6e35eb6fc7ccd08f2a4d0589c8d3fb36389",
+    "src/proxy/loading_trace.h": "a2cb9334f5fb2c3e1734de61fa76de33019cb29ead2e9cae0d7e9cdfa27e861e",
+    "src/proxy/telemetry.cpp": "0cae95895de6613c4d72db7e8ff5ea89250802c78b37469005e52c5ecc7074b5",
+    "src/proxy/telemetry.h": "88dd36aa1755c2b61175aa3060e9c1843294c69e9ddceaa7d2c0a8bbbb54da37"
+  },
+  "source_tree_unchanged_during_run": true
+}

@@ -1,0 +1,2723 @@
+x3-modern-renderer version=0.4 schema=2 capture_start=1 capture_frames=5 pointer_bits=32
+telemetry_start schema=1 qpc_frequency=10000000 qpc=7943777834520 anchor=proxy_initialize cpu_only=1
+loading_trace disabled=fingerprint_mismatch hash=9cfbd1d948ed4f62 bytes=255862
+telemetry_span name=backend_load qpc_begin=7943777844252 qpc_end=7943778752027 thread=440 success=1 error=0
+backend path=C:\windows\system32\d3d9.dll
+telemetry_span name=direct3d_create9 qpc_begin=7943778753157 qpc_end=7943790584509 thread=440 success=1
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+telemetry_summary device=0 frame=0 reason=interval qpc=7943790716356 since_start_us=1288183.600 interval_us=1288183.600 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=1 failures=0 total_us=1.300 min_us=1.300 max_us=1.300 bytes=0 buckets=1,0,0,0,0,0
+telemetry_presentation phase=create_before device=0 thread=440 focus_window=00040056 device_window=00040056 width=160 height=120 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000042 width=160 height=120 format=0 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=440 focus_window=00040056 device_window=00040056 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=001134a8 device=1 ex=0
+telemetry_first_present device=1 frame=0 qpc=7943791426944 since_start_us=1359242.400 capture=0 reset_count=0
+telemetry_window_context device=1 frame=0 render_thread=440 window_thread=440 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
+telemetry_window device=1 frame=0 qpc=7943791431312 window=00040056 foreground=00000000 thread_focus=00000000 iconic=0 visible=1 style=14cf0000 exstyle=00000100 window_rect=80,80,260,240 client_rect=0,0,172,126
+telemetry_cursor_poll device=1 frame=0 qpc=7943791431312 flags=1 cursor=00000000 x=2299 y=973
+telemetry_present_window device=1 frame=0 override=00000000 device_window=00040056 result=00000000
+frame_end device=1 frame=0 draws=1 capture=0 present=00000000
+frame_begin device=1 frame=1
+capture_event device=1 frame=1 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=7943791435750
+draw device=1 frame=1 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
+geometry source=buffers
+resource identity=1 ptr=00114a10 type=6
+stream slot=0 result=00000000 identity=1 offset=16 stride=20 frequency=1 frequency_result=00000000
+vertex_buffer identity=1 bytes=76 usage=0 pool=1 fvf=68
+stream slot=1 result=00000000 identity=0
+stream slot=2 result=00000000 identity=0
+stream slot=3 result=00000000 identity=0
+stream slot=4 result=00000000 identity=0
+stream slot=5 result=00000000 identity=0
+stream slot=6 result=00000000 identity=0
+stream slot=7 result=00000000 identity=0
+stream slot=8 result=00000000 identity=0
+stream slot=9 result=00000000 identity=0
+stream slot=10 result=00000000 identity=0
+stream slot=11 result=00000000 identity=0
+stream slot=12 result=00000000 identity=0
+stream slot=13 result=00000000 identity=0
+stream slot=14 result=00000000 identity=0
+stream slot=15 result=00000000 identity=0
+resource identity=2 ptr=00114a40 type=7
+indices result=00000000 identity=2
+index_buffer identity=2 bytes=6 usage=0 pool=1 format=101
+resource identity=3 ptr=00115468 type=3
+resource identity=4 ptr=001154a8 type=1
+surface role=rt0 ptr=001154a8 identity=4 width=160 height=120 format=21 usage=1 msaa=0 container=3 container_type=3 container_result=00000000
+state id=7 value=0
+state id=14 value=1
+state id=23 value=4
+state id=15 value=0
+state id=24 value=0
+state id=25 value=8
+state id=27 value=0
+state id=19 value=2
+state id=20 value=1
+state id=171 value=1
+state id=22 value=1
+state id=168 value=15
+state id=194 value=0
+state id=206 value=0
+state id=52 value=0
+state id=56 value=8
+state id=57 value=0
+state id=58 value=4294967295
+state id=59 value=4294967295
+state id=53 value=1
+state id=54 value=1
+state id=55 value=1
+state id=185 value=0
+state id=189 value=8
+state id=186 value=1
+state id=187 value=1
+state id=188 value=1
+viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
+resource identity=5 ptr=001153e8 type=3
+texture stage=0 ptr=001153e8 type=3 identity=5
+texture_desc stage=0 w=8 h=8 format=21
+sampler stage=0 state=6 value=1
+sampler stage=0 state=5 value=1
+sampler stage=0 state=7 value=0
+sampler stage=0 state=10 value=1
+sampler stage=0 state=11 value=0
+sampler stage=1 state=6 value=1
+sampler stage=1 state=5 value=1
+sampler stage=1 state=7 value=0
+sampler stage=1 state=10 value=1
+sampler stage=1 state=11 value=0
+sampler stage=2 state=6 value=1
+sampler stage=2 state=5 value=1
+sampler stage=2 state=7 value=0
+sampler stage=2 state=10 value=1
+sampler stage=2 state=11 value=0
+sampler stage=3 state=6 value=1
+sampler stage=3 state=5 value=1
+sampler stage=3 state=7 value=0
+sampler stage=3 state=10 value=1
+sampler stage=3 state=11 value=0
+sampler stage=4 state=6 value=1
+sampler stage=4 state=5 value=1
+sampler stage=4 state=7 value=0
+sampler stage=4 state=10 value=1
+sampler stage=4 state=11 value=0
+sampler stage=5 state=6 value=1
+sampler stage=5 state=5 value=1
+sampler stage=5 state=7 value=0
+sampler stage=5 state=10 value=1
+sampler stage=5 state=11 value=0
+sampler stage=6 state=6 value=1
+sampler stage=6 state=5 value=1
+sampler stage=6 state=7 value=0
+sampler stage=6 state=10 value=1
+sampler stage=6 state=11 value=0
+sampler stage=7 state=6 value=1
+sampler stage=7 state=5 value=1
+sampler stage=7 state=7 value=0
+sampler stage=7 state=10 value=1
+sampler stage=7 state=11 value=0
+sampler stage=8 state=6 value=1
+sampler stage=8 state=5 value=1
+sampler stage=8 state=7 value=0
+sampler stage=8 state=10 value=1
+sampler stage=8 state=11 value=0
+sampler stage=9 state=6 value=1
+sampler stage=9 state=5 value=1
+sampler stage=9 state=7 value=0
+sampler stage=9 state=10 value=1
+sampler stage=9 state=11 value=0
+sampler stage=10 state=6 value=1
+sampler stage=10 state=5 value=1
+sampler stage=10 state=7 value=0
+sampler stage=10 state=10 value=1
+sampler stage=10 state=11 value=0
+sampler stage=11 state=6 value=1
+sampler stage=11 state=5 value=1
+sampler stage=11 state=7 value=0
+sampler stage=11 state=10 value=1
+sampler stage=11 state=11 value=0
+sampler stage=12 state=6 value=1
+sampler stage=12 state=5 value=1
+sampler stage=12 state=7 value=0
+sampler stage=12 state=10 value=1
+sampler stage=12 state=11 value=0
+sampler stage=13 state=6 value=1
+sampler stage=13 state=5 value=1
+sampler stage=13 state=7 value=0
+sampler stage=13 state=10 value=1
+sampler stage=13 state=11 value=0
+sampler stage=14 state=6 value=1
+sampler stage=14 state=5 value=1
+sampler stage=14 state=7 value=0
+sampler stage=14 state=10 value=1
+sampler stage=14 state=11 value=0
+sampler stage=15 state=6 value=1
+sampler stage=15 state=5 value=1
+sampler stage=15 state=7 value=0
+sampler stage=15 state=10 value=1
+sampler stage=15 state=11 value=0
+vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
+vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
+vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
+transform state=256 row=0 values=1,0,0,0
+transform state=256 row=1 values=0,1,0,0
+transform state=256 row=2 values=0,0,1,0
+transform state=256 row=3 values=0,0,0,1
+transform state=2 row=0 values=1,0,0,0
+transform state=2 row=1 values=0,1,0,0
+transform state=2 row=2 values=0,0,1,0
+transform state=2 row=3 values=0,0,0,1
+transform state=3 row=0 values=1,0,0,0
+transform state=3 row=1 values=0,1,0,0
+transform state=3 row=2 values=0,0,1,0
+transform state=3 row=3 values=0,0,0,1
+constants kind=vs type=f count=256 result=00000000 encoding=sparse_zero
+constant kind=vs type=f reg=10 bits=80000000,00000000,00000000,00000000
+constants kind=vs type=i count=16 result=00000000 encoding=full
+constant kind=vs type=i reg=0 values=7,-2,2147483647,-2147483647
+constant kind=vs type=i reg=1 values=0,0,0,0
+constant kind=vs type=i reg=2 values=0,0,0,0
+constant kind=vs type=i reg=3 values=0,0,0,0
+constant kind=vs type=i reg=4 values=0,0,0,0
+constant kind=vs type=i reg=5 values=0,0,0,0
+constant kind=vs type=i reg=6 values=0,0,0,0
+constant kind=vs type=i reg=7 values=0,0,0,0
+constant kind=vs type=i reg=8 values=0,0,0,0
+constant kind=vs type=i reg=9 values=0,0,0,0
+constant kind=vs type=i reg=10 values=0,0,0,0
+constant kind=vs type=i reg=11 values=0,0,0,0
+constant kind=vs type=i reg=12 values=0,0,0,0
+constant kind=vs type=i reg=13 values=0,0,0,0
+constant kind=vs type=i reg=14 values=0,0,0,0
+constant kind=vs type=i reg=15 values=0,0,0,0
+constants kind=vs type=b count=16 result=00000000 encoding=full
+constant kind=vs type=b reg=0 values=1
+constant kind=vs type=b reg=1 values=0
+constant kind=vs type=b reg=2 values=1
+constant kind=vs type=b reg=3 values=0
+constant kind=vs type=b reg=4 values=0
+constant kind=vs type=b reg=5 values=0
+constant kind=vs type=b reg=6 values=0
+constant kind=vs type=b reg=7 values=0
+constant kind=vs type=b reg=8 values=0
+constant kind=vs type=b reg=9 values=0
+constant kind=vs type=b reg=10 values=0
+constant kind=vs type=b reg=11 values=0
+constant kind=vs type=b reg=12 values=0
+constant kind=vs type=b reg=13 values=0
+constant kind=vs type=b reg=14 values=0
+constant kind=vs type=b reg=15 values=0
+constants kind=ps type=f count=224 result=00000000 encoding=sparse_zero
+constants kind=ps type=i count=16 result=00000000 encoding=full
+constant kind=ps type=i reg=0 values=7,-2,2147483647,-2147483647
+constant kind=ps type=i reg=1 values=0,0,0,0
+constant kind=ps type=i reg=2 values=0,0,0,0
+constant kind=ps type=i reg=3 values=0,0,0,0
+constant kind=ps type=i reg=4 values=0,0,0,0
+constant kind=ps type=i reg=5 values=0,0,0,0
+constant kind=ps type=i reg=6 values=0,0,0,0
+constant kind=ps type=i reg=7 values=0,0,0,0
+constant kind=ps type=i reg=8 values=0,0,0,0
+constant kind=ps type=i reg=9 values=0,0,0,0
+constant kind=ps type=i reg=10 values=0,0,0,0
+constant kind=ps type=i reg=11 values=0,0,0,0
+constant kind=ps type=i reg=12 values=0,0,0,0
+constant kind=ps type=i reg=13 values=0,0,0,0
+constant kind=ps type=i reg=14 values=0,0,0,0
+constant kind=ps type=i reg=15 values=0,0,0,0
+constants kind=ps type=b count=16 result=00000000 encoding=full
+constant kind=ps type=b reg=0 values=1
+constant kind=ps type=b reg=1 values=0
+constant kind=ps type=b reg=2 values=1
+constant kind=ps type=b reg=3 values=0
+constant kind=ps type=b reg=4 values=0
+constant kind=ps type=b reg=5 values=0
+constant kind=ps type=b reg=6 values=0
+constant kind=ps type=b reg=7 values=0
+constant kind=ps type=b reg=8 values=0
+constant kind=ps type=b reg=9 values=0
+constant kind=ps type=b reg=10 values=0
+constant kind=ps type=b reg=11 values=0
+constant kind=ps type=b reg=12 values=0
+constant kind=ps type=b reg=13 values=0
+constant kind=ps type=b reg=14 values=0
+constant kind=ps type=b reg=15 values=0
+draw_args base_vertex=0 min_vertex=0 num_vertices=3 start_index=0
+draw_result device=1 frame=1 index=1 result=00000000
+frame_end device=1 frame=1 draws=1 capture=1 present=00000000
+frame_begin device=1 frame=2
+capture_event device=1 frame=2 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=7943791480030
+draw device=1 frame=2 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
+geometry source=buffers
+stream slot=0 result=00000000 identity=1 offset=16 stride=20 frequency=1 frequency_result=00000000
+vertex_buffer identity=1 bytes=76 usage=0 pool=1 fvf=68
+stream slot=1 result=00000000 identity=0
+stream slot=2 result=00000000 identity=0
+stream slot=3 result=00000000 identity=0
+stream slot=4 result=00000000 identity=0
+stream slot=5 result=00000000 identity=0
+stream slot=6 result=00000000 identity=0
+stream slot=7 result=00000000 identity=0
+stream slot=8 result=00000000 identity=0
+stream slot=9 result=00000000 identity=0
+stream slot=10 result=00000000 identity=0
+stream slot=11 result=00000000 identity=0
+stream slot=12 result=00000000 identity=0
+stream slot=13 result=00000000 identity=0
+stream slot=14 result=00000000 identity=0
+stream slot=15 result=00000000 identity=0
+indices result=00000000 identity=2
+index_buffer identity=2 bytes=6 usage=0 pool=1 format=101
+surface role=rt0 ptr=001154a8 identity=4 width=160 height=120 format=21 usage=1 msaa=0 container=3 container_type=3 container_result=00000000
+state id=7 value=0
+state id=14 value=1
+state id=23 value=4
+state id=15 value=0
+state id=24 value=0
+state id=25 value=8
+state id=27 value=0
+state id=19 value=2
+state id=20 value=1
+state id=171 value=1
+state id=22 value=1
+state id=168 value=15
+state id=194 value=0
+state id=206 value=0
+state id=52 value=0
+state id=56 value=8
+state id=57 value=0
+state id=58 value=4294967295
+state id=59 value=4294967295
+state id=53 value=1
+state id=54 value=1
+state id=55 value=1
+state id=185 value=0
+state id=189 value=8
+state id=186 value=1
+state id=187 value=1
+state id=188 value=1
+viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
+texture stage=0 ptr=001153e8 type=3 identity=5
+texture_desc stage=0 w=8 h=8 format=21
+sampler stage=0 state=6 value=1
+sampler stage=0 state=5 value=1
+sampler stage=0 state=7 value=0
+sampler stage=0 state=10 value=1
+sampler stage=0 state=11 value=0
+sampler stage=1 state=6 value=1
+sampler stage=1 state=5 value=1
+sampler stage=1 state=7 value=0
+sampler stage=1 state=10 value=1
+sampler stage=1 state=11 value=0
+sampler stage=2 state=6 value=1
+sampler stage=2 state=5 value=1
+sampler stage=2 state=7 value=0
+sampler stage=2 state=10 value=1
+sampler stage=2 state=11 value=0
+sampler stage=3 state=6 value=1
+sampler stage=3 state=5 value=1
+sampler stage=3 state=7 value=0
+sampler stage=3 state=10 value=1
+sampler stage=3 state=11 value=0
+sampler stage=4 state=6 value=1
+sampler stage=4 state=5 value=1
+sampler stage=4 state=7 value=0
+sampler stage=4 state=10 value=1
+sampler stage=4 state=11 value=0
+sampler stage=5 state=6 value=1
+sampler stage=5 state=5 value=1
+sampler stage=5 state=7 value=0
+sampler stage=5 state=10 value=1
+sampler stage=5 state=11 value=0
+sampler stage=6 state=6 value=1
+sampler stage=6 state=5 value=1
+sampler stage=6 state=7 value=0
+sampler stage=6 state=10 value=1
+sampler stage=6 state=11 value=0
+sampler stage=7 state=6 value=1
+sampler stage=7 state=5 value=1
+sampler stage=7 state=7 value=0
+sampler stage=7 state=10 value=1
+sampler stage=7 state=11 value=0
+sampler stage=8 state=6 value=1
+sampler stage=8 state=5 value=1
+sampler stage=8 state=7 value=0
+sampler stage=8 state=10 value=1
+sampler stage=8 state=11 value=0
+sampler stage=9 state=6 value=1
+sampler stage=9 state=5 value=1
+sampler stage=9 state=7 value=0
+sampler stage=9 state=10 value=1
+sampler stage=9 state=11 value=0
+sampler stage=10 state=6 value=1
+sampler stage=10 state=5 value=1
+sampler stage=10 state=7 value=0
+sampler stage=10 state=10 value=1
+sampler stage=10 state=11 value=0
+sampler stage=11 state=6 value=1
+sampler stage=11 state=5 value=1
+sampler stage=11 state=7 value=0
+sampler stage=11 state=10 value=1
+sampler stage=11 state=11 value=0
+sampler stage=12 state=6 value=1
+sampler stage=12 state=5 value=1
+sampler stage=12 state=7 value=0
+sampler stage=12 state=10 value=1
+sampler stage=12 state=11 value=0
+sampler stage=13 state=6 value=1
+sampler stage=13 state=5 value=1
+sampler stage=13 state=7 value=0
+sampler stage=13 state=10 value=1
+sampler stage=13 state=11 value=0
+sampler stage=14 state=6 value=1
+sampler stage=14 state=5 value=1
+sampler stage=14 state=7 value=0
+sampler stage=14 state=10 value=1
+sampler stage=14 state=11 value=0
+sampler stage=15 state=6 value=1
+sampler stage=15 state=5 value=1
+sampler stage=15 state=7 value=0
+sampler stage=15 state=10 value=1
+sampler stage=15 state=11 value=0
+vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
+vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
+vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
+transform state=256 row=0 values=1,0,0,0
+transform state=256 row=1 values=0,1,0,0
+transform state=256 row=2 values=0,0,1,0
+transform state=256 row=3 values=0,0,0,1
+transform state=2 row=0 values=1,0,0,0
+transform state=2 row=1 values=0,1,0,0
+transform state=2 row=2 values=0,0,1,0
+transform state=2 row=3 values=0,0,0,1
+transform state=3 row=0 values=1,0,0,0
+transform state=3 row=1 values=0,1,0,0
+transform state=3 row=2 values=0,0,1,0
+transform state=3 row=3 values=0,0,0,1
+constants kind=vs type=f count=256 result=00000000 encoding=sparse_zero
+constant kind=vs type=f reg=10 bits=80000000,00000000,00000000,00000000
+constants kind=vs type=i count=16 result=00000000 encoding=full
+constant kind=vs type=i reg=0 values=7,-2,2147483647,-2147483647
+constant kind=vs type=i reg=1 values=0,0,0,0
+constant kind=vs type=i reg=2 values=0,0,0,0
+constant kind=vs type=i reg=3 values=0,0,0,0
+constant kind=vs type=i reg=4 values=0,0,0,0
+constant kind=vs type=i reg=5 values=0,0,0,0
+constant kind=vs type=i reg=6 values=0,0,0,0
+constant kind=vs type=i reg=7 values=0,0,0,0
+constant kind=vs type=i reg=8 values=0,0,0,0
+constant kind=vs type=i reg=9 values=0,0,0,0
+constant kind=vs type=i reg=10 values=0,0,0,0
+constant kind=vs type=i reg=11 values=0,0,0,0
+constant kind=vs type=i reg=12 values=0,0,0,0
+constant kind=vs type=i reg=13 values=0,0,0,0
+constant kind=vs type=i reg=14 values=0,0,0,0
+constant kind=vs type=i reg=15 values=0,0,0,0
+constants kind=vs type=b count=16 result=00000000 encoding=full
+constant kind=vs type=b reg=0 values=1
+constant kind=vs type=b reg=1 values=0
+constant kind=vs type=b reg=2 values=1
+constant kind=vs type=b reg=3 values=0
+constant kind=vs type=b reg=4 values=0
+constant kind=vs type=b reg=5 values=0
+constant kind=vs type=b reg=6 values=0
+constant kind=vs type=b reg=7 values=0
+constant kind=vs type=b reg=8 values=0
+constant kind=vs type=b reg=9 values=0
+constant kind=vs type=b reg=10 values=0
+constant kind=vs type=b reg=11 values=0
+constant kind=vs type=b reg=12 values=0
+constant kind=vs type=b reg=13 values=0
+constant kind=vs type=b reg=14 values=0
+constant kind=vs type=b reg=15 values=0
+constants kind=ps type=f count=224 result=00000000 encoding=sparse_zero
+constants kind=ps type=i count=16 result=00000000 encoding=full
+constant kind=ps type=i reg=0 values=7,-2,2147483647,-2147483647
+constant kind=ps type=i reg=1 values=0,0,0,0
+constant kind=ps type=i reg=2 values=0,0,0,0
+constant kind=ps type=i reg=3 values=0,0,0,0
+constant kind=ps type=i reg=4 values=0,0,0,0
+constant kind=ps type=i reg=5 values=0,0,0,0
+constant kind=ps type=i reg=6 values=0,0,0,0
+constant kind=ps type=i reg=7 values=0,0,0,0
+constant kind=ps type=i reg=8 values=0,0,0,0
+constant kind=ps type=i reg=9 values=0,0,0,0
+constant kind=ps type=i reg=10 values=0,0,0,0
+constant kind=ps type=i reg=11 values=0,0,0,0
+constant kind=ps type=i reg=12 values=0,0,0,0
+constant kind=ps type=i reg=13 values=0,0,0,0
+constant kind=ps type=i reg=14 values=0,0,0,0
+constant kind=ps type=i reg=15 values=0,0,0,0
+constants kind=ps type=b count=16 result=00000000 encoding=full
+constant kind=ps type=b reg=0 values=1
+constant kind=ps type=b reg=1 values=0
+constant kind=ps type=b reg=2 values=1
+constant kind=ps type=b reg=3 values=0
+constant kind=ps type=b reg=4 values=0
+constant kind=ps type=b reg=5 values=0
+constant kind=ps type=b reg=6 values=0
+constant kind=ps type=b reg=7 values=0
+constant kind=ps type=b reg=8 values=0
+constant kind=ps type=b reg=9 values=0
+constant kind=ps type=b reg=10 values=0
+constant kind=ps type=b reg=11 values=0
+constant kind=ps type=b reg=12 values=0
+constant kind=ps type=b reg=13 values=0
+constant kind=ps type=b reg=14 values=0
+constant kind=ps type=b reg=15 values=0
+draw_args base_vertex=0 min_vertex=0 num_vertices=3 start_index=0
+draw_result device=1 frame=2 index=1 result=00000000
+frame_end device=1 frame=2 draws=1 capture=1 present=00000000
+frame_begin device=1 frame=3
+capture_event device=1 frame=3 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=7943791491592
+draw device=1 frame=3 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
+geometry source=buffers
+stream slot=0 result=00000000 identity=1 offset=16 stride=20 frequency=1 frequency_result=00000000
+vertex_buffer identity=1 bytes=76 usage=0 pool=1 fvf=68
+stream slot=1 result=00000000 identity=0
+stream slot=2 result=00000000 identity=0
+stream slot=3 result=00000000 identity=0
+stream slot=4 result=00000000 identity=0
+stream slot=5 result=00000000 identity=0
+stream slot=6 result=00000000 identity=0
+stream slot=7 result=00000000 identity=0
+stream slot=8 result=00000000 identity=0
+stream slot=9 result=00000000 identity=0
+stream slot=10 result=00000000 identity=0
+stream slot=11 result=00000000 identity=0
+stream slot=12 result=00000000 identity=0
+stream slot=13 result=00000000 identity=0
+stream slot=14 result=00000000 identity=0
+stream slot=15 result=00000000 identity=0
+indices result=00000000 identity=2
+index_buffer identity=2 bytes=6 usage=0 pool=1 format=101
+surface role=rt0 ptr=001154a8 identity=4 width=160 height=120 format=21 usage=1 msaa=0 container=3 container_type=3 container_result=00000000
+state id=7 value=0
+state id=14 value=1
+state id=23 value=4
+state id=15 value=0
+state id=24 value=0
+state id=25 value=8
+state id=27 value=0
+state id=19 value=2
+state id=20 value=1
+state id=171 value=1
+state id=22 value=1
+state id=168 value=15
+state id=194 value=0
+state id=206 value=0
+state id=52 value=0
+state id=56 value=8
+state id=57 value=0
+state id=58 value=4294967295
+state id=59 value=4294967295
+state id=53 value=1
+state id=54 value=1
+state id=55 value=1
+state id=185 value=0
+state id=189 value=8
+state id=186 value=1
+state id=187 value=1
+state id=188 value=1
+viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
+texture stage=0 ptr=001153e8 type=3 identity=5
+texture_desc stage=0 w=8 h=8 format=21
+sampler stage=0 state=6 value=1
+sampler stage=0 state=5 value=1
+sampler stage=0 state=7 value=0
+sampler stage=0 state=10 value=1
+sampler stage=0 state=11 value=0
+sampler stage=1 state=6 value=1
+sampler stage=1 state=5 value=1
+sampler stage=1 state=7 value=0
+sampler stage=1 state=10 value=1
+sampler stage=1 state=11 value=0
+sampler stage=2 state=6 value=1
+sampler stage=2 state=5 value=1
+sampler stage=2 state=7 value=0
+sampler stage=2 state=10 value=1
+sampler stage=2 state=11 value=0
+sampler stage=3 state=6 value=1
+sampler stage=3 state=5 value=1
+sampler stage=3 state=7 value=0
+sampler stage=3 state=10 value=1
+sampler stage=3 state=11 value=0
+sampler stage=4 state=6 value=1
+sampler stage=4 state=5 value=1
+sampler stage=4 state=7 value=0
+sampler stage=4 state=10 value=1
+sampler stage=4 state=11 value=0
+sampler stage=5 state=6 value=1
+sampler stage=5 state=5 value=1
+sampler stage=5 state=7 value=0
+sampler stage=5 state=10 value=1
+sampler stage=5 state=11 value=0
+sampler stage=6 state=6 value=1
+sampler stage=6 state=5 value=1
+sampler stage=6 state=7 value=0
+sampler stage=6 state=10 value=1
+sampler stage=6 state=11 value=0
+sampler stage=7 state=6 value=1
+sampler stage=7 state=5 value=1
+sampler stage=7 state=7 value=0
+sampler stage=7 state=10 value=1
+sampler stage=7 state=11 value=0
+sampler stage=8 state=6 value=1
+sampler stage=8 state=5 value=1
+sampler stage=8 state=7 value=0
+sampler stage=8 state=10 value=1
+sampler stage=8 state=11 value=0
+sampler stage=9 state=6 value=1
+sampler stage=9 state=5 value=1
+sampler stage=9 state=7 value=0
+sampler stage=9 state=10 value=1
+sampler stage=9 state=11 value=0
+sampler stage=10 state=6 value=1
+sampler stage=10 state=5 value=1
+sampler stage=10 state=7 value=0
+sampler stage=10 state=10 value=1
+sampler stage=10 state=11 value=0
+sampler stage=11 state=6 value=1
+sampler stage=11 state=5 value=1
+sampler stage=11 state=7 value=0
+sampler stage=11 state=10 value=1
+sampler stage=11 state=11 value=0
+sampler stage=12 state=6 value=1
+sampler stage=12 state=5 value=1
+sampler stage=12 state=7 value=0
+sampler stage=12 state=10 value=1
+sampler stage=12 state=11 value=0
+sampler stage=13 state=6 value=1
+sampler stage=13 state=5 value=1
+sampler stage=13 state=7 value=0
+sampler stage=13 state=10 value=1
+sampler stage=13 state=11 value=0
+sampler stage=14 state=6 value=1
+sampler stage=14 state=5 value=1
+sampler stage=14 state=7 value=0
+sampler stage=14 state=10 value=1
+sampler stage=14 state=11 value=0
+sampler stage=15 state=6 value=1
+sampler stage=15 state=5 value=1
+sampler stage=15 state=7 value=0
+sampler stage=15 state=10 value=1
+sampler stage=15 state=11 value=0
+vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
+vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
+vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
+transform state=256 row=0 values=1,0,0,0
+transform state=256 row=1 values=0,1,0,0
+transform state=256 row=2 values=0,0,1,0
+transform state=256 row=3 values=0,0,0,1
+transform state=2 row=0 values=1,0,0,0
+transform state=2 row=1 values=0,1,0,0
+transform state=2 row=2 values=0,0,1,0
+transform state=2 row=3 values=0,0,0,1
+transform state=3 row=0 values=1,0,0,0
+transform state=3 row=1 values=0,1,0,0
+transform state=3 row=2 values=0,0,1,0
+transform state=3 row=3 values=0,0,0,1
+constants kind=vs type=f count=256 result=00000000 encoding=sparse_zero
+constant kind=vs type=f reg=10 bits=80000000,00000000,00000000,00000000
+constants kind=vs type=i count=16 result=00000000 encoding=full
+constant kind=vs type=i reg=0 values=0,0,0,0
+constant kind=vs type=i reg=1 values=0,0,0,0
+constant kind=vs type=i reg=2 values=0,0,0,0
+constant kind=vs type=i reg=3 values=0,0,0,0
+constant kind=vs type=i reg=4 values=0,0,0,0
+constant kind=vs type=i reg=5 values=0,0,0,0
+constant kind=vs type=i reg=6 values=0,0,0,0
+constant kind=vs type=i reg=7 values=0,0,0,0
+constant kind=vs type=i reg=8 values=0,0,0,0
+constant kind=vs type=i reg=9 values=0,0,0,0
+constant kind=vs type=i reg=10 values=0,0,0,0
+constant kind=vs type=i reg=11 values=0,0,0,0
+constant kind=vs type=i reg=12 values=0,0,0,0
+constant kind=vs type=i reg=13 values=0,0,0,0
+constant kind=vs type=i reg=14 values=0,0,0,0
+constant kind=vs type=i reg=15 values=0,0,0,0
+constants kind=vs type=b count=16 result=00000000 encoding=full
+constant kind=vs type=b reg=0 values=0
+constant kind=vs type=b reg=1 values=0
+constant kind=vs type=b reg=2 values=0
+constant kind=vs type=b reg=3 values=0
+constant kind=vs type=b reg=4 values=0
+constant kind=vs type=b reg=5 values=0
+constant kind=vs type=b reg=6 values=0
+constant kind=vs type=b reg=7 values=0
+constant kind=vs type=b reg=8 values=0
+constant kind=vs type=b reg=9 values=0
+constant kind=vs type=b reg=10 values=0
+constant kind=vs type=b reg=11 values=0
+constant kind=vs type=b reg=12 values=0
+constant kind=vs type=b reg=13 values=0
+constant kind=vs type=b reg=14 values=0
+constant kind=vs type=b reg=15 values=0
+constants kind=ps type=f count=224 result=00000000 encoding=sparse_zero
+constants kind=ps type=i count=16 result=00000000 encoding=full
+constant kind=ps type=i reg=0 values=0,0,0,0
+constant kind=ps type=i reg=1 values=0,0,0,0
+constant kind=ps type=i reg=2 values=0,0,0,0
+constant kind=ps type=i reg=3 values=0,0,0,0
+constant kind=ps type=i reg=4 values=0,0,0,0
+constant kind=ps type=i reg=5 values=0,0,0,0
+constant kind=ps type=i reg=6 values=0,0,0,0
+constant kind=ps type=i reg=7 values=0,0,0,0
+constant kind=ps type=i reg=8 values=0,0,0,0
+constant kind=ps type=i reg=9 values=0,0,0,0
+constant kind=ps type=i reg=10 values=0,0,0,0
+constant kind=ps type=i reg=11 values=0,0,0,0
+constant kind=ps type=i reg=12 values=0,0,0,0
+constant kind=ps type=i reg=13 values=0,0,0,0
+constant kind=ps type=i reg=14 values=0,0,0,0
+constant kind=ps type=i reg=15 values=0,0,0,0
+constants kind=ps type=b count=16 result=00000000 encoding=full
+constant kind=ps type=b reg=0 values=0
+constant kind=ps type=b reg=1 values=0
+constant kind=ps type=b reg=2 values=0
+constant kind=ps type=b reg=3 values=0
+constant kind=ps type=b reg=4 values=0
+constant kind=ps type=b reg=5 values=0
+constant kind=ps type=b reg=6 values=0
+constant kind=ps type=b reg=7 values=0
+constant kind=ps type=b reg=8 values=0
+constant kind=ps type=b reg=9 values=0
+constant kind=ps type=b reg=10 values=0
+constant kind=ps type=b reg=11 values=0
+constant kind=ps type=b reg=12 values=0
+constant kind=ps type=b reg=13 values=0
+constant kind=ps type=b reg=14 values=0
+constant kind=ps type=b reg=15 values=0
+draw_args base_vertex=0 min_vertex=0 num_vertices=3 start_index=0
+draw_result device=1 frame=3 index=1 result=00000000
+capture_event device=1 frame=3 seq=2 after_draw=1 op=draw_begin result=00000000 qpc=7943791498680
+draw device=1 frame=3 index=2 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
+geometry source=buffers
+stream slot=0 result=00000000 identity=1 offset=16 stride=20 frequency=1 frequency_result=00000000
+vertex_buffer identity=1 bytes=76 usage=0 pool=1 fvf=68
+stream slot=1 result=00000000 identity=0
+stream slot=2 result=00000000 identity=0
+stream slot=3 result=00000000 identity=0
+stream slot=4 result=00000000 identity=0
+stream slot=5 result=00000000 identity=0
+stream slot=6 result=00000000 identity=0
+stream slot=7 result=00000000 identity=0
+stream slot=8 result=00000000 identity=0
+stream slot=9 result=00000000 identity=0
+stream slot=10 result=00000000 identity=0
+stream slot=11 result=00000000 identity=0
+stream slot=12 result=00000000 identity=0
+stream slot=13 result=00000000 identity=0
+stream slot=14 result=00000000 identity=0
+stream slot=15 result=00000000 identity=0
+indices result=00000000 identity=0
+surface role=rt0 ptr=001154a8 identity=4 width=160 height=120 format=21 usage=1 msaa=0 container=3 container_type=3 container_result=00000000
+state id=7 value=0
+state id=14 value=1
+state id=23 value=4
+state id=15 value=0
+state id=24 value=0
+state id=25 value=8
+state id=27 value=0
+state id=19 value=2
+state id=20 value=1
+state id=171 value=1
+state id=22 value=1
+state id=168 value=15
+state id=194 value=0
+state id=206 value=0
+state id=52 value=0
+state id=56 value=8
+state id=57 value=0
+state id=58 value=4294967295
+state id=59 value=4294967295
+state id=53 value=1
+state id=54 value=1
+state id=55 value=1
+state id=185 value=0
+state id=189 value=8
+state id=186 value=1
+state id=187 value=1
+state id=188 value=1
+viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
+texture stage=0 ptr=001153e8 type=3 identity=5
+texture_desc stage=0 w=8 h=8 format=21
+sampler stage=0 state=6 value=1
+sampler stage=0 state=5 value=1
+sampler stage=0 state=7 value=0
+sampler stage=0 state=10 value=1
+sampler stage=0 state=11 value=0
+sampler stage=1 state=6 value=1
+sampler stage=1 state=5 value=1
+sampler stage=1 state=7 value=0
+sampler stage=1 state=10 value=1
+sampler stage=1 state=11 value=0
+sampler stage=2 state=6 value=1
+sampler stage=2 state=5 value=1
+sampler stage=2 state=7 value=0
+sampler stage=2 state=10 value=1
+sampler stage=2 state=11 value=0
+sampler stage=3 state=6 value=1
+sampler stage=3 state=5 value=1
+sampler stage=3 state=7 value=0
+sampler stage=3 state=10 value=1
+sampler stage=3 state=11 value=0
+sampler stage=4 state=6 value=1
+sampler stage=4 state=5 value=1
+sampler stage=4 state=7 value=0
+sampler stage=4 state=10 value=1
+sampler stage=4 state=11 value=0
+sampler stage=5 state=6 value=1
+sampler stage=5 state=5 value=1
+sampler stage=5 state=7 value=0
+sampler stage=5 state=10 value=1
+sampler stage=5 state=11 value=0
+sampler stage=6 state=6 value=1
+sampler stage=6 state=5 value=1
+sampler stage=6 state=7 value=0
+sampler stage=6 state=10 value=1
+sampler stage=6 state=11 value=0
+sampler stage=7 state=6 value=1
+sampler stage=7 state=5 value=1
+sampler stage=7 state=7 value=0
+sampler stage=7 state=10 value=1
+sampler stage=7 state=11 value=0
+sampler stage=8 state=6 value=1
+sampler stage=8 state=5 value=1
+sampler stage=8 state=7 value=0
+sampler stage=8 state=10 value=1
+sampler stage=8 state=11 value=0
+sampler stage=9 state=6 value=1
+sampler stage=9 state=5 value=1
+sampler stage=9 state=7 value=0
+sampler stage=9 state=10 value=1
+sampler stage=9 state=11 value=0
+sampler stage=10 state=6 value=1
+sampler stage=10 state=5 value=1
+sampler stage=10 state=7 value=0
+sampler stage=10 state=10 value=1
+sampler stage=10 state=11 value=0
+sampler stage=11 state=6 value=1
+sampler stage=11 state=5 value=1
+sampler stage=11 state=7 value=0
+sampler stage=11 state=10 value=1
+sampler stage=11 state=11 value=0
+sampler stage=12 state=6 value=1
+sampler stage=12 state=5 value=1
+sampler stage=12 state=7 value=0
+sampler stage=12 state=10 value=1
+sampler stage=12 state=11 value=0
+sampler stage=13 state=6 value=1
+sampler stage=13 state=5 value=1
+sampler stage=13 state=7 value=0
+sampler stage=13 state=10 value=1
+sampler stage=13 state=11 value=0
+sampler stage=14 state=6 value=1
+sampler stage=14 state=5 value=1
+sampler stage=14 state=7 value=0
+sampler stage=14 state=10 value=1
+sampler stage=14 state=11 value=0
+sampler stage=15 state=6 value=1
+sampler stage=15 state=5 value=1
+sampler stage=15 state=7 value=0
+sampler stage=15 state=10 value=1
+sampler stage=15 state=11 value=0
+vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
+vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
+vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
+transform state=256 row=0 values=1,0,0,0
+transform state=256 row=1 values=0,1,0,0
+transform state=256 row=2 values=0,0,1,0
+transform state=256 row=3 values=0,0,0,1
+transform state=2 row=0 values=1,0,0,0
+transform state=2 row=1 values=0,1,0,0
+transform state=2 row=2 values=0,0,1,0
+transform state=2 row=3 values=0,0,0,1
+transform state=3 row=0 values=1,0,0,0
+transform state=3 row=1 values=0,1,0,0
+transform state=3 row=2 values=0,0,1,0
+transform state=3 row=3 values=0,0,0,1
+constants kind=vs type=f count=256 result=00000000 encoding=sparse_zero
+constant kind=vs type=f reg=10 bits=80000000,00000000,00000000,00000000
+constants kind=vs type=i count=16 result=00000000 encoding=full
+constant kind=vs type=i reg=0 values=0,0,0,0
+constant kind=vs type=i reg=1 values=0,0,0,0
+constant kind=vs type=i reg=2 values=0,0,0,0
+constant kind=vs type=i reg=3 values=0,0,0,0
+constant kind=vs type=i reg=4 values=0,0,0,0
+constant kind=vs type=i reg=5 values=0,0,0,0
+constant kind=vs type=i reg=6 values=0,0,0,0
+constant kind=vs type=i reg=7 values=0,0,0,0
+constant kind=vs type=i reg=8 values=0,0,0,0
+constant kind=vs type=i reg=9 values=0,0,0,0
+constant kind=vs type=i reg=10 values=0,0,0,0
+constant kind=vs type=i reg=11 values=0,0,0,0
+constant kind=vs type=i reg=12 values=0,0,0,0
+constant kind=vs type=i reg=13 values=0,0,0,0
+constant kind=vs type=i reg=14 values=0,0,0,0
+constant kind=vs type=i reg=15 values=0,0,0,0
+constants kind=vs type=b count=16 result=00000000 encoding=full
+constant kind=vs type=b reg=0 values=0
+constant kind=vs type=b reg=1 values=0
+constant kind=vs type=b reg=2 values=0
+constant kind=vs type=b reg=3 values=0
+constant kind=vs type=b reg=4 values=0
+constant kind=vs type=b reg=5 values=0
+constant kind=vs type=b reg=6 values=0
+constant kind=vs type=b reg=7 values=0
+constant kind=vs type=b reg=8 values=0
+constant kind=vs type=b reg=9 values=0
+constant kind=vs type=b reg=10 values=0
+constant kind=vs type=b reg=11 values=0
+constant kind=vs type=b reg=12 values=0
+constant kind=vs type=b reg=13 values=0
+constant kind=vs type=b reg=14 values=0
+constant kind=vs type=b reg=15 values=0
+constants kind=ps type=f count=224 result=00000000 encoding=sparse_zero
+constants kind=ps type=i count=16 result=00000000 encoding=full
+constant kind=ps type=i reg=0 values=0,0,0,0
+constant kind=ps type=i reg=1 values=0,0,0,0
+constant kind=ps type=i reg=2 values=0,0,0,0
+constant kind=ps type=i reg=3 values=0,0,0,0
+constant kind=ps type=i reg=4 values=0,0,0,0
+constant kind=ps type=i reg=5 values=0,0,0,0
+constant kind=ps type=i reg=6 values=0,0,0,0
+constant kind=ps type=i reg=7 values=0,0,0,0
+constant kind=ps type=i reg=8 values=0,0,0,0
+constant kind=ps type=i reg=9 values=0,0,0,0
+constant kind=ps type=i reg=10 values=0,0,0,0
+constant kind=ps type=i reg=11 values=0,0,0,0
+constant kind=ps type=i reg=12 values=0,0,0,0
+constant kind=ps type=i reg=13 values=0,0,0,0
+constant kind=ps type=i reg=14 values=0,0,0,0
+constant kind=ps type=i reg=15 values=0,0,0,0
+constants kind=ps type=b count=16 result=00000000 encoding=full
+constant kind=ps type=b reg=0 values=0
+constant kind=ps type=b reg=1 values=0
+constant kind=ps type=b reg=2 values=0
+constant kind=ps type=b reg=3 values=0
+constant kind=ps type=b reg=4 values=0
+constant kind=ps type=b reg=5 values=0
+constant kind=ps type=b reg=6 values=0
+constant kind=ps type=b reg=7 values=0
+constant kind=ps type=b reg=8 values=0
+constant kind=ps type=b reg=9 values=0
+constant kind=ps type=b reg=10 values=0
+constant kind=ps type=b reg=11 values=0
+constant kind=ps type=b reg=12 values=0
+constant kind=ps type=b reg=13 values=0
+constant kind=ps type=b reg=14 values=0
+constant kind=ps type=b reg=15 values=0
+draw_args base_vertex=0 min_vertex=0 num_vertices=3 start_index=0
+draw_result device=1 frame=3 index=2 result=8876086c
+frame_end device=1 frame=3 draws=2 capture=1 present=00000000
+frame_begin device=1 frame=4
+capture_event device=1 frame=4 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=7943791573915
+draw device=1 frame=4 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
+geometry source=buffers
+resource identity=6 ptr=00d2d478 type=6
+stream slot=0 result=00000000 identity=6 offset=16 stride=20 frequency=1 frequency_result=00000000
+vertex_buffer identity=6 bytes=76 usage=0 pool=1 fvf=68
+stream slot=1 result=00000000 identity=0
+stream slot=2 result=00000000 identity=0
+stream slot=3 result=00000000 identity=0
+stream slot=4 result=00000000 identity=0
+stream slot=5 result=00000000 identity=0
+stream slot=6 result=00000000 identity=0
+stream slot=7 result=00000000 identity=0
+stream slot=8 result=00000000 identity=0
+stream slot=9 result=00000000 identity=0
+stream slot=10 result=00000000 identity=0
+stream slot=11 result=00000000 identity=0
+stream slot=12 result=00000000 identity=0
+stream slot=13 result=00000000 identity=0
+stream slot=14 result=00000000 identity=0
+stream slot=15 result=00000000 identity=0
+indices result=00000000 identity=2
+index_buffer identity=2 bytes=6 usage=0 pool=1 format=101
+surface role=rt0 ptr=001154a8 identity=4 width=160 height=120 format=21 usage=1 msaa=0 container=3 container_type=3 container_result=00000000
+state id=7 value=0
+state id=14 value=1
+state id=23 value=4
+state id=15 value=0
+state id=24 value=0
+state id=25 value=8
+state id=27 value=0
+state id=19 value=2
+state id=20 value=1
+state id=171 value=1
+state id=22 value=1
+state id=168 value=15
+state id=194 value=0
+state id=206 value=0
+state id=52 value=0
+state id=56 value=8
+state id=57 value=0
+state id=58 value=4294967295
+state id=59 value=4294967295
+state id=53 value=1
+state id=54 value=1
+state id=55 value=1
+state id=185 value=0
+state id=189 value=8
+state id=186 value=1
+state id=187 value=1
+state id=188 value=1
+viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
+texture stage=0 ptr=001153e8 type=3 identity=5
+texture_desc stage=0 w=8 h=8 format=21
+sampler stage=0 state=6 value=1
+sampler stage=0 state=5 value=1
+sampler stage=0 state=7 value=0
+sampler stage=0 state=10 value=1
+sampler stage=0 state=11 value=0
+sampler stage=1 state=6 value=1
+sampler stage=1 state=5 value=1
+sampler stage=1 state=7 value=0
+sampler stage=1 state=10 value=1
+sampler stage=1 state=11 value=0
+sampler stage=2 state=6 value=1
+sampler stage=2 state=5 value=1
+sampler stage=2 state=7 value=0
+sampler stage=2 state=10 value=1
+sampler stage=2 state=11 value=0
+sampler stage=3 state=6 value=1
+sampler stage=3 state=5 value=1
+sampler stage=3 state=7 value=0
+sampler stage=3 state=10 value=1
+sampler stage=3 state=11 value=0
+sampler stage=4 state=6 value=1
+sampler stage=4 state=5 value=1
+sampler stage=4 state=7 value=0
+sampler stage=4 state=10 value=1
+sampler stage=4 state=11 value=0
+sampler stage=5 state=6 value=1
+sampler stage=5 state=5 value=1
+sampler stage=5 state=7 value=0
+sampler stage=5 state=10 value=1
+sampler stage=5 state=11 value=0
+sampler stage=6 state=6 value=1
+sampler stage=6 state=5 value=1
+sampler stage=6 state=7 value=0
+sampler stage=6 state=10 value=1
+sampler stage=6 state=11 value=0
+sampler stage=7 state=6 value=1
+sampler stage=7 state=5 value=1
+sampler stage=7 state=7 value=0
+sampler stage=7 state=10 value=1
+sampler stage=7 state=11 value=0
+sampler stage=8 state=6 value=1
+sampler stage=8 state=5 value=1
+sampler stage=8 state=7 value=0
+sampler stage=8 state=10 value=1
+sampler stage=8 state=11 value=0
+sampler stage=9 state=6 value=1
+sampler stage=9 state=5 value=1
+sampler stage=9 state=7 value=0
+sampler stage=9 state=10 value=1
+sampler stage=9 state=11 value=0
+sampler stage=10 state=6 value=1
+sampler stage=10 state=5 value=1
+sampler stage=10 state=7 value=0
+sampler stage=10 state=10 value=1
+sampler stage=10 state=11 value=0
+sampler stage=11 state=6 value=1
+sampler stage=11 state=5 value=1
+sampler stage=11 state=7 value=0
+sampler stage=11 state=10 value=1
+sampler stage=11 state=11 value=0
+sampler stage=12 state=6 value=1
+sampler stage=12 state=5 value=1
+sampler stage=12 state=7 value=0
+sampler stage=12 state=10 value=1
+sampler stage=12 state=11 value=0
+sampler stage=13 state=6 value=1
+sampler stage=13 state=5 value=1
+sampler stage=13 state=7 value=0
+sampler stage=13 state=10 value=1
+sampler stage=13 state=11 value=0
+sampler stage=14 state=6 value=1
+sampler stage=14 state=5 value=1
+sampler stage=14 state=7 value=0
+sampler stage=14 state=10 value=1
+sampler stage=14 state=11 value=0
+sampler stage=15 state=6 value=1
+sampler stage=15 state=5 value=1
+sampler stage=15 state=7 value=0
+sampler stage=15 state=10 value=1
+sampler stage=15 state=11 value=0
+vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
+vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
+vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
+transform state=256 row=0 values=1,0,0,0
+transform state=256 row=1 values=0,1,0,0
+transform state=256 row=2 values=0,0,1,0
+transform state=256 row=3 values=0,0,0,1
+transform state=2 row=0 values=1,0,0,0
+transform state=2 row=1 values=0,1,0,0
+transform state=2 row=2 values=0,0,1,0
+transform state=2 row=3 values=0,0,0,1
+transform state=3 row=0 values=1,0,0,0
+transform state=3 row=1 values=0,1,0,0
+transform state=3 row=2 values=0,0,1,0
+transform state=3 row=3 values=0,0,0,1
+constants kind=vs type=f count=256 result=00000000 encoding=sparse_zero
+constant kind=vs type=f reg=10 bits=80000000,00000000,00000000,00000000
+constants kind=vs type=i count=16 result=00000000 encoding=full
+constant kind=vs type=i reg=0 values=0,0,0,0
+constant kind=vs type=i reg=1 values=0,0,0,0
+constant kind=vs type=i reg=2 values=0,0,0,0
+constant kind=vs type=i reg=3 values=0,0,0,0
+constant kind=vs type=i reg=4 values=0,0,0,0
+constant kind=vs type=i reg=5 values=0,0,0,0
+constant kind=vs type=i reg=6 values=0,0,0,0
+constant kind=vs type=i reg=7 values=0,0,0,0
+constant kind=vs type=i reg=8 values=0,0,0,0
+constant kind=vs type=i reg=9 values=0,0,0,0
+constant kind=vs type=i reg=10 values=0,0,0,0
+constant kind=vs type=i reg=11 values=0,0,0,0
+constant kind=vs type=i reg=12 values=0,0,0,0
+constant kind=vs type=i reg=13 values=0,0,0,0
+constant kind=vs type=i reg=14 values=0,0,0,0
+constant kind=vs type=i reg=15 values=0,0,0,0
+constants kind=vs type=b count=16 result=00000000 encoding=full
+constant kind=vs type=b reg=0 values=0
+constant kind=vs type=b reg=1 values=0
+constant kind=vs type=b reg=2 values=0
+constant kind=vs type=b reg=3 values=0
+constant kind=vs type=b reg=4 values=0
+constant kind=vs type=b reg=5 values=0
+constant kind=vs type=b reg=6 values=0
+constant kind=vs type=b reg=7 values=0
+constant kind=vs type=b reg=8 values=0
+constant kind=vs type=b reg=9 values=0
+constant kind=vs type=b reg=10 values=0
+constant kind=vs type=b reg=11 values=0
+constant kind=vs type=b reg=12 values=0
+constant kind=vs type=b reg=13 values=0
+constant kind=vs type=b reg=14 values=0
+constant kind=vs type=b reg=15 values=0
+constants kind=ps type=f count=224 result=00000000 encoding=sparse_zero
+constants kind=ps type=i count=16 result=00000000 encoding=full
+constant kind=ps type=i reg=0 values=0,0,0,0
+constant kind=ps type=i reg=1 values=0,0,0,0
+constant kind=ps type=i reg=2 values=0,0,0,0
+constant kind=ps type=i reg=3 values=0,0,0,0
+constant kind=ps type=i reg=4 values=0,0,0,0
+constant kind=ps type=i reg=5 values=0,0,0,0
+constant kind=ps type=i reg=6 values=0,0,0,0
+constant kind=ps type=i reg=7 values=0,0,0,0
+constant kind=ps type=i reg=8 values=0,0,0,0
+constant kind=ps type=i reg=9 values=0,0,0,0
+constant kind=ps type=i reg=10 values=0,0,0,0
+constant kind=ps type=i reg=11 values=0,0,0,0
+constant kind=ps type=i reg=12 values=0,0,0,0
+constant kind=ps type=i reg=13 values=0,0,0,0
+constant kind=ps type=i reg=14 values=0,0,0,0
+constant kind=ps type=i reg=15 values=0,0,0,0
+constants kind=ps type=b count=16 result=00000000 encoding=full
+constant kind=ps type=b reg=0 values=0
+constant kind=ps type=b reg=1 values=0
+constant kind=ps type=b reg=2 values=0
+constant kind=ps type=b reg=3 values=0
+constant kind=ps type=b reg=4 values=0
+constant kind=ps type=b reg=5 values=0
+constant kind=ps type=b reg=6 values=0
+constant kind=ps type=b reg=7 values=0
+constant kind=ps type=b reg=8 values=0
+constant kind=ps type=b reg=9 values=0
+constant kind=ps type=b reg=10 values=0
+constant kind=ps type=b reg=11 values=0
+constant kind=ps type=b reg=12 values=0
+constant kind=ps type=b reg=13 values=0
+constant kind=ps type=b reg=14 values=0
+constant kind=ps type=b reg=15 values=0
+draw_args base_vertex=0 min_vertex=0 num_vertices=3 start_index=0
+draw_result device=1 frame=4 index=1 result=00000000
+frame_end device=1 frame=4 draws=1 capture=1 present=00000000
+frame_begin device=1 frame=5
+capture_event device=1 frame=5 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=7943791584547
+draw device=1 frame=5 index=1 kind=indexed_up topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
+geometry source=user_memory
+surface role=rt0 ptr=001154a8 identity=4 width=160 height=120 format=21 usage=1 msaa=0 container=3 container_type=3 container_result=00000000
+state id=7 value=0
+state id=14 value=1
+state id=23 value=4
+state id=15 value=0
+state id=24 value=0
+state id=25 value=8
+state id=27 value=0
+state id=19 value=2
+state id=20 value=1
+state id=171 value=1
+state id=22 value=1
+state id=168 value=15
+state id=194 value=0
+state id=206 value=0
+state id=52 value=0
+state id=56 value=8
+state id=57 value=0
+state id=58 value=4294967295
+state id=59 value=4294967295
+state id=53 value=1
+state id=54 value=1
+state id=55 value=1
+state id=185 value=0
+state id=189 value=8
+state id=186 value=1
+state id=187 value=1
+state id=188 value=1
+viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
+texture stage=0 ptr=001153e8 type=3 identity=5
+texture_desc stage=0 w=8 h=8 format=21
+sampler stage=0 state=6 value=1
+sampler stage=0 state=5 value=1
+sampler stage=0 state=7 value=0
+sampler stage=0 state=10 value=1
+sampler stage=0 state=11 value=0
+sampler stage=1 state=6 value=1
+sampler stage=1 state=5 value=1
+sampler stage=1 state=7 value=0
+sampler stage=1 state=10 value=1
+sampler stage=1 state=11 value=0
+sampler stage=2 state=6 value=1
+sampler stage=2 state=5 value=1
+sampler stage=2 state=7 value=0
+sampler stage=2 state=10 value=1
+sampler stage=2 state=11 value=0
+sampler stage=3 state=6 value=1
+sampler stage=3 state=5 value=1
+sampler stage=3 state=7 value=0
+sampler stage=3 state=10 value=1
+sampler stage=3 state=11 value=0
+sampler stage=4 state=6 value=1
+sampler stage=4 state=5 value=1
+sampler stage=4 state=7 value=0
+sampler stage=4 state=10 value=1
+sampler stage=4 state=11 value=0
+sampler stage=5 state=6 value=1
+sampler stage=5 state=5 value=1
+sampler stage=5 state=7 value=0
+sampler stage=5 state=10 value=1
+sampler stage=5 state=11 value=0
+sampler stage=6 state=6 value=1
+sampler stage=6 state=5 value=1
+sampler stage=6 state=7 value=0
+sampler stage=6 state=10 value=1
+sampler stage=6 state=11 value=0
+sampler stage=7 state=6 value=1
+sampler stage=7 state=5 value=1
+sampler stage=7 state=7 value=0
+sampler stage=7 state=10 value=1
+sampler stage=7 state=11 value=0
+sampler stage=8 state=6 value=1
+sampler stage=8 state=5 value=1
+sampler stage=8 state=7 value=0
+sampler stage=8 state=10 value=1
+sampler stage=8 state=11 value=0
+sampler stage=9 state=6 value=1
+sampler stage=9 state=5 value=1
+sampler stage=9 state=7 value=0
+sampler stage=9 state=10 value=1
+sampler stage=9 state=11 value=0
+sampler stage=10 state=6 value=1
+sampler stage=10 state=5 value=1
+sampler stage=10 state=7 value=0
+sampler stage=10 state=10 value=1
+sampler stage=10 state=11 value=0
+sampler stage=11 state=6 value=1
+sampler stage=11 state=5 value=1
+sampler stage=11 state=7 value=0
+sampler stage=11 state=10 value=1
+sampler stage=11 state=11 value=0
+sampler stage=12 state=6 value=1
+sampler stage=12 state=5 value=1
+sampler stage=12 state=7 value=0
+sampler stage=12 state=10 value=1
+sampler stage=12 state=11 value=0
+sampler stage=13 state=6 value=1
+sampler stage=13 state=5 value=1
+sampler stage=13 state=7 value=0
+sampler stage=13 state=10 value=1
+sampler stage=13 state=11 value=0
+sampler stage=14 state=6 value=1
+sampler stage=14 state=5 value=1
+sampler stage=14 state=7 value=0
+sampler stage=14 state=10 value=1
+sampler stage=14 state=11 value=0
+sampler stage=15 state=6 value=1
+sampler stage=15 state=5 value=1
+sampler stage=15 state=7 value=0
+sampler stage=15 state=10 value=1
+sampler stage=15 state=11 value=0
+vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
+vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
+vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
+transform state=256 row=0 values=1,0,0,0
+transform state=256 row=1 values=0,1,0,0
+transform state=256 row=2 values=0,0,1,0
+transform state=256 row=3 values=0,0,0,1
+transform state=2 row=0 values=1,0,0,0
+transform state=2 row=1 values=0,1,0,0
+transform state=2 row=2 values=0,0,1,0
+transform state=2 row=3 values=0,0,0,1
+transform state=3 row=0 values=1,0,0,0
+transform state=3 row=1 values=0,1,0,0
+transform state=3 row=2 values=0,0,1,0
+transform state=3 row=3 values=0,0,0,1
+constants kind=vs type=f count=256 result=00000000 encoding=sparse_zero
+constant kind=vs type=f reg=10 bits=80000000,00000000,00000000,00000000
+constants kind=vs type=i count=16 result=00000000 encoding=full
+constant kind=vs type=i reg=0 values=0,0,0,0
+constant kind=vs type=i reg=1 values=0,0,0,0
+constant kind=vs type=i reg=2 values=0,0,0,0
+constant kind=vs type=i reg=3 values=0,0,0,0
+constant kind=vs type=i reg=4 values=0,0,0,0
+constant kind=vs type=i reg=5 values=0,0,0,0
+constant kind=vs type=i reg=6 values=0,0,0,0
+constant kind=vs type=i reg=7 values=0,0,0,0
+constant kind=vs type=i reg=8 values=0,0,0,0
+constant kind=vs type=i reg=9 values=0,0,0,0
+constant kind=vs type=i reg=10 values=0,0,0,0
+constant kind=vs type=i reg=11 values=0,0,0,0
+constant kind=vs type=i reg=12 values=0,0,0,0
+constant kind=vs type=i reg=13 values=0,0,0,0
+constant kind=vs type=i reg=14 values=0,0,0,0
+constant kind=vs type=i reg=15 values=0,0,0,0
+constants kind=vs type=b count=16 result=00000000 encoding=full
+constant kind=vs type=b reg=0 values=0
+constant kind=vs type=b reg=1 values=0
+constant kind=vs type=b reg=2 values=0
+constant kind=vs type=b reg=3 values=0
+constant kind=vs type=b reg=4 values=0
+constant kind=vs type=b reg=5 values=0
+constant kind=vs type=b reg=6 values=0
+constant kind=vs type=b reg=7 values=0
+constant kind=vs type=b reg=8 values=0
+constant kind=vs type=b reg=9 values=0
+constant kind=vs type=b reg=10 values=0
+constant kind=vs type=b reg=11 values=0
+constant kind=vs type=b reg=12 values=0
+constant kind=vs type=b reg=13 values=0
+constant kind=vs type=b reg=14 values=0
+constant kind=vs type=b reg=15 values=0
+constants kind=ps type=f count=224 result=00000000 encoding=sparse_zero
+constants kind=ps type=i count=16 result=00000000 encoding=full
+constant kind=ps type=i reg=0 values=0,0,0,0
+constant kind=ps type=i reg=1 values=0,0,0,0
+constant kind=ps type=i reg=2 values=0,0,0,0
+constant kind=ps type=i reg=3 values=0,0,0,0
+constant kind=ps type=i reg=4 values=0,0,0,0
+constant kind=ps type=i reg=5 values=0,0,0,0
+constant kind=ps type=i reg=6 values=0,0,0,0
+constant kind=ps type=i reg=7 values=0,0,0,0
+constant kind=ps type=i reg=8 values=0,0,0,0
+constant kind=ps type=i reg=9 values=0,0,0,0
+constant kind=ps type=i reg=10 values=0,0,0,0
+constant kind=ps type=i reg=11 values=0,0,0,0
+constant kind=ps type=i reg=12 values=0,0,0,0
+constant kind=ps type=i reg=13 values=0,0,0,0
+constant kind=ps type=i reg=14 values=0,0,0,0
+constant kind=ps type=i reg=15 values=0,0,0,0
+constants kind=ps type=b count=16 result=00000000 encoding=full
+constant kind=ps type=b reg=0 values=0
+constant kind=ps type=b reg=1 values=0
+constant kind=ps type=b reg=2 values=0
+constant kind=ps type=b reg=3 values=0
+constant kind=ps type=b reg=4 values=0
+constant kind=ps type=b reg=5 values=0
+constant kind=ps type=b reg=6 values=0
+constant kind=ps type=b reg=7 values=0
+constant kind=ps type=b reg=8 values=0
+constant kind=ps type=b reg=9 values=0
+constant kind=ps type=b reg=10 values=0
+constant kind=ps type=b reg=11 values=0
+constant kind=ps type=b reg=12 values=0
+constant kind=ps type=b reg=13 values=0
+constant kind=ps type=b reg=14 values=0
+constant kind=ps type=b reg=15 values=0
+draw_args min_vertex=0 num_vertices=3 vertex_ptr=0032feb0 stride=20 index_ptr=0032fe48 index_format=101
+draw_result device=1 frame=5 index=1 result=00000000
+frame_end device=1 frame=5 draws=1 capture=1 present=00000000
+telemetry_presentation phase=reset_before device=1 thread=440 focus_window=00040056 device_window=00040056 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+reset_begin ptr=001134a8 device=1
+telemetry_presentation phase=reset_after device=1 thread=440 focus_window=00040056 device_window=00040056 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_summary device=1 frame=6 reason=reset qpc=7943791728119 since_start_us=1389359.900 interval_us=38577.100 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=397.200 min_us=397.200 max_us=397.200 bytes=0 buckets=0,0,1,0,0,0
+telemetry_metric device=1 name=present_capture count=5 failures=0 total_us=5557.700 min_us=4.000 max_us=5534.800 bytes=0 buckets=4,0,0,1,0,0
+telemetry_metric device=1 name=frame_capture count=5 failures=0 total_us=18976.400 min_us=1836.600 max_us=7182.400 bytes=0 buckets=0,0,0,5,0,0
+telemetry_metric device=1 name=draw_backend count=7 failures=1 total_us=6454.800 min_us=2.100 max_us=3440.500 bytes=0 buckets=2,1,2,2,0,0
+telemetry_metric device=1 name=capture_cpu count=6 failures=0 total_us=6016.100 min_us=503.700 max_us=3339.100 bytes=0 buckets=0,0,5,1,0,0
+telemetry_metric device=1 name=snapshot count=6 failures=0 total_us=5937.700 min_us=489.600 max_us=3326.500 bytes=0 buckets=0,0,5,1,0,0
+telemetry_metric device=1 name=texture count=2 failures=0 total_us=275.200 min_us=1.400 max_us=273.800 bytes=0 buckets=1,0,1,0,0,0
+telemetry_metric device=1 name=vertex_buffer count=2 failures=0 total_us=209.400 min_us=4.100 max_us=205.300 bytes=152 buckets=1,0,1,0,0,0
+telemetry_metric device=1 name=index_buffer count=1 failures=0 total_us=54.600 min_us=54.600 max_us=54.600 bytes=6 buckets=0,1,0,0,0,0
+telemetry_metric device=1 name=reset count=1 failures=0 total_us=10637.200 min_us=10637.200 max_us=10637.200 bytes=0 buckets=0,0,0,0,1,0
+telemetry_metric device=1 name=log_flush count=6 failures=0 total_us=3.300 min_us=0.300 max_us=1.300 bytes=0 buckets=6,0,0,0,0,0
+reset_end device=1 result=00000000
+telemetry_summary device=1 frame=6 reason=device_destroy qpc=7943791782046 since_start_us=1394752.600 interval_us=5392.700 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=log_flush count=1 failures=0 total_us=0.400 min_us=0.400 max_us=0.400 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=6 reason=device_destroy qpc=7943791782585 since_start_us=1394806.500 interval_us=106622.900 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=37 failures=0 total_us=14.800 min_us=0.100 max_us=2.200 bytes=0 buckets=37,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=60272.000 min_us=60272.000 max_us=60272.000 bytes=0 buckets=0,0,0,0,1,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=26.100 min_us=26.100 max_us=26.100 bytes=0 buckets=0,1,0,0,0,0
+device_destroy ptr=001134a8 device=1
+telemetry_presentation phase=create_before device=0 thread=440 focus_window=00040056 device_window=00040056 width=160 height=120 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device adapter=0 flags=00000052 width=160 height=120 format=0 windowed=1 msaa=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=440 focus_window=00040056 device_window=00040056 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=001134a8 device=2 ex=0
+telemetry_first_present device=2 frame=0 qpc=7943791821679 since_start_us=1398715.900 capture=0 reset_count=0
+telemetry_window_context device=2 frame=0 render_thread=440 window_thread=440 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
+telemetry_window device=2 frame=0 qpc=7943791822199 window=00040056 foreground=00000000 thread_focus=00000000 iconic=0 visible=1 style=14cf0000 exstyle=00000100 window_rect=80,80,260,240 client_rect=0,0,172,126
+telemetry_cursor_poll device=2 frame=0 qpc=7943791822199 flags=1 cursor=00000000 x=2299 y=973
+telemetry_present_window device=2 frame=0 override=00000000 device_window=00040056 result=00000000
+frame_end device=2 frame=0 draws=1 capture=0 present=00000000
+frame_begin device=2 frame=1
+capture_event device=2 frame=1 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=7943791824373
+draw device=2 frame=1 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
+geometry source=buffers
+resource identity=7 ptr=00d2d3b8 type=6
+stream slot=0 result=00000000 identity=7 offset=16 stride=20 frequency=1 frequency_result=00000000
+vertex_buffer identity=7 bytes=76 usage=0 pool=1 fvf=68
+stream slot=1 result=00000000 identity=0
+stream slot=2 result=00000000 identity=0
+stream slot=3 result=00000000 identity=0
+stream slot=4 result=00000000 identity=0
+stream slot=5 result=00000000 identity=0
+stream slot=6 result=00000000 identity=0
+stream slot=7 result=00000000 identity=0
+stream slot=8 result=00000000 identity=0
+stream slot=9 result=00000000 identity=0
+stream slot=10 result=00000000 identity=0
+stream slot=11 result=00000000 identity=0
+stream slot=12 result=00000000 identity=0
+stream slot=13 result=00000000 identity=0
+stream slot=14 result=00000000 identity=0
+stream slot=15 result=00000000 identity=0
+resource identity=8 ptr=00d2d3e8 type=7
+indices result=00000000 identity=8
+index_buffer identity=8 bytes=6 usage=0 pool=1 format=101
+resource identity=9 ptr=001154a8 type=3
+resource identity=10 ptr=001154e8 type=1
+surface role=rt0 ptr=001154e8 identity=10 width=160 height=120 format=21 usage=1 msaa=0 container=9 container_type=3 container_result=00000000
+state id=7 value=0
+state id=14 value=1
+state id=23 value=4
+state id=15 value=0
+state id=24 value=0
+state id=25 value=8
+state id=27 value=0
+state id=19 value=2
+state id=20 value=1
+state id=171 value=1
+state id=22 value=1
+state id=168 value=15
+state id=194 value=0
+state id=206 value=0
+state id=52 value=0
+state id=56 value=8
+state id=57 value=0
+state id=58 value=4294967295
+state id=59 value=4294967295
+state id=53 value=1
+state id=54 value=1
+state id=55 value=1
+state id=185 value=0
+state id=189 value=8
+state id=186 value=1
+state id=187 value=1
+state id=188 value=1
+viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
+resource identity=11 ptr=00115428 type=3
+texture stage=0 ptr=00115428 type=3 identity=11
+texture_desc stage=0 w=8 h=8 format=21
+sampler stage=0 state=6 value=1
+sampler stage=0 state=5 value=1
+sampler stage=0 state=7 value=0
+sampler stage=0 state=10 value=1
+sampler stage=0 state=11 value=0
+sampler stage=1 state=6 value=1
+sampler stage=1 state=5 value=1
+sampler stage=1 state=7 value=0
+sampler stage=1 state=10 value=1
+sampler stage=1 state=11 value=0
+sampler stage=2 state=6 value=1
+sampler stage=2 state=5 value=1
+sampler stage=2 state=7 value=0
+sampler stage=2 state=10 value=1
+sampler stage=2 state=11 value=0
+sampler stage=3 state=6 value=1
+sampler stage=3 state=5 value=1
+sampler stage=3 state=7 value=0
+sampler stage=3 state=10 value=1
+sampler stage=3 state=11 value=0
+sampler stage=4 state=6 value=1
+sampler stage=4 state=5 value=1
+sampler stage=4 state=7 value=0
+sampler stage=4 state=10 value=1
+sampler stage=4 state=11 value=0
+sampler stage=5 state=6 value=1
+sampler stage=5 state=5 value=1
+sampler stage=5 state=7 value=0
+sampler stage=5 state=10 value=1
+sampler stage=5 state=11 value=0
+sampler stage=6 state=6 value=1
+sampler stage=6 state=5 value=1
+sampler stage=6 state=7 value=0
+sampler stage=6 state=10 value=1
+sampler stage=6 state=11 value=0
+sampler stage=7 state=6 value=1
+sampler stage=7 state=5 value=1
+sampler stage=7 state=7 value=0
+sampler stage=7 state=10 value=1
+sampler stage=7 state=11 value=0
+sampler stage=8 state=6 value=1
+sampler stage=8 state=5 value=1
+sampler stage=8 state=7 value=0
+sampler stage=8 state=10 value=1
+sampler stage=8 state=11 value=0
+sampler stage=9 state=6 value=1
+sampler stage=9 state=5 value=1
+sampler stage=9 state=7 value=0
+sampler stage=9 state=10 value=1
+sampler stage=9 state=11 value=0
+sampler stage=10 state=6 value=1
+sampler stage=10 state=5 value=1
+sampler stage=10 state=7 value=0
+sampler stage=10 state=10 value=1
+sampler stage=10 state=11 value=0
+sampler stage=11 state=6 value=1
+sampler stage=11 state=5 value=1
+sampler stage=11 state=7 value=0
+sampler stage=11 state=10 value=1
+sampler stage=11 state=11 value=0
+sampler stage=12 state=6 value=1
+sampler stage=12 state=5 value=1
+sampler stage=12 state=7 value=0
+sampler stage=12 state=10 value=1
+sampler stage=12 state=11 value=0
+sampler stage=13 state=6 value=1
+sampler stage=13 state=5 value=1
+sampler stage=13 state=7 value=0
+sampler stage=13 state=10 value=1
+sampler stage=13 state=11 value=0
+sampler stage=14 state=6 value=1
+sampler stage=14 state=5 value=1
+sampler stage=14 state=7 value=0
+sampler stage=14 state=10 value=1
+sampler stage=14 state=11 value=0
+sampler stage=15 state=6 value=1
+sampler stage=15 state=5 value=1
+sampler stage=15 state=7 value=0
+sampler stage=15 state=10 value=1
+sampler stage=15 state=11 value=0
+vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
+vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
+vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
+transform state=256 row=0 values=1,0,0,0
+transform state=256 row=1 values=0,1,0,0
+transform state=256 row=2 values=0,0,1,0
+transform state=256 row=3 values=0,0,0,1
+transform state=2 row=0 values=1,0,0,0
+transform state=2 row=1 values=0,1,0,0
+transform state=2 row=2 values=0,0,1,0
+transform state=2 row=3 values=0,0,0,1
+transform state=3 row=0 values=1,0,0,0
+transform state=3 row=1 values=0,1,0,0
+transform state=3 row=2 values=0,0,1,0
+transform state=3 row=3 values=0,0,0,1
+constants kind=vs type=f count=256 result=00000000 encoding=sparse_zero
+constant kind=vs type=f reg=10 bits=80000000,00000000,00000000,00000000
+constants kind=vs type=i count=16 result=00000000 encoding=full
+constant kind=vs type=i reg=0 values=7,-2,2147483647,-2147483647
+constant kind=vs type=i reg=1 values=0,0,0,0
+constant kind=vs type=i reg=2 values=0,0,0,0
+constant kind=vs type=i reg=3 values=0,0,0,0
+constant kind=vs type=i reg=4 values=0,0,0,0
+constant kind=vs type=i reg=5 values=0,0,0,0
+constant kind=vs type=i reg=6 values=0,0,0,0
+constant kind=vs type=i reg=7 values=0,0,0,0
+constant kind=vs type=i reg=8 values=0,0,0,0
+constant kind=vs type=i reg=9 values=0,0,0,0
+constant kind=vs type=i reg=10 values=0,0,0,0
+constant kind=vs type=i reg=11 values=0,0,0,0
+constant kind=vs type=i reg=12 values=0,0,0,0
+constant kind=vs type=i reg=13 values=0,0,0,0
+constant kind=vs type=i reg=14 values=0,0,0,0
+constant kind=vs type=i reg=15 values=0,0,0,0
+constants kind=vs type=b count=16 result=00000000 encoding=full
+constant kind=vs type=b reg=0 values=1
+constant kind=vs type=b reg=1 values=0
+constant kind=vs type=b reg=2 values=1
+constant kind=vs type=b reg=3 values=0
+constant kind=vs type=b reg=4 values=0
+constant kind=vs type=b reg=5 values=0
+constant kind=vs type=b reg=6 values=0
+constant kind=vs type=b reg=7 values=0
+constant kind=vs type=b reg=8 values=0
+constant kind=vs type=b reg=9 values=0
+constant kind=vs type=b reg=10 values=0
+constant kind=vs type=b reg=11 values=0
+constant kind=vs type=b reg=12 values=0
+constant kind=vs type=b reg=13 values=0
+constant kind=vs type=b reg=14 values=0
+constant kind=vs type=b reg=15 values=0
+constants kind=ps type=f count=224 result=00000000 encoding=sparse_zero
+constants kind=ps type=i count=16 result=00000000 encoding=full
+constant kind=ps type=i reg=0 values=7,-2,2147483647,-2147483647
+constant kind=ps type=i reg=1 values=0,0,0,0
+constant kind=ps type=i reg=2 values=0,0,0,0
+constant kind=ps type=i reg=3 values=0,0,0,0
+constant kind=ps type=i reg=4 values=0,0,0,0
+constant kind=ps type=i reg=5 values=0,0,0,0
+constant kind=ps type=i reg=6 values=0,0,0,0
+constant kind=ps type=i reg=7 values=0,0,0,0
+constant kind=ps type=i reg=8 values=0,0,0,0
+constant kind=ps type=i reg=9 values=0,0,0,0
+constant kind=ps type=i reg=10 values=0,0,0,0
+constant kind=ps type=i reg=11 values=0,0,0,0
+constant kind=ps type=i reg=12 values=0,0,0,0
+constant kind=ps type=i reg=13 values=0,0,0,0
+constant kind=ps type=i reg=14 values=0,0,0,0
+constant kind=ps type=i reg=15 values=0,0,0,0
+constants kind=ps type=b count=16 result=00000000 encoding=full
+constant kind=ps type=b reg=0 values=1
+constant kind=ps type=b reg=1 values=0
+constant kind=ps type=b reg=2 values=1
+constant kind=ps type=b reg=3 values=0
+constant kind=ps type=b reg=4 values=0
+constant kind=ps type=b reg=5 values=0
+constant kind=ps type=b reg=6 values=0
+constant kind=ps type=b reg=7 values=0
+constant kind=ps type=b reg=8 values=0
+constant kind=ps type=b reg=9 values=0
+constant kind=ps type=b reg=10 values=0
+constant kind=ps type=b reg=11 values=0
+constant kind=ps type=b reg=12 values=0
+constant kind=ps type=b reg=13 values=0
+constant kind=ps type=b reg=14 values=0
+constant kind=ps type=b reg=15 values=0
+draw_args base_vertex=0 min_vertex=0 num_vertices=3 start_index=0
+draw_result device=2 frame=1 index=1 result=00000000
+frame_end device=2 frame=1 draws=1 capture=1 present=00000000
+frame_begin device=2 frame=2
+capture_event device=2 frame=2 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=7943791835185
+draw device=2 frame=2 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
+geometry source=buffers
+stream slot=0 result=00000000 identity=7 offset=16 stride=20 frequency=1 frequency_result=00000000
+vertex_buffer identity=7 bytes=76 usage=0 pool=1 fvf=68
+stream slot=1 result=00000000 identity=0
+stream slot=2 result=00000000 identity=0
+stream slot=3 result=00000000 identity=0
+stream slot=4 result=00000000 identity=0
+stream slot=5 result=00000000 identity=0
+stream slot=6 result=00000000 identity=0
+stream slot=7 result=00000000 identity=0
+stream slot=8 result=00000000 identity=0
+stream slot=9 result=00000000 identity=0
+stream slot=10 result=00000000 identity=0
+stream slot=11 result=00000000 identity=0
+stream slot=12 result=00000000 identity=0
+stream slot=13 result=00000000 identity=0
+stream slot=14 result=00000000 identity=0
+stream slot=15 result=00000000 identity=0
+indices result=00000000 identity=8
+index_buffer identity=8 bytes=6 usage=0 pool=1 format=101
+surface role=rt0 ptr=001154e8 identity=10 width=160 height=120 format=21 usage=1 msaa=0 container=9 container_type=3 container_result=00000000
+state id=7 value=0
+state id=14 value=1
+state id=23 value=4
+state id=15 value=0
+state id=24 value=0
+state id=25 value=8
+state id=27 value=0
+state id=19 value=2
+state id=20 value=1
+state id=171 value=1
+state id=22 value=1
+state id=168 value=15
+state id=194 value=0
+state id=206 value=0
+state id=52 value=0
+state id=56 value=8
+state id=57 value=0
+state id=58 value=4294967295
+state id=59 value=4294967295
+state id=53 value=1
+state id=54 value=1
+state id=55 value=1
+state id=185 value=0
+state id=189 value=8
+state id=186 value=1
+state id=187 value=1
+state id=188 value=1
+viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
+texture stage=0 ptr=00115428 type=3 identity=11
+texture_desc stage=0 w=8 h=8 format=21
+sampler stage=0 state=6 value=1
+sampler stage=0 state=5 value=1
+sampler stage=0 state=7 value=0
+sampler stage=0 state=10 value=1
+sampler stage=0 state=11 value=0
+sampler stage=1 state=6 value=1
+sampler stage=1 state=5 value=1
+sampler stage=1 state=7 value=0
+sampler stage=1 state=10 value=1
+sampler stage=1 state=11 value=0
+sampler stage=2 state=6 value=1
+sampler stage=2 state=5 value=1
+sampler stage=2 state=7 value=0
+sampler stage=2 state=10 value=1
+sampler stage=2 state=11 value=0
+sampler stage=3 state=6 value=1
+sampler stage=3 state=5 value=1
+sampler stage=3 state=7 value=0
+sampler stage=3 state=10 value=1
+sampler stage=3 state=11 value=0
+sampler stage=4 state=6 value=1
+sampler stage=4 state=5 value=1
+sampler stage=4 state=7 value=0
+sampler stage=4 state=10 value=1
+sampler stage=4 state=11 value=0
+sampler stage=5 state=6 value=1
+sampler stage=5 state=5 value=1
+sampler stage=5 state=7 value=0
+sampler stage=5 state=10 value=1
+sampler stage=5 state=11 value=0
+sampler stage=6 state=6 value=1
+sampler stage=6 state=5 value=1
+sampler stage=6 state=7 value=0
+sampler stage=6 state=10 value=1
+sampler stage=6 state=11 value=0
+sampler stage=7 state=6 value=1
+sampler stage=7 state=5 value=1
+sampler stage=7 state=7 value=0
+sampler stage=7 state=10 value=1
+sampler stage=7 state=11 value=0
+sampler stage=8 state=6 value=1
+sampler stage=8 state=5 value=1
+sampler stage=8 state=7 value=0
+sampler stage=8 state=10 value=1
+sampler stage=8 state=11 value=0
+sampler stage=9 state=6 value=1
+sampler stage=9 state=5 value=1
+sampler stage=9 state=7 value=0
+sampler stage=9 state=10 value=1
+sampler stage=9 state=11 value=0
+sampler stage=10 state=6 value=1
+sampler stage=10 state=5 value=1
+sampler stage=10 state=7 value=0
+sampler stage=10 state=10 value=1
+sampler stage=10 state=11 value=0
+sampler stage=11 state=6 value=1
+sampler stage=11 state=5 value=1
+sampler stage=11 state=7 value=0
+sampler stage=11 state=10 value=1
+sampler stage=11 state=11 value=0
+sampler stage=12 state=6 value=1
+sampler stage=12 state=5 value=1
+sampler stage=12 state=7 value=0
+sampler stage=12 state=10 value=1
+sampler stage=12 state=11 value=0
+sampler stage=13 state=6 value=1
+sampler stage=13 state=5 value=1
+sampler stage=13 state=7 value=0
+sampler stage=13 state=10 value=1
+sampler stage=13 state=11 value=0
+sampler stage=14 state=6 value=1
+sampler stage=14 state=5 value=1
+sampler stage=14 state=7 value=0
+sampler stage=14 state=10 value=1
+sampler stage=14 state=11 value=0
+sampler stage=15 state=6 value=1
+sampler stage=15 state=5 value=1
+sampler stage=15 state=7 value=0
+sampler stage=15 state=10 value=1
+sampler stage=15 state=11 value=0
+vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
+vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
+vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
+transform state=256 row=0 values=1,0,0,0
+transform state=256 row=1 values=0,1,0,0
+transform state=256 row=2 values=0,0,1,0
+transform state=256 row=3 values=0,0,0,1
+transform state=2 row=0 values=1,0,0,0
+transform state=2 row=1 values=0,1,0,0
+transform state=2 row=2 values=0,0,1,0
+transform state=2 row=3 values=0,0,0,1
+transform state=3 row=0 values=1,0,0,0
+transform state=3 row=1 values=0,1,0,0
+transform state=3 row=2 values=0,0,1,0
+transform state=3 row=3 values=0,0,0,1
+constants kind=vs type=f count=256 result=00000000 encoding=sparse_zero
+constant kind=vs type=f reg=10 bits=80000000,00000000,00000000,00000000
+constants kind=vs type=i count=16 result=00000000 encoding=full
+constant kind=vs type=i reg=0 values=7,-2,2147483647,-2147483647
+constant kind=vs type=i reg=1 values=0,0,0,0
+constant kind=vs type=i reg=2 values=0,0,0,0
+constant kind=vs type=i reg=3 values=0,0,0,0
+constant kind=vs type=i reg=4 values=0,0,0,0
+constant kind=vs type=i reg=5 values=0,0,0,0
+constant kind=vs type=i reg=6 values=0,0,0,0
+constant kind=vs type=i reg=7 values=0,0,0,0
+constant kind=vs type=i reg=8 values=0,0,0,0
+constant kind=vs type=i reg=9 values=0,0,0,0
+constant kind=vs type=i reg=10 values=0,0,0,0
+constant kind=vs type=i reg=11 values=0,0,0,0
+constant kind=vs type=i reg=12 values=0,0,0,0
+constant kind=vs type=i reg=13 values=0,0,0,0
+constant kind=vs type=i reg=14 values=0,0,0,0
+constant kind=vs type=i reg=15 values=0,0,0,0
+constants kind=vs type=b count=16 result=00000000 encoding=full
+constant kind=vs type=b reg=0 values=1
+constant kind=vs type=b reg=1 values=0
+constant kind=vs type=b reg=2 values=1
+constant kind=vs type=b reg=3 values=0
+constant kind=vs type=b reg=4 values=0
+constant kind=vs type=b reg=5 values=0
+constant kind=vs type=b reg=6 values=0
+constant kind=vs type=b reg=7 values=0
+constant kind=vs type=b reg=8 values=0
+constant kind=vs type=b reg=9 values=0
+constant kind=vs type=b reg=10 values=0
+constant kind=vs type=b reg=11 values=0
+constant kind=vs type=b reg=12 values=0
+constant kind=vs type=b reg=13 values=0
+constant kind=vs type=b reg=14 values=0
+constant kind=vs type=b reg=15 values=0
+constants kind=ps type=f count=224 result=00000000 encoding=sparse_zero
+constants kind=ps type=i count=16 result=00000000 encoding=full
+constant kind=ps type=i reg=0 values=7,-2,2147483647,-2147483647
+constant kind=ps type=i reg=1 values=0,0,0,0
+constant kind=ps type=i reg=2 values=0,0,0,0
+constant kind=ps type=i reg=3 values=0,0,0,0
+constant kind=ps type=i reg=4 values=0,0,0,0
+constant kind=ps type=i reg=5 values=0,0,0,0
+constant kind=ps type=i reg=6 values=0,0,0,0
+constant kind=ps type=i reg=7 values=0,0,0,0
+constant kind=ps type=i reg=8 values=0,0,0,0
+constant kind=ps type=i reg=9 values=0,0,0,0
+constant kind=ps type=i reg=10 values=0,0,0,0
+constant kind=ps type=i reg=11 values=0,0,0,0
+constant kind=ps type=i reg=12 values=0,0,0,0
+constant kind=ps type=i reg=13 values=0,0,0,0
+constant kind=ps type=i reg=14 values=0,0,0,0
+constant kind=ps type=i reg=15 values=0,0,0,0
+constants kind=ps type=b count=16 result=00000000 encoding=full
+constant kind=ps type=b reg=0 values=1
+constant kind=ps type=b reg=1 values=0
+constant kind=ps type=b reg=2 values=1
+constant kind=ps type=b reg=3 values=0
+constant kind=ps type=b reg=4 values=0
+constant kind=ps type=b reg=5 values=0
+constant kind=ps type=b reg=6 values=0
+constant kind=ps type=b reg=7 values=0
+constant kind=ps type=b reg=8 values=0
+constant kind=ps type=b reg=9 values=0
+constant kind=ps type=b reg=10 values=0
+constant kind=ps type=b reg=11 values=0
+constant kind=ps type=b reg=12 values=0
+constant kind=ps type=b reg=13 values=0
+constant kind=ps type=b reg=14 values=0
+constant kind=ps type=b reg=15 values=0
+draw_args base_vertex=0 min_vertex=0 num_vertices=3 start_index=0
+draw_result device=2 frame=2 index=1 result=00000000
+frame_end device=2 frame=2 draws=1 capture=1 present=00000000
+frame_begin device=2 frame=3
+capture_event device=2 frame=3 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=7943791845075
+draw device=2 frame=3 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
+geometry source=buffers
+stream slot=0 result=00000000 identity=7 offset=16 stride=20 frequency=1 frequency_result=00000000
+vertex_buffer identity=7 bytes=76 usage=0 pool=1 fvf=68
+stream slot=1 result=00000000 identity=0
+stream slot=2 result=00000000 identity=0
+stream slot=3 result=00000000 identity=0
+stream slot=4 result=00000000 identity=0
+stream slot=5 result=00000000 identity=0
+stream slot=6 result=00000000 identity=0
+stream slot=7 result=00000000 identity=0
+stream slot=8 result=00000000 identity=0
+stream slot=9 result=00000000 identity=0
+stream slot=10 result=00000000 identity=0
+stream slot=11 result=00000000 identity=0
+stream slot=12 result=00000000 identity=0
+stream slot=13 result=00000000 identity=0
+stream slot=14 result=00000000 identity=0
+stream slot=15 result=00000000 identity=0
+indices result=00000000 identity=8
+index_buffer identity=8 bytes=6 usage=0 pool=1 format=101
+surface role=rt0 ptr=001154e8 identity=10 width=160 height=120 format=21 usage=1 msaa=0 container=9 container_type=3 container_result=00000000
+state id=7 value=0
+state id=14 value=1
+state id=23 value=4
+state id=15 value=0
+state id=24 value=0
+state id=25 value=8
+state id=27 value=0
+state id=19 value=2
+state id=20 value=1
+state id=171 value=1
+state id=22 value=1
+state id=168 value=15
+state id=194 value=0
+state id=206 value=0
+state id=52 value=0
+state id=56 value=8
+state id=57 value=0
+state id=58 value=4294967295
+state id=59 value=4294967295
+state id=53 value=1
+state id=54 value=1
+state id=55 value=1
+state id=185 value=0
+state id=189 value=8
+state id=186 value=1
+state id=187 value=1
+state id=188 value=1
+viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
+texture stage=0 ptr=00115428 type=3 identity=11
+texture_desc stage=0 w=8 h=8 format=21
+sampler stage=0 state=6 value=1
+sampler stage=0 state=5 value=1
+sampler stage=0 state=7 value=0
+sampler stage=0 state=10 value=1
+sampler stage=0 state=11 value=0
+sampler stage=1 state=6 value=1
+sampler stage=1 state=5 value=1
+sampler stage=1 state=7 value=0
+sampler stage=1 state=10 value=1
+sampler stage=1 state=11 value=0
+sampler stage=2 state=6 value=1
+sampler stage=2 state=5 value=1
+sampler stage=2 state=7 value=0
+sampler stage=2 state=10 value=1
+sampler stage=2 state=11 value=0
+sampler stage=3 state=6 value=1
+sampler stage=3 state=5 value=1
+sampler stage=3 state=7 value=0
+sampler stage=3 state=10 value=1
+sampler stage=3 state=11 value=0
+sampler stage=4 state=6 value=1
+sampler stage=4 state=5 value=1
+sampler stage=4 state=7 value=0
+sampler stage=4 state=10 value=1
+sampler stage=4 state=11 value=0
+sampler stage=5 state=6 value=1
+sampler stage=5 state=5 value=1
+sampler stage=5 state=7 value=0
+sampler stage=5 state=10 value=1
+sampler stage=5 state=11 value=0
+sampler stage=6 state=6 value=1
+sampler stage=6 state=5 value=1
+sampler stage=6 state=7 value=0
+sampler stage=6 state=10 value=1
+sampler stage=6 state=11 value=0
+sampler stage=7 state=6 value=1
+sampler stage=7 state=5 value=1
+sampler stage=7 state=7 value=0
+sampler stage=7 state=10 value=1
+sampler stage=7 state=11 value=0
+sampler stage=8 state=6 value=1
+sampler stage=8 state=5 value=1
+sampler stage=8 state=7 value=0
+sampler stage=8 state=10 value=1
+sampler stage=8 state=11 value=0
+sampler stage=9 state=6 value=1
+sampler stage=9 state=5 value=1
+sampler stage=9 state=7 value=0
+sampler stage=9 state=10 value=1
+sampler stage=9 state=11 value=0
+sampler stage=10 state=6 value=1
+sampler stage=10 state=5 value=1
+sampler stage=10 state=7 value=0
+sampler stage=10 state=10 value=1
+sampler stage=10 state=11 value=0
+sampler stage=11 state=6 value=1
+sampler stage=11 state=5 value=1
+sampler stage=11 state=7 value=0
+sampler stage=11 state=10 value=1
+sampler stage=11 state=11 value=0
+sampler stage=12 state=6 value=1
+sampler stage=12 state=5 value=1
+sampler stage=12 state=7 value=0
+sampler stage=12 state=10 value=1
+sampler stage=12 state=11 value=0
+sampler stage=13 state=6 value=1
+sampler stage=13 state=5 value=1
+sampler stage=13 state=7 value=0
+sampler stage=13 state=10 value=1
+sampler stage=13 state=11 value=0
+sampler stage=14 state=6 value=1
+sampler stage=14 state=5 value=1
+sampler stage=14 state=7 value=0
+sampler stage=14 state=10 value=1
+sampler stage=14 state=11 value=0
+sampler stage=15 state=6 value=1
+sampler stage=15 state=5 value=1
+sampler stage=15 state=7 value=0
+sampler stage=15 state=10 value=1
+sampler stage=15 state=11 value=0
+vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
+vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
+vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
+transform state=256 row=0 values=1,0,0,0
+transform state=256 row=1 values=0,1,0,0
+transform state=256 row=2 values=0,0,1,0
+transform state=256 row=3 values=0,0,0,1
+transform state=2 row=0 values=1,0,0,0
+transform state=2 row=1 values=0,1,0,0
+transform state=2 row=2 values=0,0,1,0
+transform state=2 row=3 values=0,0,0,1
+transform state=3 row=0 values=1,0,0,0
+transform state=3 row=1 values=0,1,0,0
+transform state=3 row=2 values=0,0,1,0
+transform state=3 row=3 values=0,0,0,1
+constants kind=vs type=f count=256 result=00000000 encoding=sparse_zero
+constant kind=vs type=f reg=10 bits=80000000,00000000,00000000,00000000
+constants kind=vs type=i count=16 result=00000000 encoding=full
+constant kind=vs type=i reg=0 values=0,0,0,0
+constant kind=vs type=i reg=1 values=0,0,0,0
+constant kind=vs type=i reg=2 values=0,0,0,0
+constant kind=vs type=i reg=3 values=0,0,0,0
+constant kind=vs type=i reg=4 values=0,0,0,0
+constant kind=vs type=i reg=5 values=0,0,0,0
+constant kind=vs type=i reg=6 values=0,0,0,0
+constant kind=vs type=i reg=7 values=0,0,0,0
+constant kind=vs type=i reg=8 values=0,0,0,0
+constant kind=vs type=i reg=9 values=0,0,0,0
+constant kind=vs type=i reg=10 values=0,0,0,0
+constant kind=vs type=i reg=11 values=0,0,0,0
+constant kind=vs type=i reg=12 values=0,0,0,0
+constant kind=vs type=i reg=13 values=0,0,0,0
+constant kind=vs type=i reg=14 values=0,0,0,0
+constant kind=vs type=i reg=15 values=0,0,0,0
+constants kind=vs type=b count=16 result=00000000 encoding=full
+constant kind=vs type=b reg=0 values=0
+constant kind=vs type=b reg=1 values=0
+constant kind=vs type=b reg=2 values=0
+constant kind=vs type=b reg=3 values=0
+constant kind=vs type=b reg=4 values=0
+constant kind=vs type=b reg=5 values=0
+constant kind=vs type=b reg=6 values=0
+constant kind=vs type=b reg=7 values=0
+constant kind=vs type=b reg=8 values=0
+constant kind=vs type=b reg=9 values=0
+constant kind=vs type=b reg=10 values=0
+constant kind=vs type=b reg=11 values=0
+constant kind=vs type=b reg=12 values=0
+constant kind=vs type=b reg=13 values=0
+constant kind=vs type=b reg=14 values=0
+constant kind=vs type=b reg=15 values=0
+constants kind=ps type=f count=224 result=00000000 encoding=sparse_zero
+constants kind=ps type=i count=16 result=00000000 encoding=full
+constant kind=ps type=i reg=0 values=0,0,0,0
+constant kind=ps type=i reg=1 values=0,0,0,0
+constant kind=ps type=i reg=2 values=0,0,0,0
+constant kind=ps type=i reg=3 values=0,0,0,0
+constant kind=ps type=i reg=4 values=0,0,0,0
+constant kind=ps type=i reg=5 values=0,0,0,0
+constant kind=ps type=i reg=6 values=0,0,0,0
+constant kind=ps type=i reg=7 values=0,0,0,0
+constant kind=ps type=i reg=8 values=0,0,0,0
+constant kind=ps type=i reg=9 values=0,0,0,0
+constant kind=ps type=i reg=10 values=0,0,0,0
+constant kind=ps type=i reg=11 values=0,0,0,0
+constant kind=ps type=i reg=12 values=0,0,0,0
+constant kind=ps type=i reg=13 values=0,0,0,0
+constant kind=ps type=i reg=14 values=0,0,0,0
+constant kind=ps type=i reg=15 values=0,0,0,0
+constants kind=ps type=b count=16 result=00000000 encoding=full
+constant kind=ps type=b reg=0 values=0
+constant kind=ps type=b reg=1 values=0
+constant kind=ps type=b reg=2 values=0
+constant kind=ps type=b reg=3 values=0
+constant kind=ps type=b reg=4 values=0
+constant kind=ps type=b reg=5 values=0
+constant kind=ps type=b reg=6 values=0
+constant kind=ps type=b reg=7 values=0
+constant kind=ps type=b reg=8 values=0
+constant kind=ps type=b reg=9 values=0
+constant kind=ps type=b reg=10 values=0
+constant kind=ps type=b reg=11 values=0
+constant kind=ps type=b reg=12 values=0
+constant kind=ps type=b reg=13 values=0
+constant kind=ps type=b reg=14 values=0
+constant kind=ps type=b reg=15 values=0
+draw_args base_vertex=0 min_vertex=0 num_vertices=3 start_index=0
+draw_result device=2 frame=3 index=1 result=00000000
+capture_event device=2 frame=3 seq=2 after_draw=1 op=draw_begin result=00000000 qpc=7943791852012
+draw device=2 frame=3 index=2 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
+geometry source=buffers
+stream slot=0 result=00000000 identity=7 offset=16 stride=20 frequency=1 frequency_result=00000000
+vertex_buffer identity=7 bytes=76 usage=0 pool=1 fvf=68
+stream slot=1 result=00000000 identity=0
+stream slot=2 result=00000000 identity=0
+stream slot=3 result=00000000 identity=0
+stream slot=4 result=00000000 identity=0
+stream slot=5 result=00000000 identity=0
+stream slot=6 result=00000000 identity=0
+stream slot=7 result=00000000 identity=0
+stream slot=8 result=00000000 identity=0
+stream slot=9 result=00000000 identity=0
+stream slot=10 result=00000000 identity=0
+stream slot=11 result=00000000 identity=0
+stream slot=12 result=00000000 identity=0
+stream slot=13 result=00000000 identity=0
+stream slot=14 result=00000000 identity=0
+stream slot=15 result=00000000 identity=0
+indices result=00000000 identity=0
+surface role=rt0 ptr=001154e8 identity=10 width=160 height=120 format=21 usage=1 msaa=0 container=9 container_type=3 container_result=00000000
+state id=7 value=0
+state id=14 value=1
+state id=23 value=4
+state id=15 value=0
+state id=24 value=0
+state id=25 value=8
+state id=27 value=0
+state id=19 value=2
+state id=20 value=1
+state id=171 value=1
+state id=22 value=1
+state id=168 value=15
+state id=194 value=0
+state id=206 value=0
+state id=52 value=0
+state id=56 value=8
+state id=57 value=0
+state id=58 value=4294967295
+state id=59 value=4294967295
+state id=53 value=1
+state id=54 value=1
+state id=55 value=1
+state id=185 value=0
+state id=189 value=8
+state id=186 value=1
+state id=187 value=1
+state id=188 value=1
+viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
+texture stage=0 ptr=00115428 type=3 identity=11
+texture_desc stage=0 w=8 h=8 format=21
+sampler stage=0 state=6 value=1
+sampler stage=0 state=5 value=1
+sampler stage=0 state=7 value=0
+sampler stage=0 state=10 value=1
+sampler stage=0 state=11 value=0
+sampler stage=1 state=6 value=1
+sampler stage=1 state=5 value=1
+sampler stage=1 state=7 value=0
+sampler stage=1 state=10 value=1
+sampler stage=1 state=11 value=0
+sampler stage=2 state=6 value=1
+sampler stage=2 state=5 value=1
+sampler stage=2 state=7 value=0
+sampler stage=2 state=10 value=1
+sampler stage=2 state=11 value=0
+sampler stage=3 state=6 value=1
+sampler stage=3 state=5 value=1
+sampler stage=3 state=7 value=0
+sampler stage=3 state=10 value=1
+sampler stage=3 state=11 value=0
+sampler stage=4 state=6 value=1
+sampler stage=4 state=5 value=1
+sampler stage=4 state=7 value=0
+sampler stage=4 state=10 value=1
+sampler stage=4 state=11 value=0
+sampler stage=5 state=6 value=1
+sampler stage=5 state=5 value=1
+sampler stage=5 state=7 value=0
+sampler stage=5 state=10 value=1
+sampler stage=5 state=11 value=0
+sampler stage=6 state=6 value=1
+sampler stage=6 state=5 value=1
+sampler stage=6 state=7 value=0
+sampler stage=6 state=10 value=1
+sampler stage=6 state=11 value=0
+sampler stage=7 state=6 value=1
+sampler stage=7 state=5 value=1
+sampler stage=7 state=7 value=0
+sampler stage=7 state=10 value=1
+sampler stage=7 state=11 value=0
+sampler stage=8 state=6 value=1
+sampler stage=8 state=5 value=1
+sampler stage=8 state=7 value=0
+sampler stage=8 state=10 value=1
+sampler stage=8 state=11 value=0
+sampler stage=9 state=6 value=1
+sampler stage=9 state=5 value=1
+sampler stage=9 state=7 value=0
+sampler stage=9 state=10 value=1
+sampler stage=9 state=11 value=0
+sampler stage=10 state=6 value=1
+sampler stage=10 state=5 value=1
+sampler stage=10 state=7 value=0
+sampler stage=10 state=10 value=1
+sampler stage=10 state=11 value=0
+sampler stage=11 state=6 value=1
+sampler stage=11 state=5 value=1
+sampler stage=11 state=7 value=0
+sampler stage=11 state=10 value=1
+sampler stage=11 state=11 value=0
+sampler stage=12 state=6 value=1
+sampler stage=12 state=5 value=1
+sampler stage=12 state=7 value=0
+sampler stage=12 state=10 value=1
+sampler stage=12 state=11 value=0
+sampler stage=13 state=6 value=1
+sampler stage=13 state=5 value=1
+sampler stage=13 state=7 value=0
+sampler stage=13 state=10 value=1
+sampler stage=13 state=11 value=0
+sampler stage=14 state=6 value=1
+sampler stage=14 state=5 value=1
+sampler stage=14 state=7 value=0
+sampler stage=14 state=10 value=1
+sampler stage=14 state=11 value=0
+sampler stage=15 state=6 value=1
+sampler stage=15 state=5 value=1
+sampler stage=15 state=7 value=0
+sampler stage=15 state=10 value=1
+sampler stage=15 state=11 value=0
+vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
+vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
+vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
+transform state=256 row=0 values=1,0,0,0
+transform state=256 row=1 values=0,1,0,0
+transform state=256 row=2 values=0,0,1,0
+transform state=256 row=3 values=0,0,0,1
+transform state=2 row=0 values=1,0,0,0
+transform state=2 row=1 values=0,1,0,0
+transform state=2 row=2 values=0,0,1,0
+transform state=2 row=3 values=0,0,0,1
+transform state=3 row=0 values=1,0,0,0
+transform state=3 row=1 values=0,1,0,0
+transform state=3 row=2 values=0,0,1,0
+transform state=3 row=3 values=0,0,0,1
+constants kind=vs type=f count=256 result=00000000 encoding=sparse_zero
+constant kind=vs type=f reg=10 bits=80000000,00000000,00000000,00000000
+constants kind=vs type=i count=16 result=00000000 encoding=full
+constant kind=vs type=i reg=0 values=0,0,0,0
+constant kind=vs type=i reg=1 values=0,0,0,0
+constant kind=vs type=i reg=2 values=0,0,0,0
+constant kind=vs type=i reg=3 values=0,0,0,0
+constant kind=vs type=i reg=4 values=0,0,0,0
+constant kind=vs type=i reg=5 values=0,0,0,0
+constant kind=vs type=i reg=6 values=0,0,0,0
+constant kind=vs type=i reg=7 values=0,0,0,0
+constant kind=vs type=i reg=8 values=0,0,0,0
+constant kind=vs type=i reg=9 values=0,0,0,0
+constant kind=vs type=i reg=10 values=0,0,0,0
+constant kind=vs type=i reg=11 values=0,0,0,0
+constant kind=vs type=i reg=12 values=0,0,0,0
+constant kind=vs type=i reg=13 values=0,0,0,0
+constant kind=vs type=i reg=14 values=0,0,0,0
+constant kind=vs type=i reg=15 values=0,0,0,0
+constants kind=vs type=b count=16 result=00000000 encoding=full
+constant kind=vs type=b reg=0 values=0
+constant kind=vs type=b reg=1 values=0
+constant kind=vs type=b reg=2 values=0
+constant kind=vs type=b reg=3 values=0
+constant kind=vs type=b reg=4 values=0
+constant kind=vs type=b reg=5 values=0
+constant kind=vs type=b reg=6 values=0
+constant kind=vs type=b reg=7 values=0
+constant kind=vs type=b reg=8 values=0
+constant kind=vs type=b reg=9 values=0
+constant kind=vs type=b reg=10 values=0
+constant kind=vs type=b reg=11 values=0
+constant kind=vs type=b reg=12 values=0
+constant kind=vs type=b reg=13 values=0
+constant kind=vs type=b reg=14 values=0
+constant kind=vs type=b reg=15 values=0
+constants kind=ps type=f count=224 result=00000000 encoding=sparse_zero
+constants kind=ps type=i count=16 result=00000000 encoding=full
+constant kind=ps type=i reg=0 values=0,0,0,0
+constant kind=ps type=i reg=1 values=0,0,0,0
+constant kind=ps type=i reg=2 values=0,0,0,0
+constant kind=ps type=i reg=3 values=0,0,0,0
+constant kind=ps type=i reg=4 values=0,0,0,0
+constant kind=ps type=i reg=5 values=0,0,0,0
+constant kind=ps type=i reg=6 values=0,0,0,0
+constant kind=ps type=i reg=7 values=0,0,0,0
+constant kind=ps type=i reg=8 values=0,0,0,0
+constant kind=ps type=i reg=9 values=0,0,0,0
+constant kind=ps type=i reg=10 values=0,0,0,0
+constant kind=ps type=i reg=11 values=0,0,0,0
+constant kind=ps type=i reg=12 values=0,0,0,0
+constant kind=ps type=i reg=13 values=0,0,0,0
+constant kind=ps type=i reg=14 values=0,0,0,0
+constant kind=ps type=i reg=15 values=0,0,0,0
+constants kind=ps type=b count=16 result=00000000 encoding=full
+constant kind=ps type=b reg=0 values=0
+constant kind=ps type=b reg=1 values=0
+constant kind=ps type=b reg=2 values=0
+constant kind=ps type=b reg=3 values=0
+constant kind=ps type=b reg=4 values=0
+constant kind=ps type=b reg=5 values=0
+constant kind=ps type=b reg=6 values=0
+constant kind=ps type=b reg=7 values=0
+constant kind=ps type=b reg=8 values=0
+constant kind=ps type=b reg=9 values=0
+constant kind=ps type=b reg=10 values=0
+constant kind=ps type=b reg=11 values=0
+constant kind=ps type=b reg=12 values=0
+constant kind=ps type=b reg=13 values=0
+constant kind=ps type=b reg=14 values=0
+constant kind=ps type=b reg=15 values=0
+draw_args base_vertex=0 min_vertex=0 num_vertices=3 start_index=0
+draw_result device=2 frame=3 index=2 result=8876086c
+frame_end device=2 frame=3 draws=2 capture=1 present=00000000
+frame_begin device=2 frame=4
+capture_event device=2 frame=4 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=7943791863828
+draw device=2 frame=4 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
+geometry source=buffers
+resource identity=12 ptr=00d2d568 type=6
+stream slot=0 result=00000000 identity=12 offset=16 stride=20 frequency=1 frequency_result=00000000
+vertex_buffer identity=12 bytes=76 usage=0 pool=1 fvf=68
+stream slot=1 result=00000000 identity=0
+stream slot=2 result=00000000 identity=0
+stream slot=3 result=00000000 identity=0
+stream slot=4 result=00000000 identity=0
+stream slot=5 result=00000000 identity=0
+stream slot=6 result=00000000 identity=0
+stream slot=7 result=00000000 identity=0
+stream slot=8 result=00000000 identity=0
+stream slot=9 result=00000000 identity=0
+stream slot=10 result=00000000 identity=0
+stream slot=11 result=00000000 identity=0
+stream slot=12 result=00000000 identity=0
+stream slot=13 result=00000000 identity=0
+stream slot=14 result=00000000 identity=0
+stream slot=15 result=00000000 identity=0
+indices result=00000000 identity=8
+index_buffer identity=8 bytes=6 usage=0 pool=1 format=101
+surface role=rt0 ptr=001154e8 identity=10 width=160 height=120 format=21 usage=1 msaa=0 container=9 container_type=3 container_result=00000000
+state id=7 value=0
+state id=14 value=1
+state id=23 value=4
+state id=15 value=0
+state id=24 value=0
+state id=25 value=8
+state id=27 value=0
+state id=19 value=2
+state id=20 value=1
+state id=171 value=1
+state id=22 value=1
+state id=168 value=15
+state id=194 value=0
+state id=206 value=0
+state id=52 value=0
+state id=56 value=8
+state id=57 value=0
+state id=58 value=4294967295
+state id=59 value=4294967295
+state id=53 value=1
+state id=54 value=1
+state id=55 value=1
+state id=185 value=0
+state id=189 value=8
+state id=186 value=1
+state id=187 value=1
+state id=188 value=1
+viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
+texture stage=0 ptr=00115428 type=3 identity=11
+texture_desc stage=0 w=8 h=8 format=21
+sampler stage=0 state=6 value=1
+sampler stage=0 state=5 value=1
+sampler stage=0 state=7 value=0
+sampler stage=0 state=10 value=1
+sampler stage=0 state=11 value=0
+sampler stage=1 state=6 value=1
+sampler stage=1 state=5 value=1
+sampler stage=1 state=7 value=0
+sampler stage=1 state=10 value=1
+sampler stage=1 state=11 value=0
+sampler stage=2 state=6 value=1
+sampler stage=2 state=5 value=1
+sampler stage=2 state=7 value=0
+sampler stage=2 state=10 value=1
+sampler stage=2 state=11 value=0
+sampler stage=3 state=6 value=1
+sampler stage=3 state=5 value=1
+sampler stage=3 state=7 value=0
+sampler stage=3 state=10 value=1
+sampler stage=3 state=11 value=0
+sampler stage=4 state=6 value=1
+sampler stage=4 state=5 value=1
+sampler stage=4 state=7 value=0
+sampler stage=4 state=10 value=1
+sampler stage=4 state=11 value=0
+sampler stage=5 state=6 value=1
+sampler stage=5 state=5 value=1
+sampler stage=5 state=7 value=0
+sampler stage=5 state=10 value=1
+sampler stage=5 state=11 value=0
+sampler stage=6 state=6 value=1
+sampler stage=6 state=5 value=1
+sampler stage=6 state=7 value=0
+sampler stage=6 state=10 value=1
+sampler stage=6 state=11 value=0
+sampler stage=7 state=6 value=1
+sampler stage=7 state=5 value=1
+sampler stage=7 state=7 value=0
+sampler stage=7 state=10 value=1
+sampler stage=7 state=11 value=0
+sampler stage=8 state=6 value=1
+sampler stage=8 state=5 value=1
+sampler stage=8 state=7 value=0
+sampler stage=8 state=10 value=1
+sampler stage=8 state=11 value=0
+sampler stage=9 state=6 value=1
+sampler stage=9 state=5 value=1
+sampler stage=9 state=7 value=0
+sampler stage=9 state=10 value=1
+sampler stage=9 state=11 value=0
+sampler stage=10 state=6 value=1
+sampler stage=10 state=5 value=1
+sampler stage=10 state=7 value=0
+sampler stage=10 state=10 value=1
+sampler stage=10 state=11 value=0
+sampler stage=11 state=6 value=1
+sampler stage=11 state=5 value=1
+sampler stage=11 state=7 value=0
+sampler stage=11 state=10 value=1
+sampler stage=11 state=11 value=0
+sampler stage=12 state=6 value=1
+sampler stage=12 state=5 value=1
+sampler stage=12 state=7 value=0
+sampler stage=12 state=10 value=1
+sampler stage=12 state=11 value=0
+sampler stage=13 state=6 value=1
+sampler stage=13 state=5 value=1
+sampler stage=13 state=7 value=0
+sampler stage=13 state=10 value=1
+sampler stage=13 state=11 value=0
+sampler stage=14 state=6 value=1
+sampler stage=14 state=5 value=1
+sampler stage=14 state=7 value=0
+sampler stage=14 state=10 value=1
+sampler stage=14 state=11 value=0
+sampler stage=15 state=6 value=1
+sampler stage=15 state=5 value=1
+sampler stage=15 state=7 value=0
+sampler stage=15 state=10 value=1
+sampler stage=15 state=11 value=0
+vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
+vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
+vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
+transform state=256 row=0 values=1,0,0,0
+transform state=256 row=1 values=0,1,0,0
+transform state=256 row=2 values=0,0,1,0
+transform state=256 row=3 values=0,0,0,1
+transform state=2 row=0 values=1,0,0,0
+transform state=2 row=1 values=0,1,0,0
+transform state=2 row=2 values=0,0,1,0
+transform state=2 row=3 values=0,0,0,1
+transform state=3 row=0 values=1,0,0,0
+transform state=3 row=1 values=0,1,0,0
+transform state=3 row=2 values=0,0,1,0
+transform state=3 row=3 values=0,0,0,1
+constants kind=vs type=f count=256 result=00000000 encoding=sparse_zero
+constant kind=vs type=f reg=10 bits=80000000,00000000,00000000,00000000
+constants kind=vs type=i count=16 result=00000000 encoding=full
+constant kind=vs type=i reg=0 values=0,0,0,0
+constant kind=vs type=i reg=1 values=0,0,0,0
+constant kind=vs type=i reg=2 values=0,0,0,0
+constant kind=vs type=i reg=3 values=0,0,0,0
+constant kind=vs type=i reg=4 values=0,0,0,0
+constant kind=vs type=i reg=5 values=0,0,0,0
+constant kind=vs type=i reg=6 values=0,0,0,0
+constant kind=vs type=i reg=7 values=0,0,0,0
+constant kind=vs type=i reg=8 values=0,0,0,0
+constant kind=vs type=i reg=9 values=0,0,0,0
+constant kind=vs type=i reg=10 values=0,0,0,0
+constant kind=vs type=i reg=11 values=0,0,0,0
+constant kind=vs type=i reg=12 values=0,0,0,0
+constant kind=vs type=i reg=13 values=0,0,0,0
+constant kind=vs type=i reg=14 values=0,0,0,0
+constant kind=vs type=i reg=15 values=0,0,0,0
+constants kind=vs type=b count=16 result=00000000 encoding=full
+constant kind=vs type=b reg=0 values=0
+constant kind=vs type=b reg=1 values=0
+constant kind=vs type=b reg=2 values=0
+constant kind=vs type=b reg=3 values=0
+constant kind=vs type=b reg=4 values=0
+constant kind=vs type=b reg=5 values=0
+constant kind=vs type=b reg=6 values=0
+constant kind=vs type=b reg=7 values=0
+constant kind=vs type=b reg=8 values=0
+constant kind=vs type=b reg=9 values=0
+constant kind=vs type=b reg=10 values=0
+constant kind=vs type=b reg=11 values=0
+constant kind=vs type=b reg=12 values=0
+constant kind=vs type=b reg=13 values=0
+constant kind=vs type=b reg=14 values=0
+constant kind=vs type=b reg=15 values=0
+constants kind=ps type=f count=224 result=00000000 encoding=sparse_zero
+constants kind=ps type=i count=16 result=00000000 encoding=full
+constant kind=ps type=i reg=0 values=0,0,0,0
+constant kind=ps type=i reg=1 values=0,0,0,0
+constant kind=ps type=i reg=2 values=0,0,0,0
+constant kind=ps type=i reg=3 values=0,0,0,0
+constant kind=ps type=i reg=4 values=0,0,0,0
+constant kind=ps type=i reg=5 values=0,0,0,0
+constant kind=ps type=i reg=6 values=0,0,0,0
+constant kind=ps type=i reg=7 values=0,0,0,0
+constant kind=ps type=i reg=8 values=0,0,0,0
+constant kind=ps type=i reg=9 values=0,0,0,0
+constant kind=ps type=i reg=10 values=0,0,0,0
+constant kind=ps type=i reg=11 values=0,0,0,0
+constant kind=ps type=i reg=12 values=0,0,0,0
+constant kind=ps type=i reg=13 values=0,0,0,0
+constant kind=ps type=i reg=14 values=0,0,0,0
+constant kind=ps type=i reg=15 values=0,0,0,0
+constants kind=ps type=b count=16 result=00000000 encoding=full
+constant kind=ps type=b reg=0 values=0
+constant kind=ps type=b reg=1 values=0
+constant kind=ps type=b reg=2 values=0
+constant kind=ps type=b reg=3 values=0
+constant kind=ps type=b reg=4 values=0
+constant kind=ps type=b reg=5 values=0
+constant kind=ps type=b reg=6 values=0
+constant kind=ps type=b reg=7 values=0
+constant kind=ps type=b reg=8 values=0
+constant kind=ps type=b reg=9 values=0
+constant kind=ps type=b reg=10 values=0
+constant kind=ps type=b reg=11 values=0
+constant kind=ps type=b reg=12 values=0
+constant kind=ps type=b reg=13 values=0
+constant kind=ps type=b reg=14 values=0
+constant kind=ps type=b reg=15 values=0
+draw_args base_vertex=0 min_vertex=0 num_vertices=3 start_index=0
+draw_result device=2 frame=4 index=1 result=00000000
+frame_end device=2 frame=4 draws=1 capture=1 present=00000000
+frame_begin device=2 frame=5
+capture_event device=2 frame=5 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=7943791870909
+draw device=2 frame=5 index=1 kind=indexed_up topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
+geometry source=user_memory
+surface role=rt0 ptr=001154e8 identity=10 width=160 height=120 format=21 usage=1 msaa=0 container=9 container_type=3 container_result=00000000
+state id=7 value=0
+state id=14 value=1
+state id=23 value=4
+state id=15 value=0
+state id=24 value=0
+state id=25 value=8
+state id=27 value=0
+state id=19 value=2
+state id=20 value=1
+state id=171 value=1
+state id=22 value=1
+state id=168 value=15
+state id=194 value=0
+state id=206 value=0
+state id=52 value=0
+state id=56 value=8
+state id=57 value=0
+state id=58 value=4294967295
+state id=59 value=4294967295
+state id=53 value=1
+state id=54 value=1
+state id=55 value=1
+state id=185 value=0
+state id=189 value=8
+state id=186 value=1
+state id=187 value=1
+state id=188 value=1
+viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
+texture stage=0 ptr=00115428 type=3 identity=11
+texture_desc stage=0 w=8 h=8 format=21
+sampler stage=0 state=6 value=1
+sampler stage=0 state=5 value=1
+sampler stage=0 state=7 value=0
+sampler stage=0 state=10 value=1
+sampler stage=0 state=11 value=0
+sampler stage=1 state=6 value=1
+sampler stage=1 state=5 value=1
+sampler stage=1 state=7 value=0
+sampler stage=1 state=10 value=1
+sampler stage=1 state=11 value=0
+sampler stage=2 state=6 value=1
+sampler stage=2 state=5 value=1
+sampler stage=2 state=7 value=0
+sampler stage=2 state=10 value=1
+sampler stage=2 state=11 value=0
+sampler stage=3 state=6 value=1
+sampler stage=3 state=5 value=1
+sampler stage=3 state=7 value=0
+sampler stage=3 state=10 value=1
+sampler stage=3 state=11 value=0
+sampler stage=4 state=6 value=1
+sampler stage=4 state=5 value=1
+sampler stage=4 state=7 value=0
+sampler stage=4 state=10 value=1
+sampler stage=4 state=11 value=0
+sampler stage=5 state=6 value=1
+sampler stage=5 state=5 value=1
+sampler stage=5 state=7 value=0
+sampler stage=5 state=10 value=1
+sampler stage=5 state=11 value=0
+sampler stage=6 state=6 value=1
+sampler stage=6 state=5 value=1
+sampler stage=6 state=7 value=0
+sampler stage=6 state=10 value=1
+sampler stage=6 state=11 value=0
+sampler stage=7 state=6 value=1
+sampler stage=7 state=5 value=1
+sampler stage=7 state=7 value=0
+sampler stage=7 state=10 value=1
+sampler stage=7 state=11 value=0
+sampler stage=8 state=6 value=1
+sampler stage=8 state=5 value=1
+sampler stage=8 state=7 value=0
+sampler stage=8 state=10 value=1
+sampler stage=8 state=11 value=0
+sampler stage=9 state=6 value=1
+sampler stage=9 state=5 value=1
+sampler stage=9 state=7 value=0
+sampler stage=9 state=10 value=1
+sampler stage=9 state=11 value=0
+sampler stage=10 state=6 value=1
+sampler stage=10 state=5 value=1
+sampler stage=10 state=7 value=0
+sampler stage=10 state=10 value=1
+sampler stage=10 state=11 value=0
+sampler stage=11 state=6 value=1
+sampler stage=11 state=5 value=1
+sampler stage=11 state=7 value=0
+sampler stage=11 state=10 value=1
+sampler stage=11 state=11 value=0
+sampler stage=12 state=6 value=1
+sampler stage=12 state=5 value=1
+sampler stage=12 state=7 value=0
+sampler stage=12 state=10 value=1
+sampler stage=12 state=11 value=0
+sampler stage=13 state=6 value=1
+sampler stage=13 state=5 value=1
+sampler stage=13 state=7 value=0
+sampler stage=13 state=10 value=1
+sampler stage=13 state=11 value=0
+sampler stage=14 state=6 value=1
+sampler stage=14 state=5 value=1
+sampler stage=14 state=7 value=0
+sampler stage=14 state=10 value=1
+sampler stage=14 state=11 value=0
+sampler stage=15 state=6 value=1
+sampler stage=15 state=5 value=1
+sampler stage=15 state=7 value=0
+sampler stage=15 state=10 value=1
+sampler stage=15 state=11 value=0
+vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
+vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
+vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
+transform state=256 row=0 values=1,0,0,0
+transform state=256 row=1 values=0,1,0,0
+transform state=256 row=2 values=0,0,1,0
+transform state=256 row=3 values=0,0,0,1
+transform state=2 row=0 values=1,0,0,0
+transform state=2 row=1 values=0,1,0,0
+transform state=2 row=2 values=0,0,1,0
+transform state=2 row=3 values=0,0,0,1
+transform state=3 row=0 values=1,0,0,0
+transform state=3 row=1 values=0,1,0,0
+transform state=3 row=2 values=0,0,1,0
+transform state=3 row=3 values=0,0,0,1
+constants kind=vs type=f count=256 result=00000000 encoding=sparse_zero
+constant kind=vs type=f reg=10 bits=80000000,00000000,00000000,00000000
+constants kind=vs type=i count=16 result=00000000 encoding=full
+constant kind=vs type=i reg=0 values=0,0,0,0
+constant kind=vs type=i reg=1 values=0,0,0,0
+constant kind=vs type=i reg=2 values=0,0,0,0
+constant kind=vs type=i reg=3 values=0,0,0,0
+constant kind=vs type=i reg=4 values=0,0,0,0
+constant kind=vs type=i reg=5 values=0,0,0,0
+constant kind=vs type=i reg=6 values=0,0,0,0
+constant kind=vs type=i reg=7 values=0,0,0,0
+constant kind=vs type=i reg=8 values=0,0,0,0
+constant kind=vs type=i reg=9 values=0,0,0,0
+constant kind=vs type=i reg=10 values=0,0,0,0
+constant kind=vs type=i reg=11 values=0,0,0,0
+constant kind=vs type=i reg=12 values=0,0,0,0
+constant kind=vs type=i reg=13 values=0,0,0,0
+constant kind=vs type=i reg=14 values=0,0,0,0
+constant kind=vs type=i reg=15 values=0,0,0,0
+constants kind=vs type=b count=16 result=00000000 encoding=full
+constant kind=vs type=b reg=0 values=0
+constant kind=vs type=b reg=1 values=0
+constant kind=vs type=b reg=2 values=0
+constant kind=vs type=b reg=3 values=0
+constant kind=vs type=b reg=4 values=0
+constant kind=vs type=b reg=5 values=0
+constant kind=vs type=b reg=6 values=0
+constant kind=vs type=b reg=7 values=0
+constant kind=vs type=b reg=8 values=0
+constant kind=vs type=b reg=9 values=0
+constant kind=vs type=b reg=10 values=0
+constant kind=vs type=b reg=11 values=0
+constant kind=vs type=b reg=12 values=0
+constant kind=vs type=b reg=13 values=0
+constant kind=vs type=b reg=14 values=0
+constant kind=vs type=b reg=15 values=0
+constants kind=ps type=f count=224 result=00000000 encoding=sparse_zero
+constants kind=ps type=i count=16 result=00000000 encoding=full
+constant kind=ps type=i reg=0 values=0,0,0,0
+constant kind=ps type=i reg=1 values=0,0,0,0
+constant kind=ps type=i reg=2 values=0,0,0,0
+constant kind=ps type=i reg=3 values=0,0,0,0
+constant kind=ps type=i reg=4 values=0,0,0,0
+constant kind=ps type=i reg=5 values=0,0,0,0
+constant kind=ps type=i reg=6 values=0,0,0,0
+constant kind=ps type=i reg=7 values=0,0,0,0
+constant kind=ps type=i reg=8 values=0,0,0,0
+constant kind=ps type=i reg=9 values=0,0,0,0
+constant kind=ps type=i reg=10 values=0,0,0,0
+constant kind=ps type=i reg=11 values=0,0,0,0
+constant kind=ps type=i reg=12 values=0,0,0,0
+constant kind=ps type=i reg=13 values=0,0,0,0
+constant kind=ps type=i reg=14 values=0,0,0,0
+constant kind=ps type=i reg=15 values=0,0,0,0
+constants kind=ps type=b count=16 result=00000000 encoding=full
+constant kind=ps type=b reg=0 values=0
+constant kind=ps type=b reg=1 values=0
+constant kind=ps type=b reg=2 values=0
+constant kind=ps type=b reg=3 values=0
+constant kind=ps type=b reg=4 values=0
+constant kind=ps type=b reg=5 values=0
+constant kind=ps type=b reg=6 values=0
+constant kind=ps type=b reg=7 values=0
+constant kind=ps type=b reg=8 values=0
+constant kind=ps type=b reg=9 values=0
+constant kind=ps type=b reg=10 values=0
+constant kind=ps type=b reg=11 values=0
+constant kind=ps type=b reg=12 values=0
+constant kind=ps type=b reg=13 values=0
+constant kind=ps type=b reg=14 values=0
+constant kind=ps type=b reg=15 values=0
+draw_args min_vertex=0 num_vertices=3 vertex_ptr=0032feb0 stride=20 index_ptr=0032fe48 index_format=101
+draw_result device=2 frame=5 index=1 result=00000000
+frame_end device=2 frame=5 draws=1 capture=1 present=00000000
+telemetry_presentation phase=reset_before device=2 thread=440 focus_window=00040056 device_window=00040056 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+reset_begin ptr=001134a8 device=2
+telemetry_presentation phase=reset_after device=2 thread=440 focus_window=00040056 device_window=00040056 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_summary device=2 frame=6 reason=reset qpc=7943791949977 since_start_us=1411545.700 interval_us=14033.500 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=2 name=present_normal count=1 failures=0 total_us=18.600 min_us=18.600 max_us=18.600 bytes=0 buckets=0,1,0,0,0,0
+telemetry_metric device=2 name=present_capture count=5 failures=0 total_us=19.800 min_us=2.600 max_us=4.800 bytes=0 buckets=5,0,0,0,0,0
+telemetry_metric device=2 name=frame_capture count=5 failures=0 total_us=6252.500 min_us=986.900 max_us=1680.300 bytes=0 buckets=0,0,1,4,0,0
+telemetry_metric device=2 name=draw_backend count=7 failures=1 total_us=792.000 min_us=0.300 max_us=730.600 bytes=0 buckets=4,2,1,0,0,0
+telemetry_metric device=2 name=capture_cpu count=6 failures=0 total_us=3234.900 min_us=495.100 max_us=627.600 bytes=0 buckets=0,0,6,0,0,0
+telemetry_metric device=2 name=snapshot count=6 failures=0 total_us=3182.300 min_us=476.000 max_us=620.500 bytes=0 buckets=0,0,6,0,0,0
+telemetry_metric device=2 name=texture count=2 failures=0 total_us=7.300 min_us=0.800 max_us=6.500 bytes=0 buckets=2,0,0,0,0,0
+telemetry_metric device=2 name=vertex_buffer count=2 failures=0 total_us=6.100 min_us=2.900 max_us=3.200 bytes=152 buckets=2,0,0,0,0,0
+telemetry_metric device=2 name=index_buffer count=1 failures=0 total_us=2.600 min_us=2.600 max_us=2.600 bytes=6 buckets=1,0,0,0,0,0
+telemetry_metric device=2 name=reset count=1 failures=0 total_us=6308.700 min_us=6308.700 max_us=6308.700 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=2 name=log_flush count=6 failures=0 total_us=1.800 min_us=0.200 max_us=0.500 bytes=0 buckets=6,0,0,0,0,0
+reset_end device=2 result=00000000
+telemetry_summary device=2 frame=6 reason=device_destroy qpc=7943791975408 since_start_us=1414088.800 interval_us=2543.100 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=2 name=log_flush count=1 failures=0 total_us=0.500 min_us=0.500 max_us=0.500 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=6 reason=device_destroy qpc=7943791975835 since_start_us=1414131.500 interval_us=19325.000 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=38 failures=0 total_us=8.500 min_us=0.000 max_us=0.900 bytes=0 buckets=38,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2362.500 min_us=2362.500 max_us=2362.500 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=001134a8 device=2

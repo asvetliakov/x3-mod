@@ -1,4 +1,5 @@
 /build/
+/build-ownership/
 /artifacts/
 **/__pycache__/
 *.pyc
