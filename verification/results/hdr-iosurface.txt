@@ -1,0 +1,7 @@
+CGL create=0
+GL renderer=Apple M5 Pro version=4.1 Metal - 90.5
+CGL IOSurface RGBA16F bind=0
+GL framebuffer=8cd5
+GL producer_error=0 sync=glFinish
+Metal device=Apple M5 Pro IOSurface_texture=1
+Metal validation_pixel=0.180054,2,4,1 command_status=4 RESULT=PASS

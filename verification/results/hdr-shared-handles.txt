@@ -1,0 +1,37 @@
+CREATE_D3D9 result=00000000
+CREATE_D3D9EX_FACTORY result=00000000
+CREATE_D3D9EX_DEVICE result=00000000
+CREATE_D3D11 result=00000000 level=b000
+D3D9_TEXTURE kind=ordinary_export format=21 input_handle=00000000 result=80004001 texture=0 output_handle=00000000
+D3D9_TEXTURE kind=ex_export format=21 input_handle=00000000 result=00000000 texture=1 output_handle=00000000
+D3D11_SHARED_CREATE format=87 result=00000000
+D3D11_SHARED_HANDLE result=00000000 handle=40000082
+D3D11_REOPEN result=00000000 alias=1
+D3D9_TEXTURE kind=ex_import_dxmt format=21 input_handle=40000082 result=00000000 texture=1 output_handle=40000082
+ALIAS_RTV result=00000000
+PIXEL kind=dxmt_original_after_alias_clear bytes=bf8040ff
+WINE9_IMPORT_CLEAR result=00000000
+WINE9_READBACK result=00000000
+PIXEL kind=wine9_import_after_green_clear bytes=00ff00ff
+PIXEL kind=dxmt_original_after_wine9_clear bytes=bf8040ff
+SHARING_CONTROL format=21 dxmt_unchanged=1 wine9_differs=1
+D3D9_TEXTURE kind=ordinary_export format=113 input_handle=00000000 result=80004001 texture=0 output_handle=00000000
+D3D9_TEXTURE kind=ex_export format=113 input_handle=00000000 result=00000000 texture=1 output_handle=00000000
+D3D11_SHARED_CREATE format=10 result=00000000
+D3D11_SHARED_HANDLE result=00000000 handle=400000c2
+D3D11_REOPEN result=00000000 alias=1
+D3D9_TEXTURE kind=ex_import_dxmt format=113 input_handle=400000c2 result=00000000 texture=1 output_handle=400000c2
+ALIAS_RTV result=00000000
+PIXEL kind=dxmt_original_after_alias_clear bytes=00340038003a003c
+WINE9_IMPORT_CLEAR result=00000000
+WINE9_READBACK result=00000000
+PIXEL kind=wine9_import_after_green_clear bytes=0000003c0000003c
+PIXEL kind=dxmt_original_after_wine9_clear bytes=00340038003a003c
+SHARING_CONTROL format=113 dxmt_unchanged=1 wine9_differs=1
+MODULE name=d3d9.dll path=C:\windows\system32\d3d9.dll
+MODULE name=wined3d.dll path=C:\windows\system32\wined3d.dll
+MODULE name=d3d11.dll path=C:\windows\system32\d3d11.dll
+MODULE name=dxgi.dll path=C:\windows\system32\DXGI.DLL
+MODULE name=winemetal.dll path=C:\windows\system32\winemetal.dll
+MODULE name=opengl32.dll path=C:\windows\system32\opengl32.dll
+PROBE_COMPLETED Readback is verification only, not a proposed production bridge.

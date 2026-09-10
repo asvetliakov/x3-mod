@@ -1,0 +1,43 @@
+{
+  "started_utc": "2026-09-10T19:44:38.453184+00:00",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/hdr_shared_handles.exe"
+  ],
+  "build_command": [
+    "i686-w64-mingw32-g++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-static",
+    "/Users/asvetl/x3-mod/verification/probe/hdr_shared_handles.cpp",
+    "-o",
+    "/Users/asvetl/x3-mod/verification/probe/build/hdr_shared_handles.exe",
+    "-luser32",
+    "-ldxguid"
+  ],
+  "sources_sha256": {
+    "verification/probe/hdr_shared_handles.cpp": "9f255145a1c214841f90da4894ac921ec9cd70f878b80a211881b592d26073f8",
+    "verification/probe/run_hdr_shared_handles.py": "fc1e8801c35c91e611cb0358134e122891bdbe81c69f31db120bd5d11feda912"
+  },
+  "executable_sha256": "605baa05abd459aa377695c34ac3418667a7689d5ca712fa63b3776da6e31651",
+  "process_override": "d3d9=b",
+  "game_launched": false,
+  "timeout_seconds": 45,
+  "scope": "Hidden standalone API and pixel-aliasing probe. CPU readback is verification only.",
+  "exit_code": 0,
+  "sources_and_executable_unchanged": true,
+  "pixel_controls": [
+    "SHARING_CONTROL format=21 dxmt_unchanged=1 wine9_differs=1",
+    "SHARING_CONTROL format=113 dxmt_unchanged=1 wine9_differs=1"
+  ],
+  "completed": true,
+  "report_sha256": "7037300b431bb49baf02dc21ed0ef8ffb6d05fa444a72241d6cec4b010d03213"
+}

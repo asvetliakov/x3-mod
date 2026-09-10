@@ -1,0 +1,32 @@
+{
+  "recorded_utc": "2026-09-10T19:47:49.824009+00:00",
+  "architecture": "x86_64 host executable under Rosetta, matching installed Wine unix-module architecture",
+  "build_command": [
+    "clang++",
+    "-arch",
+    "x86_64",
+    "-std=c++17",
+    "-fobjc-arc",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "/Users/asvetl/x3-mod/verification/platform/iosurface_hdr.mm",
+    "-o",
+    "/tmp/x3-iosurface-hdr-x86_64",
+    "-framework",
+    "Foundation",
+    "-framework",
+    "Metal",
+    "-framework",
+    "IOSurface",
+    "-framework",
+    "OpenGL"
+  ],
+  "source_sha256": "09a368bc0142ba6b41e453abb56d6d33987ca2c7d3bff248b7355c830c2d93f7",
+  "executable_sha256": "ae73427b09c6323e2c54677b5ba7faf2aaa0809d85b7f6baacce2040b91a0dad",
+  "exit_code": 0,
+  "source_and_executable_unchanged": true,
+  "passed": true,
+  "scope": "Host primitive only; not WineD3D context/resource integration; no window, display presentation, game or installation",
+  "report_sha256": "3f9662dd6243bb15a17078467d8940c98175cd1fec8c3c058b930974ebbf922c"
+}
