@@ -1,0 +1,296 @@
+CHECK native libraries PASS
+DEVICE pure=0
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK first committed diagnostic has no correspondence PASS
+CHECK synchronous diagnostic consumer copied pixels without retaining output PASS
+SAMPLE component=0 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=1 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=2 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=3 actual=-1.000000000 expected=-1.000000000 PASS
+CHECK boundary retires native geometry leases PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK adjacent original draw yields paired motion PASS
+CHECK synchronous diagnostic consumer copied pixels without retaining output PASS
+SAMPLE component=0 actual=0.390625000 expected=0.390625000 PASS
+SAMPLE component=1 actual=0.515625000 expected=0.515625000 PASS
+SAMPLE component=2 actual=0.500000000 expected=0.500000000 PASS
+SAMPLE component=3 actual=1.000000000 expected=1.000000000 PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK late conflicting duplicate cannot publish earlier motion PASS
+CHECK synchronous diagnostic consumer copied pixels without retaining output PASS
+SAMPLE component=0 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=1 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=2 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=3 actual=-1.000000000 expected=-1.000000000 PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK changed VB before boundary revokes replay lease PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK content failure invalidates correspondence PASS
+CHECK synchronous diagnostic consumer copied pixels without retaining output PASS
+SAMPLE component=0 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=1 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=2 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=3 actual=-1.000000000 expected=-1.000000000 PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK failed selection Clear prevents previous-frame commit PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK failed Present prevents previous-frame commit PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK active application query refuses diagnostic PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK stateblock recording refuses diagnostic PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK registry mutation before boundary refuses diagnostic PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK diagnostic preserves already-open caller scene PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK Reset invalidates private correspondence and uploads renewed PASS
+CHECK synchronous diagnostic consumer copied pixels without retaining output PASS
+SAMPLE component=0 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=1 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=2 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=3 actual=-1.000000000 expected=-1.000000000 PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK teardown cancels pending collection PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK native replay failure publishes no diagnostic PASS
+CHECK uncertain injected native pass permanently revokes execution proof PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK next frame refuses after uncertain native execution PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+DEVICE pure=1
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK first committed diagnostic has no correspondence PASS
+CHECK synchronous diagnostic consumer copied pixels without retaining output PASS
+SAMPLE component=0 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=1 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=2 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=3 actual=-1.000000000 expected=-1.000000000 PASS
+CHECK boundary retires native geometry leases PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK adjacent original draw yields paired motion PASS
+CHECK synchronous diagnostic consumer copied pixels without retaining output PASS
+SAMPLE component=0 actual=0.390625000 expected=0.390625000 PASS
+SAMPLE component=1 actual=0.515625000 expected=0.515625000 PASS
+SAMPLE component=2 actual=0.500000000 expected=0.500000000 PASS
+SAMPLE component=3 actual=1.000000000 expected=1.000000000 PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK late conflicting duplicate cannot publish earlier motion PASS
+CHECK synchronous diagnostic consumer copied pixels without retaining output PASS
+SAMPLE component=0 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=1 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=2 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=3 actual=-1.000000000 expected=-1.000000000 PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK changed VB before boundary revokes replay lease PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK content failure invalidates correspondence PASS
+CHECK synchronous diagnostic consumer copied pixels without retaining output PASS
+SAMPLE component=0 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=1 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=2 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=3 actual=-1.000000000 expected=-1.000000000 PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK failed selection Clear prevents previous-frame commit PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK failed Present prevents previous-frame commit PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK active application query refuses diagnostic PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK stateblock recording refuses diagnostic PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK registry mutation before boundary refuses diagnostic PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK diagnostic preserves already-open caller scene PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK Reset invalidates private correspondence and uploads renewed PASS
+CHECK synchronous diagnostic consumer copied pixels without retaining output PASS
+SAMPLE component=0 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=1 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=2 actual=0.000000000 expected=0.000000000 PASS
+SAMPLE component=3 actual=-1.000000000 expected=-1.000000000 PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK teardown cancels pending collection PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK native replay failure publishes no diagnostic PASS
+CHECK uncertain injected native pass permanently revokes execution proof PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+CHECK diagnostic geometry frame opened PASS
+CHECK actual finite input remains distinct from synthetic shader admission PASS
+CHECK lease admitted PASS
+CHECK boundary preserves full x87 MXCSR and LastError after injected work PASS
+CHECK pre-Clear replay preserves captured application state PASS
+CHECK private motion is not temporal-color eligible PASS
+CHECK next frame refuses after uncertain native execution PASS
+CHECK frame geometry released and commit agrees with confirmation PASS
+RESULT PASS checks=253 samples=40 state_comparisons=28 devices=2
