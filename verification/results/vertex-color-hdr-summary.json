@@ -1,0 +1,293 @@
+{
+  "started_utc": "2026-09-10T17:56:46.649750+00:00",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/vertex_color_hdr.exe",
+    "C:\\X3\\d3dx9_37.dll"
+  ],
+  "process_local_override": "d3d9=b",
+  "timeout_seconds": 60,
+  "source_sha256": "f91c3e99db5cf46557f7dc339e0dfd5fa561ab19ae88f994aaf539e49f14b5d9",
+  "executable_sha256": "78f528ea668b860bffa7a0009a4820ca203c1d36a0ba079e86cc55f03805ab41",
+  "exit_code": 0,
+  "sample_checks": 96,
+  "passed_sample_checks": 96,
+  "cases": [
+    {
+      "generation": "0",
+      "profile": "2",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "0",
+      "gradient": "0",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "0",
+      "profile": "2",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "0",
+      "gradient": "1",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "0",
+      "profile": "2",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "1",
+      "gradient": "0",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "0",
+      "profile": "2",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "1",
+      "gradient": "1",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "0",
+      "profile": "2",
+      "semantic": "COLOR0",
+      "ps_saturate": "0",
+      "gradient": "0",
+      "consistent_models": "6"
+    },
+    {
+      "generation": "0",
+      "profile": "2",
+      "semantic": "COLOR0",
+      "ps_saturate": "0",
+      "gradient": "1",
+      "consistent_models": "2"
+    },
+    {
+      "generation": "0",
+      "profile": "2",
+      "semantic": "COLOR0",
+      "ps_saturate": "1",
+      "gradient": "0",
+      "consistent_models": "7"
+    },
+    {
+      "generation": "0",
+      "profile": "2",
+      "semantic": "COLOR0",
+      "ps_saturate": "1",
+      "gradient": "1",
+      "consistent_models": "2"
+    },
+    {
+      "generation": "0",
+      "profile": "3",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "0",
+      "gradient": "0",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "0",
+      "profile": "3",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "0",
+      "gradient": "1",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "0",
+      "profile": "3",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "1",
+      "gradient": "0",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "0",
+      "profile": "3",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "1",
+      "gradient": "1",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "0",
+      "profile": "3",
+      "semantic": "COLOR0",
+      "ps_saturate": "0",
+      "gradient": "0",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "0",
+      "profile": "3",
+      "semantic": "COLOR0",
+      "ps_saturate": "0",
+      "gradient": "1",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "0",
+      "profile": "3",
+      "semantic": "COLOR0",
+      "ps_saturate": "1",
+      "gradient": "0",
+      "consistent_models": "7"
+    },
+    {
+      "generation": "0",
+      "profile": "3",
+      "semantic": "COLOR0",
+      "ps_saturate": "1",
+      "gradient": "1",
+      "consistent_models": "5"
+    },
+    {
+      "generation": "1",
+      "profile": "2",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "0",
+      "gradient": "0",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "1",
+      "profile": "2",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "0",
+      "gradient": "1",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "1",
+      "profile": "2",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "1",
+      "gradient": "0",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "1",
+      "profile": "2",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "1",
+      "gradient": "1",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "1",
+      "profile": "2",
+      "semantic": "COLOR0",
+      "ps_saturate": "0",
+      "gradient": "0",
+      "consistent_models": "6"
+    },
+    {
+      "generation": "1",
+      "profile": "2",
+      "semantic": "COLOR0",
+      "ps_saturate": "0",
+      "gradient": "1",
+      "consistent_models": "2"
+    },
+    {
+      "generation": "1",
+      "profile": "2",
+      "semantic": "COLOR0",
+      "ps_saturate": "1",
+      "gradient": "0",
+      "consistent_models": "7"
+    },
+    {
+      "generation": "1",
+      "profile": "2",
+      "semantic": "COLOR0",
+      "ps_saturate": "1",
+      "gradient": "1",
+      "consistent_models": "2"
+    },
+    {
+      "generation": "1",
+      "profile": "3",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "0",
+      "gradient": "0",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "1",
+      "profile": "3",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "0",
+      "gradient": "1",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "1",
+      "profile": "3",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "1",
+      "gradient": "0",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "1",
+      "profile": "3",
+      "semantic": "TEXCOORD0",
+      "ps_saturate": "1",
+      "gradient": "1",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "1",
+      "profile": "3",
+      "semantic": "COLOR0",
+      "ps_saturate": "0",
+      "gradient": "0",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "1",
+      "profile": "3",
+      "semantic": "COLOR0",
+      "ps_saturate": "0",
+      "gradient": "1",
+      "consistent_models": "1"
+    },
+    {
+      "generation": "1",
+      "profile": "3",
+      "semantic": "COLOR0",
+      "ps_saturate": "1",
+      "gradient": "0",
+      "consistent_models": "7"
+    },
+    {
+      "generation": "1",
+      "profile": "3",
+      "semantic": "COLOR0",
+      "ps_saturate": "1",
+      "gradient": "1",
+      "consistent_models": "5"
+    }
+  ],
+  "interpolation_models_consistent_across_both_generations": {
+    "sm2_TEXCOORD0": [
+      "unclamped"
+    ],
+    "sm2_COLOR0": [
+      "clamped_at_vertex_output"
+    ],
+    "sm3_TEXCOORD0": [
+      "unclamped"
+    ],
+    "sm3_COLOR0": [
+      "unclamped"
+    ]
+  },
+  "passed": true
+}

@@ -1,0 +1,1192 @@
+MODULE requested=C:\X3\d3dx9_37.dll resolved=C:\X3\d3dx9_37.dll
+MODULE requested=d3d9.dll resolved=C:\windows\system32\d3d9.dll
+API GetAdapterIdentifier result=00000000
+ADAPTER description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll
+API CreateDevice result=00000000
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=0 consistent_models=1
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=2.83984375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=3.30859375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=4.80859375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=1 consistent_models=1
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=0 consistent_models=1
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+SAMPLE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+SAMPLE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=1 consistent_models=1
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=2 semantic=COLOR0 ps_saturate=0 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=6 PASS
+SAMPLE generation=0 profile=2 semantic=COLOR0 ps_saturate=0 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=6 PASS
+SAMPLE generation=0 profile=2 semantic=COLOR0 ps_saturate=0 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=6 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=2 semantic=COLOR0 ps_saturate=0 gradient=0 consistent_models=6
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=2 semantic=COLOR0 ps_saturate=0 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=0.44921875,1.00000000,1.00000000,1.00000000 matching_models=2 PASS
+SAMPLE generation=0 profile=2 semantic=COLOR0 ps_saturate=0 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=0.54296875,1.00000000,1.00000000,1.00000000 matching_models=2 PASS
+SAMPLE generation=0 profile=2 semantic=COLOR0 ps_saturate=0 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=0.54296875,1.00000000,1.00000000,1.00000000 matching_models=2 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=2 semantic=COLOR0 ps_saturate=0 gradient=1 consistent_models=2
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=2 semantic=COLOR0 ps_saturate=1 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=0 profile=2 semantic=COLOR0 ps_saturate=1 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=0 profile=2 semantic=COLOR0 ps_saturate=1 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=2 semantic=COLOR0 ps_saturate=1 gradient=0 consistent_models=7
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=2 semantic=COLOR0 ps_saturate=1 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=0.44921875,1.00000000,1.00000000,1.00000000 matching_models=2 PASS
+SAMPLE generation=0 profile=2 semantic=COLOR0 ps_saturate=1 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=0.54296875,1.00000000,1.00000000,1.00000000 matching_models=2 PASS
+SAMPLE generation=0 profile=2 semantic=COLOR0 ps_saturate=1 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=0.54296875,1.00000000,1.00000000,1.00000000 matching_models=2 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=2 semantic=COLOR0 ps_saturate=1 gradient=1 consistent_models=2
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=0 consistent_models=1
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=2.83984375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=3.30859375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=4.80859375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=1 consistent_models=1
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=0 consistent_models=1
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+SAMPLE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+SAMPLE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=1 consistent_models=1
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=3 semantic=COLOR0 ps_saturate=0 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=0 profile=3 semantic=COLOR0 ps_saturate=0 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=0 profile=3 semantic=COLOR0 ps_saturate=0 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=3 semantic=COLOR0 ps_saturate=0 gradient=0 consistent_models=1
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=3 semantic=COLOR0 ps_saturate=0 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=2.83984375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=0 profile=3 semantic=COLOR0 ps_saturate=0 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=3.30859375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=0 profile=3 semantic=COLOR0 ps_saturate=0 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=4.80859375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=3 semantic=COLOR0 ps_saturate=0 gradient=1 consistent_models=1
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=3 semantic=COLOR0 ps_saturate=1 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=0 profile=3 semantic=COLOR0 ps_saturate=1 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=0 profile=3 semantic=COLOR0 ps_saturate=1 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=3 semantic=COLOR0 ps_saturate=1 gradient=0 consistent_models=7
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=0 profile=3 semantic=COLOR0 ps_saturate=1 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+SAMPLE generation=0 profile=3 semantic=COLOR0 ps_saturate=1 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+SAMPLE generation=0 profile=3 semantic=COLOR0 ps_saturate=1 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=0 profile=3 semantic=COLOR0 ps_saturate=1 gradient=1 consistent_models=5
+API Reset after resource release result=00000000
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=0 consistent_models=1
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=2.83984375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=3.30859375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=4.80859375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=0 gradient=1 consistent_models=1
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=0 consistent_models=1
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+SAMPLE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+SAMPLE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=2 semantic=TEXCOORD0 ps_saturate=1 gradient=1 consistent_models=1
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=2 semantic=COLOR0 ps_saturate=0 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=6 PASS
+SAMPLE generation=1 profile=2 semantic=COLOR0 ps_saturate=0 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=6 PASS
+SAMPLE generation=1 profile=2 semantic=COLOR0 ps_saturate=0 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=6 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=2 semantic=COLOR0 ps_saturate=0 gradient=0 consistent_models=6
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=2 semantic=COLOR0 ps_saturate=0 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=0.44921875,1.00000000,1.00000000,1.00000000 matching_models=2 PASS
+SAMPLE generation=1 profile=2 semantic=COLOR0 ps_saturate=0 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=0.54296875,1.00000000,1.00000000,1.00000000 matching_models=2 PASS
+SAMPLE generation=1 profile=2 semantic=COLOR0 ps_saturate=0 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=0.54296875,1.00000000,1.00000000,1.00000000 matching_models=2 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=2 semantic=COLOR0 ps_saturate=0 gradient=1 consistent_models=2
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=2 semantic=COLOR0 ps_saturate=1 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=1 profile=2 semantic=COLOR0 ps_saturate=1 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=1 profile=2 semantic=COLOR0 ps_saturate=1 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=2 semantic=COLOR0 ps_saturate=1 gradient=0 consistent_models=7
+API vs_2_0 result=00000000
+API ps_2_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=2 semantic=COLOR0 ps_saturate=1 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=0.44921875,1.00000000,1.00000000,1.00000000 matching_models=2 PASS
+SAMPLE generation=1 profile=2 semantic=COLOR0 ps_saturate=1 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=0.54296875,1.00000000,1.00000000,1.00000000 matching_models=2 PASS
+SAMPLE generation=1 profile=2 semantic=COLOR0 ps_saturate=1 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=0.54296875,1.00000000,1.00000000,1.00000000 matching_models=2 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=2 semantic=COLOR0 ps_saturate=1 gradient=1 consistent_models=2
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=0 consistent_models=1
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=2.83984375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=3.30859375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=4.80859375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=0 gradient=1 consistent_models=1
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=0 consistent_models=1
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+SAMPLE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+SAMPLE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=3 semantic=TEXCOORD0 ps_saturate=1 gradient=1 consistent_models=1
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=3 semantic=COLOR0 ps_saturate=0 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=1 profile=3 semantic=COLOR0 ps_saturate=0 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=1 profile=3 semantic=COLOR0 ps_saturate=0 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=3 semantic=COLOR0 ps_saturate=0 gradient=0 consistent_models=1
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=3 semantic=COLOR0 ps_saturate=0 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=2.83984375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=1 profile=3 semantic=COLOR0 ps_saturate=0 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=3.30859375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+SAMPLE generation=1 profile=3 semantic=COLOR0 ps_saturate=0 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=4.80859375,4.00000000,16.00000000,1.00000000 matching_models=1 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=3 semantic=COLOR0 ps_saturate=0 gradient=1 consistent_models=1
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=3 semantic=COLOR0 ps_saturate=1 gradient=0 xy=8,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=1 profile=3 semantic=COLOR0 ps_saturate=1 gradient=0 xy=16,8 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+SAMPLE generation=1 profile=3 semantic=COLOR0 ps_saturate=1 gradient=0 xy=8,16 unclamped_red=0.25000000 rgba=0.25000000,1.00000000,1.00000000,1.00000000 matching_models=7 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=3 semantic=COLOR0 ps_saturate=1 gradient=0 consistent_models=7
+API vs_3_0 result=00000000
+API ps_3_0 result=00000000
+API CreateVertexShader result=00000000
+API CreatePixelShader result=00000000
+API CreateVertexDeclaration result=00000000
+API GetBackBuffer result=00000000
+API CreateRenderTarget FP16 result=00000000
+API CreateReadback FP16 result=00000000
+API SetRenderTarget result=00000000
+API SetDepthStencilSurface null result=00000000
+API SetViewport result=00000000
+API SetVertexDeclaration result=00000000
+API SetVertexShader result=00000000
+API SetPixelShader result=00000000
+API ZENABLE false result=00000000
+API ZWRITE false result=00000000
+API CULL none result=00000000
+API ALPHABLEND false result=00000000
+API ALPHATEST false result=00000000
+API SRGBWRITE false result=00000000
+API FOGENABLE false result=00000000
+API COLORWRITE all result=00000000
+API Clear result=00000000
+API BeginScene result=00000000
+API DrawPrimitiveUP result=00000000
+API EndScene result=00000000
+API GetRenderTargetData result=00000000
+API LockRect result=00000000
+SAMPLE generation=1 profile=3 semantic=COLOR0 ps_saturate=1 gradient=1 xy=8,8 unclamped_red=2.83984375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+SAMPLE generation=1 profile=3 semantic=COLOR0 ps_saturate=1 gradient=1 xy=16,8 unclamped_red=3.30859375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+SAMPLE generation=1 profile=3 semantic=COLOR0 ps_saturate=1 gradient=1 xy=8,16 unclamped_red=4.80859375 rgba=1.00000000,1.00000000,1.00000000,1.00000000 matching_models=5 PASS
+API UnlockRect result=00000000
+API RestoreBackbuffer result=00000000
+API UnbindVertexShader result=00000000
+API UnbindPixelShader result=00000000
+API UnbindDeclaration result=00000000
+CASE generation=1 profile=3 semantic=COLOR0 ps_saturate=1 gradient=1 consistent_models=5
+BACKEND wined3d=C:\windows\system32\wined3d.dll
+RESULT PASS: 96 numeric samples, 32 cases, two generations with Reset

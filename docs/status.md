@@ -113,5 +113,12 @@ connected to the loader or installed DLL; see [ownership source](../src/ownershi
 and [verification](../verification/probe/ownership.md). Generated fragments use
 `*_inc.h` per the user's editor preference.
 
+The original shader interpolation fixture passes 96/96 numeric samples across
+32 cases and Reset. On this backend SM3 COLOR0 preserves values above one into
+FP16; SM2 COLOR0 clips before interpolation. Explicit pixel-shader saturation
+still clips both paths. See [HDR varying verification](verification/vertex-color-hdr.md).
+This supports targeted SM3 material changes once the FP16 scene path exists;
+it is not a game HDR implementation.
+
 No game was launched by the agent. No visual enhancement has been enabled.
 Commit each completed logical checkpoint.
