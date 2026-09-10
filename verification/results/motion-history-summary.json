@@ -1,0 +1,42 @@
+{
+  "passed": true,
+  "checks": 3210,
+  "game_launched": false,
+  "build_command": [
+    "i686-w64-mingw32-g++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-msse2",
+    "-mfpmath=sse",
+    "-mstackrealign",
+    "-mincoming-stack-boundary=2",
+    "-static",
+    "/Users/asvetl/x3-mod/src/renderer/motion_history.cpp",
+    "/Users/asvetl/x3-mod/verification/probe/motion_history.cpp",
+    "-o",
+    "/Users/asvetl/x3-mod/verification/probe/build/motion_history.exe"
+  ],
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/motion_history.exe"
+  ],
+  "source_hashes": {
+    "src/renderer/motion_history.h": "4704a480ce47f9a93f063f42f7b667d8a380b328af5d1692453d00623b64bea0",
+    "src/renderer/motion_history.cpp": "c820f55ea340e166930024753133101a17a06a331591c3ec08a47625d372f840",
+    "verification/probe/motion_history.cpp": "702c307f0661e4da4f9ef4f4595cc074653bd8f191b7659f1bc823500d3d34dd",
+    "verification/probe/run_motion_history.py": "899dfb64278f75d258f52f7728d9d2766af0a43e5dd7c0daa015489c5b4199a5"
+  },
+  "executable_sha256": "b0c50ea1cd3a56093b7a0e9f2ab75732a48ccf857a551d945b91405920d4a34c",
+  "source_unchanged": true,
+  "executable_unchanged": true,
+  "report_sha256": "33d37a737900719ab5e50da3a3cf92f34d87e05153e28f83efbb9264a0d3666d",
+  "exit_code": 0
+}
