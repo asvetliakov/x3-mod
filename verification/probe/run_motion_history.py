@@ -19,8 +19,9 @@ def main():
     results = ROOT / "verification/results"
     build.mkdir(exist_ok=True); results.mkdir(exist_ok=True)
     exe = build / "motion_history.exe"
-    before = sources()
     summary = results / "motion-history-summary.json"
+    summary.write_text(json.dumps(dict(passed=False, phase="reading_inputs"), indent=2) + "\n")
+    before = sources()
     summary.write_text(json.dumps(dict(passed=False, phase="building", source_hashes=before), indent=2) + "\n")
     command = ["i686-w64-mingw32-g++", "-std=c++17", "-O2", "-Wall", "-Wextra", "-Werror",
                "-msse2", "-mfpmath=sse", "-mstackrealign", "-mincoming-stack-boundary=2", "-static",
@@ -34,7 +35,7 @@ def main():
     report = results / "motion-history.txt"; report.write_bytes(result.stdout)
     (results / "motion-history-wine.log").write_bytes(result.stderr)
     match = re.fullmatch(rb"RESULT PASS checks=(\d+)\r?\n", result.stdout)
-    data = dict(passed=result.returncode == 0 and bool(match) and sources() == before and digest(exe) == binary,
+    data = dict(passed=result.returncode == 0 and bool(match) and int(match[1]) == 3404 and sources() == before and digest(exe) == binary,
                 checks=int(match[1]) if match else 0, game_launched=False, build_command=command,
                 command=launch, source_hashes=before, executable_sha256=binary,
                 source_unchanged=sources() == before, executable_unchanged=digest(exe) == binary,

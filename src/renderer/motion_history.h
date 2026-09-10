@@ -41,11 +41,16 @@ struct RigidObservation {
     SubmittedMatrix submitted_wvp{}; // Actual rows, never reconstructed W*V*P.
     std::uint32_t proofs = 0; // Unknown is ineligible, not camera-only fallback.
 };
+enum class MotionHistoryPurpose { TemporalAccumulation, DiagnosticStorageCorrespondence };
+enum class MotionContinuity { Unknown, Discontinuity, Continuous };
 struct MotionFrame {
-    // Trusted caller epoch changes on scene/camera cuts, reload/reset, resource
-    // generation or exposure/coordinate-regime changes. Ordinary frames retain it.
+    // Observed identity/resource/coordinate domain. An unchanged epoch does not
+    // itself prove camera continuity. Reload/reset and domain changes advance it.
     std::uint64_t frame = 0, epoch = 0;
     std::uint32_t width = 0, height = 0;
+    // Caller evidence about the transition FROM the immediately preceding frame.
+    // Unknown never permits temporal accumulation; a cut clears both purposes.
+    MotionContinuity continuity = MotionContinuity::Unknown;
 };
 enum class Correspondence {
     Matched, NotSealed, MissingCurrent, InvalidKey, MissingProof,
@@ -53,19 +58,31 @@ enum class Correspondence {
 };
 struct RigidMotionPair {
     Correspondence status = Correspondence::NotSealed;
+    MotionHistoryPurpose purpose = MotionHistoryPurpose::TemporalAccumulation;
+    MotionContinuity continuity = MotionContinuity::Unknown;
     SubmittedMatrix current{}, previous{};
+    // Only caller continuity evidence, not color/depth/jitter/exposure readiness.
+    bool temporal_continuity_attested() const noexcept {
+        return status == Correspondence::Matched &&
+            purpose == MotionHistoryPurpose::TemporalAccumulation &&
+            continuity == MotionContinuity::Continuous;
+    }
 };
 
 // Collect ALL current observations, seal, then query pairs for GPU replay.
 // Two phases prevent a late conflicting duplicate from invalidating motion that
-// was already emitted. commit(true) is only for a completely successful frame,
-// including motion/resolve/presentation; failure invalidates both generations.
+// was already emitted. commit(true) requires a successful configured producer
+// and frame/presentation boundary; failure invalidates both generations.
+// Diagnostic mode commits matrix observations only, never temporal-color history.
+// Temporal mode also requires its complete motion/resolve/presentation transaction;
+// unknown continuity clears previous pairing but may seed the current frame.
 // The caller must additionally verify buffers remain unchanged until replay,
 // provide jitter metadata, and reject/react to unsupported color contributors.
 // This class cannot discover engine lifetime, semantic or visibility proofs.
 class MotionHistory {
 public:
-    explicit MotionHistory(std::size_t capacity = 8192) noexcept;
+    explicit MotionHistory(std::size_t capacity = 8192,
+        MotionHistoryPurpose purpose = MotionHistoryPurpose::TemporalAccumulation) noexcept;
     bool begin_frame(MotionFrame frame) noexcept;
     // True means stored, not eligible. Ineligible entries remain to poison any
     // duplicate key; only lookup().status == Matched authorizes correspondence.
@@ -91,6 +108,7 @@ private:
     std::vector<Entry> current_, previous_;
     MotionFrame frame_{}, previous_frame_{};
     std::size_t capacity_;
+    MotionHistoryPurpose purpose_;
     Phase phase_ = Phase::Idle;
     bool previous_valid_ = false;
 };

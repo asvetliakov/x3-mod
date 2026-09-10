@@ -17,8 +17,8 @@ auto fields(const RigidDrawKey& k) noexcept {
 }
 } // namespace
 
-MotionHistory::MotionHistory(std::size_t capacity) noexcept
-    : capacity_(std::min<std::size_t>(capacity, 65536)) {}
+MotionHistory::MotionHistory(std::size_t capacity, MotionHistoryPurpose purpose) noexcept
+    : capacity_(std::min<std::size_t>(capacity, 65536)), purpose_(purpose) {}
 bool MotionHistory::less(const RigidDrawKey& a, const RigidDrawKey& b) noexcept { return fields(a) < fields(b); }
 bool MotionHistory::equal(const RigidDrawKey& a, const RigidDrawKey& b) noexcept { return fields(a) == fields(b); }
 
@@ -45,12 +45,20 @@ void MotionHistory::invalidate() noexcept {
 bool MotionHistory::begin_frame(MotionFrame frame) noexcept {
     // An uncommitted prior frame is not eligible even if its numbers look adjacent.
     if (phase_ != Phase::Idle) invalidate();
-    if (!capacity_ || !frame.frame || !frame.epoch || !frame.width || !frame.height) {
+    if (!capacity_ || !frame.frame || !frame.epoch || !frame.width || !frame.height ||
+        (purpose_ != MotionHistoryPurpose::TemporalAccumulation &&
+         purpose_ != MotionHistoryPurpose::DiagnosticStorageCorrespondence) ||
+        (frame.continuity != MotionContinuity::Unknown &&
+         frame.continuity != MotionContinuity::Discontinuity &&
+         frame.continuity != MotionContinuity::Continuous)) {
         invalidate(); return false;
     }
     if (!previous_valid_ || previous_frame_.frame == std::numeric_limits<std::uint64_t>::max() ||
         frame.frame != previous_frame_.frame + 1 || frame.epoch != previous_frame_.epoch ||
-        frame.width != previous_frame_.width || frame.height != previous_frame_.height) {
+        frame.width != previous_frame_.width || frame.height != previous_frame_.height ||
+        frame.continuity == MotionContinuity::Discontinuity ||
+        (purpose_ == MotionHistoryPurpose::TemporalAccumulation &&
+         frame.continuity != MotionContinuity::Continuous)) {
         previous_.clear(); previous_valid_ = false;
     }
     current_.clear(); frame_ = frame; phase_ = Phase::Collecting;
@@ -93,6 +101,7 @@ const MotionHistory::Entry* MotionHistory::find(const std::vector<Entry>& entrie
 }
 RigidMotionPair MotionHistory::lookup(const RigidDrawKey& key) const noexcept {
     RigidMotionPair result{};
+    result.purpose = purpose_;
     if (phase_ != Phase::Sealed) return result;
     const auto* now = find(current_, key);
     if (!now) { result.status = Correspondence::MissingCurrent; return result; }
@@ -101,7 +110,8 @@ RigidMotionPair MotionHistory::lookup(const RigidDrawKey& key) const noexcept {
     const auto* old = find(previous_, key);
     if (!old) { result.status = Correspondence::MissingPrevious; return result; }
     if (old->status != Correspondence::Matched) { result.status = old->status; return result; }
-    result.status = Correspondence::Matched; result.current = now->matrix; result.previous = old->matrix;
+    result.status = Correspondence::Matched; result.continuity = frame_.continuity;
+    result.current = now->matrix; result.previous = old->matrix;
     return result;
 }
 bool MotionHistory::commit(bool frame_succeeded) noexcept {

@@ -1,6 +1,6 @@
 {
   "passed": true,
-  "checks": 3210,
+  "checks": 3404,
   "game_launched": false,
   "build_command": [
     "i686-w64-mingw32-g++",
@@ -29,14 +29,14 @@
     "/Users/asvetl/x3-mod/verification/probe/build/motion_history.exe"
   ],
   "source_hashes": {
-    "src/renderer/motion_history.h": "4704a480ce47f9a93f063f42f7b667d8a380b328af5d1692453d00623b64bea0",
-    "src/renderer/motion_history.cpp": "c820f55ea340e166930024753133101a17a06a331591c3ec08a47625d372f840",
-    "verification/probe/motion_history.cpp": "702c307f0661e4da4f9ef4f4595cc074653bd8f191b7659f1bc823500d3d34dd",
-    "verification/probe/run_motion_history.py": "899dfb64278f75d258f52f7728d9d2766af0a43e5dd7c0daa015489c5b4199a5"
+    "src/renderer/motion_history.h": "a8bb9ef874282e83db1551cf741bc3648ed2e8b04ead2f7dc4c2919aa6447eda",
+    "src/renderer/motion_history.cpp": "7cf63608c7846156aace252fa66086656fec113e5025da23991e0839ecc823df",
+    "verification/probe/motion_history.cpp": "fe212c8797cd475ebb4cd4beeb9c3854ade400dfbc48c2ae57fe2d362affb85e",
+    "verification/probe/run_motion_history.py": "c43c2d6c65a32026e08e1534ab319772681ebc79409ecf576c2d3a1655ee2ffb"
   },
-  "executable_sha256": "b0c50ea1cd3a56093b7a0e9f2ab75732a48ccf857a551d945b91405920d4a34c",
+  "executable_sha256": "c7701fdc520c889a87ef3b17c8ec2557119e5abab505ffef32c6b140be2dcbcf",
   "source_unchanged": true,
   "executable_unchanged": true,
-  "report_sha256": "33d37a737900719ab5e50da3a3cf92f34d87e05153e28f83efbb9264a0d3666d",
+  "report_sha256": "828ba803dba34592148c3bf4c371363acdca56bd359ac5614166695dd2bdcdf2",
   "exit_code": 0
 }

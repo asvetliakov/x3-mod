@@ -36,7 +36,7 @@ static RigidObservation draw(unsigned object = 1) {
     return o;
 }
 static void begin(MotionHistory& h, std::uint64_t frame, std::uint64_t epoch = 1, unsigned width = 64) {
-    expect(h.begin_frame({frame, epoch, width, 64}), "begin valid frame");
+    expect(h.begin_frame({frame, epoch, width, 64, MotionContinuity::Continuous}), "begin authored continuous frame");
 }
 static void observe(MotionHistory& h, const RigidObservation& o) { expect(h.observe(o), "collect observation"); }
 static void seal(MotionHistory& h) { expect(h.seal(), "seal observations"); }
@@ -60,6 +60,7 @@ int main() {
         begin(h,2); observe(h,moved); seal(h);
         const auto pair = h.lookup(moved.key);
         expect(pair.status == Correspondence::Matched, "moving object matches");
+        expect(pair.temporal_continuity_attested(), "authored continuous temporal pair carries continuity evidence");
         expect(!std::memcmp(pair.previous.data(), original.submitted_wvp.data(), sizeof(SubmittedMatrix)), "prior submitted rows preserved");
         expect(!std::memcmp(pair.current.data(), moved.submitted_wvp.data(), sizeof(SubmittedMatrix)), "current submitted rows preserved");
         commit(h);
@@ -170,6 +171,44 @@ int main() {
         if (defect == 4) bad.key.position_offset = std::numeric_limits<std::uint32_t>::max();
         if (defect == 5) bad.key.indexed = false; // Contradictory index fields.
         begin(h,1); observe(h,bad); seal(h); status(h,bad.key,Correspondence::InvalidKey);
+    }
+    {
+        MotionHistory h; seed(h,original);
+        expect(h.begin_frame({2,1,64,64}), "default unknown frame can collect a fresh seed");
+        observe(h,original);seal(h);status(h,original.key,Correspondence::NoPreviousFrame);
+        expect(!h.lookup(original.key).temporal_continuity_attested(), "unknown continuity never attests temporal pair");
+        commit(h);begin(h,3);observe(h,original);seal(h);
+        expect(h.lookup(original.key).temporal_continuity_attested(), "known next transition may use previously unknown fresh seed");
+    }
+    for(auto purpose:{MotionHistoryPurpose::TemporalAccumulation,MotionHistoryPurpose::DiagnosticStorageCorrespondence}){
+        MotionHistory h(8192,purpose);seed(h,original);
+        expect(h.begin_frame({2,1,64,64,MotionContinuity::Discontinuity}), "explicit cut collects fresh seed");
+        observe(h,original);seal(h);status(h,original.key,Correspondence::NoPreviousFrame);
+        expect(!h.lookup(original.key).temporal_continuity_attested(), "explicit cut cannot carry temporal continuity");
+        commit(h);begin(h,3);observe(h,original);seal(h);
+        const auto pair=h.lookup(original.key);
+        expect(pair.status==Correspondence::Matched&&pair.purpose==purpose,"both purposes restart after explicit cut");
+        expect(pair.temporal_continuity_attested()==(purpose==MotionHistoryPurpose::TemporalAccumulation),"diagnostic purpose cannot attest temporal use even with continuous input");
+    }
+    {
+        MotionHistory h(8192,MotionHistoryPurpose::DiagnosticStorageCorrespondence);
+        expect(h.begin_frame({1,1,64,64}),"diagnostic unknown seed");observe(h,original);seal(h);commit(h);
+        auto moved=original;moved.submitted_wvp[3]=0.75f;
+        expect(h.begin_frame({2,1,64,64}),"diagnostic unknown adjacent frame");observe(h,moved);seal(h);
+        const auto pair=h.lookup(moved.key);
+        expect(pair.status==Correspondence::Matched&&pair.continuity==MotionContinuity::Unknown,
+               "diagnostic storage matches without inventing camera continuity");
+        expect(!pair.temporal_continuity_attested(),"diagnostic match cannot authorize temporal continuity");
+        expect(!std::memcmp(pair.previous.data(),original.submitted_wvp.data(),sizeof(SubmittedMatrix))&&
+               !std::memcmp(pair.current.data(),moved.submitted_wvp.data(),sizeof(SubmittedMatrix)),"diagnostic pairing retains exact submitted matrices");
+        commit(h);expect(h.begin_frame({4,1,64,64}),"diagnostic gap begins");observe(h,moved);seal(h);
+        status(h,moved.key,Correspondence::NoPreviousFrame);
+    }
+    {
+        MotionHistory h;seed(h,original);
+        expect(!h.begin_frame({2,1,64,64,static_cast<MotionContinuity>(99)}),"unknown enum value fails closed");
+        MotionHistory bad(8192,static_cast<MotionHistoryPurpose>(99));
+        expect(!bad.begin_frame({1,1,64,64,MotionContinuity::Continuous}),"invalid purpose fails closed");
     }
     std::printf("RESULT PASS checks=%u\n", checks);
 }
