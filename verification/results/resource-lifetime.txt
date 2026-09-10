@@ -1,0 +1,44 @@
+CASE texture_retains_device
+CreateDevice: 0x00000000
+CreateDevice: PASS
+CreateTexture FP16: 0x00000000
+CreateTexture FP16: PASS
+application device Release returns 1
+texture prevents device Release reaching zero: PASS
+Recovery GetDevice: 0x00000000
+Recovery GetDevice: PASS
+GetDevice preserves native identity: PASS
+QueryInterface IUnknown: 0x00000000
+QueryInterface IUnknown: PASS
+IUnknown preserves native identity: PASS
+recovered device final Release returns 0
+device reaches zero after owned resources release: PASS
+CASE bound_surface_private_owner
+CreateDevice: 0x00000000
+CreateDevice: PASS
+CreateTexture FP16: 0x00000000
+CreateTexture FP16: PASS
+CreateDepthStencilSurface D24X8: 0x00000000
+CreateDepthStencilSurface D24X8: PASS
+SetPrivateData owner: 0x00000000
+SetPrivateData owner: PASS
+SetDepthStencilSurface: 0x00000000
+SetDepthStencilSurface: PASS
+source surface Release returns 0; private owner destroyed=0
+private owner survives release of bound source: PASS
+application device Release returns 1
+texture prevents device Release reaching zero: PASS
+Recovery GetDevice: 0x00000000
+Recovery GetDevice: PASS
+GetDevice preserves native identity: PASS
+QueryInterface IUnknown: 0x00000000
+QueryInterface IUnknown: PASS
+IUnknown preserves native identity: PASS
+owner still alive after application device release: PASS
+Unbind source to break anchor retention: 0x00000000
+Unbind source to break anchor retention: PASS
+recovered device final Release returns 0
+device reaches zero after owned resources release: PASS
+private owner destroyed on cleanup: PASS
+factory reaches zero: PASS
+LIFETIME RESULT: 0 failures

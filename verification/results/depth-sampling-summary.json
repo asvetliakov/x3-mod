@@ -1,0 +1,20 @@
+{
+  "started_utc": "2026-09-10T15:46:04.597245+00:00",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/depth_sampling.exe",
+    "C:\\X3\\d3dx9_37.dll"
+  ],
+  "timeout_seconds": 60,
+  "source_sha256": "e9bdbad53081c2d1874917e91ca42688b2b89b8266db3d0c3ea3777dfd69ed3b",
+  "executable_sha256": "a6fa3d36b5461a09fb15f3689c561bc342d17e569edc0484aea2abdd2e583a8b",
+  "exit_code": 0,
+  "sample_checks": 16,
+  "passed_sample_checks": 16,
+  "passed": true
+}

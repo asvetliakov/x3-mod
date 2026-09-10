@@ -1,0 +1,19 @@
+test_failed_draw_result_is_excluded_and_reported (test_camera_analysis.CameraAnalysisTests) ... ok
+test_incomplete_frame_is_not_evidence (test_camera_analysis.CameraAnalysisTests) ... ok
+test_inconsistent_second_draw_is_detectable (test_camera_analysis.CameraAnalysisTests) ... ok
+test_integer_query_failure_does_not_invalidate_float (test_camera_analysis.CameraAnalysisTests) ... ok
+test_invalid_matrices_rejected (test_camera_analysis.CameraAnalysisTests) ... ok
+test_noncommuting_world_view_projection_cross_draw_fit (test_camera_analysis.CameraAnalysisTests) ... ok
+test_reported_draw_count_mismatch_rejects_frame (test_camera_analysis.CameraAnalysisTests) ... ok
+test_sparse_rows_are_zero_without_cross_draw_leakage (test_camera_analysis.CameraAnalysisTests) ... ok
+test_typed_registers_do_not_alias_float_namespace (test_camera_analysis.CameraAnalysisTests) ... ok
+test_unavailable_queries_exclude_draws (test_camera_analysis.CameraAnalysisTests) ... ok
+test_v2_devices_reusing_frame_numbers_stay_separate (test_camera_analysis.CameraAnalysisTests) ... ok
+test_v2_missing_draw_result_rejected (test_camera_analysis.CameraAnalysisTests) ... ok
+test_v2_missing_float_status_rejected (test_camera_analysis.CameraAnalysisTests) ... ok
+test_v2_short_float_query_does_not_supply_missing_zero_rows (test_camera_analysis.CameraAnalysisTests) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.005s
+
+OK

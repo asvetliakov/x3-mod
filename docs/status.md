@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-10. **Iteration 1 capture foundation is working. The overall renderer
+Updated 2026-09-10. **Iteration 2 capture inputs and numeric depth/camera probes are verified. The overall renderer
 modernization objective is not complete.** No HDR/TAA/AgX/material/clustered-lighting
 visual enhancement is enabled yet. See the [full user objective](user-objective.md)
 and [roadmap](architecture/roadmap.md).
@@ -13,16 +13,27 @@ and [roadmap](architecture/roadmap.md).
   configuration preserved. User test setting: 1280×768 windowed (was 5120×1440
   borderless). No unused launcher is intentionally left open.
 - Independent FP16/depth/D3D11-scRGB capabilities; baseline/proxy smoke passes;
-  12 analysis tests and compile-time ABI guards pass.
+  31 analysis tests and compile-time ABI guards pass.
 - Static archive/PE analysis, targeted Ghidra renderer map, shader index and CTAB
   register mapping, documented separately in `docs/reverse-engineering/`.
 - Animated menu capture: 690 draws; user-assisted flight: two complete 122-draw
   frames. Exact archive matches for all 47 shaders recorded in flight session.
 
+## Iteration 2 additions
+
+- Capture v2: typed I/B/F state, per-device frame keys, resource allocation IDs,
+  stream/index metadata, draw parameters/results, and texture/surface relationship.
+  Actual synthetic traces verify stateblock restoration and resource recreation.
+- Camera factorization: 105 draws/frame fit the same multiplication convention;
+  three camera coordinate regimes prohibit a blanket single-camera assumption.
+- INTZ numeric rendering/sampling: 16 pixel checks pass across 8-bit/FP16 outputs
+  and reset. This is sampleable synthetic depth, not game depth substitution.
+- Common shader point-light array decoded as eight pos/color/atten structures.
+
 ## Concrete next work
 
-1. Add typed integer/bool constants, stable geometry/buffer identifiers and stream
-   metadata to capture. Light count is integer i0; float-only logs omit it.
+1. Finish analyzing the received eight v2 turning frames for typed light count and
+   draw-slice continuity. Allocation identity is not engine object identity.
 2. Map camera conventions and object identity across controlled motion; correlate
    world/WVP/view-inverse values to depth and projection. The capture has useful
    names/registers, not yet validated motion vectors.
@@ -56,6 +67,7 @@ Raw shader bytes remain local beside X3. The large generated archive shader inde
 was `/tmp/x3-shader-index.json`; regenerate with `tools/analysis/index_shaders.py`
 if missing. Raw game logs are also beside X3, not redistributed source assets.
 
-The installed DLL matches `build/d3d9.dll` at the end of this iteration. See the
-verification report for checksum. If the game is still running it retains the
-previous build until restart; the final change only hardens vtable installation.
+The installed DLL is capture 0.2 and matches `build/d3d9.dll`. See
+`docs/verification/iteration-02.md` for checksum and checks. The user supplied two four-frame turning bursts; all captured draws succeeded.
+A still-running game retains its startup DLL until restart. No visual enhancement
+has been enabled. Commit each completed logical checkpoint.

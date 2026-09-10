@@ -21,9 +21,15 @@ Observed hashes include `53a0a641107ed76c`, `37c34a7478544c14`,
 | g_mViewInverse | float c34–c36 | Matrix, 3 registers |
 | g_nNumLightPoint | integer i0 | Separate integer register namespace |
 
-The integer count is **not captured** by the current float-only register snapshot.
-Do not mistake it for float c0. Extending typed constant capture is a prerequisite
-for reliably decoding the engine light list.
+The historical version 1 game captures omit the integer count. Capture version 2
+now records the separate integer and boolean namespaces; its standalone fixture
+verifies live stateblock-restored values and explicit zeros. Do not mistake i0 for
+float c0. A new version 2 game capture is needed to inspect the actual light count.
+
+Nested CTAB metadata describes `g_LightPoint` as eight structures, each with
+`pos` float3, `color` float3 and `atten` float4, using three float4 registers per
+entry (24 total). These are compiler names and layout evidence, not validated
+physical units, color space or an attenuation equation.
 
 ## Other camera paths
 
@@ -50,3 +56,6 @@ The local MinGW `d3dx9shader.h` defines CTAB's 28-byte header, 20-byte constant
 records, 16-byte type records and register-set enums. The analysis tool validates
 all offsets against the enclosing comment block. Production code does not rely
 on these metadata offsets; this is an offline research tool.
+
+See [numerical camera evidence](camera-numerics.md) for the verified cross-draw
+matrix factorization and the three camera coordinate regimes in the flight logs.

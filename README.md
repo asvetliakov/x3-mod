@@ -53,7 +53,7 @@ use the supplied launcher for reproducible tests.
 
 Targets X3AP's imported `Direct3DCreate9` path. Shader bytecode is FNV-1a 64 hashed
 and locally dumped; a requested frame records draw order, shaders, targets, depth,
-vertex declarations, textures/samplers, render states, float constants and fixed
+vertex declarations, textures/samplers, render states, typed shader constants and fixed
 function transforms. It preserves all original COM identities by giving each
 instrumented object a private vtable. No extra GPU resources or render-state changes
 are introduced. Shader hashes are identifiers, not cryptographic integrity checks.
@@ -61,10 +61,13 @@ are introduced. Shader hashes are identifiers, not cryptographic integrity check
 `Direct3DCreate9Ex` is forwarded without instrumentation. Additional swapchain
 Present and Ex Present are not capture boundaries yet. Pure-device state queries
 may fail and captures are incomplete there. Per-draw texture pixels, vertex/index
-contents, integer/bool constants and patch draws are not captured yet. This is a
+contents, buffer content revisions and patch draws are not captured yet. This is a
 research proxy for this specific game, not a universal D3D9 compatibility layer.
 
 ## Documentation
+
+- [Capture format 2 and identity semantics](docs/architecture/capture-format.md)
+- [Iteration 2 verification](docs/verification/iteration-02.md)
 
 - [Current status and next implementation tasks](docs/status.md)
 

@@ -3583,7 +3583,36 @@
       "rows": 1,
       "columns": 10,
       "elements": 8,
-      "struct_members": 3
+      "struct_members": 3,
+      "members": [
+        {
+          "name": "pos",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 3,
+          "elements": 1,
+          "struct_members": 0
+        },
+        {
+          "name": "color",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 3,
+          "elements": 1,
+          "struct_members": 0
+        },
+        {
+          "name": "atten",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 4,
+          "elements": 1,
+          "struct_members": 0
+        }
+      ]
     },
     {
       "name": "g_MatEmissiveColor",
@@ -3767,7 +3796,36 @@
       "rows": 1,
       "columns": 10,
       "elements": 8,
-      "struct_members": 3
+      "struct_members": 3,
+      "members": [
+        {
+          "name": "pos",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 3,
+          "elements": 1,
+          "struct_members": 0
+        },
+        {
+          "name": "color",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 3,
+          "elements": 1,
+          "struct_members": 0
+        },
+        {
+          "name": "atten",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 4,
+          "elements": 1,
+          "struct_members": 0
+        }
+      ]
     },
     {
       "name": "g_MatEmissiveColor",
@@ -3939,7 +3997,36 @@
       "rows": 1,
       "columns": 10,
       "elements": 8,
-      "struct_members": 3
+      "struct_members": 3,
+      "members": [
+        {
+          "name": "pos",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 3,
+          "elements": 1,
+          "struct_members": 0
+        },
+        {
+          "name": "color",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 3,
+          "elements": 1,
+          "struct_members": 0
+        },
+        {
+          "name": "atten",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 4,
+          "elements": 1,
+          "struct_members": 0
+        }
+      ]
     },
     {
       "name": "g_MatEmissiveColor",
@@ -4073,7 +4160,36 @@
       "rows": 1,
       "columns": 10,
       "elements": 8,
-      "struct_members": 3
+      "struct_members": 3,
+      "members": [
+        {
+          "name": "pos",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 3,
+          "elements": 1,
+          "struct_members": 0
+        },
+        {
+          "name": "color",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 3,
+          "elements": 1,
+          "struct_members": 0
+        },
+        {
+          "name": "atten",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 4,
+          "elements": 1,
+          "struct_members": 0
+        }
+      ]
     },
     {
       "name": "g_MatEmissiveColor",
@@ -4207,7 +4323,36 @@
       "rows": 1,
       "columns": 10,
       "elements": 8,
-      "struct_members": 3
+      "struct_members": 3,
+      "members": [
+        {
+          "name": "pos",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 3,
+          "elements": 1,
+          "struct_members": 0
+        },
+        {
+          "name": "color",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 3,
+          "elements": 1,
+          "struct_members": 0
+        },
+        {
+          "name": "atten",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 4,
+          "elements": 1,
+          "struct_members": 0
+        }
+      ]
     },
     {
       "name": "g_MatEmissiveColor",
@@ -4482,7 +4627,36 @@
       "rows": 1,
       "columns": 10,
       "elements": 8,
-      "struct_members": 3
+      "struct_members": 3,
+      "members": [
+        {
+          "name": "pos",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 3,
+          "elements": 1,
+          "struct_members": 0
+        },
+        {
+          "name": "color",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 3,
+          "elements": 1,
+          "struct_members": 0
+        },
+        {
+          "name": "atten",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 4,
+          "elements": 1,
+          "struct_members": 0
+        }
+      ]
     },
     {
       "name": "g_MatEmissiveColor",
@@ -4678,7 +4852,36 @@
       "rows": 1,
       "columns": 10,
       "elements": 8,
-      "struct_members": 3
+      "struct_members": 3,
+      "members": [
+        {
+          "name": "pos",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 3,
+          "elements": 1,
+          "struct_members": 0
+        },
+        {
+          "name": "color",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 3,
+          "elements": 1,
+          "struct_members": 0
+        },
+        {
+          "name": "atten",
+          "parameter_class": 1,
+          "parameter_type": 3,
+          "rows": 1,
+          "columns": 4,
+          "elements": 1,
+          "struct_members": 0
+        }
+      ]
     },
     {
       "name": "g_MatEmissiveColor",

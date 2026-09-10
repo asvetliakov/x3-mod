@@ -38,15 +38,32 @@ def parse_ctab(code):
                     if stop < 0:
                         raise ValueError('Unterminated CTAB string')
                     return table[start:stop].decode('utf-8', errors='replace')
+                type_budget = [4096]
+                def parameter_type(start, ancestors=frozenset()):
+                    # CTAB type records can share subtrees. Validate cycles and
+                    # bound expansion instead of trusting arbitrary nested offsets.
+                    if start in ancestors or len(ancestors) >= 16:
+                        raise ValueError('Cyclic or excessively nested CTAB type')
+                    type_budget[0] -= 1
+                    if type_budget[0] < 0 or start + 16 > len(table):
+                        raise ValueError('CTAB type offset or expansion out of range')
+                    cls, typ, rows, cols, elems, members, memberoffset = struct.unpack_from('<6HI', table, start)
+                    result = dict(parameter_class=cls, parameter_type=typ, rows=rows,
+                                  columns=cols, elements=elems, struct_members=members)
+                    if members:
+                        if memberoffset + members*8 > len(table):
+                            raise ValueError('CTAB member range out of bounds')
+                        result['members'] = []
+                        for member in range(members):
+                            nameoffset, child = struct.unpack_from('<2I', table, memberoffset+member*8)
+                            result['members'].append(dict(name=string(nameoffset),
+                                **parameter_type(child, ancestors | {start})))
+                    return result
                 results = []
                 for i in range(total):
                     name, regset, reg, regs, reserved, typeinfo, default = struct.unpack_from('<I4H2I', table, offset+i*20)
-                    if typeinfo+16 > len(table):
-                        raise ValueError('CTAB type offset out of range')
-                    cls, typ, rows, cols, elems, members, memberoffset = struct.unpack_from('<6HI', table, typeinfo)
                     results.append(dict(name=string(name), register_set=regset, register=reg, count=regs,
-                                        parameter_class=cls, parameter_type=typ, rows=rows, columns=cols,
-                                        elements=elems, struct_members=members))
+                                        **parameter_type(typeinfo)))
                 return results
             pos = end
         else:

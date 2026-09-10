@@ -1,4 +1,5 @@
 #include "capture.h"
+#include "capture_state.h"
 #include <array>
 #include <cstdarg>
 #include <cstdio>
@@ -19,6 +20,7 @@ std::wstring directory;
 unsigned capture_start = 120;
 unsigned capture_count = 1;
 std::set<uint64_t> dumped;
+uint64_t next_device_id = 1;
 
 // Each object owns a private copy of the backend vtable. We don't patch shared
 // executable pages, wrap resources, or change IUnknown identity. Ex tails are
@@ -39,6 +41,8 @@ struct Hooks {
     }
 };
 struct Device : Hooks {
+    D3DCAPS9 caps{};
+    uint64_t id = next_device_id++;
     uint64_t frame = 0;
     uint64_t draws = 0;
     unsigned remaining = 0;
@@ -73,29 +77,21 @@ template<typename Shader> uint64_t shader_id(Shader* shader, const char* kind) {
     return hash;
 }
 void surface_info(const char* name, IDirect3DSurface9* surface) {
-    if (!surface) { log("surface role=%s ptr=0", name); return; }
+    if (!surface) { log("surface role=%s ptr=0 identity=0",name); return; }
+    IDirect3DBaseTexture9* container = nullptr;
+    const HRESULT container_result=surface->GetContainer(IID_IDirect3DBaseTexture9,reinterpret_cast<void**>(&container));
+    const auto parent_id=resource_id(container);
+    const UINT parent_type=container ? container->GetType() : 0;
+    if (container) container->Release();
+    const auto id=resource_id(surface);
     D3DSURFACE_DESC desc{};
-    if (SUCCEEDED(surface->GetDesc(&desc)))
-        log("surface role=%s ptr=%p width=%u height=%u format=%u usage=%lu msaa=%u", name,
-            surface, desc.Width, desc.Height, desc.Format, desc.Usage, desc.MultiSampleType);
+    const HRESULT result=surface->GetDesc(&desc);
+    if (SUCCEEDED(result))
+        log("surface role=%s ptr=%p identity=%llu width=%u height=%u format=%u usage=%lu msaa=%u container=%llu container_type=%u container_result=%08lx", name,
+            surface,id,desc.Width,desc.Height,desc.Format,desc.Usage,desc.MultiSampleType,parent_id,parent_type,container_result);
+    else log("surface role=%s ptr=%p identity=%llu result=%08lx",name,surface,id,result);
 }
-void constants(IDirect3DDevice9* d, bool vertex) {
-    // Full live state includes effects restored through state blocks; setter-only
-    // tracing would silently miss those. Pure devices may reject these queries.
-    float values[256*4]{};
-    UINT count = vertex ? 256 : 224;
-    HRESULT hr = vertex ? d->GetVertexShaderConstantF(0, values, count)
-                        : d->GetPixelShaderConstantF(0, values, count);
-    if (FAILED(hr)) { log("constants kind=%s unavailable=%08lx", vertex ? "vs":"ps", hr); return; }
-    for (UINT i=0; i<count; ++i) {
-        const float* v = values+i*4;
-        // Write bit patterns so NaNs, infinities and signed zero are lossless.
-        uint32_t bits[4]; memcpy(bits, v, sizeof bits);
-        if (bits[0] || bits[1] || bits[2] || bits[3])
-            log("constant kind=%s reg=%u bits=%08x,%08x,%08x,%08x", vertex?"vs":"ps",i,bits[0],bits[1],bits[2],bits[3]);
-    }
-}
-void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT primitives) {
+void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT primitives, bool user_memory=false) {
     auto& ctx = *devices.at(d);
     ++ctx.draws;
     if (!ctx.capture) return;
@@ -105,8 +101,9 @@ void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT
     const auto vhash = shader_id(vs,"vs"), phash = shader_id(ps,"ps");
     if (vs) vs->Release();
     if (ps) ps->Release();
-    log("draw frame=%llu index=%llu kind=%s topology=%u primitives=%u vs=%016llx ps=%016llx",
-        ctx.frame,ctx.draws,kind,type,primitives,vhash,phash);
+    log("draw device=%llu frame=%llu index=%llu kind=%s topology=%u primitives=%u vs=%016llx ps=%016llx",
+        ctx.id,ctx.frame,ctx.draws,kind,type,primitives,vhash,phash);
+    capture_geometry(d,user_memory,ctx.caps);
     IDirect3DSurface9* rt = nullptr;
     for (DWORD i = 0; i < 4; ++i) {
         if (SUCCEEDED(d->GetRenderTarget(i,&rt)) && rt) {
@@ -128,7 +125,7 @@ void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT
     for (DWORD i=0; i<16; ++i) {
         IDirect3DBaseTexture9* texture = nullptr;
         if (SUCCEEDED(d->GetTexture(i,&texture)) && texture) {
-            log("texture stage=%lu ptr=%p type=%u",i,texture,texture->GetType());
+            log("texture stage=%lu ptr=%p type=%u identity=%llu",i,texture,texture->GetType(),resource_id(texture));
             if (texture->GetType()==D3DRTYPE_TEXTURE) {
                 D3DSURFACE_DESC desc{};
                 if (SUCCEEDED(static_cast<IDirect3DTexture9*>(texture)->GetLevelDesc(0,&desc)))
@@ -153,13 +150,13 @@ void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT
         if (SUCCEEDED(d->GetTransform(state,&m)))
             for (unsigned i=0;i<4;++i) log("transform state=%u row=%u values=%.9g,%.9g,%.9g,%.9g",state,i,m.m[i][0],m.m[i][1],m.m[i][2],m.m[i][3]);
     }
-    constants(d,true); constants(d,false);
+    capture_constants(d,true,ctx.caps); capture_constants(d,false,ctx.caps);
 }
 ULONG WINAPI release_device(IDirect3DDevice9* d) {
     std::lock_guard<std::recursive_mutex> lock(mutex);
     auto fn = devices.at(d)->get<ULONG (WINAPI*)(IDirect3DDevice9*)>(2);
     ULONG refs=fn(d);
-    if (!refs) { log("device_destroy ptr=%p",d); devices.erase(d); }
+    if (!refs) { log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id); devices.erase(d); }
     return refs;
 }
 HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,const RGNDATA* r) {
@@ -167,13 +164,13 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     auto& ctx=*devices.at(d);
     auto fn=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,const RECT*,const RECT*,HWND,const RGNDATA*)>(17);
     const HRESULT hr=fn(d,a,b,w,r);
-    if (ctx.capture || ctx.frame%300==0) log("frame_end frame=%llu draws=%llu capture=%u present=%08lx",ctx.frame,ctx.draws,ctx.capture,hr);
+    if (ctx.capture || ctx.frame%300==0) log("frame_end device=%llu frame=%llu draws=%llu capture=%u present=%08lx",ctx.id,ctx.frame,ctx.draws,ctx.capture,hr);
     if (ctx.capture && ctx.remaining) --ctx.remaining;
     ++ctx.frame; ctx.draws=0;
     const bool down=(GetAsyncKeyState(VK_F8)&0x8000)!=0;
     if ((down&&!ctx.key_down) || (capture_count && ctx.frame==capture_start)) ctx.remaining=capture_count ? capture_count : 1;
     ctx.key_down=down; ctx.capture=ctx.remaining>0;
-    if (ctx.capture) log("frame_begin frame=%llu",ctx.frame);
+    if (ctx.capture) log("frame_begin device=%llu frame=%llu",ctx.id,ctx.frame);
     if (logfile) fflush(logfile);
     return hr;
 }
@@ -182,28 +179,40 @@ HRESULT WINAPI reset(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p) {
     auto& ctx=*devices.at(d);
     auto fn=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRESENT_PARAMETERS*)>(16);
     ctx.capture=false; ctx.remaining=0;
-    log("reset_begin device=%p",d);
-    HRESULT hr=fn(d,p); log("reset_end result=%08lx",hr); return hr;
+    log("reset_begin ptr=%p device=%llu",d,ctx.id);
+    HRESULT hr=fn(d,p); log("reset_end device=%llu result=%08lx",ctx.id,hr); return hr;
 }
 HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT c) {
     std::lock_guard<std::recursive_mutex> lock(mutex);
     snapshot(d,"primitive",t,c);
-    return devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,UINT)>(81)(d,t,s,c);
+    if (devices.at(d)->capture) log("draw_args start_vertex=%u",s);
+    const HRESULT result=devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,UINT)>(81)(d,t,s,c);
+    if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
+    return result;
 }
 HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,UINT n,UINT s,UINT c) {
     std::lock_guard<std::recursive_mutex> lock(mutex);
     snapshot(d,"indexed",t,c);
-    return devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,INT,UINT,UINT,UINT,UINT)>(82)(d,t,b,m,n,s,c);
+    if (devices.at(d)->capture) log("draw_args base_vertex=%d min_vertex=%u num_vertices=%u start_index=%u",b,m,n,s);
+    const HRESULT result=devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,INT,UINT,UINT,UINT,UINT)>(82)(d,t,b,m,n,s,c);
+    if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
+    return result;
 }
 HRESULT WINAPI draw_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT c,const void* data,UINT stride) {
     std::lock_guard<std::recursive_mutex> lock(mutex);
-    snapshot(d,"up",t,c);
-    return devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,const void*,UINT)>(83)(d,t,c,data,stride);
+    snapshot(d,"up",t,c,true);
+    if (devices.at(d)->capture) log("draw_args vertex_ptr=%p stride=%u",data,stride);
+    const HRESULT result=devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,const void*,UINT)>(83)(d,t,c,data,stride);
+    if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
+    return result;
 }
 HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT m,UINT n,UINT c,const void* indices,D3DFORMAT f,const void* data,UINT stride) {
     std::lock_guard<std::recursive_mutex> lock(mutex);
-    snapshot(d,"indexed_up",t,c);
-    return devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,UINT,UINT,const void*,D3DFORMAT,const void*,UINT)>(84)(d,t,m,n,c,indices,f,data,stride);
+    snapshot(d,"indexed_up",t,c,true);
+    if (devices.at(d)->capture) log("draw_args min_vertex=%u num_vertices=%u vertex_ptr=%p stride=%u index_ptr=%p index_format=%u",m,n,data,stride,indices,f);
+    const HRESULT result=devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,UINT,UINT,const void*,D3DFORMAT,const void*,UINT)>(84)(d,t,m,n,c,indices,f,data,stride);
+    if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
+    return result;
 }
 HRESULT WINAPI clear(IDirect3DDevice9* d,DWORD n,const D3DRECT* r,DWORD f,D3DCOLOR c,float z,DWORD s) {
     std::lock_guard<std::recursive_mutex> lock(mutex);
@@ -235,6 +244,8 @@ void hook_device(IDirect3DDevice9* d) {
         && static_cast<void*>(ex)==static_cast<void*>(d);
     if(ex) ex->Release();
     auto ctx=std::make_unique<Device>(d,supports_ex?134:119);
+    const HRESULT caps_result=d->GetDeviceCaps(&ctx->caps);
+    log("capture_caps result=%08lx streams=%lu vs_float_count=%lu ps_version=%08lx",caps_result,ctx->caps.MaxStreams,ctx->caps.MaxVertexShaderConst,ctx->caps.PixelShaderVersion);
     ctx->set(2,release_device); ctx->set(16,reset); ctx->set(17,present);
     ctx->set(37,set_rt); ctx->set(43,clear);
     ctx->set(81,draw_primitive); ctx->set(82,draw_indexed); ctx->set(83,draw_up); ctx->set(84,draw_indexed_up);
@@ -242,7 +253,7 @@ void hook_device(IDirect3DDevice9* d) {
     // Publish only after the owning map allocation succeeds.
     auto entry=devices.emplace(d,std::move(ctx));
     entry.first->second->install(d);
-    log("device_hooked ptr=%p ex=%u",d,supports_ex);
+    log("device_hooked ptr=%p device=%llu ex=%u",d,devices.at(d)->id,supports_ex);
 }
 ULONG WINAPI release_factory(IDirect3D9* d) {
     std::lock_guard<std::recursive_mutex> lock(mutex);
@@ -272,7 +283,7 @@ void initialize_log(HMODULE module) {
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_START",setting,32)>0) capture_start=wcstoul(setting,nullptr,10);
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_FRAMES",setting,32)>0) capture_count=wcstoul(setting,nullptr,10);
     if(capture_count>8) capture_count=8;
-    log("x3-modern-renderer version=0.1 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
+    log("x3-modern-renderer version=0.2 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
 }
 void log(const char* format,...) {
     std::lock_guard<std::recursive_mutex> lock(mutex);

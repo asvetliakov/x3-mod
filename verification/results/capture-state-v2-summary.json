@@ -1,0 +1,16 @@
+{
+  "result": "PASS",
+  "devices": 2,
+  "frames": 10,
+  "vertex_buffer_allocations": 4,
+  "checks": [
+    "typed constants and zeros",
+    "stateblock restoration",
+    "resource identity reuse/recreation",
+    "texture surface parent identity",
+    "device lifetime frame separation",
+    "draw arguments/results",
+    "UP source isolation",
+    "signed zero"
+  ]
+}
