@@ -1,0 +1,468 @@
+CHECK hidden original fixture ready PASS
+CHECK native D3D9 export PASS
+CHECK native factory PASS
+CHECK native device PASS
+CASE buffer kind=vertex format=101
+CHECK create original VB PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK foreign module endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK native managed WRITEONLY qualifies PASS
+CHECK contract actual allocation metadata PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK nondefault FP environment qualifies unchanged PASS
+CHECK live x87 value survives qualification PASS
+CHECK stable contract generation PASS
+CHECK qualifier adds no COM reference PASS
+CHECK new allocation closed PASS
+CHECK null output rejects PASS
+CHECK null input clears output PASS
+CHECK unreadable input rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK create original VB PASS
+CHECK different live allocation cannot refresh token PASS
+CHECK original application write Lock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK live successful write window qualifies PASS
+CHECK window normalized without changing application args PASS
+CHECK locked allocation not closed PASS
+CHECK wrong mapping pointer rejects and clears window PASS
+CHECK null mapping pointer rejects PASS
+CHECK null window output rejects PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK nonzero offset zero size rejects PASS
+CHECK offset past allocation rejects PASS
+CHECK range past allocation rejects PASS
+CHECK wrapping range rejects PASS
+CHECK qualification remains valid after application writes PASS
+CHECK original application Unlock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK matching native Unlock closes mapping PASS
+CHECK retired mapping cannot qualify after Unlock PASS
+CHECK original application write Lock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK live successful write window qualifies PASS
+CHECK window normalized without changing application args PASS
+CHECK locked allocation not closed PASS
+CHECK wrong mapping pointer rejects and clears window PASS
+CHECK null mapping pointer rejects PASS
+CHECK null window output rejects PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK nonzero offset zero size rejects PASS
+CHECK offset past allocation rejects PASS
+CHECK range past allocation rejects PASS
+CHECK wrapping range rejects PASS
+CHECK qualification remains valid after application writes PASS
+CHECK original application Unlock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK matching native Unlock closes mapping PASS
+CHECK retired mapping cannot qualify after Unlock PASS
+CHECK original application write Lock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK live successful write window qualifies PASS
+CHECK window normalized without changing application args PASS
+CHECK locked allocation not closed PASS
+CHECK wrong mapping pointer rejects and clears window PASS
+CHECK null mapping pointer rejects PASS
+CHECK null window output rejects PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK nonzero offset zero size rejects PASS
+CHECK offset past allocation rejects PASS
+CHECK range past allocation rejects PASS
+CHECK wrapping range rejects PASS
+CHECK qualification remains valid after application writes PASS
+CHECK original application Unlock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK matching native Unlock closes mapping PASS
+CHECK retired mapping cannot qualify after Unlock PASS
+CHECK original application write Lock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK live successful write window qualifies PASS
+CHECK window normalized without changing application args PASS
+CHECK locked allocation not closed PASS
+CHECK wrong mapping pointer rejects and clears window PASS
+CHECK null mapping pointer rejects PASS
+CHECK null window output rejects PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK nonzero offset zero size rejects PASS
+CHECK offset past allocation rejects PASS
+CHECK range past allocation rejects PASS
+CHECK wrapping range rejects PASS
+CHECK qualification remains valid after application writes PASS
+CHECK original application Unlock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK matching native Unlock closes mapping PASS
+CHECK retired mapping cannot qualify after Unlock PASS
+CHECK outer original Lock PASS
+OBS nested type=6 hr=00000000
+CHECK two native maps reject PASS
+CHECK nested original Unlock PASS
+CHECK outer original Unlock PASS
+CHECK nested control cleanup closes native maps PASS
+CHECK injected failed original Lock HRESULT output LastError unchanged PASS
+CHECK failed replaced Lock supplies no qualified window PASS
+CHECK injected failed original Lock HRESULT output LastError unchanged PASS
+CHECK failed replaced Lock supplies no qualified window PASS
+CHECK resolve actual native module PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK restored endpoint and import contract recovers PASS
+CHECK create original VB PASS
+CHECK unsupported actual pool or usage rejects PASS
+CHECK create original VB PASS
+CHECK unsupported actual pool or usage rejects PASS
+CASE buffer kind=index format=101
+CHECK create original IB PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK foreign module endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK native managed WRITEONLY qualifies PASS
+CHECK contract actual allocation metadata PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK nondefault FP environment qualifies unchanged PASS
+CHECK live x87 value survives qualification PASS
+CHECK stable contract generation PASS
+CHECK qualifier adds no COM reference PASS
+CHECK new allocation closed PASS
+CHECK null output rejects PASS
+CHECK null input clears output PASS
+CHECK unreadable input rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK create original IB PASS
+CHECK different live allocation cannot refresh token PASS
+CHECK original application write Lock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK live successful write window qualifies PASS
+CHECK window normalized without changing application args PASS
+CHECK locked allocation not closed PASS
+CHECK wrong mapping pointer rejects and clears window PASS
+CHECK null mapping pointer rejects PASS
+CHECK null window output rejects PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK nonzero offset zero size rejects PASS
+CHECK offset past allocation rejects PASS
+CHECK range past allocation rejects PASS
+CHECK wrapping range rejects PASS
+CHECK qualification remains valid after application writes PASS
+CHECK original application Unlock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK matching native Unlock closes mapping PASS
+CHECK retired mapping cannot qualify after Unlock PASS
+CHECK original application write Lock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK live successful write window qualifies PASS
+CHECK window normalized without changing application args PASS
+CHECK locked allocation not closed PASS
+CHECK wrong mapping pointer rejects and clears window PASS
+CHECK null mapping pointer rejects PASS
+CHECK null window output rejects PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK nonzero offset zero size rejects PASS
+CHECK offset past allocation rejects PASS
+CHECK range past allocation rejects PASS
+CHECK wrapping range rejects PASS
+CHECK qualification remains valid after application writes PASS
+CHECK original application Unlock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK matching native Unlock closes mapping PASS
+CHECK retired mapping cannot qualify after Unlock PASS
+CHECK original application write Lock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK live successful write window qualifies PASS
+CHECK window normalized without changing application args PASS
+CHECK locked allocation not closed PASS
+CHECK wrong mapping pointer rejects and clears window PASS
+CHECK null mapping pointer rejects PASS
+CHECK null window output rejects PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK nonzero offset zero size rejects PASS
+CHECK offset past allocation rejects PASS
+CHECK range past allocation rejects PASS
+CHECK wrapping range rejects PASS
+CHECK qualification remains valid after application writes PASS
+CHECK original application Unlock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK matching native Unlock closes mapping PASS
+CHECK retired mapping cannot qualify after Unlock PASS
+CHECK original application write Lock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK live successful write window qualifies PASS
+CHECK window normalized without changing application args PASS
+CHECK locked allocation not closed PASS
+CHECK wrong mapping pointer rejects and clears window PASS
+CHECK null mapping pointer rejects PASS
+CHECK null window output rejects PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK nonzero offset zero size rejects PASS
+CHECK offset past allocation rejects PASS
+CHECK range past allocation rejects PASS
+CHECK wrapping range rejects PASS
+CHECK qualification remains valid after application writes PASS
+CHECK original application Unlock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK matching native Unlock closes mapping PASS
+CHECK retired mapping cannot qualify after Unlock PASS
+CHECK outer original Lock PASS
+OBS nested type=7 hr=00000000
+CHECK two native maps reject PASS
+CHECK nested original Unlock PASS
+CHECK outer original Unlock PASS
+CHECK nested control cleanup closes native maps PASS
+CHECK injected failed original Lock HRESULT output LastError unchanged PASS
+CHECK failed replaced Lock supplies no qualified window PASS
+CHECK injected failed original Lock HRESULT output LastError unchanged PASS
+CHECK failed replaced Lock supplies no qualified window PASS
+CHECK resolve actual native module PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK restored endpoint and import contract recovers PASS
+CHECK create original IB PASS
+CHECK unsupported actual pool or usage rejects PASS
+CHECK create original IB PASS
+CHECK unsupported actual pool or usage rejects PASS
+CASE buffer kind=index format=102
+CHECK create original IB PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK foreign module endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK native managed WRITEONLY qualifies PASS
+CHECK contract actual allocation metadata PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK nondefault FP environment qualifies unchanged PASS
+CHECK live x87 value survives qualification PASS
+CHECK stable contract generation PASS
+CHECK qualifier adds no COM reference PASS
+CHECK new allocation closed PASS
+CHECK null output rejects PASS
+CHECK null input clears output PASS
+CHECK unreadable input rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK replaced native endpoint rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK altered token rejects PASS
+CHECK create original IB PASS
+CHECK different live allocation cannot refresh token PASS
+CHECK original application write Lock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK live successful write window qualifies PASS
+CHECK window normalized without changing application args PASS
+CHECK locked allocation not closed PASS
+CHECK wrong mapping pointer rejects and clears window PASS
+CHECK null mapping pointer rejects PASS
+CHECK null window output rejects PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK nonzero offset zero size rejects PASS
+CHECK offset past allocation rejects PASS
+CHECK range past allocation rejects PASS
+CHECK wrapping range rejects PASS
+CHECK qualification remains valid after application writes PASS
+CHECK original application Unlock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK matching native Unlock closes mapping PASS
+CHECK retired mapping cannot qualify after Unlock PASS
+CHECK original application write Lock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK live successful write window qualifies PASS
+CHECK window normalized without changing application args PASS
+CHECK locked allocation not closed PASS
+CHECK wrong mapping pointer rejects and clears window PASS
+CHECK null mapping pointer rejects PASS
+CHECK null window output rejects PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK nonzero offset zero size rejects PASS
+CHECK offset past allocation rejects PASS
+CHECK range past allocation rejects PASS
+CHECK wrapping range rejects PASS
+CHECK qualification remains valid after application writes PASS
+CHECK original application Unlock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK matching native Unlock closes mapping PASS
+CHECK retired mapping cannot qualify after Unlock PASS
+CHECK original application write Lock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK live successful write window qualifies PASS
+CHECK window normalized without changing application args PASS
+CHECK locked allocation not closed PASS
+CHECK wrong mapping pointer rejects and clears window PASS
+CHECK null mapping pointer rejects PASS
+CHECK null window output rejects PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK nonzero offset zero size rejects PASS
+CHECK offset past allocation rejects PASS
+CHECK range past allocation rejects PASS
+CHECK wrapping range rejects PASS
+CHECK qualification remains valid after application writes PASS
+CHECK original application Unlock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK matching native Unlock closes mapping PASS
+CHECK retired mapping cannot qualify after Unlock PASS
+CHECK original application write Lock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK live successful write window qualifies PASS
+CHECK window normalized without changing application args PASS
+CHECK locked allocation not closed PASS
+CHECK wrong mapping pointer rejects and clears window PASS
+CHECK null mapping pointer rejects PASS
+CHECK null window output rejects PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK unsupported observed flags reject PASS
+CHECK nonzero offset zero size rejects PASS
+CHECK offset past allocation rejects PASS
+CHECK range past allocation rejects PASS
+CHECK wrapping range rejects PASS
+CHECK qualification remains valid after application writes PASS
+CHECK original application Unlock PASS
+CHECK qualifier preserves x87 environment MXCSR LastError PASS
+CHECK matching native Unlock closes mapping PASS
+CHECK retired mapping cannot qualify after Unlock PASS
+CHECK outer original Lock PASS
+OBS nested type=7 hr=00000000
+CHECK two native maps reject PASS
+CHECK nested original Unlock PASS
+CHECK outer original Unlock PASS
+CHECK nested control cleanup closes native maps PASS
+CHECK injected failed original Lock HRESULT output LastError unchanged PASS
+CHECK failed replaced Lock supplies no qualified window PASS
+CHECK injected failed original Lock HRESULT output LastError unchanged PASS
+CHECK failed replaced Lock supplies no qualified window PASS
+CHECK resolve actual native module PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK import fault page writable PASS
+CHECK replaced import rejects cached contract PASS
+CHECK import fault page protection restored PASS
+CHECK restored endpoint and import contract recovers PASS
+CHECK create original IB PASS
+CHECK unsupported actual pool or usage rejects PASS
+CHECK create original IB PASS
+CHECK unsupported actual pool or usage rejects PASS
+CHECK resources cleaned before Reset PASS
+RESULT PASS checks=461

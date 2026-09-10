@@ -1,14 +1,16 @@
 # Pinned Preview managed-buffer write mapping
 
-Read-only investigation, 2026-09-11. The installed x86 Preview backend supports a
-bounded way to inspect the game's **existing successful writable VB mapping
+Initial static investigation and qualification follow-up, 2026-09-11. The installed x86 Preview backend supports a
+bounded way to inspect the game's **existing successful writable VB/IB mapping
 before its normal Unlock**, without requesting another lock. For ordinary
 managed buffers, that pointer addresses an initialized, pinned CPU heap shadow.
 The shadow is the source of the subsequent GPU upload. This is an
 implementation-specific proof, not permission to treat every D3D9 WRITEONLY
 mapping as readable or every successful Unlock as sufficient certification.
 
-No game, GPU probe, mapping or production change was performed for this review.
+The initial review used static evidence only. The subsequent
+[managed-upload qualification fixture](../verification/managed-upload-contract.md)
+checks native VB, INDEX16 and INDEX32 mappings without launching the game.
 The proposed consumer is described in
 [finite-position evidence](../architecture/finite-position-evidence.md).
 
@@ -30,6 +32,10 @@ version gate. Selected file-backed byte-range digests, with exclusive ends:
 | Module/range | SHA-256 |
 | --- | --- |
 | D3D9 `[1f90,204e)` VB Lock | `08e8c0326129b2b28e6e12509e999c9c0a65aa419946a5273e42bef80fcc4acb` |
+| D3D9 `[20c0,2183)` VB GetDesc | `229910e25dfe54ffa0e8a6fea76960149612df4290355b28144662b33ee297cc` |
+| D3D9 `[2a70,2b2e)` IB Lock | `07228f44f10888a85869e872134945b4f6d78e98b7b499b87d86ae63a1d78f0e` |
+| D3D9 `[2b40,2b9a)` IB Unlock | `af7ede22a5cdd0b9daa932b1ef90fbf6cbc75e73c61715aa3cb5bc9984b1894c` |
+| D3D9 `[2ba0,2c64)` IB GetDesc | `72843fa28114af5949a0d0b0ea1d5f379bdd459b67131aeae1643f181feb3649` |
 | D3D9 `[4160,41db)` lock flags | `78c3719e598cd5f7f54a708eb42fab757c777d8832ff470ca7b77c92ca1714f2` |
 | WineD3D `[1b4a2,1b523)` managed pinning | `299311634de6d036ba1fcfe128c6a08952238f47181c1f20866bc2fbff98e46b` |
 | WineD3D `[1c4f0,1ca60)` buffer map | `cb4fea429141c2f7eab44c02c57bf13d26af108539322e3214721dd799dac10e` |
@@ -86,6 +92,43 @@ wrote every byte. This does **not** establish finite position values before thos
 bytes are actually classified, and does not certify bytes outside the observed
 window merely because the allocation was originally zeroed.
 
+## Index-buffer and descriptor forwarding
+
+The IB path is checked independently. IB initialization `1530` translates pool
+MANAGED to `0x20000000` at `15b0–15b9` and gives that pool both CPU access bits
+at `15d0–15e6`, entering the same WineD3D pinned-buffer machinery. IB Lock
+`2a70` uses the native object's buffer pointer at `+0x10` and usage at `+0x1c`,
+constructs the same offset/size box, and calls flags converter `4160` and
+`wined3d_resource_map`. It forwards the native HRESULT and writes the returned
+map data to the caller's output slot at `2b1c–2b22`. IB Unlock `2b40` calls
+`wined3d_resource_unmap` on subresource zero and returns S_OK at `2b90`.
+
+VB GetDesc `20c0` and IB GetDesc `2ba0` use the WineD3D mutex and
+`wined3d_resource_get_desc`. The former returns VERTEXDATA/type 6; the latter
+converts the native format at `+0x18` and returns type 7. Both return their actual
+stored usage, derive MANAGED from WineD3D usage, and copy the backend allocation
+size. Thus the qualifier need not trust a descriptor supplied by its caller.
+
+The runtime qualifier checks these actual native vtable endpoints, including the
+private-data methods used by the ownership sidecar:
+
+| Slot | Method | VB RVA | IB RVA |
+| --- | --- | --- | --- |
+| 4 | SetPrivateData | `1ae0` | `25c0` |
+| 5 | GetPrivateData | `1c00` | `26e0` |
+| 6 | FreePrivateData | `1d10` | `27f0` |
+| 11 | Lock | `1f90` | `2a70` |
+| 12 | Unlock | `2060` | `2b40` |
+| 13 | GetDesc | `20c0` | `2ba0` |
+
+The corresponding static vtables are at D3D9 RVAs `191b4` and `19274`.
+Six live WineD3D imports are checked against both their export names and exact
+target RVAs: buffer_get_resource `23460→1ac00`, resource_map `235b8→7b690`,
+resource_unmap `235c4→7b700`, resource_get_desc `235ac→7b630`, mutex_lock
+`23560→c4260`, and mutex_unlock `23564→c4280`. Full module identity and the
+no-code-patching assumption cover the private-data implementations within D3D9;
+the qualifier does not claim to attest every operating-system import.
+
 ## Range, flags and ordering boundaries
 
 Use the successfully returned application pointer, the observed offset/size and
@@ -137,12 +180,21 @@ unmap cannot reach the generic allocation failure. Rechecked require/submit RVAs
 dispatched buffer operation, not the immediate packet allocator. The ordinary
 heap unmap then decrements the single map count to zero without GPU unmapping.
 
+Unmap completion is synchronous at this API boundary. Emit-unmap calls submit
+through context-vtable slot `+4` at `37c11`, then finish through slot `+8` at
+`37c1c`, before reading its stack result at `37c22`. The MT table `1ed794` names
+`3c2d0/3c3a0/3c470`; finish waits for the selected queue's head/tail equality at
+`3c4bb–3c4c9` and `3c510–3c529`. The ST table `1ed6d8` names
+`395d0/39670/39710`; its finish is empty because submit has already executed the
+handler. A matching post-Unlock native map-count-zero check therefore needs no
+polling or extra flush under the stated ordinary serialized route.
+
 The consumer must retain those exact backend, immediate-context, lifetime and
 non-reentrancy preconditions, stage classifications before Unlock, and publish
 only after its matching successful normal Unlock and matching known revision.
 Foreign hooks, code patches, corrupted objects, backend reentry and process
-faults remain outside this proof. No production observer or finite certificate
-has been implemented or verified by this document.
+faults remain outside this proof. This document and the native qualifier establish
+mapping eligibility, not finite classification or a completed renderer feature.
 
 Independent static review by the platform agent rechecked managed initialization,
 the map/pinned-heap branch, calloc allocation, upload source and pin-aware eviction,
