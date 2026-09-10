@@ -64,12 +64,16 @@ baseline, then obtained useful identities from observed insertions. Load epoch
 1→2 distinguishes 17 handles reused with different storage and serials.
 Camera cuts remain a separate policy; see [live lifetime evidence](reverse-engineering/iteration05-lifetimes.md).
 
-The current combined DLL passes all 15 integration cases and the forced native
-fallback with all 15 compiled proxy/renderer objects. It is **installed**:
+The installed iteration-5 DLL passed all 15 integration cases and the forced native
+fallback with its 15 compiled proxy/renderer objects. Its installed hash is:
 SHA256 `ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5`.
 The [installation record](../verification/results/iteration-05-install.json) verifies
 unchanged game EXE and bottle configuration. The prior 0.4 DLL is preserved in
 `artifacts/rollback/d3d9-iteration04.dll`; the older 0.3 rollback also remains intact.
+The follow-up source DLL separately passes the same 15 integration cases and
+forced native fallback with all 16 current proxy/renderer objects. Its SHA256 is
+`d25daf93af6c61cd9e8bd7f4f688e70476f2931bf04bdaaa1b00844af3987503`; it is
+**not installed**. See the [follow-up review](verification/review-05.md).
 
 The [detached adjacency cache](verification/mesh-adjacency-cache.md) passes
 721 checks using real native mesh acquisition, exact byte keys, bounded storage,
@@ -170,8 +174,8 @@ presentation and the requested visual features remain unfinished.
 
 ## Concrete next work
 
-1. Finish combined verification of the follow-up source build. Add the finite
-   POSITION producer under the reviewed managed-buffer upload contract before
+1. Add the finite POSITION producer under the reviewed
+   [managed-buffer upload contract](reverse-engineering/managed-buffer-write-mapping.md) before
    consolidating the next user-managed diagnostic run. The game's dynamic
    SYSTEMMEM mesh configuration now passes native tests; its actual cache hit rate
    still needs a future run.

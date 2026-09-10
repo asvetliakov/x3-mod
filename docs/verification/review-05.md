@@ -79,3 +79,25 @@ binary and result hash matches. The generic unmap allocation-failure branch is
 unreachable under the documented preallocated immediate-queue assumptions;
 managed usage does not introduce another packet allocator. No measured game
 speedup or installation follows from these synthetic results.
+
+## Combined follow-up DLL
+
+A fresh production build after the reviewed source checkpoints passes all 15
+actual-DLL integration cases. Forced adoption failure also passes with all 16
+current proxy/renderer objects linked, including the fixed replay program. The
+production object contains the qualification function and excludes the synthetic
+issuer. Full source and binary hashes remain stable throughout the matrix and
+fallback run. The source build DLL SHA-256 is
+`d25daf93af6c61cd9e8bd7f4f688e70476f2931bf04bdaaa1b00844af3987503`.
+
+Evidence: [build manifest](../../verification/results/ownership-integration-build.json),
+[case verification](../../verification/results/ownership-integration-verification.json),
+and [fallback manifest](../../verification/results/ownership-integration-fallback.json).
+Reproduce with `run_ownership_integration.py`, then
+`verify_ownership_integration.py` and `run_ownership_integration_fallback.py` in
+`verification/probe/`, with the user game stopped and synthetic GPU work serialized.
+
+This DLL is **not installed**. The installed iteration-5 DLL was rehashed and
+remains `ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5`.
+The next consolidated build still needs the upload-based finite-position producer;
+no additional user game run was requested for these source-only checkpoints.
