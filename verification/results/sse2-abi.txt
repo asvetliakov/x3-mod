@@ -1,0 +1,53 @@
+VARIANT default
+CASE abi=stdcall pre_call_mod16=0 local_mod16=0 errors=0 result=PASS
+CASE abi=stdcall pre_call_mod16=4 local_mod16=0 errors=0 result=PASS
+CASE abi=stdcall pre_call_mod16=8 local_mod16=0 errors=0 result=PASS
+CASE abi=stdcall pre_call_mod16=12 local_mod16=0 errors=0 result=PASS
+CASE abi=thiscall pre_call_mod16=0 local_mod16=0 errors=0 result=PASS
+CASE abi=thiscall pre_call_mod16=4 local_mod16=0 errors=0 result=PASS
+CASE abi=thiscall pre_call_mod16=8 local_mod16=0 errors=0 result=PASS
+CASE abi=thiscall pre_call_mod16=12 local_mod16=0 errors=0 result=PASS
+CASE abi=cdecl pre_call_mod16=0 local_mod16=0 errors=0 result=PASS
+CASE abi=cdecl pre_call_mod16=4 local_mod16=0 errors=0 result=PASS
+CASE abi=cdecl pre_call_mod16=8 local_mod16=0 errors=0 result=PASS
+CASE abi=cdecl pre_call_mod16=12 local_mod16=0 errors=0 result=PASS
+SCALAR_RETURN result=PASS
+RESULT checks=12 status=PASS
+
+VARIANT realign
+CASE abi=stdcall pre_call_mod16=0 local_mod16=0 errors=0 result=PASS
+CASE abi=stdcall pre_call_mod16=4 local_mod16=0 errors=0 result=PASS
+CASE abi=stdcall pre_call_mod16=8 local_mod16=0 errors=0 result=PASS
+CASE abi=stdcall pre_call_mod16=12 local_mod16=0 errors=0 result=PASS
+CASE abi=thiscall pre_call_mod16=0 local_mod16=0 errors=0 result=PASS
+CASE abi=thiscall pre_call_mod16=4 local_mod16=0 errors=0 result=PASS
+CASE abi=thiscall pre_call_mod16=8 local_mod16=0 errors=0 result=PASS
+CASE abi=thiscall pre_call_mod16=12 local_mod16=0 errors=0 result=PASS
+CASE abi=cdecl pre_call_mod16=0 local_mod16=0 errors=0 result=PASS
+CASE abi=cdecl pre_call_mod16=4 local_mod16=0 errors=0 result=PASS
+CASE abi=cdecl pre_call_mod16=8 local_mod16=0 errors=0 result=PASS
+CASE abi=cdecl pre_call_mod16=12 local_mod16=0 errors=0 result=PASS
+SCALAR_RETURN result=PASS
+RESULT checks=12 status=PASS
+
+VARIANT explicit_legacy
+CASE abi=stdcall pre_call_mod16=0 local_mod16=0 errors=0 result=PASS
+CASE abi=stdcall pre_call_mod16=4 local_mod16=0 errors=0 result=PASS
+CASE abi=stdcall pre_call_mod16=8 local_mod16=0 errors=0 result=PASS
+CASE abi=stdcall pre_call_mod16=12 local_mod16=0 errors=0 result=PASS
+CASE abi=thiscall pre_call_mod16=0 local_mod16=0 errors=0 result=PASS
+CASE abi=thiscall pre_call_mod16=4 local_mod16=0 errors=0 result=PASS
+CASE abi=thiscall pre_call_mod16=8 local_mod16=0 errors=0 result=PASS
+CASE abi=thiscall pre_call_mod16=12 local_mod16=0 errors=0 result=PASS
+CASE abi=cdecl pre_call_mod16=0 local_mod16=0 errors=0 result=PASS
+CASE abi=cdecl pre_call_mod16=4 local_mod16=0 errors=0 result=PASS
+CASE abi=cdecl pre_call_mod16=8 local_mod16=0 errors=0 result=PASS
+CASE abi=cdecl pre_call_mod16=12 local_mod16=0 errors=0 result=PASS
+SCALAR_RETURN result=PASS
+RESULT checks=12 status=PASS
+
+VARIANT assumed16_realign
+CASE abi=stdcall pre_call_mod16=4 local_mod16=4 errors=0 result=FAIL
+
+VARIANT assumed16_negative
+CASE abi=stdcall pre_call_mod16=4 local_mod16=4 errors=0 result=FAIL

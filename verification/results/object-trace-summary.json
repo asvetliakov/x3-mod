@@ -1,12 +1,12 @@
 {
-  "started_utc": "2026-09-10T19:21:09.114859+00:00",
+  "started_utc": "2026-09-10T20:09:04.363280+00:00",
   "game_launched": false,
   "fresh_build": true,
   "sources_before": {
     "src/proxy/object_trace.cpp": "22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba",
     "src/proxy/object_trace.h": "d09401eaa04830281dab30b7031fbae0c53f204ca4bfd0c9b3ea998185cdbde6",
     "verification/probe/object_trace.cpp": "3b333ab36536c20584610447c9cc1e9ea54c1008fa151332574b3637c3f8221c",
-    "verification/probe/build_object_trace.sh": "c71177cc1fc82845061f50e6fdb7a9d35d3f6381375bea438348e23df4634299",
+    "verification/probe/build_object_trace.sh": "d13d803336597ce7d72d36f0e8f503d55f1e8c002d6f25ad5fb0c7c0171be4ed",
     "verification/probe/run_object_trace.py": "1f8a6c130f2a5c8021133976443a7428292d3b2d77c25f28b276b2382c80f275"
   },
   "build_exit": 0,
@@ -14,11 +14,11 @@
     "src/proxy/object_trace.cpp": "22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba",
     "src/proxy/object_trace.h": "d09401eaa04830281dab30b7031fbae0c53f204ca4bfd0c9b3ea998185cdbde6",
     "verification/probe/object_trace.cpp": "3b333ab36536c20584610447c9cc1e9ea54c1008fa151332574b3637c3f8221c",
-    "verification/probe/build_object_trace.sh": "c71177cc1fc82845061f50e6fdb7a9d35d3f6381375bea438348e23df4634299",
+    "verification/probe/build_object_trace.sh": "d13d803336597ce7d72d36f0e8f503d55f1e8c002d6f25ad5fb0c7c0171be4ed",
     "verification/probe/run_object_trace.py": "1f8a6c130f2a5c8021133976443a7428292d3b2d77c25f28b276b2382c80f275"
   },
   "passed": true,
-  "executable_sha256": "d78ef7d68914484de7af9dc5a1e864b28d0e71785dfcce9709a2cf1e5d54360d",
+  "executable_sha256": "52aa510e72ed538d496299256f5dd9ad4c8c111af31fa18db0ab889466f05b44",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -29,12 +29,12 @@
     "/Users/asvetl/x3-mod/verification/probe/build/object_trace.exe"
   ],
   "exit_code": 0,
-  "executable_sha256_after_run": "d78ef7d68914484de7af9dc5a1e864b28d0e71785dfcce9709a2cf1e5d54360d",
+  "executable_sha256_after_run": "52aa510e72ed538d496299256f5dd9ad4c8c111af31fa18db0ab889466f05b44",
   "sources_after_run": {
     "src/proxy/object_trace.cpp": "22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba",
     "src/proxy/object_trace.h": "d09401eaa04830281dab30b7031fbae0c53f204ca4bfd0c9b3ea998185cdbde6",
     "verification/probe/object_trace.cpp": "3b333ab36536c20584610447c9cc1e9ea54c1008fa151332574b3637c3f8221c",
-    "verification/probe/build_object_trace.sh": "c71177cc1fc82845061f50e6fdb7a9d35d3f6381375bea438348e23df4634299",
+    "verification/probe/build_object_trace.sh": "d13d803336597ce7d72d36f0e8f503d55f1e8c002d6f25ad5fb0c7c0171be4ed",
     "verification/probe/run_object_trace.py": "1f8a6c130f2a5c8021133976443a7428292d3b2d77c25f28b276b2382c80f275"
   },
   "report_sha256": "fc5ca3f7c44145e1cc0af3785d9b2f54189de2dd27903025070b441828ac199e",

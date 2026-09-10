@@ -37,4 +37,5 @@ The verified fixture includes generic restoration failure followed by a syntheti
 Current checkpoint: **44 numerical checks and 40 complete fixture state comparisons passed across two pure-device generations with native Reset**, including output-as-input alias refusal. The source and executable remained unchanged throughout the fresh-build run. Exact hashes, command and raw report hash are in `verification/results/temporal-pass-summary.json`; output is `temporal-pass.txt`.
 
 Production implementation SHA256: `b1ccd1bbc8d398c4a39f1f94980f83faa5a16c883eca20cd1d9a8ef1e52d1f5e`.
-Fixture executable SHA256: `8e3403ba098f50b5800250e9a3f724c5bda26288999d7c6eec2270d9902b1f8b`.
+Fixture executable SHA256 with the explicit SSE2/legacy-stack compiler policy:
+`b3161866e5dee80b4d03ef7f2f5bad7c6515cdc124744c30205df0eab7f15d74`.

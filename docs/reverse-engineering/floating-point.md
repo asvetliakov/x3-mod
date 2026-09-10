@@ -30,3 +30,19 @@ unreached runtime-library paths. Any optimization needs a measured hot routine,
 its calling/control-state contract and output-parity checks. No global FPU-mode
 change or instruction replacement is made here. Raw executable disassembly
 remains local and untracked.
+
+## Our compilation policy
+
+Per the user's preference, production C++ uses `-msse2 -mfpmath=sse` for its CPU
+floating-point arithmetic. SSE2 is the baseline; newer SIMD can be introduced
+after runtime support and useful acceleration are established. No global
+fast-math policy is enabled. This does not alter original game code, shader
+execution or the Windows i686 ABI: an ABI-required scalar return through ST0,
+or x87 instructions in linked runtime libraries, may still occur. We do not
+promise an x87-free DLL. Tests of engine reconstruction compare results explicitly
+instead of silently changing the host FPU control mode to imitate the game.
+
+The explicit stack flags `-mstackrealign -mincoming-stack-boundary=2` retain the
+four-byte incoming Win32 contract and align SIMD locals internally. The installed
+compiler's default already passed the tested legacy callback entries; these flags
+make the contract explicit. See [ABI verification](../verification/sse2-abi.md).

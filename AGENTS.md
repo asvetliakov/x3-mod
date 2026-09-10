@@ -20,6 +20,12 @@ User preferences recorded 2026-09-10:
 - Document source. Keep verification/probes/test assets separate from production.
 - Name generated C/C++ include fragments `*_inc.h`, not `*.inc`, so the editor
   applies syntax highlighting.
+- Use SSE2 for our x86 CPU floating-point arithmetic (`-msse2 -mfpmath=sse`),
+  preserving the game's calling ABI. Do not reproduce x87 arithmetic unnecessarily.
+  Use `-mstackrealign -mincoming-stack-boundary=2` for the four-byte incoming
+  stack contract; do not assume legacy callbacks arrive aligned to 16 bytes.
+  Newer SIMD requires verified runtime support and a measured benefit; do not
+  enable fast-math globally.
 - Subagents may be used when helpful for independent research/context management.
 - Close unused launcher menus promptly: they sit above other windows.
 - For future game tests beyond menus, tell the user what is needed and let them
