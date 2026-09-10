@@ -35,13 +35,16 @@ header hashes in `verification/results/ownership-build-verification.json`.
   observe destruction. History is released before Reset and final logical device
   teardown, and stays alive while a public child still retains the device.
   Failed Reset disables renderer adoption without consuming the caller's
-  reference; successful retry enables it again.
+  reference; successful retry enables it again. A separate marker on the implicit
+  backbuffer verifies actual native backend teardown after final logical release,
+  without retaining a resource/device reference.
 - Renderer seam rejects null/foreign wrapper lookups and application wrappers
   passed as renderer resources. Factory adoption failure preserves caller
   ownership. A real native Ex factory is rejected without consuming its ref.
 - Exact backend HRESULT and output mutation for invalid CreateTexture
   dimensions/format, GetTexture stage, GetRenderTarget/GetSwapChain index and
-  unsupported GetContainer IID. Output sentinels are valid separately held
+  unsupported GetContainer IID, and invalid GetStreamSource with pointer and
+  offset/stride sentinels. Output sentinels are valid separately held
   objects; failed output slots are never dereferenced or blindly released.
 
 A wrapper can be destroyed after all its public references disappear and
@@ -65,12 +68,30 @@ The baseline observed:
 - Invalid CreateTexture dimensions/format and GetSwapChain index clear their
   output. Unsupported GetContainer clears its output. Invalid GetRenderTarget
   index returns `0x8876086c` while preserving the caller's existing output value.
+  Invalid GetStreamSource preserves the pointer, offset and stride sentinels.
 
 The last case exposed an actual discrepancy in the first wrapper draft: its
 shared output helper cleared output unconditionally on failure. The verifier
-reported a mismatch even though the lifetime checks passed. Final results must
-come from a rerun after the wrapper correction; individual CHECK counts alone
-are not sufficient evidence of matching backend behavior.
+reported a mismatch even though the lifetime checks passed. After correcting
+all generated and handwritten object-output paths with a private untouched-slot
+marker, the complete baseline/wrapped comparison passed. Individual CHECK counts
+alone are not sufficient evidence of matching backend behavior.
+
+## Final recorded result
+
+The final run passed **370 baseline checks and 431 wrapped checks**, with all
+shared HRESULTs and backend output/Reset/swapchain observations equal. This
+includes actual backend destruction, FP16 renderer history cleanup, failed Reset
+recovery, Ex rejection and output-preserving invalid calls. Both executables
+built cleanly with `-Werror`.
+
+The tested ownership implementation SHA-256 is
+`485281da1a7be9533684de296d65f73d0cde0cdb3e0c44afeb63789db35f4497`.
+The manifest also records the public header, both generated `.h` files,
+executables and report hashes. See `verification/results/ownership-verification.json`
+and `ownership-build-verification.json`, alongside the baseline/wrapped text
+reports. These are standalone results; the layer remains outside the installed
+capture proxy.
 
 ## Limits
 
