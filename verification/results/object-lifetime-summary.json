@@ -1,0 +1,44 @@
+{
+  "started_utc": "2026-09-10T21:28:29.400068+00:00",
+  "game_launched": false,
+  "fresh_build": true,
+  "passed": true,
+  "sources_before": {
+    "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+    "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+    "verification/probe/object_lifetime.cpp": "ad83ef3a20a445eac374fc2785a3acfa0511b072d3b84725ccdd9c7bf941eace",
+    "verification/probe/build_object_lifetime.sh": "40ccfc913e89b7e4605879ca3272b90e8e7744b40b24aa9ee8e179584f17ffb6",
+    "verification/probe/run_object_lifetime.py": "f919201eb9df469d434723fe6f0a3270874fe3141d623eaa85fd8617328b8763"
+  },
+  "build_exit": 0,
+  "sources_after_build": {
+    "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+    "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+    "verification/probe/object_lifetime.cpp": "ad83ef3a20a445eac374fc2785a3acfa0511b072d3b84725ccdd9c7bf941eace",
+    "verification/probe/build_object_lifetime.sh": "40ccfc913e89b7e4605879ca3272b90e8e7744b40b24aa9ee8e179584f17ffb6",
+    "verification/probe/run_object_lifetime.py": "f919201eb9df469d434723fe6f0a3270874fe3141d623eaa85fd8617328b8763"
+  },
+  "executable_sha256": "5fdbbfd3dd843bc3d47bee0b55e632cdfbd906f9a9ad0c2358743ad5ea4a8f6f",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/object_lifetime.exe"
+  ],
+  "exit_code": 0,
+  "executable_sha256_after_run": "5fdbbfd3dd843bc3d47bee0b55e632cdfbd906f9a9ad0c2358743ad5ea4a8f6f",
+  "sources_after_run": {
+    "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+    "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+    "verification/probe/object_lifetime.cpp": "ad83ef3a20a445eac374fc2785a3acfa0511b072d3b84725ccdd9c7bf941eace",
+    "verification/probe/build_object_lifetime.sh": "40ccfc913e89b7e4605879ca3272b90e8e7744b40b24aa9ee8e179584f17ffb6",
+    "verification/probe/run_object_lifetime.py": "f919201eb9df469d434723fe6f0a3270874fe3141d623eaa85fd8617328b8763"
+  },
+  "report_sha256": "06ac045839b9f2890527f28093cdeec85efa30e172651902eea48631b2d90def",
+  "checks": 533,
+  "failures": 0,
+  "backend_calls": 72
+}

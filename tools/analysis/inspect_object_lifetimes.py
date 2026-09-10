@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read-only fingerprints for reviewed X3AP lifetime callsites; never patches.
 
-Only addresses, five-byte call fingerprints and SHA-256 digests are emitted.
+Only addresses, short instruction fingerprints and SHA-256 digests are emitted.
 The private disassembly supporting each interpretation is documented separately.
 """
 import argparse
@@ -17,6 +17,17 @@ SITES = (
     ('automatic_handle_insert', 0x4efd09, 0x4efbf0),
     ('ordinary_node_unregister', 0x487d70, 0x4efd30),
     ('camera_unregister', 0x488efd, 0x4efd30),
+    ('render_registry_destroy', 0x4712e1, 0x4efe10),
+    ('recording_camera_insert', 0x473672, 0x4efbf0),
+    ('playback_camera_record_insert', 0x4770d1, 0x4efbf0),
+)
+CENTRAL_BOUNDARIES = (
+    # Exact whole-instruction ranges contain no PC-relative instruction. A
+    # synthetic detour/unwind test remains required before any runtime use.
+    ('insert_or_replace', 0x4efbf0, 0x4efcc0, 0x4efbf0, '558b6c2408'),
+    ('remove_nonempty_map', 0x4efd30, 0x4efda0, 0x4efd39, '8b4f0483e901'),
+    ('destroy_map', 0x4efe10, 0x4efeb0, 0x4efe10, '538b5c2408'),
+    ('rehash_map', 0x4efeb0, 0x4effa0, 0x4efeb0, '83ec085355'),
 )
 
 
@@ -57,8 +68,17 @@ def inspect(path):
             context_va=f'{call-12:08x}', context_bytes=32,
             context_sha256=hashlib.sha256(at(call-12, 32)).hexdigest(),
             target_prefix_bytes=32, target_prefix_sha256=hashlib.sha256(at(target, 32)).hexdigest()))
+    central = []
+    for name, entry, end, hook, expected in CENTRAL_BOUNDARIES:
+        size = len(expected)//2
+        if at(hook, size).hex() != expected:
+            raise ValueError(f'Instruction boundary mismatch at {hook:08x}')
+        central.append(dict(name=name, function_entry_va=f'{entry:08x}', hook_va=f'{hook:08x}',
+            hook_rva=f'{hook-base:08x}', displaced_bytes=expected, resume_va=f'{hook+size:08x}',
+            reviewed_region_bytes=end-entry, reviewed_region_sha256=hashlib.sha256(at(entry,end-entry)).hexdigest()))
     return dict(executable=path.name, bytes=len(data), sha256=digest, preferred_base=f'{base:08x}',
-                sites=sites, limitation='Static callsite/ABI candidates; no live hook or coverage validation.')
+                sites=sites, central_boundaries=central,
+                limitation='Static callsite/ABI candidates; no live hook or coverage validation.')
 
 
 def main():
@@ -69,7 +89,7 @@ def main():
     report = inspect(args.executable)
     report['analyzer_sha256'] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     args.output.write_text(json.dumps(report, indent=2)+'\n')
-    print(f"Verified {len(report['sites'])} read-only callsites -> {args.output}")
+    print(f"Verified {len(report['sites'])} calls and {len(report['central_boundaries'])} central boundaries -> {args.output}")
 
 
 if __name__ == '__main__':

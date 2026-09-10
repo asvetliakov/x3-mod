@@ -3,9 +3,10 @@
 There is a concrete renderer-scene load boundary and there are concrete node and
 camera retirement boundaries. A render-node handle is **not a lifetime token**:
 automatic allocation can wrap, deserialization restores saved handles, and map
-insertion can replace an existing value. The implementable next step is an
-explicit renderer-load epoch plus observed retirement tokens, combined with the
-existing device/frame validity gates. This investigation does not establish a
+insertion can replace an existing value. The opt-in implementation now combines an
+explicit renderer-load epoch with central registry mutation tokens; consumers must
+also apply the existing device/frame validity gates. The follow-up audit below supersedes
+the initial proposal to observe only individual retirement callsites. This investigation does not establish a
 universal sector-transition or camera-cut hook.
 
 ## Provenance
@@ -19,10 +20,12 @@ against MinGW objdump and installed PE bytes. Raw outputs remain local under
 `/tmp/x3-lifetime-*`; no game implementation is redistributed here.
 
 The original read-only [fingerprint tool](../../tools/analysis/inspect_object_lifetimes.py)
-verifies the full executable hash/size, PE architecture/base, five call opcodes
-and their relative targets. The [derived report](../../verification/results/object-lifetime-sites.json)
-includes five-byte call fingerprints and SHA-256 digests of 32-byte context and
-callee-prefix windows. These are validation data, not an implemented detour.
+verifies the full executable hash/size, PE architecture/base, eight call opcodes
+and their relative targets, and four central instruction boundaries. The
+[derived report](../../verification/results/object-lifetime-sites.json) includes
+five-byte call fingerprints, central displaced-instruction bytes and SHA-256
+digests of context/callee regions. The runtime observer below uses those exact
+boundaries; the analysis tool itself remains read-only.
 
 ```sh
 python3 tools/analysis/inspect_object_lifetimes.py \
@@ -113,15 +116,131 @@ camera's entire temporal history when its camera entry retires. A conservative
 global epoch bump is simpler but could reset accumulation on ordinary unrelated
 object churn; its cost must be measured rather than assumed negligible.
 
-These callsites are useful observation candidates, **not a proof of all registry
-mutations**. Other direct insertion sites include `0x00473672` and `0x004770d1`
-with dynamically supplied owner maps; this bounded investigation did not prove
-those maps cannot alias the render registry. Generic registry deletion also has
-many callers. Full lifetime certification needs either complete audited map
-mutation coverage or a separately verified central insertion/removal observer,
-plus bulk map reset/destruction coverage. A central function detour would require
-instruction relocation and a different verification burden from the call seams
-listed here. Do not silently promote partial retirement coverage to uniqueness.
+These callsites remain useful evidence, but the implementation plan below uses
+the central helpers, including bulk map destruction. Observing only the load and
+two retirement calls would leave insertion/replacement and bulk removal outside
+the observer. The follow-up audit resolves the previously ambiguous maps used at
+`0x00473672` and `0x004770d1`.
+
+## Follow-up: central mutation and bulk-reset audit
+
+The audit expanded to all 415 statically resolved references to the engine global
+across 193 functions, with local targeted decompilation (all 193 completed), the
+generic map helpers and their xrefs, and executable instruction searches for
+render-node allocation sizes. This is static coverage of the reviewed executable,
+not a proof over arbitrary pointer writes from unknown code.
+The private expanded outputs are `/tmp/x3-lifetime-central.{txt,c}`,
+`/tmp/x3-lifetime-map-helpers.{txt,c}`, `/tmp/x3-lifetime-bulk.{txt,c}` and
+`/tmp/x3-render-registry-allrefs.c`. Reproduce the last set by passing the distinct
+`function=` addresses from the `TARGET 00608518` section of the first xref output
+to `X3DecompileFunctions.java`. Helper targets are `004efbf0`, `004efd30`,
+`004efe10`, `004efeb0`, `004efb60`, `004efbc0`; owner-path targets are
+`00469e80`, `004710f0`, `0046a520`, `004735c0`, `00476140`, `00472870`, `00475dd0`.
+
+The previous ambiguous insertions are **recording/playback camera records**:
+
+- `0x004735c0` reads `engine+0xa0` at `0x004735ce`; its `+0xc` map holds
+  `0xe0`-byte camera snapshots. Insertion at `0x00473672` goes to that map,
+  not `engine+0xc`.
+- `0x00476140` obtains the same outer context at `0x00476151`, preserves it on
+  its stack and uses its `+0xc` at `0x004770cc`. Insertion at `0x004770d1`
+  creates a `0xe0` camera record. Immediately afterwards `0x004770d9` calls
+  **the actual camera allocator `0x00488c70`**, whose live handle is retained
+  in the record at `+0xd0`.
+- Context cleanup `0x00472870` and `0x00475dd0` removes these separate records
+  with the generic removal/destruction helpers. Playback deletion can also
+  resolve and destroy the corresponding live node/camera through the already
+  identified general/camera retirement paths. Do not use camera-record creation
+  itself as a live-node birth.
+
+The complete map-helper family in the examined code region is:
+
+| Helper | Mutation / ABI | Temporal significance |
+| --- | --- | --- |
+| `0x004efb60` | Creates a 16-byte map; no explicit args, EAX map | Starts with no buckets, capacity 8, counter 1, count 0 |
+| `0x004efbc0` | ESI map, ECX counter; normalizes then writes `map+8` | Counter change alone neither creates nor retires a node |
+| `0x004efbf0` | EDI map, stack key/value; insert or replace | **Per-key lifetime version must change even if EAX is zero** |
+| `0x004efcc0` | EAX map, stack value; chooses a free key then calls insertion | No separate entry mutation outside `0x004efbf0` |
+| `0x004efd30` | EDI map, EDX key; removes key and frees hash entry | Retire matching key before forwarding; missing key may conservatively retire an observation |
+| `0x004efda0` | EDI map, EDX current key; enumerates next key | Read-only |
+| `0x004efe10` | Stack map; frees every entry, bucket array and map | **Bulk invalidation before the pointer can be reused** |
+| `0x004efeb0` | ECX map, EAX new capacity; reallocates/rethreads buckets | Retains key/value pairs; allocation failure/unknown result must disable observation |
+
+Render registry construction is explicit: `0x00469e80` calls the map creator and
+stores its return at engine `+0xc`. Complete engine teardown `0x004710f0`
+passes that map to **`0x004efe10` at `0x004712e1`** before freeing the engine.
+This bulk helper does **not** call per-key deletion, so a deletion-only observer
+misses whole-registry retirement. The examined helper family has no independent
+in-place clear operation. No separate render-registry bucket/value writer was
+identified in the engine-global reference audit; the inline lookup loops read
+entries rather than mutating them.
+
+The executable's identified allocations of literal `0x270`/`0x790` node sizes
+are the three allocators `0x00486d10`, `0x004885a0`, `0x00488c70` and the shared
+serialized reader `0x00479d10`. Each installs its node through the central insert
+helper. Identified normal node frees go through general/camera destruction;
+bulk engine destruction goes through the central map destructor. Registry sweep
+`0x004872c0` calls the general destructor rather than erasing entries itself.
+Together these close the previously identified normal birth/retirement/bulk
+paths. A literal-size search alone would not establish that result; it is paired
+with the allocation and map call-chain inspection.
+
+## Smallest central observation plan
+
+For the reviewed registry API, **three mutation boundaries** cover insert/replace,
+individual removal and bulk destruction. They should replace the partial list
+of individual lifecycle seams. Filter on the exact tracked render-map pointer,
+while retaining the old map token through destruction; do not reinterpret other
+maps as render nodes. Separately keep the explicit renderer-load epoch and
+device/camera validity gates.
+
+| Boundary | Exact displaced bytes | Resume | Reason this block is usable |
+| --- | --- | --- | --- |
+| Insert entry `0x004efbf0` | `55 8b 6c 24 08` (5 bytes) | `0x004efbf5` | Two complete instructions; no relative operand |
+| Nonempty-map removal block `0x004efd39` | `8b 4f 04 83 e9 01` (6 bytes) | `0x004efd3f` | Two complete instructions; no relative operand; avoids relocating entry's short conditional branch |
+| Map destruction entry `0x004efe10` | `53 8b 5c 24 08` (5 bytes) | `0x004efe15` | Two complete instructions; no relative operand |
+| Optional conservative rehash entry `0x004efeb0` | `83 ec 08 53 55` (5 bytes) | `0x004efeb5` | Three complete instructions; no relative operand |
+
+The removal boundary is an internal block: the original function has already
+loaded the bucket-array pointer into EAX, tested it and taken its nonzero branch.
+The empty-map return before this block cannot remove anything. EDI and EDX remain
+the map/key inputs; preserve the live EAX and all other original machine state.
+These fixed, fingerprinted blocks permit small explicit trampolines. They do not
+justify an arbitrary instruction-copy detour utility. The original return paths
+and stack layout must be tested, including the internal-block case.
+
+A bounded observer can assign an independent serial to every observed
+`(map_epoch, key)` insertion attempt, retire it before removal, and invalidate
+all entries before map destruction. Store the value pointer as a consistency
+check, never as the serial. Conservatively changing a serial on a failed insert
+only discards history. Preserve the exact EAX result: insert returns zero both
+for rejection and existing-key replacement, so result-based mutation detection
+would be incorrect. A later draw must verify that the registry maps its handle
+to its current node before using the observer's token.
+
+Map operations can call allocation recovery code. Track a mutation-in-progress
+scope and reject publication during nested/reentrant operations, clearing that
+scope on foreign exception unwind. Overflow, missed hook ownership, unreadable
+map metadata or observer-capacity exhaustion must make lifetime evidence unknown
+and invalidate dependent history. Entries already alive at installation may be
+adopted only under a new observer epoch after the complete hook set is active and
+a complete quiescent baseline validates all entries; no lazy per-draw adoption or
+pre-install history survives. Installing
+or rolling back only part of the set must not leave observation enabled.
+
+The optional rehash observer is conservative insurance: no lifetime serial needs
+to change for a successful structural rehash, but in-flight map access should be
+unavailable. It is only called from central insertion in the resolved xrefs, so
+an insertion scope can also cover it. Counter-setter xrefs resolve to non-render
+maps in the larger loader and do not bypass key insertion. No extra hook is
+needed merely for the registry counter.
+
+The remaining coverage limit is explicit: this audit found no bypass in the
+reviewed normal renderer paths, but does not prove the absence of arbitrary
+indirect/aliased writes or external modules mutating game structures. The observer
+must expose that version-specific coverage, and a runtime consistency mismatch
+must invalidate rather than invent a token. In-place camera cuts with a still-live
+camera are a separate problem; central lifetime hooks cannot solve them.
 
 ## Existing signals that help, and signals that do not prove a lifetime
 
@@ -145,7 +264,7 @@ listed here. Do not silently promote partial retirement coverage to uniqueness.
   a proven engine cut event. Smooth motion and discontinuous teleports cannot be
   universally distinguished from two matrices alone.
 
-## Bounded implementation recommendation
+## Implemented observer and bounded integration contract
 
 Keep the history API's externally supplied epoch mandatory. Record its provenance
 explicitly: a verified renderer-load observation, device/reset generation, manual
@@ -155,18 +274,53 @@ require the immediately preceding eligible frame and reject any mid-frame epoch
 change. Per-object matching still needs geometry revisions, shader/range checks,
 unique submitted transforms and conservative treatment of unscoped effects.
 
-For the next mechanism checkpoint, implement and synthetically verify only the
-`0x0040508d` load wrapper and the two retirement call wrappers, with counters and
-explicit scope/coverage labels. The retirement wrappers require custom x86
-register forwarding; a normal cdecl function pointer is wrong. Preserve original
-stack cleanup, EAX result, all original callee-preserved machine state and
-LastError; injected bookkeeping must not disturb x87/SSE state or exception
-unwind. Test nested calls, failed load, foreign unwind, unreadable registry
-metadata, same-address/handle retirement and reappearance, camera retirement,
-epoch changes inside a frame and failed rollback using original synthetic code.
+The opt-in [observer](../../src/proxy/object_lifetime.cpp) implements the central
+insert, nonempty removal and map-destruction boundaries plus the `0x0040508d`
+load call. It gates on the full executable identity and six in-memory code-region
+hashes, then checks the exact four patch sites. It performs no arbitrary prologue
+decoding. All four wrappers forward the custom original ABI, preserve original
+output GPRs/flags/x87/SSE state and LastError, and register a real x86 SEH scope.
+The synthetic [verification](../verification/object-lifetime-observer.md) covers
+normal, nested, foreign-unwind, corrupt-baseline and ownership-failure paths.
 
-Do not enable lifetime-dependent object history solely because those wrappers
-pass synthetic tests. A later user-controlled capture must establish the load,
-travel and camera-switch coverage, and unresolved mutation paths must retain an
-explicit rejection policy. There is no gameplay launch, hook installation or
-production edit in this checkpoint.
+At quiescent installation, a complete bounded map snapshot may establish an
+observer-start baseline for nodes and cameras already alive. Validation checks
+power-of-two bucket count, declared entry count, key/bucket placement, nonzero
+keys/values, node handle equality, unique keys and pointers, capacity, readable
+chains, and a second pass over all headers, bucket heads and visited entries.
+Partial validation publishes no entries. Future observed insertions can then
+establish individual births; a draw-time lookup never adopts an unknown birth.
+If the renderer does not yet exist, unrelated generic-map operations forward in
+a dormant observer state. Losing a formerly bound registry clears evidence and
+permanently disables that installation.
+
+Each insertion retires its prior key before forwarding, including overwrite
+with zero return; only normal completion and final map membership can publish a
+new monotonically increasing serial. Removal retires before forwarding; bulk
+destruction clears the map epoch before any storage release. Renderer loading
+clears old evidence and advances the load epoch before forwarding, even if it
+fails or unwinds. Nested mutation scopes deny snapshots until all relevant calls
+complete. Foreign unwind clears all tokens and advances the load epoch. A
+successful insertion's internal rehash requires no separate lifetime hook.
+
+`current()` returns separate observer, renderer-load and registry epochs,
+mutation revision, node serial and camera serial, with an explicit known/reason
+result. No combined hash stands in for those fields. It checks live hook
+ownership and final handle-to-pointer membership before publishing known facts.
+Capacity exhaustion, counter exhaustion and lost hook ownership disable
+observation. Failed membership reads retire the affected identities, so a later
+read cannot silently revive their old serials.
+
+Rollback preserves foreign code and keeps disabled forwarding targets whenever
+ownership recovery is incomplete. Once production patches have been published,
+successful shutdown retains the small forwarding trampolines until process exit
+and refuses reinstallation. This permits a previously retained foreign chain to
+forward without publishing lifetime evidence. Installation and removal still
+require quiescence; no attempt is made to patch executing instructions safely.
+
+Synthetic acceptance does not establish live load, travel or camera-switch
+coverage. The next user-controlled capture must measure baseline known/unknown
+counts, observed central mutations and epoch transitions alongside draw scopes.
+The static coverage limits above remain explicit. In-place camera cuts need a
+separate conservative history policy. No game was launched or observer installed
+into a running game during this mechanism checkpoint.

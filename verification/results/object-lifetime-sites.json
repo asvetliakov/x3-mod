@@ -63,8 +63,86 @@
       "context_sha256": "1bb5fa28d13899906936fd8117261be5d8f9e5bbaf3fd715f85b3380dc01d459",
       "target_prefix_bytes": 32,
       "target_prefix_sha256": "c3d46370db48f228c6b23be0b0204d536b5e7303746c6b270f2e07f6cf6bb266"
+    },
+    {
+      "name": "render_registry_destroy",
+      "call_va": "004712e1",
+      "call_rva": "000712e1",
+      "target_va": "004efe10",
+      "call_bytes": "e82aeb0700",
+      "context_va": "004712d5",
+      "context_bytes": 32,
+      "context_sha256": "28cfe8daab758d54fb03d0f30fc5fa2cebe1146af1b06267fa1326dba9a618b5",
+      "target_prefix_bytes": 32,
+      "target_prefix_sha256": "13c1e86c57093dd285792256ae17c35231e6046c286e3a1205c50e68ed3a40f8"
+    },
+    {
+      "name": "recording_camera_insert",
+      "call_va": "00473672",
+      "call_rva": "00073672",
+      "target_va": "004efbf0",
+      "call_bytes": "e879c50700",
+      "context_va": "00473666",
+      "context_bytes": 32,
+      "context_sha256": "06d437b119c859d8c348ad006de255c1fdf72f4483c143ce5daf46590880037e",
+      "target_prefix_bytes": 32,
+      "target_prefix_sha256": "f67882ffd4c3a16bbdcfa3a94b01be34627d8e516e689b8c538f1b34b63f036f"
+    },
+    {
+      "name": "playback_camera_record_insert",
+      "call_va": "004770d1",
+      "call_rva": "000770d1",
+      "target_va": "004efbf0",
+      "call_bytes": "e81a8b0700",
+      "context_va": "004770c5",
+      "context_bytes": 32,
+      "context_sha256": "2e7316c3e777e21d32b2cc21d03ff02669b829155becf2e00595210a69975336",
+      "target_prefix_bytes": 32,
+      "target_prefix_sha256": "f67882ffd4c3a16bbdcfa3a94b01be34627d8e516e689b8c538f1b34b63f036f"
+    }
+  ],
+  "central_boundaries": [
+    {
+      "name": "insert_or_replace",
+      "function_entry_va": "004efbf0",
+      "hook_va": "004efbf0",
+      "hook_rva": "000efbf0",
+      "displaced_bytes": "558b6c2408",
+      "resume_va": "004efbf5",
+      "reviewed_region_bytes": 208,
+      "reviewed_region_sha256": "a45fd7284120eca546a620bfdd0078500570a753131edcf2c8ea7be17b38a305"
+    },
+    {
+      "name": "remove_nonempty_map",
+      "function_entry_va": "004efd30",
+      "hook_va": "004efd39",
+      "hook_rva": "000efd39",
+      "displaced_bytes": "8b4f0483e901",
+      "resume_va": "004efd3f",
+      "reviewed_region_bytes": 112,
+      "reviewed_region_sha256": "e271ea3ed40667b2a4ee5f872af4b14c2a9fe4bb315fbecd5b56c919ae14ad24"
+    },
+    {
+      "name": "destroy_map",
+      "function_entry_va": "004efe10",
+      "hook_va": "004efe10",
+      "hook_rva": "000efe10",
+      "displaced_bytes": "538b5c2408",
+      "resume_va": "004efe15",
+      "reviewed_region_bytes": 160,
+      "reviewed_region_sha256": "da9c85a554fc0b76fec6ef9df8a2d714a9f7541d952414ec045a5ae762b686be"
+    },
+    {
+      "name": "rehash_map",
+      "function_entry_va": "004efeb0",
+      "hook_va": "004efeb0",
+      "hook_rva": "000efeb0",
+      "displaced_bytes": "83ec085355",
+      "resume_va": "004efeb5",
+      "reviewed_region_bytes": 240,
+      "reviewed_region_sha256": "c482731ef6467d7e0f67ba7f7d9bb9a99cd070d97c9d834f08b595cdd679c3f5"
     }
   ],
   "limitation": "Static callsite/ABI candidates; no live hook or coverage validation.",
-  "analyzer_sha256": "5d7c9e4ec3d81be8006ae231388e99d479ddfe762e7e9dc8533df6260a5ebbbc"
+  "analyzer_sha256": "320a7f5623285d205e7940e816075c54c9b818415855ac36004ca5534f755376"
 }
