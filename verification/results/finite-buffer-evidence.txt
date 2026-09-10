@@ -1,0 +1,4 @@
+HALF encodings_per_lane=65536 lanes=3 finite=190464 nonfinite=6144
+FLOAT payloads_per_lane=2560 lanes=3 finite=7650 nonfinite=30
+CACHE vertices=4096 cold_components=12288 warm_hits=10000 cold_ns=14750 warm_total_ns=39791 classified_bytes=49152
+RESULT PASS checks=214651 all_atlases_released=1

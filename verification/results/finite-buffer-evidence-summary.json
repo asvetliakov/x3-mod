@@ -1,0 +1,41 @@
+{
+  "passed": true,
+  "game_launched": false,
+  "gpu_used": false,
+  "scope": "Portable integer-only finite-position atlas/index certificate; owner native mapping/budget/lifetime gates remain separate",
+  "i686_cpu_baseline": "SSE2; stack realignment; four-byte incoming Win32 stack",
+  "sources_before_build": {
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "verification/probe/finite_buffer_evidence.cpp": "f03378b782e8e3eb8eb514544702d8da18bea387d521fb227a0fd3a3aeb050a2",
+    "verification/probe/build_finite_buffer_evidence.sh": "2f2fb025f33e992c1a7726d35628d1f63702e9ff2d3cd04cb6ab9818246b15a1",
+    "verification/probe/run_finite_buffer_evidence.py": "0e4a37ce19b4a8953ec6515a59fc06eab30dcbe84217a1b5815f570d72e01772",
+    "verification/analysis/test_finite_evidence_runner.py": "539b65458885b63f40e70a2310fb85309fd6320d965633ec72cf4541075f46d1"
+  },
+  "artifacts": {
+    "finite_buffer_evidence": "5e20ebcb2951f3ba81dbcd86ede28f84738905f3b0b87c0dd3922289e7c789c2",
+    "finite_buffer_evidence_sanitized": "26185a1294677a5f460782d8f975acf5ee801de034ad4da53a745f347ab4db2a",
+    "finite_buffer_evidence_i686.o": "e471f7fec30fe40c0a7497ffb2cdbae2d42e6e2d1c34f958fffad1b10e06259f"
+  },
+  "executions": [
+    {
+      "artifact": "finite_buffer_evidence",
+      "exit_code": 0,
+      "checks": 214651,
+      "report_sha256": "6bdc26703224ad9ba163424aa766f02fa9fecbb29cebb9155ba7a71b79a9cba7",
+      "cold_query_nanoseconds": 14750,
+      "warm_10000_queries_nanoseconds": 39791
+    },
+    {
+      "artifact": "finite_buffer_evidence_sanitized",
+      "exit_code": 0,
+      "checks": 214651,
+      "report_sha256": "6c19391596b96567be3bcacc9a187889fd25d3269c26746fd0deeaa58470b5e8",
+      "cold_query_nanoseconds": 29000,
+      "warm_10000_queries_nanoseconds": 43709
+    }
+  ],
+  "i686_floating_arithmetic_instructions": [],
+  "source_unchanged": true,
+  "artifacts_unchanged": true
+}
