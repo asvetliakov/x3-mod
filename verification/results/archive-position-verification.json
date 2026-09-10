@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Archive VS structural position coverage; no production registry expansion",
+  "scope": "Archive VS structural position proof checkpoint; later production expansion verified separately in rigid-position-lookup-summary.json",
   "category_counts": {
     "direct_clip_xyz_w_one": 2,
     "direct_clip_xyzw": 18,
@@ -23,7 +23,7 @@
     "tools/analysis/inspect_archive_positions.py": "394bab92c81ff8f7dd0faaf67b10c22f508729a0c24bd067f31998b8959e51c0",
     "verification/analysis/test_archive_positions.py": "4974b32a1f7b4393fcc51830f1f48463f8dfca434675422c2e22c578efc5080b",
     "verification/results/archive-position-paths.json": "1617691f1c4e21737cf1bb604b4e3155510d11947acc78b2e40877b10bde431c",
-    "docs/reverse-engineering/archive-position-paths.md": "5d5ddea05da0cb850be2c62cd01a2b9e88029562053d67c1d524675b3e7f52c9",
+    "docs/reverse-engineering/archive-position-paths.md": "389a3e16a8832165aaf7378c0f6803727831f2d51a1705e0f7727d1b84bb0459",
     "docs/reverse-engineering/particle-motion-inputs.md": "f09c022acc4d0b5a5c158a8394d96826897074b083191803f83ee90ad6aef183",
     "verification/results/particle-motion-inputs.json": "8aaf72cf5239c49963edad8952e5774b20ba4349b8cf7d0e3070db7291fee96f",
     "tools/analysis/inspect_particle_inputs.py": "dac8f6d1c4c03dd91f572fbc59fef5718f90ef940715998fd073d04e6ca61ddb",
@@ -47,5 +47,6 @@
   "independent_review": {
     "archive_classifier": "platform_architecture accepted; full256report reproduced and16structural tests pass",
     "particle_fix": "parent reviewed extractor and5regressions; actualtrace report reproduces byte-exactly"
-  }
+  },
+  "prior_proof_and_registry_byte_identical_scope": "Historical comparison at the archive proof checkpoint, before the separately verified 234-profile production expansion"
 }

@@ -2,8 +2,9 @@
 
 All **256 vertex shaders in the complete installed archive sweep** now have a
 proven structural position category. None remains an unknown position shape.
-This extends the earlier 21 captured-shader review without changing its report
-or the **16-profile production whitelist**. Static classification does not by
+This extends the earlier 21 captured-shader review without changing its report.
+The subsequent [production registry expansion](shader-profile-registry.md) now
+includes all **234 row-dot programs** and classifies the other 22 explicitly. Static classification does not by
 itself establish live-pass eligibility, vertex storage, stable object/particle
 identity, unchanged geometry or safe temporal history.
 
@@ -52,11 +53,10 @@ jitter. A direct-reference check alone is insufficient for those programs.
 CTAB names the rows WorldViewProjection in 224 programs and ViewProjection in
 10; those names do not establish the input coordinate space or temporal rigidity.
 
-The production whitelist deliberately remains the 16 captured, reviewed profiles.
-The next expansion target is the full 234-profile row-dot set, **after independent
-archive-proof review and the same per-draw input/conversion, history and pass
-gates**, rather than treating the initial 16 as the final renderer scope. The
-additional c6 layout must be supported explicitly. A matching code path cannot
+The production whitelist now includes the full 234-profile row-dot set following
+independent archive-proof review. The same **per-draw input/conversion, history
+and pass gates** remain mandatory. The c6 layout is recorded explicitly, alongside
+c0 and c24. A matching code path cannot
 supply missing runtime stream layout or authorize applying history to a changing
 CPU-generated vertex buffer.
 

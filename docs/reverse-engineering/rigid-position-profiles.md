@@ -1,5 +1,10 @@
 # Reviewed vertex-position contracts for rigid motion
 
+The production registry now covers **all 234 proved archive row-dot programs**.
+The captured subset below remains the original 16-profile proof and input-layout
+record. See [archive shader lookup](shader-profile-registry.md) for deterministic
+generation, all 256 position categories, pixel coverage lookup and current tests.
+
 **16 of the 21 captured vertex shaders** have the following exact algebraic
 position path for ordinary finite inputs:
 
@@ -187,7 +192,7 @@ profile does not permit ignoring those states.
 
 ## Runtime registry contract
 
-The 16-entry exact-profile registry attests only: full byte hash + length,
+The 234-entry archive exact-profile registry attests only: full byte hash + length,
 `FloatXYZForceWOneSubmittedRowDots`, POSITION0 input register, first matrix row,
 and a CTAB WVP-name hint. The relative-light-read jitter guard is documented
 separately and must be enforced by any constant-row jitter owner. The owning draw gate
@@ -215,12 +220,13 @@ modifiers, wrong row order, literal/input-W changes, conditional position output
 early return, comments and truncation. These validate the narrow proof checker;
 they do not replace the GPU motion/raster parity fixture.
 
-The production `find_rigid_position` lookup is also freshly compiled for Win32
-with SSE2 and checked against all 21 local programs: 16 match with the expected
-row registers/name hints, and five are refused. Header/middle/END bit mutations,
-truncation, null and invalid lengths are rejected (168 checks total). Run
+The production lookup is now freshly compiled for Win32 with SSE2 and checked
+against all **751 archive programs**: all 256 VS categories agree, 234 row-dot
+profiles match their expected matrix registers/name hints, and 494 of 495 PS
+match the separate no-discard/no-depth-output coverage registry. Every DWORD's
+low bit is individually mutated: all **547,927 variants** reject. Null, zero,
+oversized, truncated and appended lengths also reject. Run
 `python3 verification/probe/run_rigid_position_profiles.py`; the
 [lookup report](../../verification/results/rigid-position-lookup-summary.json)
-records source/executable/input hashes and each command. Only derived facts are
-retained. Independent host-side review additionally tested a one-bit mutation
-at every word of each qualified program, rejecting all 5,410 mutations.
+records source/executable/input hashes and commands. This fixture creates no
+D3D device and launches no game; GPU raster parity remains a separate test.

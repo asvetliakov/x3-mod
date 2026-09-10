@@ -1,44 +1,68 @@
 // Local shader bytes are inputs only; this fixture emits derived facts, no code.
 #include "../../src/renderer/rigid_position.h"
 #include <cstdio>
-#include <cstdlib>
 #include <fstream>
+#include <iomanip>
+#include <sstream>
+#include <string>
 #include <vector>
-using x3m::renderer::find_rigid_position;
-static int verify(char** argv) {
-    std::ifstream file(argv[1], std::ios::binary | std::ios::ate);
-    if (!file) return 3;
-    const auto bytes = file.tellg();
-    if (bytes <= 0 || bytes % 4 || bytes > 1024*1024) return 4;
-    std::vector<std::uint32_t> code(static_cast<std::size_t>(bytes)/4);
-    file.seekg(0); file.read(reinterpret_cast<char*>(code.data()), bytes);
+using namespace x3m::renderer;
+static bool rejects(const std::uint32_t* code, std::size_t size) {
+    return !find_rigid_position(code, size) && !find_pixel_coverage(code, size) &&
+           classify_vertex_position(code, size) == VertexPositionPath::Unknown;
+}
+static int verify(const std::string& line, unsigned& mutations) {
+    std::string path, hash;
+    unsigned count, category, named, coverage;
+    int reg;
+    std::istringstream fields(line);
+    if (!(fields >> std::quoted(path) >> count >> category >> reg >> named >> coverage >> hash)) return 3;
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
+    if (!file || file.tellg() != std::streamoff(count * 4) || count < 2 || count > 1883) return 4;
+    std::vector<std::uint32_t> code(count);
+    file.seekg(0); file.read(reinterpret_cast<char*>(code.data()), count * 4);
     if (!file) return 5;
-    const int expected_register = std::atoi(argv[2]);
-    const bool named_wvp = std::atoi(argv[3]) != 0;
-    const auto* profile = find_rigid_position(code.data(), code.size());
-    if (expected_register < 0) {
-        if (profile) return 6;
-    } else if (!profile || profile->word_count != code.size() ||
-               profile->matrix_register != expected_register ||
-               profile->named_world_view_projection != named_wvp) return 7;
-    if (find_rigid_position(nullptr, code.size()) ||
-        find_rigid_position(code.data(), 0) ||
-        find_rigid_position(code.data(), static_cast<std::size_t>(-1)) ||
-        find_rigid_position(code.data(), code.size()-1)) return 8;
-    // Single-bit changes at the header, middle and END must never retain a profile.
-    for (std::size_t offset : {std::size_t(0), code.size()/2, code.size()-1}) {
+    const auto* rigid = find_rigid_position(code.data(), code.size());
+    const auto* pixel = find_pixel_coverage(code.data(), code.size());
+    if (classify_vertex_position(code.data(), code.size()) != static_cast<VertexPositionPath>(category)) return 6;
+    if ((reg >= 0) != (rigid != nullptr) || bool(coverage) != (pixel != nullptr)) return 7;
+    const auto expected_hash = std::stoull(hash, nullptr, 16);
+    if (rigid && (rigid->hash != expected_hash || rigid->word_count != count ||
+                  rigid->matrix_register != reg || rigid->named_world_view_projection != bool(named))) return 8;
+    if (pixel && (pixel->hash != expected_hash || pixel->word_count != count)) return 9;
+    if (!rejects(nullptr, count) || !rejects(code.data(), 0) ||
+        !rejects(code.data(), static_cast<std::size_t>(-1)) ||
+        !rejects(code.data(), kMaxReviewedPixelShaderWords + 1) ||
+        !rejects(code.data(), count - 1)) return 10;
+    code.push_back(0);
+    if (!rejects(code.data(), code.size())) return 11;
+    code.pop_back();
+    for (std::size_t offset = 0; offset < code.size(); ++offset) {
         code[offset] ^= 1;
-        if (find_rigid_position(code.data(), code.size())) return 9;
+        // Stage-relevant production gates, for every DWORD including metadata.
+        if (category) {
+            if (find_rigid_position(code.data(), count) ||
+                classify_vertex_position(code.data(), count) != VertexPositionPath::Unknown) return 12;
+        } else if (find_pixel_coverage(code.data(), count)) return 13;
         code[offset] ^= 1;
+        ++mutations;
     }
-    std::printf("PASS qualified=%u words=%u matrix=%d checks=8\n",
-        profile != nullptr, unsigned(code.size()), expected_register);
+    std::printf("PASS hash=%s words=%u path=%u matrix=%d coverage=%u mutations=%u\n",
+                hash.c_str(), count, category, reg, coverage, count);
     return 0;
 }
 int main(int argc, char** argv) {
-    if (argc < 4 || (argc-1)%3) return 2;
-    for (int i = 1; i < argc; i += 3) {
-        char* input[] = {argv[0], argv[i], argv[i+1], argv[i+2]};
-        if (const int result = verify(input)) return result;
+    if (argc != 2) return 2;
+    std::ifstream manifest(argv[1]);
+    if (!manifest) return 2;
+    std::string line;
+    unsigned programs = 0, mutations = 0;
+    while (std::getline(manifest, line)) {
+        if (const int result = verify(line, mutations)) {
+            std::fprintf(stderr, "FAIL program=%u code=%d\n", programs, result); return result;
+        }
+        ++programs;
     }
+    std::printf("TOTAL programs=%u mutations=%u\n", programs, mutations);
+    return programs ? 0 : 14;
 }
