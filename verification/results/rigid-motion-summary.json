@@ -1,0 +1,90 @@
+{
+  "passed": true,
+  "sources_before_build": {
+    "src/renderer/rigid_motion.h": "3682768bcfcd4853e0b1650c8d5f6ecfb8bbd6d3aec1e389c5fcb79588d67571",
+    "src/renderer/rigid_motion.cpp": "722de1341e4b717d3b6ba68b11743be70844d1a926886d2381abe0cf86638d96",
+    "src/temporal/rigid_motion_vs.hlsl": "f7efc44a627f9c06dcbb39ed4577f81ebe687b8063d28ec6d0712882b3a5f727",
+    "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
+    "src/temporal/resolve.h": "998a427f20aa5a11aacb5b97d71b404ee0dbbd7dbfeb641b2fa8263f11a9be6c",
+    "src/temporal/resolve.hlsl": "1c2b36356d8754fc1354dbd35eb9e0ec6749f25aad90f909625c331a82e43a3c",
+    "verification/probe/rigid_motion_fixture.cpp": "da6520947dbab158b2f327b93f8cf434f81be2e58d645e3fce00d6c82a6ebc26",
+    "verification/probe/build_rigid_motion.sh": "78a7c86f14a7f8d831d1984adb8ff0fcfd4598ed513a0980b6b9d7fdc9f26815",
+    "verification/probe/run_rigid_motion.py": "e39da41e3cc3ef42693b89202c7ee5c5019b20f53571240c754f33f404d67036"
+  },
+  "game_launched": false,
+  "cpu_baseline": "SSE2; stack realignment; four-byte incoming Win32 stack",
+  "scope": "Original native pure-device GPU fixture using production rigid producer and resolve; no live routing",
+  "executable_sha256": "b8252f8e283265c2ece6ef94c525cee89aa33ef6fae446febb14a8c83c055e4f",
+  "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--dll",
+    "d3d9=b",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/rigid_motion_fixture.exe",
+    "C:\\X3\\d3dx9_37.dll",
+    "Z:/Users/asvetl/x3-mod/src/temporal/rigid_motion_vs.hlsl",
+    "Z:/Users/asvetl/x3-mod/src/temporal/rigid_motion_ps.hlsl",
+    "Z:/Users/asvetl/x3-mod/src/temporal/resolve.hlsl"
+  ],
+  "exit_code": 0,
+  "source_unchanged": true,
+  "binary_unchanged": true,
+  "compiler_unchanged": true,
+  "report_sha256": "e485b0e427303593ee043a5f65a62a21c7e96ce895610f85358b92bb335b4a43",
+  "numerical_samples": 102,
+  "maximum_absolute_numeric_error": 9.092700000001841e-05,
+  "large_viewport_errors": [
+    {
+      "width": 1280.0,
+      "height": 768.0,
+      "x": 800.0,
+      "y": 288.0,
+      "uv_x": 4.76837e-07,
+      "uv_y": 2.264977e-06,
+      "pixel_x": 0.000610352,
+      "pixel_y": 0.001739502,
+      "depth": 4.17233e-07
+    },
+    {
+      "width": 1280.0,
+      "height": 768.0,
+      "x": 480.0,
+      "y": 480.0,
+      "uv_x": 2.9802e-08,
+      "uv_y": 1.251698e-06,
+      "pixel_x": 3.8147e-05,
+      "pixel_y": 0.000961304,
+      "depth": 1.78814e-07
+    },
+    {
+      "width": 5120.0,
+      "height": 1440.0,
+      "x": 3200.0,
+      "y": 540.0,
+      "uv_x": 0.0,
+      "uv_y": 3.57628e-07,
+      "pixel_x": 0.0,
+      "pixel_y": 0.000514984,
+      "depth": 5.9605e-08
+    },
+    {
+      "width": 5120.0,
+      "height": 1440.0,
+      "x": 1920.0,
+      "y": 900.0,
+      "uv_x": 0.0,
+      "uv_y": 1.19209e-07,
+      "pixel_x": 0.0,
+      "pixel_y": 0.000171661,
+      "depth": 1.19209e-07
+    }
+  ],
+  "checks": 106,
+  "state_restorations": 30,
+  "generations": 2
+}

@@ -1,0 +1,236 @@
+MODULE C:\windows\system32\d3d9.dll
+MODULE C:\X3\d3dx9_37.dll
+GENERATION 0
+SAMPLE original scene center actual=1.000000000 expected=1.000000000 PASS
+CHECK stationary rigid PASS
+CHECK atomic borrowed output PASS
+PIXEL stationary center (8,8) 0.531250000 0.531250000 0.500000000 1.000000000
+SAMPLE stationary center component0 actual=0.531250000 expected=0.531250000 PASS
+SAMPLE stationary center component1 actual=0.531250000 expected=0.531250000 PASS
+SAMPLE stationary center component2 actual=0.500000000 expected=0.500000000 PASS
+SAMPLE stationary center component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK object translation owned scene PASS
+CHECK atomic borrowed output PASS
+PIXEL object translation (8,8) 0.406250000 0.531250000 0.500000000 1.000000000
+SAMPLE object translation component0 actual=0.406250000 expected=0.406250000 PASS
+SAMPLE object translation component1 actual=0.531250000 expected=0.531250000 PASS
+SAMPLE object translation component2 actual=0.500000000 expected=0.500000000 PASS
+SAMPLE object translation component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK prepare actual resolve ABI PASS
+SAMPLE camera fallback distinguishing control actual=0.562500000 expected=0.562500000 PASS
+SAMPLE production resolve consumes object motion actual=0.500000000 expected=0.500000000 PASS
+CHECK packed half indexed PASS
+CHECK atomic borrowed output PASS
+PIXEL half numeric conversion and forced W1 (10,6) 0.718750000 0.343750000 0.333251953 1.000000000
+SAMPLE half numeric conversion and forced W1 component0 actual=0.718750000 expected=0.718750000 PASS
+SAMPLE half numeric conversion and forced W1 component1 actual=0.343750000 expected=0.343750000 PASS
+SAMPLE half numeric conversion and forced W1 component2 actual=0.333251953 expected=0.333251953 PASS
+SAMPLE half numeric conversion and forced W1 component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK perspective varying W PASS
+CHECK atomic borrowed output PASS
+PIXEL perspective correspondence (10,6) 0.738868833 0.388483793 0.647307277 1.000000000
+SAMPLE perspective correspondence component0 actual=0.738868833 expected=0.738839269 PASS
+SAMPLE perspective correspondence component1 actual=0.388483793 expected=0.388392866 PASS
+SAMPLE perspective correspondence component2 actual=0.647307277 expected=0.647321403 PASS
+SAMPLE perspective correspondence component3 actual=1.000000000 expected=1.000000000 PASS
+PIXEL perspective second ray (6,10) 0.480921179 0.642406702 0.607631803 1.000000000
+SAMPLE perspective second ray component0 actual=0.480921179 expected=0.480902791 PASS
+SAMPLE perspective second ray component1 actual=0.642406702 expected=0.642361104 PASS
+SAMPLE perspective second ray component2 actual=0.607631803 expected=0.607638896 PASS
+SAMPLE perspective second ray component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK distinct submitted jitter PASS
+CHECK atomic borrowed output PASS
+PIXEL jitter removed once (8,8) 0.390625000 0.554687500 0.333251953 1.000000000
+SAMPLE jitter removed once component0 actual=0.390625000 expected=0.390625000 PASS
+SAMPLE jitter removed once component1 actual=0.554687500 expected=0.554687500 PASS
+SAMPLE jitter removed once component2 actual=0.333251953 expected=0.333251953 PASS
+SAMPLE jitter removed once component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK unsupported nearer occluder PASS
+CHECK atomic borrowed output PASS
+PIXEL visible supported surface (4,8) 0.281250000 0.531250000 0.500000000 1.000000000
+SAMPLE visible supported surface component0 actual=0.281250000 expected=0.281250000 PASS
+SAMPLE visible supported surface component1 actual=0.531250000 expected=0.531250000 PASS
+SAMPLE visible supported surface component2 actual=0.500000000 expected=0.500000000 PASS
+SAMPLE visible supported surface component3 actual=1.000000000 expected=1.000000000 PASS
+SAMPLE unsupported occluder invalid actual=-1.000000000 expected=-1.000000000 PASS
+SAMPLE scene color unchanged visible actual=1.000000000 expected=1.000000000 PASS
+SAMPLE scene color unchanged occluded actual=0.000000000 expected=0.000000000 PASS
+SAMPLE depth left accepts middle actual=0.000000000 expected=0.000000000 PASS
+SAMPLE depth right rejects middle actual=1.000000000 expected=1.000000000 PASS
+CHECK empty batch invalidates all pixels PASS
+CHECK atomic borrowed output PASS
+CHECK empty output contains no camera fallback PASS
+CHECK previous behind camera PASS
+CHECK atomic borrowed output PASS
+SAMPLE previous negative W invalid actual=-1.000000000 expected=-1.000000000 PASS
+CHECK previous depth outside clip PASS
+CHECK atomic borrowed output PASS
+SAMPLE previous depth invalid actual=-1.000000000 expected=-1.000000000 PASS
+CHECK mismatched current depth PASS
+CHECK atomic borrowed output PASS
+SAMPLE depth EQUAL rejects mismatch actual=-1.000000000 expected=-1.000000000 PASS
+CHECK unknown semantic refused PASS
+CHECK unattested correspondence refused PASS
+CHECK unverified conversion refused PASS
+CHECK instancing refused PASS
+CHECK line topology refused PASS
+CHECK nonfinite WVP refused PASS
+CHECK stream byte overflow refused PASS
+CHECK extreme count stride overflow refused PASS
+CHECK extreme indexed vertex range refused PASS
+CHECK index range overflow refused PASS
+CHECK stale depth refused PASS
+CHECK nonfinite jitter refused PASS
+CHECK target extent mismatch refused PASS
+CHECK unbounded batch refused PASS
+CHECK stateblock recording refused PASS
+CHECK active or unknown query refused PASS
+CHECK all prevalidation refusals preserve caller state PASS
+CHECK refused pass emits zero query samples PASS
+CHECK draw error refuses publication PASS
+CHECK ordinary failure restoration PASS
+CHECK restore error refuses publication PASS
+CHECK ordinary restore error continues state restoration PASS
+CHECK draw loss stops ordinary setters PASS
+CHECK restore loss overrides error and stops setters PASS
+CHECK recovery after injected failures PASS
+CHECK atomic borrowed output PASS
+PIXEL recovered producer (8,8) 0.531250000 0.531250000 0.500000000 1.000000000
+SAMPLE recovered producer component0 actual=0.531250000 expected=0.531250000 PASS
+SAMPLE recovered producer component1 actual=0.531250000 expected=0.531250000 PASS
+SAMPLE recovered producer component2 actual=0.500000000 expected=0.500000000 PASS
+SAMPLE recovered producer component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK before_reset retires pass PASS
+RESET PASS
+GENERATION 1
+SAMPLE original scene center actual=1.000000000 expected=1.000000000 PASS
+CHECK stationary rigid PASS
+CHECK atomic borrowed output PASS
+PIXEL stationary center (8,8) 0.531250000 0.531250000 0.500000000 1.000000000
+SAMPLE stationary center component0 actual=0.531250000 expected=0.531250000 PASS
+SAMPLE stationary center component1 actual=0.531250000 expected=0.531250000 PASS
+SAMPLE stationary center component2 actual=0.500000000 expected=0.500000000 PASS
+SAMPLE stationary center component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK object translation owned scene PASS
+CHECK atomic borrowed output PASS
+PIXEL object translation (8,8) 0.406250000 0.531250000 0.500000000 1.000000000
+SAMPLE object translation component0 actual=0.406250000 expected=0.406250000 PASS
+SAMPLE object translation component1 actual=0.531250000 expected=0.531250000 PASS
+SAMPLE object translation component2 actual=0.500000000 expected=0.500000000 PASS
+SAMPLE object translation component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK prepare actual resolve ABI PASS
+SAMPLE camera fallback distinguishing control actual=0.562500000 expected=0.562500000 PASS
+SAMPLE production resolve consumes object motion actual=0.500000000 expected=0.500000000 PASS
+CHECK packed half indexed PASS
+CHECK atomic borrowed output PASS
+PIXEL half numeric conversion and forced W1 (10,6) 0.718750000 0.343750000 0.333251953 1.000000000
+SAMPLE half numeric conversion and forced W1 component0 actual=0.718750000 expected=0.718750000 PASS
+SAMPLE half numeric conversion and forced W1 component1 actual=0.343750000 expected=0.343750000 PASS
+SAMPLE half numeric conversion and forced W1 component2 actual=0.333251953 expected=0.333251953 PASS
+SAMPLE half numeric conversion and forced W1 component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK perspective varying W PASS
+CHECK atomic borrowed output PASS
+PIXEL perspective correspondence (10,6) 0.738868833 0.388483793 0.647307277 1.000000000
+SAMPLE perspective correspondence component0 actual=0.738868833 expected=0.738839269 PASS
+SAMPLE perspective correspondence component1 actual=0.388483793 expected=0.388392866 PASS
+SAMPLE perspective correspondence component2 actual=0.647307277 expected=0.647321403 PASS
+SAMPLE perspective correspondence component3 actual=1.000000000 expected=1.000000000 PASS
+PIXEL perspective second ray (6,10) 0.480921179 0.642406702 0.607631803 1.000000000
+SAMPLE perspective second ray component0 actual=0.480921179 expected=0.480902791 PASS
+SAMPLE perspective second ray component1 actual=0.642406702 expected=0.642361104 PASS
+SAMPLE perspective second ray component2 actual=0.607631803 expected=0.607638896 PASS
+SAMPLE perspective second ray component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK distinct submitted jitter PASS
+CHECK atomic borrowed output PASS
+PIXEL jitter removed once (8,8) 0.390625000 0.554687500 0.333251953 1.000000000
+SAMPLE jitter removed once component0 actual=0.390625000 expected=0.390625000 PASS
+SAMPLE jitter removed once component1 actual=0.554687500 expected=0.554687500 PASS
+SAMPLE jitter removed once component2 actual=0.333251953 expected=0.333251953 PASS
+SAMPLE jitter removed once component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK unsupported nearer occluder PASS
+CHECK atomic borrowed output PASS
+PIXEL visible supported surface (4,8) 0.281250000 0.531250000 0.500000000 1.000000000
+SAMPLE visible supported surface component0 actual=0.281250000 expected=0.281250000 PASS
+SAMPLE visible supported surface component1 actual=0.531250000 expected=0.531250000 PASS
+SAMPLE visible supported surface component2 actual=0.500000000 expected=0.500000000 PASS
+SAMPLE visible supported surface component3 actual=1.000000000 expected=1.000000000 PASS
+SAMPLE unsupported occluder invalid actual=-1.000000000 expected=-1.000000000 PASS
+SAMPLE scene color unchanged visible actual=1.000000000 expected=1.000000000 PASS
+SAMPLE scene color unchanged occluded actual=0.000000000 expected=0.000000000 PASS
+SAMPLE depth left accepts middle actual=0.000000000 expected=0.000000000 PASS
+SAMPLE depth right rejects middle actual=1.000000000 expected=1.000000000 PASS
+CHECK empty batch invalidates all pixels PASS
+CHECK atomic borrowed output PASS
+CHECK empty output contains no camera fallback PASS
+CHECK previous behind camera PASS
+CHECK atomic borrowed output PASS
+SAMPLE previous negative W invalid actual=-1.000000000 expected=-1.000000000 PASS
+CHECK previous depth outside clip PASS
+CHECK atomic borrowed output PASS
+SAMPLE previous depth invalid actual=-1.000000000 expected=-1.000000000 PASS
+CHECK mismatched current depth PASS
+CHECK atomic borrowed output PASS
+SAMPLE depth EQUAL rejects mismatch actual=-1.000000000 expected=-1.000000000 PASS
+CHECK unknown semantic refused PASS
+CHECK unattested correspondence refused PASS
+CHECK unverified conversion refused PASS
+CHECK instancing refused PASS
+CHECK line topology refused PASS
+CHECK nonfinite WVP refused PASS
+CHECK stream byte overflow refused PASS
+CHECK extreme count stride overflow refused PASS
+CHECK extreme indexed vertex range refused PASS
+CHECK index range overflow refused PASS
+CHECK stale depth refused PASS
+CHECK nonfinite jitter refused PASS
+CHECK target extent mismatch refused PASS
+CHECK unbounded batch refused PASS
+CHECK stateblock recording refused PASS
+CHECK active or unknown query refused PASS
+CHECK all prevalidation refusals preserve caller state PASS
+CHECK refused pass emits zero query samples PASS
+CHECK draw error refuses publication PASS
+CHECK ordinary failure restoration PASS
+CHECK restore error refuses publication PASS
+CHECK ordinary restore error continues state restoration PASS
+CHECK draw loss stops ordinary setters PASS
+CHECK restore loss overrides error and stops setters PASS
+CHECK recovery after injected failures PASS
+CHECK atomic borrowed output PASS
+PIXEL recovered producer (8,8) 0.531250000 0.531250000 0.500000000 1.000000000
+SAMPLE recovered producer component0 actual=0.531250000 expected=0.531250000 PASS
+SAMPLE recovered producer component1 actual=0.531250000 expected=0.531250000 PASS
+SAMPLE recovered producer component2 actual=0.500000000 expected=0.500000000 PASS
+SAMPLE recovered producer component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK before_reset retires pass PASS
+PRECISION_VIEWPORT 1280x768
+CHECK large viewport perspective PASS
+CHECK atomic borrowed output PASS
+SAMPLE perspective 1280x768 (800,288) component0 actual=0.707980394 expected=0.707979918 PASS
+SAMPLE perspective 1280x768 (800,288) component1 actual=0.357791632 expected=0.357793897 PASS
+SAMPLE perspective 1280x768 (800,288) component2 actual=0.647321820 expected=0.647321403 PASS
+SAMPLE perspective 1280x768 (800,288) component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK large viewport error bounded in pixels and depth PASS
+PRECISION_ERROR width=1280 height=768 x=800 y=288 uv_x=0.000000476837 uv_y=0.000002264977 pixel_x=0.000610352 pixel_y=0.001739502 depth=0.000000417233
+SAMPLE perspective 1280x768 (480,480) component0 actual=0.450043440 expected=0.450043410 PASS
+SAMPLE perspective 1280x768 (480,480) component1 actual=0.611760914 expected=0.611762166 PASS
+SAMPLE perspective 1280x768 (480,480) component2 actual=0.607639074 expected=0.607638896 PASS
+SAMPLE perspective 1280x768 (480,480) component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK large viewport error bounded in pixels and depth PASS
+PRECISION_ERROR width=1280 height=768 x=480 y=480 uv_x=0.000000029802 uv_y=0.000001251698 pixel_x=0.000038147 pixel_y=0.000961304 depth=0.000000178814
+PRECISION_VIEWPORT 5120x1440
+CHECK large viewport perspective PASS
+CHECK atomic borrowed output PASS
+SAMPLE perspective 5120x1440 (3200,540) component0 actual=0.707686961 expected=0.707686961 PASS
+SAMPLE perspective 5120x1440 (3200,540) component1 actual=0.357489735 expected=0.357490093 PASS
+SAMPLE perspective 5120x1440 (3200,540) component2 actual=0.647321463 expected=0.647321403 PASS
+SAMPLE perspective 5120x1440 (3200,540) component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK large viewport error bounded in pixels and depth PASS
+PRECISION_ERROR width=5120 height=1440 x=3200 y=540 uv_x=0.000000000000 uv_y=0.000000357628 pixel_x=0.000000000 pixel_y=0.000514984 depth=0.000000059605
+SAMPLE perspective 5120x1440 (1920,900) component0 actual=0.449750423 expected=0.449750423 PASS
+SAMPLE perspective 5120x1440 (1920,900) component1 actual=0.611458242 expected=0.611458361 PASS
+SAMPLE perspective 5120x1440 (1920,900) component2 actual=0.607639015 expected=0.607638896 PASS
+SAMPLE perspective 5120x1440 (1920,900) component3 actual=1.000000000 expected=1.000000000 PASS
+CHECK large viewport error bounded in pixels and depth PASS
+PRECISION_ERROR width=5120 height=1440 x=1920 y=900 uv_x=0.000000000000 uv_y=0.000000119209 pixel_x=0.000000000 pixel_y=0.000171661 depth=0.000000119209
+RESULT PASS numerical=102 checks=106 state_restorations=30 generations=2
