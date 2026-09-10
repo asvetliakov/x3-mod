@@ -1,0 +1,152 @@
+MODULE C:\windows\system32\d3d9.dll
+MODULE C:\X3\d3dx9_37.dll
+GENERATION 0
+CHECK first frame PASS
+CHECK atomic outputs valid PASS
+CHECK initial history invalid PASS
+SAMPLE first frame plane=color actual=0.750000000 expected=0.750000000 PASS
+SAMPLE first frame plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK second frame owned scene PASS
+CHECK atomic outputs valid PASS
+CHECK ping pong color and depth PASS
+SAMPLE second frame blend plane=color actual=0.500000000 expected=0.500000000 PASS
+SAMPLE second frame blend plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK third frame PASS
+CHECK atomic outputs valid PASS
+CHECK ping pong reuse PASS
+SAMPLE third frame blend plane=color actual=0.375000000 expected=0.375000000 PASS
+SAMPLE third frame blend plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK camera cut PASS
+CHECK atomic outputs valid PASS
+CHECK cut rejects history PASS
+SAMPLE camera cut plane=color actual=0.250000000 expected=0.250000000 PASS
+SAMPLE camera cut plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK warmup before failure PASS
+CHECK atomic outputs valid PASS
+CHECK second draw failure invalidates both histories PASS
+CHECK failure state restoration PASS
+CHECK recover after failure PASS
+CHECK atomic outputs valid PASS
+CHECK failure history not committed PASS
+SAMPLE failure recovery plane=color actual=0.250000000 expected=0.250000000 PASS
+SAMPLE failure recovery plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK depth disocclusion PASS
+CHECK atomic outputs valid PASS
+SAMPLE depth rejection plane=color actual=0.250000000 expected=0.250000000 PASS
+SAMPLE depth rejection plane=depth actual=0.750000000 expected=0.750000000 PASS
+CHECK unknown per pixel motion PASS
+CHECK atomic outputs valid PASS
+SAMPLE unknown motion rejection plane=color actual=0.250000000 expected=0.250000000 PASS
+SAMPLE unknown motion rejection plane=depth actual=0.750000000 expected=0.750000000 PASS
+CHECK warmup checker for motion PASS
+CHECK atomic outputs valid PASS
+CHECK matrix translation PASS
+CHECK atomic outputs valid PASS
+SAMPLE matrix routing plane=color actual=0.625000000 expected=0.625000000 PASS
+SAMPLE matrix routing plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK warmup checker for jitter PASS
+CHECK atomic outputs valid PASS
+CHECK jitter translation PASS
+CHECK atomic outputs valid PASS
+SAMPLE jitter routing plane=color actual=0.625000000 expected=0.625000000 PASS
+SAMPLE jitter routing plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK warmup checker for object motion PASS
+CHECK atomic outputs valid PASS
+CHECK object correspondence PASS
+CHECK atomic outputs valid PASS
+SAMPLE object routing plane=color actual=0.625000000 expected=0.625000000 PASS
+SAMPLE object routing plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK missing motion fails closed PASS
+CHECK refuse caller state block recording PASS
+CHECK recording refusal preserves state PASS
+CHECK unknown or active queries fail closed PASS
+CHECK query refusal preserves state PASS
+CHECK unknown policy enum fails closed PASS
+CHECK restore failure prevents atomic commit PASS
+CHECK ordinary restore failure attempts remaining restoration PASS
+CHECK restore loss overrides ordinary failure and stops setters PASS
+CHECK new camera epoch PASS
+CHECK atomic outputs valid PASS
+CHECK epoch invalidates history PASS
+SAMPLE epoch plane=color actual=0.250000000 expected=0.250000000 PASS
+SAMPLE epoch plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK prior output cannot alias current input PASS
+CHECK history alias refusal preserves state PASS
+CHECK explicit invalidate PASS
+CHECK before_reset shuts down runtime PASS
+RESET PASS
+GENERATION 1
+CHECK first frame PASS
+CHECK atomic outputs valid PASS
+CHECK initial history invalid PASS
+SAMPLE first frame plane=color actual=0.750000000 expected=0.750000000 PASS
+SAMPLE first frame plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK second frame owned scene PASS
+CHECK atomic outputs valid PASS
+CHECK ping pong color and depth PASS
+SAMPLE second frame blend plane=color actual=0.500000000 expected=0.500000000 PASS
+SAMPLE second frame blend plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK third frame PASS
+CHECK atomic outputs valid PASS
+CHECK ping pong reuse PASS
+SAMPLE third frame blend plane=color actual=0.375000000 expected=0.375000000 PASS
+SAMPLE third frame blend plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK camera cut PASS
+CHECK atomic outputs valid PASS
+CHECK cut rejects history PASS
+SAMPLE camera cut plane=color actual=0.250000000 expected=0.250000000 PASS
+SAMPLE camera cut plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK warmup before failure PASS
+CHECK atomic outputs valid PASS
+CHECK second draw failure invalidates both histories PASS
+CHECK failure state restoration PASS
+CHECK recover after failure PASS
+CHECK atomic outputs valid PASS
+CHECK failure history not committed PASS
+SAMPLE failure recovery plane=color actual=0.250000000 expected=0.250000000 PASS
+SAMPLE failure recovery plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK depth disocclusion PASS
+CHECK atomic outputs valid PASS
+SAMPLE depth rejection plane=color actual=0.250000000 expected=0.250000000 PASS
+SAMPLE depth rejection plane=depth actual=0.750000000 expected=0.750000000 PASS
+CHECK unknown per pixel motion PASS
+CHECK atomic outputs valid PASS
+SAMPLE unknown motion rejection plane=color actual=0.250000000 expected=0.250000000 PASS
+SAMPLE unknown motion rejection plane=depth actual=0.750000000 expected=0.750000000 PASS
+CHECK warmup checker for motion PASS
+CHECK atomic outputs valid PASS
+CHECK matrix translation PASS
+CHECK atomic outputs valid PASS
+SAMPLE matrix routing plane=color actual=0.625000000 expected=0.625000000 PASS
+SAMPLE matrix routing plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK warmup checker for jitter PASS
+CHECK atomic outputs valid PASS
+CHECK jitter translation PASS
+CHECK atomic outputs valid PASS
+SAMPLE jitter routing plane=color actual=0.625000000 expected=0.625000000 PASS
+SAMPLE jitter routing plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK warmup checker for object motion PASS
+CHECK atomic outputs valid PASS
+CHECK object correspondence PASS
+CHECK atomic outputs valid PASS
+SAMPLE object routing plane=color actual=0.625000000 expected=0.625000000 PASS
+SAMPLE object routing plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK missing motion fails closed PASS
+CHECK refuse caller state block recording PASS
+CHECK recording refusal preserves state PASS
+CHECK unknown or active queries fail closed PASS
+CHECK query refusal preserves state PASS
+CHECK unknown policy enum fails closed PASS
+CHECK restore failure prevents atomic commit PASS
+CHECK ordinary restore failure attempts remaining restoration PASS
+CHECK restore loss overrides ordinary failure and stops setters PASS
+CHECK new camera epoch PASS
+CHECK atomic outputs valid PASS
+CHECK epoch invalidates history PASS
+SAMPLE epoch plane=color actual=0.250000000 expected=0.250000000 PASS
+SAMPLE epoch plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK prior output cannot alias current input PASS
+CHECK history alias refusal preserves state PASS
+CHECK explicit invalidate PASS
+CHECK before_reset shuts down runtime PASS
+RESULT PASS numerical=44 state_restorations=40 generations=2

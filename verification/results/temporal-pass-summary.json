@@ -1,0 +1,36 @@
+{
+  "passed": true,
+  "sources_before_build": {
+    "src/renderer/temporal_pass.h": "ef79b726499efcafd00cb2635fdc7b710b74e7d5e9ec7a9008208cb55e86336b",
+    "src/renderer/temporal_pass.cpp": "b1ccd1bbc8d398c4a39f1f94980f83faa5a16c883eca20cd1d9a8ef1e52d1f5e",
+    "src/temporal/resolve.h": "998a427f20aa5a11aacb5b97d71b404ee0dbbd7dbfeb641b2fa8263f11a9be6c",
+    "src/temporal/resolve.hlsl": "1c2b36356d8754fc1354dbd35eb9e0ec6749f25aad90f909625c331a82e43a3c",
+    "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
+    "verification/probe/temporal_pass_fixture.cpp": "7021d35a2ac9bffa6afb857091e89fdde543fbc770d73e3509f95803daca0320",
+    "verification/probe/build_temporal_pass.sh": "355136d3dd418b7e2a9fd4fdcc7347386c23550c7927e0efd664f1338216f648",
+    "verification/probe/run_temporal_pass.py": "154286b28c05a8e9800acca813d04f6c7f3f5eb3ad877c019b8fe942a728c324"
+  },
+  "game_launched": false,
+  "executable_sha256": "8e3403ba098f50b5800250e9a3f724c5bda26288999d7c6eec2270d9902b1f8b",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--dll",
+    "d3d9=b",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/temporal_pass_fixture.exe",
+    "C:\\X3\\d3dx9_37.dll",
+    "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/src/temporal/resolve.hlsl"
+  ],
+  "exit_code": 0,
+  "source_unchanged": true,
+  "binary_unchanged": true,
+  "report_sha256": "a8e254f25f40970666e0007eb3232aea8524b7e52c4ad83db617943cc0b7f1ab",
+  "samples": 44,
+  "state_restorations": 40,
+  "generations": 2
+}
