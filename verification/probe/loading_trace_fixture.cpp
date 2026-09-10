@@ -64,6 +64,12 @@ int main(){
     check(read_slot&&VirtualQuery(read_slot,&before,sizeof before),"iat_page_before");
     check(fixture_initialize(self,hash)&&active(),"install_named_imports");
     check(VirtualQuery(read_slot,&after,sizeof after)&&before.Protect==after.Protect,"iat_protection_restored_after_install");
+    // This fixture links telemetry into its main EXE, so the one-time DLL
+    // fingerprint read sees its own ReadFile IAT hook. Production is a separate
+    // DLL. Complete bounded setup before the exact steady-state counter window.
+    ID3DXMesh* setup_mesh=nullptr;SetLastError(0x1357);
+    HRESULT setup_hr=D3DXCreateMesh(11,13,0x41,PTR(D3DVERTEXELEMENT9,0x1000),PTR(IDirect3DDevice9,0x2000),&setup_mesh);
+    check(setup_hr==S_FALSE&&GetLastError()==0x4321,"mesh setup before steady counter interval");
     take_snapshot();
     char actual[8]{};read=0;SetLastError(sentinel);
     BOOL result=ReadFile(file,actual,4,&read,nullptr);DWORD error=GetLastError();
@@ -111,12 +117,25 @@ int main(){
     n=inflate(nullptr,4);error=GetLastError();check(n==-3&&error==0x8765,"inflate_failure");
     void* xml=xmlReadMemory(PTR(char,0x1000),123,PTR(char,0x2000),PTR(char,0x3000),0x180);error=GetLastError();check(xml==PTR(void,0x4000)&&error==0x4321,"xmlread_args");
     xml=xmlReadMemory(PTR(char,0x1000),123,PTR(char,0x2000),PTR(char,0x3000),0);error=GetLastError();check(!xml&&error==0x8765,"xmlread_failure");
+    ID3DXMesh* mesh=nullptr;SetLastError(0x1357);
+    hr=D3DXCreateMesh(11,13,0x41,PTR(D3DVERTEXELEMENT9,0x1000),PTR(IDirect3DDevice9,0x2000),&mesh);error=GetLastError();
+    check(hr==S_FALSE&&error==0x4321&&mesh==PTR(ID3DXMesh,0x3000),"mesh_create_exact_args_output_and_incoming_error");
+    SetLastError(0x1357);hr=D3DXCreateMesh(11,13,0x42,PTR(D3DVERTEXELEMENT9,0x1000),PTR(IDirect3DDevice9,0x2000),nullptr);error=GetLastError();
+    check(hr==E_INVALIDARG&&error==0x8765,"mesh_create_failed_null_output_exact");
+    DWORD meshAdjacency=0;errors=nullptr;SetLastError(0x1357);
+    hr=D3DXCleanMesh(D3DXCLEANTYPE(3),PTR(ID3DXMesh,0x1000),PTR(DWORD,0x2000),&mesh,&meshAdjacency,&errors);error=GetLastError();
+    check(hr==S_FALSE&&error==0x4321&&mesh==PTR(ID3DXMesh,0x3000)&&meshAdjacency==0xabcdef01&&errors==PTR(ID3DXBuffer,0x4000),"mesh_clean_exact_args_outputs_and_incoming_error");
+    SetLastError(0x1357);hr=D3DXCleanMesh(D3DXCLEANTYPE(0),PTR(ID3DXMesh,0x1000),nullptr,nullptr,nullptr,nullptr);error=GetLastError();
+    check(hr==E_INVALIDARG&&error==0x8765,"mesh_clean_failed_null_outputs_exact");
     const auto data=take_snapshot();
     check(sample(data,Operation::FileRead).count==2&&sample(data,Operation::FileRead).failures==1&&sample(data,Operation::FileRead).bytes==4,"read_counters");
     check(sample(data,Operation::FileSeek).count==2&&sample(data,Operation::FileSeek).ambiguous==1,"seek_counters");
     check(sample(data,Operation::FileOpen).count==2&&sample(data,Operation::FileOpen).failures==1,"open_counters");
     check(sample(data,Operation::Effect).count==2&&sample(data,Operation::Effect).failures==1&&sample(data,Operation::Effect).bytes==246,"effect_counters");
     check(sample(data,Operation::Texture).bytes==321&&sample(data,Operation::CubeTexture).bytes==654&&sample(data,Operation::Surface).bytes==987,"texture_byte_counters");
+    check(sample(data,Operation::MeshCreate).count==2&&sample(data,Operation::MeshCreate).failures==1,"mesh_create_counters");
+    check(sample(data,Operation::MeshClean).count==2&&sample(data,Operation::MeshClean).failures==1,"mesh_clean_counters");
+    check(sample(data,Operation::MeshAdjacency).count==0&&sample(data,Operation::MeshOptimize).count==0,"unverified_stub_dll_has_no_method_hooks");
     check(sample(data,Operation::CursorSet).count==1,"cursor_count");
     check(sample(data,Operation::GzOpen).count==2&&sample(data,Operation::GzOpen).failures==1,"gzopen_counters");
     check(sample(data,Operation::GzRead).count==2&&sample(data,Operation::GzRead).failures==1&&sample(data,Operation::GzRead).bytes==4,"gzread_counters");
@@ -159,11 +178,15 @@ int main(){
     // Simulate another module replacing one of our hooks before teardown.
     DWORD old_protection=0,discard=0;
     check(VirtualProtect(read_slot,sizeof(PVOID),PAGE_READWRITE,&old_protection),"third_party_slot_writable");
+    fixture_raw_read=reinterpret_cast<decltype(&ReadFile)>(*read_slot); // Foreign chain retains our dispatched thunk.
     InterlockedExchangePointer(read_slot,reinterpret_cast<PVOID>(other_interceptor));
     check(VirtualProtect(read_slot,sizeof(PVOID),old_protection,&discard),"third_party_slot_protected");
     SetLastError(sentinel);shutdown();check(!active()&&GetLastError()==sentinel,"restore_and_error");
     check(*read_slot==reinterpret_cast<PVOID>(other_interceptor),"shutdown_preserves_other_hook");
     check(VirtualQuery(read_slot,&after,sizeof after)&&before.Protect==after.Protect,"iat_protection_restored_after_shutdown");
+    check(!fixture_initialize(self,hash),"reinitialization_refused_preserves_original_chain");
+    rawSeek(file,0,nullptr,FILE_BEGIN);read=0;check(read_fresh_import(file,actual,&read)&&read==4,"foreign_chain_to_saved_thunk_remains_callable");
+    check(sample(take_snapshot(),Operation::FileRead).count==1,"foreign_chain_uses_immutable_original_once");
     VirtualProtect(read_slot,sizeof(PVOID),PAGE_READWRITE,&old_protection);
     InterlockedExchangePointer(read_slot,reinterpret_cast<PVOID>(rawRead));
     VirtualProtect(read_slot,sizeof(PVOID),old_protection,&discard);

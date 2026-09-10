@@ -23,3 +23,16 @@ extern "C" __declspec(dllexport) HRESULT WINAPI D3DXCreateCubeTextureFromFileInM
 extern "C" __declspec(dllexport) HRESULT WINAPI D3DXLoadSurfaceFromFileInMemory(IDirect3DSurface9* dest,const PALETTEENTRY* pal,const RECT* rect,const void* data,UINT size,const RECT* srcrect,DWORD filter,D3DCOLOR key,D3DXIMAGE_INFO* info) {
     return finish(dest==PTR(IDirect3DSurface9,0x1000)&&pal==PTR(PALETTEENTRY,0x2000)&&rect==PTR(RECT,0x3000)&&data==PTR(void,0x4000)&&size==987&&srcrect==PTR(RECT,0x5000)&&filter==16&&key==18&&info==PTR(D3DXIMAGE_INFO,0x6000));
 }
+
+extern "C" __declspec(dllexport) HRESULT WINAPI D3DXCreateMesh(DWORD faces,DWORD vertices,DWORD options,const D3DVERTEXELEMENT9* decl,IDirect3DDevice9* device,ID3DXMesh** out) {
+    const bool match=faces==11&&vertices==13&&options==0x41&&decl==PTR(D3DVERTEXELEMENT9,0x1000)&&device==PTR(IDirect3DDevice9,0x2000)&&GetLastError()==0x1357;
+    if(out)*out=PTR(ID3DXMesh,0x3000);
+    return finish(match);
+}
+extern "C" __declspec(dllexport) HRESULT WINAPI D3DXCleanMesh(D3DXCLEANTYPE type,ID3DXMesh* input,const DWORD* adjacency,ID3DXMesh** out,DWORD* new_adjacency,ID3DXBuffer** errors) {
+    const bool match=type==D3DXCLEANTYPE(3)&&input==PTR(ID3DXMesh,0x1000)&&adjacency==PTR(DWORD,0x2000)&&new_adjacency&&GetLastError()==0x1357;
+    if(out)*out=PTR(ID3DXMesh,0x3000);
+    if(new_adjacency)*new_adjacency=0xabcdef01;
+    if(errors)*errors=PTR(ID3DXBuffer,0x4000);
+    return finish(match);
+}

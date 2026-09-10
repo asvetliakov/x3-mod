@@ -4,14 +4,16 @@
 #include <cstdint>
 
 // Optional, read-only loading diagnostics. Only the main EXE's verified named
-// imports are intercepted; callbacks never log or inspect payloads and make no explicit payload/event allocations.
+// imports and validated shared native mesh-vtable slots are intercepted; steady-state timing callbacks never log/inspect payloads or allocate events.
+// Bounded first-mesh setup verifies/pins the native DLL and emits setup records;
+// that one-time file read and table work are measured in the wrapper tail.
 // Runtime thread-local storage may initialize on a thread's first callback.
 // Initialize outside DllMain, after telemetry initialization. Call report from
 // the existing periodic telemetry summary. No engine code/prologues are patched.
 namespace x3m::loading_trace {
 enum class Operation : unsigned {
     FileOpen, FileRead, FileSeek, Effect, Texture, CubeTexture, Surface,
-    CursorSet, CursorPosition, GzOpen, GzRead, GzSeek, Inflate, XmlRead, Count
+    CursorSet, CursorPosition, GzOpen, GzRead, GzSeek, Inflate, XmlRead, MeshCreate, MeshClean, MeshPointReps, MeshAdjacency, MeshOptimize, Count
 };
 struct Sample {
     uint64_t count=0, failures=0, pending=0, ambiguous=0, bytes=0;
@@ -19,6 +21,8 @@ struct Sample {
     uint64_t overhead_ticks=0;
 };
 using Snapshot=std::array<Sample,static_cast<unsigned>(Operation::Count)>;
+// One installation generation per process. Reinitialization after teardown is
+// refused so foreign chains retain immutable callable originals.
 bool initialize();
 bool active();
 // Per-field atomic exchange: concurrent calls can straddle adjacent reports.
@@ -32,5 +36,9 @@ void shutdown();
 // Compile-only fixture seam: these symbols do not exist in the production DLL.
 uint64_t fixture_fingerprint(HMODULE target);
 bool fixture_initialize(HMODULE target,uint64_t expected_hash);
+// One-shot failed mesh slot installation, 1..3; quiescent synthetic tests only.
+void fixture_fail_mesh_patch(unsigned step);
+void fixture_fail_protection_restores(unsigned calls);
+unsigned fixture_protection_debts();
 #endif
 }

@@ -1,0 +1,32 @@
+loading_hook name=CreateFileA installed=0
+loading_hook name=ReadFile installed=1
+loading_hook name=SetFilePointer installed=0
+loading_hook name=D3DXCreateEffect installed=0
+loading_hook name=D3DXCreateTextureFromFileInMemoryEx installed=0
+loading_hook name=D3DXCreateCubeTextureFromFileInMemoryEx installed=0
+loading_hook name=D3DXLoadSurfaceFromFileInMemory installed=0
+loading_hook name=SetCursor installed=0
+loading_hook name=SetCursorPos installed=0
+loading_hook name=gzopen installed=0
+loading_hook name=gzread installed=0
+loading_hook name=gzseek installed=0
+loading_hook name=inflate installed=0
+loading_hook name=xmlReadMemory installed=0
+loading_hook name=D3DXCreateMesh installed=1
+loading_hook name=D3DXCleanMesh installed=1
+loading_trace coverage_begin=7983016667050 frequency=10000000 hooks=3 module=main inclusive=1 paths=0 hash=2407f8ce2b6ef468
+mesh_trace module_verified=1 pinned=1 hash=49cc52632ef762d4 bytes=3786760 scope=shared_native_vtables table_limit=8 objects_retained=0
+mesh_hook table=0 installed=0 owned_slots=0 scope=shared_native_vtable
+mesh_hook table=0 installed=1 owned_slots=3 scope=shared_native_vtable
+MESH_COUNT op=14 count=1 failures=0 inclusive=134 max=134
+MESH_COUNT op=15 count=1 failures=0 inclusive=218 max=218
+MESH_COUNT op=16 count=1 failures=0 inclusive=322 max=322
+MESH_COUNT op=17 count=2 failures=0 inclusive=1029 max=651
+MESH_COUNT op=18 count=2 failures=1 inclusive=718 max=716
+mesh_hook table=0 restored_slots=0 foreign_slots=1 remaining_owned_slots=0
+loading_hook name=ReadFile restored=0 owned=1
+loading_hook name=D3DXCreateMesh restored=0 owned=1
+loading_hook name=D3DXCleanMesh restored=0 owned=1
+mesh_hook table=0 restored_slots=0 foreign_slots=1 remaining_owned_slots=0
+loading_trace disabled=reinitialization_not_supported
+LOADING MESH RESULT checks=123 failures=0

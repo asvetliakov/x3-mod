@@ -4,3 +4,5 @@ EXPORTS
  D3DXCreateTextureFromFileInMemoryEx@60
  D3DXCreateCubeTextureFromFileInMemoryEx@56
  D3DXLoadSurfaceFromFileInMemory@36
+ D3DXCreateMesh@24
+ D3DXCleanMesh@24

@@ -1,5 +1,5 @@
-loading_trace disabled=fingerprint_mismatch hash=cd064361263440bf bytes=483946
-loading_trace disabled=fingerprint_mismatch hash=cd064361263440bf bytes=483946
+loading_trace disabled=fingerprint_mismatch hash=40df8289001a6994 bytes=524017
+loading_trace disabled=fingerprint_mismatch hash=40df8289001a6994 bytes=524017
 loading_hook name=CreateFileA installed=1
 loading_hook name=ReadFile installed=1
 loading_hook name=SetFilePointer installed=1
@@ -14,8 +14,11 @@ loading_hook name=gzread installed=1
 loading_hook name=gzseek installed=1
 loading_hook name=inflate installed=1
 loading_hook name=xmlReadMemory installed=1
-loading_trace coverage_begin=7915822115297 frequency=10000000 hooks=14 module=main inclusive=1 paths=0 hash=cd064361263440bf
-loading_benchmark synthetic=1 calls=20000 raw_us_per_call=0.003165 hooked_us_per_call=0.306575
+loading_hook name=D3DXCreateMesh installed=1
+loading_hook name=D3DXCleanMesh installed=1
+loading_trace coverage_begin=7982983249579 frequency=10000000 hooks=16 module=main inclusive=1 paths=0 hash=40df8289001a6994
+mesh_trace module_verified=0 pinned=0 hash=51137ec011615903 bytes=94908 scope=shared_native_vtables table_limit=8 objects_retained=0
+loading_benchmark synthetic=1 calls=20000 raw_us_per_call=0.003125 hooked_us_per_call=0.317150
 loading_hook name=CreateFileA restored=1 owned=1
 loading_hook name=ReadFile restored=0 owned=0
 loading_hook name=SetFilePointer restored=1 owned=1
@@ -30,4 +33,7 @@ loading_hook name=gzread restored=1 owned=1
 loading_hook name=gzseek restored=1 owned=1
 loading_hook name=inflate restored=1 owned=1
 loading_hook name=xmlReadMemory restored=1 owned=1
-loading_fixture checks=57 failures=0
+loading_hook name=D3DXCreateMesh restored=1 owned=1
+loading_hook name=D3DXCleanMesh restored=1 owned=1
+loading_trace disabled=reinitialization_not_supported
+loading_fixture checks=68 failures=0

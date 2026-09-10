@@ -18,8 +18,23 @@ struct Counter {
 Counter counters[count];
 struct Hook { const char* dll; const char* name; PVOID replacement; PVOID original=nullptr; PVOID* slot=nullptr; };
 std::atomic<bool> installed{false};
+bool installation_started=false; // One installation generation; originals never rebound.
+std::atomic<unsigned> mesh_owned_slots{0}, protection_debts{0};
 uint64_t clock_frequency=0, coverage_start=0;
 unsigned hook_count=0;
+constexpr unsigned mesh_table_limit=8;
+constexpr unsigned mesh_slot_indices[3]={20,22,27};
+struct MeshTable { PVOID* table=nullptr; Hook slots[3]{}; int last_result=-1,last_owned=-1; };
+MeshTable mesh_tables[mesh_table_limit];
+SRWLOCK mesh_lock=SRWLOCK_INIT;
+std::atomic<bool> mesh_observation_enabled{false};
+HMODULE mesh_module=nullptr; // Exact verified module is process-lifetime pinned.
+bool mesh_module_checked=false;
+#ifdef X3M_LOADING_TRACE_FIXTURE
+unsigned fail_mesh_patch=0,fail_protection_restore=0;
+#endif
+void observe_mesh(ID3DXMesh* mesh);
+void restore_mesh_hooks();
 uint64_t tick() { LARGE_INTEGER value{}; QueryPerformanceCounter(&value); return value.QuadPart; }
 
 // Thread-local nesting prevents double counting another loading hook's entire
@@ -56,6 +71,34 @@ struct Span {
     }
 };
 
+// Each bounded table has distinct trampolines. Dispatch therefore continues to
+// the correct original even if another interceptor later clones/replaces a
+// mesh vptr and chains to us. No object registry/refcounts or lock around calls.
+using PointRepsFn=HRESULT (WINAPI*)(ID3DXMesh*,const DWORD*,DWORD*);
+using AdjacencyFn=HRESULT (WINAPI*)(ID3DXMesh*,FLOAT,DWORD*);
+using OptimizeFn=HRESULT (WINAPI*)(ID3DXMesh*,DWORD,const DWORD*,DWORD*,DWORD*,ID3DXBuffer**);
+static_assert(std::is_same_v<decltype(&ID3DXMesh::GenerateAdjacency),HRESULT (STDMETHODCALLTYPE ID3DXMesh::*)(FLOAT,DWORD*)>);
+static_assert(std::is_same_v<decltype(&ID3DXMesh::ConvertPointRepsToAdjacency),HRESULT (STDMETHODCALLTYPE ID3DXMesh::*)(const DWORD*,DWORD*)>);
+static_assert(std::is_same_v<decltype(&ID3DXMesh::OptimizeInplace),HRESULT (STDMETHODCALLTYPE ID3DXMesh::*)(DWORD,const DWORD*,DWORD*,DWORD*,ID3DXBuffer**)>);
+template<unsigned Index> HRESULT WINAPI mesh_point_reps(ID3DXMesh* mesh,const DWORD* reps,DWORD* adjacency) {
+    Span span(Operation::MeshPointReps);
+    const HRESULT hr=reinterpret_cast<PointRepsFn>(mesh_tables[Index].slots[0].original)(mesh,reps,adjacency);
+    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,FAILED(hr));return hr;
+}
+template<unsigned Index> HRESULT WINAPI mesh_adjacency(ID3DXMesh* mesh,FLOAT epsilon,DWORD* adjacency) {
+    Span span(Operation::MeshAdjacency);
+    const HRESULT hr=reinterpret_cast<AdjacencyFn>(mesh_tables[Index].slots[1].original)(mesh,epsilon,adjacency);
+    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,FAILED(hr));return hr;
+}
+template<unsigned Index> HRESULT WINAPI mesh_optimize(ID3DXMesh* mesh,DWORD flags,const DWORD* in,DWORD* out,DWORD* faces,ID3DXBuffer** vertices) {
+    Span span(Operation::MeshOptimize);
+    const HRESULT hr=reinterpret_cast<OptimizeFn>(mesh_tables[Index].slots[2].original)(mesh,flags,in,out,faces,vertices);
+    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,FAILED(hr));return hr;
+}
+#define MESH_THUNKS(i) {reinterpret_cast<PVOID>(mesh_point_reps<i>),reinterpret_cast<PVOID>(mesh_adjacency<i>),reinterpret_cast<PVOID>(mesh_optimize<i>)}
+PVOID mesh_replacements[mesh_table_limit][3]={MESH_THUNKS(0),MESH_THUNKS(1),MESH_THUNKS(2),MESH_THUNKS(3),MESH_THUNKS(4),MESH_THUNKS(5),MESH_THUNKS(6),MESH_THUNKS(7)};
+#undef MESH_THUNKS
+
 HANDLE WINAPI file_open(LPCSTR,DWORD,DWORD,LPSECURITY_ATTRIBUTES,DWORD,DWORD,HANDLE);
 BOOL WINAPI file_read(HANDLE,LPVOID,DWORD,LPDWORD,LPOVERLAPPED);
 DWORD WINAPI file_seek(HANDLE,LONG,PLONG,DWORD);
@@ -63,6 +106,8 @@ HRESULT WINAPI effect(IDirect3DDevice9*,const void*,UINT,const D3DXMACRO*,ID3DXI
 HRESULT WINAPI texture(IDirect3DDevice9*,const void*,UINT,UINT,UINT,UINT,DWORD,D3DFORMAT,D3DPOOL,DWORD,DWORD,D3DCOLOR,D3DXIMAGE_INFO*,PALETTEENTRY*,IDirect3DTexture9**);
 HRESULT WINAPI cube(IDirect3DDevice9*,const void*,UINT,UINT,UINT,DWORD,D3DFORMAT,D3DPOOL,DWORD,DWORD,D3DCOLOR,D3DXIMAGE_INFO*,PALETTEENTRY*,IDirect3DCubeTexture9**);
 HRESULT WINAPI surface(IDirect3DSurface9*,const PALETTEENTRY*,const RECT*,const void*,UINT,const RECT*,DWORD,D3DCOLOR,D3DXIMAGE_INFO*);
+HRESULT WINAPI mesh_create(DWORD,DWORD,DWORD,const D3DVERTEXELEMENT9*,IDirect3DDevice9*,ID3DXMesh**);
+HRESULT WINAPI mesh_clean(D3DXCLEANTYPE,ID3DXMesh*,const DWORD*,ID3DXMesh**,DWORD*,ID3DXBuffer**);
 HCURSOR WINAPI cursor_set(HCURSOR);
 BOOL WINAPI cursor_position(int,int);
 // cdecl and argument widths corroborated by target callsites; local zlib/libxml
@@ -92,9 +137,14 @@ Hook hooks[]={
     {"zlib1.dll","gzread",reinterpret_cast<PVOID>(gz_read)},
     {"zlib1.dll","gzseek",reinterpret_cast<PVOID>(gz_seek)},
     {"zlib1.dll","inflate",reinterpret_cast<PVOID>(inflate_stream)},
-    {"libxml2.dll","xmlReadMemory",reinterpret_cast<PVOID>(xml_read)}
+    {"libxml2.dll","xmlReadMemory",reinterpret_cast<PVOID>(xml_read)},
+    {"d3dx9_37.dll","D3DXCreateMesh",reinterpret_cast<PVOID>(mesh_create)},
+    {"d3dx9_37.dll","D3DXCleanMesh",reinterpret_cast<PVOID>(mesh_clean)}
 };
-static_assert(sizeof hooks/sizeof *hooks==count);
+constexpr unsigned import_count=sizeof hooks/sizeof *hooks;
+static_assert(import_count==static_cast<unsigned>(Operation::MeshPointReps));
+const char* method_names[]={"ID3DXMesh::ConvertPointRepsToAdjacency","ID3DXMesh::GenerateAdjacency","ID3DXMesh::OptimizeInplace"};
+const char* operation_name(unsigned index){return index<import_count?hooks[index].name:method_names[index-import_count];}
 static_assert(std::is_same_v<decltype(&file_open),decltype(&CreateFileA)>);
 static_assert(std::is_same_v<decltype(&file_read),decltype(&ReadFile)>);
 static_assert(std::is_same_v<decltype(&file_seek),decltype(&SetFilePointer)>);
@@ -102,6 +152,8 @@ static_assert(std::is_same_v<decltype(&effect),decltype(&D3DXCreateEffect)>);
 static_assert(std::is_same_v<decltype(&texture),decltype(&D3DXCreateTextureFromFileInMemoryEx)>);
 static_assert(std::is_same_v<decltype(&cube),decltype(&D3DXCreateCubeTextureFromFileInMemoryEx)>);
 static_assert(std::is_same_v<decltype(&surface),decltype(&D3DXLoadSurfaceFromFileInMemory)>);
+static_assert(std::is_same_v<decltype(&mesh_create),decltype(&D3DXCreateMesh)>);
+static_assert(std::is_same_v<decltype(&mesh_clean),decltype(&D3DXCleanMesh)>);
 static_assert(std::is_same_v<decltype(&cursor_set),decltype(&SetCursor)>);
 static_assert(std::is_same_v<decltype(&cursor_position),decltype(&SetCursorPos)>);
 template<typename T>T original(Operation op){return reinterpret_cast<T>(hooks[static_cast<unsigned>(op)].original);}
@@ -146,6 +198,20 @@ HRESULT WINAPI surface(IDirect3DSurface9* dest,const PALETTEENTRY* palette,const
     Span span(Operation::Surface);
     HRESULT result=original<decltype(&D3DXLoadSurfaceFromFileInMemory)>(span.op)(dest,palette,destrect,data,size,srcrect,filter,key,info);
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,FAILED(result),size);return result;
+}
+HRESULT WINAPI mesh_create(DWORD faces,DWORD vertices,DWORD options,const D3DVERTEXELEMENT9* declaration,IDirect3DDevice9* device,ID3DXMesh** out) {
+    Span span(Operation::MeshCreate);
+    HRESULT result=original<decltype(&D3DXCreateMesh)>(span.op)(faces,vertices,options,declaration,device,out);
+    const DWORD error=GetLastError();const auto end=tick();
+    if(SUCCEEDED(result)&&out&&*out)observe_mesh(*out);
+    span.finish(end,error,FAILED(result));return result;
+}
+HRESULT WINAPI mesh_clean(D3DXCLEANTYPE type,ID3DXMesh* input,const DWORD* adjacency_in,ID3DXMesh** output,DWORD* adjacency_out,ID3DXBuffer** errors) {
+    Span span(Operation::MeshClean);
+    HRESULT result=original<decltype(&D3DXCleanMesh)>(span.op)(type,input,adjacency_in,output,adjacency_out,errors);
+    const DWORD error=GetLastError();const auto end=tick();
+    if(SUCCEEDED(result)&&output&&*output)observe_mesh(*output);
+    span.finish(end,error,FAILED(result));return result;
 }
 HCURSOR WINAPI cursor_set(HCURSOR value) {
     Span span(Operation::CursorSet);HCURSOR result=original<decltype(&SetCursor)>(span.op)(value);
@@ -210,24 +276,139 @@ struct Image {
         return std::memchr(s,0,size-rva)?s:nullptr;
     }
 };
+// Serializes page-permission changes, not API calls. A failed restore retains
+// the original page protection until recovery; PAGE_READWRITE is never mistaken
+// for a new baseline when a later slot on the same page is patched.
+struct ProtectionDebt {void* page=nullptr;DWORD protection=0;};
+ProtectionDebt protection_pages[64]; // at most 16 IAT + 8*3 mesh slot pages
+SRWLOCK protection_lock=SRWLOCK_INIT;
+void* page_of(const void* address){SYSTEM_INFO info{};GetSystemInfo(&info);return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(address)&~(uintptr_t(info.dwPageSize)-1));}
+bool restore_protection(void* address,DWORD protection){
+#ifdef X3M_LOADING_TRACE_FIXTURE
+    if(fail_protection_restore){--fail_protection_restore;SetLastError(ERROR_ACCESS_DENIED);return false;}
+#endif
+    DWORD ignored=0;return VirtualProtect(address,sizeof(PVOID),protection,&ignored)!=0;
+}
+void update_debt_count(){unsigned n=0;for(const auto& debt:protection_pages)n+=debt.page!=nullptr;protection_debts.store(n,std::memory_order_release);}
+bool has_protection_debt(const void* address){
+    AcquireSRWLockShared(&protection_lock);const auto page=page_of(address);bool found=false;
+    for(const auto& debt:protection_pages)found|=debt.page==page;
+    ReleaseSRWLockShared(&protection_lock);return found;
+}
+void recover_protections(){
+    AcquireSRWLockExclusive(&protection_lock);
+    for(auto& debt:protection_pages)if(debt.page&&restore_protection(debt.page,debt.protection))debt={};
+    update_debt_count();ReleaseSRWLockExclusive(&protection_lock);
+}
 bool patch(Hook& hook,bool restore) {
     if(!hook.slot)return false;
-    DWORD protection=0;
-    if(!VirtualProtect(hook.slot,sizeof(PVOID),PAGE_READWRITE,&protection))return false;
-    PVOID expected=restore?hook.replacement:hook.original;
-    PVOID desired=restore?hook.original:hook.replacement;
+    AcquireSRWLockExclusive(&protection_lock);
+    const auto page=page_of(hook.slot);ProtectionDebt* record=nullptr;
+    for(auto& debt:protection_pages)if(debt.page==page){record=&debt;break;}
+    if(!record)for(auto& debt:protection_pages)if(!debt.page){record=&debt;break;}
+    if(!record){ReleaseSRWLockExclusive(&protection_lock);return false;}
+    DWORD observed=0;
+    if(!VirtualProtect(hook.slot,sizeof(PVOID),PAGE_READWRITE,&observed)){ReleaseSRWLockExclusive(&protection_lock);return false;}
+    if(!record->page)*record={page,observed};
+    const PVOID expected=restore?hook.replacement:hook.original;
+    const PVOID desired=restore?hook.original:hook.replacement;
     const bool swapped=InterlockedCompareExchangePointer(hook.slot,desired,expected)==expected;
-    DWORD ignored=0;
-    const bool protected_again=VirtualProtect(hook.slot,sizeof(PVOID),protection,&ignored)!=0;
-    if(!protected_again&&!restore&&swapped) {
-        // Fail closed if page protection cannot be restored after installation.
+    bool protected_again=restore_protection(hook.slot,record->protection),rolled_back=false;
+    if(!protected_again&&!restore&&swapped){
         InterlockedCompareExchangePointer(hook.slot,hook.original,hook.replacement);
-        VirtualProtect(hook.slot,sizeof(PVOID),protection,&ignored);
+        rolled_back=true;protected_again=restore_protection(hook.slot,record->protection);
     }
-    return swapped&&protected_again;
+    if(protected_again)*record={};
+    update_debt_count();ReleaseSRWLockExclusive(&protection_lock);
+    return swapped&&protected_again&&!rolled_back;
+}
+bool readable(const void* address,size_t bytes,HMODULE owner=nullptr,bool executable=false) {
+    MEMORY_BASIC_INFORMATION info{};
+    if(!address||VirtualQuery(address,&info,sizeof info)!=sizeof info||info.State!=MEM_COMMIT||
+       (info.Protect&(PAGE_GUARD|PAGE_NOACCESS))||(owner&&info.AllocationBase!=owner))return false;
+    const auto start=reinterpret_cast<uintptr_t>(address),base=reinterpret_cast<uintptr_t>(info.BaseAddress);
+    if(start<base||bytes>info.RegionSize-(start-base))return false;
+    const DWORD protection=info.Protect&0xff;
+    if(executable)return protection==PAGE_EXECUTE||protection==PAGE_EXECUTE_READ||protection==PAGE_EXECUTE_READWRITE||protection==PAGE_EXECUTE_WRITECOPY;
+    return protection==PAGE_READONLY||protection==PAGE_READWRITE||protection==PAGE_WRITECOPY||
+           protection==PAGE_EXECUTE_READ||protection==PAGE_EXECUTE_READWRITE||protection==PAGE_EXECUTE_WRITECOPY;
+}
+bool verify_mesh_module() {
+    if(mesh_module_checked)return mesh_module!=nullptr;
+    mesh_module_checked=true;
+    HMODULE candidate=nullptr;
+    const auto create=hooks[static_cast<unsigned>(Operation::MeshCreate)].original;
+    if(!create||!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,reinterpret_cast<LPCSTR>(create),&candidate))return false;
+    DWORD size=0;const uint64_t hash=fingerprint(candidate,&size);
+    bool valid=hash==0x49cc52632ef762d4ull&&size==3786760;
+    // Pin only the exact verified native implementation. No mesh/device refs
+    // are acquired; callbacks/originals remain callable after owned-slot restore.
+    HMODULE pinned=nullptr;
+    if(valid)valid=GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,reinterpret_cast<LPCSTR>(create),&pinned)!=0;
+    FreeLibrary(candidate);
+    if(valid)mesh_module=pinned;
+    log("mesh_trace module_verified=%u pinned=%u hash=%016llx bytes=%lu scope=shared_native_vtables table_limit=%u objects_retained=0",valid,valid,hash,size,mesh_table_limit);
+    return valid;
+}
+void observe_mesh(ID3DXMesh* mesh) {
+    if(!mesh_observation_enabled.load(std::memory_order_acquire))return;
+    AcquireSRWLockExclusive(&mesh_lock);
+    if(!mesh_observation_enabled.load(std::memory_order_relaxed)||!verify_mesh_module()||!readable(mesh,sizeof(PVOID))){ReleaseSRWLockExclusive(&mesh_lock);return;}
+    auto table=*reinterpret_cast<PVOID**>(mesh);
+    if(reinterpret_cast<uintptr_t>(table)%alignof(PVOID)||!readable(table,29*sizeof(PVOID),mesh_module)){ReleaseSRWLockExclusive(&mesh_lock);return;}
+    // IUnknown and all three target methods must execute in this exact module.
+    for(unsigned slot:{0u,1u,2u,20u,22u,27u}) {
+        bool ours=false;
+        for(const auto& row:mesh_tables)for(const auto& h:row.slots)ours|=h.replacement&&table[slot]==h.replacement;
+        if(!ours&&!readable(table[slot],1,mesh_module,true)){ReleaseSRWLockExclusive(&mesh_lock);return;}
+    }
+    unsigned index=0;
+    while(index<mesh_table_limit&&mesh_tables[index].table&&mesh_tables[index].table!=table)++index;
+    if(index==mesh_table_limit){ReleaseSRWLockExclusive(&mesh_lock);return;}
+    auto& row=mesh_tables[index];
+    if(!row.table){
+        row.table=table;
+        for(unsigned i=0;i<3;++i)row.slots[i]={"d3dx9_37.dll",method_names[i],mesh_replacements[index][i],table[mesh_slot_indices[i]],&table[mesh_slot_indices[i]]};
+    }
+    bool already=true;for(const auto& h:row.slots)already&=*h.slot==h.replacement;
+    if(already){ReleaseSRWLockExclusive(&mesh_lock);return;}
+    bool okay=true;
+    for(unsigned i=0;i<3&&okay;++i){
+#ifdef X3M_LOADING_TRACE_FIXTURE
+        if(fail_mesh_patch==i+1){fail_mesh_patch=0;okay=false;break;}
+#endif
+        auto& h=row.slots[i];okay=*h.slot==h.replacement||patch(h,false);
+    }
+    if(!okay)for(auto& h:row.slots)if(*h.slot==h.replacement)patch(h,true);
+    unsigned owned=0;for(const auto& h:row.slots)owned+=*h.slot==h.replacement;
+    unsigned total_owned=0;for(const auto& r:mesh_tables)if(r.table)for(const auto& h:r.slots)total_owned+=*h.slot==h.replacement;
+    mesh_owned_slots.store(total_owned,std::memory_order_release);
+    if(row.last_result!=int(okay)||row.last_owned!=int(owned)){
+        log("mesh_hook table=%u installed=%u owned_slots=%u scope=shared_native_vtable",index,okay,owned);
+        row.last_result=int(okay);row.last_owned=int(owned);
+    }
+    ReleaseSRWLockExclusive(&mesh_lock);
+}
+void restore_mesh_hooks() {
+    mesh_observation_enabled.store(false,std::memory_order_release);
+    AcquireSRWLockExclusive(&mesh_lock);
+    for(unsigned i=0;i<mesh_table_limit;++i)if(mesh_tables[i].table){
+        unsigned restored=0,foreign=0,remaining=0;
+        for(auto& h:mesh_tables[i].slots){
+            if(*h.slot==h.replacement){restored+=patch(h,true);remaining+=*h.slot==h.replacement;}
+            else foreign+=*h.slot!=h.original;
+        }
+        log("mesh_hook table=%u restored_slots=%u foreign_slots=%u remaining_owned_slots=%u",i,restored,foreign,remaining);
+    }
+    unsigned total_owned=0;for(const auto& row:mesh_tables)if(row.table)for(const auto& h:row.slots)total_owned+=*h.slot==h.replacement;
+    mesh_owned_slots.store(total_owned,std::memory_order_release);
+    // Records/originals are intentionally kept: foreign interceptors may chain
+    // to our trampoline after teardown. The native module remains pinned.
+    ReleaseSRWLockExclusive(&mesh_lock);
 }
 bool install(HMODULE target,uint64_t expected,bool production) {
     if(installed.load())return true;
+    if(installation_started){log("loading_trace disabled=reinitialization_not_supported");return false;}
     if(!requested())return false;
     DWORD bytes=0;const uint64_t hash=fingerprint(target,&bytes);
     if(!hash||hash!=expected||(production&&bytes!=expected_x3_size)) {
@@ -266,10 +447,12 @@ bool install(HMODULE target,uint64_t expected,bool production) {
         }
     }
     LARGE_INTEGER frequency{};if(!QueryPerformanceFrequency(&frequency)||frequency.QuadPart<=0)return false;
+    installation_started=true;
     clock_frequency=frequency.QuadPart;
+    mesh_observation_enabled.store(true,std::memory_order_release);
     for(auto& hook:hooks) {
         if(hook.slot&&patch(hook,false)){++hook_count;log("loading_hook name=%s installed=1",hook.name);}
-        else {log("loading_hook name=%s installed=0",hook.name);hook.slot=nullptr;}
+        else {log("loading_hook name=%s installed=0",hook.name);if(hook.slot&&!has_protection_debt(hook.slot))hook.slot=nullptr;}
     }
     coverage_start=tick();installed.store(hook_count!=0);
     log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=1 paths=0 hash=%016llx",coverage_start,clock_frequency,hook_count,hash);
@@ -278,7 +461,7 @@ bool install(HMODULE target,uint64_t expected,bool production) {
 }
 
 bool initialize(){const DWORD error=GetLastError();bool result=install(GetModuleHandleW(nullptr),expected_x3_hash,true);SetLastError(error);return result;}
-bool active(){return installed.load();}
+bool active(){return installed.load()||mesh_owned_slots.load()||protection_debts.load();}
 Snapshot take_snapshot() {
     Snapshot result{};
     for(unsigned i=0;i<count;++i){auto& c=counters[i];auto& s=result[i];
@@ -292,12 +475,13 @@ void report() {
     const DWORD error=GetLastError();const auto data=take_snapshot();const auto end=tick();
     for(unsigned i=0;i<count;++i){const auto& s=data[i];if(!s.count&&!s.failures&&!s.pending&&!s.ambiguous&&!s.bytes&&!s.inclusive_ticks&&!s.exclusive_ticks&&!s.maximum_ticks&&!s.overhead_ticks)continue;
         log("loading_metric op=%s qpc=%llu count=%llu failures=%llu pending=%llu ambiguous=%llu bytes=%llu inclusive_ticks=%llu exclusive_ticks=%llu max_ticks=%llu wrapper_tail_ticks=%llu total_us=%.3f exclusive_us=%.3f max_us=%.3f wrapper_tail_us=%.3f",
-            hooks[i].name,end,s.count,s.failures,s.pending,s.ambiguous,s.bytes,s.inclusive_ticks,s.exclusive_ticks,s.maximum_ticks,s.overhead_ticks,
+            operation_name(i),end,s.count,s.failures,s.pending,s.ambiguous,s.bytes,s.inclusive_ticks,s.exclusive_ticks,s.maximum_ticks,s.overhead_ticks,
             double(s.inclusive_ticks)*1e6/clock_frequency,double(s.exclusive_ticks)*1e6/clock_frequency,double(s.maximum_ticks)*1e6/clock_frequency,double(s.overhead_ticks)*1e6/clock_frequency);
     }SetLastError(error);
 }
 void shutdown() {
     const DWORD error=GetLastError();
+    restore_mesh_hooks();
     for(auto& hook:hooks)if(hook.slot){
         const bool owned=*hook.slot==hook.replacement;
         const bool restored=owned&&patch(hook,true);
@@ -308,10 +492,13 @@ void shutdown() {
     }
     hook_count=0;
     for(const auto& hook:hooks)if(hook.slot)++hook_count;
-    installed.store(hook_count!=0);SetLastError(error);
+    installed.store(hook_count!=0);recover_protections();SetLastError(error);
 }
 #ifdef X3M_LOADING_TRACE_FIXTURE
 uint64_t fixture_fingerprint(HMODULE target){return fingerprint(target,nullptr);}
 bool fixture_initialize(HMODULE target,uint64_t expected){return install(target,expected,false);}
+void fixture_fail_mesh_patch(unsigned step){fail_mesh_patch=step;}
+void fixture_fail_protection_restores(unsigned calls){fail_protection_restore=calls;}
+unsigned fixture_protection_debts(){return protection_debts.load();}
 #endif
 }
