@@ -1,21 +1,36 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/rigid_motion.h": "3682768bcfcd4853e0b1650c8d5f6ecfb8bbd6d3aec1e389c5fcb79588d67571",
-    "src/renderer/rigid_motion.cpp": "722de1341e4b717d3b6ba68b11743be70844d1a926886d2381abe0cf86638d96",
-    "src/temporal/rigid_motion_vs.hlsl": "f7efc44a627f9c06dcbb39ed4577f81ebe687b8063d28ec6d0712882b3a5f727",
+    "src/renderer/rigid_motion.h": "35fe896c671c0644488360e3543208c4e045d7d2d1b7414da969d9a9c11817ea",
+    "src/renderer/rigid_motion.cpp": "866da74fb0ca0e4889eabcee5b79a58390ecba7f4eef6a7b34ea4322a67bfcb3",
+    "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
+    "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
+    "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
+    "src/renderer/rigid_position.cpp": "2cf2595243b733190bd4e5313a37f21a9f90503c5ead9d18a42ed80318139b49",
+    "src/renderer/rigid_position_profiles_inc.h": "e9a684f940b8ec461e736989e4e0dd75d09086b620eb00ed454193e57cf43a67",
+    "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
+    "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
     "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
+    "CMakeLists.txt": "3ddce2e3d07b1eb86bd0a99e2ef5e9b89f9fb9f0f056c431b6d9f81050fee4e3",
     "src/temporal/resolve.h": "e62dee55cf60b423e58481d47c0d5c65112ae6ebc53d0f516c0646436229a582",
     "src/temporal/resolve.hlsl": "6e2d4b2701e97d4db8088479d29833a828d38ae438baaeb8e1ce65c8efbe2df5",
-    "verification/probe/rigid_motion_fixture.cpp": "da6520947dbab158b2f327b93f8cf434f81be2e58d645e3fce00d6c82a6ebc26",
-    "verification/probe/build_rigid_motion.sh": "78a7c86f14a7f8d831d1984adb8ff0fcfd4598ed513a0980b6b9d7fdc9f26815",
-    "verification/probe/run_rigid_motion.py": "e39da41e3cc3ef42693b89202c7ee5c5019b20f53571240c754f33f404d67036"
+    "verification/probe/rigid_motion_fixture.cpp": "51f9cd7ef0f29c0552578a731ae881eecf82e67312fbfd04e243b369146e6227",
+    "verification/probe/build_rigid_motion.sh": "f1f0a36ead94940bd7b64b8f85e507ec6a41a02ffd54de892d870bf0bb4a750c",
+    "verification/probe/run_rigid_motion.py": "73a01d3058f0a907bd087e6456ffe69ea83e2b3697b91bd8404c46d6651652ab"
   },
   "game_launched": false,
   "cpu_baseline": "SSE2; stack realignment; four-byte incoming Win32 stack",
+  "verification_build_define": "X3M_RIGID_MOTION_VERIFICATION=1; synthetic issuer absent from production builds",
   "scope": "Original native pure-device GPU fixture using production rigid producer and resolve; no live routing",
-  "executable_sha256": "552c85c85441f5b18daecea892f7ab03dc482c13757ab1589d43cb5ce8c2df54",
+  "executable_sha256": "88181be5df5f87abf9c70b30df3f0894ae5ec2f5e99ef5e63dcb01119220ca2b",
+  "production_object_sha256": "62cfb4f8d6d70ffe9bc2a09f6319086fde895720c86082700c215a1d2363b7d4",
+  "production_has_synthetic_issuer": false,
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "archive_proof_sha256": "1617691f1c4e21737cf1bb604b4e3155510d11947acc78b2e40877b10bde431c",
+  "local_qualification_inputs": {
+    "vs_0c223ad11bce02d5.bin": "573d688222bcdee8234d60123199d5fc7b65158e8201b3e99a37bd254a697dd3",
+    "vs_03ba987c7cdee35d.bin": "115ad4499f1690af06516a87dc353487e71cf8e909bc6ea262f415960203dafa"
+  },
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -27,15 +42,17 @@
     "/Users/asvetl/x3-mod/verification/probe/build",
     "/Users/asvetl/x3-mod/verification/probe/build/rigid_motion_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/src/temporal/rigid_motion_vs.hlsl",
     "Z:/Users/asvetl/x3-mod/src/temporal/rigid_motion_ps.hlsl",
-    "Z:/Users/asvetl/x3-mod/src/temporal/resolve.hlsl"
+    "Z:/Users/asvetl/x3-mod/src/temporal/resolve.hlsl",
+    "Z:/tmp/x3-shader-sweep/programs/vs_0c223ad11bce02d5.bin",
+    "Z:/tmp/x3-shader-sweep/programs/vs_03ba987c7cdee35d.bin"
   ],
   "exit_code": 0,
   "source_unchanged": true,
   "binary_unchanged": true,
   "compiler_unchanged": true,
-  "report_sha256": "e485b0e427303593ee043a5f65a62a21c7e96ce895610f85358b92bb335b4a43",
+  "qualification_inputs_unchanged": true,
+  "report_sha256": "d5d35ad823e92ea040292a49f8146439a338a4cec3e82027e5499b7346174e1b",
   "numerical_samples": 102,
   "maximum_absolute_numeric_error": 9.092700000001841e-05,
   "large_viewport_errors": [
@@ -84,7 +101,7 @@
       "depth": 1.19209e-07
     }
   ],
-  "checks": 106,
+  "checks": 117,
   "state_restorations": 30,
   "generations": 2
 }

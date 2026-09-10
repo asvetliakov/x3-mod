@@ -1,4 +1,5 @@
 #include "rigid_motion.h"
+#include "rigid_replay_program.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -46,7 +47,7 @@ bool matrix_valid(const float* m) noexcept {
 }
 HRESULT validate_draw(IDirect3DDevice9* d,const RigidMotionDraw& x) noexcept {
     const UINT position_bytes=x.position_type==D3DDECLTYPE_FLOAT3?12:x.position_type==D3DDECLTYPE_FLOAT16_4?8:0;
-    if(!position_bytes||x.semantic!=RigidPositionSemantic::PositionXyzWOneRowDots||!x.correspondence_attested||
+    if(!position_bytes||!x.source_program.qualified()||!x.finite_positions_attested||!x.correspondence_attested||
        x.stream_frequency!=1||!x.vertices||x.stride<position_bytes||x.position_offset>x.stride-position_bytes||
        !x.primitive_count||(x.topology!=D3DPT_TRIANGLELIST&&x.topology!=D3DPT_TRIANGLESTRIP)||
        (x.cull!=D3DCULL_NONE&&x.cull!=D3DCULL_CW&&x.cull!=D3DCULL_CCW)||
@@ -109,19 +110,34 @@ HRESULT initialize_invalid(IDirect3DDevice9* d) noexcept {
     return d->DrawPrimitiveUP(D3DPT_TRIANGLELIST,1,v,3*sizeof(float));
 }
 } // namespace
+RigidReplayContract qualify_rigid_replay_source(const std::uint32_t* words,
+                                               std::size_t count) noexcept {
+    RigidReplayContract result;
+    if(const auto* profile=find_rigid_replay_profile(words,count)){
+        result.source_=RigidReplaySource::ReviewedArchiveSm3;
+        result.source_hash_=profile->hash;result.source_words_=profile->word_count;
+    }
+    return result;
+}
+#ifdef X3M_RIGID_MOTION_VERIFICATION
+RigidReplayContract original_synthetic_sm3_contract() noexcept {
+    RigidReplayContract result;result.source_=RigidReplaySource::OriginalSyntheticSm3;
+    return result; // Deliberately no archive hash: never masquerades as a game profile.
+}
+#endif
 RigidMotionPass::~RigidMotionPass(){shutdown();}
 void RigidMotionPass::shutdown() noexcept {
     for(auto& p:declarations_)drop(p);
     drop(vertex_);drop(pixel_);device_=nullptr;targets_=streams_=0;++generation_;
 }
 void RigidMotionPass::before_reset() noexcept {shutdown();}
-HRESULT RigidMotionPass::initialize(IDirect3DDevice9* d,const DWORD* vs,const DWORD* ps) noexcept {
-    shutdown();diagnostics_={};if(!d||!vs||!ps)return E_INVALIDARG;
+HRESULT RigidMotionPass::initialize(IDirect3DDevice9* d,const DWORD* ps) noexcept {
+    shutdown();diagnostics_={};if(!d||!ps)return E_INVALIDARG;
     D3DCAPS9 caps{};HRESULT h=d->GetDeviceCaps(&caps);if(FAILED(h))return h;
     if(caps.VertexShaderVersion<D3DVS_VERSION(3,0)||caps.PixelShaderVersion<D3DPS_VERSION(3,0)||
        !caps.NumSimultaneousRTs||caps.NumSimultaneousRTs>4||!caps.MaxStreams)return D3DERR_NOTAVAILABLE;
     device_=d;targets_=caps.NumSimultaneousRTs;streams_=caps.MaxStreams;
-    h=d->CreateVertexShader(vs,&vertex_);if(SUCCEEDED(h))h=d->CreatePixelShader(ps,&pixel_);
+    h=d->CreateVertexShader(reinterpret_cast<const DWORD*>(rigid_replay_program().data()),&vertex_);if(SUCCEEDED(h))h=d->CreatePixelShader(ps,&pixel_);
     for(UINT i=0;i<2&&SUCCEEDED(h);++i){
         const D3DVERTEXELEMENT9 elements[]={{0,0,BYTE(i?D3DDECLTYPE_FLOAT16_4:D3DDECLTYPE_FLOAT3),D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},D3DDECL_END()};
         h=d->CreateVertexDeclaration(elements,&declarations_[i]);

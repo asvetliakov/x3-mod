@@ -7,7 +7,7 @@ programs likewise need an established path before a final whole-scene claim.
 
 | Path | Required processing | Current boundary |
 | --- | --- | --- |
-| Ordinary object geometry | Reviewed position conversion, actual submitted current/previous clip matrices, lifecycle-safe identity, stable geometry and matching raster/depth coverage | All 234 archive row-dot programs are registered. Bounded frame correspondence, actual-state input acquisition and a detached GPU motion producer are verified. Live lifetime/coverage/jitter integration remains pending. |
+| Ordinary object geometry | Reviewed position conversion, actual submitted current/previous clip matrices, lifecycle-safe identity, stable geometry and matching raster/depth coverage | All 234 archive row-dot programs are registered; fixed replay currently admits only the 32 reviewed SM3 profiles. Bounded frame correspondence, actual-state input acquisition and a detached GPU motion producer are verified. Live lifetime/coverage/jitter integration remains pending. |
 | Three original bloom VS (`1279…`, `6059…`, `cbbf…`) | Direct clip-space fullscreen draws need no object WVP. Replace original bloom with HDR bloom downstream of temporal scene reconstruction, avoiding independent jitter on bloom quads. | Their direct-position contracts are known; modern HDR bloom/composition is not implemented. |
 | Direct-position GUI/effects VS (`f36f…`) | Classify each draw by actual pass/context. Keep confirmed HUD outside scene TAA and composite at controlled display brightness. Scene effects sharing the program need a separate motion/reactivity route. | The shared hash and post-bloom position in a frame do not prove HUD identity. No blanket exclusion of all uses is valid. |
 | Particle billboard VS (`36f9…`) | Account for transformed center and billboard offsets before projection, including prior geometry, camera orientation and current coverage. Use particle correspondence when established; reject/react to history where identities or transparency are unresolved. | Vertex data changes every captured adjacent gameplay frame. Rigid-node history does not apply. Current/prior reactive-mask consumption and owned history are implemented and GPU-verified; live mask production and particle correspondence remain pending. |
@@ -37,28 +37,33 @@ tests across these paths, sharp HUD, controlled ghosting/disocclusion and resets
 on load/scene/camera/resource discontinuities. The installed game still has no
 TAA feature enabled.
 
-## Next position-equivalence work
+## Position-equivalence boundary
 
-The current compiled rigid-motion VS already uses a homogeneous MAD constructor,
-although its HLSL spells `float4(position.xyz, 1)`. Its DP4 operands are ordered
-row/temporary, while the inspected original programs use temporary/row. A
-token-generated replay shader can preserve that order, exact literal bits and
-swizzles without relying on compiler simplification. This is a candidate for
-removing the algebraic-substitution concern, not permission to drop payload gates.
+The detached rigid-motion pass now internally creates a fixed original SM3
+program. It preserves the reviewed homogeneous MAD constructor, exact literal
+bits/swizzles, temporary/row DP4 operand order and XYZW output order. Callers
+supply only the pixel shader; they cannot replace the replay vertex program.
+A cached source token is issued from an exact full-program lookup once at source
+admission. Upstream must associate it with the actual submitted immutable shader.
+The hot replay path checks this value without rehashing the source program.
 
-Start qualification with the 32 archive SM3 row-dot programs, which include the
-captured main materials. The other 202 row-dot programs use legacy models; six
-legacy programs also write output lanes in a different order. Production profile
-metadata now retains those distinctions, verified independently against raw
-tokens; this alone does not establish exact replay. Compare
-generated tokens and actual depth/raster coverage against original synthetic
-references, including signed zero, subnormals, finite extremes, NaNs/infinities
-and every half-float encoding in each XYZ lane. Stored W remains independent and
-ignored by the reviewed position semantics. A CPU `isfinite` scan alone does not
-settle signed-zero/subnormal or backend arithmetic equivalence. Any CPU validity
-cache must include buffer revision and the actual layout/range, avoiding repeated
-per-frame locks for stable geometry. None of this additional qualification is
-implemented or verified yet.
+The token gate admits the 32 archive SM3 row-dot profiles and refuses the other
+202 legacy programs, including six with WXYZ writes. Original synthetic references
+verify the fixed tokens, all 65,536 half encodings in each XYZ lane, FLOAT3 edge
+payloads, and bilateral native depth-EQUAL/coverage. The integrated motion fixture
+also checks full state restoration, Reset, motion numerics and production resolve
+consumption; see [fixed-program verification](../verification/rigid-replay-program.md)
+and [GPU motion verification](../verification/rigid-motion.md).
+
+These checks retain the explicit **finite XYZ payload** gate. Exceptional inputs
+can become maximal finite values before readback on this backend, so observed
+pipeline agreement cannot establish internal NaN payload or universal arithmetic
+equivalence. Legacy source models remain unqualified. Stored input W remains
+independent and ignored; signed-zero/subnormal behavior is not settled by a CPU
+`isfinite` scan alone. Any future CPU validity cache must include buffer revision
+and actual layout/range, avoiding repeated per-frame locks for stable geometry.
+The live draw collector still lacks that payload proof and automatic token routing;
+none of this enables TAA in the installed game.
 
 See [position profiles](../reverse-engineering/rigid-position-profiles.md),
 [motion correspondence](../verification/motion-history.md),

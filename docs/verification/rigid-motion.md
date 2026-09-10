@@ -1,8 +1,10 @@
 # Detached rigid-object motion producer
 
 `src/renderer/rigid_motion.{h,cpp}` is a production D3D9 GPU pass that produces
-the per-pixel input consumed by `src/temporal/resolve.hlsl`. The original shaders
-are `src/temporal/rigid_motion_vs.hlsl` and `rigid_motion_ps.hlsl`. This is working
+the per-pixel input consumed by `src/temporal/resolve.hlsl`. The vertex program is fixed internally by `src/renderer/rigid_replay_program.cpp`;
+initialization accepts only the motion pixel shader (`rigid_motion_ps.hlsl`).
+The former `rigid_motion_vs.hlsl` is retained as historical illustration and is
+not compiled or used by the pass. This is working
 detached rendering code, **not live game routing or whole-frame TAA coverage**.
 The fixture launches no game and installs nothing.
 
@@ -15,15 +17,30 @@ range `[0,1]`. Each draw carries actual stream byte offset, position offset,
 stride, optional index buffer and original draw arguments. Accepted topology is
 triangle list or strip, with stream frequency exactly one.
 
-The semantic attestation is `PositionXyzWOneRowDots`: four full-precision row dot
-products consume `(POSITION0.xyz,1)`, with no positional animation or other
-position operation. Both FLOAT3 and **FLOAT16_4** preserve their native declaration
-conversion. The latter is the format observed on the main captured materials;
-packed input W is ignored. The caller must attest finite position inputs, stable
-VB/IB contents through replay, trustworthy adjacent-frame correspondence, and
-ordinary opaque rasterization. Alpha test/discard/blend, custom pixel depth,
-depth bias, user clipping, scissor and instancing are excluded. Resource/version
-and object-lifetime matching belong to the correspondence policy, not this pass.
+Each draw carries a `RigidReplayContract` value. The only production issuer,
+`qualify_rigid_replay_source`, checks the complete immutable source bytes against
+the reviewed registry and requires SM3, XYZW writes and the exact homogeneous
+MAD constructor. It currently admits 32 archive programs and rejects the other
+202 legacy row-dot programs. Issue this token once when admitting a source shader,
+then cache it with that actual shader identity: replay performs no per-draw
+whole-program hash. The token owns its hash/count/provenance values, with no
+reference to caller bytecode storage. Default tokens are unknown; callers cannot
+construct a token from a boolean or a fabricated metadata record through this API.
+
+**The upstream draw record must bind the token to the actual submitted shader.**
+A token copied from another qualified source does not prove that association, and
+the detached pass cannot discover it. Only verification builds expose a separately
+named synthetic issuer; it has distinct provenance and no archive hash. The
+production object is checked to contain no such issuer symbol.
+
+Both FLOAT3 and **FLOAT16_4** preserve their native declaration conversion;
+packed input W is ignored. `finite_positions_attested` is a separate mandatory
+proof for XYZ: the fixed instruction sequence and synthetic exceptional-value
+checks do not remove this requirement. The caller must also attest stable VB/IB
+contents through replay, trustworthy adjacent-frame correspondence, and ordinary
+opaque rasterization. Alpha test/discard/blend, custom pixel depth, depth bias,
+user clipping, scissor and instancing are excluded. Resource/version and
+object-lifetime matching belong to the correspondence policy, not this pass.
 
 Current and previous WVP arrays contain the **actual submitted shader-register
 rows**, including their actual raster jitter. They are uploaded without matrix
@@ -82,17 +99,24 @@ Run `python3 verification/probe/run_rigid_motion.py`. It always builds the curre
 fixture with SSE2 arithmetic and the four-byte incoming Win32 stack contract,
 hashes sources before/after compilation and execution, and hashes the executable
 and D3DX compiler. Runtime-loaded HLSL is part of that frozen source manifest.
-All bytecode and geometry in the fixture are original. Native builtin D3D9 is
+All GPU-executed shaders and geometry are original; local archive bytes are read
+only for CPU qualification. Native builtin D3D9 is
 selected process-locally under CrossOver Preview's Steam bottle.
 
-The final run passed **102 numeric samples, 106 checks and 30 full state comparisons**
+The final run passed **102 numeric samples, 117 checks and 30 full state comparisons**
 on a native pure device, spanning **two resource generations and a real Reset**.
 Evidence is in `verification/results/rigid-motion.txt` and
 `rigid-motion-summary.json`. It covers:
 
+- Actual exact SM3 token issuance, reviewed legacy refusal, truncated/modified
+  byte refusal, version-only legacy forgery refusal, copied token lifetime after
+  source byte release, and distinct verification-only synthetic provenance.
+  Archive inputs are hashed and read only for CPU qualification; the GPU scene
+  uses original synthetic shaders and its explicitly synthetic token.
+
 - Stationary geometry, object translation, indexed FLOAT16_4 input with
   z=`0.333251953125`, unrelated stored W=`7`, and mixed current-depth matrix rows.
-  An independently compiled original position shader produces scene depth;
+  An independently assembled original MAD/temporary-first DP4 shader produces scene depth;
   production replay passes exact native `EQUAL` against it.
 - Perspective-varying clip W at two different raster samples. An independent CPU
   oracle solves the raster ray/plane equations and then projects the recovered
@@ -103,7 +127,7 @@ Evidence is in `verification/results/rigid-motion.txt` and
   depth-integrity draw that must pass against the original far surface while
   failing against the original nearer surface.
 - Complete invalid initialization with an empty batch, including all 256 pixels.
-- Semantic, conversion, instancing, topology, finite-value, extent, depth-age and
+- Cached source-token, explicit finite-POSITION, conversion, instancing, topology, finite-matrix, extent, depth-age and
   range refusals, including extreme count/stride and indexed range overflow.
 - Real state-block recording refusal and a real active occlusion query that sees
   zero samples from the refused pass. Hostile caller state includes MRTs, packed

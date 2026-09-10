@@ -18,8 +18,8 @@ record cannot qualify a shader. This is an operation/model compatibility check,
 **not automatic draw eligibility**. Native FLOAT3/FLOAT16_4 declaration conversion,
 finite XYZ payload, stable resources, actual submitted rows, lifetime and frame
 correspondence, depth/coverage, and unsupported-contributor handling remain
-explicit caller requirements. The current rigid-motion pass and installed game
-DLL are unchanged by this module.
+explicit caller requirements. The detached rigid-motion pass now initializes this program internally; see
+[integration verification](rigid-motion.md). The installed game DLL is unchanged.
 
 The independent fixture passes:
 

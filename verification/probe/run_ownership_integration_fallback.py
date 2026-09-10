@@ -16,7 +16,7 @@ object_root=root/'build-ownership/CMakeFiles/d3d9.dir'
 objects=sorted(p for p in (object_root/'src').rglob('*.obj') if 'ownership' not in p.parts)
 expected={'src/proxy/'+name+'.cpp.obj' for name in ('loader','capture','capture_state','scene_capture','object_trace','telemetry','loading_trace','draw_input','object_lifetime','mesh_adjacency_cache')}
 expected.update('src/renderer/'+name+'.cpp.obj' for name in
-                ('temporal_pass','material_radiance','motion_history','rigid_position','rigid_motion'))
+                ('temporal_pass','material_radiance','motion_history','rigid_position','rigid_motion','rigid_replay_program'))
 assert {str(p.relative_to(object_root)) for p in objects}==expected,'Build all current production components first'
 object_hashes={str(p.relative_to(root)):sha(p) for p in objects}
 (results/'ownership-integration-fallback.json').write_text(json.dumps({'result':'RUNNING'})+'\n')

@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <type_traits>
 template<class T> struct Com {
     T* p=nullptr;
     ~Com(){if(p)p->Release();}
@@ -53,6 +54,13 @@ unsigned short toHalf(float f){ // IEEE binary32 -> binary16, round to nearest/e
     const unsigned rounded=mantissa+0xfff+((mantissa>>13)&1);
     // Addition carries a rounded mantissa into the exponent; bitwise OR does not.
     return static_cast<unsigned short>(sign|((unsigned(halfExponent)<<10)+(rounded>>13)));
+}
+using Assembler=decltype(&D3DXAssembleShader);
+Assembler assemble_shader=nullptr;
+void assemble(const std::string& source,ID3DXBuffer** code){Com<ID3DXBuffer> errors;
+    HRESULT hr=assemble_shader(source.c_str(),UINT(source.size()),nullptr,nullptr,0,code,&errors.p);
+    if(errors.p)std::printf("ASSEMBLER %s\n",static_cast<char*>(errors->GetBufferPointer()));
+    check("independent original assembly",hr);
 }
 using Compiler=decltype(&D3DXCompileShader);
 void compile(Compiler c,const std::string& source,const char* target,ID3DXBuffer** code){Com<ID3DXBuffer> errors;
@@ -160,8 +168,12 @@ struct Fixture {
         check("float declaration",d->CreateVertexDeclaration(elements,&floatDecl.p));elements[0].Type=D3DDECLTYPE_FLOAT16_4;
         check("half declaration",d->CreateVertexDeclaration(elements,&halfDecl.p));
         Com<ID3DXBuffer> vs,ps;
-        // Scene depth is produced by an independently compiled original shader.
-        compile(compiler,"float4 r0:register(c0);float4 r1:register(c1);float4 r2:register(c2);float4 r3:register(c3);float4 main(float4 v:POSITION0):POSITION0{float4 p=float4(v.xyz,1);return float4(dot(p,r0),dot(p,r1),dot(p,r2),dot(p,r3));}","vs_3_0",&vs.p);
+        // Independent original synthetic source contract: SM3, exact homogeneous
+        // MAD constructor, temp-before-row full-precision DP4, XYZW write order.
+        // It is explicitly issued as synthetic, never claimed as an archive hash.
+        assemble("vs_3_0\ndef c20, 1, 0, 0, 0\ndcl_position v0\ndcl_position o0\n"
+                 "mad r3, v0.xyzx, c20.xxxy, c20.yyyx\n"
+                 "dp4 o0.x, r3, c0\ndp4 o0.y, r3, c1\ndp4 o0.z, r3, c2\ndp4 o0.w, r3, c3\n",&vs.p);
         compile(compiler,"float4 color:register(c0);float4 main():COLOR0{return color;}","ps_3_0",&ps.p);
         check("scene VS",d->CreateVertexShader(static_cast<DWORD*>(vs->GetBufferPointer()),&sceneVS.p));
         check("scene PS",d->CreatePixelShader(static_cast<DWORD*>(ps->GetBufferPointer()),&scenePS.p));
@@ -174,7 +186,7 @@ struct Fixture {
         d->SetStreamSourceFreq(0,1);d->SetStreamSourceFreq(1,1);
     }
     RigidMotionDraw draw(bool half=false,bool indexed=false){
-        RigidMotionDraw x;x.semantic=RigidPositionSemantic::PositionXyzWOneRowDots;
+        RigidMotionDraw x;x.source_program=original_synthetic_sm3_contract();x.finite_positions_attested=true;
         x.vertices=half?halves.p:floats.p;x.indices=indexed?indices.p:nullptr;
         x.stream_offset=16;x.position_offset=4;x.stride=half?16:24;
         x.position_type=half?D3DDECLTYPE_FLOAT16_4:D3DDECLTYPE_FLOAT3;
@@ -254,8 +266,8 @@ void sample(Fixture& f,const RigidMotionDraw& x,const float* jitter,UINT px,UINT
     for(UINT i=0;i<4;++i){char name[128];std::snprintf(name,sizeof name,"%s component%u",label,i);numeric(a[i],b[i],name);}
 }
 void consume_motion(Fixture& f,const DWORD* resolver);
-void cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* vs,const DWORD* ps,const DWORD* resolver,UINT generation){
-    std::printf("GENERATION %u\n",generation);Fixture f(d,compiler);RigidMotionPass pass;check("initialize production",pass.initialize(d,vs,ps));
+void cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* ps,const DWORD* resolver,UINT generation){
+    std::printf("GENERATION %u\n",generation);Fixture f(d,compiler);RigidMotionPass pass;check("initialize production",pass.initialize(d,ps));
     auto x=f.draw();auto in=f.input(&x);
     f.render_scene(x);numeric(f.read_scene(8,8,0),1,"original scene center");f.run(pass,in,"stationary rigid");sample(f,x,in.previous_jitter,8,8,"stationary center");
     x.current_wvp[3]=.25f;f.render_scene(x);f.run(pass,in,"object translation owned scene",false);sample(f,x,in.previous_jitter,8,8,"object translation");
@@ -288,7 +300,8 @@ void cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* vs,const DWORD* ps
     x=f.draw();f.render_scene(x);x.current_wvp[11]=.125f;f.run(pass,in,"mismatched current depth");numeric(f.read_motion()[8*W+8].w,-1,"depth EQUAL rejects mismatch");
     x=f.draw();f.render_scene(x);f.hostile();Snapshot rejected(d);RigidMotionOutput out;
     auto refuse=[&](const char* label){require(pass.run(in,&out)==E_INVALIDARG&&!out.motion,label);};
-    x.semantic=RigidPositionSemantic::Unknown;refuse("unknown semantic refused");x.semantic=RigidPositionSemantic::PositionXyzWOneRowDots;
+    x.source_program={};refuse("unknown source program refused");x.source_program=original_synthetic_sm3_contract();
+    x.finite_positions_attested=false;refuse("unverified finite POSITION payload refused");x.finite_positions_attested=true;
     x.correspondence_attested=false;refuse("unattested correspondence refused");x.correspondence_attested=true;
     x.position_type=D3DDECLTYPE_FLOAT4;refuse("unverified conversion refused");x.position_type=D3DDECLTYPE_FLOAT3;
     x.stream_frequency=D3DSTREAMSOURCE_INDEXEDDATA|2;refuse("instancing refused");x.stream_frequency=1;
@@ -352,9 +365,9 @@ void consume_motion(Fixture& f,const DWORD* resolver){
     }
     f.scene_state();
 }
-void precision_control(IDirect3DDevice9* d,Compiler compiler,const DWORD* vs,const DWORD* ps,UINT width,UINT height){
+void precision_control(IDirect3DDevice9* d,Compiler compiler,const DWORD* ps,UINT width,UINT height){
     W=width;H=height;std::printf("PRECISION_VIEWPORT %ux%u\n",W,H);
-    Fixture f(d,compiler);RigidMotionPass pass;check("precision initialize",pass.initialize(d,vs,ps));
+    Fixture f(d,compiler);RigidMotionPass pass;check("precision initialize",pass.initialize(d,ps));
     auto x=f.draw();x.current_wvp[12]=.25f;x.current_wvp[13]=.125f;x.previous_wvp[13]=-.125f;
     x.previous_wvp[3]=.125f;x.previous_wvp[11]=.125f;auto in=f.input(&x);
     f.render_scene(x);f.run(pass,in,"large viewport perspective");const auto pixels=f.read_motion();
@@ -367,16 +380,34 @@ void precision_control(IDirect3DDevice9* d,Compiler compiler,const DWORD* vs,con
     }
     pass.before_reset();
 }
+void source_contract_tests(const char* sm3Path,const char* legacyPath){
+    static_assert(!std::is_aggregate<RigidReplayContract>::value,"caller cannot aggregate-initialize proof");
+    static_assert(!std::is_constructible<RigidReplayContract,bool>::value,"caller cannot assert arbitrary proof");
+    auto words=[](const char* path){std::ifstream input(path,std::ios::binary);if(!input)throw std::runtime_error(path);
+        std::vector<char> bytes{std::istreambuf_iterator<char>(input),{}};if(bytes.empty()||bytes.size()%4)throw std::runtime_error("invalid test bytecode");
+        std::vector<std::uint32_t> out(bytes.size()/4);std::memcpy(out.data(),bytes.data(),bytes.size());return out;};
+    require(!RigidReplayContract{}.qualified(),"default source token unknown");
+    require(!qualify_rigid_replay_source(nullptr,0).qualified(),"null source token unknown");
+    auto sm3=words(sm3Path);const auto admitted=qualify_rigid_replay_source(sm3.data(),sm3.size());
+    require(admitted.qualified()&&admitted.source()==RigidReplaySource::ReviewedArchiveSm3&&admitted.source_hash()!=0&&admitted.source_words()==sm3.size(),"actual exact SM3 source admitted once");
+    require(!qualify_rigid_replay_source(sm3.data(),sm3.size()-1).qualified(),"truncated source token unknown");
+    sm3[0]^=1;require(!qualify_rigid_replay_source(sm3.data(),sm3.size()).qualified(),"modified source token unknown");
+    sm3.clear();sm3.shrink_to_fit();auto copied=admitted;
+    require(copied.qualified()&&copied.source_hash()==admitted.source_hash()&&copied.source_words()==admitted.source_words(),"cached token owns value after source release");
+    auto legacy=words(legacyPath);require(!qualify_rigid_replay_source(legacy.data(),legacy.size()).qualified(),"actual reviewed legacy source refused");
+    legacy[0]=D3DVS_VERSION(3,0);require(!qualify_rigid_replay_source(legacy.data(),legacy.size()).qualified(),"version-only forged legacy source refused");
+    auto synthetic=original_synthetic_sm3_contract();require(synthetic.qualified()&&synthetic.source()==RigidReplaySource::OriginalSyntheticSm3&&!synthetic.source_hash()&&!synthetic.source_words(),"verification-only synthetic source never impersonates archive");
+}
 int main(int argc,char** argv){
     std::setvbuf(stdout,nullptr,_IONBF,0);int result=1;WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3RigidMotionFixture";RegisterClassA(&cls);
     HWND window=CreateWindowA(cls.lpszClassName,"X3 original rigid motion",WS_OVERLAPPEDWINDOW,90,90,128,128,nullptr,nullptr,cls.hInstance,nullptr);
-    try{if(argc!=5||!window)throw std::runtime_error("usage: fixture.exe D3DX motionVS motionPS resolver");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");
-        Com<ID3DXBuffer> vs,ps,resolver;compile(compiler,file(argv[2]),"vs_3_0",&vs.p);compile(compiler,file(argv[3]),"ps_3_0",&ps.p);compile(compiler,file(argv[4]),"ps_3_0",&resolver.p);
+    try{if(argc!=6||!window)throw std::runtime_error("usage: fixture.exe D3DX motionPS resolver admittedSM3 refusedLegacy");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");assemble_shader=symbol<Assembler>(d3dx.h,"D3DXAssembleShader");source_contract_tests(argv[4],argv[5]);
+        Com<ID3DXBuffer> ps,resolver;compile(compiler,file(argv[2]),"ps_3_0",&ps.p);compile(compiler,file(argv[3]),"ps_3_0",&resolver.p);
         auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");
         D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
         Com<IDirect3DDevice9> d;check("CreateDevice pure",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
-        for(UINT generation=0;generation<2;++generation){cases(d.p,compiler,static_cast<DWORD*>(vs->GetBufferPointer()),static_cast<DWORD*>(ps->GetBufferPointer()),static_cast<DWORD*>(resolver->GetBufferPointer()),generation);if(!generation){check("actual Reset",d->Reset(&pp));std::puts("RESET PASS");}}
-        for(auto size:{std::pair<UINT,UINT>{1280,768},{5120,1440}})precision_control(d.p,compiler,static_cast<DWORD*>(vs->GetBufferPointer()),static_cast<DWORD*>(ps->GetBufferPointer()),size.first,size.second);
+        for(UINT generation=0;generation<2;++generation){cases(d.p,compiler,static_cast<DWORD*>(ps->GetBufferPointer()),static_cast<DWORD*>(resolver->GetBufferPointer()),generation);if(!generation){check("actual Reset",d->Reset(&pp));std::puts("RESET PASS");}}
+        for(auto size:{std::pair<UINT,UINT>{1280,768},{5120,1440}})precision_control(d.p,compiler,static_cast<DWORD*>(ps->GetBufferPointer()),size.first,size.second);
         std::printf("RESULT PASS numerical=%u checks=%u state_restorations=%u generations=2\n",numeric_checks,checks,state_checks);result=0;
     }catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());}
     if(window)DestroyWindow(window);

@@ -1,3 +1,6 @@
+// Historical illustrative HLSL only; not compiled by the production motion pass.
+// Active replay bytecode is fixed in renderer/rigid_replay_program.cpp, which
+// preserves reviewed MAD/DP4 token details without compiler reordering.
 // Original rigid POSITION replay. Rows are the actual submitted shader constants,
 // including raster jitter. Do not transpose, multiply matrices, or jitter again.
 float4 current0 : register(c0);

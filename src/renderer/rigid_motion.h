@@ -4,12 +4,42 @@
 #include <cstdint>
 
 namespace x3m::renderer {
-// An explicit semantic attestation, not a declaration inferred from a name.
-// POSITION0 must be finite FLOAT3 or FLOAT16_4; shader position is four row
-// dot-products with (xyz,1). Stored W is ignored, including packed-half W.
-enum class RigidPositionSemantic { Unknown, PositionXyzWOneRowDots };
+enum class RigidReplaySource : std::uint8_t { Unknown, ReviewedArchiveSm3, OriginalSyntheticSm3 };
+// Value proof issued once from exact immutable source bytecode, then cached with
+// that shader's identity. Copying is safe; no bytecode or COM resource is retained.
+// The upstream draw record MUST associate this token with its actual submitted
+// source program, not borrow a valid token from another shader. This is an API
+// invariant, not protection against arbitrary memory corruption in the caller.
+class RigidReplayContract {
+public:
+    RigidReplayContract() = default; // Unknown cannot admit a draw.
+    RigidReplaySource source() const noexcept { return source_; }
+    std::uint64_t source_hash() const noexcept { return source_hash_; }
+    std::uint32_t source_words() const noexcept { return source_words_; }
+    bool qualified() const noexcept { return source_ != RigidReplaySource::Unknown; }
+private:
+    RigidReplaySource source_ = RigidReplaySource::Unknown;
+    std::uint64_t source_hash_ = 0;
+    std::uint32_t source_words_ = 0;
+    friend RigidReplayContract qualify_rigid_replay_source(const std::uint32_t*, std::size_t) noexcept;
+#ifdef X3M_RIGID_MOTION_VERIFICATION
+    // Only original synthetic fixtures compile this explicit test issuer.
+    friend RigidReplayContract original_synthetic_sm3_contract() noexcept;
+#endif
+};
+// Exact reviewed whole-program lookup + SM3/XYZW/MAD constructor gate. No COM
+// or allocation; never reads vertex/index buffers. Perform once at source admission.
+RigidReplayContract qualify_rigid_replay_source(const std::uint32_t* words,
+                                               std::size_t count) noexcept;
+#ifdef X3M_RIGID_MOTION_VERIFICATION
+RigidReplayContract original_synthetic_sm3_contract() noexcept;
+#endif
 struct RigidMotionDraw {
-    RigidPositionSemantic semantic = RigidPositionSemantic::Unknown;
+    RigidReplayContract source_program{};
+    // Explicit ordinary finite XYZ proof; exact constructor tests do not waive it.
+    // Both FLOAT3 and FLOAT16_4 preserve native declaration conversion. Stored W
+    // is ignored, including exceptional packed-half W; only XYZ must be finite.
+    bool finite_positions_attested = false;
     IDirect3DVertexBuffer9* vertices = nullptr; // native, borrowed
     IDirect3DIndexBuffer9* indices = nullptr;   // optional native, borrowed
     UINT stream_offset = 0, stride = 0, position_offset = 0, stream_frequency = 1;
@@ -63,7 +93,8 @@ public:
     RigidMotionPass& operator=(const RigidMotionPass&) = delete;
     // Device borrowed; caller serializes render/reset and releases pass before
     // native Reset/final device teardown. No persistent VB/IB/RT/DS references.
-    HRESULT initialize(IDirect3DDevice9* native_device, const DWORD* vertex_shader,
+    // Vertex program is fixed internally; callers cannot replace its arithmetic.
+    HRESULT initialize(IDirect3DDevice9* native_device,
                        const DWORD* pixel_shader) noexcept;
     HRESULT run(const RigidMotionInputs&, RigidMotionOutput*) noexcept;
     void before_reset() noexcept;
