@@ -1,8 +1,12 @@
 {
   "passed": true,
+  "game_launched": false,
+  "cpu_baseline": "SSE2; stack realignment; four-byte incoming Win32 stack",
+  "verification_build_define": "X3M_RIGID_MOTION_VERIFICATION=1; synthetic issuer absent from production builds",
+  "scope": "Original native pure-device GPU fixture using production rigid producer and resolve; no live routing",
   "sources_before_build": {
-    "src/renderer/rigid_motion.h": "35fe896c671c0644488360e3543208c4e045d7d2d1b7414da969d9a9c11817ea",
-    "src/renderer/rigid_motion.cpp": "866da74fb0ca0e4889eabcee5b79a58390ecba7f4eef6a7b34ea4322a67bfcb3",
+    "src/renderer/rigid_motion.h": "d74d41d8079290d68ad1b41b74d4bdac62964473f62b6e4b81129c4bdd31e503",
+    "src/renderer/rigid_motion.cpp": "6e2720b27908658e02226dcb730d0c78d0b6bfed7ef7c24d6d4ff6f7ca1eeb4f",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
@@ -11,21 +15,22 @@
     "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
     "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
     "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
-    "CMakeLists.txt": "3ddce2e3d07b1eb86bd0a99e2ef5e9b89f9fb9f0f056c431b6d9f81050fee4e3",
+    "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+    "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+    "tools/shaders/compile_rigid_motion_pixel.cpp": "287cc8c6387de4ac134d720e0922876763744007838d96dd2fbe2cfe6c393830",
+    "tools/shaders/generate_rigid_motion_pixel.py": "a6c6b714e1912ef21eaf2e5c21de11fe24e915ca70d4af460717a5ad19262ff5",
+    "verification/results/rigid-motion-pixel-program.json": "3d6e9d1d798b1a62b17834e06a2cf8a623f6ec67947e0b193f5506658fd9d359",
     "src/temporal/resolve.h": "e62dee55cf60b423e58481d47c0d5c65112ae6ebc53d0f516c0646436229a582",
     "src/temporal/resolve.hlsl": "6e2d4b2701e97d4db8088479d29833a828d38ae438baaeb8e1ce65c8efbe2df5",
-    "verification/probe/rigid_motion_fixture.cpp": "51f9cd7ef0f29c0552578a731ae881eecf82e67312fbfd04e243b369146e6227",
+    "verification/probe/rigid_motion_fixture.cpp": "bb7d37dbdf644f5d86c08c3888a09c84267ca19b04b2575ca68229c42bbdd112",
     "verification/probe/build_rigid_motion.sh": "f1f0a36ead94940bd7b64b8f85e507ec6a41a02ffd54de892d870bf0bb4a750c",
-    "verification/probe/run_rigid_motion.py": "73a01d3058f0a907bd087e6456ffe69ea83e2b3697b91bd8404c46d6651652ab"
+    "verification/probe/run_rigid_motion.py": "6749968cc41ef514d7ff9f2554dce316d48b050b11e34ec5ae85a490df60a0fc"
   },
-  "game_launched": false,
-  "cpu_baseline": "SSE2; stack realignment; four-byte incoming Win32 stack",
-  "verification_build_define": "X3M_RIGID_MOTION_VERIFICATION=1; synthetic issuer absent from production builds",
-  "scope": "Original native pure-device GPU fixture using production rigid producer and resolve; no live routing",
-  "executable_sha256": "88181be5df5f87abf9c70b30df3f0894ae5ec2f5e99ef5e63dcb01119220ca2b",
-  "production_object_sha256": "62cfb4f8d6d70ffe9bc2a09f6319086fde895720c86082700c215a1d2363b7d4",
+  "executable_sha256": "4aa0fa3539578845701187c3400f5feac0b5a8cbe39354cfa8923bfdfa38fe8e",
+  "production_object_sha256": "b4436bafcce7bf75973b35fa103fdf51d6f4a10c414adb8eb10aa6f4c3ceee7e",
   "production_has_synthetic_issuer": false,
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "embedded_pixel_program_sha256": "a604ce8c772ac472dca8612c8cafcb353cb648f89aaffd7a089b7c9f0ae1e107",
   "archive_proof_sha256": "1617691f1c4e21737cf1bb604b4e3155510d11947acc78b2e40877b10bde431c",
   "local_qualification_inputs": {
     "vs_0c223ad11bce02d5.bin": "573d688222bcdee8234d60123199d5fc7b65158e8201b3e99a37bd254a697dd3",
@@ -52,7 +57,7 @@
   "binary_unchanged": true,
   "compiler_unchanged": true,
   "qualification_inputs_unchanged": true,
-  "report_sha256": "d5d35ad823e92ea040292a49f8146439a338a4cec3e82027e5499b7346174e1b",
+  "report_sha256": "ee322d2c627bd61e473dddcb4f6d3fc45047f4f43236d88ee5e8e8892a8232a1",
   "numerical_samples": 102,
   "maximum_absolute_numeric_error": 9.092700000001841e-05,
   "large_viewport_errors": [
@@ -101,7 +106,8 @@
       "depth": 1.19209e-07
     }
   ],
-  "checks": 117,
+  "checks": 118,
   "state_restorations": 30,
-  "generations": 2
+  "generations": 2,
+  "embedded_pixel_program_matches_native_compilation": true
 }

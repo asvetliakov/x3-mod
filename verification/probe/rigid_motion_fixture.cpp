@@ -4,6 +4,7 @@
 #include <d3d9.h>
 #include <d3dx9shader.h>
 #include "../../src/renderer/rigid_motion.h"
+#include "../../src/renderer/rigid_motion_pixel_program.h"
 #include "../../src/temporal/resolve.h"
 #include <algorithm>
 #include <array>
@@ -266,8 +267,8 @@ void sample(Fixture& f,const RigidMotionDraw& x,const float* jitter,UINT px,UINT
     for(UINT i=0;i<4;++i){char name[128];std::snprintf(name,sizeof name,"%s component%u",label,i);numeric(a[i],b[i],name);}
 }
 void consume_motion(Fixture& f,const DWORD* resolver);
-void cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* ps,const DWORD* resolver,UINT generation){
-    std::printf("GENERATION %u\n",generation);Fixture f(d,compiler);RigidMotionPass pass;check("initialize production",pass.initialize(d,ps));
+void cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver,UINT generation){
+    std::printf("GENERATION %u\n",generation);Fixture f(d,compiler);RigidMotionPass pass;check("initialize production",pass.initialize(d));
     auto x=f.draw();auto in=f.input(&x);
     f.render_scene(x);numeric(f.read_scene(8,8,0),1,"original scene center");f.run(pass,in,"stationary rigid");sample(f,x,in.previous_jitter,8,8,"stationary center");
     x.current_wvp[3]=.25f;f.render_scene(x);f.run(pass,in,"object translation owned scene",false);sample(f,x,in.previous_jitter,8,8,"object translation");
@@ -365,9 +366,9 @@ void consume_motion(Fixture& f,const DWORD* resolver){
     }
     f.scene_state();
 }
-void precision_control(IDirect3DDevice9* d,Compiler compiler,const DWORD* ps,UINT width,UINT height){
+void precision_control(IDirect3DDevice9* d,Compiler compiler,UINT width,UINT height){
     W=width;H=height;std::printf("PRECISION_VIEWPORT %ux%u\n",W,H);
-    Fixture f(d,compiler);RigidMotionPass pass;check("precision initialize",pass.initialize(d,ps));
+    Fixture f(d,compiler);RigidMotionPass pass;check("precision initialize",pass.initialize(d));
     auto x=f.draw();x.current_wvp[12]=.25f;x.current_wvp[13]=.125f;x.previous_wvp[13]=-.125f;
     x.previous_wvp[3]=.125f;x.previous_wvp[11]=.125f;auto in=f.input(&x);
     f.render_scene(x);f.run(pass,in,"large viewport perspective");const auto pixels=f.read_motion();
@@ -403,11 +404,12 @@ int main(int argc,char** argv){
     HWND window=CreateWindowA(cls.lpszClassName,"X3 original rigid motion",WS_OVERLAPPEDWINDOW,90,90,128,128,nullptr,nullptr,cls.hInstance,nullptr);
     try{if(argc!=6||!window)throw std::runtime_error("usage: fixture.exe D3DX motionPS resolver admittedSM3 refusedLegacy");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");assemble_shader=symbol<Assembler>(d3dx.h,"D3DXAssembleShader");source_contract_tests(argv[4],argv[5]);
         Com<ID3DXBuffer> ps,resolver;compile(compiler,file(argv[2]),"ps_3_0",&ps.p);compile(compiler,file(argv[3]),"ps_3_0",&resolver.p);
+        require(ps->GetBufferSize()==sizeof(rigid_motion_pixel_program())&&std::memcmp(ps->GetBufferPointer(),rigid_motion_pixel_program(),sizeof(rigid_motion_pixel_program()))==0,"embedded pixel program equals native HLSL compilation");
         auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");
         D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
         Com<IDirect3DDevice9> d;check("CreateDevice pure",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
-        for(UINT generation=0;generation<2;++generation){cases(d.p,compiler,static_cast<DWORD*>(ps->GetBufferPointer()),static_cast<DWORD*>(resolver->GetBufferPointer()),generation);if(!generation){check("actual Reset",d->Reset(&pp));std::puts("RESET PASS");}}
-        for(auto size:{std::pair<UINT,UINT>{1280,768},{5120,1440}})precision_control(d.p,compiler,static_cast<DWORD*>(ps->GetBufferPointer()),size.first,size.second);
+        for(UINT generation=0;generation<2;++generation){cases(d.p,compiler,static_cast<DWORD*>(resolver->GetBufferPointer()),generation);if(!generation){check("actual Reset",d->Reset(&pp));std::puts("RESET PASS");}}
+        for(auto size:{std::pair<UINT,UINT>{1280,768},{5120,1440}})precision_control(d.p,compiler,size.first,size.second);
         std::printf("RESULT PASS numerical=%u checks=%u state_restorations=%u generations=2\n",numeric_checks,checks,state_checks);result=0;
     }catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());}
     if(window)DestroyWindow(window);

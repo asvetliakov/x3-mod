@@ -70,10 +70,12 @@ struct RigidMotionInputs {
     bool caller_scene_open = true;
     bool caller_stateblock_recording = false;
     bool caller_queries_idle = false;
-    // Depth EQUAL establishes depth agreement, not exclusive color ownership.
-    // Caller must mask/reject unsupported transparent or equal-depth competing
-    // contributors, including draws outside this batch. No whole-frame coverage
-    // is implied. Uncovered pixels initialize to alpha=-1, never camera fallback.
+    // Depth EQUAL yields geometric motion candidates, not exclusive color
+    // ownership. Private diagnostics may inspect these candidates. Temporal-color
+    // consumption additionally requires masking/rejecting unsupported transparent
+    // or equal-depth contributors, including draws outside this batch, plus
+    // independently established continuity. No whole-frame coverage is implied.
+    // Uncovered pixels initialize to alpha=-1, never camera fallback.
 };
 struct RigidMotionOutput {
     // Borrowed caller texture, published ONLY after draw + restoration success.
@@ -94,6 +96,9 @@ public:
     // Device borrowed; caller serializes render/reset and releases pass before
     // native Reset/final device teardown. No persistent VB/IB/RT/DS references.
     // Vertex program is fixed internally; callers cannot replace its arithmetic.
+    // Production path uses the embedded motion pixel program compiled from our
+    // authored HLSL; no runtime compiler or external bytecode is required.
+    HRESULT initialize(IDirect3DDevice9* native_device) noexcept;
     HRESULT initialize(IDirect3DDevice9* native_device,
                        const DWORD* pixel_shader) noexcept;
     HRESULT run(const RigidMotionInputs&, RigidMotionOutput*) noexcept;

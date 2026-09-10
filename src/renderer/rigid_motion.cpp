@@ -1,5 +1,6 @@
 #include "rigid_motion.h"
 #include "rigid_replay_program.h"
+#include "rigid_motion_pixel_program.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -131,6 +132,9 @@ void RigidMotionPass::shutdown() noexcept {
     drop(vertex_);drop(pixel_);device_=nullptr;targets_=streams_=0;++generation_;
 }
 void RigidMotionPass::before_reset() noexcept {shutdown();}
+HRESULT RigidMotionPass::initialize(IDirect3DDevice9* d) noexcept {
+    return initialize(d,reinterpret_cast<const DWORD*>(rigid_motion_pixel_program()));
+}
 HRESULT RigidMotionPass::initialize(IDirect3DDevice9* d,const DWORD* ps) noexcept {
     shutdown();diagnostics_={};if(!d||!ps)return E_INVALIDARG;
     D3DCAPS9 caps{};HRESULT h=d->GetDeviceCaps(&caps);if(FAILED(h))return h;

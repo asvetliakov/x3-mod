@@ -2,7 +2,9 @@
 
 `src/renderer/rigid_motion.{h,cpp}` is a production D3D9 GPU pass that produces
 the per-pixel input consumed by `src/temporal/resolve.hlsl`. The vertex program is fixed internally by `src/renderer/rigid_replay_program.cpp`;
-initialization accepts only the motion pixel shader (`rigid_motion_ps.hlsl`).
+the default `initialize(device)` also uses the embedded pixel program compiled
+from our authored `src/temporal/rigid_motion_ps.hlsl`. The explicit pixel-program
+overload remains available for existing detached callers.
 The former `rigid_motion_vs.hlsl` is retained as historical illustration and is
 not compiled or used by the pass. This is working
 detached rendering code, **not live game routing or whole-frame TAA coverage**.
@@ -99,11 +101,13 @@ Run `python3 verification/probe/run_rigid_motion.py`. It always builds the curre
 fixture with SSE2 arithmetic and the four-byte incoming Win32 stack contract,
 hashes sources before/after compilation and execution, and hashes the executable
 and D3DX compiler. Runtime-loaded HLSL is part of that frozen source manifest.
-All GPU-executed shaders and geometry are original; local archive bytes are read
+The fixture recompiles the authored motion HLSL with the pinned native compiler,
+requires exact byte-for-byte equality with the embedded program, then exercises
+the default initializer for every motion pass. All GPU-executed shaders and geometry are original; local archive bytes are read
 only for CPU qualification. Native builtin D3D9 is
 selected process-locally under CrossOver Preview's Steam bottle.
 
-The final run passed **102 numeric samples, 117 checks and 30 full state comparisons**
+The final run passed **102 numeric samples, 118 checks and 30 full state comparisons**
 on a native pure device, spanning **two resource generations and a real Reset**.
 Evidence is in `verification/results/rigid-motion.txt` and
 `rigid-motion-summary.json`. It covers:
@@ -172,3 +176,38 @@ initialization. Direct binding and omission-of-initialization controls rendered
 the expected motion. Using the same programmable vertex path for initialization
 and replay resolved the issue. The final fixture exercises this sequence on every
 run; no claim is made about the underlying driver implementation cause.
+
+## Reproducible embedded pixel program
+
+The live initializer requires no D3DX dependency, file access, shader compilation,
+allocation of bytecode, or caller-supplied pixel program. The immutable helper
+`src/renderer/rigid_motion_pixel_program.h` exposes the checked-in original shader
+in `rigid_motion_pixel_program_inc.h`; normal D3D shader object creation still
+occurs at initialization. The program is **176 DWORDs** (`ps_3_0`), with SHA256
+`a604ce8c772ac472dca8612c8cafcb353cb648f89aaffd7a089b7c9f0ae1e107`.
+It retains the established c0/c1, TEXCOORD0 and RGBA32F motion/sentinel ABI.
+
+Reproduce or verify without a game or D3D device:
+
+```sh
+python3 tools/shaders/generate_rigid_motion_pixel.py
+python3 tools/shaders/generate_rigid_motion_pixel.py --check
+```
+
+The small native compiler tool loads the local `d3dx9_37.dll` whose SHA256 is
+`c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8`.
+It compiles exact source bytes with entry `main`, profile `ps_3_0`, optimization
+level 3 (`0x8000`), no macros and no includes. The generator refuses a different
+compiler, active X3AP or a failed process inventory. It checks source/compiler/tool
+hashes before and after compilation, validates complete token framing and writes
+only our own generated program plus deterministic provenance. The external
+Microsoft compiler DLL is never copied into the repository. The retained shader
+source and compiled program are our authored project artifacts; no captured game
+program is included.
+
+`verification/results/rigid-motion-pixel-program.json` records the source,
+compiler, tool and generated-header hashes, flags, bytecode hash and word count.
+`--check` rebuilds in a temporary directory and compares both retained artifacts,
+without rewriting them. The numeric fixture adds one explicit byte-parity check
+to its existing 117 checks; the 102 numeric samples and all state/Reset cases now
+execute exactly the embedded program used by the production default initializer.
