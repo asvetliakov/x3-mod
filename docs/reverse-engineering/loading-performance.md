@@ -1,5 +1,9 @@
 # Loading performance: evidence and one-session measurement plan
 
+This document preserves the pre-0.3 measurement plan. The requested combined run
+is complete; see [loading observations](loading-observations.md) for measured
+costs, uncovered mesh processing and the next investigation steps.
+
 Reviewed 2026-09-10 against capture 0.2 source, existing capture summaries, local PE metadata and targeted Ghidra analysis. No game was launched for this investigation. No loading-time measurement or improvement is claimed. The next instrumented build should measure startup, the animated menu, and one user-started new game in the same session, while preserving the requested F8 renderer capture.
 
 ## What is established

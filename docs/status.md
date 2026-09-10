@@ -13,7 +13,7 @@ and [roadmap](architecture/roadmap.md).
   configuration preserved. User test setting: 1280×768 windowed (was 5120×1440
   borderless). No unused launcher is intentionally left open.
 - Independent FP16/depth/D3D11-scRGB capabilities; baseline/proxy smoke passes;
-  51 analysis tests and compile-time ABI guards pass.
+  62 analysis tests and compile-time ABI guards pass.
 - Static archive/PE analysis, targeted Ghidra renderer map, shader index and CTAB
   register mapping, documented separately in `docs/reverse-engineering/`.
 - Animated menu capture: 690 draws; user-assisted flight: two complete 122-draw
@@ -48,10 +48,11 @@ and [roadmap](architecture/roadmap.md).
 
 ## Concrete next work
 
-1. Await the requested single user-run 0.3 telemetry session, then attribute loading
-   spans, inspect render/depth/copy boundaries and correlate cursor/focus changes.
-   Fourteen import hooks and graphics/cursor timing are batched into one build.
-   No speedup or cursor fix is claimed.
+1. Use the completed 0.3 session to guide scene-depth preservation and batched
+   follow-up work. All 12 captured frames are complete (3,131 successful draws).
+   The same depth allocation is cleared between background, main scene and
+   overlays; scene depth must be used/preserved before its post-bloom clear.
+   See [station-session passes](reverse-engineering/station-session-passes.md).
 2. Map camera conventions and object identity across controlled motion; correlate
    world/WVP/view-inverse values to depth and projection. The capture has useful
    names/registers, not yet validated motion vectors.
@@ -89,7 +90,28 @@ The installed DLL is diagnostics 0.3 and matches `build/d3d9.dll`, owned checksu
 `71f59c8e6422d5bbf2f55c116e2c0388026d956ba45a3a03eee53c4d85a232a6`. See
 `docs/verification/iteration-03.md` for the command, coverage and test evidence.
 The user supplied two four-frame turning bursts from 0.2; all captured draws
-succeeded and camera/light/motion analysis is complete. A combined 0.3 session
-has now been requested with loading, turning and alt-tab observations. No game
-was launched by the agent. No visual enhancement has been enabled. Commit each
-completed logical checkpoint.
+succeeded and camera/light/motion analysis is complete. The combined 0.3 session
+is also complete; the user reported docking during it, without a timestamp that
+locates docking within the captured bursts. All 2,914 named point-light count
+observations are zero. Camera reconstruction error remains below 1.41e-7.
+
+Texture helpers took 16.382 seconds and inflate 7.109 seconds in observed flushed
+totals. An 89.092-second presentation gap remains incompletely attributed;
+sampling/disassembly identifies an uncovered mesh adjacency/cleaning/optimization
+path. See [loading observations](reverse-engineering/loading-observations.md).
+No loading speedup is implemented.
+
+The user confirmed a game cursor and macOS arrow at different positions, persisting
+after focus changes. Win32 focus/clipping/hiding restore in the trace, but native
+cursor state was not sampled. See [cursor observations](reverse-engineering/cursor-observations.md)
+for a scoped synthetic investigation; no cursor fix is deployed.
+
+An independent canonical D3D9 ownership layer now passes 370 baseline / 431 wrapped
+fixture checks with matching shared HRESULTs and output mutations. It releases
+renderer-owned resources before Reset and native device teardown. It is not yet
+connected to the loader or installed DLL; see [ownership source](../src/ownership/README.md)
+and [verification](../verification/probe/ownership.md). Generated fragments use
+`*_inc.h` per the user's editor preference.
+
+No game was launched by the agent. No visual enhancement has been enabled.
+Commit each completed logical checkpoint.

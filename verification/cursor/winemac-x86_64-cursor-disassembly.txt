@@ -1,0 +1,113 @@
+Read-only disassembly 2026-09-10; no binary patched.
+Source: /Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/wine/x86_64-unix/winemac.so
+SHA256: d13a1f9e37abc9f90f46de5f5c00bf062b42b23bf8c0ef9cb94fa8b66404db37
+ObjC metadata: WineApplicationController updateCursor: 0x7d10, hideCursor 0x7e00, unhideCursor 0x7e30, setCursor: 0x7e60.
+Ivars from metadata: lastTargetWindow=0xa0, cursorIsCurrent=0x120, cursorHidden=0x121, clientWantsCursorHidden=0x122.
+These offsets are specific to this binary; not addresses to patch. Loaded architecture not independently verified here.
+
+
+/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/wine/x86_64-unix/winemac.so:	file format mach-o 64-bit x86-64
+
+Disassembly of section __TEXT,__text:
+
+0000000000001210 <__text>:
+    7d10: 55                           	pushq	%rbp
+    7d11: 48 89 e5                     	movq	%rsp, %rbp
+    7d14: 41 56                        	pushq	%r14
+    7d16: 53                           	pushq	%rbx
+    7d17: 48 89 fb                     	movq	%rdi, %rbx
+    7d1a: 84 d2                        	testb	%dl, %dl
+    7d1c: 75 0a                        	jne	0x7d28 <__text+0x6b18>
+    7d1e: 48 83 bb a0 00 00 00 00      	cmpq	$0x0, 0xa0(%rbx)
+    7d26: 74 6b                        	je	0x7d93 <__text+0x6b83>
+    7d28: 80 bb 22 01 00 00 00         	cmpb	$0x0, 0x122(%rbx)
+    7d2f: 74 09                        	je	0x7d3a <__text+0x6b2a>
+    7d31: 80 bb 21 01 00 00 00         	cmpb	$0x0, 0x121(%rbx)
+    7d38: 74 33                        	je	0x7d6d <__text+0x6b5d>
+    7d3a: 80 bb 20 01 00 00 00         	cmpb	$0x0, 0x120(%rbx)
+    7d41: 75 1b                        	jne	0x7d5e <__text+0x6b4e>
+    7d43: 48 8b bb 18 01 00 00         	movq	0x118(%rbx), %rdi
+    7d4a: 48 8b 35 d7 55 05 00         	movq	0x555d7(%rip), %rsi     ## 0x5d328 <_write+0x5d328>
+    7d51: ff 15 b1 e1 04 00            	callq	*0x4e1b1(%rip)          ## 0x55f08 <_write+0x55f08>
+    7d57: c6 83 20 01 00 00 01         	movb	$0x1, 0x120(%rbx)
+    7d5e: 80 bb 22 01 00 00 00         	cmpb	$0x0, 0x122(%rbx)
+    7d65: 0f 85 81 00 00 00            	jne	0x7dec <__text+0x6bdc>
+    7d6b: eb 5b                        	jmp	0x7dc8 <__text+0x6bb8>
+    7d6d: 48 8b 3d 1c 6d 05 00         	movq	0x56d1c(%rip), %rdi     ## 0x5ea90 <_write+0x5ea90>
+    7d74: 48 8b 35 a5 55 05 00         	movq	0x555a5(%rip), %rsi     ## 0x5d320 <_write+0x5d320>
+    7d7b: ff 15 87 e1 04 00            	callq	*0x4e187(%rip)          ## 0x55f08 <_write+0x55f08>
+    7d81: c6 83 21 01 00 00 01         	movb	$0x1, 0x121(%rbx)
+    7d88: 80 bb 20 01 00 00 00         	cmpb	$0x0, 0x120(%rbx)
+    7d8f: 75 cd                        	jne	0x7d5e <__text+0x6b4e>
+    7d91: eb b0                        	jmp	0x7d43 <__text+0x6b33>
+    7d93: 80 bb 20 01 00 00 00         	cmpb	$0x0, 0x120(%rbx)
+    7d9a: 74 2c                        	je	0x7dc8 <__text+0x6bb8>
+    7d9c: 48 8b 3d ed 6c 05 00         	movq	0x56ced(%rip), %rdi     ## 0x5ea90 <_write+0x5ea90>
+    7da3: 48 8b 35 8e 55 05 00         	movq	0x5558e(%rip), %rsi     ## 0x5d338 <_write+0x5d338>
+    7daa: 4c 8b 35 57 e1 04 00         	movq	0x4e157(%rip), %r14     ## 0x55f08 <_write+0x55f08>
+    7db1: 41 ff d6                     	callq	*%r14
+    7db4: 48 8b 35 6d 55 05 00         	movq	0x5556d(%rip), %rsi     ## 0x5d328 <_write+0x5d328>
+    7dbb: 48 89 c7                     	movq	%rax, %rdi
+    7dbe: 41 ff d6                     	callq	*%r14
+    7dc1: c6 83 20 01 00 00 00         	movb	$0x0, 0x120(%rbx)
+    7dc8: 80 bb 21 01 00 00 00         	cmpb	$0x0, 0x121(%rbx)
+    7dcf: 74 1b                        	je	0x7dec <__text+0x6bdc>
+    7dd1: 48 8b 3d b8 6c 05 00         	movq	0x56cb8(%rip), %rdi     ## 0x5ea90 <_write+0x5ea90>
+    7dd8: 48 8b 35 51 55 05 00         	movq	0x55551(%rip), %rsi     ## 0x5d330 <_write+0x5d330>
+    7ddf: ff 15 23 e1 04 00            	callq	*0x4e123(%rip)          ## 0x55f08 <_write+0x55f08>
+    7de5: c6 83 21 01 00 00 00         	movb	$0x0, 0x121(%rbx)
+    7dec: 5b                           	popq	%rbx
+    7ded: 41 5e                        	popq	%r14
+    7def: 5d                           	popq	%rbp
+    7df0: c3                           	retq
+    7df1: 66 66 66 66 66 66 2e 0f 1f 84 00 00 00 00 00 	nopw	%cs:(%rax,%rax)
+    7e00: 55                           	pushq	%rbp
+    7e01: 48 89 e5                     	movq	%rsp, %rbp
+    7e04: 80 bf 22 01 00 00 00         	cmpb	$0x0, 0x122(%rdi)
+    7e0b: 74 02                        	je	0x7e0f <__text+0x6bff>
+    7e0d: 5d                           	popq	%rbp
+    7e0e: c3                           	retq
+    7e0f: c6 87 22 01 00 00 01         	movb	$0x1, 0x122(%rdi)
+    7e16: 48 8b 35 23 55 05 00         	movq	0x55523(%rip), %rsi     ## 0x5d340 <_write+0x5d340>
+    7e1d: ba 01 00 00 00               	movl	$0x1, %edx
+    7e22: 5d                           	popq	%rbp
+    7e23: ff 25 df e0 04 00            	jmpq	*0x4e0df(%rip)          ## 0x55f08 <_write+0x55f08>
+    7e29: 0f 1f 80 00 00 00 00         	nopl	(%rax)
+    7e30: 55                           	pushq	%rbp
+    7e31: 48 89 e5                     	movq	%rsp, %rbp
+    7e34: 80 bf 22 01 00 00 00         	cmpb	$0x0, 0x122(%rdi)
+    7e3b: 74 17                        	je	0x7e54 <__text+0x6c44>
+    7e3d: c6 87 22 01 00 00 00         	movb	$0x0, 0x122(%rdi)
+    7e44: 48 8b 35 f5 54 05 00         	movq	0x554f5(%rip), %rsi     ## 0x5d340 <_write+0x5d340>
+    7e4b: 31 d2                        	xorl	%edx, %edx
+    7e4d: 5d                           	popq	%rbp
+    7e4e: ff 25 b4 e0 04 00            	jmpq	*0x4e0b4(%rip)          ## 0x55f08 <_write+0x55f08>
+    7e54: 5d                           	popq	%rbp
+    7e55: c3                           	retq
+    7e56: 66 2e 0f 1f 84 00 00 00 00 00	nopw	%cs:(%rax,%rax)
+    7e60: 55                           	pushq	%rbp
+    7e61: 48 89 e5                     	movq	%rsp, %rbp
+    7e64: 41 56                        	pushq	%r14
+    7e66: 53                           	pushq	%rbx
+    7e67: 48 89 fb                     	movq	%rdi, %rbx
+    7e6a: 48 8b bf 18 01 00 00         	movq	0x118(%rdi), %rdi
+    7e71: 48 39 fa                     	cmpq	%rdi, %rdx
+    7e74: 74 36                        	je	0x7eac <__text+0x6c9c>
+    7e76: 49 89 d6                     	movq	%rdx, %r14
+    7e79: ff 15 d1 e0 04 00            	callq	*0x4e0d1(%rip)          ## 0x55f50 <_write+0x55f50>
+    7e7f: 4c 89 f7                     	movq	%r14, %rdi
+    7e82: ff 15 d0 e0 04 00            	callq	*0x4e0d0(%rip)          ## 0x55f58 <_write+0x55f58>
+    7e88: 48 89 83 18 01 00 00         	movq	%rax, 0x118(%rbx)
+    7e8f: c6 83 20 01 00 00 00         	movb	$0x0, 0x120(%rbx)
+    7e96: 48 8b 35 a3 54 05 00         	movq	0x554a3(%rip), %rsi     ## 0x5d340 <_write+0x5d340>
+    7e9d: 48 89 df                     	movq	%rbx, %rdi
+    7ea0: 31 d2                        	xorl	%edx, %edx
+    7ea2: 5b                           	popq	%rbx
+    7ea3: 41 5e                        	popq	%r14
+    7ea5: 5d                           	popq	%rbp
+    7ea6: ff 25 5c e0 04 00            	jmpq	*0x4e05c(%rip)          ## 0x55f08 <_write+0x55f08>
+    7eac: 5b                           	popq	%rbx
+    7ead: 41 5e                        	popq	%r14
+    7eaf: 5d                           	popq	%rbp
+    7eb0: c3                           	retq
+    7eb1: 66 66 66 66 66 66 2e 0f 1f 84 00 00 00 00 00 	nopw	%cs:(%rax,%rax)
