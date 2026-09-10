@@ -1,0 +1,95 @@
+X3 original RESZ D24X8-to-INTZ copy probe; not game integration
+VARIANT D24X8_D24X8
+GetAdapterDisplayMode: 0x00000000 OK
+MATCH color=21
+CheckDepthStencilMatch original source: 0x00000000 OK
+MATCH color=113
+CheckDepthStencilMatch original source: 0x00000000 OK
+MATCH color=114
+CheckDepthStencilMatch original source: 0x00000000 OK
+CAP RESZ result=00000000 (numeric trigger result is authoritative)
+DEVICE flags=0x00000050 HARDWARE_VERTEXPROCESSING|PUREDEVICE
+CreateDevice: 0x00000000 OK
+CASE generation=0 output=RGBA8 depth_source=77 depth_copy=77 samples=NONE shadow=0 reference=0.10
+vs_3_0: 0x00000000 OK
+ps_3_0: 0x00000000 OK
+ps_3_0: 0x00000000 OK
+CreateVertexShader: 0x00000000 OK
+CreatePixelShader solid: 0x00000000 OK
+CreatePixelShader depth sampling: 0x00000000 OK
+CreateVertexDeclaration: 0x00000000 OK
+GetBackBuffer: 0x00000000 OK
+CreateTexture resolve destination: 0x00000000 OK
+GetSurfaceLevel resolve destination: 0x00000000 OK
+CreateDepthStencilSurface ordinary source: 0x00000000 OK
+CreateTexture sentinel: 0x00000000 OK
+CreateRenderTarget: 0x00000000 OK
+CreateOffscreenPlainSurface: 0x00000000 OK
+SetRenderTarget: 0x00000000 OK
+Bind resolve destination for poison: 0x00000000 OK
+Clear resolve destination poison: 0x00000000 OK
+SetDepthStencilSurface original source: 0x00000000 OK
+SetViewport: 0x00000000 OK
+SetVertexDeclaration: 0x00000000 OK
+SetVertexShader: 0x00000000 OK
+SetPixelShader solid: 0x00000000 OK
+CULL_NONE: 0x00000000 OK
+ZENABLE: 0x00000000 OK
+ZWRITEENABLE: 0x00000000 OK
+ZFUNC LESS: 0x00000000 OK
+ALPHABLENDENABLE false: 0x00000000 OK
+SRGBWRITEENABLE false: 0x00000000 OK
+Clear: 0x00000000 OK
+BeginScene geometry: 0x00000000 OK
+DrawPrimitiveUP five depth triangles: 0x00000000 OK
+EndScene geometry: 0x00000000 OK
+Bind sentinel texture: 0x00000000 OK
+Set original POINTSIZE: 0x00000000 OK
+Bind RESZ destination texture: 0x00000000 OK
+Dummy color writes off: 0x00000000 OK
+Dummy depth writes off: 0x00000000 OK
+BeginScene dummy: 0x00000000 OK
+Dummy DrawPrimitiveUP flush: 0x00000000 OK
+TRIGGER pointsize=7fa05000
+Trigger RESZ selected value: 0x00000000 OK
+EndScene dummy after RESZ: 0x00000000 OK
+Restore color writes: 0x00000000 OK
+Restore depth writes: 0x00000000 OK
+Restore POINTSIZE: 0x00000000 OK
+Restore sentinel texture: 0x00000000 OK
+GetDepthStencilSurface after RESZ: 0x00000000 OK
+GetTexture after restore: 0x00000000 OK
+GetRenderState POINTSIZE after restore: 0x00000000 OK
+GetDesc original depth: 0x00000000 OK
+STATE generation=0 output=RGBA8 original_depth_identity=1 original_depth_format=77 texture_restored=1 pointsize_expected=40500000 pointsize_actual=40500000 PASS
+Unbind sentinel: 0x00000000 OK
+Clear original source after copy: 0x00000000 OK
+Unbind depth: 0x00000000 OK
+Disable depth: 0x00000000 OK
+Disable depth writes: 0x00000000 OK
+SetTexture INTZ: 0x00000000 OK
+MINFILTER POINT: 0x00000000 OK
+MAGFILTER POINT: 0x00000000 OK
+MIPFILTER NONE: 0x00000000 OK
+ADDRESSU CLAMP: 0x00000000 OK
+ADDRESSV CLAMP: 0x00000000 OK
+SRGBTEXTURE false: 0x00000000 OK
+SetPixelShader sampling: 0x00000000 OK
+BeginScene sampling: 0x00000000 OK
+DrawPrimitiveUP sample quad: 0x00000000 OK
+EndScene sampling: 0x00000000 OK
+Unbind depth texture: 0x00000000 OK
+GetRenderTargetData: 0x00000000 OK
+LockRect: 0x00000000 OK
+SAMPLE generation=0 output=RGBA8 name=near_with_far_rejected xy=8,8 expected=0.250000000 rgba=1.000000000,1.000000000,1.000000000,1.000000000 tolerance=0.005882353 FAIL
+SAMPLE generation=0 output=RGBA8 name=far xy=56,8 expected=0.750000000 rgba=1.000000000,1.000000000,1.000000000,1.000000000 tolerance=0.005882353 FAIL
+SAMPLE generation=0 output=RGBA8 name=clear xy=32,48 expected=1.000000000 rgba=1.000000000,1.000000000,1.000000000,1.000000000 tolerance=0.005882353 PASS
+SAMPLE generation=0 output=RGBA8 name=outside_near_triangle xy=24,24 expected=1.000000000 rgba=1.000000000,1.000000000,1.000000000,1.000000000 tolerance=0.005882353 PASS
+SAMPLE generation=0 output=RGBA8 name=far_precision_9999 xy=8,40 expected=0.999899983 rgba=1.000000000,1.000000000,1.000000000,1.000000000 tolerance=0.005882353 PASS
+SAMPLE generation=0 output=RGBA8 name=far_precision_99999 xy=56,40 expected=0.999989986 rgba=1.000000000,1.000000000,1.000000000,1.000000000 tolerance=0.005882353 PASS
+UnlockRect: 0x00000000 OK
+Restore backbuffer: 0x00000000 OK
+Unbind vertex shader: 0x00000000 OK
+Unbind pixel shader: 0x00000000 OK
+Unbind declaration: 0x00000000 OK
+RESULT FAIL: numeric sampled depth mismatch

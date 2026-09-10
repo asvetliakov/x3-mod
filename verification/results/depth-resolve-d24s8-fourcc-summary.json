@@ -1,0 +1,35 @@
+{
+  "started_utc": "2026-09-10T19:01:04.906416+00:00",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/depth_resolve.exe",
+    "C:\\X3\\d3dx9_37.dll",
+    "D24S8_FOURCC"
+  ],
+  "timeout_seconds": 60,
+  "process_local_override": "d3d9=b",
+  "source_sha256": "cb5ef7bba6e7af515525c045341631978ce8fe16c8af885f00d145803f9d8601",
+  "executable_sha256": "fafd37f696b6b5ad77116c18308ac852693bde28cdcf7302b152a5433016af2c",
+  "freshly_built": true,
+  "build_exit_code": 0,
+  "build_output": "",
+  "sources_sha256": {
+    "verification/probe/depth_resolve.cpp": "cb5ef7bba6e7af515525c045341631978ce8fe16c8af885f00d145803f9d8601",
+    "verification/probe/build_depth_resolve.sh": "386aec4c3303ff40e2ec799df9241b96503245f91186468b2cfea13d9ffe40ef",
+    "verification/probe/run_depth_resolve.py": "0b2ea8c1550951d53666aa08dd9339eb56d70e94c87a47fb27d7749a3b6cdfac"
+  },
+  "sources_unchanged_after_build": true,
+  "exit_code": 1,
+  "sample_checks": 6,
+  "passed_sample_checks": 0,
+  "state_checks": 1,
+  "passed_state_checks": 1,
+  "sources_unchanged_after_run": true,
+  "executable_unchanged_after_run": true,
+  "passed": false
+}

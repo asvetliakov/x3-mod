@@ -1,0 +1,23 @@
+X3 original RESZ D24X8-to-INTZ copy probe; not game integration
+VARIANT D24X8_DF24
+GetAdapterDisplayMode: 0x00000000 OK
+MATCH color=21
+CheckDepthStencilMatch original source: 0x00000000 OK
+MATCH color=113
+CheckDepthStencilMatch original source: 0x00000000 OK
+MATCH color=114
+CheckDepthStencilMatch original source: 0x00000000 OK
+CAP RESZ result=00000000 (numeric trigger result is authoritative)
+DEVICE flags=0x00000050 HARDWARE_VERTEXPROCESSING|PUREDEVICE
+CreateDevice: 0x00000000 OK
+CASE generation=0 output=RGBA8 depth_source=77 depth_copy=875710020 samples=NONE shadow=0 reference=0.10
+vs_3_0: 0x00000000 OK
+ps_3_0: 0x00000000 OK
+ps_3_0: 0x00000000 OK
+CreateVertexShader: 0x00000000 OK
+CreatePixelShader solid: 0x00000000 OK
+CreatePixelShader depth sampling: 0x00000000 OK
+CreateVertexDeclaration: 0x00000000 OK
+GetBackBuffer: 0x00000000 OK
+CreateTexture resolve destination: 0x8876086c FAILED
+RESULT FAIL: CreateTexture resolve destination

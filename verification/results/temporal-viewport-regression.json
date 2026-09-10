@@ -1,0 +1,15 @@
+{
+  "expected_exit_code": 1,
+  "observed_exit_code": 1,
+  "source_sha256": {
+    "src/temporal/resolve.hlsl": "c4fc099c4268bebcd5c39e54b69b7b32a30ec5645b2aff9192480328ff8f8c9a",
+    "src/temporal/resolve.h": "998a427f20aa5a11aacb5b97d71b404ee0dbbd7dbfeb641b2fa8263f11a9be6c",
+    "verification/probe/temporal_resolve.cpp": "3995c219d236dc5df70459cfc1e177abadf922efdcb8cad858c0c3603ad2704e"
+  },
+  "executable_sha256": "91308185c90ac3f7eb1a663ea7c88436e980ef7672d29f0e46535e3d52d284fc",
+  "reason": "New raw-viewport geometry oracle deliberately run before correcting camera reprojection half-texel math. Earlier identity and translation cases cancelled the missing offset.",
+  "failed_check": "zoom rasterized geometry reprojection",
+  "actual_rgb": 0.38256836,
+  "expected_rgb": 0.375,
+  "tolerance": 0.002
+}

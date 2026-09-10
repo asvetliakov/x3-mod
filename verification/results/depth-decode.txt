@@ -1,0 +1,284 @@
+MODULE C:\X3\d3dx9_37.dll
+MODULE C:\windows\system32\d3d9.dll
+CASE generation=0 width=64 height=64
+COPY_STATE inside_scene=1 original_depth=1 texture=1 pointsize=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=0 expected=0.000000000 actual=0.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=1 expected=0.250000000 actual=0.250000030 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=2 expected=0.750000000 actual=0.750000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=3 expected=1.000000000 actual=1.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=4 expected=0.999899983 actual=0.999899983 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=5 expected=0.999989986 actual=0.999989986 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=6 expected=0.000000060 actual=0.000000089 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=7 expected=0.000000119 actual=0.000000149 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=8 expected=0.999999940 actual=0.999999881 error_d24_lsb=1.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=9 expected=0.999999881 actual=0.999999881 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=10 expected=0.677534699 actual=0.677534699 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=11 expected=0.994464040 actual=0.994464040 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=12 expected=0.250324100 actual=0.250324100 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=13 expected=0.070244677 actual=0.070244700 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=14 expected=0.413741976 actual=0.413741976 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=15 expected=0.955204368 actual=0.955204368 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=16 expected=0.498700827 actual=0.498700827 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=17 expected=0.702932954 actual=0.702932954 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=18 expected=0.060032252 actual=0.060032278 error_d24_lsb=0.437500 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=19 expected=0.214828804 actual=0.214828819 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=20 expected=0.082835086 actual=0.082835108 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=21 expected=0.582781732 actual=0.582781732 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=22 expected=0.682567060 actual=0.682567060 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=23 expected=0.217199937 actual=0.217199951 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=24 expected=0.127582029 actual=0.127582043 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=25 expected=0.788256943 actual=0.788256943 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=26 expected=0.254379481 actual=0.254379481 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=27 expected=0.542330980 actual=0.542330980 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=28 expected=0.838145614 actual=0.838145614 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=29 expected=0.777648330 actual=0.777648330 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=30 expected=0.527619004 actual=0.527619004 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=0 index=31 expected=0.021746280 actual=0.021746308 error_d24_lsb=0.468750 endpoints=1 PASS
+RESTORE generation=0 width=64 height=64 phase=0 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=0 expected=0.000000000 actual=0.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=1 expected=0.250000000 actual=0.250000030 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=2 expected=0.750000000 actual=0.750000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=3 expected=1.000000000 actual=1.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=4 expected=0.999899983 actual=0.999899983 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=5 expected=0.999989986 actual=0.999989986 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=6 expected=0.000000060 actual=0.000000089 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=7 expected=0.000000119 actual=0.000000149 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=8 expected=0.999999940 actual=0.999999881 error_d24_lsb=1.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=9 expected=0.999999881 actual=0.999999881 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=10 expected=0.677534699 actual=0.677534699 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=11 expected=0.994464040 actual=0.994464040 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=12 expected=0.250324100 actual=0.250324100 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=13 expected=0.070244677 actual=0.070244700 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=14 expected=0.413741976 actual=0.413741976 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=15 expected=0.955204368 actual=0.955204368 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=16 expected=0.498700827 actual=0.498700827 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=17 expected=0.702932954 actual=0.702932954 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=18 expected=0.060032252 actual=0.060032278 error_d24_lsb=0.437500 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=19 expected=0.214828804 actual=0.214828819 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=20 expected=0.082835086 actual=0.082835108 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=21 expected=0.582781732 actual=0.582781732 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=22 expected=0.682567060 actual=0.682567060 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=23 expected=0.217199937 actual=0.217199951 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=24 expected=0.127582029 actual=0.127582043 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=25 expected=0.788256943 actual=0.788256943 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=26 expected=0.254379481 actual=0.254379481 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=27 expected=0.542330980 actual=0.542330980 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=28 expected=0.838145614 actual=0.838145614 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=29 expected=0.777648330 actual=0.777648330 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=30 expected=0.527619004 actual=0.527619004 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=64 height=64 after_source_clear=1 index=31 expected=0.021746280 actual=0.021746308 error_d24_lsb=0.468750 endpoints=1 PASS
+TIMING_CAP timestamp=8876086a end=8876086a frequency=8876086a disjoint=8876086a
+TIMING generation=0 width=64 height=64 iterations=32 gpu_ms_per_decode=-1.000000 batch_cpu_gpu_completion_ms_per_decode=0.048700 serialized_iterations=16 serialized_completion_mean_ms=1.265375 serialized_completion_median_ms=1.278900 serialized_completion_min_ms=1.036400 serialized_completion_max_ms=1.295700 event_poll_sleep_ms=1 disjoint=1 timed_pixel_readback=0
+RESTORE generation=0 width=64 height=64 phase=1 PASS
+CASE generation=0 width=1280 height=768
+COPY_STATE inside_scene=1 original_depth=1 texture=1 pointsize=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=0 expected=0.000000000 actual=0.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=1 expected=0.250000000 actual=0.250000030 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=2 expected=0.750000000 actual=0.750000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=3 expected=1.000000000 actual=1.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=4 expected=0.999899983 actual=0.999899983 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=5 expected=0.999989986 actual=0.999989986 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=6 expected=0.000000060 actual=0.000000089 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=7 expected=0.000000119 actual=0.000000149 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=8 expected=0.999999940 actual=0.999999881 error_d24_lsb=1.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=9 expected=0.999999881 actual=0.999999881 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=10 expected=0.677534699 actual=0.677534699 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=11 expected=0.994464040 actual=0.994464040 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=12 expected=0.250324100 actual=0.250324100 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=13 expected=0.070244677 actual=0.070244700 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=14 expected=0.413741976 actual=0.413741976 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=15 expected=0.955204368 actual=0.955204368 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=16 expected=0.498700827 actual=0.498700827 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=17 expected=0.702932954 actual=0.702932954 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=18 expected=0.060032252 actual=0.060032278 error_d24_lsb=0.437500 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=19 expected=0.214828804 actual=0.214828819 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=20 expected=0.082835086 actual=0.082835108 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=21 expected=0.582781732 actual=0.582781732 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=22 expected=0.682567060 actual=0.682567060 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=23 expected=0.217199937 actual=0.217199951 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=24 expected=0.127582029 actual=0.127582043 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=25 expected=0.788256943 actual=0.788256943 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=26 expected=0.254379481 actual=0.254379481 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=27 expected=0.542330980 actual=0.542330980 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=28 expected=0.838145614 actual=0.838145614 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=29 expected=0.777648330 actual=0.777648330 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=30 expected=0.527619004 actual=0.527619004 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=0 index=31 expected=0.021746280 actual=0.021746308 error_d24_lsb=0.468750 endpoints=1 PASS
+RESTORE generation=0 width=1280 height=768 phase=0 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=0 expected=0.000000000 actual=0.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=1 expected=0.250000000 actual=0.250000030 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=2 expected=0.750000000 actual=0.750000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=3 expected=1.000000000 actual=1.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=4 expected=0.999899983 actual=0.999899983 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=5 expected=0.999989986 actual=0.999989986 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=6 expected=0.000000060 actual=0.000000089 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=7 expected=0.000000119 actual=0.000000149 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=8 expected=0.999999940 actual=0.999999881 error_d24_lsb=1.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=9 expected=0.999999881 actual=0.999999881 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=10 expected=0.677534699 actual=0.677534699 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=11 expected=0.994464040 actual=0.994464040 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=12 expected=0.250324100 actual=0.250324100 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=13 expected=0.070244677 actual=0.070244700 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=14 expected=0.413741976 actual=0.413741976 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=15 expected=0.955204368 actual=0.955204368 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=16 expected=0.498700827 actual=0.498700827 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=17 expected=0.702932954 actual=0.702932954 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=18 expected=0.060032252 actual=0.060032278 error_d24_lsb=0.437500 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=19 expected=0.214828804 actual=0.214828819 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=20 expected=0.082835086 actual=0.082835108 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=21 expected=0.582781732 actual=0.582781732 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=22 expected=0.682567060 actual=0.682567060 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=23 expected=0.217199937 actual=0.217199951 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=24 expected=0.127582029 actual=0.127582043 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=25 expected=0.788256943 actual=0.788256943 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=26 expected=0.254379481 actual=0.254379481 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=27 expected=0.542330980 actual=0.542330980 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=28 expected=0.838145614 actual=0.838145614 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=29 expected=0.777648330 actual=0.777648330 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=30 expected=0.527619004 actual=0.527619004 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=0 width=1280 height=768 after_source_clear=1 index=31 expected=0.021746280 actual=0.021746308 error_d24_lsb=0.468750 endpoints=1 PASS
+TIMING_CAP timestamp=8876086a end=8876086a frequency=8876086a disjoint=8876086a
+TIMING generation=0 width=1280 height=768 iterations=32 gpu_ms_per_decode=-1.000000 batch_cpu_gpu_completion_ms_per_decode=0.086259 serialized_iterations=16 serialized_completion_mean_ms=2.030550 serialized_completion_median_ms=2.379500 serialized_completion_min_ms=1.273800 serialized_completion_max_ms=2.537400 event_poll_sleep_ms=1 disjoint=1 timed_pixel_readback=0
+RESTORE generation=0 width=1280 height=768 phase=1 PASS
+RESET PASS
+CASE generation=1 width=64 height=64
+COPY_STATE inside_scene=1 original_depth=1 texture=1 pointsize=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=0 expected=0.000000000 actual=0.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=1 expected=0.250000000 actual=0.250000030 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=2 expected=0.750000000 actual=0.750000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=3 expected=1.000000000 actual=1.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=4 expected=0.999899983 actual=0.999899983 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=5 expected=0.999989986 actual=0.999989986 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=6 expected=0.000000060 actual=0.000000089 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=7 expected=0.000000119 actual=0.000000149 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=8 expected=0.999999940 actual=0.999999881 error_d24_lsb=1.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=9 expected=0.999999881 actual=0.999999881 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=10 expected=0.677534699 actual=0.677534699 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=11 expected=0.994464040 actual=0.994464040 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=12 expected=0.250324100 actual=0.250324100 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=13 expected=0.070244677 actual=0.070244700 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=14 expected=0.413741976 actual=0.413741976 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=15 expected=0.955204368 actual=0.955204368 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=16 expected=0.498700827 actual=0.498700827 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=17 expected=0.702932954 actual=0.702932954 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=18 expected=0.060032252 actual=0.060032278 error_d24_lsb=0.437500 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=19 expected=0.214828804 actual=0.214828819 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=20 expected=0.082835086 actual=0.082835108 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=21 expected=0.582781732 actual=0.582781732 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=22 expected=0.682567060 actual=0.682567060 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=23 expected=0.217199937 actual=0.217199951 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=24 expected=0.127582029 actual=0.127582043 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=25 expected=0.788256943 actual=0.788256943 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=26 expected=0.254379481 actual=0.254379481 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=27 expected=0.542330980 actual=0.542330980 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=28 expected=0.838145614 actual=0.838145614 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=29 expected=0.777648330 actual=0.777648330 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=30 expected=0.527619004 actual=0.527619004 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=0 index=31 expected=0.021746280 actual=0.021746308 error_d24_lsb=0.468750 endpoints=1 PASS
+RESTORE generation=1 width=64 height=64 phase=0 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=0 expected=0.000000000 actual=0.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=1 expected=0.250000000 actual=0.250000030 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=2 expected=0.750000000 actual=0.750000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=3 expected=1.000000000 actual=1.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=4 expected=0.999899983 actual=0.999899983 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=5 expected=0.999989986 actual=0.999989986 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=6 expected=0.000000060 actual=0.000000089 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=7 expected=0.000000119 actual=0.000000149 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=8 expected=0.999999940 actual=0.999999881 error_d24_lsb=1.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=9 expected=0.999999881 actual=0.999999881 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=10 expected=0.677534699 actual=0.677534699 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=11 expected=0.994464040 actual=0.994464040 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=12 expected=0.250324100 actual=0.250324100 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=13 expected=0.070244677 actual=0.070244700 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=14 expected=0.413741976 actual=0.413741976 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=15 expected=0.955204368 actual=0.955204368 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=16 expected=0.498700827 actual=0.498700827 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=17 expected=0.702932954 actual=0.702932954 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=18 expected=0.060032252 actual=0.060032278 error_d24_lsb=0.437500 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=19 expected=0.214828804 actual=0.214828819 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=20 expected=0.082835086 actual=0.082835108 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=21 expected=0.582781732 actual=0.582781732 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=22 expected=0.682567060 actual=0.682567060 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=23 expected=0.217199937 actual=0.217199951 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=24 expected=0.127582029 actual=0.127582043 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=25 expected=0.788256943 actual=0.788256943 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=26 expected=0.254379481 actual=0.254379481 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=27 expected=0.542330980 actual=0.542330980 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=28 expected=0.838145614 actual=0.838145614 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=29 expected=0.777648330 actual=0.777648330 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=30 expected=0.527619004 actual=0.527619004 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=64 height=64 after_source_clear=1 index=31 expected=0.021746280 actual=0.021746308 error_d24_lsb=0.468750 endpoints=1 PASS
+TIMING_CAP timestamp=8876086a end=8876086a frequency=8876086a disjoint=8876086a
+TIMING generation=1 width=64 height=64 iterations=32 gpu_ms_per_decode=-1.000000 batch_cpu_gpu_completion_ms_per_decode=0.046869 serialized_iterations=16 serialized_completion_mean_ms=1.259250 serialized_completion_median_ms=1.262550 serialized_completion_min_ms=1.200900 serialized_completion_max_ms=1.289400 event_poll_sleep_ms=1 disjoint=1 timed_pixel_readback=0
+RESTORE generation=1 width=64 height=64 phase=1 PASS
+CASE generation=1 width=1280 height=768
+COPY_STATE inside_scene=1 original_depth=1 texture=1 pointsize=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=0 expected=0.000000000 actual=0.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=1 expected=0.250000000 actual=0.250000030 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=2 expected=0.750000000 actual=0.750000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=3 expected=1.000000000 actual=1.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=4 expected=0.999899983 actual=0.999899983 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=5 expected=0.999989986 actual=0.999989986 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=6 expected=0.000000060 actual=0.000000089 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=7 expected=0.000000119 actual=0.000000149 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=8 expected=0.999999940 actual=0.999999881 error_d24_lsb=1.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=9 expected=0.999999881 actual=0.999999881 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=10 expected=0.677534699 actual=0.677534699 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=11 expected=0.994464040 actual=0.994464040 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=12 expected=0.250324100 actual=0.250324100 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=13 expected=0.070244677 actual=0.070244700 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=14 expected=0.413741976 actual=0.413741976 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=15 expected=0.955204368 actual=0.955204368 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=16 expected=0.498700827 actual=0.498700827 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=17 expected=0.702932954 actual=0.702932954 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=18 expected=0.060032252 actual=0.060032278 error_d24_lsb=0.437500 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=19 expected=0.214828804 actual=0.214828819 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=20 expected=0.082835086 actual=0.082835108 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=21 expected=0.582781732 actual=0.582781732 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=22 expected=0.682567060 actual=0.682567060 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=23 expected=0.217199937 actual=0.217199951 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=24 expected=0.127582029 actual=0.127582043 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=25 expected=0.788256943 actual=0.788256943 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=26 expected=0.254379481 actual=0.254379481 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=27 expected=0.542330980 actual=0.542330980 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=28 expected=0.838145614 actual=0.838145614 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=29 expected=0.777648330 actual=0.777648330 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=30 expected=0.527619004 actual=0.527619004 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=0 index=31 expected=0.021746280 actual=0.021746308 error_d24_lsb=0.468750 endpoints=1 PASS
+RESTORE generation=1 width=1280 height=768 phase=0 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=0 expected=0.000000000 actual=0.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=1 expected=0.250000000 actual=0.250000030 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=2 expected=0.750000000 actual=0.750000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=3 expected=1.000000000 actual=1.000000000 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=4 expected=0.999899983 actual=0.999899983 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=5 expected=0.999989986 actual=0.999989986 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=6 expected=0.000000060 actual=0.000000089 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=7 expected=0.000000119 actual=0.000000149 error_d24_lsb=0.500000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=8 expected=0.999999940 actual=0.999999881 error_d24_lsb=1.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=9 expected=0.999999881 actual=0.999999881 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=10 expected=0.677534699 actual=0.677534699 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=11 expected=0.994464040 actual=0.994464040 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=12 expected=0.250324100 actual=0.250324100 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=13 expected=0.070244677 actual=0.070244700 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=14 expected=0.413741976 actual=0.413741976 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=15 expected=0.955204368 actual=0.955204368 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=16 expected=0.498700827 actual=0.498700827 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=17 expected=0.702932954 actual=0.702932954 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=18 expected=0.060032252 actual=0.060032278 error_d24_lsb=0.437500 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=19 expected=0.214828804 actual=0.214828819 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=20 expected=0.082835086 actual=0.082835108 error_d24_lsb=0.375000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=21 expected=0.582781732 actual=0.582781732 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=22 expected=0.682567060 actual=0.682567060 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=23 expected=0.217199937 actual=0.217199951 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=24 expected=0.127582029 actual=0.127582043 error_d24_lsb=0.250000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=25 expected=0.788256943 actual=0.788256943 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=26 expected=0.254379481 actual=0.254379481 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=27 expected=0.542330980 actual=0.542330980 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=28 expected=0.838145614 actual=0.838145614 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=29 expected=0.777648330 actual=0.777648330 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=30 expected=0.527619004 actual=0.527619004 error_d24_lsb=0.000000 endpoints=1 PASS
+SAMPLE generation=1 width=1280 height=768 after_source_clear=1 index=31 expected=0.021746280 actual=0.021746308 error_d24_lsb=0.468750 endpoints=1 PASS
+TIMING_CAP timestamp=8876086a end=8876086a frequency=8876086a disjoint=8876086a
+TIMING generation=1 width=1280 height=768 iterations=32 gpu_ms_per_decode=-1.000000 batch_cpu_gpu_completion_ms_per_decode=0.091859 serialized_iterations=16 serialized_completion_mean_ms=1.707844 serialized_completion_median_ms=1.285700 serialized_completion_min_ms=1.275100 serialized_completion_max_ms=2.536300 event_poll_sleep_ms=1 disjoint=1 timed_pixel_readback=0
+RESTORE generation=1 width=1280 height=768 phase=1 PASS
+RESULT PASS: 256 precision samples, 4 inside-scene copies, 8 state restorations, 4 timings, Reset

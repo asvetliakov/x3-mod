@@ -1,0 +1,26 @@
+{
+  "sampled_codes": 8345,
+  "comparator_models": [
+    {
+      "model": "exact_normalized",
+      "maximum_error_d24_lsb": 0.9999998807907104,
+      "failures": []
+    },
+    {
+      "model": "float32_normalized",
+      "maximum_error_d24_lsb": 1.4999998807907104,
+      "failures": []
+    }
+  ],
+  "passed": true,
+  "old_endpoint_collision": {
+    "code": 16777214,
+    "exact_normalized_depth": 0.9999999403953517,
+    "old_float32_comparison_output": 1.0,
+    "corrected_float32_comparison_output": 0.9999999403953552
+  },
+  "sources_sha256": {
+    "verification/analysis/test_depth_decode_oracle.py": "599d4f3ad9d26790ea0c1c61caaf2d29a0fffc8cbe41074328d128907daba67a",
+    "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5"
+  }
+}

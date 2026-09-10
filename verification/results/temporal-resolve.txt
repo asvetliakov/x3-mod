@@ -1,0 +1,143 @@
+MODULE C:\X3\d3dx9_37.dll
+MODULE C:\windows\system32\d3d9.dll
+ADAPTER NVIDIA GeForce 8800 GTX driver=nvd3dum.dll
+CHECK prepare constants PASS
+GENERATION 0
+CHECK half rounding exponent carry 2 PASS
+CHECK half rounding exponent carry 8 PASS
+CHECK half nearest even tie down PASS
+CHECK half nearest even tie up PASS
+SAMPLE raw viewport center geometry xy=8,8 actual=0.49975586,0.49975586,0.49975586,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+SAMPLE raw viewport neighbor geometry xy=9,8 actual=0.53076172,0.53076172,0.53076172,1.00000000 expected=0.53125000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE zoom rasterized geometry reprojection xy=8,8 actual=0.37475586,0.37475586,0.37475586,1.00000000 expected=0.37500000 tolerance=0.00200000 PASS
+SAMPLE zoom optical center xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE rotation optical center xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE static blend xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE history invalid xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE disocclusion xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE camera one pixel xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE perspective previous depth xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE mixed depth footprint xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE outside bounds xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE behind camera xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE object motion xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+SAMPLE full precision object expected depth xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+SAMPLE object invalid sentinel xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+SAMPLE reserved motion state rejected xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+SAMPLE motion static fallback xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE motion previous jitter xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE neighborhood clipping xy=8,8 actual=0.62500000,0.62500000,0.62500000,1.00000000 expected=0.62500000 tolerance=0.00200000 PASS
+SAMPLE HDR preservation xy=8,8 actual=5.00000000,5.00000000,5.00000000,1.00000000 expected=5.00000000 tolerance=0.01000000 PASS
+SAMPLE invalid history color xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+SAMPLE invalid current color xy=8,8 actual=0.00000000,0.00000000,0.00000000,1.00000000 expected=0.00000000 tolerance=0.00200000 PASS
+SAMPLE invalid current depth xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+SAMPLE invalid history depth xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE camera jitter signs xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+SAMPLE static jitter accumulated coverage xy=8,8 actual=0.43750000,0.43750000,0.43750000,1.00000000 expected=0.50000000 tolerance=0.07000000 PASS
+CHECK prepare constants PASS
+SAMPLE static jitter accumulated coverage xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.50000000 tolerance=0.07000000 PASS
+CHECK prepare constants PASS
+SAMPLE epoch reset xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK resize invalidates PASS
+CHECK device reset invalidates PASS
+CHECK invalid CPU weight rejected PASS
+RESET PASS
+CHECK prepare constants PASS
+GENERATION 1
+CHECK half rounding exponent carry 2 PASS
+CHECK half rounding exponent carry 8 PASS
+CHECK half nearest even tie down PASS
+CHECK half nearest even tie up PASS
+SAMPLE raw viewport center geometry xy=8,8 actual=0.49975586,0.49975586,0.49975586,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+SAMPLE raw viewport neighbor geometry xy=9,8 actual=0.53076172,0.53076172,0.53076172,1.00000000 expected=0.53125000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE zoom rasterized geometry reprojection xy=8,8 actual=0.37475586,0.37475586,0.37475586,1.00000000 expected=0.37500000 tolerance=0.00200000 PASS
+SAMPLE zoom optical center xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE rotation optical center xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE static blend xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE history invalid xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE disocclusion xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE camera one pixel xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE perspective previous depth xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE mixed depth footprint xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE outside bounds xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE behind camera xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE object motion xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+SAMPLE full precision object expected depth xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+SAMPLE object invalid sentinel xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+SAMPLE reserved motion state rejected xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+SAMPLE motion static fallback xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE motion previous jitter xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE neighborhood clipping xy=8,8 actual=0.62500000,0.62500000,0.62500000,1.00000000 expected=0.62500000 tolerance=0.00200000 PASS
+SAMPLE HDR preservation xy=8,8 actual=5.00000000,5.00000000,5.00000000,1.00000000 expected=5.00000000 tolerance=0.01000000 PASS
+SAMPLE invalid history color xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+SAMPLE invalid current color xy=8,8 actual=0.00000000,0.00000000,0.00000000,1.00000000 expected=0.00000000 tolerance=0.00200000 PASS
+SAMPLE invalid current depth xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+SAMPLE invalid history depth xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE camera jitter signs xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+SAMPLE static jitter accumulated coverage xy=8,8 actual=0.43750000,0.43750000,0.43750000,1.00000000 expected=0.50000000 tolerance=0.07000000 PASS
+CHECK prepare constants PASS
+SAMPLE static jitter accumulated coverage xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.50000000 tolerance=0.07000000 PASS
+CHECK prepare constants PASS
+SAMPLE epoch reset xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK resize invalidates PASS
+CHECK device reset invalidates PASS
+CHECK invalid CPU weight rejected PASS
+RESULT PASS samples=58 generations=2

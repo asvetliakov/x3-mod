@@ -1,0 +1,14 @@
+MODULE C:\X3\d3dx9_37.dll
+MODULE C:\windows\system32\d3d9.dll
+ADAPTER NVIDIA GeForce 8800 GTX driver=nvd3dum.dll
+CHECK prepare constants PASS
+GENERATION 0
+CHECK half rounding exponent carry 2 PASS
+CHECK half rounding exponent carry 8 PASS
+CHECK half nearest even tie down PASS
+CHECK half nearest even tie up PASS
+SAMPLE raw viewport center geometry xy=8,8 actual=0.49975586,0.49975586,0.49975586,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+SAMPLE raw viewport neighbor geometry xy=9,8 actual=0.53076172,0.53076172,0.53076172,1.00000000 expected=0.53125000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE zoom rasterized geometry reprojection xy=8,8 actual=0.38256836,0.38256836,0.38256836,1.00000000 expected=0.37500000 tolerance=0.00200000 FAIL
+RESULT FAIL zoom rasterized geometry reprojection

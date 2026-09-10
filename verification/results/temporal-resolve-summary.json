@@ -1,0 +1,34 @@
+{
+  "started_utc": "2026-09-10T18:54:37.049368+00:00",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/temporal_resolve.exe",
+    "C:\\X3\\d3dx9_37.dll",
+    "Z:/Users/asvetl/x3-mod/src/temporal/resolve.hlsl"
+  ],
+  "process_local_override": "d3d9=b",
+  "timeout_seconds": 60,
+  "source_sha256": {
+    "verification/probe/temporal_resolve.cpp": "3995c219d236dc5df70459cfc1e177abadf922efdcb8cad858c0c3603ad2704e",
+    "verification/probe/temporal_build.sh": "541be02d75027469c1d491d0db3adf776aefa149069412929ca7a3affaee62d8",
+    "verification/probe/temporal_run.py": "8339a77f4b038ea73c5f3aae0afc36259e14b4764eeb00bd57cbe3a99feb358f",
+    "src/temporal/resolve.h": "998a427f20aa5a11aacb5b97d71b404ee0dbbd7dbfeb641b2fa8263f11a9be6c",
+    "src/temporal/resolve.hlsl": "1c2b36356d8754fc1354dbd35eb9e0ec6749f25aad90f909625c331a82e43a3c"
+  },
+  "freshly_built": true,
+  "build_exit_code": 0,
+  "executable_sha256": "e1fd9dd9701ba6da06a8e0bbeb786a5a7fd5a5408f14203a15464934256e312e",
+  "exit_code": 0,
+  "sample_checks": 58,
+  "passed_sample_checks": 58,
+  "reset_passed": true,
+  "device_generations": 2,
+  "sources_unchanged_after_run": true,
+  "executable_unchanged_after_run": true,
+  "passed": true
+}
