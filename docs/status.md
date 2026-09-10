@@ -7,6 +7,33 @@ and [roadmap](architecture/roadmap.md).
 
 ## Latest checkpoint
 
+Detached rigid-motion production now has bounded CPU correspondence (3,210
+checks), exact position profiles and a GPU producer (102 numerical samples,
+106 checks and 30 state comparisons). The GPU output feeds the production
+temporal resolve in verification; perspective checks also pass at 1280×768 and
+5120×1440. See [motion history](verification/motion-history.md) and
+[GPU motion](verification/rigid-motion.md). These modules are compiled into the
+current source build but have no live game callsites.
+
+The [archive position review](reverse-engineering/archive-position-paths.md)
+accounts for all 256 VS: 234 homogeneous row-dot paths, 18 direct-clip bloom paths,
+two direct-position GUI/effect paths and two particle billboards. The production
+registry still contains the 16 captured row-dot programs. The other five captured
+programs require explicit separate handling; they are not excluded from final
+TAA/composition scope. Particle RGB blending and missing prior particle identity
+are documented in [particle inputs](reverse-engineering/particle-motion-inputs.md).
+The full Python analysis suite passes **169 tests**.
+
+[Lifecycle disassembly](reverse-engineering/object-lifetimes.md) fingerprints
+renderer-load and ordinary-node/camera retirement sites, including restored
+handle reuse. Universal registry mutation, bulk teardown and camera-cut coverage
+are still unproved; no lifecycle hook is installed by this checkpoint.
+
+The current combined DLL passes all 15 integration cases and the forced native
+fallback with all 12 compiled proxy/renderer objects. It is **not installed**:
+SHA256 `53d91a676ddb855ed936079d128ac47f06666c88b1ed6870b5453f7ea21cd9c4`.
+The installed 0.4 diagnostic DLL retains its historical SHA below.
+
 The user-run 0.4 session has 20 complete captured frames and 13,431 successful
 draws, including a final third-person burst. The installed selector rejected all
 frames and attempted no depth copy: planet haze was unnecessarily mandatory,
@@ -85,11 +112,11 @@ presentation and the requested visual features remain unfinished.
 1. Batch the corrected scene selector and any further required diagnostics before
    another user-managed run. Obtain target identities for the observed ColorFill
    calls and prove successful pre-clear depth preservation in the game.
-2. Build conservative rigid-object correspondence from the verified submitted
-   transforms, with reload/reuse generations, camera cuts and geometry revision
+2. Connect the verified correspondence and GPU motion modules to lifecycle-safe
+   draw records, with reload/reuse generations, camera cuts and geometry revision
    gates. Account separately for CPU-changing particles/stardust and overlays.
-3. Validate jitter placement and a motion producer against the full shader-family
-   inventory, then connect matched color/depth/motion inputs to temporal resolve.
+3. Validate live jitter placement and extend profile registration from the full
+   archive proof, then connect matched color/depth/motion inputs to temporal resolve.
    Camera-only reprojection cannot satisfy the observed scene; TAA remains required.
 4. Establish the FP16 scene path and enable only reviewed material variants there.
    Integrate a GPU-native HDR presentation route; output conversion of clipped
@@ -132,7 +159,7 @@ Texture helpers took 16.382 seconds and inflate 7.109 seconds in observed flushe
 totals. An 89.092-second presentation gap remains incompletely attributed;
 sampling/disassembly identifies an uncovered mesh adjacency/cleaning/optimization
 path. See [loading observations](reverse-engineering/loading-observations.md).
-No loading speedup is implemented.
+No loading speedup is enabled in the game.
 
 The user confirmed a game cursor and macOS arrow at different positions, persisting
 after focus changes. Win32 focus/clipping/hiding restore in the trace, but native

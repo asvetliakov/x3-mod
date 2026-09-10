@@ -106,3 +106,29 @@ After the final pointer-safety changes, a fresh combined build again passes all
 15 DLL integration cases, log/cleanup verification and the forced native fallback.
 Uninstalled corrected DLL SHA256:
 `b81af5d3c0c9c0fd7cbed54ee7fe613453f8309288b17d7602916e3fa0bd1896`.
+
+## Rigid motion and archive coverage checkpoint
+
+Reviewed 2026-09-11. These changes remain detached from game rendering.
+
+| Component | Review outcome and verification |
+| --- | --- |
+| CPU motion history | Independent review of all key fields, exact matrix copies, sealed whole-frame duplicate handling, failed/gapped frames, epochs, allocation and capacity failures. The actual Win32 fixture passes 3,210 checks. Missing external lifetime/coverage proofs stay ineligible. |
+| Lifecycle disassembly | Exact executable and five callsite/context fingerprints reproduce. Load invalidation must precede deserialization, including failed loads; ordinary-node retirement misses the separate camera path. Universal registry mutation and camera-cut detection remain unproved. |
+| Position profiles | Independent reproduction of 21 captured programs and nine structural tests; all 5,410 single-word mutation controls across accepted programs reject. Runtime FLOAT16_4 storage must be preserved. The batched Win32 lookup passes 21 programs / 168 checks with 16 accepted; final runner status now derives from every stability check. |
+| GPU rigid motion | Root review corrected a vertex-range product overflow by bounding against actual VB size before multiplication. A programmable fullscreen invalidation pass resolved the synthetic initialization failure without claiming an unproved backend cause. Final independent review accepts 102 numeric samples, 106 checks, 30 full state comparisons, reset/loss controls and production-resolve consumption. Full-resolution perspective controls bound measured error to 0.001740 pixel at 1280×768 and 0.000515 pixel at 5120×1440; this is not a universal raster or performance proof. |
+| Archive position coverage | Independent reproduction classifies all 256 VS into 234 row-dot, 18 direct XYZW, two direct XYZ/W=1 and two billboards. Position-only proof does not erase the general semantic interpreter's unrelated unknowns. Production lookup remains the original 16 profiles. |
+| Particle evidence | Review corrected scoped-result comparison and excluded 14 uncaptured telemetry frame ends. Reproducible extraction now records 20 complete capture frames and 16 successful non-indexed particle draws; five parser regressions pass. Bound IB identity is irrelevant to those draws. Actual RGB blend contribution, missing particle identities and prior coverage require explicit temporal treatment. |
+| Combined DLL | CMake and fallback object sets reviewed together. Fresh 15-case integration, log/lifetime checks and forced adoption failure pass with all 12 compiled proxy/renderer objects unchanged. Material/motion modules have no live callsites; the cache is not linked. |
+
+The full analysis suite passes **169 tests**. No new game run was requested for
+these checks. GPU motion is verified on original synthetic geometry, including
+half-float conversion and original-position shader controls; it does not establish
+whole-scene eligibility or final TAA quality. The fixture reads motion back for
+assertions before resolving, but the resolve consumes the unchanged GPU texture
+without a CPU modification/reupload.
+
+Current uninstalled DLL SHA256:
+`53d91a676ddb855ed936079d128ac47f06666c88b1ed6870b5453f7ea21cd9c4`.
+Installed diagnostic DLL remains
+`81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516`.
