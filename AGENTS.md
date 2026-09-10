@@ -16,6 +16,8 @@ User preferences recorded 2026-09-10:
   verify it explicitly when changing window/presentation behavior.
 - Keep logically grouped disassembly/architecture findings in separate documents.
 - Document source. Keep verification/probes/test assets separate from production.
+- Name generated C/C++ include fragments `*_inc.h`, not `*.inc`, so the editor
+  applies syntax highlighting.
 - Subagents may be used when helpful for independent research/context management.
 - Close unused launcher menus promptly: they sit above other windows.
 - For future game tests beyond menus, tell the user what is needed and let them

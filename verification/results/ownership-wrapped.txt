@@ -1,0 +1,720 @@
+CHECK factory null output rejected PASS
+CHECK failed factory adoption preserves native reference PASS
+RESULT wrap_factory 00000000
+CHECK wrap_factory PASS
+RESULT factory identity 00000000
+CHECK factory identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+OBSERVE Ex_factory_creation=00000000
+CHECK Ex factory rejected at ownership boundary PASS
+CHECK Ex rejection preserves caller reference PASS
+ITERATION 0
+RESULT create device 00000000
+CHECK create device PASS
+RESULT device identity 00000000
+CHECK device identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT device GetDirect3D 00000000
+CHECK device GetDirect3D PASS
+CHECK canonical factory parent PASS
+RESULT managed texture 00000000
+CHECK managed texture PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT texture identity 00000000
+CHECK texture identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT texture QI base 00000000
+CHECK texture QI base PASS
+RESULT texture QI resource 00000000
+CHECK texture QI resource PASS
+CHECK texture/base/resource IUnknown identity PASS
+RESULT texture surface 00000000
+CHECK texture surface PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT surface texture container 00000000
+CHECK surface texture container PASS
+CHECK surface texture container canonical PASS
+RESULT bind texture 00000000
+CHECK bind texture PASS
+RESULT regain bound texture 00000000
+CHECK regain bound texture PASS
+CHECK bound texture regained after external zero PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT regained texture identity 00000000
+CHECK regained texture identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT overlapping texture getter 00000000
+CHECK overlapping texture getter PASS
+CHECK overlapping texture getters canonical PASS
+RESULT held surface parent after texture regain 00000000
+CHECK held surface parent after texture regain PASS
+CHECK regained texture and held surface parent canonical PASS
+RESULT stateblock captures texture 00000000
+CHECK stateblock captures texture PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT unbind texture 00000000
+CHECK unbind texture PASS
+RESULT stateblock restore 00000000
+CHECK stateblock restore PASS
+RESULT stateblock regained texture 00000000
+CHECK stateblock regained texture PASS
+CHECK stateblock restored texture PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT stateblock regained texture identity 00000000
+CHECK stateblock regained texture identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT final texture unbind 00000000
+CHECK final texture unbind PASS
+RESULT vertex buffer 00000000
+CHECK vertex buffer PASS
+RESULT index buffer 00000000
+CHECK index buffer PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT bind stream 00000000
+CHECK bind stream PASS
+RESULT get stream after external zero 00000000
+CHECK get stream after external zero PASS
+CHECK canonical stream and offsets PASS
+RESULT unbind stream 00000000
+CHECK unbind stream PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT bind indices 00000000
+CHECK bind indices PASS
+RESULT get indices after external zero 00000000
+CHECK get indices after external zero PASS
+CHECK indices regained PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT regained index identity 00000000
+CHECK regained index identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT unbind indices 00000000
+CHECK unbind indices PASS
+RESULT pixel shader 00000000
+CHECK pixel shader PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT bind pixel shader 00000000
+CHECK bind pixel shader PASS
+RESULT get pixel shader after external zero 00000000
+CHECK get pixel shader after external zero PASS
+CHECK pixel shader regained PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT regained shader identity 00000000
+CHECK regained shader identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT unbind pixel shader 00000000
+CHECK unbind pixel shader PASS
+RESULT vertex declaration 00000000
+CHECK vertex declaration PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT bind declaration 00000000
+CHECK bind declaration PASS
+RESULT get declaration after external zero 00000000
+CHECK get declaration after external zero PASS
+CHECK declaration regained PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT regained declaration identity 00000000
+CHECK regained declaration identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT unbind declaration 00000000
+CHECK unbind declaration PASS
+RESULT save backbuffer for surface binding 00000000
+CHECK save backbuffer for surface binding PASS
+RESULT standalone render target 00000000
+CHECK standalone render target PASS
+RESULT standalone depth 00000000
+CHECK standalone depth PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT bind standalone target 00000000
+CHECK bind standalone target PASS
+RESULT bind standalone depth 00000000
+CHECK bind standalone depth PASS
+RESULT regain target after external zero 00000000
+CHECK regain target after external zero PASS
+RESULT regain depth after external zero 00000000
+CHECK regain depth after external zero PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT regained target identity 00000000
+CHECK regained target identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT regained depth identity 00000000
+CHECK regained depth identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT overlapping target getter 00000000
+CHECK overlapping target getter PASS
+CHECK target overlapping identity PASS
+RESULT clear wrapped bound surfaces 00000000
+CHECK clear wrapped bound surfaces PASS
+RESULT restore original target 00000000
+CHECK restore original target PASS
+RESULT unbind standalone depth 00000000
+CHECK unbind standalone depth PASS
+RESULT present forwarded 00000000
+CHECK present forwarded PASS
+RESULT sentinel texture 00000000
+CHECK sentinel texture PASS
+OBSERVE failed_CreateTexture_dimensions=8876086c unchanged=0 null=1
+CHECK invalid texture dimensions fail PASS
+OBSERVE failed_CreateTexture_format=8876086c unchanged=0 null=1
+CHECK invalid texture format fails PASS
+OBSERVE GetTexture_invalid_stage=00000000 unchanged=0 null=1
+RESULT sentinel backbuffer 00000000
+CHECK sentinel backbuffer PASS
+OBSERVE failed_GetRenderTarget=8876086c unchanged=1 null=0
+CHECK invalid render target index fails PASS
+RESULT sentinel swapchain 00000000
+CHECK sentinel swapchain PASS
+OBSERVE failed_GetSwapChain=8876086c unchanged=0 null=1
+CHECK invalid swapchain index fails PASS
+RESULT sentinel stream buffer 00000000
+CHECK sentinel stream buffer PASS
+OBSERVE GetStreamSource_invalid=8876086c unchanged=1 null=0 offset=42 stride=24
+RESULT sentinel texture surface 00000000
+CHECK sentinel texture surface PASS
+OBSERVE failed_GetContainer=80004002 unchanged=0 null=1
+CHECK unknown container interface fails PASS
+RESULT CreateQuery null output capability 00000000
+CHECK CreateQuery null output capability PASS
+RESULT event query 00000000
+CHECK event query PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT query identity 00000000
+CHECK query identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+CHECK query type unchanged PASS
+CHECK query data size unchanged PASS
+RESULT event query Issue 00000000
+CHECK event query Issue PASS
+CHECK query GetData result valid PASS
+RESULT cube texture 00000000
+CHECK cube texture PASS
+RESULT cube face 00000000
+CHECK cube face PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT cube face container 00000000
+CHECK cube face container PASS
+CHECK cube container canonical PASS
+RESULT volume texture 00000000
+CHECK volume texture PASS
+RESULT volume level 00000000
+CHECK volume level PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT volume container 00000000
+CHECK volume container PASS
+CHECK volume container canonical PASS
+RESULT implicit swapchain 00000000
+CHECK implicit swapchain PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT device backbuffer 00000000
+CHECK device backbuffer PASS
+RESULT swapchain backbuffer 00000000
+CHECK swapchain backbuffer PASS
+CHECK implicit backbuffer canonical PASS
+OBSERVE implicit backbuffer GetContainer swapchain=00000000 equal=1
+CHECK implicit backbuffer container canonical PASS
+RESULT regain implicit swapchain 00000000
+CHECK regain implicit swapchain PASS
+CHECK implicit swapchain regained PASS
+RESULT overlapping implicit getter 00000000
+CHECK overlapping implicit getter PASS
+CHECK overlapping implicit canonical PASS
+RESULT additional swapchain 00000000
+CHECK additional swapchain PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+OBSERVE chains_with_additional=1
+OBSERVE additional_enumeration=8876086c
+RESULT additional backbuffer 00000000
+CHECK additional backbuffer PASS
+RESULT additional backbuffer container 00000000
+CHECK additional backbuffer container PASS
+CHECK additional container canonical PASS
+OBSERVE chains_after_additional_release=1
+CHECK borrowed native renderer device PASS
+RESULT native renderer FP16 history 00000000
+CHECK native renderer FP16 history PASS
+RESULT history lifetime marker 00000000
+CHECK history lifetime marker PASS
+RESULT adopt native renderer history 00000000
+CHECK adopt native renderer history PASS
+CHECK adopted history remains alive PASS
+RESULT default texture before reset 00000000
+CHECK default texture before reset PASS
+OBSERVE reset_retained_default=8876086c
+CHECK reset rejects retained default resource PASS
+CHECK renderer history released before failed reset PASS
+CHECK renderer adoption disabled after failed reset PASS
+CHECK failed renderer adoption leaves caller reference alive PASS
+CHECK caller releases rejected renderer reference PASS
+RESULT reset retry after resource release 00000000
+CHECK reset retry after resource release PASS
+CHECK borrowed native renderer device PASS
+RESULT native renderer FP16 history 00000000
+CHECK native renderer FP16 history PASS
+RESULT history lifetime marker 00000000
+CHECK history lifetime marker PASS
+RESULT adopt native renderer history 00000000
+CHECK adopt native renderer history PASS
+CHECK adopted history remains alive PASS
+RESULT separate successful reset 00000000
+CHECK separate successful reset PASS
+CHECK renderer history released before successful reset PASS
+RESULT backbuffer after reset 00000000
+CHECK backbuffer after reset PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT backend lifetime backbuffer 00000000
+CHECK backend lifetime backbuffer PASS
+RESULT backend lifetime marker 00000000
+CHECK backend lifetime marker PASS
+CHECK implicit backbuffer marker survives released caller reference PASS
+CHECK borrowed null safely rejected PASS
+CHECK borrowed foreign pointer safely rejected PASS
+CHECK null renderer resource rejected PASS
+RESULT application texture for seam rejection 00000000
+CHECK application texture for seam rejection PASS
+CHECK application wrapper rejected as renderer resource PASS
+RESULT rejected resource reference preserved 00000000
+CHECK rejected resource reference preserved PASS
+CHECK borrowed native renderer device PASS
+RESULT native renderer FP16 history 00000000
+CHECK native renderer FP16 history PASS
+RESULT history lifetime marker 00000000
+CHECK history lifetime marker PASS
+RESULT adopt native renderer history 00000000
+CHECK adopt native renderer history PASS
+CHECK adopted history remains alive PASS
+RESULT retained child 00000000
+CHECK retained child PASS
+OBSERVE device_release_with_child=1
+CHECK backend stays alive through retained public child PASS
+CHECK renderer history lives while public child retains device PASS
+RESULT recover device from child 00000000
+CHECK recover device from child PASS
+CHECK recovered canonical device PASS
+CHECK final device references zero PASS
+CHECK native backend destroyed after final logical device release PASS
+CHECK renderer history destroyed at final logical device release PASS
+ITERATION 1
+RESULT create device 00000000
+CHECK create device PASS
+RESULT device identity 00000000
+CHECK device identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT device GetDirect3D 00000000
+CHECK device GetDirect3D PASS
+CHECK canonical factory parent PASS
+RESULT managed texture 00000000
+CHECK managed texture PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT texture identity 00000000
+CHECK texture identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT texture QI base 00000000
+CHECK texture QI base PASS
+RESULT texture QI resource 00000000
+CHECK texture QI resource PASS
+CHECK texture/base/resource IUnknown identity PASS
+RESULT texture surface 00000000
+CHECK texture surface PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT surface texture container 00000000
+CHECK surface texture container PASS
+CHECK surface texture container canonical PASS
+RESULT bind texture 00000000
+CHECK bind texture PASS
+RESULT regain bound texture 00000000
+CHECK regain bound texture PASS
+CHECK bound texture regained after external zero PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT regained texture identity 00000000
+CHECK regained texture identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT overlapping texture getter 00000000
+CHECK overlapping texture getter PASS
+CHECK overlapping texture getters canonical PASS
+RESULT held surface parent after texture regain 00000000
+CHECK held surface parent after texture regain PASS
+CHECK regained texture and held surface parent canonical PASS
+RESULT stateblock captures texture 00000000
+CHECK stateblock captures texture PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT unbind texture 00000000
+CHECK unbind texture PASS
+RESULT stateblock restore 00000000
+CHECK stateblock restore PASS
+RESULT stateblock regained texture 00000000
+CHECK stateblock regained texture PASS
+CHECK stateblock restored texture PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT stateblock regained texture identity 00000000
+CHECK stateblock regained texture identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT final texture unbind 00000000
+CHECK final texture unbind PASS
+RESULT vertex buffer 00000000
+CHECK vertex buffer PASS
+RESULT index buffer 00000000
+CHECK index buffer PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT bind stream 00000000
+CHECK bind stream PASS
+RESULT get stream after external zero 00000000
+CHECK get stream after external zero PASS
+CHECK canonical stream and offsets PASS
+RESULT unbind stream 00000000
+CHECK unbind stream PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT bind indices 00000000
+CHECK bind indices PASS
+RESULT get indices after external zero 00000000
+CHECK get indices after external zero PASS
+CHECK indices regained PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT regained index identity 00000000
+CHECK regained index identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT unbind indices 00000000
+CHECK unbind indices PASS
+RESULT pixel shader 00000000
+CHECK pixel shader PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT bind pixel shader 00000000
+CHECK bind pixel shader PASS
+RESULT get pixel shader after external zero 00000000
+CHECK get pixel shader after external zero PASS
+CHECK pixel shader regained PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT regained shader identity 00000000
+CHECK regained shader identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT unbind pixel shader 00000000
+CHECK unbind pixel shader PASS
+RESULT vertex declaration 00000000
+CHECK vertex declaration PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT bind declaration 00000000
+CHECK bind declaration PASS
+RESULT get declaration after external zero 00000000
+CHECK get declaration after external zero PASS
+CHECK declaration regained PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT regained declaration identity 00000000
+CHECK regained declaration identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT unbind declaration 00000000
+CHECK unbind declaration PASS
+RESULT save backbuffer for surface binding 00000000
+CHECK save backbuffer for surface binding PASS
+RESULT standalone render target 00000000
+CHECK standalone render target PASS
+RESULT standalone depth 00000000
+CHECK standalone depth PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT bind standalone target 00000000
+CHECK bind standalone target PASS
+RESULT bind standalone depth 00000000
+CHECK bind standalone depth PASS
+RESULT regain target after external zero 00000000
+CHECK regain target after external zero PASS
+RESULT regain depth after external zero 00000000
+CHECK regain depth after external zero PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT regained target identity 00000000
+CHECK regained target identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT regained depth identity 00000000
+CHECK regained depth identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+RESULT overlapping target getter 00000000
+CHECK overlapping target getter PASS
+CHECK target overlapping identity PASS
+RESULT clear wrapped bound surfaces 00000000
+CHECK clear wrapped bound surfaces PASS
+RESULT restore original target 00000000
+CHECK restore original target PASS
+RESULT unbind standalone depth 00000000
+CHECK unbind standalone depth PASS
+RESULT present forwarded 00000000
+CHECK present forwarded PASS
+RESULT sentinel texture 00000000
+CHECK sentinel texture PASS
+OBSERVE failed_CreateTexture_dimensions=8876086c unchanged=0 null=1
+CHECK invalid texture dimensions fail PASS
+OBSERVE failed_CreateTexture_format=8876086c unchanged=0 null=1
+CHECK invalid texture format fails PASS
+OBSERVE GetTexture_invalid_stage=00000000 unchanged=0 null=1
+RESULT sentinel backbuffer 00000000
+CHECK sentinel backbuffer PASS
+OBSERVE failed_GetRenderTarget=8876086c unchanged=1 null=0
+CHECK invalid render target index fails PASS
+RESULT sentinel swapchain 00000000
+CHECK sentinel swapchain PASS
+OBSERVE failed_GetSwapChain=8876086c unchanged=0 null=1
+CHECK invalid swapchain index fails PASS
+RESULT sentinel stream buffer 00000000
+CHECK sentinel stream buffer PASS
+OBSERVE GetStreamSource_invalid=8876086c unchanged=1 null=0 offset=42 stride=24
+RESULT sentinel texture surface 00000000
+CHECK sentinel texture surface PASS
+OBSERVE failed_GetContainer=80004002 unchanged=0 null=1
+CHECK unknown container interface fails PASS
+RESULT CreateQuery null output capability 00000000
+CHECK CreateQuery null output capability PASS
+RESULT event query 00000000
+CHECK event query PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT query identity 00000000
+CHECK query identity PASS
+RESULT IUnknown repeat 00000000
+CHECK IUnknown repeat PASS
+CHECK IUnknown canonical PASS
+CHECK query type unchanged PASS
+CHECK query data size unchanged PASS
+RESULT event query Issue 00000000
+CHECK event query Issue PASS
+CHECK query GetData result valid PASS
+RESULT cube texture 00000000
+CHECK cube texture PASS
+RESULT cube face 00000000
+CHECK cube face PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT cube face container 00000000
+CHECK cube face container PASS
+CHECK cube container canonical PASS
+RESULT volume texture 00000000
+CHECK volume texture PASS
+RESULT volume level 00000000
+CHECK volume level PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT volume container 00000000
+CHECK volume container PASS
+CHECK volume container canonical PASS
+RESULT implicit swapchain 00000000
+CHECK implicit swapchain PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT device backbuffer 00000000
+CHECK device backbuffer PASS
+RESULT swapchain backbuffer 00000000
+CHECK swapchain backbuffer PASS
+CHECK implicit backbuffer canonical PASS
+OBSERVE implicit backbuffer GetContainer swapchain=00000000 equal=1
+CHECK implicit backbuffer container canonical PASS
+RESULT regain implicit swapchain 00000000
+CHECK regain implicit swapchain PASS
+CHECK implicit swapchain regained PASS
+RESULT overlapping implicit getter 00000000
+CHECK overlapping implicit getter PASS
+CHECK overlapping implicit canonical PASS
+RESULT additional swapchain 00000000
+CHECK additional swapchain PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+OBSERVE chains_with_additional=1
+OBSERVE additional_enumeration=8876086c
+RESULT additional backbuffer 00000000
+CHECK additional backbuffer PASS
+RESULT additional backbuffer container 00000000
+CHECK additional backbuffer container PASS
+CHECK additional container canonical PASS
+OBSERVE chains_after_additional_release=1
+CHECK borrowed native renderer device PASS
+RESULT native renderer FP16 history 00000000
+CHECK native renderer FP16 history PASS
+RESULT history lifetime marker 00000000
+CHECK history lifetime marker PASS
+RESULT adopt native renderer history 00000000
+CHECK adopt native renderer history PASS
+CHECK adopted history remains alive PASS
+RESULT default texture before reset 00000000
+CHECK default texture before reset PASS
+OBSERVE reset_retained_default=8876086c
+CHECK reset rejects retained default resource PASS
+CHECK renderer history released before failed reset PASS
+CHECK renderer adoption disabled after failed reset PASS
+CHECK failed renderer adoption leaves caller reference alive PASS
+CHECK caller releases rejected renderer reference PASS
+RESULT reset retry after resource release 00000000
+CHECK reset retry after resource release PASS
+CHECK borrowed native renderer device PASS
+RESULT native renderer FP16 history 00000000
+CHECK native renderer FP16 history PASS
+RESULT history lifetime marker 00000000
+CHECK history lifetime marker PASS
+RESULT adopt native renderer history 00000000
+CHECK adopt native renderer history PASS
+CHECK adopted history remains alive PASS
+RESULT separate successful reset 00000000
+CHECK separate successful reset PASS
+CHECK renderer history released before successful reset PASS
+RESULT backbuffer after reset 00000000
+CHECK backbuffer after reset PASS
+RESULT child GetDevice 00000000
+CHECK child GetDevice PASS
+CHECK child canonical device PASS
+RESULT backend lifetime backbuffer 00000000
+CHECK backend lifetime backbuffer PASS
+RESULT backend lifetime marker 00000000
+CHECK backend lifetime marker PASS
+CHECK implicit backbuffer marker survives released caller reference PASS
+CHECK borrowed null safely rejected PASS
+CHECK borrowed foreign pointer safely rejected PASS
+CHECK null renderer resource rejected PASS
+RESULT application texture for seam rejection 00000000
+CHECK application texture for seam rejection PASS
+CHECK application wrapper rejected as renderer resource PASS
+RESULT rejected resource reference preserved 00000000
+CHECK rejected resource reference preserved PASS
+CHECK borrowed native renderer device PASS
+RESULT native renderer FP16 history 00000000
+CHECK native renderer FP16 history PASS
+RESULT history lifetime marker 00000000
+CHECK history lifetime marker PASS
+RESULT adopt native renderer history 00000000
+CHECK adopt native renderer history PASS
+CHECK adopted history remains alive PASS
+RESULT retained child 00000000
+CHECK retained child PASS
+OBSERVE device_release_with_child=1
+CHECK backend stays alive through retained public child PASS
+CHECK renderer history lives while public child retains device PASS
+RESULT recover device from child 00000000
+CHECK recover device from child PASS
+CHECK recovered canonical device PASS
+CHECK final device references zero PASS
+CHECK native backend destroyed after final logical device release PASS
+CHECK renderer history destroyed at final logical device release PASS
+RESULT device retaining factory 00000000
+CHECK device retaining factory PASS
+RESULT recover released factory through device 00000000
+CHECK recover released factory through device PASS
+CHECK recovered factory canonical PASS
+CHECK parent-chain device final zero PASS
+CHECK factory references zero PASS
+OWNERSHIP RESULT checks=431 failures=0
