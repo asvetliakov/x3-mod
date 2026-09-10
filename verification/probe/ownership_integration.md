@@ -12,7 +12,7 @@ python3 verification/probe/verify_ownership_integration.py
 python3 verification/probe/run_ownership_integration_fallback.py
 ```
 
-The runner performs a clean CMake build and recompiles every consumed fixture before launching any case. Source hashes are recorded before compilation, after compilation and after execution. It rejects changes across those checkpoints and checks EXE/DLL hashes before and after execution, plus hashes of each isolated copy and report. The fallback run requires that fresh-build manifest still match current inputs and checks the twelve linked proxy/renderer objects before and after execution. It copies the DLL and executables into disposable verification directories and uses `/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine --bottle Steam --no-update`, with app-local D3D9 override. It does not mutate bottle settings, launch X3, install a DLL, or replace `build/d3d9.dll`.
+The runner performs a clean CMake build and recompiles every consumed fixture before launching any case. Source hashes are recorded before compilation, after compilation and after execution. It rejects changes across those checkpoints and checks EXE/DLL hashes before and after execution, plus hashes of each isolated copy and report. The fallback run requires that fresh-build manifest still match current inputs and checks the fifteen linked proxy/renderer objects before and after execution. It copies the DLL and executables into disposable verification directories and uses `/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine --bottle Steam --no-update`, with app-local D3D9 override. It does not mutate bottle settings, launch X3, install a DLL, or replace `build/d3d9.dll`.
 
 ## Historical installed 0.4 checkpoint
 
@@ -47,23 +47,28 @@ Final child cleanup now releases its parent through `parent->application->Releas
 
 The imports audit shows ADVAPI32, KERNEL32, USER32 and UCRT dependencies; no external libstdc++, libgcc or libwinpthread DLL is needed. These are synthetic API/lifetime checks, not gameplay, visual-quality, frame-pacing or performance measurements.
 
-## Current source checkpoint: detached renderer modules
+## Current source checkpoint: motion inputs, lifetime and cache integration
 
-Verified 2026-09-11. CMake now compiles the material-radiance transformer, motion
-history, exact rigid-position lookup and rigid-motion pass alongside the existing
-temporal pass. No live renderer callsites or visual features are enabled by this
-link change. The mesh-adjacency cache remains detached and is not compiled into
-this DLL.
+Verified 2026-09-11. CMake now also compiles the actual draw-input reader, registry
+lifetime observer and bounded adjacency cache. Captured draws carry scoped motion
+input records; lifetime proof requires matching before/after epochs, mutation
+revision and serials. `--object-lifetime` requires `--object-trace --ownership`;
+`--mesh-cache` requires `--telemetry`. Both new switches are off by default. The
+mesh cache has a separate actual-hook fixture; this combined matrix disables it.
+The object-requested case enables both engine observers and verifies they refuse
+the synthetic executable fingerprint while ordinary rendering remains operational.
+The material, motion-history, rigid-motion and temporal modules remain detached
+from live rendering. No visual feature is enabled by this integration.
 
 A fresh build passes all 15 integration cases, capture/lifetime verification and
-the forced adoption-failure fallback. The fallback links all **12** compiled
+the forced adoption-failure fallback. The fallback links all **15** compiled
 proxy/renderer objects unchanged; only the ownership implementation is replaced
 by the test stub. Source and binary hashes match before and after both runs.
 The current result files describe this build; historical installed evidence is
 retained in Git history and the iteration notes.
 
 Uninstalled production DLL SHA256:
-`53d91a676ddb855ed936079d128ac47f06666c88b1ed6870b5453f7ea21cd9c4`.
+`ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5`.
 The installed diagnostic DLL remains
 `81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516`.
 This matrix verifies combined API/lifetime behavior; the numerical motion and

@@ -22,6 +22,22 @@ def draw_summary(records, include_floats=False):
 
 
 class CaptureObjectSummaryTests(unittest.TestCase):
+    def test_motion_input_keeps_gates_and_requires_matching_scope(self):
+        record = ('motion_input device=1 frame=7 index=1 blockers=00000200 proofs=30 '
+                  'rows_hash=8000000000000001 lifetime_verified=0 vertex_finite_verified=0')
+        draw = draw_summary([record])
+        self.assertTrue(draw['motion_input_matches_draw'])
+        self.assertEqual(draw['motion_input']['proofs'], '30')
+        self.assertEqual(draw['motion_input']['lifetime_verified'], '0')
+        self.assertEqual(draw['motion_input']['rows_hash'], '8000000000000001')
+        for old, new in (('device=1', 'device=2'), ('frame=7', 'frame=8'),
+                         ('index=1', 'index=2'), ('device=1 ', '')):
+            self.assertFalse(draw_summary([record.replace(old, new)])['motion_input_matches_draw'])
+        self.assertNotIn('motion_input', draw_summary([]))
+        lifetime = record.replace('motion_input', 'motion_lifetime')
+        self.assertTrue(draw_summary([lifetime])['motion_lifetime_matches_draw'])
+        self.assertFalse(draw_summary([lifetime.replace('index=1', 'index=2')])['motion_lifetime_matches_draw'])
+
     def test_valid_context_all_matrix_roles_position_basis_and_scale_are_raw(self):
         records = [CONTEXT]
         for role in ('world', 'world_basis', 'view', 'projection', 'scale'):

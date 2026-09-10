@@ -4,6 +4,8 @@
 #include "loading_trace.h"
 #include "scene_capture.h"
 #include "object_trace.h"
+#include "object_lifetime.h"
+#include "draw_input.h"
 #include "../ownership/d3d9_ownership.h"
 #include <array>
 #include <cstdarg>
@@ -54,6 +56,7 @@ struct Device : Hooks {
     uint64_t events = 0;
     telemetry::State stats;
     SceneCapture scene_depth;
+    DrawInputReader draw_inputs;
     unsigned remaining = 0;
     bool capture = false;
     bool key_down = false;
@@ -88,6 +91,60 @@ uint64_t hash_bytes(const void* data, size_t size) {
     auto bytes = static_cast<const unsigned char*>(data);
     for (size_t i = 0; i < size; ++i) { hash ^= bytes[i]; hash *= 1099511628211ull; }
     return hash;
+}
+struct ObservedDraw {
+    DrawInput input{};
+    object_lifetime::Snapshot lifetime{};
+    std::uintptr_t registry = 0;
+    bool lifetime_observed = false;
+};
+ObservedDraw read_draw_input(Device& ctx,IDirect3DDevice9* device,const DrawArguments& arguments) {
+    if(!ctx.capture)return {};
+    ObservedDraw draw{};
+    object_trace::Snapshot scope{};
+    const bool scoped=object_trace::current(&scope);
+    draw.input=ctx.draw_inputs.read(device,arguments,scoped?&scope:nullptr);
+    draw.lifetime_observed=object_lifetime::active();
+    if(draw.lifetime_observed)draw.lifetime.reason=object_lifetime::Reason::LookupUnavailable;
+    if(scoped&&!(draw.input.blockers&ObjectScope)) {
+        draw.registry=scope.registry;
+        if(object_lifetime::current(scope.registry,scope.node,scope.node_handle,
+                                    scope.camera,scope.camera_handle,&draw.lifetime)) {
+            auto& observation=draw.input.observation;
+            observation.key.object_lifetime=draw.lifetime.node_serial;
+            observation.key.camera_lifetime=draw.lifetime.camera_serial;
+            observation.proofs|=renderer::LifetimeVerified;
+        }
+    }
+    return draw;
+}
+void record_draw_input(Device& ctx,ObservedDraw& draw,HRESULT result) {
+    if(!ctx.capture)return;
+    auto& input=draw.input;
+    DrawInputReader::complete(input,result);
+    const auto& o=input.observation;const auto& k=o.key;
+    object_lifetime::Snapshot after{};
+    if(draw.lifetime.known) {
+        const bool known=object_lifetime::current(draw.registry,k.node,k.node_handle,k.camera,k.camera_handle,&after);
+        if(!known||after.observer_epoch!=draw.lifetime.observer_epoch||after.load_epoch!=draw.lifetime.load_epoch||
+           after.registry_epoch!=draw.lifetime.registry_epoch||after.mutation_revision!=draw.lifetime.mutation_revision||
+           after.node_serial!=draw.lifetime.node_serial||after.camera_serial!=draw.lifetime.camera_serial)
+            input.observation.proofs&=~renderer::LifetimeVerified;
+    } else after=draw.lifetime;
+    log("motion_input device=%llu frame=%llu index=%llu blockers=%08lx proofs=%lu position_path=%u vs=%016llx ps=%016llx declaration=%016llx rows_hash=%016llx color=%llu depth=%llu width=%u height=%u cull=%u vb=%llu vb_revision=%llu ib=%llu ib_revision=%llu position_offset=%u position_type=%u lifetime_verified=%u vertex_finite_verified=0",
+        ctx.id,ctx.frame,ctx.draws,static_cast<DWORD>(input.blockers),static_cast<DWORD>(o.proofs),unsigned(input.position_path),
+        input.vertex_program,input.pixel_program,k.declaration,hash_bytes(o.submitted_wvp.data(),sizeof(o.submitted_wvp)),
+        input.color_target,input.depth_target,input.width,input.height,unsigned(input.cull),
+        k.vertex_buffer,k.vertex_revision,k.index_buffer,k.index_revision,k.position_offset,k.position_type,
+        (o.proofs&renderer::LifetimeVerified)!=0);
+    // Preserve the terminal failure record if the observer disabled itself
+    // during either lookup. Its current active state must not hide that cause.
+    if(draw.lifetime_observed)
+        log("motion_lifetime device=%llu frame=%llu index=%llu before_known=%u after_known=%u before_reason=%u after_reason=%u registry=%p observer_epoch=%llu load_epoch=%llu registry_epoch=%llu mutation_before=%llu mutation_after=%llu node_serial=%llu camera_serial=%llu observer_epoch_after=%llu load_epoch_after=%llu registry_epoch_after=%llu node_serial_after=%llu camera_serial_after=%llu",
+            ctx.id,ctx.frame,ctx.draws,draw.lifetime.known,after.known,unsigned(draw.lifetime.reason),unsigned(after.reason),
+            reinterpret_cast<void*>(draw.registry),draw.lifetime.observer_epoch,draw.lifetime.load_epoch,draw.lifetime.registry_epoch,
+            draw.lifetime.mutation_revision,after.mutation_revision,draw.lifetime.node_serial,draw.lifetime.camera_serial,
+            after.observer_epoch,after.load_epoch,after.registry_epoch,after.node_serial,after.camera_serial);
 }
 template<typename Shader> uint64_t shader_id(Shader* shader, const char* kind) {
     if (!shader) return 0;
@@ -290,6 +347,7 @@ HRESULT WINAPI reset(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p) {
 HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT c) {
     HookGuard lock;
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    auto input=read_draw_input(ctx,d,{DrawMethod::Primitive,t,c,s});
     ctx.scene_depth.before_draw(d,t,c);
     snapshot(d,"primitive",t,c);
     if (devices.at(d)->capture) log("draw_args start_vertex=%u",s);
@@ -297,12 +355,14 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT
     const HRESULT result=devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,UINT)>(81)(d,t,s,c);
     timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
     ctx.scene_depth.after_draw(result);
+    record_draw_input(ctx,input,result);
     if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
     return result;
 }
 HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,UINT n,UINT s,UINT c) {
     HookGuard lock;
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    auto input=read_draw_input(ctx,d,{DrawMethod::Indexed,t,c,s,b,m,n});
     ctx.scene_depth.before_draw(d,t,c);
     snapshot(d,"indexed",t,c);
     if (devices.at(d)->capture) log("draw_args base_vertex=%d min_vertex=%u num_vertices=%u start_index=%u",b,m,n,s);
@@ -310,12 +370,14 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
     const HRESULT result=devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,INT,UINT,UINT,UINT,UINT)>(82)(d,t,b,m,n,s,c);
     timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
     ctx.scene_depth.after_draw(result);
+    record_draw_input(ctx,input,result);
     if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
     return result;
 }
 HRESULT WINAPI draw_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT c,const void* data,UINT stride) {
     HookGuard lock;
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    auto input=read_draw_input(ctx,d,{DrawMethod::UserMemory,t,c});
     ctx.scene_depth.before_draw(d,t,c);
     snapshot(d,"up",t,c,true);
     if (devices.at(d)->capture) log("draw_args vertex_ptr=%p stride=%u",data,stride);
@@ -323,12 +385,14 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT c,const void*
     const HRESULT result=devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,const void*,UINT)>(83)(d,t,c,data,stride);
     timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
     ctx.scene_depth.after_draw(result);
+    record_draw_input(ctx,input,result);
     if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
     return result;
 }
 HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT m,UINT n,UINT c,const void* indices,D3DFORMAT f,const void* data,UINT stride) {
     HookGuard lock;
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    auto input=read_draw_input(ctx,d,{DrawMethod::IndexedUserMemory,t,c,0,0,m,n});
     ctx.scene_depth.before_draw(d,t,c);
     snapshot(d,"indexed_up",t,c,true);
     if (devices.at(d)->capture) log("draw_args min_vertex=%u num_vertices=%u vertex_ptr=%p stride=%u index_ptr=%p index_format=%u",m,n,data,stride,indices,f);
@@ -336,6 +400,7 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT m,UIN
     const HRESULT result=devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,UINT,UINT,const void*,D3DFORMAT,const void*,UINT)>(84)(d,t,m,n,c,indices,f,data,stride);
     timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
     ctx.scene_depth.after_draw(result);
+    record_draw_input(ctx,input,result);
     if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
     return result;
 }

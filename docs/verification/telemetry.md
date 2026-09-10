@@ -75,6 +75,36 @@ without interrogating the failed resource arguments. Draw snapshots and all
 boundary observations preserve the backend's returned COM objects and pointers.
 The new depth/stretch hooks are not installed with telemetry disabled.
 
+## Motion input and lifetime diagnostics
+
+The next source build adds `motion_input` after each draw in requested capture
+frames. It records the actual shader path, submitted-row bit hash, declaration,
+target identities, buffer allocation/revision identities and independent blocker
+and proof masks. The record is tied to the draw's `device`, `frame` and `index`.
+The capture summarizer retains those fields and explicitly reports whether all
+three coordinates match; missing or mismatched records establish no eligibility.
+
+`blockers` is hexadecimal; `proofs` is decimal. Blocker bits are position program
+1, pixel coverage 2, position layout 4, buffer description 8, buffer revision 16,
+draw range 32, raster state 64, target layout 128, submitted rows 256, object scope
+512, user-memory draw 1024, query failure 2048 and submission failure 4096. Proof
+bits are lifetime 1, known geometry revisions 2, reviewed position 4, supported
+coverage 8 and successful submission 16. Zero blockers alone does not prove a
+lifetime. Even all five proof bits do not establish finite vertex payloads,
+geometry retention until replay, camera-cut policy or final scene-color coverage.
+`vertex_finite_verified=0` keeps the unimplemented payload gate explicit.
+
+`--object-lifetime` requests the exact-build registry observer and requires
+`--object-trace --ownership`. The observer is off by default. When active at the
+start of a captured draw, `motion_lifetime` records the before/after lookup status,
+epochs, mutation revisions and node/camera serials. Lifetime proof survives only
+when both lookups agree across the native draw. A failure that disables observation
+still produces its terminal record. The loader records activation status and
+whether a complete initial registry snapshot was available. These observations
+describe storage identity; a camera cut can occur without destroying the camera.
+See [lifetime analysis](../reverse-engineering/object-lifetimes.md) and
+[draw-input verification](draw-input.md).
+
 ## Cursor, window, focus and optional phase markers
 
 Only when telemetry is enabled, the proxy observes D3D SetCursorProperties,

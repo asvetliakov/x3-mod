@@ -1,6 +1,7 @@
 #include "capture.h"
 #include "telemetry.h"
 #include "object_trace.h"
+#include "object_lifetime.h"
 #include "../ownership/d3d9_ownership.h"
 #include <string>
 
@@ -40,6 +41,11 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
         x3m::log("backend path=%ls", path);
         x3m::object_trace::initialize();
         x3m::log("object_trace active=%u status=%s recovery_required=%u",x3m::object_trace::active(),x3m::object_trace::status(),x3m::object_trace::recovery_required());
+        x3m::object_lifetime::initialize();
+        const auto lifetime_stats=x3m::object_lifetime::stats();
+        x3m::log("object_lifetime active=%u status=%s recovery_required=%u baseline_complete=%u baseline_entries=%lu",
+            x3m::object_lifetime::active(),x3m::object_lifetime::status(),x3m::object_lifetime::recovery_required(),
+            lifetime_stats.baseline_complete,static_cast<DWORD>(lifetime_stats.baseline_entries));
     } else {
         x3m::log("ERROR backend load failed error=%lu", load_error);
     }

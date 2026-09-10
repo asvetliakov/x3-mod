@@ -81,7 +81,9 @@ def main():
                 env = dict(os.environ, X3M_TELEMETRY='1', X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES=frames,
                            X3M_DEPTH_COPY='1' if mode in ('depth_only', 'copy_depth', 'scene_depth') else '0',
                            X3M_SCENE_DEPTH_CAPTURE='1' if mode in ('scene_depth', 'scene_only') else '0',
-                           X3M_OBJECT_TRACE='1' if mode == 'object_requested' else '0')
+                           X3M_OBJECT_TRACE='1' if mode == 'object_requested' else '0',
+                           X3M_OBJECT_LIFETIME='1' if mode == 'object_requested' else '0',
+                           X3M_MESH_CACHE='0')
                 if mode in ('on', 'copy_depth', 'scene_depth'):
                     env['X3M_OWNERSHIP'] = '1'
                 else:

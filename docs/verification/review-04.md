@@ -152,3 +152,77 @@ disturb LastError/FP state; the fixture verifies original entry/output state and
 five complete downstream native mesh cases. No duplicate game test was requested.
 Measured acquisition-inclusive hit cost is synthetic; this module remains detached
 and uninstalled, with game memory-pool eligibility and hit rate unmeasured.
+
+## Archive registry, reactive history and live draw inputs
+
+The full registry expansion received independent review and deterministic
+regeneration: 234 row-dot VS, 22 separately classified VS, and 494 positive-only
+PS coverage profiles. One malformed PS stays unproved. All 751 original-program
+lookups and 547,927 single-word mutations pass the Win32 fixture. The generator
+and coverage proofs add 37 original synthetic tests; the full analysis suite now
+passes 207 tests including the new scoped motion-record parser control. The
+lookup runner invalidates old PASS evidence before reading any source inputs.
+
+Reactive history review accepted explicit unknown/nonreactive/required policies,
+owned R32F snapshots, current and previous positive-weight sampling-footprint
+rejection, and atomic color/depth/mask publication. The zero-alpha, source-color
+particle fixture proves that masking is independent of alpha. It covers birth,
+disappearance, movement, reordering, opaque occlusion, object-motion lookup, HDR,
+policy changes and third-draw/restoration failures. Final production-pass evidence
+is 98 numeric samples / 102 state comparisons; standalone resolve and rigid-motion
+regressions remain 58 and 102 samples, respectively.
+
+The new draw reader was independently reviewed against its original native-device
+fixture. Review found that a failing VB/IB GetDesc could populate plausible bytes
+and leave the separate coverage proof set. Coverage now also requires successful
+buffer-description evidence; both failure-populated descriptor controls pass.
+Final verification is 167 checks / 48 ordinary state comparisons / seven getter
+faults. RAII releases all acquired references; range arithmetic is widened and
+bounded before subtraction/multiplication; nonindexed draws ignore the bound IB.
+These local proofs do not grant engine lifetimes, finite vertex payloads or final
+scene-color ownership. Capture wiring and the lifetime observer require their own
+integration verification before a new game test.
+
+The ownership buffer-endpoint helper also received root review: unregistered
+null-backed shells capture pristine Lock/Unlock slots without COM calls. Native,
+unknown, wrong-kind and replaced-slot inputs reject; the 698-check buffer suite
+includes shared and copied vtable controls with unchanged reference counts and
+metadata. This helper certifies only forwarding endpoints, not native unlock
+success or mesh-cache tracking parity.
+
+### Central registry lifetime observer
+
+Independent source, ABI, fixture, provenance and documentation review accepted
+the exact-build observer. Review caught loss of live detour ownership allowing
+stale serial publication; every known lookup and insertion publication now checks
+owned patch bytes. Early absent-engine calls stay dormant, while loss after a
+trusted registry invalidates identities. Published trampolines remain callable
+after shutdown and production reinstallation is refused. The final fixture passes
+533 checks / 72 backend calls, plus six runner tests. Live game coverage and camera
+cuts remain separate requirements; see [observer verification](object-lifetime-observer.md).
+
+The capture integration has a separate independent review. It requires matching
+before/after epochs, mutation revision and node/camera serials around the original
+draw. Terminal observer failures remain logged even if observation disables
+itself, and both generations of identity fields are retained for diagnosis. The
+parser retains explicit coordinate-match status and all 11 focused tests pass.
+
+### Combined motion/lifetime/cache source build
+
+The clean combined DLL `ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5`
+passes all 15 integration cases and the forced native-adoption fallback with all
+15 proxy/renderer objects. Scoped motion input records are verified for actual
+captured fixture draws; failed submissions cannot carry the success proof. Both
+engine observers refuse the wrong executable. All source and binary hashes remain
+stable across compilation/execution. The matrix keeps cache execution disabled;
+its actual-hook behavior is covered separately. Nothing was installed by these
+checks. The analysis suite passes 213 tests.
+
+The final root pass also found that the newly constructed cache pointer was
+published under the mesh lock but read by telemetry under a different mutex.
+The later log call did not order a concurrent report's earlier access. Independent
+review confirmed the startup race. The fix release-publishes the fully
+constructed immutable cache pointer and acquire-loads a local at each consumer.
+Reporting retains access after a cache fault or shutdown, without adding a mesh
+lock or inverse lock order. Independent review and fresh 5,757 cache checks plus
+68 + 123 loading regression checks pass for the corrected source.

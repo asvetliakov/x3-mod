@@ -49,7 +49,9 @@ def verify():
                     assert int(depth[-1]['generation'])>int(depth[0]['generation']),'Reset must replace copy storage'
                 if name=='auto':assert len([d for d in depth if d['phase']=='reset_after'])==1
             else:assert not depth
-            if mode=='object_requested':assert 'object_trace active=0 status=executable_mismatch' in trace
+            if mode=='object_requested':
+                assert 'object_trace active=0 status=executable_mismatch' in trace
+                assert 'object_lifetime active=0 status=executable_mismatch' in trace
             if mode=='scene_depth':
                 assert 'scene_depth_frame phase=begin ' in trace
                 assert 'scene_depth_copy ' not in trace, 'Unrecognized synthetic frame must not select game boundary'

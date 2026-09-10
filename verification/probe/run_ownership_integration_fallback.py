@@ -14,17 +14,17 @@ assert manifest['result']=='PASS' and manifest['sources']==sources(),'Run fresh-
 assert manifest['binaries_at_end']==binaries(),'Integration binaries changed'
 object_root=root/'build-ownership/CMakeFiles/d3d9.dir'
 objects=sorted(p for p in (object_root/'src').rglob('*.obj') if 'ownership' not in p.parts)
-expected={'src/proxy/'+name+'.cpp.obj' for name in ('loader','capture','capture_state','scene_capture','object_trace','telemetry','loading_trace')}
+expected={'src/proxy/'+name+'.cpp.obj' for name in ('loader','capture','capture_state','scene_capture','object_trace','telemetry','loading_trace','draw_input','object_lifetime','mesh_adjacency_cache')}
 expected.update('src/renderer/'+name+'.cpp.obj' for name in
                 ('temporal_pass','material_radiance','motion_history','rigid_position','rigid_motion'))
 assert {str(p.relative_to(object_root)) for p in objects}==expected,'Build all current production components first'
 object_hashes={str(p.relative_to(root)):sha(p) for p in objects}
 (results/'ownership-integration-fallback.json').write_text(json.dumps({'result':'RUNNING'})+'\n')
 directory=probe/('ownership-integration-fallback-'+datetime.datetime.now().strftime('%Y%m%d-%H%M%S'));directory.mkdir(parents=True)
-command=['i686-w64-mingw32-g++','-std=c++17','-shared','-static','-static-libgcc','-static-libstdc++','-Wl,--kill-at','-Wl,--enable-stdcall-fixup','-o',str(directory/'d3d9.dll'),str(root/'verification/probe/ownership_integration_fallback_stub.cpp'),*[str(p) for p in objects],str(root/'src/proxy/d3d9.def'),'-ldxguid','-luser32','-ladvapi32']
+command=['i686-w64-mingw32-g++','-std=c++17','-msse2','-mfpmath=sse','-mstackrealign','-mincoming-stack-boundary=2','-shared','-static','-static-libgcc','-static-libstdc++','-Wl,--kill-at','-Wl,--enable-stdcall-fixup','-o',str(directory/'d3d9.dll'),str(root/'verification/probe/ownership_integration_fallback_stub.cpp'),*[str(p) for p in objects],str(root/'src/proxy/d3d9.def'),'-ldxguid','-luser32','-ladvapi32']
 subprocess.run(command,check=True)
 shutil.copy(probe/'d3d9_smoke.exe',directory)
-env=dict(os.environ,X3M_OWNERSHIP='1',X3M_DEPTH_COPY='0',X3M_SCENE_DEPTH_CAPTURE='0',X3M_OBJECT_TRACE='0',X3M_TELEMETRY='1',X3M_CAPTURE_START='1',X3M_CAPTURE_FRAMES='1')
+env=dict(os.environ,X3M_OWNERSHIP='1',X3M_DEPTH_COPY='0',X3M_SCENE_DEPTH_CAPTURE='0',X3M_OBJECT_TRACE='0',X3M_OBJECT_LIFETIME='0',X3M_MESH_CACHE='0',X3M_TELEMETRY='1',X3M_CAPTURE_START='1',X3M_CAPTURE_FRAMES='1')
 wine='/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
 stdout_path=results/'ownership-integration-fallback.txt'
 with stdout_path.open('w') as stdout,(results/'ownership-integration-fallback-wine.log').open('w') as stderr:

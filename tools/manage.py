@@ -37,11 +37,17 @@ def main():
     parser.add_argument('--depth-copy', action='store_true', help='Enable experimental original-preserving depth copy (requires --ownership)')
     parser.add_argument('--scene-depth-capture', action='store_true', help='Preserve identified scene depth in requested capture frames (requires --ownership --depth-copy)')
     parser.add_argument('--object-trace', action='store_true', help='Capture verified engine submission identity (exact executable only)')
+    parser.add_argument('--object-lifetime', action='store_true', help='Observe verified render-registry lifetimes (requires --object-trace --ownership)')
+    parser.add_argument('--mesh-cache', action='store_true', help='Enable experimental verified native adjacency reuse (requires --telemetry)')
     args = parser.parse_args()
     if args.depth_copy and not args.ownership:
         parser.error('--depth-copy requires --ownership.')
     if args.scene_depth_capture and not (args.ownership and args.depth_copy):
         parser.error('--scene-depth-capture requires --ownership and --depth-copy.')
+    if args.object_lifetime and not (args.object_trace and args.ownership):
+        parser.error('--object-lifetime requires --object-trace and --ownership.')
+    if args.mesh_cache and not args.telemetry:
+        parser.error('--mesh-cache requires --telemetry.')
     game = args.game_dir.resolve()
     dll = game / 'd3d9.dll'
     manifest = game / 'x3-modern-install.json'
@@ -87,6 +93,8 @@ def main():
         env['X3M_DEPTH_COPY'] = '1' if args.depth_copy else '0'
         env['X3M_SCENE_DEPTH_CAPTURE'] = '1' if args.scene_depth_capture else '0'
         env['X3M_OBJECT_TRACE'] = '1' if args.object_trace else '0'
+        env['X3M_OBJECT_LIFETIME'] = '1' if args.object_lifetime else '0'
+        env['X3M_MESH_CACHE'] = '1' if args.mesh_cache else '0'
         # --dll applies to this child only, preserving the user's other overrides.
         command = [str(WINE), '--bottle', args.bottle, '--no-update',
                    '--dll', 'd3d9=b' if args.vanilla else 'd3d9=n,b',

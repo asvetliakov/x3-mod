@@ -1,11 +1,11 @@
 {
   "result": "PASS",
-  "dll_sha256": "53d91a676ddb855ed936079d128ac47f06666c88b1ed6870b5453f7ea21cd9c4",
+  "dll_sha256": "ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5",
   "cases": {
     "off-smoke": {
       "devices": 2,
       "destroyed": 2,
-      "reused_device_addresses": 1
+      "reused_device_addresses": 0
     },
     "off-capture": {
       "devices": 2,
@@ -40,12 +40,12 @@
     "on-lifetime": {
       "devices": 16,
       "destroyed": 16,
-      "reused_device_addresses": 11
+      "reused_device_addresses": 10
     },
     "on-contracts": {
       "devices": 3,
       "destroyed": 3,
-      "reused_device_addresses": 1
+      "reused_device_addresses": 0
     },
     "on-auto": {
       "devices": 1,
@@ -55,7 +55,7 @@
     "depth_only-smoke": {
       "devices": 2,
       "destroyed": 2,
-      "reused_device_addresses": 0
+      "reused_device_addresses": 1
     },
     "copy_depth-auto": {
       "devices": 1,
@@ -70,7 +70,7 @@
     "scene_only-smoke": {
       "devices": 2,
       "destroyed": 2,
-      "reused_device_addresses": 0
+      "reused_device_addresses": 1
     },
     "object_requested-smoke": {
       "devices": 2,

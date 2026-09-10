@@ -24,6 +24,13 @@ def verify(trace):
         for frame in (initial,restored,cleared,recreated,up):
             assert frame['complete'] and frame['draw_count_matches']
             assert frame['present_result'] == '00000000'
+            for draw in frame['draws']:
+                assert draw['motion_input_matches_draw']
+                motion = draw['motion_input']
+                assert motion['lifetime_verified'] == motion['vertex_finite_verified'] == '0'
+                assert not (int(motion['proofs']) & 1)
+                succeeded = not (int(draw['draw_result']['result'], 16) & 0x80000000)
+                assert bool(int(motion['proofs']) & 16) == succeeded
         a,b,c,n,u = [f['draws'][0] for f in (initial,restored,cleared,recreated,up)]
         stream = lambda d: next(s for s in d['stream'] if s['slot']=='0')
         identity = stream(a)['identity']
@@ -51,9 +58,11 @@ def verify(trace):
         failed = cleared['draws'][1]
         assert failed['indices']['identity'] == '0'
         assert int(failed['draw_result']['result'],16) & 0x80000000
+        assert int(failed['motion_input']['blockers'],16) & 4096
         assert a['draw_result']['result'] == '00000000'
         assert u['geometry']['source'] == 'user_memory' and 'stream' not in u and 'indices' not in u
         assert u['draw_args']['stride'] == '20' and u['draw_args']['index_format'] == '101'
+        assert int(u['motion_input']['blockers'],16) & 1024
     assert len(all_vbs) == 4, 'Allocation IDs must not alias across sequential devices'
     return dict(result='PASS', devices=2, frames=10, vertex_buffer_allocations=4,
                 checks=['typed constants and zeros','stateblock restoration','resource identity reuse/recreation',

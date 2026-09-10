@@ -8,6 +8,8 @@ HRESULT wrap_factory(IDirect3D9*,IDirect3D9** out,const Options&) noexcept {
     return E_OUTOFMEMORY;
 }
 IDirect3DDevice9* borrowed_native_device(IDirect3DDevice9*) noexcept {return nullptr;}
+IDirect3DVertexBuffer9* borrowed_native_buffer_for_lock_contract(IDirect3DVertexBuffer9*) noexcept {return nullptr;}
+IDirect3DIndexBuffer9* borrowed_native_buffer_for_lock_contract(IDirect3DIndexBuffer9*) noexcept {return nullptr;}
 HRESULT get_copy_depth_view(IDirect3DDevice9*,CopyDepthView*) noexcept {return E_INVALIDARG;}
 HRESULT copy_auto_depth(IDirect3DDevice9*) noexcept {return E_INVALIDARG;}
 HRESULT get_buffer_content_view(IDirect3DResource9*,BufferContentView*) noexcept {return E_INVALIDARG;}

@@ -18,20 +18,40 @@ current source build but have no live game callsites.
 The [archive position review](reverse-engineering/archive-position-paths.md)
 accounts for all 256 VS: 234 homogeneous row-dot paths, 18 direct-clip bloom paths,
 two direct-position GUI/effect paths and two particle billboards. The production
-registry still contains the 16 captured row-dot programs. The other five captured
+registry now contains all 234 row-dot programs, with separate lookup for the other
+22 VS and positive-only coverage profiles for 494 PS. One malformed PS is excluded.
+The reviewed registry passes 751 actual-program lookups and rejects 547,927
+single-word mutation controls. The other five captured
 programs require explicit separate handling; they are not excluded from final
 TAA/composition scope. Particle RGB blending and missing prior particle identity
 are documented in [particle inputs](reverse-engineering/particle-motion-inputs.md).
-The full Python analysis suite passes **169 tests**.
+The full Python analysis suite passes **213 tests**.
 
-[Lifecycle disassembly](reverse-engineering/object-lifetimes.md) fingerprints
-renderer-load and ordinary-node/camera retirement sites, including restored
-handle reuse. Universal registry mutation, bulk teardown and camera-cut coverage
-are still unproved; no lifecycle hook is installed by this checkpoint.
+The [live draw-input reader](verification/draw-input.md) passes 167 checks,
+48 caller-state comparisons and seven failed-getter controls. It reads exact
+submitted rows and actual layouts/revisions, distinguishes nonindexed draws from
+an unused bound IB, and preserves unknown lifetime/finite-payload gates. Proxy
+capture wiring now records these inputs and composes lifetime evidence around the
+native draw. The combined fixture checks record scope and failed submission gates.
+
+[Reactive history](verification/reactive-history.md) now owns current/prior mask
+snapshots and rejects contaminated RGB independently of alpha. Actual synthetic
+particle birth, disappearance, movement, reordering and occlusion pass, along with
+policy/reset/failure handling: 98 numeric checks and 102 state comparisons. The
+58-sample resolve and 102-sample rigid-motion regressions still pass. Producing
+these masks for live game draws remains unfinished.
+
+[Lifecycle disassembly](reverse-engineering/object-lifetimes.md) now covers the
+reviewed central insertion, removal, bulk destruction and renderer-load paths.
+The opt-in [observer](verification/object-lifetime-observer.md) passes 533 checks
+and 72 original backend calls, including baseline adoption, reuse, foreign
+unwind, hook ownership loss and retirement. Six runner-provenance tests pass.
+Live baseline usefulness and mutation coverage still need game validation;
+camera cuts remain a separate policy. No lifecycle hook is installed in the game.
 
 The current combined DLL passes all 15 integration cases and the forced native
-fallback with all 12 compiled proxy/renderer objects. It is **not installed**:
-SHA256 `53d91a676ddb855ed936079d128ac47f06666c88b1ed6870b5453f7ea21cd9c4`.
+fallback with all 15 compiled proxy/renderer objects. It is **not installed**:
+SHA256 `ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5`.
 The installed 0.4 diagnostic DLL retains its historical SHA below.
 
 The [detached adjacency cache](verification/mesh-adjacency-cache.md) passes
@@ -39,8 +59,14 @@ The [detached adjacency cache](verification/mesh-adjacency-cache.md) passes
 native downstream cleaning/optimization and computational FP-state parity.
 Repeated original synthetic meshes show a large hit-time reduction including
 acquisition/lookup cost. Game mesh eligibility and hit rate remain unmeasured;
-the cache is not linked or enabled. Persistent acquisition-unlock failure has an
-explicit non-native outcome that requires handling before any live integration.
+the cache is now linked behind an off-by-default switch. Independently reviewed
+[native/wrapped hook integration](verification/mesh-cache-hook.md) passes 5,757
+checks across six cases; the existing loading regressions pass 68 + 123 checks.
+Known wrapper state stays truthful to the actual cache/native lock path; existing
+uncertainty never becomes known through a cache hit. Acquisition
+cleanup failure explicitly disables cache admission and rejects only subsequent
+preparation calls intercepted by our hooks; restart is required. It never claims
+to repair the native lock or contain calls outside those hooks.
 
 The user-run 0.4 session has 20 complete captured frames and 13,431 successful
 draws, including a final third-person burst. The installed selector rejected all
@@ -123,8 +149,8 @@ presentation and the requested visual features remain unfinished.
 2. Connect the verified correspondence and GPU motion modules to lifecycle-safe
    draw records, with reload/reuse generations, camera cuts and geometry revision
    gates. Account separately for CPU-changing particles/stardust and overlays.
-3. Validate live jitter placement and extend profile registration from the full
-   archive proof, then connect matched color/depth/motion inputs to temporal resolve.
+3. Validate live jitter placement and position/raster equivalence using the full
+   archive registry, then connect matched color/depth/motion inputs to temporal resolve.
    Camera-only reprojection cannot satisfy the observed scene; TAA remains required.
 4. Establish the FP16 scene path and enable only reviewed material variants there.
    Integrate a GPU-native HDR presentation route; output conversion of clipped
