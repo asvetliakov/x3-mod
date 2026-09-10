@@ -5,9 +5,13 @@ to each buffer allocation. Observe the application's existing writable mapping,
 classify CPU-visible bytes before its native Unlock, and publish only after that
 Unlock succeeds. Later draws query compact metadata using their actual layout,
 range and content revision. This requires a positive native mapping
-readability/coherence contract; it is **not yet safe to implement generically**
-from D3D Lock success or WRITEONLY alone. No runtime implementation or game change
-is part of this proposal.
+readability/coherence contract; D3D Lock success or WRITEONLY alone cannot supply
+it. The reviewed [classification core](../verification/finite-buffer-evidence.md)
+and [exact Preview VB/IB qualifier](../verification/managed-upload-contract.md)
+are now implemented and independently tested. The [allocation observer](../verification/finite-upload-observer.md)
+passes 385 native/wrapped checks, and the combined source DLL passes 18 cases plus
+native fallback. The installed iteration-5 game build remains unchanged; no game
+finite-coverage result is available yet.
 
 ## What the completed iteration 0.5 capture establishes
 
@@ -171,11 +175,12 @@ arithmetic must validate base + actual indices and buffer byte bounds.
 not a captured copy or independent proof of the actual index values. A successful
 native draw does not establish that the buffer obeyed those promises.
 
-The linked managed-mapping artifact currently documents the **VB** Lock entry.
-The shared WineD3D buffer path does not by itself verify the D3D9 **IB** entry;
-its exact forwarding/endpoint contract remains a separate gate before any IB
-certificate can be issued. The following is a proposed consumer, not an already
-qualified IB acquisition route.
+The linked managed-mapping artifact now documents the exact **VB and IB** Lock,
+Unlock, GetDesc and private-data endpoints. A shared WineD3D buffer path alone
+would not establish the D3D9 IB entry; the typed qualifier and its 461 native
+checks enforce that separate boundary. Issuing an IB certificate still requires
+the ownership observer's revision, lifetime, flags and successful-publication
+checks.
 
 A conservative first producer can scan a complete observed IB upload and retain
 its actual min/max plus known range, format, allocation and revision. For the
@@ -203,15 +208,16 @@ bytes **within a valid mapped window**, without pretending the application wrote
 every byte or certifying anything outside that window. It does not license a
 new READONLY lock on these buffers.
 
-A future producer must enforce the documented exact module/dispatch, flags,
+The producer must enforce the documented exact module/dispatch, flags,
 bounds, single same-thread mapping, MFENCE, ordinary immediate-queue unmap and
-serialization constraints. That static contract has not yet verified an actual
-finite-evidence observer. A VirtualQuery permission check alone is insufficient.
+serialization constraints. The implemented observer's native fixture and
+independent review now verify that integration under the bounded contract.
+A VirtualQuery permission check alone is insufficient.
 If those runtime gates fail, evidence remains unknown; a concrete CPU upload
 source/copy boundary is an alternative requiring its own proof, not a fallback
 to per-frame readback.
 
-Then test original FLOAT3/half4 payloads, all exponent classes and ignored W;
+Acceptance covers original FLOAT3/half4 payloads, all exponent classes and ignored W;
 partial/unaligned writes, DISCARD/NOOVERWRITE, nested/failed Lock/Unlock,
 ProcessVertices, wrapper recreation, revision rollover/ambiguity, reset/loss,
 budgets, index overflow/negative effective base and stale-revision rejection.

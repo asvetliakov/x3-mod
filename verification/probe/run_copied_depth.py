@@ -20,7 +20,7 @@ def main():
     env['WINEDLLOVERRIDES'] = 'd3d9=b'
     files = ['verification/probe/copied_depth_fixture.cpp',
              'verification/probe/build_copied_depth.sh', 'verification/probe/run_copied_depth.py',
-             'src/ownership/d3d9_ownership.cpp',
+             'src/ownership/d3d9_ownership.cpp', 'src/ownership/finite_buffer_evidence.cpp', 'src/ownership/finite_buffer_evidence.h', 'src/ownership/managed_upload_contract.cpp', 'src/ownership/managed_upload_contract.h',
              'src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_classes_inc.h',
              'src/ownership/d3d9_forwarders_inc.h', 'src/temporal/depth_decode.hlsl']
     before_build = {f: hashlib.sha256((root/f).read_bytes()).hexdigest() for f in files}

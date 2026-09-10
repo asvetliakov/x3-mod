@@ -1,27 +1,35 @@
 {
-  "started_utc": "2026-09-10T19:35:39.797284+00:00",
+  "started_utc": "2026-09-10T22:58:41.164568+00:00",
   "sources_before": {
     "verification/probe/copy_depth_loss.cpp": "e218d7ee838379a7fa24c4040cd8607933c4b2ae4d9f277a6a45626e1891a6b8",
-    "verification/probe/build_copy_depth_loss.sh": "3cdce761f5e82234c974c1c2765db6ece553d698fa72bea46894ebec0e6fffe8",
+    "verification/probe/build_copy_depth_loss.sh": "eb5bc6e0261a50f2786f4495d738909ee2d8b93cc6ed58c0f170b0f487e9d1e7",
     "verification/probe/run_copy_depth_loss.py": "d33e29a49e680411ee9b92f791c43f964a92d08a2875fcbe8d87b14ec701449a",
-    "src/ownership/d3d9_ownership.cpp": "fa3ebaed46e0a6beb0b82b3aaadbb71dc1a0ba852d5efeb965e4d58a78ec45b4",
-    "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
+    "src/ownership/d3d9_ownership.cpp": "d1e8f7842756e529f3e5e2167b34727f2ff8291297e9ca62f2881891f83fbe08",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
+    "src/ownership/d3d9_classes_inc.h": "71f29eb2d99c68c3f7837594219d74f1b1b618fd2bba80993bab349b5d7df5e4",
     "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
-    "src/ownership/d3d9_ownership.h": "ebe6f4f9d48841dae5a9845a3e9aac552f150b33f0544b052a78bc53f3674302"
+    "src/ownership/d3d9_ownership.h": "684dd32e962d6146dfff40e831a9281808f548b0a03f1232feee08838d540931",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949"
   },
   "game_launched": false,
   "fresh_build": true,
   "build_exit": 0,
   "sources_after_build": {
     "verification/probe/copy_depth_loss.cpp": "e218d7ee838379a7fa24c4040cd8607933c4b2ae4d9f277a6a45626e1891a6b8",
-    "verification/probe/build_copy_depth_loss.sh": "3cdce761f5e82234c974c1c2765db6ece553d698fa72bea46894ebec0e6fffe8",
+    "verification/probe/build_copy_depth_loss.sh": "eb5bc6e0261a50f2786f4495d738909ee2d8b93cc6ed58c0f170b0f487e9d1e7",
     "verification/probe/run_copy_depth_loss.py": "d33e29a49e680411ee9b92f791c43f964a92d08a2875fcbe8d87b14ec701449a",
-    "src/ownership/d3d9_ownership.cpp": "fa3ebaed46e0a6beb0b82b3aaadbb71dc1a0ba852d5efeb965e4d58a78ec45b4",
-    "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
+    "src/ownership/d3d9_ownership.cpp": "d1e8f7842756e529f3e5e2167b34727f2ff8291297e9ca62f2881891f83fbe08",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
+    "src/ownership/d3d9_classes_inc.h": "71f29eb2d99c68c3f7837594219d74f1b1b618fd2bba80993bab349b5d7df5e4",
     "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
-    "src/ownership/d3d9_ownership.h": "ebe6f4f9d48841dae5a9845a3e9aac552f150b33f0544b052a78bc53f3674302"
+    "src/ownership/d3d9_ownership.h": "684dd32e962d6146dfff40e831a9281808f548b0a03f1232feee08838d540931",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949"
   },
-  "executable_sha256": "a2e80c4952f729186ee9d0222a7989d69c0436ee7bdf53266bcf702b2026484e",
+  "executable_sha256": "42e54f9e089a23c5edf7c2adb49922798a93d8ba22317914c564c1c2fccb66ee",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -500,14 +508,18 @@
   ],
   "sources_after_run": {
     "verification/probe/copy_depth_loss.cpp": "e218d7ee838379a7fa24c4040cd8607933c4b2ae4d9f277a6a45626e1891a6b8",
-    "verification/probe/build_copy_depth_loss.sh": "3cdce761f5e82234c974c1c2765db6ece553d698fa72bea46894ebec0e6fffe8",
+    "verification/probe/build_copy_depth_loss.sh": "eb5bc6e0261a50f2786f4495d738909ee2d8b93cc6ed58c0f170b0f487e9d1e7",
     "verification/probe/run_copy_depth_loss.py": "d33e29a49e680411ee9b92f791c43f964a92d08a2875fcbe8d87b14ec701449a",
-    "src/ownership/d3d9_ownership.cpp": "fa3ebaed46e0a6beb0b82b3aaadbb71dc1a0ba852d5efeb965e4d58a78ec45b4",
-    "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
+    "src/ownership/d3d9_ownership.cpp": "d1e8f7842756e529f3e5e2167b34727f2ff8291297e9ca62f2881891f83fbe08",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
+    "src/ownership/d3d9_classes_inc.h": "71f29eb2d99c68c3f7837594219d74f1b1b618fd2bba80993bab349b5d7df5e4",
     "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
-    "src/ownership/d3d9_ownership.h": "ebe6f4f9d48841dae5a9845a3e9aac552f150b33f0544b052a78bc53f3674302"
+    "src/ownership/d3d9_ownership.h": "684dd32e962d6146dfff40e831a9281808f548b0a03f1232feee08838d540931",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949"
   },
-  "executable_sha256_after_run": "a2e80c4952f729186ee9d0222a7989d69c0436ee7bdf53266bcf702b2026484e",
+  "executable_sha256_after_run": "42e54f9e089a23c5edf7c2adb49922798a93d8ba22317914c564c1c2fccb66ee",
   "passed": true,
   "report_sha256": "3a3c4f50bae0b0556db72c89ec238181e372c2feaa864b23873e67cc170fd8c9"
 }

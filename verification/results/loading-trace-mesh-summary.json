@@ -6,37 +6,41 @@
     "src/proxy/loading_trace.cpp": "536f02f87c62bae77d72c5fd95e13813379fd5d78665cf5fc4932c7e5d0eefb0",
     "src/proxy/mesh_adjacency_cache.h": "03c3fcb7a818a586e30eef43c93aa0b3d22e42e8a9186827df5f84dcbb7cfdef",
     "src/proxy/mesh_adjacency_cache.cpp": "fb612017858407688b096c4da4049401725728523753b6bce9f7f9f3f440ba9e",
-    "src/ownership/d3d9_ownership.h": "9613d9b77c5cdd6dbff8ede1656efe63006eec5d3048756cdd82d226298c6f78",
-    "src/ownership/d3d9_ownership.cpp": "42d94a3419208700b1fb7e4482fae8398418b8b3b3337de8e67bf06851f7ed2b",
-    "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
+    "src/ownership/d3d9_ownership.h": "684dd32e962d6146dfff40e831a9281808f548b0a03f1232feee08838d540931",
+    "src/ownership/d3d9_ownership.cpp": "d1e8f7842756e529f3e5e2167b34727f2ff8291297e9ca62f2881891f83fbe08",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
+    "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949",
+    "src/ownership/d3d9_classes_inc.h": "71f29eb2d99c68c3f7837594219d74f1b1b618fd2bba80993bab349b5d7df5e4",
     "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
     "verification/probe/loading_trace_fixture.cpp": "ad82e27d0c0e11000fa15af2b7581691ab3cba0e08a8ff1c9f7363ec85482fc4",
     "verification/probe/loading_trace_stub.cpp": "ac9f065e7263d174b4a120fb1d8a7f294370dc503cb25002fe20697bee7fa905",
     "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
     "verification/probe/loading_codec_stub.cpp": "688dae30bb88f07cd79cab193dd9480b34e45e34544742df75255f254908a5ab",
     "verification/probe/loading_mesh_fixture.cpp": "6bf8fc95d478a60d7ab2e6fbfef25e56fc041554b0e081665e440e9972c465bb",
-    "verification/probe/build_loading_trace.sh": "86f796e928e5b604bae583bcd589cb3e4c4e9d13f645eb4c515e2ba76d243d7e",
-    "verification/probe/run_loading_trace.py": "30fba8aae59907b511931a5af8b8b3a2d17004782d53432d0136dd36c119dac7"
+    "verification/probe/build_loading_trace.sh": "cc8e6a6c63d222d06f592b69da081c26d2e0104201e0df2ea49ab497723de314",
+    "verification/probe/run_loading_trace.py": "2fb107629395d774e57272885b886e16af95357ed2f1f8c7c0526ab49877aa4e"
   },
   "game_launched": false,
   "cases": {
     "loading-trace": {
       "exit_code": 0,
-      "executable_sha256": "5a3bc1d7d0924363a1d6c2fe62e36da6740c86ab7074080c5848e4e79a43f413",
+      "executable_sha256": "43cd8d3ea78047887ca361125a80e4ef3796b68e0f3932546cb2a377788851d2",
       "dll_sha256": {
-        "d3dx9_37.dll": "b09dfde135ad69cf56abc4ac86492338a3eb7f4d7bb53581cfac1d31e2005b7c",
-        "zlib1.dll": "7d9b9784d11061c1db919b8d24d82e1c97e81615de43e6c634eec2999ca3165d",
-        "libxml2.dll": "932684f90209cec6b14e452c8895c215b334157cc36b9d705b1dd9607d629606"
+        "d3dx9_37.dll": "46bc2cdead16c584d292b6a5a9b466ef5f9fbece297beebb9e558261584bf704",
+        "zlib1.dll": "073d8044fd0bef889eeb6800750036e973a41f5f4d30536fb294f1cffbc97b4d",
+        "libxml2.dll": "a329b54e5ab85aeed2d94a1bed7cfbeac0b6c68b855b2036de402098b57f8c9f"
       },
-      "report_sha256": "9a0f29f70b51600e0578612150f7b49798bfe864971fde9ac41d1e2000f031d7"
+      "report_sha256": "46574ee7a55a92743c80b4d45f9c08a06277a47a552e3fb111fe02ea3c10719a"
     },
     "loading-mesh": {
       "exit_code": 0,
-      "executable_sha256": "84aa039224c4175b5f95fe9043727d5d443babead1ffd0a23a99d6379ec297fd",
+      "executable_sha256": "6c2fa1bbd03c70924a041e617a25683dacfacd4e3fab8b202bf498443d83cfa4",
       "dll_sha256": {
         "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
       },
-      "report_sha256": "19cb0f9ea7e42b987174b5c203e6d9df84c2c5f4105ba355ad41aecc772beeb2"
+      "report_sha256": "f306ce637a8239b20a1e5413d1919fcb1b2de1327c5c9fb3ec142e9c430074ec"
     }
   },
   "sources_and_binaries_unchanged": true

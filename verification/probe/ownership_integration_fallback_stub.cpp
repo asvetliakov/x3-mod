@@ -13,4 +13,8 @@ IDirect3DIndexBuffer9* borrowed_native_buffer_for_lock_contract(IDirect3DIndexBu
 HRESULT get_copy_depth_view(IDirect3DDevice9*,CopyDepthView*) noexcept {return E_INVALIDARG;}
 HRESULT copy_auto_depth(IDirect3DDevice9*) noexcept {return E_INVALIDARG;}
 HRESULT get_buffer_content_view(IDirect3DResource9*,BufferContentView*) noexcept {return E_INVALIDARG;}
+HRESULT get_finite_position_view(IDirect3DVertexBuffer9*,const FinitePositionRequest&,FinitePositionView*) noexcept {return E_INVALIDARG;}
+HRESULT get_index_range_view(IDirect3DIndexBuffer9*,const IndexRangeRequest&,IndexRangeView*) noexcept {return E_INVALIDARG;}
+HRESULT get_finite_upload_statistics(IDirect3DDevice9*,FiniteUploadStatistics*) noexcept {return E_INVALIDARG;}
+const char* finite_evidence_reason_name(FiniteEvidenceReason) noexcept {return "unavailable";}
 }

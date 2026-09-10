@@ -16,7 +16,7 @@ loading_hook name=inflate installed=0
 loading_hook name=xmlReadMemory installed=0
 loading_hook name=D3DXCreateMesh installed=1
 loading_hook name=D3DXCleanMesh installed=1
-loading_trace coverage_begin=8079979089660 frequency=10000000 hooks=3 module=main inclusive=1 paths=0 hash=e9520621b9f9bf77
+loading_trace coverage_begin=8106542359608 frequency=10000000 hooks=3 module=main inclusive=1 paths=0 hash=24a1537f4b2f8742
 mesh_trace module_verified=1 pinned=1 hash=49cc52632ef762d4 bytes=3786760 scope=shared_native_vtables table_limit=8 objects_retained=0
 mesh_hook table=0 installed=1 owned_slots=3 scope=shared_native_vtable
 CASE name=closed_manifold parity=1
@@ -30,11 +30,11 @@ DYNAMIC options=00000990 parity=1 write_after_hit_miss=0
 DYNAMIC options=00000991 parity=1 write_after_hit_miss=0
 DYNAMIC options=00018990 parity=1 write_after_hit_miss=0
 DYNAMIC options=00018991 parity=1 write_after_hit_miss=0
-loading_metric op=ReadFile qpc=8079979310858 count=232 failures=0 pending=0 ambiguous=0 bytes=3786760 inclusive_ticks=5174 exclusive_ticks=5174 max_ticks=102 wrapper_tail_ticks=232 total_us=517.400 exclusive_us=517.400 max_us=10.200 wrapper_tail_us=23.200
-loading_metric op=D3DXCreateMesh qpc=8079979310858 count=31 failures=0 pending=0 ambiguous=0 bytes=0 inclusive_ticks=4683 exclusive_ticks=3520 max_ticks=1163 wrapper_tail_ticks=84809 total_us=468.300 exclusive_us=352.000 max_us=116.300 wrapper_tail_us=8480.900
-loading_metric op=D3DXCleanMesh qpc=8079979310858 count=18 failures=2 pending=0 ambiguous=0 bytes=0 inclusive_ticks=1669 exclusive_ticks=1669 max_ticks=313 wrapper_tail_ticks=773 total_us=166.900 exclusive_us=166.900 max_us=31.300 wrapper_tail_us=77.300
-loading_metric op=ID3DXMesh::GenerateAdjacency qpc=8079979310858 count=36 failures=1 pending=0 ambiguous=0 bytes=0 inclusive_ticks=14244 exclusive_ticks=14244 max_ticks=1027 wrapper_tail_ticks=593 total_us=1424.400 exclusive_us=1424.400 max_us=102.700 wrapper_tail_us=59.300
-loading_metric op=ID3DXMesh::OptimizeInplace qpc=8079979310858 count=24 failures=0 pending=0 ambiguous=0 bytes=0 inclusive_ticks=22438 exclusive_ticks=22438 max_ticks=9947 wrapper_tail_ticks=56 total_us=2243.800 exclusive_us=2243.800 max_us=994.700 wrapper_tail_us=5.600
+loading_metric op=ReadFile qpc=8106542584300 count=232 failures=0 pending=0 ambiguous=0 bytes=3786760 inclusive_ticks=4657 exclusive_ticks=4657 max_ticks=58 wrapper_tail_ticks=214 total_us=465.700 exclusive_us=465.700 max_us=5.800 wrapper_tail_us=21.400
+loading_metric op=D3DXCreateMesh qpc=8106542584300 count=31 failures=0 pending=0 ambiguous=0 bytes=0 inclusive_ticks=3717 exclusive_ticks=2775 max_ticks=942 wrapper_tail_ticks=78527 total_us=371.700 exclusive_us=277.500 max_us=94.200 wrapper_tail_us=7852.700
+loading_metric op=D3DXCleanMesh qpc=8106542584300 count=18 failures=2 pending=0 ambiguous=0 bytes=0 inclusive_ticks=1539 exclusive_ticks=1539 max_ticks=196 wrapper_tail_ticks=710 total_us=153.900 exclusive_us=153.900 max_us=19.600 wrapper_tail_us=71.000
+loading_metric op=ID3DXMesh::GenerateAdjacency qpc=8106542584300 count=36 failures=1 pending=0 ambiguous=0 bytes=0 inclusive_ticks=18308 exclusive_ticks=18308 max_ticks=826 wrapper_tail_ticks=553 total_us=1830.800 exclusive_us=1830.800 max_us=82.600 wrapper_tail_us=55.300
+loading_metric op=ID3DXMesh::OptimizeInplace qpc=8106542584300 count=24 failures=0 pending=0 ambiguous=0 bytes=0 inclusive_ticks=21799 exclusive_ticks=21799 max_ticks=9125 wrapper_tail_ticks=49 total_us=2179.900 exclusive_us=2179.900 max_us=912.500 wrapper_tail_us=4.900
 CACHE_RESULT enabled=0 wrapped=1 fault=0 calls=0 hits=0 misses=0 native_calls=0 rejections=0 blocked=0 retained=0
 mesh_hook table=0 restored_slots=3 foreign_slots=0 remaining_owned_slots=0
 mesh_hook table=1 restored_slots=3 foreign_slots=0 remaining_owned_slots=0

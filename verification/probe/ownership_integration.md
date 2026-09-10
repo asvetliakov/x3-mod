@@ -12,7 +12,7 @@ python3 verification/probe/verify_ownership_integration.py
 python3 verification/probe/run_ownership_integration_fallback.py
 ```
 
-The runner performs a clean CMake build and recompiles every consumed fixture before launching any case. Source hashes are recorded before compilation, after compilation and after execution. It rejects changes across those checkpoints and checks EXE/DLL hashes before and after execution, plus hashes of each isolated copy and report. The fallback run requires that fresh-build manifest still match current inputs and checks the fifteen linked proxy/renderer objects before and after execution. It copies the DLL and executables into disposable verification directories and uses `/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine --bottle Steam --no-update`, with app-local D3D9 override. It does not mutate bottle settings, launch X3, install a DLL, or replace `build/d3d9.dll`.
+The runner performs a clean CMake build and recompiles every consumed fixture before launching any case. Its contract fixture is named `ownership_integration_baseline.exe`, separate from the standalone ownership runner's executable, so sequential suites preserve each other's binary provenance. Source hashes are recorded before compilation, after compilation and after execution. It rejects changes across those checkpoints and checks EXE/DLL hashes before and after execution, plus hashes of each isolated copy and report. The fallback run requires that fresh-build manifest still match current inputs and checks every expected linked proxy/renderer object before and after execution. It copies the DLL and executables into disposable verification directories and uses `/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine --bottle Steam --no-update`, with app-local D3D9 override. It does not mutate bottle settings, launch X3, install a DLL, or replace `build/d3d9.dll`.
 
 ## Historical installed 0.4 checkpoint
 
@@ -47,7 +47,7 @@ Final child cleanup now releases its parent through `parent->application->Releas
 
 The imports audit shows ADVAPI32, KERNEL32, USER32 and UCRT dependencies; no external libstdc++, libgcc or libwinpthread DLL is needed. These are synthetic API/lifetime checks, not gameplay, visual-quality, frame-pacing or performance measurements.
 
-## Current source checkpoint: motion inputs, lifetime and cache integration
+## Installed iteration-5 checkpoint: motion inputs, lifetime and cache integration
 
 Verified 2026-09-11. CMake now also compiles the actual draw-input reader, registry
 lifetime observer and bounded adjacency cache. Captured draws carry scoped motion
@@ -64,8 +64,8 @@ A fresh build passes all 15 integration cases, capture/lifetime verification and
 the forced adoption-failure fallback. The fallback links all **15** compiled
 proxy/renderer objects unchanged; only the ownership implementation is replaced
 by the test stub. Source and binary hashes match before and after both runs.
-The current result files describe this build; historical installed evidence is
-retained in Git history and the iteration notes.
+That checkpoint's result files are retained in Git history and the iteration
+notes; current result files describe the finite-position checkpoint below.
 
 Verified production DLL SHA256:
 `ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5`.
@@ -76,3 +76,45 @@ is preserved as a local rollback.
 This matrix verifies combined API/lifetime behavior; the numerical motion and
 material contracts have their own fixtures, and gameplay integration remains
 pending.
+
+## Current finite-position wiring checkpoint
+
+The verified source matrix preserves all 15 cases above and adds three actual-DLL
+cases: ownership plus `X3M_FINITE_POSITIONS=1` with the smoke and capture fixtures,
+and finite positions requested without ownership with the capture fixture. The
+18-case runner explicitly sets `X3M_FINITE_POSITIONS=0` for every other case so an
+inherited shell setting cannot enable the producer accidentally. Object tracing
+is disabled in both finite-enabled cases: their known buffer revisions must come
+from the finite option's independent tracking prerequisite.
+
+The verifier requires one `finite_upload_mode` record for each requested process,
+correct effective enablement, scoped `motion_geometry` records for every captured
+draw, and batched `finite_upload_metric` records. The existing fixtures use
+usage-zero managed buffers, transformed-position declarations and/or UP draws;
+they must retain unknown finite/index evidence and an unqualified replay source.
+The finite capture case must explicitly report the native-contract refusal for
+its unsupported buffer usage. Its memory, publication and classification counters
+remain zero. This is option wiring and refusal verification; successful managed
+upload classification has separate original-data fixtures. Cumulative metric and
+reason snapshots are not summed as independent events.
+
+The forced adoption-failure case also requests finite positions. The loader's
+option remains requested/enabled, but native query stubs must return unknown
+metadata, with no finite payload or fabricated proof. It links the **16** current
+proxy/renderer objects unchanged against the ownership stub. Its disposable DLL
+and executable are hashed before and after execution in addition to the source,
+production binary and object provenance checks. Captured application API results
+are compared byte-for-byte with the corresponding finite-disabled cases.
+
+Both runners refuse execution if X3AP is running or process inventory fails; the
+main runner repeats that check before each child launch. All 18 cases, the current-source verifier and forced adoption-failure fallback
+passed after the executable namespace correction. The separate standalone
+ownership executable hashes remain unchanged. The installed iteration-5 DLL is
+unchanged.
+
+Verified production DLL SHA256:
+`6e21f29a57e97018753212759392ef0b79bd9fc120aa5121f30dd62f70ed3083`.
+`ownership-integration-symbols.json` records an `nm -C --defined-only` audit of
+the fresh ownership and rigid-motion objects: fixture scheduling callbacks and
+`original_synthetic_sm3_contract` are absent; `qualify_rigid_replay_source` is
+present. Source, executable, DLL and object hashes match across the final runs.

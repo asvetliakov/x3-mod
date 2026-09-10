@@ -127,7 +127,8 @@ malformed arguments/topology/scalar widths, device-ID isolation, cumulative and
 per-generation metrics, optional/overlapping timers, first-refusal batching,
 latest-sample failure, input/source changes, missing-input stale reports and raw
 input hardlink protection. No game or GPU run is needed for these parser tests.
-# Completed iteration-5 compatibility control
+
+## Completed iteration-5 compatibility control
 
 The parent integration check ran this analyzer on the immutable 216,605,445-byte
 iteration-5 snapshot with its expected SHA-256. All 28 frames and 12,957 draws

@@ -5,6 +5,8 @@
 #include "object_trace.h"
 #include "../renderer/motion_history.h"
 #include "../renderer/rigid_position.h"
+#include "../renderer/rigid_motion.h"
+#include "../ownership/d3d9_ownership.h"
 
 namespace x3m {
 // A live input reader shared by capture diagnostics and later motion routing.
@@ -27,9 +29,18 @@ enum DrawInputBlocker : std::uint32_t {
 };
 struct DrawInput {
     // Partial local proofs only. LifetimeVerified is never supplied here.
-    // Before replay the caller must establish finite position payloads, stable
-    // buffers through replay, engine lifetimes and whole-scene color coverage.
+    // Before replay the caller must consume separate finite-position evidence,
+    // revalidate buffers through replay, and establish engine lifetimes and
+    // whole-scene color coverage.
     renderer::RigidObservation observation{};
+    // Issued from the actual submitted VS bytes before scratch is reused for PS.
+    // This source association is independent of the legacy local proof mask.
+    renderer::RigidReplayContract replay_source{};
+    // Separate from the existing local proof mask. These describe the exact
+    // allocation revisions queried now, not stability through a later replay.
+    ownership::FinitePositionView finite_positions{};
+    ownership::IndexRangeView indices{};
+    bool index_range_verified = false, vertex_finite_verified = false;
     std::uint32_t blockers = 0;
     renderer::VertexPositionPath position_path = renderer::VertexPositionPath::Unknown;
     std::uint64_t vertex_program = 0, pixel_program = 0;

@@ -93,6 +93,9 @@ fallback run. The source build DLL SHA-256 is
 Evidence: [build manifest](../../verification/results/ownership-integration-build.json),
 [case verification](../../verification/results/ownership-integration-verification.json),
 and [fallback manifest](../../verification/results/ownership-integration-fallback.json).
+These paths track the latest run; the historical 15-case artifacts described
+here are preserved in commit `437e95b`. The later finite-upload matrix is documented
+in [review 6](review-06.md).
 Reproduce with `run_ownership_integration.py`, then
 `verify_ownership_integration.py` and `run_ownership_integration_fallback.py` in
 `verification/probe/`, with the user game stopped and synthetic GPU work serialized.

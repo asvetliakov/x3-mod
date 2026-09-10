@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-10T19:34:32.064247+00:00",
+  "started_utc": "2026-09-10T22:58:54.649362+00:00",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -15,15 +15,19 @@
   "process_local_override": "d3d9=b",
   "source_sha256": {
     "verification/probe/copied_depth_fixture.cpp": "cc12b0ab2089f7c6c46bc18c2e29ac3d994754a41267f0109f1881b329675c88",
-    "verification/probe/build_copied_depth.sh": "e37a54dbe40607239b3ac71923e87c6940e1e09bc7c8fdc9eef86bd7cd5b79a6",
-    "verification/probe/run_copied_depth.py": "5a7a5e050abd2c7e0831a26d7e4d0aadbe1b21e20ada9d85dd20015e0d38d874",
-    "src/ownership/d3d9_ownership.cpp": "fa3ebaed46e0a6beb0b82b3aaadbb71dc1a0ba852d5efeb965e4d58a78ec45b4",
-    "src/ownership/d3d9_ownership.h": "6be9bf693bfa847690550f8d4a28b59c22433a2ebe354e5db304c02c994c78c4",
-    "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
+    "verification/probe/build_copied_depth.sh": "13d141ca5cf6050dc6b7c6d40424d4c1132fc4b93a520ba0844f8334d84bef0b",
+    "verification/probe/run_copied_depth.py": "5e46b7bec05ee940ff4e97a05e49eddfaeb6cb62dbe6432be0e73f7b673699d0",
+    "src/ownership/d3d9_ownership.cpp": "d1e8f7842756e529f3e5e2167b34727f2ff8291297e9ca62f2881891f83fbe08",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
+    "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949",
+    "src/ownership/d3d9_ownership.h": "684dd32e962d6146dfff40e831a9281808f548b0a03f1232feee08838d540931",
+    "src/ownership/d3d9_classes_inc.h": "71f29eb2d99c68c3f7837594219d74f1b1b618fd2bba80993bab349b5d7df5e4",
     "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5"
   },
-  "executable_sha256": "097c7d4ab848f56d7aecbe3a3f26ae596adeca0323b5b11cf5d03442b714ad59",
+  "executable_sha256": "ee259147a29250e228215eed55d95edf212cb63e736ebf840baaf180ece7d971",
   "exit_code": 0,
   "checks": 634,
   "samples": 32,

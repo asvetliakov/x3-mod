@@ -65,7 +65,7 @@ def summarize(trace, index, include_floats=False):
             current['object_context_matches_draw'] = all(
                 key in f and current_coordinates.get(key) is not None and
                 f[key] == current_coordinates[key] for key in ('device', 'frame', 'index'))
-        elif event in ('motion_input', 'motion_lifetime') and current is not None:
+        elif event in ('motion_input', 'motion_lifetime', 'motion_geometry') and current is not None:
             current[event] = f
             current[event + '_matches_draw'] = all(
                 key in f and current_coordinates.get(key) is not None and

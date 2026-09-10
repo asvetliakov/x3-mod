@@ -27,6 +27,7 @@ std::wstring directory;
 unsigned capture_start = 120;
 unsigned capture_count = 1;
 bool scene_depth_capture_requested = false;
+bool finite_positions_requested = false;
 std::set<uint64_t> dumped;
 uint64_t next_device_id = 1;
 
@@ -131,12 +132,18 @@ void record_draw_input(Device& ctx,ObservedDraw& draw,HRESULT result) {
            after.node_serial!=draw.lifetime.node_serial||after.camera_serial!=draw.lifetime.camera_serial)
             input.observation.proofs&=~renderer::LifetimeVerified;
     } else after=draw.lifetime;
-    log("motion_input device=%llu frame=%llu index=%llu blockers=%08lx proofs=%lu position_path=%u vs=%016llx ps=%016llx declaration=%016llx rows_hash=%016llx color=%llu depth=%llu width=%u height=%u cull=%u vb=%llu vb_revision=%llu ib=%llu ib_revision=%llu position_offset=%u position_type=%u lifetime_verified=%u vertex_finite_verified=0",
+    log("motion_input device=%llu frame=%llu index=%llu blockers=%08lx proofs=%lu position_path=%u vs=%016llx ps=%016llx declaration=%016llx rows_hash=%016llx color=%llu depth=%llu width=%u height=%u cull=%u vb=%llu vb_revision=%llu ib=%llu ib_revision=%llu position_offset=%u position_type=%u lifetime_verified=%u vertex_finite_verified=%u",
         ctx.id,ctx.frame,ctx.draws,static_cast<DWORD>(input.blockers),static_cast<DWORD>(o.proofs),unsigned(input.position_path),
         input.vertex_program,input.pixel_program,k.declaration,hash_bytes(o.submitted_wvp.data(),sizeof(o.submitted_wvp)),
         input.color_target,input.depth_target,input.width,input.height,unsigned(input.cull),
         k.vertex_buffer,k.vertex_revision,k.index_buffer,k.index_revision,k.position_offset,k.position_type,
-        (o.proofs&renderer::LifetimeVerified)!=0);
+        (o.proofs&renderer::LifetimeVerified)!=0,input.vertex_finite_verified);
+    const auto& finite=input.finite_positions;const auto& indices=input.indices;
+    log("motion_geometry device=%llu frame=%llu index=%llu source_qualified=%u source_hash=%016llx source_words=%u finite_requested=%u finite_state=%u finite_reason=%u finite_status=%08lx finite_generation=%llu finite_revision=%llu index_required=%u index_requested=%u index_known=%u index_range_verified=%u index_exact=%u index_min=%u index_max=%u index_reason=%u index_status=%08lx index_generation=%llu index_revision=%llu",
+        ctx.id,ctx.frame,ctx.draws,input.replay_source.qualified(),input.replay_source.source_hash(),input.replay_source.source_words(),
+        finite.requested,unsigned(finite.state),unsigned(finite.reason),finite.status,finite.generation,finite.revision,
+        k.indexed,indices.requested,indices.known,input.index_range_verified,indices.exact_range,indices.minimum,indices.maximum,
+        unsigned(indices.reason),indices.status,indices.generation,indices.revision);
     // Preserve the terminal failure record if the observer disabled itself
     // during either lookup. Its current active state must not hide that cause.
     if(draw.lifetime_observed)
@@ -304,6 +311,26 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
     if (!refs) { telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame); telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame); log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id); devices.erase(d); }
     return refs;
 }
+void finite_upload_metrics(IDirect3DDevice9* device,const Device& ctx,const char* phase) {
+    if(!finite_positions_requested)return;
+    ownership::FiniteUploadStatistics s{};
+    const HRESULT hr=ownership::get_finite_upload_statistics(device,&s);
+    // Cumulative per-owner counters and current process reservations, emitted in
+    // batches. No resource uploads or payload contents are logged individually.
+    log("finite_upload_metric device=%llu frame=%llu phase=%s result=%08lx status=%08lx requested=%u active=%u generation=%llu payload_bytes=%llu peak_payload_bytes=%llu sidecars=%llu metadata_bytes=%llu global_payload_bytes=%llu global_sidecars=%llu uploads=%llu publications=%llu invalidations=%llu allocation_failures=%llu scans=%llu classified_bytes=%llu scan_ticks=%llu qualifier_ticks=%llu queries=%llu query_ticks=%llu query_cache_hits=%llu position_components=%llu",
+        ctx.id,ctx.frame,phase,hr,s.status,s.requested,s.active,s.generation,s.payload_bytes,s.peak_payload_bytes,s.sidecars,s.metadata_bytes,
+        s.global_payload_bytes,s.global_sidecars,s.uploads,s.publications,s.invalidations,s.allocation_failures,s.scans,s.classified_bytes,
+        s.scan_ticks,s.qualifier_ticks,s.queries,s.query_ticks,s.query_cache_hits,s.position_components);
+    if(s.first_refusal.available){
+        const auto& f=s.first_refusal;
+        log("finite_upload_first_refusal device=%llu frame=%llu phase=%s reason=%u name=%s type=%u format=%u pool=%u size=%u usage=%08lx lock_flags=%08lx",
+            ctx.id,ctx.frame,phase,unsigned(f.reason),ownership::finite_evidence_reason_name(f.reason),
+            unsigned(f.type),unsigned(f.format),unsigned(f.pool),f.size,static_cast<DWORD>(f.usage),static_cast<DWORD>(f.lock_flags));
+    }
+    for(unsigned i=0;i<ownership::finite_evidence_reason_count;++i)if(s.reasons[i])
+        log("finite_upload_reason device=%llu frame=%llu phase=%s reason=%u name=%s count=%llu",ctx.id,ctx.frame,phase,i,
+            ownership::finite_evidence_reason_name(static_cast<ownership::FiniteEvidenceReason>(i)),s.reasons[i]);
+}
 HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,const RGNDATA* r) {
     HookGuard lock;
     auto& ctx=*devices.at(d);
@@ -318,6 +345,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
         ctx.stats.present_override_known=true;ctx.stats.present_override=w;
     }
     if (ctx.capture || ctx.frame%300==0) log("frame_end device=%llu frame=%llu draws=%llu capture=%u present=%08lx",ctx.id,ctx.frame,ctx.draws,ctx.capture,hr);
+    if(ctx.capture||ctx.frame%300==0)finite_upload_metrics(d,ctx,"present");
     if (ctx.capture && ctx.remaining) --ctx.remaining;
     ++ctx.frame; ctx.draws=0; ctx.events=0; ctx.stats.frame=ctx.frame;
     const bool down=(GetAsyncKeyState(VK_F8)&0x8000)!=0;
@@ -336,10 +364,12 @@ HRESULT WINAPI reset(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p) {
     ctx.scene_depth.invalidate();
     presentation_parameters("reset_before",ctx.id,ctx.stats.focus_window,p);
     log("reset_begin ptr=%p device=%llu",d,ctx.id);
+    finite_upload_metrics(d,ctx,"reset_before");
     const auto begin=telemetry::now();
     HRESULT hr=fn(d,p); telemetry::record(ctx.stats,telemetry::Metric::Reset,telemetry::now()-begin,FAILED(hr));
     presentation_parameters("reset_after",ctx.id,ctx.stats.focus_window,p);
     ownership_depth_info(d,ctx.id,"reset_after");
+    finite_upload_metrics(d,ctx,"reset_after");
     if(SUCCEEDED(hr)&&p&&p->hDeviceWindow)ctx.stats.window=p->hDeviceWindow;
     telemetry::summary(ctx.stats,"reset",ctx.frame);
     log("reset_end device=%llu result=%08lx",ctx.id,hr); return hr;
@@ -651,6 +681,7 @@ void initialize_log(HMODULE module) {
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_FRAMES",setting,32)>0) capture_count=wcstoul(setting,nullptr,10);
     if(capture_count>8) capture_count=8;
     scene_depth_capture_requested=GetEnvironmentVariableW(L"X3M_SCENE_DEPTH_CAPTURE",setting,32)==1 && setting[0]==L'1';
+    finite_positions_requested=GetEnvironmentVariableW(L"X3M_FINITE_POSITIONS",setting,32)==1 && setting[0]==L'1';
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     if(telemetry::enabled())loading_trace::initialize();

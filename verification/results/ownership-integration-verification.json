@@ -1,86 +1,157 @@
 {
   "result": "PASS",
-  "dll_sha256": "d25daf93af6c61cd9e8bd7f4f688e70476f2931bf04bdaaa1b00844af3987503",
+  "dll_sha256": "6e21f29a57e97018753212759392ef0b79bd9fc120aa5121f30dd62f70ed3083",
   "cases": {
     "off-smoke": {
       "devices": 2,
       "destroyed": 2,
-      "reused_device_addresses": 0
+      "reused_device_addresses": 1,
+      "scoped_geometry_records": 2,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
     },
     "off-capture": {
       "devices": 2,
       "destroyed": 2,
-      "reused_device_addresses": 1
+      "reused_device_addresses": 1,
+      "scoped_geometry_records": 12,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
     },
     "off-lifetime": {
       "devices": 16,
       "destroyed": 16,
-      "reused_device_addresses": 15
+      "reused_device_addresses": 15,
+      "scoped_geometry_records": 0,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
     },
     "off-contracts": {
       "devices": 3,
       "destroyed": 3,
-      "reused_device_addresses": 2
+      "reused_device_addresses": 2,
+      "scoped_geometry_records": 0,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
     },
     "off-auto": {
       "devices": 1,
       "destroyed": 1,
-      "reused_device_addresses": 0
+      "reused_device_addresses": 0,
+      "scoped_geometry_records": 0,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
     },
     "on-smoke": {
       "devices": 2,
       "destroyed": 2,
-      "reused_device_addresses": 0
+      "reused_device_addresses": 0,
+      "scoped_geometry_records": 2,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
     },
     "on-capture": {
       "devices": 2,
       "destroyed": 2,
-      "reused_device_addresses": 0
+      "reused_device_addresses": 0,
+      "scoped_geometry_records": 12,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
     },
     "on-lifetime": {
       "devices": 16,
       "destroyed": 16,
-      "reused_device_addresses": 9
+      "reused_device_addresses": 14,
+      "scoped_geometry_records": 0,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
     },
     "on-contracts": {
       "devices": 3,
       "destroyed": 3,
-      "reused_device_addresses": 0
+      "reused_device_addresses": 0,
+      "scoped_geometry_records": 0,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
     },
     "on-auto": {
       "devices": 1,
       "destroyed": 1,
-      "reused_device_addresses": 0
+      "reused_device_addresses": 0,
+      "scoped_geometry_records": 0,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
     },
     "depth_only-smoke": {
       "devices": 2,
       "destroyed": 2,
-      "reused_device_addresses": 1
+      "reused_device_addresses": 1,
+      "scoped_geometry_records": 2,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
     },
     "copy_depth-auto": {
       "devices": 1,
       "destroyed": 1,
-      "reused_device_addresses": 0
+      "reused_device_addresses": 0,
+      "scoped_geometry_records": 0,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
     },
     "scene_depth-auto": {
       "devices": 1,
       "destroyed": 1,
-      "reused_device_addresses": 0
+      "reused_device_addresses": 0,
+      "scoped_geometry_records": 0,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
     },
     "scene_only-smoke": {
       "devices": 2,
       "destroyed": 2,
-      "reused_device_addresses": 1
+      "reused_device_addresses": 1,
+      "scoped_geometry_records": 2,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
     },
     "object_requested-smoke": {
       "devices": 2,
       "destroyed": 2,
-      "reused_device_addresses": 1
+      "reused_device_addresses": 0,
+      "scoped_geometry_records": 2,
+      "finite_metric_records": 0,
+      "native_contract_rejection_reported": false
+    },
+    "finite_on-smoke": {
+      "devices": 2,
+      "destroyed": 2,
+      "reused_device_addresses": 0,
+      "scoped_geometry_records": 2,
+      "finite_metric_records": 8,
+      "native_contract_rejection_reported": false
+    },
+    "finite_on-capture": {
+      "devices": 2,
+      "destroyed": 2,
+      "reused_device_addresses": 0,
+      "scoped_geometry_records": 12,
+      "finite_metric_records": 16,
+      "native_contract_rejection_reported": true
+    },
+    "finite_without_ownership-capture": {
+      "devices": 2,
+      "destroyed": 2,
+      "reused_device_addresses": 1,
+      "scoped_geometry_records": 12,
+      "finite_metric_records": 16,
+      "native_contract_rejection_reported": false
     }
   },
   "limits": [
     "Synthetic DLL integration, not gameplay validation.",
     "Direct3D9Ex remains native and uninstrumented.",
+    "Finite enabled cases verify wiring and unsupported-input refusal; positive finite uploads have separate original-data fixtures.",
     "Original-preserving depth-copy allocation smoke only; numerical/content behavior has a separate fixture."
-  ]
+  ],
+  "current_sources_and_binaries_match": true
 }

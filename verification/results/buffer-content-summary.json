@@ -1,29 +1,37 @@
 {
-  "started_utc": "2026-09-10T21:07:22.184153+00:00",
+  "started_utc": "2026-09-10T22:57:58.479044+00:00",
   "sources_before": {
-    "tools/ownership/generate_d3d9_forwarders.py": "b84a0cc06c3f176e47ff9e4d141c9719c9909a4f2a3bf8f8345e9f1990160b3b",
+    "tools/ownership/generate_d3d9_forwarders.py": "9522930cce1c7587abf23d0e5b92a5a39d8b711258bc58952a90980dc6dbd290",
     "verification/probe/buffer_content.cpp": "48d94c06e3de159c0e197f8d01599dccb7635356bfef642dff0b98a72ca73d55",
-    "verification/probe/build_buffer_content.sh": "3b8f5a433441346013fd00678235dc1ba31725edf4d3ce2b02eab6b417e77f73",
+    "verification/probe/build_buffer_content.sh": "98ee37caea1b95020e2635d2eaae89a2513be0873af84d36b0a472db1b2a3991",
     "verification/probe/run_buffer_content.py": "a34c13eb71efccc7dfd3493bc3dbff4e5c6889b5e7569ded0dd43492a0b8b1a3",
-    "src/ownership/d3d9_ownership.cpp": "42d94a3419208700b1fb7e4482fae8398418b8b3b3337de8e67bf06851f7ed2b",
-    "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
+    "src/ownership/d3d9_ownership.cpp": "d1e8f7842756e529f3e5e2167b34727f2ff8291297e9ca62f2881891f83fbe08",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
+    "src/ownership/d3d9_classes_inc.h": "71f29eb2d99c68c3f7837594219d74f1b1b618fd2bba80993bab349b5d7df5e4",
     "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
-    "src/ownership/d3d9_ownership.h": "9613d9b77c5cdd6dbff8ede1656efe63006eec5d3048756cdd82d226298c6f78"
+    "src/ownership/d3d9_ownership.h": "684dd32e962d6146dfff40e831a9281808f548b0a03f1232feee08838d540931",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949"
   },
   "game_launched": false,
   "fresh_build": true,
   "build_exit": 0,
   "sources_after_build": {
-    "tools/ownership/generate_d3d9_forwarders.py": "b84a0cc06c3f176e47ff9e4d141c9719c9909a4f2a3bf8f8345e9f1990160b3b",
+    "tools/ownership/generate_d3d9_forwarders.py": "9522930cce1c7587abf23d0e5b92a5a39d8b711258bc58952a90980dc6dbd290",
     "verification/probe/buffer_content.cpp": "48d94c06e3de159c0e197f8d01599dccb7635356bfef642dff0b98a72ca73d55",
-    "verification/probe/build_buffer_content.sh": "3b8f5a433441346013fd00678235dc1ba31725edf4d3ce2b02eab6b417e77f73",
+    "verification/probe/build_buffer_content.sh": "98ee37caea1b95020e2635d2eaae89a2513be0873af84d36b0a472db1b2a3991",
     "verification/probe/run_buffer_content.py": "a34c13eb71efccc7dfd3493bc3dbff4e5c6889b5e7569ded0dd43492a0b8b1a3",
-    "src/ownership/d3d9_ownership.cpp": "42d94a3419208700b1fb7e4482fae8398418b8b3b3337de8e67bf06851f7ed2b",
-    "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
+    "src/ownership/d3d9_ownership.cpp": "d1e8f7842756e529f3e5e2167b34727f2ff8291297e9ca62f2881891f83fbe08",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
+    "src/ownership/d3d9_classes_inc.h": "71f29eb2d99c68c3f7837594219d74f1b1b618fd2bba80993bab349b5d7df5e4",
     "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
-    "src/ownership/d3d9_ownership.h": "9613d9b77c5cdd6dbff8ede1656efe63006eec5d3048756cdd82d226298c6f78"
+    "src/ownership/d3d9_ownership.h": "684dd32e962d6146dfff40e831a9281808f548b0a03f1232feee08838d540931",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949"
   },
-  "executable_sha256": "48bb9a9e87f287233d9afec0a6ffeab1a518c207b93e9c858b27fbef44605adb",
+  "executable_sha256": "39d624bc78c7ec6910e442a10d69b65001c09b26ad973b7a275838047ec47c50",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -57,16 +65,20 @@
     }
   ],
   "sources_after_run": {
-    "tools/ownership/generate_d3d9_forwarders.py": "b84a0cc06c3f176e47ff9e4d141c9719c9909a4f2a3bf8f8345e9f1990160b3b",
+    "tools/ownership/generate_d3d9_forwarders.py": "9522930cce1c7587abf23d0e5b92a5a39d8b711258bc58952a90980dc6dbd290",
     "verification/probe/buffer_content.cpp": "48d94c06e3de159c0e197f8d01599dccb7635356bfef642dff0b98a72ca73d55",
-    "verification/probe/build_buffer_content.sh": "3b8f5a433441346013fd00678235dc1ba31725edf4d3ce2b02eab6b417e77f73",
+    "verification/probe/build_buffer_content.sh": "98ee37caea1b95020e2635d2eaae89a2513be0873af84d36b0a472db1b2a3991",
     "verification/probe/run_buffer_content.py": "a34c13eb71efccc7dfd3493bc3dbff4e5c6889b5e7569ded0dd43492a0b8b1a3",
-    "src/ownership/d3d9_ownership.cpp": "42d94a3419208700b1fb7e4482fae8398418b8b3b3337de8e67bf06851f7ed2b",
-    "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
+    "src/ownership/d3d9_ownership.cpp": "d1e8f7842756e529f3e5e2167b34727f2ff8291297e9ca62f2881891f83fbe08",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
+    "src/ownership/d3d9_classes_inc.h": "71f29eb2d99c68c3f7837594219d74f1b1b618fd2bba80993bab349b5d7df5e4",
     "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
-    "src/ownership/d3d9_ownership.h": "9613d9b77c5cdd6dbff8ede1656efe63006eec5d3048756cdd82d226298c6f78"
+    "src/ownership/d3d9_ownership.h": "684dd32e962d6146dfff40e831a9281808f548b0a03f1232feee08838d540931",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949"
   },
-  "executable_sha256_after_run": "48bb9a9e87f287233d9afec0a6ffeab1a518c207b93e9c858b27fbef44605adb",
+  "executable_sha256_after_run": "39d624bc78c7ec6910e442a10d69b65001c09b26ad973b7a275838047ec47c50",
   "passed": true,
   "report_sha256": "7874f46fe2c82becc6710fff89e1fa61821e541b8c0d4ea5b4853251742866a8"
 }

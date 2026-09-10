@@ -1,0 +1,386 @@
+CHECK load native D3D9 PASS
+CHECK create entry PASS
+CHECK window PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK unobserved initial bytes unknown PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK full Float3 finite PASS
+CHECK statistics PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK statistics PASS
+CHECK query cache hit PASS
+CHECK partial lock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK pending query unknown PASS
+CHECK partial unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK preserving partial retains untouched cells PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK NaN XYZ rejected PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK full rewrite recovers observed bytes PASS
+CHECK create VB PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK Half4 W nonfinite ignored PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK Half4 XYZ infinity rejected PASS
+CHECK native borrowed PASS
+CHECK retain native binding PASS
+CHECK wrapper recreated PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK allocation evidence survives wrapper recreation PASS
+CHECK unbind PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK managed Reset PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK Reset retires atlas and advances generation PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK post Reset observed write recertifies PASS
+CHECK content PASS
+CHECK query preserves live x87 and MXCSR and LastError PASS
+CHECK create IB PASS
+CHECK IB lock PASS
+CHECK IB unlock PASS
+CHECK content PASS
+CHECK index query PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK IB conservative subdraw certificate PASS
+CHECK create IB PASS
+CHECK IB lock PASS
+CHECK IB unlock PASS
+CHECK content PASS
+CHECK index query PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK IB conservative subdraw certificate PASS
+CHECK statistics PASS
+CHECK statistics PASS
+CHECK statistics PASS
+CHECK bounded counters record real work PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK statistics PASS
+CHECK off mode no sidecars PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK statistics PASS
+CHECK statistics PASS
+CHECK payload budget refuses without residue PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK create VB PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK statistics PASS
+CHECK sidecar count budget bounded PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK statistics PASS
+CHECK unsupported descriptor diagnosed PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK unsupported flag native Lock PASS
+CHECK unsupported flag native Unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK unsupported flags invalidate PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK cross thread Lock PASS
+CHECK cross thread native Unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK cross thread publication rejected PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK retain private sidecar PASS
+CHECK private IUnknown returned PASS
+CHECK statistics PASS
+CHECK external CPU sidecar survives native allocation PASS
+CHECK statistics PASS
+CHECK external final Release returns budget PASS
+CHECK create VB PASS
+CHECK native private Release never waits for registry PASS
+CHECK statistics PASS
+CHECK deferred final Release drained and budget returned PASS
+CHECK create VB PASS
+CHECK retain sidecar for POD spoof PASS
+CHECK foreign POD replaces reservation PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK statistics PASS
+CHECK POD pointer cannot impersonate private IUnknown PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK failed native Lock exact HRESULT/output PASS
+CHECK failed native Lock exact arguments PASS
+CHECK failed native Lock FP/LastError preserved PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK failed native Lock exact HRESULT/output PASS
+CHECK failed native Lock exact arguments PASS
+CHECK failed native Lock FP/LastError preserved PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK failed Unlock setup PASS
+CHECK failed native Unlock exact result/FP/LastError PASS
+CHECK explicit fixture repairs failed native mapping PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK content PASS
+CHECK failed Unlock never publishes PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK pending Reset setup PASS
+CHECK statistics PASS
+CHECK statistics PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK Reset attempt invalidates pending publication PASS
+CHECK pending Reset Unlock native PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK old staged upload cannot publish after Reset PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK nested outer Lock PASS
+CHECK nested readonly Lock PASS
+CHECK nested inner Unlock PASS
+CHECK nested outer Unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK content PASS
+CHECK nested readonly cannot publish earlier write PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK external ref setup PASS
+CHECK CPU sidecar survives complete device teardown PASS
+CHECK external reference balanced after device teardown PASS
+CHECK final external reference frees owner without device cycle PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK concurrent external ref setup PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK unrelated concurrent AddRef cannot spoof reservation counter PASS
+CHECK statistics PASS
+CHECK native GetPrivateData ref never leaked during external AddRef PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK native parity buffer PASS
+CHECK native/wrapped successful Lock output parity PASS
+CHECK native/wrapped successful Lock FP and LastError parity PASS
+CHECK native/wrapped successful Unlock FP and LastError parity PASS
+CHECK native byte comparison mapping PASS
+CHECK wrapped byte comparison mapping PASS
+CHECK observer never mutates mapped native payload PASS
+CHECK native byte comparison close PASS
+CHECK wrapped byte comparison close PASS
+CHECK native/wrapped successful Lock output parity PASS
+CHECK native/wrapped successful Lock FP and LastError parity PASS
+CHECK native/wrapped successful Unlock FP and LastError parity PASS
+CHECK native byte comparison mapping PASS
+CHECK wrapped byte comparison mapping PASS
+CHECK observer never mutates mapped native payload PASS
+CHECK native byte comparison close PASS
+CHECK wrapped byte comparison close PASS
+CHECK native/wrapped failed Lock output FP LastError parity PASS
+CHECK native/wrapped failed Lock output FP LastError parity PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK retain old sidecar for foreign object PASS
+CHECK foreign native IUnknown reservation replacement PASS
+CHECK native store owns one foreign reference PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK one untrusted observation retained without guessed Release PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK statistics PASS
+CHECK permanent disable prevents repeated foreign reference growth PASS
+CHECK fixture removes foreign reservation PASS
+CHECK native store releases its own foreign reference PASS
+CHECK fixture explicitly balances documented tamper-only retained reference PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK ProcessVertices failure preserves HRESULT PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK ProcessVertices attempt invalidates evidence PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK statistics PASS
+CHECK failed Reset HRESULT preserved PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK statistics PASS
+CHECK statistics PASS
+CHECK failed Reset retires evidence and budget PASS
+CHECK failed Reset retry native success PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK successful Reset fresh upload restores evidence PASS
+CHECK statistics PASS
+CHECK observed loss HRESULT preserved PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK statistics PASS
+CHECK statistics PASS
+CHECK observed loss clears atlas PASS
+CHECK loss retry native Reset PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK create VB PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK statistics PASS
+CHECK tracking failure has retained atlases PASS
+CHECK tracker SetPrivateData failure preserves native Lock PASS
+CHECK tracker failure preserves native Unlock PASS
+CHECK statistics PASS
+CHECK first tracker failure retires all owner atlases PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK other buffer cannot use stale atlas after tracker failure PASS
+CHECK tracking failure Reset still native success PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK statistics PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK Reset cannot clear permanent tracking failure PASS
+RESULT PASS checks=385

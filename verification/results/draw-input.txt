@@ -1,7 +1,7 @@
 CHECK native libraries and hidden window PASS
 CHECK reader preserves queried caller state PASS
 CHECK reader releases getter references PASS
-CHECK valid draw has intrinsic proofs only PASS
+CHECK valid synthetic draw has intrinsic proofs but no archive replay token PASS
 CHECK nonindexed ignores bound IB PASS
 CHECK scope fields never invent lifetime PASS
 CHECK reader preserves queried caller state PASS
@@ -165,4 +165,56 @@ CHECK failed IB description refuses geometry and coverage PASS
 CHECK failed IB description preserves state and releases references PASS
 CHECK null device explicit failure PASS
 CHECK Reset succeeds without retained DEFAULT references PASS
-RESULT PASS checks=167 reads=48 state_checks=48
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK managed FLOAT3 ordinary upload proves finite XYZ PASS
+CHECK finite payload cannot upgrade synthetic shader into archive replay source PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK half XYZ finite despite NaN and infinity stored W PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK half nonfinite XYZ refuses finite attestation PASS
+CHECK half XYZ rejection is positive nonfinite evidence PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK FLOAT3 signaling NaN refuses finite attestation PASS
+CHECK FLOAT3 rejection is positive nonfinite evidence PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK full finite replacement restores ordinary attestation PASS
+CHECK old VB revision cannot reuse newer evidence PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK indexed finite proof requires actual index certificate PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK actual indices outside declared API min count refuse finite proof PASS
+CHECK known actual IB extrema fail the narrower declared interval PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK nonindexed finite proof ignores bound bad IB PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK pending IB cannot certify indexed finite positions PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK partial IB update leaves whole allocation certificate unknown PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK full IB upload restores indexed finite proof PASS
+CHECK old IB revision cannot reuse newer certificate PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK pending VB cannot certify finite positions PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK aligned finite partial VB upload preserves unaffected finite cells PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK native VB pointer cannot claim observer-owned evidence PASS
+CHECK native IB pointer cannot claim observer-owned certificate PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK Reset invalidates old upload attestation PASS
+RESULT PASS checks=219 reads=63 state_checks=63

@@ -1,0 +1,24 @@
+{
+  "result": "PASS",
+  "command": [
+    "i686-w64-mingw32-nm",
+    "-C",
+    "--defined-only"
+  ],
+  "objects": {
+    "build-ownership/CMakeFiles/d3d9.dir/src/ownership/d3d9_ownership.cpp.obj": {
+      "sha256": "d634e3d3235140ef28e60415f978efe37e4c23153242c1ad9cf39509d9eeb1c5",
+      "forbidden_test_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/renderer/rigid_motion.cpp.obj": {
+      "sha256": "9e8934acdc00490c19f94d8ee346b04fdb2de7e47810b5d76779b8a33a207451",
+      "forbidden_test_symbols": [],
+      "qualifier_symbols": [
+        "00000000 T x3m::renderer::qualify_rigid_replay_source(unsigned int const*, unsigned int)"
+      ]
+    }
+  },
+  "dll_sha256": "6e21f29a57e97018753212759392ef0b79bd9fc120aa5121f30dd62f70ed3083",
+  "standalone_ownership_binaries_preserved": true
+}

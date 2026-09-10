@@ -68,6 +68,7 @@ DrawInput DrawInputReader::read(IDirect3DDevice9* device,const DrawArguments& ar
         if(words){
             result.vertex_program=hash(shader_words_.data(),words*4);
             result.position_path=renderer::classify_vertex_position(shader_words_.data(),words);
+            result.replay_source=renderer::qualify_rigid_replay_source(shader_words_.data(),words);
 #ifdef X3M_DRAW_INPUT_FIXTURE
             profile=position_lookup_(shader_words_.data(),words);
 #else
@@ -125,11 +126,14 @@ DrawInput DrawInputReader::read(IDirect3DDevice9* device,const DrawArguments& ar
         const UINT position_bytes=key.position_type==D3DDECLTYPE_FLOAT16_4?8:12;
         if(!key.stride||key.position_offset>key.stride||position_bytes>key.stride-key.position_offset)reject(PositionLayout);
         // Widen before all range arithmetic. No buffer payload reads/locks, even
-        // for WRITEONLY resources. Indexed ranges use the API's exact min/count.
+        // for WRITEONLY resources. Indexed metadata uses the API min/count;
+        // the separate finite gate also requires observed actual IB extrema.
         std::uint64_t last=0;
+        std::int64_t first_vertex=args.first;
         const std::uint64_t consumed=args.topology==D3DPT_TRIANGLELIST?std::uint64_t(args.primitives)*3:std::uint64_t(args.primitives)+2;
         if(key.indexed){
             const std::int64_t first=std::int64_t(args.base_vertex)+args.minimum_vertex;
+            first_vertex=first;
             if(first<0||!args.vertex_count)reject(DrawRange);
             else last=std::uint64_t(first)+args.vertex_count-1;
             Ref<IDirect3DIndexBuffer9> ib;D3DINDEXBUFFER_DESC ib_desc{};
@@ -138,6 +142,18 @@ DrawInput DrawInputReader::read(IDirect3DDevice9* device,const DrawArguments& ar
             if(!revision(ib.p,key.index_revision))reject(BufferRevision);
             const UINT bytes=ib_desc.Format==D3DFMT_INDEX16?2:ib_desc.Format==D3DFMT_INDEX32?4:0;
             if(!bytes||(std::uint64_t(args.first)+consumed)>ib_desc.Size/bytes)reject(DrawRange);
+            if(!(result.blockers&(BufferDescription|BufferRevision|DrawRange|UserMemory))){
+                ownership::IndexRangeRequest request{};
+                request.expected_revision=key.index_revision;request.format=ib_desc.Format;
+                request.start_index=args.first;request.index_count=consumed;
+                const auto hr=ownership::get_index_range_view(ib.p,request,&result.indices);
+                const auto& view=result.indices;
+                result.index_range_verified=hr==S_OK&&view.status==S_OK&&view.requested&&
+                    view.generation&&view.revision==key.index_revision&&view.known&&
+                    view.minimum<=view.maximum&&view.minimum>=args.minimum_vertex&&
+                    std::uint64_t(view.maximum)<std::uint64_t(args.minimum_vertex)+args.vertex_count&&
+                    first_vertex>=0;
+            }
         }else{
             // A bound IB is irrelevant to DrawPrimitive. Its fields remain zero.
             last=std::uint64_t(args.first)+consumed-1;
@@ -145,6 +161,30 @@ DrawInput DrawInputReader::read(IDirect3DDevice9* device,const DrawArguments& ar
         const std::uint64_t start=std::uint64_t(key.stream_offset)+key.position_offset;
         if(!key.stride||start>vb_desc.Size||position_bytes>vb_desc.Size-start||
            last>(vb_desc.Size-start-position_bytes)/key.stride)reject(DrawRange);
+
+        // Query classifications only; no additional Lock, payload read or shader
+        // execution occurs here. Whole-IB bounds may conservatively reject a
+        // subdraw. Never use declared min/count alone as index content evidence.
+        constexpr auto geometry_blockers=PositionLayout|BufferDescription|BufferRevision|DrawRange|UserMemory;
+        if(!key.indexed&&!(result.blockers&geometry_blockers))result.index_range_verified=true;
+        if(!(result.blockers&geometry_blockers)&&result.index_range_verified){
+            ownership::FinitePositionRequest request{};
+            request.expected_revision=key.vertex_revision;request.stream_offset=key.stream_offset;
+            request.stride=key.stride;request.position_offset=key.position_offset;
+            request.first_vertex=first_vertex;request.vertex_count=key.indexed?args.vertex_count:consumed;
+            request.position_type=static_cast<D3DDECLTYPE>(key.position_type);
+            const auto hr=ownership::get_finite_position_view(vb.p,request,&result.finite_positions);
+            const auto& view=result.finite_positions;
+            result.vertex_finite_verified=hr==S_OK&&view.status==S_OK&&view.requested&&
+                view.state==ownership::FiniteStatus::Finite&&view.generation&&
+                view.revision==key.vertex_revision&&(!key.indexed||view.generation==result.indices.generation);
+        }else{
+            result.finite_positions.reason=(result.blockers&PositionLayout)?ownership::FiniteEvidenceReason::InvalidLayout:
+                (result.blockers&(DrawRange|UserMemory))?ownership::FiniteEvidenceReason::InvalidRange:
+                (result.blockers&BufferRevision)?ownership::FiniteEvidenceReason::TrackingUnavailable:
+                (result.blockers&BufferDescription)?ownership::FiniteEvidenceReason::MissingAllocation:
+                ownership::FiniteEvidenceReason::IndexUnknown;
+        }
 
         D3DCAPS9 caps{};
         if(FAILED(device->GetDeviceCaps(&caps))||caps.NumSimultaneousRTs<1||caps.NumSimultaneousRTs>4||caps.MaxStreams<1||caps.MaxStreams>16)reject(TargetLayout|QueryFailure);
@@ -181,7 +221,8 @@ DrawInput DrawInputReader::read(IDirect3DDevice9* device,const DrawArguments& ar
         if(!(result.blockers&(BufferDescription|BufferRevision|DrawRange|UserMemory)))observation.proofs|=renderer::GeometryUnchanged;
         if(!(result.blockers&(PositionProgram|PositionLayout|BufferDescription|DrawRange|SubmittedRows|PixelCoverage|RasterState|TargetLayout|UserMemory)))observation.proofs|=renderer::CoverageSupported;
         if(result.blockers&QueryFailure)observation.proofs=0;
-    }catch(...){shader_words_.fill(0);reject(QueryFailure);observation.proofs=0;}
+        if(result.blockers&PositionLayout)result.vertex_finite_verified=false;
+    }catch(...){shader_words_.fill(0);reject(QueryFailure);observation.proofs=0;result.vertex_finite_verified=false;result.index_range_verified=false;}
     return result;
 }
 void DrawInputReader::complete(DrawInput& input,HRESULT result) noexcept {

@@ -53,13 +53,13 @@ struct Fixture {
     Com<IDirect3DVertexBuffer9> vb;Com<IDirect3DIndexBuffer9> ib;
     Com<IDirect3DVertexDeclaration9> float_decl,half_decl,bad_decl;
     D3DPRESENT_PARAMETERS pp{};DrawInputReader reader;object_trace::Snapshot scope{};renderer::SubmittedMatrix rows{};
-    explicit Fixture(IDirect3D9* native,HWND window){ownership::Options options;options.track_buffer_writes=true;api(ownership::wrap_factory(native,&factory.p,options),"wrap factory");pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=pp.BackBufferHeight=32;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.EnableAutoDepthStencil=TRUE;pp.AutoDepthStencilFormat=D3DFMT_D24X8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
+    explicit Fixture(IDirect3D9* native,HWND window,bool finite=false){ownership::Options options;options.track_buffer_writes=true;options.capture_finite_positions=finite;api(ownership::wrap_factory(native,&factory.p,options),"wrap factory");pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=pp.BackBufferHeight=32;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.EnableAutoDepthStencil=TRUE;pp.AutoDepthStencilFormat=D3DFMT_D24X8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
         api(factory->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING,&pp,&device.p),"wrapped device");
         for(unsigned i=0;i<3;++i){api(device->CreateVertexShader(reinterpret_cast<const DWORD*>(vertices[i].words.data()),&vs[i].p),"create VS");}
         api(device->CreatePixelShader(reinterpret_cast<const DWORD*>(pixel.data()),&ps.p),"create PS");
         auto declaration=[&](BYTE type,IDirect3DVertexDeclaration9** out){D3DVERTEXELEMENT9 elements[]={{0,0,type,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},D3DDECL_END()};api(device->CreateVertexDeclaration(elements,out),"create declaration");};declaration(D3DDECLTYPE_FLOAT3,&float_decl.p);declaration(D3DDECLTYPE_FLOAT16_4,&half_decl.p);declaration(D3DDECLTYPE_FLOAT4,&bad_decl.p);
-        api(device->CreateVertexBuffer(256,D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,0,D3DPOOL_DEFAULT,&vb.p,nullptr),"create dynamic VB");api(device->CreateIndexBuffer(24,0,D3DFMT_INDEX16,D3DPOOL_MANAGED,&ib.p,nullptr),"create IB");
-        void* p=nullptr;api(vb->Lock(0,0,&p,D3DLOCK_DISCARD),"initialize VB");std::memset(p,0,256);const float triangle[]={-.5f,-.5f,.5f, .5f,-.5f,.5f, 0,.5f,.5f};std::memcpy(p,triangle,sizeof triangle);api(vb->Unlock(),"close VB");api(ib->Lock(0,0,&p,0),"initialize IB");const unsigned short indices[12]={0,1,2};std::memcpy(p,indices,sizeof indices);api(ib->Unlock(),"close IB");
+        api(device->CreateVertexBuffer(256,finite?D3DUSAGE_WRITEONLY:D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,0,finite?D3DPOOL_MANAGED:D3DPOOL_DEFAULT,&vb.p,nullptr),"create dynamic VB");api(device->CreateIndexBuffer(24,finite?D3DUSAGE_WRITEONLY:0,D3DFMT_INDEX16,D3DPOOL_MANAGED,&ib.p,nullptr),"create IB");
+        void* p=nullptr;api(vb->Lock(0,0,&p,finite?0:D3DLOCK_DISCARD),"initialize VB");std::memset(p,0,256);const float triangle[]={-.5f,-.5f,.5f, .5f,-.5f,.5f, 0,.5f,.5f};std::memcpy(p,triangle,sizeof triangle);api(vb->Unlock(),"close VB");api(ib->Lock(0,0,&p,0),"initialize IB");const unsigned short indices[12]={0,1,2};std::memcpy(p,indices,sizeof indices);api(ib->Unlock(),"close IB");
         scope.valid=object_trace::Node|object_trace::Camera|object_trace::Registry;scope.scope_depth=1;scope.node=0x1000;scope.camera=0x2000;scope.mesh=0x3000;scope.registry=0x4000;scope.node_handle=7;scope.camera_handle=9;scope.model=4;scope.lod=2;scope.session=123;
         rows={1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};reader.fixture_profiles(vertex_lookup,pixel_lookup);baseline();
     }
@@ -98,7 +98,7 @@ template<class Buffer,class Descriptor> struct DescriptorFault {
     explicit DescriptorFault(Buffer* b):original(*reinterpret_cast<void***>(b)),buffer(b){std::copy(original,original+14,table);std::memcpy(&get_desc,&table[13],sizeof get_desc);auto replacement=&fail;std::memcpy(&table[13],&replacement,sizeof replacement);populated=false;*reinterpret_cast<void***>(b)=table;}
     ~DescriptorFault(){*reinterpret_cast<void***>(buffer)=original;}
 };
-void run(Fixture& f){auto good=f.read();const unsigned intrinsic=renderer::PositionReviewed|renderer::GeometryUnchanged|renderer::CoverageSupported;check(!good.blockers&&good.observation.proofs==intrinsic,"valid draw has intrinsic proofs only");check(!good.observation.key.indexed&&!good.observation.key.index_buffer&&!good.observation.key.index_revision&&!good.observation.key.index_format,"nonindexed ignores bound IB");check(good.observation.key.node==f.scope.node&&good.observation.key.model==4&&good.observation.key.lod==2&&!good.observation.key.object_lifetime&&!good.observation.key.camera_lifetime,"scope fields never invent lifetime");
+void run(Fixture& f){auto good=f.read();const unsigned intrinsic=renderer::PositionReviewed|renderer::GeometryUnchanged|renderer::CoverageSupported;check(!good.blockers&&good.observation.proofs==intrinsic&&!good.replay_source.qualified()&&!good.vertex_finite_verified,"valid synthetic draw has intrinsic proofs but no archive replay token");check(!good.observation.key.indexed&&!good.observation.key.index_buffer&&!good.observation.key.index_revision&&!good.observation.key.index_format,"nonindexed ignores bound IB");check(good.observation.key.node==f.scope.node&&good.observation.key.model==4&&good.observation.key.lod==2&&!good.observation.key.object_lifetime&&!good.observation.key.camera_lifetime,"scope fields never invent lifetime");
     for(unsigned i=0;i<3;++i){auto rows=f.rows;std::uint32_t bits=0x80000000;std::memcpy(&rows[1],&bits,4);rows[3]=0.123456789f;rows[6]=-7.125f;api(f.device->SetVertexShader(f.vs[i].p),"select row register shader");api(f.device->SetVertexShaderConstantF(vertices[i].profile.matrix_register,rows.data(),4),"submit nontrivial rows");auto d=f.read();check(!d.blockers&&!std::memcmp(rows.data(),d.observation.submitted_wvp.data(),sizeof rows),"c0 c6 c24 submitted rows copied bitwise");}f.baseline();
     const DrawArguments ordinary{DrawMethod::Primitive,D3DPT_TRIANGLELIST,1,0,0,0,0};auto missing=f.read(ordinary,nullptr,true);check(missing.blockers==ObjectScope&&!(missing.observation.proofs&renderer::LifetimeVerified),"missing scope cannot prove lifetime");auto partial=f.scope;partial.valid&=~object_trace::Registry;check(f.read(ordinary,&partial).blockers==ObjectScope,"partial scope rejected");
     api(f.device->BeginScene(),"begin actual draw");auto submitted=f.read();api(f.device->DrawPrimitive(D3DPT_TRIANGLELIST,0,1),"actual successful draw");DrawInputReader::complete(submitted,S_OK);check((submitted.observation.proofs&renderer::SubmissionSucceeded)&&!(submitted.observation.proofs&renderer::LifetimeVerified),"successful submission still lacks lifetime");DrawInputReader::complete(submitted,E_FAIL);check((submitted.blockers&SubmissionFailure)&&!(submitted.observation.proofs&renderer::SubmissionSucceeded),"failed submission revokes success");api(f.device->EndScene(),"end actual draw");
@@ -124,6 +124,76 @@ void run(Fixture& f){auto good=f.read();const unsigned intrinsic=renderer::Posit
     auto null=f.reader.read(nullptr,{},nullptr);check(null.blockers==QueryFailure&&!null.observation.proofs,"null device explicit failure");
     api(f.device->SetStreamSource(0,nullptr,0,0),"unbind before Reset");f.vb.reset();api(f.device->Reset(&f.pp),"Reset after all reader calls");check(true,"Reset succeeds without retained DEFAULT references");
 }
+// No geometry readback or extra Lock at query time. The observer learns only
+// from these ordinary application uploads to MANAGED+WRITEONLY resources.
+void run_finite(Fixture& f){
+    const DrawArguments ordinary{DrawMethod::Primitive,D3DPT_TRIANGLELIST,1,0,0,0,0};
+    const DrawArguments indexed{DrawMethod::Indexed,D3DPT_TRIANGLELIST,1,0,0,0,3};
+    auto expect=[&](bool finite,const char* label,const DrawArguments& args){
+        auto input=f.read(args);
+        const bool position_identity=!finite||(input.finite_positions.state==ownership::FiniteStatus::Finite&&
+            input.finite_positions.requested&&input.finite_positions.generation&&
+            input.finite_positions.revision==input.observation.key.vertex_revision);
+        const bool indexed_identity=args.method!=DrawMethod::Indexed||!finite||
+            (input.index_range_verified&&input.indices.known&&input.indices.requested&&
+             input.indices.revision==input.observation.key.index_revision);
+        check(input.vertex_finite_verified==finite&&position_identity&&indexed_identity,label);
+        return input;
+    };
+    auto upload_vertices=[&](const void* data,std::size_t bytes){
+        void* mapped=nullptr;api(f.vb->Lock(0,0,&mapped,0),"managed full VB upload");
+        std::memset(mapped,0,256);std::memcpy(mapped,data,bytes);
+        api(f.vb->Unlock(),"managed full VB publication");
+    };
+    auto upload_indices=[&](unsigned short maximum){
+        const unsigned short indices[12]={0,1,maximum};void* mapped=nullptr;
+        api(f.ib->Lock(0,0,&mapped,0),"managed full IB upload");
+        std::memcpy(mapped,indices,sizeof indices);api(f.ib->Unlock(),"managed full IB publication");
+    };
+    auto positive=expect(true,"managed FLOAT3 ordinary upload proves finite XYZ",ordinary);
+    check(!positive.replay_source.qualified(),"finite payload cannot upgrade synthetic shader into archive replay source");
+    const auto original_revision=positive.observation.key.vertex_revision;
+    const unsigned short half[12]={0xb800,0xb800,0x3800,0x7e01,0x3800,0xb800,0x3800,0x7c01,0,0x3800,0x3800,0xfc00};
+    upload_vertices(half,sizeof half);api(f.device->SetVertexDeclaration(f.half_decl.p),"finite half declaration");api(f.device->SetStreamSource(0,f.vb.p,0,8),"finite half stride");
+    expect(true,"half XYZ finite despite NaN and infinity stored W",ordinary);
+    auto bad_half=std::array<unsigned short,12>{};std::copy(std::begin(half),std::end(half),bad_half.begin());bad_half[4]=0x7c01;
+    upload_vertices(bad_half.data(),sizeof bad_half);auto rejected_half=expect(false,"half nonfinite XYZ refuses finite attestation",ordinary);
+    check(rejected_half.finite_positions.state==ownership::FiniteStatus::NonFinite,"half XYZ rejection is positive nonfinite evidence");
+    f.baseline();const std::uint32_t bad_float[9]={0x7f812345,0,0,0,0,0,0,0,0};
+    upload_vertices(bad_float,sizeof bad_float);auto rejected_float=expect(false,"FLOAT3 signaling NaN refuses finite attestation",ordinary);
+    check(rejected_float.finite_positions.state==ownership::FiniteStatus::NonFinite,"FLOAT3 rejection is positive nonfinite evidence");
+    const float triangle[9]={-.5f,-.5f,.5f,.5f,-.5f,.5f,0,.5f,.5f};
+    upload_vertices(triangle,sizeof triangle);positive=expect(true,"full finite replacement restores ordinary attestation",ordinary);
+    ownership::FinitePositionRequest stale{};stale.expected_revision=original_revision;stale.stride=12;stale.vertex_count=3;stale.position_type=D3DDECLTYPE_FLOAT3;
+    ownership::FinitePositionView stale_view{};api(ownership::get_finite_position_view(f.vb.p,stale,&stale_view),"stale finite position query");
+    check(stale_view.state==ownership::FiniteStatus::Unknown&&stale_view.reason==ownership::FiniteEvidenceReason::RevisionMismatch,"old VB revision cannot reuse newer evidence");
+    auto valid_indexed=expect(true,"indexed finite proof requires actual index certificate",indexed);
+    const auto original_index_revision=valid_indexed.observation.key.index_revision;
+    upload_indices(5);auto outside=expect(false,"actual indices outside declared API min count refuse finite proof",indexed);
+    check(outside.indices.known&&outside.indices.minimum==0&&outside.indices.maximum==5&&!outside.index_range_verified,
+          "known actual IB extrema fail the narrower declared interval");
+    expect(true,"nonindexed finite proof ignores bound bad IB",ordinary);
+    void* mapped=nullptr;api(f.ib->Lock(0,2,&mapped,0),"pending managed IB");
+    expect(false,"pending IB cannot certify indexed finite positions",indexed);
+    api(f.ib->Unlock(),"partial managed IB publication");
+    expect(false,"partial IB update leaves whole allocation certificate unknown",indexed);
+    upload_indices(2);expect(true,"full IB upload restores indexed finite proof",indexed);
+    ownership::IndexRangeRequest old_indices{};old_indices.expected_revision=original_index_revision;old_indices.format=D3DFMT_INDEX16;old_indices.index_count=3;
+    ownership::IndexRangeView stale_indices{};api(ownership::get_index_range_view(f.ib.p,old_indices,&stale_indices),"stale index query");
+    check(!stale_indices.known&&stale_indices.reason==ownership::FiniteEvidenceReason::RevisionMismatch,"old IB revision cannot reuse newer certificate");
+    api(f.vb->Lock(0,12,&mapped,0),"pending managed VB");expect(false,"pending VB cannot certify finite positions",ordinary);
+    std::memcpy(mapped,triangle,12);api(f.vb->Unlock(),"partial managed VB publication");
+    expect(true,"aligned finite partial VB upload preserves unaffected finite cells",ordinary);
+    auto* native_vb=ownership::borrowed_native_buffer_for_lock_contract(f.vb.p);
+    auto* native_ib=ownership::borrowed_native_buffer_for_lock_contract(f.ib.p);
+    ownership::FinitePositionView native_view{};ownership::IndexRangeView native_indices{};
+    auto current=stale;current.expected_revision=f.read().observation.key.vertex_revision;
+    check(native_vb&&FAILED(ownership::get_finite_position_view(native_vb,current,&native_view))&&native_view.state==ownership::FiniteStatus::Unknown,"native VB pointer cannot claim observer-owned evidence");
+    check(native_ib&&FAILED(ownership::get_index_range_view(native_ib,old_indices,&native_indices))&&!native_indices.known,"native IB pointer cannot claim observer-owned certificate");
+    api(f.device->SetStreamSource(0,nullptr,0,0),"finite unbind before Reset");api(f.device->SetIndices(nullptr),"finite index unbind before Reset");
+    api(f.device->Reset(&f.pp),"finite observer Reset with managed allocations retained");f.baseline();
+    expect(false,"Reset invalidates old upload attestation",ordinary);
+}
 }
 int main(int argc,char**argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=1;HMODULE d3d=nullptr,d3dx=nullptr;WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3DrawInputFixture";RegisterClassA(&cls);HWND window=CreateWindowA(cls.lpszClassName,"X3 draw input fixture",WS_OVERLAPPEDWINDOW,0,0,64,64,nullptr,nullptr,cls.hInstance,nullptr);
-    try{if(argc!=2)throw std::runtime_error("expected native D3DX path");d3d=LoadLibraryA("d3d9.dll");d3dx=LoadLibraryA(argv[1]);check(d3d&&d3dx&&window,"native libraries and hidden window");auto fn=symbol<Assemble>(d3dx,"D3DXAssembleShader");const unsigned registers[]={0,6,24};for(unsigned i=0;i<3;++i){const auto r=registers[i];auto source=std::string("vs_2_0\ndcl_position v0\ndef c31, 1, 0, 0, 0\nmov r0.xyz, v0\nmov r0.w, c31.x\ndp4 oPos.x, r0, c")+std::to_string(r)+"\ndp4 oPos.y, r0, c"+std::to_string(r+1)+"\ndp4 oPos.z, r0, c"+std::to_string(r+2)+"\ndp4 oPos.w, r0, c"+std::to_string(r+3)+"\n";auto& v=vertices[i];v.words=assemble(fn,source);v.profile={hash(v.words.data(),v.words.size()*4),std::uint32_t(v.words.size()),std::uint16_t(r),true};}pixel=assemble(fn,"ps_2_0\ndef c0, 0.25, 0.5, 0.75, 1\nmov oC0, c0\n");pixel_profile={hash(pixel.data(),pixel.size()*4),std::uint32_t(pixel.size())};auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(d3d,"Direct3DCreate9");{Fixture fixture(create(D3D_SDK_VERSION),window);run(fixture);}std::printf("RESULT PASS checks=%u reads=%u state_checks=%u\n",checks,reads,state_checks);result=0;}catch(const std::exception&e){std::printf("RESULT FAIL %s checks=%u\n",e.what(),checks);}if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);if(d3dx)FreeLibrary(d3dx);if(d3d)FreeLibrary(d3d);return result;}
+    try{if(argc!=2)throw std::runtime_error("expected native D3DX path");d3d=LoadLibraryA("d3d9.dll");d3dx=LoadLibraryA(argv[1]);check(d3d&&d3dx&&window,"native libraries and hidden window");auto fn=symbol<Assemble>(d3dx,"D3DXAssembleShader");const unsigned registers[]={0,6,24};for(unsigned i=0;i<3;++i){const auto r=registers[i];auto source=std::string("vs_2_0\ndcl_position v0\ndef c31, 1, 0, 0, 0\nmov r0.xyz, v0\nmov r0.w, c31.x\ndp4 oPos.x, r0, c")+std::to_string(r)+"\ndp4 oPos.y, r0, c"+std::to_string(r+1)+"\ndp4 oPos.z, r0, c"+std::to_string(r+2)+"\ndp4 oPos.w, r0, c"+std::to_string(r+3)+"\n";auto& v=vertices[i];v.words=assemble(fn,source);v.profile={hash(v.words.data(),v.words.size()*4),std::uint32_t(v.words.size()),std::uint16_t(r),true};}pixel=assemble(fn,"ps_2_0\ndef c0, 0.25, 0.5, 0.75, 1\nmov oC0, c0\n");pixel_profile={hash(pixel.data(),pixel.size()*4),std::uint32_t(pixel.size())};auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(d3d,"Direct3DCreate9");{Fixture fixture(create(D3D_SDK_VERSION),window);run(fixture);}{Fixture fixture(create(D3D_SDK_VERSION),window,true);run_finite(fixture);}std::printf("RESULT PASS checks=%u reads=%u state_checks=%u\n",checks,reads,state_checks);result=0;}catch(const std::exception&e){std::printf("RESULT FAIL %s checks=%u\n",e.what(),checks);}if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);if(d3dx)FreeLibrary(d3dx);if(d3d)FreeLibrary(d3d);return result;}

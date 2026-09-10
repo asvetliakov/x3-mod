@@ -3,17 +3,34 @@
 from pathlib import Path
 from collections import Counter
 import json
+import hashlib
 import re
 root=Path(__file__).resolve().parents[2];results=root/'verification/results'
 def verify():
+    (results/'ownership-verification.json').write_text(json.dumps({'result':'RUNNING'})+'\n')
     manifest=json.loads((results/'ownership-build-verification.json').read_text())
+    assert manifest.get('passed') and manifest.get('fresh_build') and manifest.get('phase')=='complete','Fresh ownership build/run did not complete'
+    assert manifest['sources_before_build']==manifest['sources_after_build']==manifest['sources'],'Source changed during ownership verification'
+    assert manifest['binaries_before']==manifest['binaries_after'],'Build products changed during ownership verification'
+    for name,expected in manifest['sources'].items():
+        assert hashlib.sha256((root/name).read_bytes()).hexdigest()==expected,'Source differs from verified build: '+name
+    assert set(manifest['fixtures'])==set(manifest['binaries_before'])=={'baseline','wrapped'},'Incomplete fixture/binary maps'
+    for mode,entry in manifest['fixtures'].items():
+        assert entry['exe_sha256']==manifest['binaries_before'][mode],'Fixture executable differs from pre/post build maps'
+        binary=root/'verification/probe/build'/f'ownership_{mode}.exe'
+        assert hashlib.sha256(binary.read_bytes()).hexdigest()==entry['exe_sha256'],'Current build executable differs from verified run: '+mode
+        assert hashlib.sha256((results/f'ownership-{mode}.txt').read_bytes()).hexdigest()==entry['report_sha256'],'Report does not match run manifest'
     assert set(manifest['fixtures'])=={'baseline','wrapped'} and all(item['exit']==0 for item in manifest['fixtures'].values()),'Incomplete or failed fixture run'
     reports={mode:(results/f'ownership-{mode}.txt').read_text() for mode in ('baseline','wrapped')}
     summary={}
     for mode,trace in reports.items():
         assert not re.search(r'^CHECK .* FAIL$',trace,re.M),mode
-        end=re.search(r'^OWNERSHIP RESULT checks=(\d+) failures=(\d+)$',trace,re.M)
-        assert end and int(end[2])==0,mode
+        terminal=trace.rstrip().splitlines()[-1] if trace.strip() else ''
+        endings=[line for line in trace.splitlines() if line.startswith('OWNERSHIP RESULT ')]
+        end=re.fullmatch(r'OWNERSHIP RESULT checks=(\d+) failures=(\d+)',terminal) if endings==[terminal] else None
+        check_lines=[line for line in trace.splitlines() if line.startswith('CHECK ')]
+        assert end and int(end[2])==0 and int(end[1])==len(check_lines)=={'baseline':370,'wrapped':431}[mode],mode+' incomplete check inventory'
+        assert all(line.endswith(' PASS') for line in check_lines),mode+' nonpassing check'
         summary[mode]={'checks':int(end[1]),'failures':int(end[2])}
     # These are actual backend contracts, including Preview's additional chain
     # enumeration behavior. Native reference-count magnitudes are diagnostic only.

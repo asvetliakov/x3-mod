@@ -38,6 +38,20 @@ class CaptureObjectSummaryTests(unittest.TestCase):
         self.assertTrue(draw_summary([lifetime])['motion_lifetime_matches_draw'])
         self.assertFalse(draw_summary([lifetime.replace('index=1', 'index=2')])['motion_lifetime_matches_draw'])
 
+    def test_geometry_certificate_is_scoped_and_unknowns_survive(self):
+        record = ('motion_geometry device=1 frame=7 index=1 source_qualified=1 '
+                  'finite_state=0 finite_reason=22 finite_generation=8 finite_revision=3 '
+                  'index_known=1 index_exact=0 index_min=0 index_max=99 index_range_verified=0')
+        draw = draw_summary([record])
+        self.assertTrue(draw['motion_geometry_matches_draw'])
+        self.assertEqual(draw['motion_geometry']['finite_state'], '0')
+        self.assertEqual(draw['motion_geometry']['index_exact'], '0')
+        self.assertNotIn('vertex_finite_verified', draw['motion_geometry'])
+        for old, new in (('device=1', 'device=2'), ('frame=7', 'frame=8'),
+                         ('index=1', 'index=2'), ('device=1 ', '')):
+            self.assertFalse(draw_summary([record.replace(old, new)])['motion_geometry_matches_draw'])
+        self.assertNotIn('motion_geometry', draw_summary([]))
+
     def test_valid_context_all_matrix_roles_position_basis_and_scale_are_raw(self):
         records = [CONTEXT]
         for role in ('world', 'world_basis', 'view', 'projection', 'scale'):

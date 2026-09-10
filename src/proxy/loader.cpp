@@ -10,6 +10,7 @@ HMODULE self_module;
 HMODULE backend;
 bool ownership_enabled = false;
 bool depth_copy_enabled = false;
+bool finite_positions_enabled = false;
 INIT_ONCE once = INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     x3m::initialize_log(self_module);
@@ -19,8 +20,12 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     ownership_enabled = GetEnvironmentVariableW(L"X3M_OWNERSHIP", setting, 8) == 1 && setting[0] == L'1';
     const bool depth_requested = GetEnvironmentVariableW(L"X3M_DEPTH_COPY", setting, 8) == 1 && setting[0] == L'1';
     depth_copy_enabled = ownership_enabled && depth_requested;
+    const bool finite_requested = GetEnvironmentVariableW(L"X3M_FINITE_POSITIONS", setting, 8) == 1 && setting[0] == L'1';
+    finite_positions_enabled = ownership_enabled && finite_requested;
     if (ownership_enabled || depth_requested)
         x3m::log("ownership_mode requested=%u depth_copy_requested=%u depth_copy_enabled=%u scope=normal9 fallback=native", ownership_enabled, depth_requested, depth_copy_enabled);
+    if (finite_requested)
+        x3m::log("finite_upload_mode requested=1 enabled=%u scope=verified_managed_uploads payload_retained=0", finite_positions_enabled);
     wchar_t path[32768]{};
     // Absolute system path avoids reloading this app-local proxy. Never search PATH.
     UINT length = GetSystemDirectoryW(path, 32750);
@@ -68,7 +73,8 @@ extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
         IDirect3D9* wrapped = nullptr;
         x3m::ownership::Options options{};
         options.capture_auto_depth = depth_copy_enabled;
-        options.track_buffer_writes = x3m::object_trace::active();
+        options.track_buffer_writes = x3m::object_trace::active() || finite_positions_enabled;
+        options.capture_finite_positions = finite_positions_enabled;
         const HRESULT adopted = x3m::ownership::wrap_factory(result, &wrapped, options);
         if (SUCCEEDED(adopted)) {
             // Successful adoption consumes the native factory reference. Capture

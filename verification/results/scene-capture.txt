@@ -89,8 +89,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=1 frame=1 generation=1
-TRACE resource identity=1 ptr=01659240 type=1
-TRACE resource identity=2 ptr=01659270 type=1
+TRACE resource identity=1 ptr=01659bd8 type=1
+TRACE resource identity=2 ptr=01659c08 type=1
 API scene clear result=00000000
 CHECK scene clear PASS
 API draw PS result=00000000
@@ -169,14 +169,14 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API depth unbind result=00000000
 CHECK depth unbind PASS
-TRACE resource identity=3 ptr=01718f48 type=1
-TRACE resource identity=4 ptr=01718eb8 type=3
+TRACE resource identity=3 ptr=01718f18 type=1
+TRACE resource identity=4 ptr=01659c38 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=5 ptr=01718f78 type=1
-TRACE resource identity=6 ptr=01718ee8 type=3
+TRACE resource identity=5 ptr=01718f48 type=1
+TRACE resource identity=6 ptr=01718eb8 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -197,8 +197,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=7 ptr=01718fa8 type=1
-TRACE resource identity=8 ptr=01718f18 type=3
+TRACE resource identity=7 ptr=01718f78 type=1
+TRACE resource identity=8 ptr=01718ee8 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -2968,7 +2968,7 @@ API actual ColorFill result=00000000
 CHECK actual ColorFill PASS
 TRACE resource identity=76 ptr=01719038 type=1
 TRACE resource identity=77 ptr=01718fa8 type=3
-TRACE scene_depth_color_fill device=11 frame=11 event=11 result=00000000 target_ptr=01719038 rect_ptr=0032f790 target_known=1 target=76 container=77 width=32 height=32 format=21 msaa=0 rect_null=0 left=0 top=0 right=16 bottom=16
+TRACE scene_depth_color_fill device=11 frame=11 event=11 result=00000000 target_ptr=01719038 rect_ptr=0032f780 target_known=1 target=76 container=77 width=32 height=32 format=21 msaa=0 rect_null=0 left=0 top=0 right=16 bottom=16
 API actual ColorFill result=00000000
 CHECK actual ColorFill PASS
 TRACE resource identity=78 ptr=01719068 type=1
@@ -3258,8 +3258,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=12 frame=12 generation=1
-TRACE resource identity=80 ptr=0172e5b8 type=1
-TRACE resource identity=81 ptr=0172e5e8 type=1
+TRACE resource identity=80 ptr=0171d2f0 type=1
+TRACE resource identity=81 ptr=0171d320 type=1
 API scene clear result=00000000
 CHECK scene clear PASS
 API draw PS result=00000000
@@ -3340,16 +3340,16 @@ API depth unbind result=00000000
 CHECK depth unbind PASS
 API actual ColorFill result=00000000
 CHECK actual ColorFill PASS
-TRACE scene_depth_color_fill device=12 frame=12 event=10 result=00000000 target_ptr=0172e5b8 rect_ptr=00000000 target_known=1 target=80 container=0 width=64 height=64 format=21 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
+TRACE scene_depth_color_fill device=12 frame=12 event=10 result=00000000 target_ptr=0171d2f0 rect_ptr=00000000 target_known=1 target=80 container=0 width=64 height=64 format=21 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
 TRACE scene_depth_reject device=12 frame=12 event=10 operation=ColorFill prior_state=3 rejection=5 reason=Pattern result=00000000 rt=0 depth=0 destination_known=1 destination=80 destination_container=0 destination_format=21 destination_width=64 destination_height=64 destination_msaa=0
-TRACE resource identity=82 ptr=0172e6a8 type=1
-TRACE resource identity=83 ptr=0172e618 type=3
+TRACE resource identity=82 ptr=0171d3e0 type=1
+TRACE resource identity=83 ptr=0171d350 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=84 ptr=0172e6d8 type=1
-TRACE resource identity=85 ptr=0172e648 type=3
+TRACE resource identity=84 ptr=0171d410 type=1
+TRACE resource identity=85 ptr=0171d380 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -3370,8 +3370,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=86 ptr=0172e708 type=1
-TRACE resource identity=87 ptr=0172e678 type=3
+TRACE resource identity=86 ptr=0171d440 type=1
+TRACE resource identity=87 ptr=0171d3b0 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -3799,8 +3799,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=14 frame=14 generation=1
-TRACE resource identity=96 ptr=0172e5b8 type=1
-TRACE resource identity=97 ptr=0172e5e8 type=1
+TRACE resource identity=96 ptr=0171d2f0 type=1
+TRACE resource identity=97 ptr=0171d320 type=1
 API scene clear result=00000000
 CHECK scene clear PASS
 API draw PS result=00000000
@@ -3881,17 +3881,17 @@ API depth unbind result=00000000
 CHECK depth unbind PASS
 API actual ColorFill result=00000000
 CHECK actual ColorFill PASS
-TRACE scene_depth_color_fill device=14 frame=14 event=10 result=00000000 target_ptr=0172e6d8 rect_ptr=00000000 target_known=0 target=0 container=0 width=0 height=0 format=0 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
+TRACE scene_depth_color_fill device=14 frame=14 event=10 result=00000000 target_ptr=0171d410 rect_ptr=00000000 target_known=0 target=0 container=0 width=0 height=0 format=0 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
 TRACE scene_depth_reject device=14 frame=14 event=10 operation=ColorFill prior_state=3 rejection=5 reason=Pattern result=00000000 rt=0 depth=0 destination_known=0 destination=0 destination_container=0 destination_format=0 destination_width=0 destination_height=0 destination_msaa=0
 INJECT ColorFill target GetDesc E_FAIL
-TRACE resource identity=98 ptr=0172e6a8 type=1
-TRACE resource identity=99 ptr=0172e618 type=3
+TRACE resource identity=98 ptr=0171d3e0 type=1
+TRACE resource identity=99 ptr=0171d350 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=100 ptr=0172e6d8 type=1
-TRACE resource identity=101 ptr=0172e648 type=3
+TRACE resource identity=100 ptr=0171d410 type=1
+TRACE resource identity=101 ptr=0171d380 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -3912,8 +3912,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=102 ptr=0172e708 type=1
-TRACE resource identity=103 ptr=0172e678 type=3
+TRACE resource identity=102 ptr=0171d440 type=1
+TRACE resource identity=103 ptr=0171d3b0 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -4344,8 +4344,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=16 frame=16 generation=1
-TRACE resource identity=112 ptr=0172e5b8 type=1
-TRACE resource identity=113 ptr=0172e5e8 type=1
+TRACE resource identity=112 ptr=0171d2f0 type=1
+TRACE resource identity=113 ptr=0171d320 type=1
 API scene clear result=00000000
 CHECK scene clear PASS
 API draw PS result=00000000
@@ -4424,14 +4424,14 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API actual ColorFill result=00000000
 CHECK actual ColorFill PASS
-TRACE resource identity=114 ptr=0172e6d8 type=1
-TRACE resource identity=115 ptr=0172e648 type=3
-TRACE scene_depth_color_fill device=16 frame=16 event=9 result=00000000 target_ptr=0172e6d8 rect_ptr=00000000 target_known=1 target=114 container=115 width=32 height=32 format=21 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
+TRACE resource identity=114 ptr=0171d410 type=1
+TRACE resource identity=115 ptr=0171d380 type=3
+TRACE scene_depth_color_fill device=16 frame=16 event=9 result=00000000 target_ptr=0171d410 rect_ptr=00000000 target_known=1 target=114 container=115 width=32 height=32 format=21 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
 TRACE scene_depth_reject device=16 frame=16 event=9 operation=ColorFill prior_state=2 rejection=5 reason=Pattern result=00000000 rt=0 depth=0 destination_known=1 destination=114 destination_container=115 destination_format=21 destination_width=32 destination_height=32 destination_msaa=0
 API depth unbind result=00000000
 CHECK depth unbind PASS
-TRACE resource identity=116 ptr=0172e6a8 type=1
-TRACE resource identity=117 ptr=0172e618 type=3
+TRACE resource identity=116 ptr=0171d3e0 type=1
+TRACE resource identity=117 ptr=0171d350 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
@@ -4456,8 +4456,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=118 ptr=0172e708 type=1
-TRACE resource identity=119 ptr=0172e678 type=3
+TRACE resource identity=118 ptr=0171d440 type=1
+TRACE resource identity=119 ptr=0171d3b0 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -4699,8 +4699,8 @@ API standalone scratch result=00000000
 CHECK standalone scratch PASS
 API actual ColorFill result=00000000
 CHECK actual ColorFill PASS
-TRACE resource identity=122 ptr=0172e6d8 type=1
-TRACE scene_depth_color_fill device=17 frame=17 event=10 result=00000000 target_ptr=0172e6d8 rect_ptr=00000000 target_known=1 target=122 container=0 width=32 height=32 format=21 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
+TRACE resource identity=122 ptr=0171d410 type=1
+TRACE scene_depth_color_fill device=17 frame=17 event=10 result=00000000 target_ptr=0171d410 rect_ptr=00000000 target_known=1 target=122 container=0 width=32 height=32 format=21 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
 TRACE scene_depth_reject device=17 frame=17 event=10 operation=ColorFill prior_state=3 rejection=5 reason=Pattern result=00000000 rt=0 depth=0 destination_known=1 destination=122 destination_container=0 destination_format=21 destination_width=32 destination_height=32 destination_msaa=0
 TRACE resource identity=123 ptr=01719008 type=1
 TRACE resource identity=124 ptr=01718f78 type=3
@@ -4889,8 +4889,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=18 frame=18 generation=1
-TRACE resource identity=129 ptr=0172e5b8 type=1
-TRACE resource identity=130 ptr=0172e5e8 type=1
+TRACE resource identity=129 ptr=0171d2f0 type=1
+TRACE resource identity=130 ptr=0171d320 type=1
 TRACE scene_depth_reject device=18 frame=18 event=1 operation=Clear prior_state=0 rejection=5 reason=Pattern result=00000000 rt=129 depth=130 destination_known=0 destination=0 destination_container=0 destination_format=0 destination_width=0 destination_height=0 destination_msaa=0
 API scene clear result=00000000
 CHECK scene clear PASS
@@ -4970,14 +4970,14 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API depth unbind result=00000000
 CHECK depth unbind PASS
-TRACE resource identity=131 ptr=0172e6a8 type=1
-TRACE resource identity=132 ptr=0172e618 type=3
+TRACE resource identity=131 ptr=0171d3e0 type=1
+TRACE resource identity=132 ptr=0171d350 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=133 ptr=0172e6d8 type=1
-TRACE resource identity=134 ptr=0172e648 type=3
+TRACE resource identity=133 ptr=0171d410 type=1
+TRACE resource identity=134 ptr=0171d380 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -4998,8 +4998,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=135 ptr=0172e708 type=1
-TRACE resource identity=136 ptr=0172e678 type=3
+TRACE resource identity=135 ptr=0171d440 type=1
+TRACE resource identity=136 ptr=0171d3b0 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -5528,8 +5528,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=20 frame=20 generation=1
-TRACE resource identity=145 ptr=0172e5b8 type=1
-TRACE resource identity=146 ptr=0172e5e8 type=1
+TRACE resource identity=145 ptr=0171d2f0 type=1
+TRACE resource identity=146 ptr=0171d320 type=1
 API scene clear result=00000000
 CHECK scene clear PASS
 API draw PS result=00000000
@@ -5608,14 +5608,14 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API depth unbind result=00000000
 CHECK depth unbind PASS
-TRACE resource identity=147 ptr=0172e6a8 type=1
-TRACE resource identity=148 ptr=0172e618 type=3
+TRACE resource identity=147 ptr=0171d3e0 type=1
+TRACE resource identity=148 ptr=0171d350 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=149 ptr=0172e6d8 type=1
-TRACE resource identity=150 ptr=0172e648 type=3
+TRACE resource identity=149 ptr=0171d410 type=1
+TRACE resource identity=150 ptr=0171d380 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -5636,8 +5636,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=151 ptr=0172e708 type=1
-TRACE resource identity=152 ptr=0172e678 type=3
+TRACE resource identity=151 ptr=0171d440 type=1
+TRACE resource identity=152 ptr=0171d3b0 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -6063,8 +6063,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=22 frame=22 generation=1
-TRACE resource identity=160 ptr=0172e5b8 type=1
-TRACE resource identity=161 ptr=0172e5e8 type=1
+TRACE resource identity=160 ptr=0171d2f0 type=1
+TRACE resource identity=161 ptr=0171d320 type=1
 API scene clear result=00000000
 CHECK scene clear PASS
 API draw PS result=00000000
@@ -6143,14 +6143,14 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API depth unbind result=00000000
 CHECK depth unbind PASS
-TRACE resource identity=162 ptr=0172e6a8 type=1
-TRACE resource identity=163 ptr=0172e618 type=3
+TRACE resource identity=162 ptr=0171d3e0 type=1
+TRACE resource identity=163 ptr=0171d350 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=164 ptr=0172e6d8 type=1
-TRACE resource identity=165 ptr=0172e648 type=3
+TRACE resource identity=164 ptr=0171d410 type=1
+TRACE resource identity=165 ptr=0171d380 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -6171,8 +6171,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=166 ptr=0172e708 type=1
-TRACE resource identity=167 ptr=0172e678 type=3
+TRACE resource identity=166 ptr=0171d440 type=1
+TRACE resource identity=167 ptr=0171d3b0 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -6602,8 +6602,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=24 frame=24 generation=1
-TRACE resource identity=176 ptr=0172e5b8 type=1
-TRACE resource identity=177 ptr=0172e5e8 type=1
+TRACE resource identity=176 ptr=0171d2f0 type=1
+TRACE resource identity=177 ptr=0171d320 type=1
 API scene clear result=00000000
 CHECK scene clear PASS
 API draw PS result=00000000
@@ -6682,14 +6682,14 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API depth unbind result=00000000
 CHECK depth unbind PASS
-TRACE resource identity=178 ptr=0172e6a8 type=1
-TRACE resource identity=179 ptr=0172e618 type=3
+TRACE resource identity=178 ptr=0171d3e0 type=1
+TRACE resource identity=179 ptr=0171d350 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=180 ptr=0172e6d8 type=1
-TRACE resource identity=181 ptr=0172e648 type=3
+TRACE resource identity=180 ptr=0171d410 type=1
+TRACE resource identity=181 ptr=0171d380 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -6710,8 +6710,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=182 ptr=0172e708 type=1
-TRACE resource identity=183 ptr=0172e678 type=3
+TRACE resource identity=182 ptr=0171d440 type=1
+TRACE resource identity=183 ptr=0171d3b0 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -7146,8 +7146,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=26 frame=26 generation=1
-TRACE resource identity=192 ptr=0172e5b8 type=1
-TRACE resource identity=193 ptr=0172e5e8 type=1
+TRACE resource identity=192 ptr=0171d2f0 type=1
+TRACE resource identity=193 ptr=0171d320 type=1
 API scene clear result=00000000
 CHECK scene clear PASS
 API draw PS result=00000000
@@ -7226,14 +7226,14 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API depth unbind result=00000000
 CHECK depth unbind PASS
-TRACE resource identity=194 ptr=0172e6a8 type=1
-TRACE resource identity=195 ptr=0172e618 type=3
+TRACE resource identity=194 ptr=0171d3e0 type=1
+TRACE resource identity=195 ptr=0171d350 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=196 ptr=0172e6d8 type=1
-TRACE resource identity=197 ptr=0172e648 type=3
+TRACE resource identity=196 ptr=0171d410 type=1
+TRACE resource identity=197 ptr=0171d380 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -7254,8 +7254,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=198 ptr=0172e708 type=1
-TRACE resource identity=199 ptr=0172e678 type=3
+TRACE resource identity=198 ptr=0171d440 type=1
+TRACE resource identity=199 ptr=0171d3b0 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -7669,8 +7669,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=28 frame=28 generation=1
-TRACE resource identity=200 ptr=0172e5b8 type=1
-TRACE resource identity=201 ptr=0172e5e8 type=1
+TRACE resource identity=200 ptr=0171d2f0 type=1
+TRACE resource identity=201 ptr=0171d320 type=1
 API scene clear result=00000000
 CHECK scene clear PASS
 API draw PS result=00000000
@@ -7749,14 +7749,14 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API depth unbind result=00000000
 CHECK depth unbind PASS
-TRACE resource identity=202 ptr=0172e6a8 type=1
-TRACE resource identity=203 ptr=0172e618 type=3
+TRACE resource identity=202 ptr=0171d3e0 type=1
+TRACE resource identity=203 ptr=0171d350 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=204 ptr=0172e6d8 type=1
-TRACE resource identity=205 ptr=0172e648 type=3
+TRACE resource identity=204 ptr=0171d410 type=1
+TRACE resource identity=205 ptr=0171d380 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -7777,8 +7777,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=206 ptr=0172e708 type=1
-TRACE resource identity=207 ptr=0172e678 type=3
+TRACE resource identity=206 ptr=0171d440 type=1
+TRACE resource identity=207 ptr=0171d3b0 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -8037,7 +8037,7 @@ API actual ColorFill result=00000000
 CHECK actual ColorFill PASS
 TRACE resource identity=212 ptr=01719038 type=1
 TRACE resource identity=213 ptr=01718fa8 type=3
-TRACE scene_depth_color_fill device=29 frame=29 event=11 result=00000000 target_ptr=01719038 rect_ptr=0032f790 target_known=1 target=212 container=213 width=32 height=32 format=21 msaa=0 rect_null=0 left=0 top=0 right=16 bottom=16
+TRACE scene_depth_color_fill device=29 frame=29 event=11 result=00000000 target_ptr=01719038 rect_ptr=0032f780 target_known=1 target=212 container=213 width=32 height=32 format=21 msaa=0 rect_null=0 left=0 top=0 right=16 bottom=16
 API actual ColorFill result=00000000
 CHECK actual ColorFill PASS
 TRACE resource identity=214 ptr=01719068 type=1
@@ -8327,8 +8327,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=30 frame=30 generation=1
-TRACE resource identity=216 ptr=0172e5b8 type=1
-TRACE resource identity=217 ptr=0172e5e8 type=1
+TRACE resource identity=216 ptr=0171d2f0 type=1
+TRACE resource identity=217 ptr=0171d320 type=1
 API scene clear result=00000000
 CHECK scene clear PASS
 API draw PS result=00000000
@@ -8409,16 +8409,16 @@ API depth unbind result=00000000
 CHECK depth unbind PASS
 API actual ColorFill result=00000000
 CHECK actual ColorFill PASS
-TRACE scene_depth_color_fill device=30 frame=30 event=10 result=00000000 target_ptr=0172e5b8 rect_ptr=00000000 target_known=1 target=216 container=0 width=64 height=64 format=21 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
+TRACE scene_depth_color_fill device=30 frame=30 event=10 result=00000000 target_ptr=0171d2f0 rect_ptr=00000000 target_known=1 target=216 container=0 width=64 height=64 format=21 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
 TRACE scene_depth_reject device=30 frame=30 event=10 operation=ColorFill prior_state=3 rejection=5 reason=Pattern result=00000000 rt=0 depth=0 destination_known=1 destination=216 destination_container=0 destination_format=21 destination_width=64 destination_height=64 destination_msaa=0
-TRACE resource identity=218 ptr=0172e6a8 type=1
-TRACE resource identity=219 ptr=0172e618 type=3
+TRACE resource identity=218 ptr=0171d3e0 type=1
+TRACE resource identity=219 ptr=0171d350 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=220 ptr=0172e6d8 type=1
-TRACE resource identity=221 ptr=0172e648 type=3
+TRACE resource identity=220 ptr=0171d410 type=1
+TRACE resource identity=221 ptr=0171d380 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -8439,8 +8439,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=222 ptr=0172e708 type=1
-TRACE resource identity=223 ptr=0172e678 type=3
+TRACE resource identity=222 ptr=0171d440 type=1
+TRACE resource identity=223 ptr=0171d3b0 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -8868,8 +8868,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=32 frame=32 generation=1
-TRACE resource identity=232 ptr=0172e5b8 type=1
-TRACE resource identity=233 ptr=0172e618 type=1
+TRACE resource identity=232 ptr=0171d2f0 type=1
+TRACE resource identity=233 ptr=0171d350 type=1
 API scene clear result=00000000
 CHECK scene clear PASS
 API draw PS result=00000000
@@ -8950,17 +8950,17 @@ API depth unbind result=00000000
 CHECK depth unbind PASS
 API actual ColorFill result=00000000
 CHECK actual ColorFill PASS
-TRACE scene_depth_color_fill device=32 frame=32 event=10 result=00000000 target_ptr=0172e708 rect_ptr=00000000 target_known=0 target=0 container=0 width=0 height=0 format=0 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
+TRACE scene_depth_color_fill device=32 frame=32 event=10 result=00000000 target_ptr=0171d440 rect_ptr=00000000 target_known=0 target=0 container=0 width=0 height=0 format=0 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
 TRACE scene_depth_reject device=32 frame=32 event=10 operation=ColorFill prior_state=3 rejection=5 reason=Pattern result=00000000 rt=0 depth=0 destination_known=0 destination=0 destination_container=0 destination_format=0 destination_width=0 destination_height=0 destination_msaa=0
 INJECT ColorFill target GetDesc E_FAIL
-TRACE resource identity=234 ptr=0172e6d8 type=1
-TRACE resource identity=235 ptr=0172e648 type=3
+TRACE resource identity=234 ptr=0171d410 type=1
+TRACE resource identity=235 ptr=0171d380 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=236 ptr=0172e708 type=1
-TRACE resource identity=237 ptr=0172e678 type=3
+TRACE resource identity=236 ptr=0171d440 type=1
+TRACE resource identity=237 ptr=0171d3b0 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -8981,8 +8981,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=238 ptr=0172e738 type=1
-TRACE resource identity=239 ptr=0172e6a8 type=3
+TRACE resource identity=238 ptr=0171d470 type=1
+TRACE resource identity=239 ptr=0171d3e0 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -9140,8 +9140,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=33 frame=33 generation=1
-TRACE resource identity=240 ptr=01727ea8 type=1
-TRACE resource identity=241 ptr=01727ed8 type=1
+TRACE resource identity=240 ptr=0173c040 type=1
+TRACE resource identity=241 ptr=0173c070 type=1
 API scene clear result=00000000
 CHECK scene clear PASS
 API draw PS result=00000000
@@ -9225,14 +9225,14 @@ CHECK actual ColorFill PASS
 TRACE scene_depth_color_fill device=33 frame=33 event=10 result=80004005 target_ptr=00000000 rect_ptr=00000001 target_known=0 target=0 container=0 width=0 height=0 format=0 msaa=0 rect_null=0 left=0 top=0 right=0 bottom=0
 TRACE scene_depth_reject device=33 frame=33 event=10 operation=ColorFill prior_state=3 rejection=4 reason=FailedCall result=80004005 rt=0 depth=0 destination_known=0 destination=0 destination_container=0 destination_format=0 destination_width=0 destination_height=0 destination_msaa=0
 INJECT failed ColorFill callback with null target and unreadable RECT sentinel
-TRACE resource identity=242 ptr=01727f98 type=1
-TRACE resource identity=243 ptr=01727f08 type=3
+TRACE resource identity=242 ptr=0173c130 type=1
+TRACE resource identity=243 ptr=0173c0a0 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=244 ptr=01727fc8 type=1
-TRACE resource identity=245 ptr=01727f38 type=3
+TRACE resource identity=244 ptr=0173c160 type=1
+TRACE resource identity=245 ptr=0173c0d0 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -9253,8 +9253,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=246 ptr=01727ff8 type=1
-TRACE resource identity=247 ptr=01727f68 type=3
+TRACE resource identity=246 ptr=0173c190 type=1
+TRACE resource identity=247 ptr=0173c100 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -9413,8 +9413,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=34 frame=34 generation=1
-TRACE resource identity=248 ptr=0165cc60 type=1
-TRACE resource identity=249 ptr=0165cc90 type=1
+TRACE resource identity=248 ptr=0172e458 type=1
+TRACE resource identity=249 ptr=0172e488 type=1
 API scene clear result=00000000
 CHECK scene clear PASS
 API draw PS result=00000000
@@ -9493,14 +9493,14 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API actual ColorFill result=00000000
 CHECK actual ColorFill PASS
-TRACE resource identity=250 ptr=0165cd80 type=1
-TRACE resource identity=251 ptr=0165ccf0 type=3
-TRACE scene_depth_color_fill device=34 frame=34 event=9 result=00000000 target_ptr=0165cd80 rect_ptr=00000000 target_known=1 target=250 container=251 width=32 height=32 format=21 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
+TRACE resource identity=250 ptr=0172e578 type=1
+TRACE resource identity=251 ptr=0172e4e8 type=3
+TRACE scene_depth_color_fill device=34 frame=34 event=9 result=00000000 target_ptr=0172e578 rect_ptr=00000000 target_known=1 target=250 container=251 width=32 height=32 format=21 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
 TRACE scene_depth_reject device=34 frame=34 event=9 operation=ColorFill prior_state=2 rejection=5 reason=Pattern result=00000000 rt=0 depth=0 destination_known=1 destination=250 destination_container=251 destination_format=21 destination_width=32 destination_height=32 destination_msaa=0
 API depth unbind result=00000000
 CHECK depth unbind PASS
-TRACE resource identity=252 ptr=0165cd50 type=1
-TRACE resource identity=253 ptr=0165ccc0 type=3
+TRACE resource identity=252 ptr=0172e548 type=1
+TRACE resource identity=253 ptr=0172e4b8 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
@@ -9525,8 +9525,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=254 ptr=0165cdb0 type=1
-TRACE resource identity=255 ptr=0165cd20 type=3
+TRACE resource identity=254 ptr=0172e5a8 type=1
+TRACE resource identity=255 ptr=0172e518 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -9684,8 +9684,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=35 frame=35 generation=1
-TRACE resource identity=256 ptr=01727ea8 type=1
-TRACE resource identity=257 ptr=01727ed8 type=1
+TRACE resource identity=256 ptr=0173c040 type=1
+TRACE resource identity=257 ptr=0173c070 type=1
 API scene clear result=00000000
 CHECK scene clear PASS
 API draw PS result=00000000
@@ -9768,17 +9768,17 @@ API standalone scratch result=00000000
 CHECK standalone scratch PASS
 API actual ColorFill result=00000000
 CHECK actual ColorFill PASS
-TRACE resource identity=258 ptr=0165cd80 type=1
-TRACE scene_depth_color_fill device=35 frame=35 event=10 result=00000000 target_ptr=0165cd80 rect_ptr=00000000 target_known=1 target=258 container=0 width=32 height=32 format=21 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
+TRACE resource identity=258 ptr=0172e578 type=1
+TRACE scene_depth_color_fill device=35 frame=35 event=10 result=00000000 target_ptr=0172e578 rect_ptr=00000000 target_known=1 target=258 container=0 width=32 height=32 format=21 msaa=0 rect_null=1 left=0 top=0 right=0 bottom=0
 TRACE scene_depth_reject device=35 frame=35 event=10 operation=ColorFill prior_state=3 rejection=5 reason=Pattern result=00000000 rt=0 depth=0 destination_known=1 destination=258 destination_container=0 destination_format=21 destination_width=32 destination_height=32 destination_msaa=0
-TRACE resource identity=259 ptr=01727f98 type=1
-TRACE resource identity=260 ptr=01727f08 type=3
+TRACE resource identity=259 ptr=0173c130 type=1
+TRACE resource identity=260 ptr=0173c0a0 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=261 ptr=01727fc8 type=1
-TRACE resource identity=262 ptr=01727f38 type=3
+TRACE resource identity=261 ptr=0173c160 type=1
+TRACE resource identity=262 ptr=0173c0d0 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -9799,8 +9799,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=263 ptr=01727ff8 type=1
-TRACE resource identity=264 ptr=01727f68 type=3
+TRACE resource identity=263 ptr=0173c190 type=1
+TRACE resource identity=264 ptr=0173c100 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -9958,8 +9958,8 @@ CHECK scene sampler PASS
 API scene viewport result=00000000
 CHECK scene viewport PASS
 TRACE scene_depth_frame phase=begin device=36 frame=36 generation=1
-TRACE resource identity=265 ptr=0165cc60 type=1
-TRACE resource identity=266 ptr=0165cc90 type=1
+TRACE resource identity=265 ptr=0172e458 type=1
+TRACE resource identity=266 ptr=0172e488 type=1
 TRACE scene_depth_reject device=36 frame=36 event=1 operation=Clear prior_state=0 rejection=5 reason=Pattern result=00000000 rt=265 depth=266 destination_known=0 destination=0 destination_container=0 destination_format=0 destination_width=0 destination_height=0 destination_msaa=0
 API scene clear result=00000000
 CHECK scene clear PASS
@@ -10039,14 +10039,14 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API depth unbind result=00000000
 CHECK depth unbind PASS
-TRACE resource identity=267 ptr=0165cd50 type=1
-TRACE resource identity=268 ptr=0165ccc0 type=3
+TRACE resource identity=267 ptr=0172e548 type=1
+TRACE resource identity=268 ptr=0172e4b8 type=3
 API full color copy result=00000000
 CHECK full color copy PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=269 ptr=0165cd80 type=1
-TRACE resource identity=270 ptr=0165ccf0 type=3
+TRACE resource identity=269 ptr=0172e578 type=1
+TRACE resource identity=270 ptr=0172e4e8 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000
@@ -10067,8 +10067,8 @@ API draw EndScene result=00000000
 CHECK draw EndScene PASS
 API unbind sampled target result=00000000
 CHECK unbind sampled target PASS
-TRACE resource identity=271 ptr=0165cdb0 type=1
-TRACE resource identity=272 ptr=0165cd20 type=3
+TRACE resource identity=271 ptr=0172e5a8 type=1
+TRACE resource identity=272 ptr=0172e518 type=3
 API bloom target result=00000000
 CHECK bloom target PASS
 API scene viewport result=00000000

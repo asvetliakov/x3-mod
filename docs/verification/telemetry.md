@@ -92,7 +92,44 @@ bits are lifetime 1, known geometry revisions 2, reviewed position 4, supported
 coverage 8 and successful submission 16. Zero blockers alone does not prove a
 lifetime. Even all five proof bits do not establish finite vertex payloads,
 geometry retention until replay, camera-cut policy or final scene-color coverage.
-`vertex_finite_verified=0` keeps the unimplemented payload gate explicit.
+`vertex_finite_verified` is a separate upload-evidence result in the follow-up
+source build; it remains zero in installed iteration 5.
+
+`--finite-positions` requires `--ownership --telemetry` in the launcher and sets
+`X3M_FINITE_POSITIONS=1`. It is off by default and also enables buffer revision
+tracking when object tracing is inactive. The native loader requires ownership;
+`finite_upload_mode` reports the request and enable decision. The observer is
+restricted to the verified Preview MANAGED/WRITEONLY upload contract. It adds no
+draw-time buffer Lock or GPU readback and retains classifications rather than
+vertex payload. Unsupported mappings remain unknown.
+
+The scoped `motion_geometry` record separates exact submitted shader qualification
+(`source_qualified`, hash, word count), finite XYZ state (`0` unknown, `1` finite,
+`2` nonfinite), query status/reason/generation/revision and index-range evidence.
+For indexed draws, actual whole-IB extrema must fit the declared min/count before
+querying the full declared effective vertex interval. `index_exact=0` means the
+extrema conservatively cover the allocation, not exactly the requested subrange.
+Nonindexed draws need no IB evidence. `finite_requested=0` can also mean the
+reader skipped that query because its layout/range/revision or IB gate failed;
+the reason identifies that refusal. Global activation is in `finite_upload_mode`.
+Reason numbers and names are defined by `FiniteEvidenceReason` in the ownership
+header. Neither a qualified source nor finite XYZ establishes temporal coverage,
+successful submission, object correspondence or stability until later replay.
+
+When requested, `finite_upload_metric` records cumulative owner counters at each
+captured Present, every 300 other Presents and before/after Reset. It includes
+current/peak atlas bytes, sidecars/metadata, process reservations, uploads,
+publications, invalidations, allocation failures, scans, classified bytes, scan
+QPC ticks, qualifier/query QPC ticks, queries, cached results and examined position
+components. Qualifier time and scan time are separate measurements; they are not
+total observer overhead. Nonzero `finite_upload_reason` counters retain refusal
+names/counts. `finite_upload_first_refusal` retains one bounded reason plus buffer
+type, format, pool, size, usage and lock flags for diagnosing unsupported inputs.
+These are batched
+diagnostics, not per-upload logs. Counters belong to an owner; evidence generation
+changes invalidate prior certificates. The QPC frequency comes from the session's
+telemetry record. No loading-cost or game coverage result is claimed before a
+user-run capture from this build.
 
 `--object-lifetime` requests the exact-build registry observer and requires
 `--object-trace --ownership`. The observer is off by default. When active at the

@@ -39,6 +39,7 @@ def main():
     parser.add_argument('--object-trace', action='store_true', help='Capture verified engine submission identity (exact executable only)')
     parser.add_argument('--object-lifetime', action='store_true', help='Observe verified render-registry lifetimes (requires --object-trace --ownership)')
     parser.add_argument('--mesh-cache', action='store_true', help='Enable experimental verified native adjacency reuse (requires --telemetry)')
+    parser.add_argument('--finite-positions', action='store_true', help='Validate positions from verified existing buffer uploads (requires --ownership --telemetry)')
     args = parser.parse_args()
     if args.depth_copy and not args.ownership:
         parser.error('--depth-copy requires --ownership.')
@@ -48,6 +49,8 @@ def main():
         parser.error('--object-lifetime requires --object-trace and --ownership.')
     if args.mesh_cache and not args.telemetry:
         parser.error('--mesh-cache requires --telemetry.')
+    if args.finite_positions and not (args.ownership and args.telemetry):
+        parser.error('--finite-positions requires --ownership and --telemetry.')
     game = args.game_dir.resolve()
     dll = game / 'd3d9.dll'
     manifest = game / 'x3-modern-install.json'
@@ -95,6 +98,7 @@ def main():
         env['X3M_OBJECT_TRACE'] = '1' if args.object_trace else '0'
         env['X3M_OBJECT_LIFETIME'] = '1' if args.object_lifetime else '0'
         env['X3M_MESH_CACHE'] = '1' if args.mesh_cache else '0'
+        env['X3M_FINITE_POSITIONS'] = '1' if args.finite_positions else '0'
         # --dll applies to this child only, preserving the user's other overrides.
         command = [str(WINE), '--bottle', args.bottle, '--no-update',
                    '--dll', 'd3d9=b' if args.vanilla else 'd3d9=n,b',

@@ -11,6 +11,16 @@ and [roadmap](architecture/roadmap.md).
 
 ## Latest checkpoint
 
+The finite-position source path now includes a reviewed compact classification
+core (214,651 optimized and sanitizer checks), exact Preview managed VB/IB
+qualification (461 native checks), and an allocation-owned upload observer
+(385 native/wrapped checks). The extended draw reader passes 219 checks and 63
+caller-state comparisons. It obtains finite XYZ and actual index bounds from
+the game's existing writes, with no extra buffer Lock or GPU readback. The
+installed iteration-5 DLL is unchanged. All affected regressions, 18 combined-DLL
+cases and the forced native fallback pass. See [finite upload evidence](verification/finite-upload-observer.md)
+and [review 6](verification/review-06.md).
+
 Detached rigid-motion production now has bounded CPU correspondence (3,210
 checks), exact position profiles and a GPU producer (102 numerical samples,
 117 checks and 30 state comparisons). The GPU output feeds the production
@@ -29,7 +39,7 @@ single-word mutation controls. The other five captured
 programs require explicit separate handling; they are not excluded from final
 TAA/composition scope. Particle RGB blending and missing prior particle identity
 are documented in [particle inputs](reverse-engineering/particle-motion-inputs.md).
-The full Python analysis suite passes **246 tests**.
+The full Python analysis suite passes **279 tests**.
 The post-install source registry also retains original shader model, constructor
 and position-write order, independently verified for all 234 row-dot profiles.
 The detached rigid-motion pass now creates the reviewed fixed SM3 replay program
@@ -39,10 +49,11 @@ component comparisons and 134 bilateral raster/depth cases; independent review
 checks its evidence limits. These source changes have not replaced the installed
 iteration-5 DLL.
 
-The [live draw-input reader](verification/draw-input.md) passes 167 checks,
-48 caller-state comparisons and seven failed-getter controls. It reads exact
+The [live draw-input reader](verification/draw-input.md) passes 219 checks,
+63 caller-state comparisons and seven failed-getter controls. It reads exact
 submitted rows and actual layouts/revisions, distinguishes nonindexed draws from
-an unused bound IB, and preserves unknown lifetime/finite-payload gates. Proxy
+an unused bound IB, and keeps lifetime, source qualification and finite-payload
+gates independent. Proxy
 capture wiring now records these inputs and composes lifetime evidence around the
 native draw. The combined fixture checks record scope and failed submission gates.
 
@@ -70,10 +81,12 @@ SHA256 `ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5`.
 The [installation record](../verification/results/iteration-05-install.json) verifies
 unchanged game EXE and bottle configuration. The prior 0.4 DLL is preserved in
 `artifacts/rollback/d3d9-iteration04.dll`; the older 0.3 rollback also remains intact.
-The follow-up source DLL separately passes the same 15 integration cases and
-forced native fallback with all 16 current proxy/renderer objects. Its SHA256 is
-`d25daf93af6c61cd9e8bd7f4f688e70476f2931bf04bdaaa1b00844af3987503`; it is
-**not installed**. See the [follow-up review](verification/review-05.md).
+The latest source DLL separately passes 18 integration cases and the forced
+native fallback with all 16 current proxy/renderer objects. Its SHA256 is
+`6e21f29a57e97018753212759392ef0b79bd9fc120aa5121f30dd62f70ed3083`; it is
+**not installed**. See [review 6](verification/review-06.md). The earlier source
+checkpoint and its 15-case evidence remain recorded in [review 5](verification/review-05.md)
+and commit `437e95b`.
 
 The [detached adjacency cache](verification/mesh-adjacency-cache.md) passes
 721 checks using real native mesh acquisition, exact byte keys, bounded storage,
@@ -174,9 +187,12 @@ presentation and the requested visual features remain unfinished.
 
 ## Concrete next work
 
-1. Add the finite POSITION producer under the reviewed
-   [managed-buffer upload contract](reverse-engineering/managed-buffer-write-mapping.md) before
-   consolidating the next user-managed diagnostic run. The game's dynamic
+1. Prepare the next user-managed diagnostic run of the verified finite POSITION
+   producer under the reviewed
+   [managed-buffer upload contract](reverse-engineering/managed-buffer-write-mapping.md).
+   The new [capture audit](verification/finite-upload-capture.md) reports source,
+   finite/index coverage and cumulative cost without treating inputs as TAA eligibility.
+   The game's dynamic
    SYSTEMMEM mesh configuration now passes native tests; its actual cache hit rate
    still needs a future run.
 2. Connect the verified correspondence and GPU motion modules to lifecycle-safe
