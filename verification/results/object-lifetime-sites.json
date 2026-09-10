@@ -1,0 +1,70 @@
+{
+  "executable": "X3AP.exe",
+  "bytes": 2153984,
+  "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "preferred_base": "00400000",
+  "sites": [
+    {
+      "name": "renderer_scene_deserialize",
+      "call_va": "0040508d",
+      "call_rva": "0000508d",
+      "target_va": "0047a720",
+      "call_bytes": "e88e560700",
+      "context_va": "00405081",
+      "context_bytes": 32,
+      "context_sha256": "286c345c62aad08a3c8651bfc72e2e4e0a9079c6e80d9e6068a32e7741716159",
+      "target_prefix_bytes": 32,
+      "target_prefix_sha256": "e24d561bd8354b3f70bc36fedd7c973343a99e35306e506fa124ba5caa2858be"
+    },
+    {
+      "name": "restore_node_handle",
+      "call_va": "0047a6ad",
+      "call_rva": "0007a6ad",
+      "target_va": "004efbf0",
+      "call_bytes": "e83e550700",
+      "context_va": "0047a6a1",
+      "context_bytes": 32,
+      "context_sha256": "924b04899d40a2fc6fddbc179234101c7087fa768501ad6563299f566404b307",
+      "target_prefix_bytes": 32,
+      "target_prefix_sha256": "f67882ffd4c3a16bbdcfa3a94b01be34627d8e516e689b8c538f1b34b63f036f"
+    },
+    {
+      "name": "automatic_handle_insert",
+      "call_va": "004efd09",
+      "call_rva": "000efd09",
+      "target_va": "004efbf0",
+      "call_bytes": "e8e2feffff",
+      "context_va": "004efcfd",
+      "context_bytes": 32,
+      "context_sha256": "ce8150d8058b82727e1745f346d5e6b689b2209dbec9a19a89a30609f880b996",
+      "target_prefix_bytes": 32,
+      "target_prefix_sha256": "f67882ffd4c3a16bbdcfa3a94b01be34627d8e516e689b8c538f1b34b63f036f"
+    },
+    {
+      "name": "ordinary_node_unregister",
+      "call_va": "00487d70",
+      "call_rva": "00087d70",
+      "target_va": "004efd30",
+      "call_bytes": "e8bb7f0600",
+      "context_va": "00487d64",
+      "context_bytes": 32,
+      "context_sha256": "1824745db89bf393281368cadcfc7bc0e92ecfa1b5a8b5dfed89a7b35b2dbd3c",
+      "target_prefix_bytes": 32,
+      "target_prefix_sha256": "c3d46370db48f228c6b23be0b0204d536b5e7303746c6b270f2e07f6cf6bb266"
+    },
+    {
+      "name": "camera_unregister",
+      "call_va": "00488efd",
+      "call_rva": "00088efd",
+      "target_va": "004efd30",
+      "call_bytes": "e82e6e0600",
+      "context_va": "00488ef1",
+      "context_bytes": 32,
+      "context_sha256": "1bb5fa28d13899906936fd8117261be5d8f9e5bbaf3fd715f85b3380dc01d459",
+      "target_prefix_bytes": 32,
+      "target_prefix_sha256": "c3d46370db48f228c6b23be0b0204d536b5e7303746c6b270f2e07f6cf6bb266"
+    }
+  ],
+  "limitation": "Static callsite/ABI candidates; no live hook or coverage validation.",
+  "analyzer_sha256": "5d7c9e4ec3d81be8006ae231388e99d479ddfe762e7e9dc8533df6260a5ebbbc"
+}
