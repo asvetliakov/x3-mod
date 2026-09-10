@@ -1,0 +1,17 @@
+CASE name=closed_manifold adjacency_hr=00000000 clean_hr=00000000 optimize_hr=00000000 adjacency_words=12 mesh_bytes=160 cache_hit=1 exact_parity=1 linked_edges=12 optimize_called=1
+CASE name=duplicated_seam adjacency_hr=00000000 clean_hr=00000000 optimize_hr=00000000 adjacency_words=6 mesh_bytes=180 cache_hit=1 exact_parity=1 linked_edges=2 optimize_called=1
+CASE name=epsilon_seam adjacency_hr=00000000 clean_hr=00000000 optimize_hr=00000000 adjacency_words=6 mesh_bytes=180 cache_hit=1 exact_parity=1 linked_edges=2 optimize_called=1
+CASE name=disconnected adjacency_hr=00000000 clean_hr=00000000 optimize_hr=00000000 adjacency_words=6 mesh_bytes=180 cache_hit=1 exact_parity=1 linked_edges=0 optimize_called=1
+CASE name=degenerate adjacency_hr=00000000 clean_hr=88760b55 optimize_hr=80004005 adjacency_words=6 mesh_bytes=0 cache_hit=1 exact_parity=1 linked_edges=0 optimize_called=0
+INVALIDATION field=vertex_position miss=1 exact_parity=1
+INVALIDATION field=index_topology miss=1 exact_parity=1
+INVALIDATION field=declaration miss=1 exact_parity=1
+INVALIDATION field=epsilon miss=1 exact_parity=1
+INVALIDATION field=vertex_uv miss=1 exact_parity=1
+INVALIDATION field=runtime_identity miss=1 exact_parity=1
+INVALIDATION field=mesh_options miss=1 exact_parity=1
+ATTRIBUTE_CHANGE adjacency_hit=1 downstream_exact_parity=1
+BOUND slots=8 budget_bytes=2097152 retained_bytes=1401216 slot_evictions=32 byte_evictions=10 oversize_bypass=1 failed_result_bypass=1
+TIMING mesh=grid96 faces=18432 vertices=9409 repetitions=21 cold_median_us=96680.500 reuse_median_us=136.200 cold_min_us=95550.195 cold_max_us=104338.203 reuse_min_us=123.200 reuse_max_us=184.100 retained_bytes=520264 budget_bytes=2097152
+SEQUENCE_TIMING mesh=grid96 repetitions=7 cold_median_us=101524.000 reuse_median_us=4455.000 cold_min_us=100684.398 cold_max_us=105373.898 reuse_min_us=4340.300 reuse_max_us=4625.300 exact_parity=1 includes_creation_clean_optimize_snapshots=1
+RESULT PASS checks=1218

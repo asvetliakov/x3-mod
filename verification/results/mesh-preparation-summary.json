@@ -1,0 +1,183 @@
+{
+  "started_utc": "2026-09-10T18:19:33.011736+00:00",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/mesh_preparation.exe",
+    "C:\\X3\\d3dx9_37.dll",
+    "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+  ],
+  "source_sha256": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
+  "executable_sha256": "e2f9a57f3a27caac7f38f20194d49908439d1c474ea2e823e5cd43d43b4d38db",
+  "d3dx_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "process_local_override": "d3d9=b",
+  "timeout_seconds": 90,
+  "exit_code": 0,
+  "results": {
+    "CASE": [
+      {
+        "name": "closed_manifold",
+        "adjacency_hr": "00000000",
+        "clean_hr": "00000000",
+        "optimize_hr": "00000000",
+        "adjacency_words": "12",
+        "mesh_bytes": "160",
+        "cache_hit": "1",
+        "exact_parity": "1",
+        "linked_edges": "12",
+        "optimize_called": "1"
+      },
+      {
+        "name": "duplicated_seam",
+        "adjacency_hr": "00000000",
+        "clean_hr": "00000000",
+        "optimize_hr": "00000000",
+        "adjacency_words": "6",
+        "mesh_bytes": "180",
+        "cache_hit": "1",
+        "exact_parity": "1",
+        "linked_edges": "2",
+        "optimize_called": "1"
+      },
+      {
+        "name": "epsilon_seam",
+        "adjacency_hr": "00000000",
+        "clean_hr": "00000000",
+        "optimize_hr": "00000000",
+        "adjacency_words": "6",
+        "mesh_bytes": "180",
+        "cache_hit": "1",
+        "exact_parity": "1",
+        "linked_edges": "2",
+        "optimize_called": "1"
+      },
+      {
+        "name": "disconnected",
+        "adjacency_hr": "00000000",
+        "clean_hr": "00000000",
+        "optimize_hr": "00000000",
+        "adjacency_words": "6",
+        "mesh_bytes": "180",
+        "cache_hit": "1",
+        "exact_parity": "1",
+        "linked_edges": "0",
+        "optimize_called": "1"
+      },
+      {
+        "name": "degenerate",
+        "adjacency_hr": "00000000",
+        "clean_hr": "88760b55",
+        "optimize_hr": "80004005",
+        "adjacency_words": "6",
+        "mesh_bytes": "0",
+        "cache_hit": "1",
+        "exact_parity": "1",
+        "linked_edges": "0",
+        "optimize_called": "0"
+      }
+    ],
+    "INVALIDATION": [
+      {
+        "field": "vertex_position",
+        "miss": "1",
+        "exact_parity": "1"
+      },
+      {
+        "field": "index_topology",
+        "miss": "1",
+        "exact_parity": "1"
+      },
+      {
+        "field": "declaration",
+        "miss": "1",
+        "exact_parity": "1"
+      },
+      {
+        "field": "epsilon",
+        "miss": "1",
+        "exact_parity": "1"
+      },
+      {
+        "field": "vertex_uv",
+        "miss": "1",
+        "exact_parity": "1"
+      },
+      {
+        "field": "runtime_identity",
+        "miss": "1",
+        "exact_parity": "1"
+      },
+      {
+        "field": "mesh_options",
+        "miss": "1",
+        "exact_parity": "1"
+      }
+    ],
+    "ATTRIBUTE_CHANGE": [
+      {
+        "adjacency_hit": "1",
+        "downstream_exact_parity": "1"
+      }
+    ],
+    "BOUND": [
+      {
+        "slots": "8",
+        "budget_bytes": "2097152",
+        "retained_bytes": "1401216",
+        "slot_evictions": "32",
+        "byte_evictions": "10",
+        "oversize_bypass": "1",
+        "failed_result_bypass": "1"
+      }
+    ],
+    "TIMING": [
+      {
+        "mesh": "grid96",
+        "faces": "18432",
+        "vertices": "9409",
+        "repetitions": "21",
+        "cold_median_us": "96680.500",
+        "reuse_median_us": "136.200",
+        "cold_min_us": "95550.195",
+        "cold_max_us": "104338.203",
+        "reuse_min_us": "123.200",
+        "reuse_max_us": "184.100",
+        "retained_bytes": "520264",
+        "budget_bytes": "2097152"
+      }
+    ],
+    "SEQUENCE_TIMING": [
+      {
+        "mesh": "grid96",
+        "repetitions": "7",
+        "cold_median_us": "101524.000",
+        "reuse_median_us": "4455.000",
+        "cold_min_us": "100684.398",
+        "cold_max_us": "105373.898",
+        "reuse_min_us": "4340.300",
+        "reuse_max_us": "4625.300",
+        "exact_parity": "1",
+        "includes_creation_clean_optimize_snapshots": "1"
+      }
+    ],
+    "RESULT": [
+      {
+        "checks": "1218"
+      }
+    ]
+  },
+  "passed": true,
+  "limits": [
+    "Standalone original meshes; no game loading improvement demonstrated.",
+    "Cache stores adjacency only; cleaning/optimization still execute on each current mesh.",
+    "Cold timing is repeated uncached computation with warmed DLL/mesh; not cold OS/disk startup.",
+    "Reuse timing includes serialization, full-key comparison and adjacency output allocation/copy.",
+    "Retained 2 MiB budget accounts vector capacities and entry structs; allocator bookkeeping is excluded.",
+    "Caller mesh and bounded transient key/output/candidate allocations are outside the retained budget.",
+    "Full-sequence timing includes mesh creation and verification snapshots in both paths."
+  ]
+}
