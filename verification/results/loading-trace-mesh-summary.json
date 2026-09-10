@@ -2,10 +2,10 @@
   "passed": true,
   "sources_before_build": {
     "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
-    "src/proxy/loading_trace.h": "ef676e2881e8abe86eb0073336c5d3393528a8b641365851b5700b5c93995952",
-    "src/proxy/loading_trace.cpp": "7a6f763616dd1f4c7aed13658201355c255c6d0231da20ceebb24c60784663ac",
-    "src/proxy/mesh_adjacency_cache.h": "0324af34386837cb9eab22b7538a29b0cd8f86d4bcd66cd833fd7041bd933cf3",
-    "src/proxy/mesh_adjacency_cache.cpp": "0582780ccb86e04de48d4d61390af5d4842081750de51a90170a857d089f6584",
+    "src/proxy/loading_trace.h": "65ddea27cb82e14c5c70b1cf7651f49e42559c06bee244692b09a73488ce549d",
+    "src/proxy/loading_trace.cpp": "536f02f87c62bae77d72c5fd95e13813379fd5d78665cf5fc4932c7e5d0eefb0",
+    "src/proxy/mesh_adjacency_cache.h": "03c3fcb7a818a586e30eef43c93aa0b3d22e42e8a9186827df5f84dcbb7cfdef",
+    "src/proxy/mesh_adjacency_cache.cpp": "fb612017858407688b096c4da4049401725728523753b6bce9f7f9f3f440ba9e",
     "src/ownership/d3d9_ownership.h": "9613d9b77c5cdd6dbff8ede1656efe63006eec5d3048756cdd82d226298c6f78",
     "src/ownership/d3d9_ownership.cpp": "42d94a3419208700b1fb7e4482fae8398418b8b3b3337de8e67bf06851f7ed2b",
     "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
@@ -22,21 +22,21 @@
   "cases": {
     "loading-trace": {
       "exit_code": 0,
-      "executable_sha256": "c9c7c8e19b80ad02714738939ac7883abfb21f81d69410bc18e56b2ac3c0414a",
+      "executable_sha256": "5a3bc1d7d0924363a1d6c2fe62e36da6740c86ab7074080c5848e4e79a43f413",
       "dll_sha256": {
-        "d3dx9_37.dll": "3a11088de80d6ef48aca23dc917a8d866e2e07ebddfb4b9f47bd86ef88b78f18",
-        "zlib1.dll": "587eedfb3e34c5239cb03d04e3e764499926cb914837380a372028627711f3d3",
-        "libxml2.dll": "cc70a329c87764337798ffa08e0a6e2babedc266b5036439992836897f59bf48"
+        "d3dx9_37.dll": "b09dfde135ad69cf56abc4ac86492338a3eb7f4d7bb53581cfac1d31e2005b7c",
+        "zlib1.dll": "7d9b9784d11061c1db919b8d24d82e1c97e81615de43e6c634eec2999ca3165d",
+        "libxml2.dll": "932684f90209cec6b14e452c8895c215b334157cc36b9d705b1dd9607d629606"
       },
-      "report_sha256": "7190a2ac6907d2bbaa6c6fa4669e8f35725cf296e774e04a2b6f87182315e90a"
+      "report_sha256": "9a0f29f70b51600e0578612150f7b49798bfe864971fde9ac41d1e2000f031d7"
     },
     "loading-mesh": {
       "exit_code": 0,
-      "executable_sha256": "4427bd3262771d1e1b7bcfa50d10a4605d09f2c2a9310a9a28f2b484ad78288e",
+      "executable_sha256": "84aa039224c4175b5f95fe9043727d5d443babead1ffd0a23a99d6379ec297fd",
       "dll_sha256": {
         "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
       },
-      "report_sha256": "ee7203874847a2a1fa5a0090534b4a8c2348494cd4c53ddc04d351d9034c05f2"
+      "report_sha256": "19cb0f9ea7e42b987174b5c203e6d9df84c2c5f4105ba355ad41aecc772beeb2"
     }
   },
   "sources_and_binaries_unchanged": true

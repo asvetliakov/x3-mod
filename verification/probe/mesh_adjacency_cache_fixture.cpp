@@ -134,6 +134,11 @@ int main(int argc,char**argv){
         {mac::Cache c({sizeof(mac::Cache)+600,4096,8});for(unsigned i=0;i<8;++i){auto changed=base;changed.vertices[0].u=float(i);Com<ID3DXMesh>m;createMesh(create,device.p,changed,&m.p);invoke(&c,m.p,base.epsilon);require(c.statistics().retained_bytes<=sizeof(mac::Cache)+600,"byte-only retained bound");}require(c.statistics().evictions>0&&c.statistics().retained_entries<8,"byte eviction before slot ceiling");}
         {mac::Cache c({sizeof(mac::Cache)+20,20,1});parity(baseline,invoke(&c,mesh.p,base.epsilon),"oversize bypass");require(c.statistics().admissions==0,"oversize not admitted");}
         {auto in=base;in.options=D3DXMESH_MANAGED;Com<ID3DXMesh>m;createMesh(create,device.p,in,&m.p);mac::Cache c;parity(invoke(nullptr,m.p,in.epsilon),invoke(&c,m.p,in.epsilon),"unsupported managed bypass");require(c.statistics().bypasses==1,"managed bypass counted");}
+        {auto in=base;in.options=D3DXMESH_SYSTEMMEM|D3DXMESH_DYNAMIC;Com<ID3DXMesh>m;createMesh(create,device.p,in,&m.p);mac::Cache unverified;
+            auto expected=invoke(nullptr,m.p,in.epsilon);auto rejected=invoke(&unverified,m.p,in.epsilon);parity(expected,rejected,"dynamic without explicit readonly contract preserves native result");
+            require(rejected.result.origin==mac::Origin::Native&&unverified.statistics().acquired_bytes==0&&unverified.statistics().bypass_reasons[static_cast<unsigned>(mac::BypassReason::Options)]==1,"dynamic contract defaults to no acquisition");
+            auto verified=identity;verified.systemmem_dynamic_readonly_verified=true;mac::Cache accepted;auto first=invoke(&accepted,m.p,in.epsilon,seed,&verified);auto second=invoke(&accepted,m.p,in.epsilon,seed,&verified);parity(expected,first,"verified dynamic fill parity");parity(expected,second,"verified dynamic hit parity");require(first.result.origin==mac::Origin::Native&&second.result.origin==mac::Origin::CacheHit,"positive exact readonly contract admits dynamic");
+        }
         // Timed production adapter includes real native readonly locks, key copy,
         // hash+memcmp and result copy. No fixture snapshots are inside these spans.
         auto big=grid(96);Com<ID3DXMesh>large;createMesh(create,device.p,big,&large.p);mac::Cache timed;invoke(&timed,large.p,big.epsilon);LARGE_INTEGER frequency;QueryPerformanceFrequency(&frequency);

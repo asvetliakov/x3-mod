@@ -4,5 +4,5 @@ CASE name=epsilon_seam adjacency_hr=00000000 clean_hr=00000000 optimize_hr=00000
 CASE name=disconnected adjacency_hr=00000000 clean_hr=00000000 optimize_hr=00000000 cache_hit=1 downstream_exact=1
 CASE name=degenerate adjacency_hr=00000000 clean_hr=88760b55 optimize_hr=80004005 cache_hit=1 downstream_exact=1
 FP native_cw=007f native_sw=0020 native_mxcsr=00001f80 hit_computational_parity=1 diagnostic_instruction_pointers_excluded=1
-TIMING faces=18432 vertices=9409 repetitions=15 native_median_us=97657.300 adapter_miss_median_us=99949.400 adapter_hit_median_us=1209.700 includes_native_buffer_acquisition=1 retained_bytes=540768 scratch_cap_bytes=4194304 acquisition_ticks=35312 lookup_ticks=319375 copy_ticks=8242 native_ticks=16849348 total_ticks=17214776 hits=15 misses=16
-RESULT PASS checks=721
+TIMING faces=18432 vertices=9409 repetitions=15 native_median_us=96104.500 adapter_miss_median_us=97116.600 adapter_hit_median_us=1143.100 includes_native_buffer_acquisition=1 retained_bytes=540928 scratch_cap_bytes=4194304 acquisition_ticks=31941 lookup_ticks=305003 copy_ticks=7848 native_ticks=15391130 total_ticks=15738008 hits=15 misses=16
+RESULT PASS checks=733

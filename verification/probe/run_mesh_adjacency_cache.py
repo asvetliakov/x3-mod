@@ -44,12 +44,13 @@ def main():
         for line in report.read_text().splitlines():
             kind=line.split(' ',1)[0];groups.setdefault(kind,[]).append(dict(re.findall(r'(\w+)=([^\s]+)',line)))
         meta['results']=groups
-        meta['passed']=run.returncode==0 and 'RESULT PASS' in report.read_text() and before==meta['hashes_after'] and len(groups.get('CASE',[]))==5 and len(groups.get('FP',[]))==1 and len(groups.get('TIMING',[]))==1
+        terminal=report.read_text().rstrip().splitlines()[-1]
+        meta['passed']=run.returncode==0 and bool(re.fullmatch(r'RESULT PASS checks=\d+',terminal)) and len(groups.get('RESULT',[]))==1 and before==meta['hashes_after'] and len(groups.get('CASE',[]))==5 and len(groups.get('FP',[]))==1 and len(groups.get('TIMING',[]))==1
         meta['phase']='complete'
         meta['limits']=[
             'Detached core; no hooks, installation or game loading improvement.',
             'Caller must verify/pin runtime and serialize mesh/output mutation.',
-            'SYSTEMMEM non-dynamic/non-writeonly/non-shared meshes only; game eligibility unknown.',
+            'SYSTEMMEM non-writeonly/non-shared meshes only; dynamic additionally needs positive exact readonly runtime contract.',
             'Default masked FP computational controls only; unsupported controls forward unchanged.',
             'FP instruction/data pointers and allocator side effects are not emulated.',
             'Persistent acquisition unlock failure has distinct origin, permanently disables cache and does not call native.',

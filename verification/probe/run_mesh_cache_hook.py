@@ -44,9 +44,22 @@ def main():
                 case={'exit_code':run.returncode,'checks':int(match) if match else 0,'report_sha256':sha(out),'wine_log_sha256':sha(err),'command':command}
                 case['cache_result']=[dict(re.findall(r'(\w+)=([^\s]+)',line)) for line in text.splitlines() if line.startswith('CACHE_RESULT ')][0] if 'CACHE_RESULT ' in text else {}
                 case['cache_metrics']=[dict(re.findall(r'(\w+)=([^\s]+)',line)) for line in text.splitlines() if line.startswith('mesh_cache_metric ')]
+                case['gate_counts']=[dict(re.findall(r'(\w+)=([^\s]+)',line)) for line in text.splitlines() if line.startswith('mesh_cache_gate ')]
+                case['gate_details']=[dict(re.findall(r'(\w+)=([^\s]+)',line)) for line in text.splitlines() if line.startswith('mesh_cache_gate_first ')]
+                case['core_bypass']=[dict(re.findall(r'(\w+)=([^\s]+)',line)) for line in text.splitlines() if line.startswith('mesh_cache_bypass ')]
+                case['dynamic_options']=[dict(re.findall(r'(\w+)=([^\s]+)',line)) for line in text.splitlines() if line.startswith('DYNAMIC ')]
                 meta['cases'][name]=case;save()
                 assert run.returncode==0 and match and 'RESULT FAIL' not in text,text[-4000:]
                 assert 'LIVE32 parity=1' in text and len(re.findall(r'^CASE ',text,re.M))==5,'Missing live32/downstream controls'
+                assert [d['options'] for d in case['dynamic_options']]==['00000990','00000991','00018990','00018991'] and all(d['parity']=='1' for d in case['dynamic_options']),'Missing exact game options'
+                reasons=[d['reason'] for d in case['gate_details']]
+                assert len(reasons)==len(set(reasons)),'First gate detail repeated'
+                if mode=='on':
+                    assert {'mesh_options','mesh_pool','mesh_method','backend_imports'}.issubset(reasons),'Missing distinct rejection diagnostics'
+                    assert any(d['reason']=='floating_point' and int(d['count'])>0 for d in case['core_bypass']),'Missing core bypass reason'
+                    assert len(re.findall(r'^mesh_cache_fp_first ',text,re.M))==1,'Missing or repeated first FP details'
+                else:
+                    assert not reasons and not case['core_bypass'],'Disabled cache diagnostics performed work'
                 result=case['cache_result']
                 assert (int(result['hits'])>0 and int(result['misses'])>0) if mode=='on' else int(result['calls'])==0,'Cache activation coverage'
                 assert len(re.findall(r'^mesh_cache_fault ',text,re.M))==(1 if fault=='fault' else 0),'Fault event count'

@@ -16,6 +16,8 @@ struct RuntimeIdentity {
     uint64_t generation=0; // Immutable generation of the verified/pinned module.
     bool verified=false;
     bool success_preserves_last_error=false;
+    // Exact backend readonly map/unmap contract, not a general DYNAMIC opt-out.
+    bool systemmem_dynamic_readonly_verified=false;
 };
 struct Config {
     size_t retained_bytes=16u*1024*1024;
@@ -24,12 +26,19 @@ struct Config {
 };
 enum class Origin { Native, CacheHit, AcquisitionCleanupFailure, InvalidCallback };
 struct Outcome { HRESULT hr=E_FAIL; Origin origin=Origin::Native; };
+enum class BypassReason : unsigned { Input, Runtime, FloatingPoint, Epsilon, Configuration, Disabled, Contention, Options, Metadata, Declaration, Size, OutputRange, Allocation, BufferRead, Count };
+constexpr unsigned bypass_reason_count=static_cast<unsigned>(BypassReason::Count);
+const char* bypass_reason_name(unsigned reason) noexcept;
+struct FloatingPointDiagnostic {DWORD control=0,status=0,tag=0,mxcsr=0;};
 struct Statistics {
     uint64_t calls=0,hits=0,misses=0,bypasses=0,contention=0,admissions=0,evictions=0;
     uint64_t allocation_failures=0,acquisition_failures=0,unrecoverable_unlocks=0;
     uint64_t native_calls=0,native_failures=0,retained_bytes=0,retained_entries=0;
     uint64_t acquired_bytes=0,copied_bytes=0,evicted_bytes=0;
     uint64_t acquisition_ticks=0,lookup_ticks=0,copy_ticks=0,native_ticks=0,total_ticks=0;
+    std::array<uint64_t,bypass_reason_count> bypass_reasons{};
+    uint64_t rejected_result=0,rejected_last_error=0,rejected_fp=0;
+    bool unsupported_fp_available=false;FloatingPointDiagnostic unsupported_fp{};
 };
 class Cache final {
 public:
@@ -64,6 +73,10 @@ private:
         X3M_CACHE_COUNTER(acquired_bytes) X3M_CACHE_COUNTER(copied_bytes) X3M_CACHE_COUNTER(evicted_bytes)
         X3M_CACHE_COUNTER(acquisition_ticks) X3M_CACHE_COUNTER(lookup_ticks)
         X3M_CACHE_COUNTER(copy_ticks) X3M_CACHE_COUNTER(native_ticks) X3M_CACHE_COUNTER(total_ticks)
+        X3M_CACHE_COUNTER(rejected_result) X3M_CACHE_COUNTER(rejected_last_error) X3M_CACHE_COUNTER(rejected_fp)
+        std::array<std::atomic<uint64_t>,bypass_reason_count> bypass_reasons{};
+        std::atomic<unsigned> unsupported_fp_publication{0};
+        FloatingPointDiagnostic unsupported_fp{};
 #undef X3M_CACHE_COUNTER
     } counters_;
     Config config_;

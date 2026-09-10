@@ -1,25 +1,25 @@
 {
-  "started_utc": "2026-09-10T20:52:29.246146+00:00",
+  "started_utc": "2026-09-10T22:17:44.288229+00:00",
   "passed": true,
   "phase": "complete",
   "fresh_build": true,
   "timeout_seconds": 90,
   "source_hashes_before_build": {
-    "src/proxy/mesh_adjacency_cache.h": "0324af34386837cb9eab22b7538a29b0cd8f86d4bcd66cd833fd7041bd933cf3",
-    "src/proxy/mesh_adjacency_cache.cpp": "0582780ccb86e04de48d4d61390af5d4842081750de51a90170a857d089f6584",
-    "verification/probe/mesh_adjacency_cache_fixture.cpp": "bd5c303bf73952fb76ee62a57541e8fb3f9c15fac1df67db4c32b9ae730192a1",
+    "src/proxy/mesh_adjacency_cache.h": "03c3fcb7a818a586e30eef43c93aa0b3d22e42e8a9186827df5f84dcbb7cfdef",
+    "src/proxy/mesh_adjacency_cache.cpp": "fb612017858407688b096c4da4049401725728523753b6bce9f7f9f3f440ba9e",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "037f4c7321a72448b686007f9b3a3ab933dea2d6162898da2ba01449f5eeb6cf",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
-    "verification/probe/run_mesh_adjacency_cache.py": "9da9aa1d492450e501f6515b7918646d80f4ca694cda5435f4b89233cfec0c73",
+    "verification/probe/run_mesh_adjacency_cache.py": "aa5204595e2eebc4a4d5969e1466edf37775f5087ca7825c3c7156ad92b10744",
     "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   },
   "source_hashes_after_build": {
-    "src/proxy/mesh_adjacency_cache.h": "0324af34386837cb9eab22b7538a29b0cd8f86d4bcd66cd833fd7041bd933cf3",
-    "src/proxy/mesh_adjacency_cache.cpp": "0582780ccb86e04de48d4d61390af5d4842081750de51a90170a857d089f6584",
-    "verification/probe/mesh_adjacency_cache_fixture.cpp": "bd5c303bf73952fb76ee62a57541e8fb3f9c15fac1df67db4c32b9ae730192a1",
+    "src/proxy/mesh_adjacency_cache.h": "03c3fcb7a818a586e30eef43c93aa0b3d22e42e8a9186827df5f84dcbb7cfdef",
+    "src/proxy/mesh_adjacency_cache.cpp": "fb612017858407688b096c4da4049401725728523753b6bce9f7f9f3f440ba9e",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "037f4c7321a72448b686007f9b3a3ab933dea2d6162898da2ba01449f5eeb6cf",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
-    "verification/probe/run_mesh_adjacency_cache.py": "9da9aa1d492450e501f6515b7918646d80f4ca694cda5435f4b89233cfec0c73",
+    "verification/probe/run_mesh_adjacency_cache.py": "aa5204595e2eebc4a4d5969e1466edf37775f5087ca7825c3c7156ad92b10744",
     "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   },
   "command": [
@@ -34,27 +34,27 @@
     "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   ],
   "hashes_before": {
-    "src/proxy/mesh_adjacency_cache.h": "0324af34386837cb9eab22b7538a29b0cd8f86d4bcd66cd833fd7041bd933cf3",
-    "src/proxy/mesh_adjacency_cache.cpp": "0582780ccb86e04de48d4d61390af5d4842081750de51a90170a857d089f6584",
-    "verification/probe/mesh_adjacency_cache_fixture.cpp": "bd5c303bf73952fb76ee62a57541e8fb3f9c15fac1df67db4c32b9ae730192a1",
+    "src/proxy/mesh_adjacency_cache.h": "03c3fcb7a818a586e30eef43c93aa0b3d22e42e8a9186827df5f84dcbb7cfdef",
+    "src/proxy/mesh_adjacency_cache.cpp": "fb612017858407688b096c4da4049401725728523753b6bce9f7f9f3f440ba9e",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "037f4c7321a72448b686007f9b3a3ab933dea2d6162898da2ba01449f5eeb6cf",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
-    "verification/probe/run_mesh_adjacency_cache.py": "9da9aa1d492450e501f6515b7918646d80f4ca694cda5435f4b89233cfec0c73",
-    "verification/probe/build/mesh_adjacency_cache_fixture.exe": "b0dd97f12a103f2edb66139128d661a98f95049afa8584093d89e3efaa6c1f6e",
+    "verification/probe/run_mesh_adjacency_cache.py": "aa5204595e2eebc4a4d5969e1466edf37775f5087ca7825c3c7156ad92b10744",
+    "verification/probe/build/mesh_adjacency_cache_fixture.exe": "5e91bb9cde3d3853239165648cb6352b550732cddf783fb396db1bf766ce217f",
     "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   },
   "exit_code": 0,
   "hashes_after": {
-    "src/proxy/mesh_adjacency_cache.h": "0324af34386837cb9eab22b7538a29b0cd8f86d4bcd66cd833fd7041bd933cf3",
-    "src/proxy/mesh_adjacency_cache.cpp": "0582780ccb86e04de48d4d61390af5d4842081750de51a90170a857d089f6584",
-    "verification/probe/mesh_adjacency_cache_fixture.cpp": "bd5c303bf73952fb76ee62a57541e8fb3f9c15fac1df67db4c32b9ae730192a1",
+    "src/proxy/mesh_adjacency_cache.h": "03c3fcb7a818a586e30eef43c93aa0b3d22e42e8a9186827df5f84dcbb7cfdef",
+    "src/proxy/mesh_adjacency_cache.cpp": "fb612017858407688b096c4da4049401725728523753b6bce9f7f9f3f440ba9e",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "037f4c7321a72448b686007f9b3a3ab933dea2d6162898da2ba01449f5eeb6cf",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
-    "verification/probe/run_mesh_adjacency_cache.py": "9da9aa1d492450e501f6515b7918646d80f4ca694cda5435f4b89233cfec0c73",
-    "verification/probe/build/mesh_adjacency_cache_fixture.exe": "b0dd97f12a103f2edb66139128d661a98f95049afa8584093d89e3efaa6c1f6e",
+    "verification/probe/run_mesh_adjacency_cache.py": "aa5204595e2eebc4a4d5969e1466edf37775f5087ca7825c3c7156ad92b10744",
+    "verification/probe/build/mesh_adjacency_cache_fixture.exe": "5e91bb9cde3d3853239165648cb6352b550732cddf783fb396db1bf766ce217f",
     "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   },
-  "report_sha256": "0a6be8be2836f5057173ba9a11a28ab9496a71183614d513086de7d71e230cc8",
+  "report_sha256": "a3c194ab22c9f896004bc96eb1254ff983c3f78757d944dea17397987ee8362c",
   "results": {
     "CASE": [
       {
@@ -112,31 +112,31 @@
         "faces": "18432",
         "vertices": "9409",
         "repetitions": "15",
-        "native_median_us": "97657.300",
-        "adapter_miss_median_us": "99949.400",
-        "adapter_hit_median_us": "1209.700",
+        "native_median_us": "96104.500",
+        "adapter_miss_median_us": "97116.600",
+        "adapter_hit_median_us": "1143.100",
         "includes_native_buffer_acquisition": "1",
-        "retained_bytes": "540768",
+        "retained_bytes": "540928",
         "scratch_cap_bytes": "4194304",
-        "acquisition_ticks": "35312",
-        "lookup_ticks": "319375",
-        "copy_ticks": "8242",
-        "native_ticks": "16849348",
-        "total_ticks": "17214776",
+        "acquisition_ticks": "31941",
+        "lookup_ticks": "305003",
+        "copy_ticks": "7848",
+        "native_ticks": "15391130",
+        "total_ticks": "15738008",
         "hits": "15",
         "misses": "16"
       }
     ],
     "RESULT": [
       {
-        "checks": "721"
+        "checks": "733"
       }
     ]
   },
   "limits": [
     "Detached core; no hooks, installation or game loading improvement.",
     "Caller must verify/pin runtime and serialize mesh/output mutation.",
-    "SYSTEMMEM non-dynamic/non-writeonly/non-shared meshes only; game eligibility unknown.",
+    "SYSTEMMEM non-writeonly/non-shared meshes only; dynamic additionally needs positive exact readonly runtime contract.",
     "Default masked FP computational controls only; unsupported controls forward unchanged.",
     "FP instruction/data pointers and allocator side effects are not emulated.",
     "Persistent acquisition unlock failure has distinct origin, permanently disables cache and does not call native.",

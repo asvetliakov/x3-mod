@@ -1,0 +1,233 @@
+{
+  "snapshot": {
+    "path": "/tmp/x3-iteration05-completed-snapshot.log",
+    "bytes": 216605445,
+    "sha256": "e5beaa861d04659fe9c7df05a01845bd05d656a33c643f4b484ff379cf3ccaf8",
+    "completed_user_run": true
+  },
+  "qpc_frequency": 10000000,
+  "setup": [
+    "mesh_cache requested=1 enabled=0 activation=await_verified_mesh_and_buffer_contract adjacency_metric_scope=hook_service restart_on_cleanup_failure=1",
+    "mesh_cache ready=1 buffer_contract_required=1 sha256=c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8 generation=1 retained_budget=16777216 scratch_budget=4194304 entries=512",
+    "mesh_trace module_verified=1 pinned=1 hash=49cc52632ef762d4 bytes=3786760 scope=shared_native_vtables table_limit=8 objects_retained=0",
+    "mesh_hook table=0 installed=1 owned_slots=3 scope=shared_native_vtable",
+    "mesh_hook table=1 installed=1 owned_slots=3 scope=shared_native_vtable"
+  ],
+  "cache_metric_records": 116,
+  "last_cache_metric": {
+    "cumulative": "1",
+    "qpc": "8069001750293",
+    "dispatch_enabled": "1",
+    "backend_verified": "0",
+    "faulted": "0",
+    "calls": "0",
+    "hits": "0",
+    "misses": "0",
+    "bypasses": "0",
+    "contention": "0",
+    "admissions": "0",
+    "evictions": "0",
+    "allocation_failures": "0",
+    "acquisition_failures": "0",
+    "unrecoverable_unlocks": "0",
+    "native_calls": "0",
+    "native_failures": "0",
+    "retained_bytes": "20696",
+    "retained_entries": "0",
+    "acquired_bytes": "0",
+    "copied_bytes": "0",
+    "evicted_bytes": "0",
+    "acquisition_ticks": "0",
+    "lookup_ticks": "0",
+    "copy_ticks": "0",
+    "native_ticks": "0",
+    "total_ticks": "0",
+    "gate_rejections": "7199",
+    "gate_ticks": "213093",
+    "native_outcomes": "7199",
+    "hit_outcomes": "0",
+    "cleanup_outcomes": "0",
+    "blocked": "0",
+    "cleanup_hr": "00000000"
+  },
+  "loading_totals": {
+    "CreateFileA": {
+      "count": 6007,
+      "failures": 2,
+      "bytes": 0,
+      "inclusive_ticks": 58662309,
+      "exclusive_ticks": 58662309,
+      "wrapper_tail_ticks": 31023
+    },
+    "ReadFile": {
+      "count": 276826,
+      "failures": 0,
+      "bytes": 1129318965,
+      "inclusive_ticks": 21117691,
+      "exclusive_ticks": 21117691,
+      "wrapper_tail_ticks": 422614
+    },
+    "SetFilePointer": {
+      "count": 16503,
+      "failures": 0,
+      "bytes": 0,
+      "inclusive_ticks": 355954,
+      "exclusive_ticks": 355954,
+      "wrapper_tail_ticks": 45472
+    },
+    "D3DXCreateEffect": {
+      "count": 22,
+      "failures": 0,
+      "bytes": 724240,
+      "inclusive_ticks": 3855185,
+      "exclusive_ticks": 3855185,
+      "wrapper_tail_ticks": 127
+    },
+    "D3DXCreateTextureFromFileInMemoryEx": {
+      "count": 2321,
+      "failures": 0,
+      "bytes": 1897654701,
+      "inclusive_ticks": 246638593,
+      "exclusive_ticks": 246638593,
+      "wrapper_tail_ticks": 8217
+    },
+    "D3DXCreateCubeTextureFromFileInMemoryEx": {
+      "count": 47,
+      "failures": 0,
+      "bytes": 10428592,
+      "inclusive_ticks": 633448,
+      "exclusive_ticks": 633448,
+      "wrapper_tail_ticks": 292
+    },
+    "D3DXLoadSurfaceFromFileInMemory": {
+      "count": 16,
+      "failures": 0,
+      "bytes": 10414308,
+      "inclusive_ticks": 2356080,
+      "exclusive_ticks": 2356080,
+      "wrapper_tail_ticks": 106
+    },
+    "inflate": {
+      "count": 1022966,
+      "failures": 0,
+      "bytes": 0,
+      "inclusive_ticks": 108066119,
+      "exclusive_ticks": 108066119,
+      "wrapper_tail_ticks": 1425659
+    },
+    "xmlReadMemory": {
+      "count": 1598,
+      "failures": 0,
+      "bytes": 62366860,
+      "inclusive_ticks": 6428887,
+      "exclusive_ticks": 6428887,
+      "wrapper_tail_ticks": 9453
+    },
+    "D3DXCreateMesh": {
+      "count": 7199,
+      "failures": 0,
+      "bytes": 0,
+      "inclusive_ticks": 1729136,
+      "exclusive_ticks": 1729136,
+      "wrapper_tail_ticks": 644294
+    },
+    "D3DXCleanMesh": {
+      "count": 7214,
+      "failures": 30,
+      "bytes": 0,
+      "inclusive_ticks": 8801558,
+      "exclusive_ticks": 8801558,
+      "wrapper_tail_ticks": 368579
+    },
+    "ID3DXMesh::GenerateAdjacency": {
+      "count": 7199,
+      "failures": 0,
+      "bytes": 0,
+      "inclusive_ticks": 235175329,
+      "exclusive_ticks": 235175329,
+      "wrapper_tail_ticks": 25595
+    },
+    "ID3DXMesh::OptimizeInplace": {
+      "count": 7199,
+      "failures": 0,
+      "bytes": 0,
+      "inclusive_ticks": 18378046,
+      "exclusive_ticks": 18378046,
+      "wrapper_tail_ticks": 25152
+    },
+    "gzopen": {
+      "count": 27,
+      "failures": 24,
+      "bytes": 0,
+      "inclusive_ticks": 108662,
+      "exclusive_ticks": 108662,
+      "wrapper_tail_ticks": 369
+    },
+    "gzread": {
+      "count": 14430533,
+      "failures": 0,
+      "bytes": 43601799,
+      "inclusive_ticks": 24538753,
+      "exclusive_ticks": 24538753,
+      "wrapper_tail_ticks": 20126814
+    }
+  },
+  "binary_sha256": {
+    "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+    "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+  },
+  "static_evidence": {
+    "create_options": {
+      "addresses": [
+        "0x004bb6a8",
+        "0x004bb6b2",
+        "0x004bb6cf",
+        "0x004bb72a"
+      ],
+      "finding": "Options0x990 or0x991, optionalOR0x18000; SYSTEMMEM+DYNAMIC, optional32bit/softwareprocessing."
+    },
+    "create_thunk": {
+      "addresses": [
+        "0x004faf12",
+        "0x00532360"
+      ],
+      "finding": "Thunk targets namedD3DXCreateMesh import."
+    },
+    "adjacency_call": {
+      "addresses": [
+        "0x004bc752",
+        "0x004bc76a"
+      ],
+      "finding": "Game prepares approximately1e-6 epsilon and dispatches slot22."
+    },
+    "get_options": {
+      "addresses": [
+        "0x0058c297"
+      ],
+      "finding": "Native GetOptions reads stored optionword at mesh+0x214."
+    },
+    "constructor_options": {
+      "addresses": [
+        "0x005a25f2",
+        "0x005a28a9"
+      ],
+      "finding": "Native16/32 constructors preserve supplied optionword at+0x214."
+    },
+    "local_only_artifacts": [
+      "/tmp/x3-native-executable-disassembly.txt",
+      "/tmp/x3-native-d3dx37-disassembly.txt"
+    ],
+    "method": "Read-only i686-w64-mingw32-objdump on exact hashed installedbinaries; fullinstructiontext notretained in repository.",
+    "buffer_initialization": {
+      "addresses": [
+        "0x004bc1f6",
+        "0x004bc5ea",
+        "0x004bc0bd",
+        "0x004bc1ac",
+        "0x004bb996"
+      ],
+      "finding": "Ordinary creation path locks/writes/unlocks VB, separately locks/writes/unlocks IB, then calls preparation; no deliberately retained outer write lock is present on this path."
+    }
+  },
+  "conclusion": "Verified EXE mesh path supplies SYSTEMMEM|DYNAMIC (0x990/0x991 plus optional0x18000); installed adapter rejects DYNAMIC before backend verification. Trace lacks per-reason/options records, so this is static-path diagnosis corroborated by totals, not a measured per-call reason."
+}

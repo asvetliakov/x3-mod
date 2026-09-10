@@ -49,6 +49,37 @@ std::atomic<uint64_t> cache_native_outcomes{0},cache_hit_outcomes{0},cache_clean
 std::atomic<uint64_t> cache_gate_rejections{0},cache_gate_ticks{0};
 std::atomic<HRESULT> cache_cleanup_hr{S_OK};
 uint64_t cache_last_report_calls=0,cache_last_report_blocked=0,cache_last_report_rejected=0;
+enum class GateReason : unsigned {
+    Unavailable, Input, MeshObject, MeshTable, MeshMethod, MeshPool, MeshOptions,
+    VertexAcquire, IndexAcquire, BufferMissing, Tracker, BufferObject, BufferTable,
+    BufferEndpoint, BackendIdentity, DescriptorEndpoint, BackendImports,
+    DescriptorCall, DescriptorPool, DescriptorUsage, DescriptorFormat, DescriptorSize, Count
+};
+constexpr unsigned gate_reason_count=static_cast<unsigned>(GateReason::Count);
+const char* gate_reason_name(unsigned i){
+    static constexpr const char* names[]={"unavailable","input","mesh_object","mesh_table","mesh_method","mesh_pool","mesh_options","vertex_acquire","index_acquire","buffer_missing","tracker","buffer_object","buffer_table","buffer_endpoint","backend_identity","descriptor_endpoint","backend_imports","descriptor_call","descriptor_pool","descriptor_usage","descriptor_format","descriptor_size"};
+    return i<gate_reason_count?names[i]:"unknown";
+}
+struct GateDetail {
+    unsigned scope=0; // 0 mesh, 1 vertex buffer, 2 index buffer.
+    DWORD options=0,slot=0,actual_entry=0,expected_entry=0;
+    HRESULT status=S_OK;DWORD pool=0,usage=0,format=0;
+    uint64_t required_bytes=0,size_bytes=0,pending=0;
+    bool known=false;
+};
+struct GateCounter {std::atomic<uint64_t> count{0};std::atomic<unsigned> publication{0};GateDetail first{};};
+GateCounter cache_gate_reasons[gate_reason_count];
+uint64_t cache_gate_last_counts[gate_reason_count]{};
+bool cache_gate_detail_reported[gate_reason_count]{};
+uint64_t cache_bypass_last_counts[adjacency_cache::bypass_reason_count]{};
+bool cache_fp_detail_reported=false;
+bool reject_gate(GateReason reason,const GateDetail& detail={}){
+    auto& row=cache_gate_reasons[static_cast<unsigned>(reason)];row.count.fetch_add(1,std::memory_order_relaxed);
+    unsigned empty=0;if(row.publication.compare_exchange_strong(empty,1,std::memory_order_acquire)){
+        row.first=detail;row.publication.store(2,std::memory_order_release);
+    }
+    return false;
+}
 struct X87Environment {DWORD control,status,tag,ip,cs,dp,ds;};
 struct ComputationalState {X87Environment x87;DWORD mxcsr;};
 ComputationalState computational_state(){ComputationalState value{};
@@ -136,7 +167,7 @@ template<unsigned Index> HRESULT WINAPI mesh_adjacency(ID3DXMesh* mesh,FLOAT eps
     const DWORD incoming_error=GetLastError();const auto incoming=computational_state();
     Span span(Operation::MeshAdjacency);const auto gate_begin=tick();
     auto* const instance=cache_instance.load(std::memory_order_acquire);
-    const bool eligible=instance&&mesh&&adjacency&&cache_buffer_contract(mesh);
+    const bool eligible=!instance?reject_gate(GateReason::Unavailable):(!mesh||!adjacency)?reject_gate(GateReason::Input):cache_buffer_contract(mesh);
     cache_gate_ticks.fetch_add(tick()-gate_begin,std::memory_order_relaxed);
     restore_computational_state(incoming);SetLastError(incoming_error);
     adjacency_cache::Outcome outcome;
@@ -481,43 +512,71 @@ bool backend_module_for(PVOID endpoint) {
     }
     const bool okay=cache_backend!=nullptr;ReleaseSRWLockExclusive(&mesh_lock);return okay;
 }
-template<class Buffer> bool buffer_contract(Buffer* application,unsigned lock_rva,unsigned unlock_rva,unsigned desc_rva,uint64_t required_bytes,D3DFORMAT format) {
-    if(!application)return false;
+bool verified_dynamic_options(DWORD options){
+    // The four actual X3 creation variants reviewed against exact Preview map/unmap.
+    return options==0x990u||options==0x991u||options==0x18990u||options==0x18991u;
+}
+template<class Buffer> bool buffer_contract(Buffer* application,unsigned lock_rva,unsigned unlock_rva,unsigned desc_rva,uint64_t required_bytes,D3DFORMAT format,DWORD options) {
+    GateDetail detail{};detail.scope=std::is_same_v<Buffer,IDirect3DVertexBuffer9>?1:2;detail.options=options;detail.required_bytes=required_bytes;
+    if(!application)return reject_gate(GateReason::BufferMissing,detail);
     Buffer* native=ownership::borrowed_native_buffer_for_lock_contract(application);
     if(native){
-        ownership::BufferContentView view{};
-        if(FAILED(ownership::get_buffer_content_view(application,&view))||
-           (view.requested&&(!view.known||view.pending_locks||FAILED(view.status))))return false;
+        ownership::BufferContentView view{};detail.status=ownership::get_buffer_content_view(application,&view);detail.known=view.known;detail.pending=view.pending_locks;
+        if(FAILED(detail.status))return reject_gate(GateReason::Tracker,detail);
+        detail.status=view.status;
+        if(view.requested&&(!view.known||view.pending_locks||FAILED(view.status)))return reject_gate(GateReason::Tracker,detail);
     }else native=application;
-    if(!readable(native,sizeof(PVOID)))return false;
+    if(!readable(native,sizeof(PVOID)))return reject_gate(GateReason::BufferObject,detail);
     auto table=*reinterpret_cast<PVOID**>(native);
-    if(!readable(table,14*sizeof(PVOID)))return false;
-    HMODULE owner=nullptr;
-    if(!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCSTR>(table[12]),&owner)||
-       table[11]!=reinterpret_cast<PVOID>(reinterpret_cast<uintptr_t>(owner)+lock_rva)||
-       table[12]!=reinterpret_cast<PVOID>(reinterpret_cast<uintptr_t>(owner)+unlock_rva)||!backend_module_for(table[12]))return false;
+    if(!readable(table,14*sizeof(PVOID)))return reject_gate(GateReason::BufferTable,detail);
+    HMODULE owner=nullptr;detail.slot=12;detail.actual_entry=DWORD(reinterpret_cast<uintptr_t>(table[12]));
+    if(!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCSTR>(table[12]),&owner))return reject_gate(GateReason::BufferEndpoint,detail);
+    for(unsigned slot:{11u,12u}){
+        detail.slot=slot;detail.actual_entry=DWORD(reinterpret_cast<uintptr_t>(table[slot]));detail.expected_entry=DWORD(reinterpret_cast<uintptr_t>(owner)+(slot==11?lock_rva:unlock_rva));
+        if(detail.actual_entry!=detail.expected_entry)return reject_gate(GateReason::BufferEndpoint,detail);
+    }
+    if(!backend_module_for(table[12]))return reject_gate(GateReason::BackendIdentity,detail);
     const auto base=reinterpret_cast<uintptr_t>(cache_backend);
-    if(table[11]!=reinterpret_cast<PVOID>(base+lock_rva)||table[12]!=reinterpret_cast<PVOID>(base+unlock_rva)||table[13]!=reinterpret_cast<PVOID>(base+desc_rva)||
-       !readable(table[11],1,cache_backend,true)||!readable(table[12],1,cache_backend,true)||!readable(table[13],1,cache_backend,true)||!backend_imports_match(cache_backend,cache_wined3d))return false;
+    for(unsigned slot:{11u,12u,13u}){
+        detail.slot=slot;detail.actual_entry=DWORD(reinterpret_cast<uintptr_t>(table[slot]));detail.expected_entry=DWORD(base+(slot==11?lock_rva:slot==12?unlock_rva:desc_rva));
+        if(detail.actual_entry!=detail.expected_entry||!readable(table[slot],1,cache_backend,true))return reject_gate(slot==13?GateReason::DescriptorEndpoint:GateReason::BufferEndpoint,detail);
+    }
+    if(!backend_imports_match(cache_backend,cache_wined3d))return reject_gate(GateReason::BackendImports,detail);
     std::conditional_t<std::is_same_v<Buffer,IDirect3DVertexBuffer9>,D3DVERTEXBUFFER_DESC,D3DINDEXBUFFER_DESC> desc{};
-    return SUCCEEDED(native->GetDesc(&desc))&&desc.Pool==D3DPOOL_SYSTEMMEM&&desc.Format==format&&
-        !(desc.Usage&(D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY))&&required_bytes&&required_bytes<=desc.Size;
+    detail.status=native->GetDesc(&desc);detail.pool=desc.Pool;detail.usage=desc.Usage;detail.format=desc.Format;detail.size_bytes=desc.Size;
+    if(FAILED(detail.status))return reject_gate(GateReason::DescriptorCall,detail);
+    if(desc.Pool!=D3DPOOL_SYSTEMMEM)return reject_gate(GateReason::DescriptorPool,detail);
+    if(desc.Format!=format)return reject_gate(GateReason::DescriptorFormat,detail);
+    if(desc.Usage&D3DUSAGE_WRITEONLY)return reject_gate(GateReason::DescriptorUsage,detail);
+    if(options&D3DXMESH_DYNAMIC){
+        const DWORD expected_usage=D3DUSAGE_DYNAMIC|((options&D3DXMESH_SOFTWAREPROCESSING)?D3DUSAGE_SOFTWAREPROCESSING:0);
+        if(!verified_dynamic_options(options)||desc.Usage!=expected_usage)return reject_gate(GateReason::DescriptorUsage,detail);
+    }else if(desc.Usage&D3DUSAGE_DYNAMIC)return reject_gate(GateReason::DescriptorUsage,detail);
+    if(!required_bytes||required_bytes>desc.Size)return reject_gate(GateReason::DescriptorSize,detail);
+    return true;
 }
 bool cache_buffer_contract(ID3DXMesh* mesh) {
-    if(!readable(mesh,sizeof(PVOID)))return false;
-    auto table=*reinterpret_cast<PVOID**>(mesh);if(!readable(table,19*sizeof(PVOID)))return false;
+    GateDetail detail{};
+    if(!readable(mesh,sizeof(PVOID)))return reject_gate(GateReason::MeshObject,detail);
+    auto table=*reinterpret_cast<PVOID**>(mesh);if(!readable(table,19*sizeof(PVOID)))return reject_gate(GateReason::MeshTable,detail);
     constexpr unsigned slots[]={4,5,7,8,9,13,14,15,16,17,18};
     constexpr unsigned rvas[]={0x18c626,0x18c63d,0x191987,0x18c280,0x18c297,0x18c2ae,0x18c2e0,0x18c57d,0x18c1a3,0x18c1c0,0x18c1ee};
-    for(unsigned i=0;i<11;++i)if(table[slots[i]]!=reinterpret_cast<PVOID>(reinterpret_cast<uintptr_t>(mesh_module)+rvas[i]))return false;
-    const DWORD options=mesh->GetOptions();
-    if((options&D3DXMESH_SYSTEMMEM)!=D3DXMESH_SYSTEMMEM||(options&(D3DXMESH_WRITEONLY|D3DXMESH_DYNAMIC|D3DXMESH_VB_SHARE)))return false;
+    for(unsigned i=0;i<11;++i){
+        detail.slot=slots[i];detail.actual_entry=DWORD(reinterpret_cast<uintptr_t>(table[slots[i]]));detail.expected_entry=DWORD(reinterpret_cast<uintptr_t>(mesh_module)+rvas[i]);
+        if(detail.actual_entry!=detail.expected_entry)return reject_gate(GateReason::MeshMethod,detail);
+    }
+    const DWORD options=mesh->GetOptions();detail.options=options;
+    if((options&D3DXMESH_SYSTEMMEM)!=D3DXMESH_SYSTEMMEM)return reject_gate(GateReason::MeshPool,detail);
+    if(options&(D3DXMESH_WRITEONLY|D3DXMESH_VB_SHARE))return reject_gate(GateReason::MeshOptions,detail);
+    if((options&D3DXMESH_DYNAMIC)&&!verified_dynamic_options(options))return reject_gate(GateReason::MeshOptions,detail);
     IDirect3DVertexBuffer9* vb=nullptr;IDirect3DIndexBuffer9* ib=nullptr;
-    bool okay=SUCCEEDED(mesh->GetVertexBuffer(&vb))&&vb;
-    if(okay)okay=SUCCEEDED(mesh->GetIndexBuffer(&ib))&&ib;
+    detail.status=mesh->GetVertexBuffer(&vb);bool okay=SUCCEEDED(detail.status)&&vb;
+    if(!okay)reject_gate(GateReason::VertexAcquire,detail);
+    if(okay){detail.status=mesh->GetIndexBuffer(&ib);okay=SUCCEEDED(detail.status)&&ib;if(!okay)reject_gate(GateReason::IndexAcquire,detail);}
     if(okay){const uint64_t vertices=uint64_t(mesh->GetNumVertices())*mesh->GetNumBytesPerVertex();
         const uint64_t indices=uint64_t(mesh->GetNumFaces())*3*((options&D3DXMESH_32BIT)?4:2);
-        okay=buffer_contract(vb,0x1f90,0x2060,0x20c0,vertices,D3DFMT_VERTEXDATA)&&
-             buffer_contract(ib,0x2a70,0x2b40,0x2ba0,indices,(options&D3DXMESH_32BIT)?D3DFMT_INDEX32:D3DFMT_INDEX16);
+        okay=buffer_contract(vb,0x1f90,0x2060,0x20c0,vertices,D3DFMT_VERTEXDATA,options)&&
+             buffer_contract(ib,0x2a70,0x2b40,0x2ba0,indices,(options&D3DXMESH_32BIT)?D3DFMT_INDEX32:D3DFMT_INDEX16,options);
     }
     if(ib)ib->Release();
     if(vb)vb->Release();
@@ -535,11 +594,25 @@ void cache_report() {
     if(!cache_requested)return;
     auto* const instance=cache_instance.load(std::memory_order_acquire);
     const auto stats=instance?instance->statistics():adjacency_cache::Statistics{};
+    for(unsigned i=0;i<gate_reason_count;++i){
+        auto& row=cache_gate_reasons[i];const auto count=row.count.load(std::memory_order_relaxed);
+        if(count!=cache_gate_last_counts[i]){cache_gate_last_counts[i]=count;log("mesh_cache_gate cumulative=1 reason=%s count=%llu",gate_reason_name(i),count);}
+        if(!cache_gate_detail_reported[i]&&row.publication.load(std::memory_order_acquire)==2){
+            cache_gate_detail_reported[i]=true;const auto& d=row.first;
+            log("mesh_cache_gate_first reason=%s scope=%u options=%08lx slot=%lu actual_entry=%08lx expected_entry=%08lx status=%08lx pool=%lu usage=%08lx format=%lu required_bytes=%llu size_bytes=%llu known=%u pending=%llu",gate_reason_name(i),d.scope,d.options,d.slot,d.actual_entry,d.expected_entry,d.status,d.pool,d.usage,d.format,d.required_bytes,d.size_bytes,d.known,d.pending);
+        }
+    }
+    for(unsigned i=0;i<adjacency_cache::bypass_reason_count;++i)if(stats.bypass_reasons[i]!=cache_bypass_last_counts[i]){
+        cache_bypass_last_counts[i]=stats.bypass_reasons[i];log("mesh_cache_bypass cumulative=1 reason=%s count=%llu",adjacency_cache::bypass_reason_name(i),stats.bypass_reasons[i]);
+    }
+    if(stats.unsupported_fp_available&&!cache_fp_detail_reported){cache_fp_detail_reported=true;const auto& f=stats.unsupported_fp;
+        log("mesh_cache_fp_first control=%08lx status=%08lx tag=%08lx mxcsr=%08lx",f.control,f.status,f.tag,f.mxcsr);
+    }
     const auto blocked=cache_blocked.load(),rejected=cache_gate_rejections.load();
     if(stats.calls==cache_last_report_calls&&blocked==cache_last_report_blocked&&rejected==cache_last_report_rejected)return;
     cache_last_report_calls=stats.calls;cache_last_report_blocked=blocked;cache_last_report_rejected=rejected;
-    log("mesh_cache_metric cumulative=1 qpc=%llu dispatch_enabled=%u backend_verified=%u faulted=%u calls=%llu hits=%llu misses=%llu bypasses=%llu contention=%llu admissions=%llu evictions=%llu allocation_failures=%llu acquisition_failures=%llu unrecoverable_unlocks=%llu native_calls=%llu native_failures=%llu retained_bytes=%llu retained_entries=%llu acquired_bytes=%llu copied_bytes=%llu evicted_bytes=%llu acquisition_ticks=%llu lookup_ticks=%llu copy_ticks=%llu native_ticks=%llu total_ticks=%llu gate_rejections=%llu gate_ticks=%llu native_outcomes=%llu hit_outcomes=%llu cleanup_outcomes=%llu blocked=%llu cleanup_hr=%08lx",
-        tick(),unsigned(cache_enabled.load()),unsigned(cache_backend_verified.load()),unsigned(cache_faulted.load()),stats.calls,stats.hits,stats.misses,stats.bypasses,stats.contention,stats.admissions,stats.evictions,stats.allocation_failures,stats.acquisition_failures,stats.unrecoverable_unlocks,stats.native_calls,stats.native_failures,stats.retained_bytes,stats.retained_entries,stats.acquired_bytes,stats.copied_bytes,stats.evicted_bytes,stats.acquisition_ticks,stats.lookup_ticks,stats.copy_ticks,stats.native_ticks,stats.total_ticks,rejected,cache_gate_ticks.load(),cache_native_outcomes.load(),cache_hit_outcomes.load(),cache_cleanup_outcomes.load(),blocked,cache_cleanup_hr.load());
+    log("mesh_cache_metric cumulative=1 qpc=%llu dispatch_enabled=%u backend_verified=%u faulted=%u calls=%llu hits=%llu misses=%llu bypasses=%llu contention=%llu admissions=%llu evictions=%llu allocation_failures=%llu acquisition_failures=%llu unrecoverable_unlocks=%llu native_calls=%llu native_failures=%llu retained_bytes=%llu retained_entries=%llu acquired_bytes=%llu copied_bytes=%llu evicted_bytes=%llu acquisition_ticks=%llu lookup_ticks=%llu copy_ticks=%llu native_ticks=%llu total_ticks=%llu gate_rejections=%llu gate_ticks=%llu native_outcomes=%llu hit_outcomes=%llu cleanup_outcomes=%llu blocked=%llu cleanup_hr=%08lx rejected_result=%llu rejected_last_error=%llu rejected_fp=%llu",
+        tick(),unsigned(cache_enabled.load()),unsigned(cache_backend_verified.load()),unsigned(cache_faulted.load()),stats.calls,stats.hits,stats.misses,stats.bypasses,stats.contention,stats.admissions,stats.evictions,stats.allocation_failures,stats.acquisition_failures,stats.unrecoverable_unlocks,stats.native_calls,stats.native_failures,stats.retained_bytes,stats.retained_entries,stats.acquired_bytes,stats.copied_bytes,stats.evicted_bytes,stats.acquisition_ticks,stats.lookup_ticks,stats.copy_ticks,stats.native_ticks,stats.total_ticks,rejected,cache_gate_ticks.load(),cache_native_outcomes.load(),cache_hit_outcomes.load(),cache_cleanup_outcomes.load(),blocked,cache_cleanup_hr.load(),stats.rejected_result,stats.rejected_last_error,stats.rejected_fp);
 }
 
 bool verify_mesh_module() {
@@ -559,10 +632,12 @@ bool verify_mesh_module() {
     if(valid&&cache_requested&&sha256_module(mesh_module,native_mesh_sha)){
         std::copy_n(native_mesh_sha,32,cache_runtime.sha256.begin());cache_runtime.generation=1;
         cache_runtime.verified=true;cache_runtime.success_preserves_last_error=true;
+        // generate() is reached only after exact backend/endpoint/descriptor gates.
+        cache_runtime.systemmem_dynamic_readonly_verified=true;
         auto* const instance=new(cache_storage) adjacency_cache::Cache();
         cache_instance.store(instance,std::memory_order_release);
         cache_enabled.store(true,std::memory_order_release);
-        log("mesh_cache ready=1 buffer_contract_required=1 sha256=c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8 generation=1 retained_budget=16777216 scratch_budget=4194304 entries=512");
+        log("mesh_cache ready=1 buffer_contract_required=1 sha256=c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8 generation=1 retained_budget=16777216 scratch_budget=4194304 entries=512 dynamic_systemmem_contract=1 dynamic_options=990,991,18990,18991");
     }else if(cache_requested)log("mesh_cache ready=0 reason=native_runtime_not_verified");
     log("mesh_trace module_verified=%u pinned=%u hash=%016llx bytes=%lu scope=shared_native_vtables table_limit=%u objects_retained=0",valid,valid,hash,size,mesh_table_limit);
     return valid;
@@ -729,5 +804,6 @@ uint64_t fixture_cache_blocked(){return cache_blocked.load();}
 void fixture_cache_cleanup_failure(HRESULT hr){forced_cache_cleanup.store(hr);}
 void fixture_cache_reenter_once(){cache_reentry_once=true;}
 bool fixture_cache_contract(ID3DXMesh* mesh){return cache_buffer_contract(mesh);}
+uint64_t fixture_cache_gate_reason(const char* reason){for(unsigned i=0;i<gate_reason_count;++i)if(!std::strcmp(reason,gate_reason_name(i)))return cache_gate_reasons[i].count.load();return 0;}
 #endif
 }

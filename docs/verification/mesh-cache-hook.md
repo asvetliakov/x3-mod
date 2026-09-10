@@ -26,8 +26,11 @@ each candidate then passes all of these additional checks:
   Generation 1 identifies the process’s single immutable installation. Geometry
   metadata, GetVB/GetIB and all four mesh buffer Lock/Unlock methods must have the
   verified native entry addresses.
-- Both buffers are SYSTEMMEM, without dynamic, write-only or shared-VB options.
-  Sixteen-bit and 32-bit index meshes are supported. Native descriptors bound all
+- Both buffers are SYSTEMMEM, without write-only or shared-VB options. In addition
+  to the original nondynamic cases, dynamic meshes admit only the four actual game
+  variants `0x990`, `0x991`, `0x18990`, `0x18991` (both buffers dynamic, optional
+  32-bit indices/software processing). Their native descriptor Usage must equal
+  DYNAMIC plus the corresponding SOFTWAREPROCESSING bit. Native descriptors bound all
   copies; zero or oversized spans fail the gate. The core further validates the
   declaration, exact key size, output range and configured budgets.
 - Actual held-buffer Lock/Unlock/GetDesc endpoints match the exact builtin x86
@@ -42,12 +45,20 @@ each candidate then passes all of these additional checks:
   tracking status. Existing uncertainty or a pending lock bypasses. The cache
   neither invents writes nor clears pre-existing uncertainty.
 
-The [exact unlock review](../reverse-engineering/mesh-unlock-contract.md) establishes
+The [exact unlock review](../reverse-engineering/mesh-unlock-contract.md) and
+[dynamic readonly extension](../reverse-engineering/mesh-dynamic-contract.md) establish
 paired-lock completion for this runtime under ordinary serialized, non-reentrant
 application calls and valid object lifetimes. The proof does not cover invocation
 from the Wine command-stream thread, concurrent mutation, corruption, or foreign
 in-module code patches. The gate checks files/endpoints/imports; it is not a full
 in-memory code-integrity system. Different runtimes remain native-only.
+
+The core’s `RuntimeIdentity.systemmem_dynamic_readonly_verified` defaults to
+false. Only the live adapter’s reviewed exact backend gates justify its positive
+assertion; generic callers still bypass dynamic acquisition. The exact native
+readonly flags become MAP_READ | NOSYSLOCK; SYSTEMMEM avoids the GPU buffer path,
+and these DYNAMIC/SOFTWAREPROCESSING variants add no write, discard or renaming
+behavior. This does not permit general dynamic GPU buffers.
 
 The core keys full vertex/index/declaration bytes, counts/options/stride, exact
 epsilon, runtime/function identity and supported incoming computational FP state.
@@ -113,7 +124,15 @@ the fault latch. Default application teardown uses no worker or background cache
 `mesh_cache_metric` records cumulative integer counts, acquired/copied bytes,
 retained bytes/entries, acquisition/lookup/copy/native/total QPC ticks, preflight
 rejections and `gate_ticks`. It reports through the existing periodic loading
-summary only when counters change. It does not emit per-mesh keys or payloads.
+summary only when counters change. Fixed cumulative `mesh_cache_gate` reasons
+identify every outer preflight exit; `mesh_cache_gate_first` publishes one numeric
+detail per reason (scope, options, slot/entry, status, pool/usage/format/size or
+tracker state). First details use release/acquire publication and never change.
+Core `mesh_cache_bypass` reasons distinguish FP, identity, configuration, options,
+metadata/declaration, size/output bounds, allocation, buffer access and contention.
+The first unsupported computational FP state is recorded once; failed result,
+LastError and FP admission checks have separate counters. These bounded records
+contain no per-mesh keys or payloads.
 The existing `MeshAdjacency` loading span now means whole intercepted service
 time when the cache is enabled, including lookup/hit or native work; core
 `native_ticks` isolates calls that actually reached the saved original.
@@ -122,8 +141,8 @@ Gate timing includes descriptor/endpoint/import checks and the first backend
 fingerprinting cost. First native D3DX fingerprint/setup is charged to the
 CreateMesh wrapper tail. These one-time file reads must be separated from steady
 cache cost when judging a user run. In the final normal cases, cumulative gate
-time was 25.056 ms on the native device and 21.833 ms on the wrapped device;
-CreateMesh wrapper-tail totals were 119.659 ms and 27.027 ms, respectively. These
+time was 23.567 ms on the native device and 24.384 ms on the wrapped device;
+CreateMesh wrapper-tail totals were 121.235 ms and 28.369 ms, respectively. These
 totals include first-use setup rather than estimating steady per-call overhead.
 The small correctness fixture is not a game loading benchmark; raw QPC fields
 and the recorded 10 MHz frequency retain the distinction.
@@ -151,9 +170,12 @@ references. The critical-IAT negative calls preflight only, restores the slot an
 page protection, and never dispatches the deliberately invalid target.
 
 Current retained evidence is `verification/results/mesh-cache-hook-summary.json`
-and its six raw reports. Native off/on/fault cases pass 744/861/869 checks;
-wrapped off/on/fault cases pass 939/1,168/1,176 checks (5,757 total). Each enabled case records 17 core calls, eight hits,
-eight misses and one recursive contention fallback. Cache-off cases record zero
+and its six raw reports. Native off/on/fault cases pass 1,714/1,907/1,915 checks;
+wrapped off/on/fault cases pass 2,189/2,524/2,532 checks (12,781 total). Each
+enabled case records 38 core calls, 20 hits, 16 misses, one recursive contention
+fallback and one unsupported-FP bypass. Cache-off cases record zero
 core calls and no constructed cache. Fault cases emit exactly one restart-required
 record and reject four subsequent hooked operations. These numbers establish
-actual wiring and parity, not X3 eligibility or expected repetition.
+actual wiring and parity, not expected X3 repetition. The completed iteration 5
+trace and exact option diagnosis are [recorded separately](../reverse-engineering/iteration05-cache-gate.md);
+that installed run used the earlier dynamic-rejecting implementation.

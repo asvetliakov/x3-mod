@@ -1,8 +1,7 @@
 # Production adjacency cache core
 
 `src/proxy/mesh_adjacency_cache.{h,cpp}` implements bounded, process-local reuse of
-successful native `ID3DXMesh::GenerateAdjacency` results. The original checkpoint
-and the 721-check evidence below test this core detached from the game. The later
+successful native `ID3DXMesh::GenerateAdjacency` results. The 733-check evidence below tests this core separately from the game. The
 [off-by-default live hook](mesh-cache-hook.md) connects it to the proxy with additional
 verified runtime gates and separate evidence. No game loading improvement is claimed. This advances the [original synthetic prototype](mesh-preparation.md)
 by acquiring the current mesh through its real native readonly buffer locks and
@@ -44,10 +43,12 @@ also requires equal key lengths and a full byte comparison. Forced hash collisio
 are tested. There is no mesh-address identity or semantic/approximate comparison.
 
 The initial adapter accepts only meshes with **both VB and IB in SYSTEMMEM**, one
-vertex stream, and neither dynamic, write-only nor shared-vertex-buffer options.
-It supports 16-bit and 32-bit indices. Managed/GPU-backed meshes bypass to avoid
-assuming that acquisition costs and synchronization are harmless. The game trace
-did not record mesh options, so applicability to X3 is not yet established.
+vertex stream, and neither write-only nor shared-vertex-buffer options. Dynamic
+SYSTEMMEM requires the explicit default-false runtime capability
+`systemmem_dynamic_readonly_verified`; the live adapter narrows this to four
+reviewed game variants. It supports 16-bit and 32-bit indices. Managed/GPU-backed meshes bypass to avoid
+assuming that acquisition costs and synchronization are harmless. The later iteration 5 static-path diagnosis identifies SYSTEMMEM+DYNAMIC options
+in the game, while exact repetition and user-run benefit remain unmeasured.
 
 Only `S_OK` results whose observed LastError remains unchanged and whose FP state
 satisfies the verified contract are admitted. Other successful HRESULTs and failures
@@ -155,7 +156,7 @@ and records failure if compilation, launch or timeout handling fails. Its proces
 is used without Present or game assets. Fixture seams are compile-time only;
 production source also compiles independently with `-Wall -Wextra -Werror`.
 
-The final fixture passes **721 checks**. Coverage includes:
+The final fixture passes **733 checks**. Coverage includes:
 
 - Five original mesh cases through native generation, cleaning and optimization,
   with exact adjacency, vertex/index/declaration/attribute data, face/vertex remaps
@@ -167,6 +168,8 @@ The final fixture passes **721 checks**. Coverage includes:
 - Native failure/partial output, S_FALSE and changed-LastError admission refusal;
   optional null output; allocation failure, both lock failures, recovered and
   persistent unlock failures, poisoned-instance behavior.
+- Default-false dynamic capability performs no acquisition; a positively verified
+  dynamic SYSTEMMEM contract admits exact native fill/hit parity.
 - Recursive and actual concurrent lease fallback; output alias and wrapping-address
   rejection; all-`0xffffffff` metadata regression; byte/entry limits and clear.
 
@@ -175,15 +178,15 @@ measurements produced these medians:
 
 | Operation | Median |
 | --- | ---: |
-| Repeated uncached native generation | 97.657 ms |
-| Production adapter miss | 99.949 ms |
-| Production adapter hit | 1.210 ms |
+| Repeated uncached native generation | 96.105 ms |
+| Production adapter miss | 97.117 ms |
+| Production adapter hit | 1.143 ms |
 
 The hit includes **real readonly buffer acquisition**, key allocation/copy, full
 hash/equality checks and adjacency copy. Both measured paths include common fixture
 output-vector creation. The miss includes all acquisition/lookup work plus native
 generation and admission. The retained grid entry plus fixture-build cache metadata
-accounts for 540,768 bytes. These are warmed-runtime synthetic measurements from
+accounts for 540,928 bytes. These are warmed-runtime synthetic measurements from
 one run, not a confidence interval or game performance forecast. The prototype's
 host-memory key timing is not substituted for real acquisition cost.
 

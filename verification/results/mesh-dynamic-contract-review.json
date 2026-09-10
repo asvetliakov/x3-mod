@@ -1,0 +1,72 @@
+{
+  "scope": "Independent static SYSTEMMEM+DYNAMIC readonly map/unmap review; no GPU run or production edit. Runtime fixtures separately required.",
+  "allowed_mesh_options": [
+    "0x990",
+    "0x991",
+    "0x18990",
+    "0x18991"
+  ],
+  "lock_flags": "0x810",
+  "wined3d_map_flags": "0x80000800",
+  "modules": {
+    "d3d9": {
+      "path": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/wine/i386-windows/d3d9.dll",
+      "sha256": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+      "preferred_image_base": "0x10000000",
+      "reviewed_rva_ranges": [
+        [
+          "0x1200",
+          "0x147a"
+        ],
+        [
+          "0x1500",
+          "0x16df"
+        ],
+        [
+          "0x1f90",
+          "0x20bc"
+        ],
+        [
+          "0x2a70",
+          "0x2b9c"
+        ],
+        [
+          "0x4160",
+          "0x41e0"
+        ]
+      ]
+    },
+    "wined3d": {
+      "path": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/wine/i386-windows/wined3d.dll",
+      "sha256": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863",
+      "preferred_image_base": "0x10000000",
+      "reviewed_rva_ranges": [
+        [
+          "0x1b3d0",
+          "0x1b580"
+        ],
+        [
+          "0x1b800",
+          "0x1b980"
+        ],
+        [
+          "0x1c4f0",
+          "0x1c6b0"
+        ],
+        [
+          "0x1ca60",
+          "0x1cbe0"
+        ],
+        [
+          "0x37940",
+          "0x37b40"
+        ],
+        [
+          "0x4c190",
+          "0x4c420"
+        ]
+      ]
+    }
+  },
+  "instruction_text_policy": "Raw disassembly remains local-only; retained evidence records exact module hashes and reviewed RVA ranges. Findings are in docs/reverse-engineering/mesh-dynamic-contract.md."
+}

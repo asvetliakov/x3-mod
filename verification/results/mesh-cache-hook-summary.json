@@ -3,12 +3,12 @@
   "phase": "complete",
   "fresh_build": true,
   "game_launched": false,
-  "started_utc": "2026-09-10T21:45:05.057685+00:00",
+  "started_utc": "2026-09-10T22:15:41.297233+00:00",
   "cases": {
     "native-off-normal": {
       "exit_code": 0,
-      "checks": 744,
-      "report_sha256": "ecaaa12226cc0d055dc84e40d3e7f2f98b4d70939bc753615476329218d9dab2",
+      "checks": 1714,
+      "report_sha256": "db5148b25306b4b95097894a5be4d687a6bbec5a03223aafbfb37d34195a8bae",
       "wine_log_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
@@ -36,12 +36,37 @@
         "blocked": "0",
         "retained": "0"
       },
-      "cache_metrics": []
+      "cache_metrics": [],
+      "gate_counts": [],
+      "gate_details": [],
+      "core_bypass": [],
+      "dynamic_options": [
+        {
+          "options": "00000990",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        },
+        {
+          "options": "00000991",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        },
+        {
+          "options": "00018990",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        },
+        {
+          "options": "00018991",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        }
+      ]
     },
     "native-on-normal": {
       "exit_code": 0,
-      "checks": 861,
-      "report_sha256": "54ebde995e80e34140f7a520f633a93d7e9815b995c85d46c2cde337dd78bfab",
+      "checks": 1907,
+      "report_sha256": "5950acdb75375ce030e3648e2d442134ce33f3c2dcdf43c575afe7010d90c029",
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
@@ -61,57 +86,203 @@
         "enabled": "1",
         "wrapped": "0",
         "fault": "0",
-        "calls": "17",
-        "hits": "8",
-        "misses": "8",
-        "native_calls": "9",
+        "calls": "38",
+        "hits": "20",
+        "misses": "16",
+        "native_calls": "18",
         "rejections": "3",
         "blocked": "0",
-        "retained": "22816"
+        "retained": "25136"
       },
       "cache_metrics": [
         {
           "cumulative": "1",
-          "qpc": "8061629307524",
+          "qpc": "8079948631040",
           "dispatch_enabled": "1",
           "backend_verified": "1",
           "faulted": "0",
-          "calls": "17",
-          "hits": "8",
-          "misses": "8",
-          "bypasses": "1",
+          "calls": "38",
+          "hits": "20",
+          "misses": "16",
+          "bypasses": "2",
           "contention": "1",
-          "admissions": "8",
+          "admissions": "16",
           "evictions": "0",
           "allocation_failures": "0",
           "acquisition_failures": "0",
           "unrecoverable_unlocks": "0",
-          "native_calls": "9",
+          "native_calls": "18",
           "native_failures": "0",
-          "retained_bytes": "22816",
-          "retained_entries": "8",
-          "acquired_bytes": "2080",
-          "copied_bytes": "432",
+          "retained_bytes": "25136",
+          "retained_entries": "16",
+          "acquired_bytes": "4840",
+          "copied_bytes": "912",
           "evicted_bytes": "0",
-          "acquisition_ticks": "4795",
-          "lookup_ticks": "589",
-          "copy_ticks": "35",
-          "native_ticks": "5452",
-          "total_ticks": "12579",
+          "acquisition_ticks": "9711",
+          "lookup_ticks": "532",
+          "copy_ticks": "63",
+          "native_ticks": "9015",
+          "total_ticks": "21581",
           "gate_rejections": "3",
-          "gate_ticks": "250557",
-          "native_outcomes": "12",
-          "hit_outcomes": "8",
+          "gate_ticks": "235674",
+          "native_outcomes": "21",
+          "hit_outcomes": "20",
           "cleanup_outcomes": "0",
           "blocked": "0",
-          "cleanup_hr": "00000000"
+          "cleanup_hr": "00000000",
+          "rejected_result": "0",
+          "rejected_last_error": "0",
+          "rejected_fp": "0"
+        }
+      ],
+      "gate_counts": [
+        {
+          "cumulative": "1",
+          "reason": "input",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_method",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_pool",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_options",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "backend_imports",
+          "count": "1"
+        }
+      ],
+      "gate_details": [
+        {
+          "reason": "input",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_method",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "16",
+          "actual_entry": "00401520",
+          "expected_entry": "7b4fc1a3",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_pool",
+          "scope": "0",
+          "options": "00000220",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_options",
+          "scope": "0",
+          "options": "00000550",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "backend_imports",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "13",
+          "actual_entry": "7b3020c0",
+          "expected_entry": "7b3020c0",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "120",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        }
+      ],
+      "core_bypass": [
+        {
+          "cumulative": "1",
+          "reason": "floating_point",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "contention",
+          "count": "1"
+        }
+      ],
+      "dynamic_options": [
+        {
+          "options": "00000990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00000991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
         }
       ]
     },
     "native-on-fault": {
       "exit_code": 0,
-      "checks": 869,
-      "report_sha256": "034952cc2e7aeffdbbb0efce5289c11aa04a8de3b0d45f29c7bc0d341b96faba",
+      "checks": 1915,
+      "report_sha256": "5693132a22fe85a2898fcf690b689ba19ad6d97b0458f31468641501ea196539",
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
@@ -131,93 +302,242 @@
         "enabled": "1",
         "wrapped": "0",
         "fault": "1",
-        "calls": "17",
-        "hits": "8",
-        "misses": "8",
-        "native_calls": "9",
+        "calls": "38",
+        "hits": "20",
+        "misses": "16",
+        "native_calls": "18",
         "rejections": "3",
         "blocked": "4",
-        "retained": "22816"
+        "retained": "25136"
       },
       "cache_metrics": [
         {
           "cumulative": "1",
-          "qpc": "8061649581695",
+          "qpc": "8079967032007",
           "dispatch_enabled": "1",
           "backend_verified": "1",
           "faulted": "0",
-          "calls": "17",
-          "hits": "8",
-          "misses": "8",
-          "bypasses": "1",
+          "calls": "38",
+          "hits": "20",
+          "misses": "16",
+          "bypasses": "2",
           "contention": "1",
-          "admissions": "8",
+          "admissions": "16",
           "evictions": "0",
           "allocation_failures": "0",
           "acquisition_failures": "0",
           "unrecoverable_unlocks": "0",
-          "native_calls": "9",
+          "native_calls": "18",
           "native_failures": "0",
-          "retained_bytes": "22816",
-          "retained_entries": "8",
-          "acquired_bytes": "2080",
-          "copied_bytes": "432",
+          "retained_bytes": "25136",
+          "retained_entries": "16",
+          "acquired_bytes": "4840",
+          "copied_bytes": "912",
           "evicted_bytes": "0",
-          "acquisition_ticks": "5302",
-          "lookup_ticks": "549",
-          "copy_ticks": "38",
-          "native_ticks": "5410",
-          "total_ticks": "12974",
+          "acquisition_ticks": "9904",
+          "lookup_ticks": "572",
+          "copy_ticks": "75",
+          "native_ticks": "9389",
+          "total_ticks": "22393",
           "gate_rejections": "3",
-          "gate_ticks": "225965",
-          "native_outcomes": "12",
-          "hit_outcomes": "8",
+          "gate_ticks": "229620",
+          "native_outcomes": "21",
+          "hit_outcomes": "20",
           "cleanup_outcomes": "0",
           "blocked": "0",
-          "cleanup_hr": "00000000"
+          "cleanup_hr": "00000000",
+          "rejected_result": "0",
+          "rejected_last_error": "0",
+          "rejected_fp": "0"
         },
         {
           "cumulative": "1",
-          "qpc": "8061649601462",
+          "qpc": "8079967050554",
           "dispatch_enabled": "0",
           "backend_verified": "1",
           "faulted": "1",
-          "calls": "17",
-          "hits": "8",
-          "misses": "8",
-          "bypasses": "1",
+          "calls": "38",
+          "hits": "20",
+          "misses": "16",
+          "bypasses": "2",
           "contention": "1",
-          "admissions": "8",
+          "admissions": "16",
           "evictions": "0",
           "allocation_failures": "0",
           "acquisition_failures": "0",
           "unrecoverable_unlocks": "0",
-          "native_calls": "9",
+          "native_calls": "18",
           "native_failures": "0",
-          "retained_bytes": "22816",
-          "retained_entries": "8",
-          "acquired_bytes": "2080",
-          "copied_bytes": "432",
+          "retained_bytes": "25136",
+          "retained_entries": "16",
+          "acquired_bytes": "4840",
+          "copied_bytes": "912",
           "evicted_bytes": "0",
-          "acquisition_ticks": "5302",
-          "lookup_ticks": "549",
-          "copy_ticks": "38",
-          "native_ticks": "5410",
-          "total_ticks": "12974",
+          "acquisition_ticks": "9904",
+          "lookup_ticks": "572",
+          "copy_ticks": "75",
+          "native_ticks": "9389",
+          "total_ticks": "22393",
           "gate_rejections": "3",
-          "gate_ticks": "226132",
-          "native_outcomes": "12",
-          "hit_outcomes": "8",
+          "gate_ticks": "229743",
+          "native_outcomes": "21",
+          "hit_outcomes": "20",
           "cleanup_outcomes": "1",
           "blocked": "4",
-          "cleanup_hr": "8007000e"
+          "cleanup_hr": "8007000e",
+          "rejected_result": "0",
+          "rejected_last_error": "0",
+          "rejected_fp": "0"
+        }
+      ],
+      "gate_counts": [
+        {
+          "cumulative": "1",
+          "reason": "input",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_method",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_pool",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_options",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "backend_imports",
+          "count": "1"
+        }
+      ],
+      "gate_details": [
+        {
+          "reason": "input",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_method",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "16",
+          "actual_entry": "00401520",
+          "expected_entry": "7b4fc1a3",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_pool",
+          "scope": "0",
+          "options": "00000220",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_options",
+          "scope": "0",
+          "options": "00000550",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "backend_imports",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "13",
+          "actual_entry": "7b3020c0",
+          "expected_entry": "7b3020c0",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "120",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        }
+      ],
+      "core_bypass": [
+        {
+          "cumulative": "1",
+          "reason": "floating_point",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "contention",
+          "count": "1"
+        }
+      ],
+      "dynamic_options": [
+        {
+          "options": "00000990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00000991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
         }
       ]
     },
     "wrapped-off-normal": {
       "exit_code": 0,
-      "checks": 939,
-      "report_sha256": "c0aed6fcef05fada6f4a1994e6c043dbef5072ac2a7b1a983e50de5dbf5700cd",
+      "checks": 2189,
+      "report_sha256": "c03e3301ea88c1f87f5a7d5bc6ff83df0a9524ce4432cfbd48f2a658e5f4257b",
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
@@ -245,12 +565,37 @@
         "blocked": "0",
         "retained": "0"
       },
-      "cache_metrics": []
+      "cache_metrics": [],
+      "gate_counts": [],
+      "gate_details": [],
+      "core_bypass": [],
+      "dynamic_options": [
+        {
+          "options": "00000990",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        },
+        {
+          "options": "00000991",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        },
+        {
+          "options": "00018990",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        },
+        {
+          "options": "00018991",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        }
+      ]
     },
     "wrapped-on-normal": {
       "exit_code": 0,
-      "checks": 1168,
-      "report_sha256": "349a291408433d6deabf3cb40e6143edfabe7677933fe4bbfd2d3dfc92f0a8bd",
+      "checks": 2524,
+      "report_sha256": "be2919d6518ce6eadd987f9382a53eaa21fa9fa6d5dc776095e8bb3bd0de3342",
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
@@ -270,57 +615,224 @@
         "enabled": "1",
         "wrapped": "1",
         "fault": "0",
-        "calls": "17",
-        "hits": "8",
-        "misses": "8",
-        "native_calls": "9",
+        "calls": "38",
+        "hits": "20",
+        "misses": "16",
+        "native_calls": "18",
         "rejections": "5",
         "blocked": "0",
-        "retained": "22816"
+        "retained": "25136"
       },
       "cache_metrics": [
         {
           "cumulative": "1",
-          "qpc": "8061679575737",
+          "qpc": "8079998971579",
           "dispatch_enabled": "1",
           "backend_verified": "1",
           "faulted": "0",
-          "calls": "17",
-          "hits": "8",
-          "misses": "8",
-          "bypasses": "1",
+          "calls": "38",
+          "hits": "20",
+          "misses": "16",
+          "bypasses": "2",
           "contention": "1",
-          "admissions": "8",
+          "admissions": "16",
           "evictions": "0",
           "allocation_failures": "0",
           "acquisition_failures": "0",
           "unrecoverable_unlocks": "0",
-          "native_calls": "9",
+          "native_calls": "18",
           "native_failures": "0",
-          "retained_bytes": "22816",
-          "retained_entries": "8",
-          "acquired_bytes": "2080",
-          "copied_bytes": "432",
+          "retained_bytes": "25136",
+          "retained_entries": "16",
+          "acquired_bytes": "4840",
+          "copied_bytes": "912",
           "evicted_bytes": "0",
-          "acquisition_ticks": "5981",
-          "lookup_ticks": "554",
-          "copy_ticks": "48",
-          "native_ticks": "7098",
-          "total_ticks": "15321",
+          "acquisition_ticks": "11511",
+          "lookup_ticks": "566",
+          "copy_ticks": "69",
+          "native_ticks": "13307",
+          "total_ticks": "27922",
           "gate_rejections": "5",
-          "gate_ticks": "218325",
-          "native_outcomes": "14",
-          "hit_outcomes": "8",
+          "gate_ticks": "243844",
+          "native_outcomes": "23",
+          "hit_outcomes": "20",
           "cleanup_outcomes": "0",
           "blocked": "0",
-          "cleanup_hr": "00000000"
+          "cleanup_hr": "00000000",
+          "rejected_result": "0",
+          "rejected_last_error": "0",
+          "rejected_fp": "0"
+        }
+      ],
+      "gate_counts": [
+        {
+          "cumulative": "1",
+          "reason": "input",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_method",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_pool",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_options",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "tracker",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "backend_imports",
+          "count": "1"
+        }
+      ],
+      "gate_details": [
+        {
+          "reason": "input",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_method",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "16",
+          "actual_entry": "00401520",
+          "expected_entry": "7b4fc1a3",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_pool",
+          "scope": "0",
+          "options": "00000220",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_options",
+          "scope": "0",
+          "options": "00000550",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "tracker",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000001",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "120",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "backend_imports",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "13",
+          "actual_entry": "7b3020c0",
+          "expected_entry": "7b3020c0",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "120",
+          "size_bytes": "0",
+          "known": "1",
+          "pending": "0"
+        }
+      ],
+      "core_bypass": [
+        {
+          "cumulative": "1",
+          "reason": "floating_point",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "contention",
+          "count": "1"
+        }
+      ],
+      "dynamic_options": [
+        {
+          "options": "00000990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00000991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
         }
       ]
     },
     "wrapped-on-fault": {
       "exit_code": 0,
-      "checks": 1176,
-      "report_sha256": "92b92f70d0283a65bd3f574d63208919a4e6c2d281d6b90e18f228b0819a7834",
+      "checks": 2532,
+      "report_sha256": "1c8e599416812fdd7c01e22602e5b5786ec761a3be31053c665b09da5eefcd27",
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
@@ -340,153 +852,323 @@
         "enabled": "1",
         "wrapped": "1",
         "fault": "1",
-        "calls": "17",
-        "hits": "8",
-        "misses": "8",
-        "native_calls": "9",
+        "calls": "38",
+        "hits": "20",
+        "misses": "16",
+        "native_calls": "18",
         "rejections": "5",
         "blocked": "4",
-        "retained": "22816"
+        "retained": "25136"
       },
       "cache_metrics": [
         {
           "cumulative": "1",
-          "qpc": "8061698179206",
+          "qpc": "8080018138890",
           "dispatch_enabled": "1",
           "backend_verified": "1",
           "faulted": "0",
-          "calls": "17",
-          "hits": "8",
-          "misses": "8",
-          "bypasses": "1",
+          "calls": "38",
+          "hits": "20",
+          "misses": "16",
+          "bypasses": "2",
           "contention": "1",
-          "admissions": "8",
+          "admissions": "16",
           "evictions": "0",
           "allocation_failures": "0",
           "acquisition_failures": "0",
           "unrecoverable_unlocks": "0",
-          "native_calls": "9",
+          "native_calls": "18",
           "native_failures": "0",
-          "retained_bytes": "22816",
-          "retained_entries": "8",
-          "acquired_bytes": "2080",
-          "copied_bytes": "432",
+          "retained_bytes": "25136",
+          "retained_entries": "16",
+          "acquired_bytes": "4840",
+          "copied_bytes": "912",
           "evicted_bytes": "0",
-          "acquisition_ticks": "5803",
-          "lookup_ticks": "665",
-          "copy_ticks": "31",
-          "native_ticks": "8106",
-          "total_ticks": "16347",
+          "acquisition_ticks": "11608",
+          "lookup_ticks": "596",
+          "copy_ticks": "70",
+          "native_ticks": "11916",
+          "total_ticks": "26569",
           "gate_rejections": "5",
-          "gate_ticks": "233016",
-          "native_outcomes": "14",
-          "hit_outcomes": "8",
+          "gate_ticks": "234607",
+          "native_outcomes": "23",
+          "hit_outcomes": "20",
           "cleanup_outcomes": "0",
           "blocked": "0",
-          "cleanup_hr": "00000000"
+          "cleanup_hr": "00000000",
+          "rejected_result": "0",
+          "rejected_last_error": "0",
+          "rejected_fp": "0"
         },
         {
           "cumulative": "1",
-          "qpc": "8061698199567",
+          "qpc": "8080018158986",
           "dispatch_enabled": "0",
           "backend_verified": "1",
           "faulted": "1",
-          "calls": "17",
-          "hits": "8",
-          "misses": "8",
-          "bypasses": "1",
+          "calls": "38",
+          "hits": "20",
+          "misses": "16",
+          "bypasses": "2",
           "contention": "1",
-          "admissions": "8",
+          "admissions": "16",
           "evictions": "0",
           "allocation_failures": "0",
           "acquisition_failures": "0",
           "unrecoverable_unlocks": "0",
-          "native_calls": "9",
+          "native_calls": "18",
           "native_failures": "0",
-          "retained_bytes": "22816",
-          "retained_entries": "8",
-          "acquired_bytes": "2080",
-          "copied_bytes": "432",
+          "retained_bytes": "25136",
+          "retained_entries": "16",
+          "acquired_bytes": "4840",
+          "copied_bytes": "912",
           "evicted_bytes": "0",
-          "acquisition_ticks": "5803",
-          "lookup_ticks": "665",
-          "copy_ticks": "31",
-          "native_ticks": "8106",
-          "total_ticks": "16347",
+          "acquisition_ticks": "11608",
+          "lookup_ticks": "596",
+          "copy_ticks": "70",
+          "native_ticks": "11916",
+          "total_ticks": "26569",
           "gate_rejections": "5",
-          "gate_ticks": "233230",
-          "native_outcomes": "14",
-          "hit_outcomes": "8",
+          "gate_ticks": "234779",
+          "native_outcomes": "23",
+          "hit_outcomes": "20",
           "cleanup_outcomes": "1",
           "blocked": "4",
-          "cleanup_hr": "8007000e"
+          "cleanup_hr": "8007000e",
+          "rejected_result": "0",
+          "rejected_last_error": "0",
+          "rejected_fp": "0"
+        }
+      ],
+      "gate_counts": [
+        {
+          "cumulative": "1",
+          "reason": "input",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_method",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_pool",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_options",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "tracker",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "backend_imports",
+          "count": "1"
+        }
+      ],
+      "gate_details": [
+        {
+          "reason": "input",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_method",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "16",
+          "actual_entry": "00401520",
+          "expected_entry": "7b4fc1a3",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_pool",
+          "scope": "0",
+          "options": "00000220",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_options",
+          "scope": "0",
+          "options": "00000550",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "tracker",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000001",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "120",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "backend_imports",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "13",
+          "actual_entry": "7b3020c0",
+          "expected_entry": "7b3020c0",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "120",
+          "size_bytes": "0",
+          "known": "1",
+          "pending": "0"
+        }
+      ],
+      "core_bypass": [
+        {
+          "cumulative": "1",
+          "reason": "floating_point",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "contention",
+          "count": "1"
+        }
+      ],
+      "dynamic_options": [
+        {
+          "options": "00000990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00000991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
         }
       ]
     }
   },
   "sources_before_build": {
     "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
-    "src/proxy/loading_trace.h": "ef676e2881e8abe86eb0073336c5d3393528a8b641365851b5700b5c93995952",
-    "src/proxy/loading_trace.cpp": "7a6f763616dd1f4c7aed13658201355c255c6d0231da20ceebb24c60784663ac",
-    "src/proxy/mesh_adjacency_cache.h": "0324af34386837cb9eab22b7538a29b0cd8f86d4bcd66cd833fd7041bd933cf3",
-    "src/proxy/mesh_adjacency_cache.cpp": "0582780ccb86e04de48d4d61390af5d4842081750de51a90170a857d089f6584",
+    "src/proxy/loading_trace.h": "65ddea27cb82e14c5c70b1cf7651f49e42559c06bee244692b09a73488ce549d",
+    "src/proxy/loading_trace.cpp": "536f02f87c62bae77d72c5fd95e13813379fd5d78665cf5fc4932c7e5d0eefb0",
+    "src/proxy/mesh_adjacency_cache.h": "03c3fcb7a818a586e30eef43c93aa0b3d22e42e8a9186827df5f84dcbb7cfdef",
+    "src/proxy/mesh_adjacency_cache.cpp": "fb612017858407688b096c4da4049401725728523753b6bce9f7f9f3f440ba9e",
     "src/ownership/d3d9_ownership.h": "9613d9b77c5cdd6dbff8ede1656efe63006eec5d3048756cdd82d226298c6f78",
     "src/ownership/d3d9_ownership.cpp": "42d94a3419208700b1fb7e4482fae8398418b8b3b3337de8e67bf06851f7ed2b",
     "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
     "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
-    "verification/probe/mesh_cache_hook_fixture.cpp": "e4a527b730b4448aaed4dc91089d1631edfa9e8baf8ce395cb53e227a67b4359",
+    "verification/probe/mesh_cache_hook_fixture.cpp": "376ba5b63ddbe6a1e56b0f16faa7978ad210c6239409badb2bc78ee67599a392",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
     "verification/probe/build_mesh_cache_hook.sh": "2051f21c284d82291bc121acaf20e14beef9d60d037b16467925c7a652036791",
-    "verification/probe/run_mesh_cache_hook.py": "4459041d0b22ea103aca149764c8aab155a8287035c882a88c89543391eb840e",
+    "verification/probe/run_mesh_cache_hook.py": "3260e3769af3ef7f361dd6c9710124c8ceea69935c6f30eeba80404d320e1aff",
     "native/d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
     "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
     "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
   },
   "sources_after_build": {
     "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
-    "src/proxy/loading_trace.h": "ef676e2881e8abe86eb0073336c5d3393528a8b641365851b5700b5c93995952",
-    "src/proxy/loading_trace.cpp": "7a6f763616dd1f4c7aed13658201355c255c6d0231da20ceebb24c60784663ac",
-    "src/proxy/mesh_adjacency_cache.h": "0324af34386837cb9eab22b7538a29b0cd8f86d4bcd66cd833fd7041bd933cf3",
-    "src/proxy/mesh_adjacency_cache.cpp": "0582780ccb86e04de48d4d61390af5d4842081750de51a90170a857d089f6584",
+    "src/proxy/loading_trace.h": "65ddea27cb82e14c5c70b1cf7651f49e42559c06bee244692b09a73488ce549d",
+    "src/proxy/loading_trace.cpp": "536f02f87c62bae77d72c5fd95e13813379fd5d78665cf5fc4932c7e5d0eefb0",
+    "src/proxy/mesh_adjacency_cache.h": "03c3fcb7a818a586e30eef43c93aa0b3d22e42e8a9186827df5f84dcbb7cfdef",
+    "src/proxy/mesh_adjacency_cache.cpp": "fb612017858407688b096c4da4049401725728523753b6bce9f7f9f3f440ba9e",
     "src/ownership/d3d9_ownership.h": "9613d9b77c5cdd6dbff8ede1656efe63006eec5d3048756cdd82d226298c6f78",
     "src/ownership/d3d9_ownership.cpp": "42d94a3419208700b1fb7e4482fae8398418b8b3b3337de8e67bf06851f7ed2b",
     "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
     "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
-    "verification/probe/mesh_cache_hook_fixture.cpp": "e4a527b730b4448aaed4dc91089d1631edfa9e8baf8ce395cb53e227a67b4359",
+    "verification/probe/mesh_cache_hook_fixture.cpp": "376ba5b63ddbe6a1e56b0f16faa7978ad210c6239409badb2bc78ee67599a392",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
     "verification/probe/build_mesh_cache_hook.sh": "2051f21c284d82291bc121acaf20e14beef9d60d037b16467925c7a652036791",
-    "verification/probe/run_mesh_cache_hook.py": "4459041d0b22ea103aca149764c8aab155a8287035c882a88c89543391eb840e",
+    "verification/probe/run_mesh_cache_hook.py": "3260e3769af3ef7f361dd6c9710124c8ceea69935c6f30eeba80404d320e1aff",
     "native/d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
     "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
     "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
   },
   "binaries_before": {
-    "mesh_cache_hook_fixture.exe": "e4929d278ec3077e2e004206bb3bba4d69da7c23f00a57290261d3f0f4911aa3",
+    "mesh_cache_hook_fixture.exe": "aeadbf42d0a9b0e5bab9aa6169ec7727973cadd8947d78608fc817e89a9f35fc",
     "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   },
   "sources_after_run": {
     "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
-    "src/proxy/loading_trace.h": "ef676e2881e8abe86eb0073336c5d3393528a8b641365851b5700b5c93995952",
-    "src/proxy/loading_trace.cpp": "7a6f763616dd1f4c7aed13658201355c255c6d0231da20ceebb24c60784663ac",
-    "src/proxy/mesh_adjacency_cache.h": "0324af34386837cb9eab22b7538a29b0cd8f86d4bcd66cd833fd7041bd933cf3",
-    "src/proxy/mesh_adjacency_cache.cpp": "0582780ccb86e04de48d4d61390af5d4842081750de51a90170a857d089f6584",
+    "src/proxy/loading_trace.h": "65ddea27cb82e14c5c70b1cf7651f49e42559c06bee244692b09a73488ce549d",
+    "src/proxy/loading_trace.cpp": "536f02f87c62bae77d72c5fd95e13813379fd5d78665cf5fc4932c7e5d0eefb0",
+    "src/proxy/mesh_adjacency_cache.h": "03c3fcb7a818a586e30eef43c93aa0b3d22e42e8a9186827df5f84dcbb7cfdef",
+    "src/proxy/mesh_adjacency_cache.cpp": "fb612017858407688b096c4da4049401725728523753b6bce9f7f9f3f440ba9e",
     "src/ownership/d3d9_ownership.h": "9613d9b77c5cdd6dbff8ede1656efe63006eec5d3048756cdd82d226298c6f78",
     "src/ownership/d3d9_ownership.cpp": "42d94a3419208700b1fb7e4482fae8398418b8b3b3337de8e67bf06851f7ed2b",
     "src/ownership/d3d9_classes_inc.h": "dc57393577e8b545b57d88ab9148347afbea9261c7db12c050417eb601d71f59",
     "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
-    "verification/probe/mesh_cache_hook_fixture.cpp": "e4a527b730b4448aaed4dc91089d1631edfa9e8baf8ce395cb53e227a67b4359",
+    "verification/probe/mesh_cache_hook_fixture.cpp": "376ba5b63ddbe6a1e56b0f16faa7978ad210c6239409badb2bc78ee67599a392",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
     "verification/probe/build_mesh_cache_hook.sh": "2051f21c284d82291bc121acaf20e14beef9d60d037b16467925c7a652036791",
-    "verification/probe/run_mesh_cache_hook.py": "4459041d0b22ea103aca149764c8aab155a8287035c882a88c89543391eb840e",
+    "verification/probe/run_mesh_cache_hook.py": "3260e3769af3ef7f361dd6c9710124c8ceea69935c6f30eeba80404d320e1aff",
     "native/d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
     "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
     "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
   },
   "binaries_after": {
-    "mesh_cache_hook_fixture.exe": "e4929d278ec3077e2e004206bb3bba4d69da7c23f00a57290261d3f0f4911aa3",
+    "mesh_cache_hook_fixture.exe": "aeadbf42d0a9b0e5bab9aa6169ec7727973cadd8947d78608fc817e89a9f35fc",
     "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   }
 }

@@ -41,8 +41,9 @@ static void parity(const Generated&a,const Generated&b,const char*label){
         require(b.after.vertex.last_lock_flags==(D3DLOCK_READONLY|D3DLOCK_NOSYSLOCK)&&b.after.index.last_lock_flags==(D3DLOCK_READONLY|D3DLOCK_NOSYSLOCK),"hit flags truthfully describe actual native mesh reads");
     }else require(equal(a.after.vertex,b.after.vertex)&&equal(a.after.index,b.after.index),"native forwarding full tracker parity");
 }
+static void create_fixture_mesh(Create,IDirect3DDevice9*,const Input&,ID3DXMesh**);
 static Result full_sequence(Create create,Clean clean,IDirect3DDevice9*d,const Input&in,bool raw){
-    Com<ID3DXMesh>m,cleaned;createMesh(create,d,in,&m.p);Result r;auto g=generate(m.p,in.epsilon,raw);r.adjacency_hr=g.hr;r.adjacent=g.adjacency;if(FAILED(g.hr))return r;
+    Com<ID3DXMesh>m,cleaned;create_fixture_mesh(create,d,in,&m.p);Result r;auto g=generate(m.p,in.epsilon,raw);r.adjacency_hr=g.hr;r.adjacent=g.adjacency;if(FAILED(g.hr))return r;
     r.cleaned.resize(in.indices.size(),0xffffffff);Com<ID3DXBuffer>errors;r.clean_hr=clean(D3DXCLEANTYPE(3),m.p,r.adjacent.data(),&cleaned.p,r.cleaned.data(),&errors.p);if(FAILED(r.clean_hr))return r;
     r.cleaned.resize(size_t(cleaned->GetNumFaces())*3);r.clean_mesh=snapshot(cleaned.p);r.optimized.resize(r.cleaned.size(),0xffffffff);r.face_remap.resize(cleaned->GetNumFaces(),0xffffffff);Com<ID3DXBuffer>remap;
     r.optimize_hr=cleaned->OptimizeInplace(D3DXMESHOPT_VERTEXCACHE,r.cleaned.data(),r.optimized.data(),r.face_remap.data(),&remap.p);if(SUCCEEDED(r.optimize_hr)){r.mesh=snapshot(cleaned.p);if(remap.p)append(r.vertex_remap,remap->GetBufferPointer(),remap->GetBufferSize());}return r;
@@ -55,7 +56,10 @@ static void create32(Create create,IDirect3DDevice9*d,const Input&in,ID3DXMesh**
     ok(create(DWORD(in.indices.size()/3),DWORD(in.vertices.size()),in.options|D3DXMESH_32BIT,in.decl.data(),d,out),"Create32 mesh");
     void*p=nullptr;ok((*out)->LockVertexBuffer(0,&p),"32 vertices");std::memcpy(p,in.vertices.data(),in.vertices.size()*sizeof(Vertex));ok((*out)->UnlockVertexBuffer(),"32 vertices release");
     ok((*out)->LockIndexBuffer(0,&p),"32 indices");auto indices=static_cast<DWORD*>(p);for(size_t n=0;n<in.indices.size();++n)indices[n]=in.indices[n];ok((*out)->UnlockIndexBuffer(),"32 indices release");
+    DWORD*attrs=nullptr;ok((*out)->LockAttributeBuffer(0,&attrs),"32 attributes");std::memcpy(attrs,in.attributes.data(),in.attributes.size()*sizeof(DWORD));ok((*out)->UnlockAttributeBuffer(),"32 attributes release");
 }
+static void create_fixture_mesh(Create create,IDirect3DDevice9*d,const Input&in,ID3DXMesh**out){if(in.options&D3DXMESH_32BIT)create32(create,d,in,out);else createMesh(create,d,in,out);}
+static void write_changed_vertex(ID3DXMesh*m){void*p=nullptr;ok(m->LockVertexBuffer(0,&p),"dynamic writable acquisition");static_cast<Vertex*>(p)[3].x+=.25f;ok(m->UnlockVertexBuffer(),"dynamic writable release");}
 static void negative_iat(ID3DXMesh*m){
     Com<IDirect3DVertexBuffer9>v;ok(m->GetVertexBuffer(&v.p),"IAT control buffer");auto native=own::borrowed_native_buffer_for_lock_contract(v.p);if(!native)native=v.p;
     auto endpoint=(*reinterpret_cast<void***>(native))[12];HMODULE module=nullptr;require(GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCWSTR>(endpoint),&module),"IAT control native module");
@@ -107,6 +111,25 @@ int main(int argc,char**argv){std::setvbuf(stdout,nullptr,_IONBF,0);
         if(enabled)require(lt::fixture_cache_statistics().misses>previous32.misses&&lt::fixture_cache_statistics().hits>previous32.hits,"actual32 adapter miss then hit");
         raw_generate=raw16;
         printf("LIVE32 parity=1 enabled=%u\n",enabled);
+      }
+      for(DWORD options:{0x990u,0x991u,0x18990u,0x18991u}){
+        auto in=input;in.options=options;auto raw16=raw_generate;raw_generate=(options&D3DXMESH_32BIT)?raw32:raw16;
+        Com<ID3DXMesh>reference,dynamic_first,dynamic_second;create_fixture_mesh(create,device,in,&reference.p);create_fixture_mesh(&D3DXCreateMesh,device,in,&dynamic_first.p);create_fixture_mesh(&D3DXCreateMesh,device,in,&dynamic_second.p);
+        require(dynamic_first->GetOptions()==options,"exact game mesh options retained");
+        {Com<IDirect3DVertexBuffer9>v;Com<IDirect3DIndexBuffer9>i;ok(dynamic_first->GetVertexBuffer(&v.p),"dynamic VB descriptor");ok(dynamic_first->GetIndexBuffer(&i.p),"dynamic IB descriptor");D3DVERTEXBUFFER_DESC vd{};D3DINDEXBUFFER_DESC id{};ok(v->GetDesc(&vd),"dynamic VB desc");ok(i->GetDesc(&id),"dynamic IB desc");require(vd.Pool==D3DPOOL_SYSTEMMEM&&id.Pool==D3DPOOL_SYSTEMMEM&&(vd.Usage&D3DUSAGE_DYNAMIC)&&(id.Usage&D3DUSAGE_DYNAMIC)&&!(vd.Usage&D3DUSAGE_WRITEONLY)&&!(id.Usage&D3DUSAGE_WRITEONLY),"actual dynamic SYSTEMMEM buffers without WRITEONLY");}
+        auto native=generate(reference.p,in.epsilon,true);auto previous=lt::fixture_cache_statistics();auto filled=generate(dynamic_first.p,in.epsilon,false);auto repeated=generate(dynamic_second.p,in.epsilon,false);parity(native,filled,"dynamic game-option miss parity");parity(native,repeated,"dynamic game-option hit parity");
+        if(enabled)require(lt::fixture_cache_statistics().misses==previous.misses+1&&lt::fixture_cache_statistics().hits==previous.hits+1,"each exact dynamic option misses then hits");
+        Com<ID3DXMesh>changed_reference;create_fixture_mesh(create,device,in,&changed_reference.p);write_changed_vertex(changed_reference.p);write_changed_vertex(dynamic_second.p);
+        auto changed_native=generate(changed_reference.p,in.epsilon,true);auto changed_before=lt::fixture_cache_statistics();auto changed_hook=generate(dynamic_second.p,in.epsilon,false);parity(changed_native,changed_hook,"write after hit exact dynamic input parity");
+        if(enabled)require(lt::fixture_cache_statistics().misses==changed_before.misses+1&&!changed_hook.cache_hit,"write after hit forces a fresh-byte miss");
+        auto downstream_native=full_sequence(create,clean,device,in,true);auto downstream_first=full_sequence(&D3DXCreateMesh,&D3DXCleanMesh,device,in,false);auto downstream_second=full_sequence(&D3DXCreateMesh,&D3DXCleanMesh,device,in,false);require(equal(downstream_native,downstream_first)&&equal(downstream_native,downstream_second),"dynamic clean/optimize/remap exact parity");
+        printf("DYNAMIC options=%08lx parity=1 write_after_hit_miss=%u\n",options,enabled);raw_generate=raw16;
+      }
+      if(enabled){
+        auto excluded=input;excluded.options=D3DXMESH_SYSTEMMEM|D3DXMESH_WRITEONLY;Com<ID3DXMesh>writeonly;createMesh(&D3DXCreateMesh,device,excluded,&writeonly.p);auto old_reason=lt::fixture_cache_gate_reason("mesh_options");require(!lt::fixture_cache_contract(writeonly.p)&&lt::fixture_cache_gate_reason("mesh_options")==old_reason+1,"writeonly remains rejected with exact reason");
+        excluded.options=D3DXMESH_MANAGED;Com<ID3DXMesh>managed;createMesh(&D3DXCreateMesh,device,excluded,&managed.p);old_reason=lt::fixture_cache_gate_reason("mesh_pool");require(!lt::fixture_cache_contract(managed.p)&&lt::fixture_cache_gate_reason("mesh_pool")==old_reason+1,"managed pool remains rejected with exact reason");
+        require(lt::fixture_cache_gate_reason("mesh_method")>=2&&lt::fixture_cache_gate_reason("backend_imports")>=1,"endpoint and import rejections have distinct reasons");
+        auto saved_seed=seed;seed.mxcsr|=0x8000;Com<ID3DXMesh>unsupported_reference,unsupported_hook;createMesh(create,device,input,&unsupported_reference.p);createMesh(&D3DXCreateMesh,device,input,&unsupported_hook.p);auto unsupported_expected=generate(unsupported_reference.p,input.epsilon,true);auto fp_before=lt::fixture_cache_statistics();auto unsupported_actual=generate(unsupported_hook.p,input.epsilon,false);parity(unsupported_expected,unsupported_actual,"unsupported FP mode preserves native behavior");auto fp_after=lt::fixture_cache_statistics();require(fp_after.bypass_reasons[static_cast<unsigned>(x3m::mesh_adjacency_cache::BypassReason::FloatingPoint)]==fp_before.bypass_reasons[static_cast<unsigned>(x3m::mesh_adjacency_cache::BypassReason::FloatingPoint)]+1,"core FP rejection has exact reason");require(fp_after.unsupported_fp_available&&fp_after.unsupported_fp.mxcsr==seed.mxcsr&&fp_after.unsupported_fp.control==seed.x87.control,"unsupported FP first detail is published coherently");seed=saved_seed;
       }
       fp(seed);SetLastError(0x3344);const auto report_fp=fp();lt::report();require(GetLastError()==0x3344&&equal(report_fp,fp()),"report preserves LastError and computational state");
       Generate retained_thunk=reinterpret_cast<Generate>(table[22]);

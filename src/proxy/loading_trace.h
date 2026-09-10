@@ -56,5 +56,6 @@ uint64_t fixture_cache_blocked();
 void fixture_cache_cleanup_failure(HRESULT hr); // Outcome seam; no real buffer is left locked.
 void fixture_cache_reenter_once();
 bool fixture_cache_contract(ID3DXMesh* mesh); // Preflight only; never dispatches adjacency.
+uint64_t fixture_cache_gate_reason(const char* reason);
 #endif
 }

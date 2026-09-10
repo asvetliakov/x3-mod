@@ -60,6 +60,10 @@ void Cache::clear() noexcept {
     counters_.retained_entries.store(0,std::memory_order_relaxed);
     restore_fp(fp);SetLastError(error);
 }
+const char* bypass_reason_name(unsigned reason) noexcept {
+    static constexpr const char* names[]={"input","runtime","floating_point","epsilon","configuration","disabled","contention","options","metadata","declaration","size","output_range","allocation","buffer_read"};
+    return reason<bypass_reason_count?names[reason]:"unknown";
+}
 Statistics Cache::statistics() const noexcept {
     Statistics s;
 #define COPY(n) s.n=counters_.n.load(std::memory_order_relaxed)
@@ -68,7 +72,10 @@ Statistics Cache::statistics() const noexcept {
     COPY(native_calls);COPY(native_failures);COPY(retained_bytes);COPY(retained_entries);
     COPY(acquired_bytes);COPY(copied_bytes);COPY(evicted_bytes);
     COPY(acquisition_ticks);COPY(lookup_ticks);COPY(copy_ticks);COPY(native_ticks);COPY(total_ticks);
+    COPY(rejected_result);COPY(rejected_last_error);COPY(rejected_fp);
+    for(unsigned i=0;i<bypass_reason_count;++i)s.bypass_reasons[i]=counters_.bypass_reasons[i].load(std::memory_order_relaxed);
 #undef COPY
+    if(counters_.unsupported_fp_publication.load(std::memory_order_acquire)==2){s.unsupported_fp_available=true;s.unsupported_fp=counters_.unsupported_fp;}
     return s;
 }
 Outcome Cache::generate(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output,Generate original,
@@ -97,20 +104,31 @@ Outcome Cache::generate(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output,Generate ori
         if(FAILED(hr))counters_.native_failures.fetch_add(1,std::memory_order_relaxed);
         return hr;
     };
-    auto bypass=[&]() noexcept {end_acquisition();counters_.bypasses.fetch_add(1,std::memory_order_relaxed);return finish(native());};
+    auto bypass=[&](BypassReason reason) noexcept {end_acquisition();counters_.bypasses.fetch_add(1,std::memory_order_relaxed);counters_.bypass_reasons[static_cast<unsigned>(reason)].fetch_add(1,std::memory_order_relaxed);return finish(native());};
     DWORD epsilon_bits=0;std::memcpy(&epsilon_bits,&epsilon,sizeof epsilon);
     bool has_identity=false;for(auto b:runtime.sha256)has_identity=has_identity||b!=0;
-    if(!mesh||!output||!original||!runtime.verified||!runtime.success_preserves_last_error||!runtime.generation||!has_identity||
-       !supported_fp(incoming_fp)||(epsilon_bits&0x80000000u)||(epsilon_bits&0x7f800000u)==0x7f800000u||
-       !config_.entries||config_.retained_bytes<=sizeof(Cache)||disabled_.load(std::memory_order_relaxed))return bypass();
+    if(!mesh||!output||!original)return bypass(BypassReason::Input);
+    if(!runtime.verified||!runtime.success_preserves_last_error||!runtime.generation||!has_identity)return bypass(BypassReason::Runtime);
+    if(!supported_fp(incoming_fp)){
+        unsigned empty=0;if(counters_.unsupported_fp_publication.compare_exchange_strong(empty,1,std::memory_order_acquire)){
+            counters_.unsupported_fp={incoming_fp.x87.control,incoming_fp.x87.status,incoming_fp.x87.tag,incoming_fp.mxcsr};
+            counters_.unsupported_fp_publication.store(2,std::memory_order_release);
+        }
+        return bypass(BypassReason::FloatingPoint);
+    }
+    if((epsilon_bits&0x80000000u)||(epsilon_bits&0x7f800000u)==0x7f800000u)return bypass(BypassReason::Epsilon);
+    if(!config_.entries||config_.retained_bytes<=sizeof(Cache))return bypass(BypassReason::Configuration);
+    if(disabled_.load(std::memory_order_relaxed))return bypass(BypassReason::Disabled);
     if(workspace_.test_and_set(std::memory_order_acquire)){
-        counters_.contention.fetch_add(1,std::memory_order_relaxed);return bypass();
+        counters_.contention.fetch_add(1,std::memory_order_relaxed);return bypass(BypassReason::Contention);
     }
     leased=true;
     acquire_begin=ticks();acquiring=true;
     const DWORD options=mesh->GetOptions(),vertices=mesh->GetNumVertices(),faces=mesh->GetNumFaces(),stride=mesh->GetNumBytesPerVertex();
     if((options&D3DXMESH_SYSTEMMEM)!=D3DXMESH_SYSTEMMEM ||
-       (options&(D3DXMESH_WRITEONLY|D3DXMESH_DYNAMIC|D3DXMESH_VB_SHARE)) || !vertices||!faces||!stride)return bypass();
+       (options&(D3DXMESH_WRITEONLY|D3DXMESH_VB_SHARE)) ||
+       ((options&D3DXMESH_DYNAMIC)&&!runtime.systemmem_dynamic_readonly_verified))return bypass(BypassReason::Options);
+    if(!vertices||!faces||!stride)return bypass(BypassReason::Metadata);
     D3DVERTEXELEMENT9 declaration[MAX_FVF_DECL_SIZE]{};
     HRESULT acquired=mesh->GetDeclaration(declaration);
     unsigned decl_count=0;
@@ -119,26 +137,26 @@ Outcome Cache::generate(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output,Generate ori
         if(declaration[decl_count].Stream!=0){acquired=E_INVALIDARG;break;}
     }
     if(!decl_count||decl_count>MAX_FVF_DECL_SIZE||declaration[decl_count-1].Stream!=0xff)acquired=E_INVALIDARG;
-    if(FAILED(acquired)){counters_.acquisition_failures.fetch_add(1,std::memory_order_relaxed);return bypass();}
+    if(FAILED(acquired)){counters_.acquisition_failures.fetch_add(1,std::memory_order_relaxed);return bypass(BypassReason::Declaration);}
     const uint64_t vb_bytes=uint64_t(vertices)*stride,ib_bytes=uint64_t(faces)*3*((options&D3DXMESH_32BIT)?4:2);
     const uint64_t value_bytes=uint64_t(faces)*3*sizeof(DWORD);
     // Reject individual products before addition: hostile DWORD counts/stride
     // can otherwise wrap a 64-bit combined allocation on this x86 adapter.
-    if(vb_bytes>config_.scratch_bytes||ib_bytes>config_.scratch_bytes||value_bytes>config_.scratch_bytes)return bypass();
+    if(vb_bytes>config_.scratch_bytes||ib_bytes>config_.scratch_bytes||value_bytes>config_.scratch_bytes)return bypass(BypassReason::Size);
     // Include input FP control/status to avoid treating equal geometry under
     // different computational environments as identical. Unsupported controls bypass.
     const uint64_t key_bytes=header_bytes+3*sizeof(DWORD)+uint64_t(decl_count)*sizeof(D3DVERTEXELEMENT9)+vb_bytes+ib_bytes;
     const uint64_t allocation_bytes=key_bytes+value_bytes;
-    if(allocation_bytes>config_.scratch_bytes||allocation_bytes>config_.retained_bytes-sizeof(Cache)||
-       uint64_t(reinterpret_cast<uintptr_t>(output))+value_bytes>(uint64_t(1)<<32))return bypass();
+    if(allocation_bytes>config_.scratch_bytes||allocation_bytes>config_.retained_bytes-sizeof(Cache))return bypass(BypassReason::Size);
+    if(uint64_t(reinterpret_cast<uintptr_t>(output))+value_bytes>(uint64_t(1)<<32))return bypass(BypassReason::OutputRange);
 #ifdef X3M_MESH_CACHE_FIXTURE
     if(fail_allocation_){fail_allocation_=false;candidate=nullptr;}
     else
 #endif
     candidate=static_cast<unsigned char*>(HeapAlloc(GetProcessHeap(),0,size_t(allocation_bytes)));
-    if(!candidate){counters_.allocation_failures.fetch_add(1,std::memory_order_relaxed);return bypass();}
+    if(!candidate){counters_.allocation_failures.fetch_add(1,std::memory_order_relaxed);return bypass(BypassReason::Allocation);}
     const SIZE_T actual_bytes=HeapSize(GetProcessHeap(),0,candidate);
-    if(actual_bytes==SIZE_T(-1)||actual_bytes>config_.scratch_bytes||actual_bytes>config_.retained_bytes-sizeof(Cache))return bypass();
+    if(actual_bytes==SIZE_T(-1)||actual_bytes>config_.scratch_bytes||actual_bytes>config_.retained_bytes-sizeof(Cache))return bypass(BypassReason::Size);
     auto cursor=candidate;const DWORD schema=1,fn=DWORD(reinterpret_cast<uintptr_t>(original));
     append(cursor,schema);append(cursor,runtime.sha256.data(),runtime.sha256.size());append(cursor,runtime.generation);
     append(cursor,fn);append(cursor,epsilon_bits);append(cursor,options);append(cursor,vertices);append(cursor,faces);
@@ -172,7 +190,7 @@ Outcome Cache::generate(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output,Generate ori
             counters_.unrecoverable_unlocks.fetch_add(1,std::memory_order_relaxed);
             origin=Origin::AcquisitionCleanupFailure;return finish(acquired);
         }
-        return bypass();
+        return bypass(BypassReason::BufferRead);
     }
     counters_.acquired_bytes.fetch_add(vb_bytes+ib_bytes,std::memory_order_relaxed);
     const auto lookup_begin=ticks();uint64_t hash=hash_bytes(candidate,size_t(key_bytes));
@@ -194,7 +212,9 @@ Outcome Cache::generate(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output,Generate ori
     }
     counters_.misses.fetch_add(1,std::memory_order_relaxed);
     const HRESULT hr=native();
-    if(hr!=S_OK||outgoing_error!=incoming_error||!admissible_fp(incoming_fp,outgoing_fp))return finish(hr);
+    if(hr!=S_OK){counters_.rejected_result.fetch_add(1,std::memory_order_relaxed);return finish(hr);}
+    if(outgoing_error!=incoming_error){counters_.rejected_last_error.fetch_add(1,std::memory_order_relaxed);return finish(hr);}
+    if(!admissible_fp(incoming_fp,outgoing_fp)){counters_.rejected_fp.fetch_add(1,std::memory_order_relaxed);return finish(hr);}
     const auto copy_begin=ticks();std::memcpy(candidate+size_t(key_bytes),output,size_t(value_bytes));
     counters_.copy_ticks.fetch_add(ticks()-copy_begin,std::memory_order_relaxed);
     counters_.copied_bytes.fetch_add(value_bytes,std::memory_order_relaxed);
