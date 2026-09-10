@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "scope": "Archive extraction, offline D3DX disassembly, conservative semantic inventory and original synthetic analysis tests; no game or device creation",
+  "effect_count": 3480,
+  "program_count": 751,
+  "occurrence_count": 13407,
+  "d3dx_disassembly_success": 751,
+  "d3dx_disassembly_failures": 0,
+  "disassembler_log_sha256": "fe94ad54b98a653a97a18933a258cb7797d17fcabac543864504615008f3123b",
+  "disassembler_executable_sha256": "81cccd0187a37feecd7f614da53e32fc330e78f90ae8b333063f9a751eccc439",
+  "disassembler_source_sha256": "40a60572124a55488830846a6c0a23b3ede3caa4bb6ec3b9858be51d64ca1fd0",
+  "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "artifacts_sha256": {
+    "tools/analysis/sweep_shaders.py": "719ece2a703af65d91f4cedcc47704f3668437e319c5d92151e9554e81513721",
+    "tools/analysis/shader_semantics.py": "8e402fadaab42745239a0c2f4752d3d17ceeeef9303bfd37c142e239d3aac280",
+    "tools/analysis/disassemble_shaders.cpp": "40a60572124a55488830846a6c0a23b3ede3caa4bb6ec3b9858be51d64ca1fd0",
+    "verification/analysis/test_shader_sweep.py": "fce1aed0012eb7a06e2f332bbbbfbf8588bb701527f5a7329b6c7d674d5b33e2",
+    "verification/analysis/test_shader_semantics.py": "fef8b57fc222bfd3917bb75e47f6cee671b33e4b88067231b0592287989abf5c",
+    "verification/results/shader-sweep-inventory.json": "794be7b6ceccfc2db45f29369982a4f61a568114f08cef303a75fd3ce9bbc737",
+    "verification/results/shader-sweep-aliases.json": "b3a4d2cd7d3b38518eea4a2f3823048646742ffe683a63acb67ebbb4000c5592",
+    "verification/results/shader-sweep-families.json": "6bd154c7b99e0c8331d43bb15ffcadef228ccc6f13c2a3694adaf2d0b27dcb41",
+    "verification/results/shader-sweep-unknowns.json": "071aad2d49f10b7428714765f7b1ebb60adbd05c917a2c9741ef9414da4136e0"
+  },
+  "synthetic_tests": {
+    "command": "python3 -m unittest verification.analysis.test_shader_sweep verification.analysis.test_shader_semantics",
+    "passed": 34,
+    "failures": 0
+  },
+  "runtime_capture_collection": {
+    "unique_programs": 57,
+    "exact_archive_matches": 57,
+    "unknown": 0
+  },
+  "source_hashes_match_inventory": true,
+  "full_analysis_tests": {
+    "command": "python3 -m unittest discover -s verification/analysis -p 'test*.py'",
+    "passed": 148,
+    "failures": 0
+  },
+  "review_correction": {
+    "unsupported_sincos": true,
+    "original_negative_subcases": 8,
+    "archive_program_records_unchanged": true
+  }
+}
