@@ -34,6 +34,14 @@ fallback with all 12 compiled proxy/renderer objects. It is **not installed**:
 SHA256 `53d91a676ddb855ed936079d128ac47f06666c88b1ed6870b5453f7ea21cd9c4`.
 The installed 0.4 diagnostic DLL retains its historical SHA below.
 
+The [detached adjacency cache](verification/mesh-adjacency-cache.md) passes
+721 checks using real native mesh acquisition, exact byte keys, bounded storage,
+native downstream cleaning/optimization and computational FP-state parity.
+Repeated original synthetic meshes show a large hit-time reduction including
+acquisition/lookup cost. Game mesh eligibility and hit rate remain unmeasured;
+the cache is not linked or enabled. Persistent acquisition-unlock failure has an
+explicit non-native outcome that requires handling before any live integration.
+
 The user-run 0.4 session has 20 complete captured frames and 13,431 successful
 draws, including a final third-person burst. The installed selector rejected all
 frames and attempted no depth copy: planet haze was unnecessarily mandatory,

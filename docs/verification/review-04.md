@@ -132,3 +132,23 @@ Current uninstalled DLL SHA256:
 `53d91a676ddb855ed936079d128ac47f06666c88b1ed6870b5453f7ea21cd9c4`.
 Installed diagnostic DLL remains
 `81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516`.
+
+## Detached mesh-adjacency cache review
+
+Independent source review and root inspection retain exact byte comparison after
+hash lookup, runtime identity, bounded storage, nonblocking reentry/contention
+fallback and original downstream processing. Root review corrected individual
+span overflow before summing allocation sizes and rejected zero runtime generations.
+The FP contract replays computational status under verified controls; it does not
+claim x87 diagnostic instruction-pointer or native allocator side-effect parity.
+Persistent acquisition-unlock failure has an explicit non-native outcome and
+permanently disables reuse; a future live hook must handle the affected mesh.
+
+Review required pre-build source/runtime hashes and immediate invalidation of the
+previous result so a compiler failure or timeout cannot leave stale PASS evidence.
+The hardened runner's fresh final run passes **721 checks**, with unchanged
+source/binary/runtime hashes across build and execution. Lock callbacks deliberately
+disturb LastError/FP state; the fixture verifies original entry/output state and
+five complete downstream native mesh cases. No duplicate game test was requested.
+Measured acquisition-inclusive hit cost is synthetic; this module remains detached
+and uninstalled, with game memory-pool eligibility and hit rate unmeasured.
