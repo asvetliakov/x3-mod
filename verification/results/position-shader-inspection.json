@@ -1,0 +1,164 @@
+{
+  "method": "Offline D3DXDisassembleShader; manually inspect position and lighting dataflow. No game or D3D device created.",
+  "disassembler_dll": "C:\\X3\\d3dx9_37.dll",
+  "disassembler_dll_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "helper_source_sha256": "40a60572124a55488830846a6c0a23b3ede3caa4bb6ec3b9858be51d64ca1fd0",
+  "disassembled_shader_count": 47,
+  "failures": 0,
+  "raw_disassembly_directory": "/tmp/x3-shader-disassembly",
+  "turning_vertex_shaders": [
+    {
+      "hash": "7b6393fe2d3e1d85",
+      "sha256": "5efc6bda105f178cc9044047f3981e5b05b020ad96876021fb938d51daa46363",
+      "profile": "vs_1_1",
+      "turning_draw_count": 84,
+      "position_vertex_animation_observed": false,
+      "position": "four dot products of input position xyz1 against four consecutive float registers",
+      "position_register_start": 0,
+      "position_output": "oPos"
+    },
+    {
+      "hash": "37c34a7478544c14",
+      "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+      "profile": "vs_3_0",
+      "turning_draw_count": 209,
+      "position_vertex_animation_observed": false,
+      "position": "four dot products of input position xyz1 against four consecutive float registers",
+      "position_register_start": 24,
+      "position_output": "o0"
+    },
+    {
+      "hash": "be199829a9bb78db",
+      "sha256": "7abd2ffa1bd3881de4ed395210c6241d9c594ebd99070cf1a65a487b4d65c72a",
+      "profile": "vs_1_1",
+      "turning_draw_count": 8,
+      "position_vertex_animation_observed": false,
+      "position": "four dot products of input position xyz1 against four consecutive float registers",
+      "position_register_start": 0,
+      "position_output": "oPos"
+    },
+    {
+      "hash": "494fe349b8bc12ec",
+      "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+      "profile": "vs_3_0",
+      "turning_draw_count": 301,
+      "position_vertex_animation_observed": false,
+      "position": "four dot products of input position xyz1 against four consecutive float registers",
+      "position_register_start": 24,
+      "position_output": "o0"
+    },
+    {
+      "hash": "d5e1c75351ed3f04",
+      "sha256": "a1db7ff10b8a6c81a830a095417133e37571a055674914df09136cc91f454114",
+      "profile": "vs_2_0",
+      "turning_draw_count": 64,
+      "position_vertex_animation_observed": false,
+      "position": "four dot products of input position xyz1 against four consecutive float registers",
+      "position_register_start": 0,
+      "position_output": "oPos"
+    },
+    {
+      "hash": "5e484a06672e28fb",
+      "sha256": "2c5815b04b4797d6a9e2feb9192a140ab3a95843f2c438a7da8e5350ff16379f",
+      "profile": "vs_1_1",
+      "turning_draw_count": 8,
+      "position_vertex_animation_observed": false,
+      "position": "four dot products of input position xyz1 against four consecutive float registers",
+      "position_register_start": 0,
+      "position_output": "oPos"
+    },
+    {
+      "hash": "cbbf26102694c961",
+      "sha256": "4d3170630d0e27dfedbd14445845dcb2329a9d5fc7e76c284def8ac61e2bcd31",
+      "profile": "vs_3_0",
+      "turning_draw_count": 8,
+      "position_vertex_animation_observed": false,
+      "position": "input position xyzw copied directly",
+      "position_output": "o0"
+    },
+    {
+      "hash": "6059306306203243",
+      "sha256": "fb0ee43d316d3738e3134aa95d4efcb865e2689e96577ff3e5af98c8d591ee79",
+      "profile": "vs_3_0",
+      "turning_draw_count": 16,
+      "position_vertex_animation_observed": false,
+      "position": "input position xyzw copied directly",
+      "position_output": "o0"
+    },
+    {
+      "hash": "1279d081455f5815",
+      "sha256": "3d03781ab7129448b3a3cc694525a3f7ae95606e17c23267eedced0e475205cc",
+      "profile": "vs_3_0",
+      "turning_draw_count": 8,
+      "position_vertex_animation_observed": false,
+      "position": "input position xyzw copied directly",
+      "position_output": "o0"
+    },
+    {
+      "hash": "f36fc43f30b19d71",
+      "sha256": "e27aa47ad706256380673c67eda5004498e24ce90b336461e9f7de61285d3fc6",
+      "profile": "vs_1_1",
+      "turning_draw_count": 16,
+      "position_vertex_animation_observed": false,
+      "position": "input position xyz, homogeneous w forced to 1",
+      "position_output": "oPos"
+    },
+    {
+      "hash": "53a0a641107ed76c",
+      "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+      "profile": "vs_3_0",
+      "turning_draw_count": 40,
+      "position_vertex_animation_observed": false,
+      "position": "four dot products of input position xyz1 against four consecutive float registers",
+      "position_register_start": 24,
+      "position_output": "o0"
+    }
+  ],
+  "pixel_shaders_reviewed": [
+    {
+      "hash": "fffdabd910793aba",
+      "sha256": "8fc110cf9cf4631ac0f7052b8f61ec6c5908bcaa7be830853570404ddfa95b72",
+      "turning_draw_count": 184,
+      "point_light_loop": false,
+      "explicit_interpolated_vertex_rgb_saturation": true
+    },
+    {
+      "hash": "5f82ecacd39529cd",
+      "sha256": "e62d0f041430e54fdea5800ef6576d812a2486f12a980f921553e7292349d8c2",
+      "turning_draw_count": 180,
+      "point_light_loop": false,
+      "explicit_interpolated_vertex_rgb_saturation": true
+    },
+    {
+      "hash": "7c83ed50c9894e44",
+      "sha256": "a171c7d7e3dcdfc87816fc651bf93918399594ec457ce1822dcd47a0cff2374a",
+      "turning_draw_count": 117,
+      "point_light_loop": false,
+      "explicit_interpolated_vertex_rgb_saturation": true
+    },
+    {
+      "hash": "8759c7838bbc86c2",
+      "sha256": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
+      "turning_draw_count": 40,
+      "point_light_loop": false,
+      "explicit_interpolated_vertex_rgb_saturation": true
+    },
+    {
+      "hash": "f1b0e820c7b488c3",
+      "sha256": "8f6517d6730a53d52712a335253d272663e34d05e3cdcdccc93c05249014515e",
+      "turning_draw_count": 29,
+      "point_light_loop": false,
+      "explicit_interpolated_vertex_rgb_saturation": true
+    },
+    {
+      "hash": "8360f422de08b5bd",
+      "sha256": "ce26e0a8fca24b311324ca1c6d210cf6a7757af44c07525e51435dbaf4a36c7d",
+      "turning_draw_count": 64,
+      "point_light_loop": false,
+      "explicit_interpolated_vertex_rgb_saturation": false
+    }
+  ],
+  "resolved_disassembler_module": "C:\\X3\\d3dx9_37.dll",
+  "helper_executable_sha256": "81cccd0187a37feecd7f614da53e32fc330e78f90ae8b333063f9a751eccc439",
+  "helper_exit_code": 0
+}

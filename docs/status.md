@@ -41,6 +41,11 @@ and [roadmap](architecture/roadmap.md).
 - User reports double cursor after alt-tab and requests loading-time investigation.
   Both are tracked; flip presentation has not been shown to fix cursor behavior.
 
+- Instruction inspection of all 11 observed vertex shaders confirms direct matrix
+  position paths without positional shader animation. Five material pixel shaders
+  clamp vertex lighting/emissive RGB before the target, so FP16 alone is insufficient.
+  See `docs/reverse-engineering/position-shaders.md`.
+
 ## Concrete next work
 
 1. Complete one consolidated telemetry build covering loading CPU spans, render
