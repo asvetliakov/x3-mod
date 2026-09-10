@@ -1,8 +1,8 @@
-DLL SHA256 ecdc8614a088e8c7f66a99b84df735ce06646580f89d97280649e8fbe65410e6
+DLL SHA256 c6ade9b9d9835c628556895fc9dcff20b08247e14f78ff7a1d676ae5e0d3f08e
 
-6fb5b050 t x3m::ownership::(anonymous namespace)::Device::Release()@4
-6fb5b040 t x3m::ownership::(anonymous namespace)::Factory::Release()@4
-6fb5aec0 t x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)
+6fb5ab20 t x3m::ownership::(anonymous namespace)::Device::Release()@4
+6fb5ab10 t x3m::ownership::(anonymous namespace)::Factory::Release()@4
+6fb5a990 t x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)
 
 
 build-ownership/d3d9.dll:     file format pei-i386
@@ -10,133 +10,133 @@ build-ownership/d3d9.dll:     file format pei-i386
 
 Disassembly of section .text:
 
-6fb5aec0 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)>:
-6fb5aec0:	83 ec 4c             	sub    $0x4c,%esp
-6fb5aec3:	89 7c 24 44          	mov    %edi,0x44(%esp)
-6fb5aec7:	8d 7c 24 08          	lea    0x8(%esp),%edi
-6fb5aecb:	89 3c 24             	mov    %edi,(%esp)
-6fb5aece:	89 5c 24 3c          	mov    %ebx,0x3c(%esp)
-6fb5aed2:	89 c3                	mov    %eax,%ebx
-6fb5aed4:	c7 44 24 20 a0 49 b9 	movl   $0x6fb949a0,0x20(%esp)
-6fb5aedb:	6f
-6fb5aedc:	c7 44 24 24 2a 65 b9 	movl   $0x6fb9652a,0x24(%esp)
-6fb5aee3:	6f
-6fb5aee4:	e8 27 47 01 00       	call   6fb6f610 <_Unwind_SjLj_Register>
-6fb5aee9:	c7 04 24 a0 7c b9 6f 	movl   $0x6fb97ca0,(%esp)
-6fb5aef0:	c7 44 24 0c ff ff ff 	movl   $0xffffffff,0xc(%esp)
-6fb5aef7:	ff
-6fb5aef8:	e8 b3 e0 01 00       	call   6fb78fb0 <pthread_mutex_lock>
-6fb5aefd:	89 74 24 40          	mov    %esi,0x40(%esp)
-6fb5af01:	85 c0                	test   %eax,%eax
-6fb5af03:	0f 85 1e 01 00 00    	jne    6fb5b027 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0x167>
-6fb5af09:	8b 73 08             	mov    0x8(%ebx),%esi
-6fb5af0c:	83 ee 01             	sub    $0x1,%esi
-6fb5af0f:	89 73 08             	mov    %esi,0x8(%ebx)
-6fb5af12:	0f 85 b8 00 00 00    	jne    6fb5afd0 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0x110>
-6fb5af18:	8d 43 10             	lea    0x10(%ebx),%eax
-6fb5af1b:	b9 e0 54 ba 6f       	mov    $0x6fba54e0,%ecx
-6fb5af20:	89 6c 24 48          	mov    %ebp,0x48(%esp)
-6fb5af24:	89 04 24             	mov    %eax,(%esp)
-6fb5af27:	e8 d4 d1 ff ff       	call   6fb58100 <std::_Hashtable<IUnknown*, std::pair<IUnknown* const, x3m::ownership::(anonymous namespace)::Node*>, std::allocator<std::pair<IUnknown* const, x3m::ownership::(anonymous namespace)::Node*> >, std::__detail::_Select1st, std::equal_to<IUnknown*>, std::hash<IUnknown*>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::erase(IUnknown* const&) [clone .isra.0]>
-6fb5af2c:	8d 43 14             	lea    0x14(%ebx),%eax
-6fb5af2f:	b9 c4 54 ba 6f       	mov    $0x6fba54c4,%ecx
-6fb5af34:	83 ec 04             	sub    $0x4,%esp
-6fb5af37:	89 04 24             	mov    %eax,(%esp)
-6fb5af3a:	e8 c1 d1 ff ff       	call   6fb58100 <std::_Hashtable<IUnknown*, std::pair<IUnknown* const, x3m::ownership::(anonymous namespace)::Node*>, std::allocator<std::pair<IUnknown* const, x3m::ownership::(anonymous namespace)::Node*> >, std::__detail::_Select1st, std::equal_to<IUnknown*>, std::hash<IUnknown*>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::erase(IUnknown* const&) [clone .isra.0]>
-6fb5af3f:	83 ec 04             	sub    $0x4,%esp
-6fb5af42:	83 7b 04 01          	cmpl   $0x1,0x4(%ebx)
-6fb5af46:	74 78                	je     6fb5afc0 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0x100>
-6fb5af48:	c7 04 24 a0 7c b9 6f 	movl   $0x6fb97ca0,(%esp)
-6fb5af4f:	c7 44 24 0c 00 00 00 	movl   $0x0,0xc(%esp)
-6fb5af56:	00
-6fb5af57:	e8 f4 e2 01 00       	call   6fb79250 <pthread_mutex_unlock>
-6fb5af5c:	8b 6b 18             	mov    0x18(%ebx),%ebp
-6fb5af5f:	83 7b 04 01          	cmpl   $0x1,0x4(%ebx)
-6fb5af63:	0f 84 97 00 00 00    	je     6fb5b000 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0x140>
-6fb5af69:	8b 43 0c             	mov    0xc(%ebx),%eax
-6fb5af6c:	8b 10                	mov    (%eax),%edx
-6fb5af6e:	89 04 24             	mov    %eax,(%esp)
-6fb5af71:	8b 42 08             	mov    0x8(%edx),%eax
-6fb5af74:	c7 44 24 0c ff ff ff 	movl   $0xffffffff,0xc(%esp)
-6fb5af7b:	ff
-6fb5af7c:	ff d0                	call   *%eax
-6fb5af7e:	8b 03                	mov    (%ebx),%eax
-6fb5af80:	89 d9                	mov    %ebx,%ecx
-6fb5af82:	83 ec 04             	sub    $0x4,%esp
-6fb5af85:	ff 50 04             	call   *0x4(%eax)
-6fb5af88:	85 ed                	test   %ebp,%ebp
-6fb5af8a:	74 64                	je     6fb5aff0 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0x130>
-6fb5af8c:	8b 45 10             	mov    0x10(%ebp),%eax
-6fb5af8f:	8b 10                	mov    (%eax),%edx
-6fb5af91:	89 04 24             	mov    %eax,(%esp)
-6fb5af94:	ff 52 08             	call   *0x8(%edx)
-6fb5af97:	83 ec 04             	sub    $0x4,%esp
-6fb5af9a:	8b 6c 24 48          	mov    0x48(%esp),%ebp
-6fb5af9e:	89 3c 24             	mov    %edi,(%esp)
-6fb5afa1:	e8 fa 46 01 00       	call   6fb6f6a0 <_Unwind_SjLj_Unregister>
-6fb5afa6:	89 f0                	mov    %esi,%eax
-6fb5afa8:	8b 5c 24 3c          	mov    0x3c(%esp),%ebx
-6fb5afac:	8b 74 24 40          	mov    0x40(%esp),%esi
-6fb5afb0:	8b 7c 24 44          	mov    0x44(%esp),%edi
-6fb5afb4:	83 c4 4c             	add    $0x4c,%esp
-6fb5afb7:	c3                   	ret
-6fb5afb8:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
-6fb5afbf:	00
-6fb5afc0:	c6 43 30 01          	movb   $0x1,0x30(%ebx)
-6fb5afc4:	eb 82                	jmp    6fb5af48 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0x88>
-6fb5afc6:	66 90                	xchg   %ax,%ax
-6fb5afc8:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
-6fb5afcf:	00
-6fb5afd0:	c7 04 24 a0 7c b9 6f 	movl   $0x6fb97ca0,(%esp)
-6fb5afd7:	c7 44 24 0c 00 00 00 	movl   $0x0,0xc(%esp)
-6fb5afde:	00
-6fb5afdf:	e8 6c e2 01 00       	call   6fb79250 <pthread_mutex_unlock>
-6fb5afe4:	eb b8                	jmp    6fb5af9e <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0xde>
-6fb5afe6:	66 90                	xchg   %ax,%ax
-6fb5afe8:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
-6fb5afef:	00
-6fb5aff0:	8b 6c 24 48          	mov    0x48(%esp),%ebp
-6fb5aff4:	eb a8                	jmp    6fb5af9e <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0xde>
-6fb5aff6:	66 90                	xchg   %ax,%ax
-6fb5aff8:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
-6fb5afff:	00
-6fb5b000:	8d 43 fc             	lea    -0x4(%ebx),%eax
-6fb5b003:	ba 01 00 00 00       	mov    $0x1,%edx
-6fb5b008:	c7 44 24 0c ff ff ff 	movl   $0xffffffff,0xc(%esp)
-6fb5b00f:	ff
-6fb5b010:	89 44 24 04          	mov    %eax,0x4(%esp)
-6fb5b014:	e8 67 3d 00 00       	call   6fb5ed80 <x3m::ownership::(anonymous namespace)::retire_auto_depth(x3m::ownership::(anonymous namespace)::Device*, long)>
-6fb5b019:	8b 44 24 04          	mov    0x4(%esp),%eax
-6fb5b01d:	e8 6e fd ff ff       	call   6fb5ad90 <x3m::ownership::(anonymous namespace)::discard_renderer_resources(x3m::ownership::(anonymous namespace)::Device*)>
-6fb5b022:	e9 42 ff ff ff       	jmp    6fb5af69 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0xa9>
-6fb5b027:	89 04 24             	mov    %eax,(%esp)
-6fb5b02a:	89 6c 24 48          	mov    %ebp,0x48(%esp)
-6fb5b02e:	e8 89 ac 03 00       	call   6fb95cbc <std::__throw_system_error(int)>
-6fb5b033:	90                   	nop
-6fb5b034:	8d 74 26 00          	lea    0x0(%esi,%eiz,1),%esi
-6fb5b038:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
-6fb5b03f:	00
+6fb5a990 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)>:
+6fb5a990:	83 ec 4c             	sub    $0x4c,%esp
+6fb5a993:	89 7c 24 44          	mov    %edi,0x44(%esp)
+6fb5a997:	8d 7c 24 08          	lea    0x8(%esp),%edi
+6fb5a99b:	89 3c 24             	mov    %edi,(%esp)
+6fb5a99e:	89 5c 24 3c          	mov    %ebx,0x3c(%esp)
+6fb5a9a2:	89 c3                	mov    %eax,%ebx
+6fb5a9a4:	c7 44 24 20 e0 4b b9 	movl   $0x6fb94be0,0x20(%esp)
+6fb5a9ab:	6f
+6fb5a9ac:	c7 44 24 24 6a 67 b9 	movl   $0x6fb9676a,0x24(%esp)
+6fb5a9b3:	6f
+6fb5a9b4:	e8 97 4e 01 00       	call   6fb6f850 <_Unwind_SjLj_Register>
+6fb5a9b9:	c7 04 24 a0 7c b9 6f 	movl   $0x6fb97ca0,(%esp)
+6fb5a9c0:	c7 44 24 0c ff ff ff 	movl   $0xffffffff,0xc(%esp)
+6fb5a9c7:	ff
+6fb5a9c8:	e8 23 e8 01 00       	call   6fb791f0 <pthread_mutex_lock>
+6fb5a9cd:	89 74 24 40          	mov    %esi,0x40(%esp)
+6fb5a9d1:	85 c0                	test   %eax,%eax
+6fb5a9d3:	0f 85 1e 01 00 00    	jne    6fb5aaf7 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0x167>
+6fb5a9d9:	8b 73 08             	mov    0x8(%ebx),%esi
+6fb5a9dc:	83 ee 01             	sub    $0x1,%esi
+6fb5a9df:	89 73 08             	mov    %esi,0x8(%ebx)
+6fb5a9e2:	0f 85 b8 00 00 00    	jne    6fb5aaa0 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0x110>
+6fb5a9e8:	8d 43 10             	lea    0x10(%ebx),%eax
+6fb5a9eb:	b9 e0 54 ba 6f       	mov    $0x6fba54e0,%ecx
+6fb5a9f0:	89 6c 24 48          	mov    %ebp,0x48(%esp)
+6fb5a9f4:	89 04 24             	mov    %eax,(%esp)
+6fb5a9f7:	e8 84 d5 ff ff       	call   6fb57f80 <std::_Hashtable<IUnknown*, std::pair<IUnknown* const, x3m::ownership::(anonymous namespace)::Node*>, std::allocator<std::pair<IUnknown* const, x3m::ownership::(anonymous namespace)::Node*> >, std::__detail::_Select1st, std::equal_to<IUnknown*>, std::hash<IUnknown*>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::erase(IUnknown* const&) [clone .isra.0]>
+6fb5a9fc:	8d 43 14             	lea    0x14(%ebx),%eax
+6fb5a9ff:	b9 c4 54 ba 6f       	mov    $0x6fba54c4,%ecx
+6fb5aa04:	83 ec 04             	sub    $0x4,%esp
+6fb5aa07:	89 04 24             	mov    %eax,(%esp)
+6fb5aa0a:	e8 71 d5 ff ff       	call   6fb57f80 <std::_Hashtable<IUnknown*, std::pair<IUnknown* const, x3m::ownership::(anonymous namespace)::Node*>, std::allocator<std::pair<IUnknown* const, x3m::ownership::(anonymous namespace)::Node*> >, std::__detail::_Select1st, std::equal_to<IUnknown*>, std::hash<IUnknown*>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::erase(IUnknown* const&) [clone .isra.0]>
+6fb5aa0f:	83 ec 04             	sub    $0x4,%esp
+6fb5aa12:	83 7b 04 01          	cmpl   $0x1,0x4(%ebx)
+6fb5aa16:	74 78                	je     6fb5aa90 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0x100>
+6fb5aa18:	c7 04 24 a0 7c b9 6f 	movl   $0x6fb97ca0,(%esp)
+6fb5aa1f:	c7 44 24 0c 00 00 00 	movl   $0x0,0xc(%esp)
+6fb5aa26:	00
+6fb5aa27:	e8 64 ea 01 00       	call   6fb79490 <pthread_mutex_unlock>
+6fb5aa2c:	8b 6b 18             	mov    0x18(%ebx),%ebp
+6fb5aa2f:	83 7b 04 01          	cmpl   $0x1,0x4(%ebx)
+6fb5aa33:	0f 84 97 00 00 00    	je     6fb5aad0 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0x140>
+6fb5aa39:	8b 43 0c             	mov    0xc(%ebx),%eax
+6fb5aa3c:	8b 10                	mov    (%eax),%edx
+6fb5aa3e:	89 04 24             	mov    %eax,(%esp)
+6fb5aa41:	8b 42 08             	mov    0x8(%edx),%eax
+6fb5aa44:	c7 44 24 0c ff ff ff 	movl   $0xffffffff,0xc(%esp)
+6fb5aa4b:	ff
+6fb5aa4c:	ff d0                	call   *%eax
+6fb5aa4e:	8b 03                	mov    (%ebx),%eax
+6fb5aa50:	89 d9                	mov    %ebx,%ecx
+6fb5aa52:	83 ec 04             	sub    $0x4,%esp
+6fb5aa55:	ff 50 04             	call   *0x4(%eax)
+6fb5aa58:	85 ed                	test   %ebp,%ebp
+6fb5aa5a:	74 64                	je     6fb5aac0 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0x130>
+6fb5aa5c:	8b 45 10             	mov    0x10(%ebp),%eax
+6fb5aa5f:	8b 10                	mov    (%eax),%edx
+6fb5aa61:	89 04 24             	mov    %eax,(%esp)
+6fb5aa64:	ff 52 08             	call   *0x8(%edx)
+6fb5aa67:	83 ec 04             	sub    $0x4,%esp
+6fb5aa6a:	8b 6c 24 48          	mov    0x48(%esp),%ebp
+6fb5aa6e:	89 3c 24             	mov    %edi,(%esp)
+6fb5aa71:	e8 6a 4e 01 00       	call   6fb6f8e0 <_Unwind_SjLj_Unregister>
+6fb5aa76:	89 f0                	mov    %esi,%eax
+6fb5aa78:	8b 5c 24 3c          	mov    0x3c(%esp),%ebx
+6fb5aa7c:	8b 74 24 40          	mov    0x40(%esp),%esi
+6fb5aa80:	8b 7c 24 44          	mov    0x44(%esp),%edi
+6fb5aa84:	83 c4 4c             	add    $0x4c,%esp
+6fb5aa87:	c3                   	ret
+6fb5aa88:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
+6fb5aa8f:	00
+6fb5aa90:	c6 43 30 01          	movb   $0x1,0x30(%ebx)
+6fb5aa94:	eb 82                	jmp    6fb5aa18 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0x88>
+6fb5aa96:	66 90                	xchg   %ax,%ax
+6fb5aa98:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
+6fb5aa9f:	00
+6fb5aaa0:	c7 04 24 a0 7c b9 6f 	movl   $0x6fb97ca0,(%esp)
+6fb5aaa7:	c7 44 24 0c 00 00 00 	movl   $0x0,0xc(%esp)
+6fb5aaae:	00
+6fb5aaaf:	e8 dc e9 01 00       	call   6fb79490 <pthread_mutex_unlock>
+6fb5aab4:	eb b8                	jmp    6fb5aa6e <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0xde>
+6fb5aab6:	66 90                	xchg   %ax,%ax
+6fb5aab8:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
+6fb5aabf:	00
+6fb5aac0:	8b 6c 24 48          	mov    0x48(%esp),%ebp
+6fb5aac4:	eb a8                	jmp    6fb5aa6e <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0xde>
+6fb5aac6:	66 90                	xchg   %ax,%ax
+6fb5aac8:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
+6fb5aacf:	00
+6fb5aad0:	8d 43 fc             	lea    -0x4(%ebx),%eax
+6fb5aad3:	ba 01 00 00 00       	mov    $0x1,%edx
+6fb5aad8:	c7 44 24 0c ff ff ff 	movl   $0xffffffff,0xc(%esp)
+6fb5aadf:	ff
+6fb5aae0:	89 44 24 04          	mov    %eax,0x4(%esp)
+6fb5aae4:	e8 37 1f 00 00       	call   6fb5ca20 <x3m::ownership::(anonymous namespace)::retire_copy_depth(x3m::ownership::(anonymous namespace)::Device*, long)>
+6fb5aae9:	8b 44 24 04          	mov    0x4(%esp),%eax
+6fb5aaed:	e8 6e fd ff ff       	call   6fb5a860 <x3m::ownership::(anonymous namespace)::discard_renderer_resources(x3m::ownership::(anonymous namespace)::Device*)>
+6fb5aaf2:	e9 42 ff ff ff       	jmp    6fb5aa39 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)+0xa9>
+6fb5aaf7:	89 04 24             	mov    %eax,(%esp)
+6fb5aafa:	89 6c 24 48          	mov    %ebp,0x48(%esp)
+6fb5aafe:	e8 f9 b3 03 00       	call   6fb95efc <std::__throw_system_error(int)>
+6fb5ab03:	90                   	nop
+6fb5ab04:	8d 74 26 00          	lea    0x0(%esi,%eiz,1),%esi
+6fb5ab08:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
+6fb5ab0f:	00
 
-6fb5b040 <x3m::ownership::(anonymous namespace)::Factory::Release()@4>:
-6fb5b040:	8b 44 24 04          	mov    0x4(%esp),%eax
-6fb5b044:	83 c0 04             	add    $0x4,%eax
-6fb5b047:	e8 74 fe ff ff       	call   6fb5aec0 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)>
-6fb5b04c:	c2 04 00             	ret    $0x4
-6fb5b04f:	90                   	nop
+6fb5ab10 <x3m::ownership::(anonymous namespace)::Factory::Release()@4>:
+6fb5ab10:	8b 44 24 04          	mov    0x4(%esp),%eax
+6fb5ab14:	83 c0 04             	add    $0x4,%eax
+6fb5ab17:	e8 74 fe ff ff       	call   6fb5a990 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)>
+6fb5ab1c:	c2 04 00             	ret    $0x4
+6fb5ab1f:	90                   	nop
 
-6fb5b050 <x3m::ownership::(anonymous namespace)::Device::Release()@4>:
-6fb5b050:	8b 44 24 04          	mov    0x4(%esp),%eax
-6fb5b054:	83 c0 04             	add    $0x4,%eax
-6fb5b057:	e8 64 fe ff ff       	call   6fb5aec0 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)>
-6fb5b05c:	c2 04 00             	ret    $0x4
-6fb5b05f:	90                   	nop
+6fb5ab20 <x3m::ownership::(anonymous namespace)::Device::Release()@4>:
+6fb5ab20:	8b 44 24 04          	mov    0x4(%esp),%eax
+6fb5ab24:	83 c0 04             	add    $0x4,%eax
+6fb5ab27:	e8 64 fe ff ff       	call   6fb5a990 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)>
+6fb5ab2c:	c2 04 00             	ret    $0x4
+6fb5ab2f:	90                   	nop
 
-6fb5b060 <x3m::ownership::(anonymous namespace)::Texture::Release()@4>:
-6fb5b060:	8b 44 24 04          	mov    0x4(%esp),%eax
-6fb5b064:	83 c0 04             	add    $0x4,%eax
-6fb5b067:	e8 54 fe ff ff       	call   6fb5aec0 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)>
-6fb5b06c:	c2 04 00             	ret    $0x4
-6fb5b06f:	90                   	nop
+6fb5ab30 <x3m::ownership::(anonymous namespace)::Texture::Release()@4>:
+6fb5ab30:	8b 44 24 04          	mov    0x4(%esp),%eax
+6fb5ab34:	83 c0 04             	add    $0x4,%eax
+6fb5ab37:	e8 54 fe ff ff       	call   6fb5a990 <x3m::ownership::(anonymous namespace)::release(x3m::ownership::(anonymous namespace)::Node*)>
+6fb5ab3c:	c2 04 00             	ret    $0x4
+6fb5ab3f:	90                   	nop
 
 Imported DLLs:
 DLL Name: KERNEL32.dll

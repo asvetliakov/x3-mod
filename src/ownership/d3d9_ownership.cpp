@@ -19,12 +19,9 @@ struct Device;
 
 // These are backend-only references. They do not own application wrappers or
 // logical device references, and are retired before the native device root.
-struct AutoDepth {
-    IDirect3DSurface9* original = nullptr;
-    IDirect3DSurface9* replacement = nullptr;
-    DepthView view;
-    bool lost_mapping = false; // Do not expose a retained physical target while lost.
-    HRESULT stencil_clear_result = D3DERR_INVALIDCALL;
+struct CopyDepth {
+    IDirect3DSurface9* original = nullptr; // Native ref only; never substituted.
+    CopyDepthView view;
 };
 
 // Weak registries contain only wrappers with positive application refcounts.
@@ -55,15 +52,15 @@ HRESULT create_device(Factory* node, UINT adapter, D3DDEVTYPE type, HWND window,
                       DWORD flags, D3DPRESENT_PARAMETERS* pp, IDirect3DDevice9** out);
 HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp);
 HRESULT observe_result(Device* node, HRESULT hr);
-HRESULT get_depth(Device* node, IDirect3DSurface9** out);
-HRESULT set_depth(Device* node, IDirect3DSurface9* surface);
 HRESULT clear_device(Device* node, DWORD count, const D3DRECT* rects, DWORD flags,
                      D3DCOLOR color, float depth, DWORD stencil);
-void initialize_auto_depth(Device* node, const D3DPRESENT_PARAMETERS& requested);
-void retire_auto_depth(Device* node, HRESULT status);
+void initialize_copy_depth(Device* node, const D3DPRESENT_PARAMETERS& requested);
+void retire_copy_depth(Device* node, HRESULT status);
+bool copy_source_bound(Device* node, HRESULT* query_status = nullptr);
+HRESULT begin_state_block(Device* node);
+HRESULT end_state_block(Device* node, IDirect3DStateBlock9** out);
 Device* device_of(Node* node);
 template<class T> T* unwrap(Device* owner, T* value);
-IDirect3DSurface9* unwrap_physical_surface(Device* owner, IDirect3DSurface9* value);
 template<class T> HRESULT output(Device* owner, HRESULT hr, T* owned, T** out);
 
 // Some D3D9 failure paths leave an output slot untouched, while others clear it.
@@ -139,7 +136,7 @@ ULONG release(Node* node) {
     Node* parent = node->parent;
     if (node->kind == Kind::Device) {
         auto device = static_cast<Device*>(node);
-        retire_auto_depth(device, S_FALSE);
+        retire_copy_depth(device, S_FALSE);
         discard_renderer_resources(device);
     }
     node->backend->Release();
@@ -221,7 +218,7 @@ HRESULT adopt(Node* parent, Kind kind, IUnknown* owned, REFIID iid, void** out,
             existing = found->second;
             if (!supports(existing->kind, iid) || existing->parent != parent) return E_NOINTERFACE;
             if (kind == Kind::Factory && options &&
-                static_cast<Factory*>(existing)->options.sampleable_auto_depth != options->sampleable_auto_depth)
+                static_cast<Factory*>(existing)->options.capture_auto_depth != options->capture_auto_depth)
                 return E_INVALIDARG; // Never silently reconfigure a live factory.
             ++existing->refs;
             *out = existing->application;
@@ -347,31 +344,36 @@ HRESULT create_device(Factory* node, UINT adapter, D3DDEVTYPE type, HWND window,
     if (has_ex(owned, IID_IDirect3DDevice9Ex)) { owned->Release(); return E_NOINTERFACE; }
     const HRESULT wrapped = adopt(node, Kind::Device, owned, IID_IDirect3DDevice9, reinterpret_cast<void**>(out), &node->options);
     if (FAILED(wrapped)) owned->Release();
-    else initialize_auto_depth(static_cast<Device*>(*out), requested);
+    else {
+        auto device = static_cast<Device*>(*out);
+        initialize_copy_depth(device, requested);
+    }
     return FAILED(wrapped) ? wrapped : hr;
 }
 
 HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp) {
     const D3DPRESENT_PARAMETERS requested = pp ? *pp : D3DPRESENT_PARAMETERS{};
-    const bool had_mapping = node->auto_depth.view.available || node->auto_depth.lost_mapping;
     { std::lock_guard<std::recursive_mutex> lock(registry_mutex); node->resetting = true; }
-    retire_auto_depth(node, S_FALSE);
+    retire_copy_depth(node, S_FALSE);
     discard_renderer_resources(node);
     const HRESULT hr = node->native_->Reset(pp);
     {
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         node->resetting = false;
         node->lost = FAILED(hr);
-        node->auto_depth.lost_mapping = FAILED(hr) && had_mapping;
     }
-    if (SUCCEEDED(hr)) initialize_auto_depth(node, requested);
-    else node->auto_depth.view.status = hr;
+    if (SUCCEEDED(hr)) {
+        node->recording_state_block = false;
+        initialize_copy_depth(node, requested);
+    } else {
+        node->copy_depth.view.status = hr;
+    }
     return hr;
 }
 HRESULT observe_result(Device* node, HRESULT hr) {
     if (hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET) {
         { std::lock_guard<std::recursive_mutex> lock(registry_mutex); node->lost = true; }
-        retire_auto_depth(node, hr);
+        retire_copy_depth(node, hr);
         discard_renderer_resources(node);
     }
     return hr;
@@ -389,89 +391,94 @@ bool same_surface(IDirect3DSurface9* left, IDirect3DSurface9* right) {
     return equal;
 }
 
-bool replacement_bound(Device* node, HRESULT* query_status = nullptr) {
-    if (query_status) *query_status = S_OK;
-    if (!node->auto_depth.replacement || node->lost) return false;
-    IDirect3DSurface9* bound = nullptr;
-    const HRESULT hr = node->native_->GetDepthStencilSurface(&bound);
-    if (query_status) *query_status = hr == D3DERR_NOTFOUND ? S_OK : hr;
-    const bool result = SUCCEEDED(hr) && same_surface(bound, node->auto_depth.replacement);
-    if (bound) bound->Release();
+HRESULT clear_device(Device* node, DWORD count, const D3DRECT* rects, DWORD flags,
+                     D3DCOLOR color, float depth, DWORD stencil) {
+    HRESULT source_status = S_OK;
+    const bool original_bound = node->copy_depth.view.available &&
+        (flags & D3DCLEAR_ZBUFFER) && copy_source_bound(node, &source_status);
+    // Snapshot bookkeeping must not change an application's Clear result.
+    if (FAILED(source_status)) node->copy_depth.view.status = source_status;
+    const HRESULT hr = node->native_->Clear(count, rects, flags, color, depth, stencil);
+    if (SUCCEEDED(hr) && original_bound) ++node->copy_depth.view.source_epoch;
+    // Preserve the app's own HRESULT, but a loss observed by our bookkeeping
+    // query must still invalidate native snapshots and borrowed resource views.
+    if (FAILED(source_status)) observe_result(node, source_status);
+    observe_result(node, hr);
+    return hr;
+}
+
+HRESULT begin_state_block(Device* node) {
+    const HRESULT hr = node->native_->BeginStateBlock();
+    if (SUCCEEDED(hr)) node->recording_state_block = true;
+    return observe_result(node, hr);
+}
+
+HRESULT end_state_block(Device* node, IDirect3DStateBlock9** out) {
+    IDirect3DStateBlock9* owned = untouched_output<IDirect3DStateBlock9>();
+    const HRESULT hr = node->native_->EndStateBlock(out ? &owned : nullptr);
+    if (SUCCEEDED(hr)) node->recording_state_block = false;
+    const HRESULT result = output(node, hr, owned, out);
+    // Clean up/adopt the backend output before retiring resources on loss.
+    observe_result(node, hr);
     return result;
 }
 
-IDirect3DSurface9* unwrap_physical_surface(Device* owner, IDirect3DSurface9* value) {
-    auto native = unwrap(owner, value);
-    if (owner->auto_depth.view.available && same_surface(native, owner->auto_depth.original))
-        return owner->auto_depth.replacement;
-    return native;
+bool copy_source_bound(Device* node, HRESULT* query_status) {
+    if (query_status) *query_status = S_OK;
+    if (!node->copy_depth.original || node->lost) return false;
+    IDirect3DSurface9* actual = nullptr;
+    const HRESULT hr = node->native_->GetDepthStencilSurface(&actual);
+    if (query_status) *query_status = hr == D3DERR_NOTFOUND ? S_OK : hr;
+    const bool bound = SUCCEEDED(hr) && same_surface(actual, node->copy_depth.original);
+    if (actual) actual->Release();
+    return bound;
 }
 
-void retire_auto_depth(Device* node, HRESULT status) {
-    auto& depth = node->auto_depth;
-    if (node->lost && depth.view.available) depth.lost_mapping = true;
-    // This is only an operational teardown/reset boundary, never a mid-frame
-    // fallback. Once loss is known, ordinary D3D9 Get/Set calls are not legal.
-    if (!node->lost && replacement_bound(node))
-        node->native_->SetDepthStencilSurface(depth.original);
-    auto original = depth.original;
-    auto replacement = depth.replacement;
-    auto texture = depth.view.texture;
-    depth.original = nullptr;
-    depth.replacement = nullptr;
-    depth.view.texture = nullptr;
-    depth.view.available = false;
-    depth.view.bound = false;
-    depth.view.clear_epoch = 0;
-    depth.view.status = status;
-    if (texture || replacement) ++depth.view.generation;
-    // Clear published state before resource destructors can reenter observers.
-    if (replacement) replacement->Release();
+void retire_copy_depth(Device* node, HRESULT status) {
+    auto& copy = node->copy_depth;
+    auto original = copy.original;
+    auto texture = copy.view.texture;
+    copy.original = nullptr;
+    copy.view.texture = nullptr;
+    copy.view.available = false;
+    copy.view.copy_valid = false;
+    copy.view.source_bound = false;
+    copy.view.source_epoch = 0;
+    copy.view.copy_epoch = 0;
+    copy.view.status = status;
+    if (texture) ++copy.view.generation;
     if (texture) texture->Release();
     if (original) original->Release();
 }
 
-void initialize_auto_depth(Device* node, const D3DPRESENT_PARAMETERS& requested) {
-    auto& depth = node->auto_depth;
-    depth.lost_mapping = false;
-    depth.view.requested = node->options.sampleable_auto_depth;
-    depth.view.status = S_FALSE;
-    depth.view.logical_desc = {};
-    if (!depth.view.requested || !requested.EnableAutoDepthStencil ||
+void initialize_copy_depth(Device* node, const D3DPRESENT_PARAMETERS& requested) {
+    auto& copy = node->copy_depth;
+    copy.view.requested = node->options.capture_auto_depth;
+    copy.view.status = S_FALSE;
+    copy.view.source_desc = {};
+    if (!copy.view.requested || !requested.EnableAutoDepthStencil ||
         requested.AutoDepthStencilFormat != D3DFMT_D24X8 ||
         requested.MultiSampleType != D3DMULTISAMPLE_NONE) return;
-
-    IDirect3DSurface9 *original = nullptr, *replacement = nullptr, *color = nullptr;
+    IDirect3DSurface9* original = nullptr;
     IDirect3DTexture9* texture = nullptr;
-    D3DSURFACE_DESC description{};
-    const D3DFORMAT intz = D3DFORMAT(MAKEFOURCC('I', 'N', 'T', 'Z'));
+    IDirect3DBaseTexture9* sampled = nullptr;
     auto attempt = [&]() -> HRESULT {
         HRESULT hr = node->native_->GetDepthStencilSurface(&original);
         if (FAILED(hr)) return hr;
         if (!original) return E_FAIL;
-        hr = original->GetDesc(&description);
+        D3DSURFACE_DESC desc{};
+        hr = original->GetDesc(&desc);
         if (FAILED(hr)) return hr;
-        depth.view.logical_desc = description;
-        if (description.Format != D3DFMT_D24X8 || description.MultiSampleType != D3DMULTISAMPLE_NONE ||
-            description.Pool != D3DPOOL_DEFAULT || !(description.Usage & D3DUSAGE_DEPTHSTENCIL)) return S_FALSE;
-        // The physical INTZ allocation has stencil bits, unlike logical D24X8.
-        // Scoped draw masking requires this getter even on a pure device. If
-        // the backend forbids it, decline now rather than changing draw behavior.
-        DWORD stencil_enabled = FALSE;
-        hr = node->native_->GetRenderState(D3DRS_STENCILENABLE, &stencil_enabled);
+        copy.view.source_desc = desc;
+        if (desc.Format != D3DFMT_D24X8 || desc.MultiSampleType != D3DMULTISAMPLE_NONE ||
+            desc.Pool != D3DPOOL_DEFAULT || !(desc.Usage & D3DUSAGE_DEPTHSTENCIL)) return S_FALSE;
+        // The exact save/restore calls are required on the real pure device;
+        // unsupported getters decline capture before application rendering.
+        hr = node->native_->GetTexture(0, &sampled);
         if (FAILED(hr)) return hr;
-        // D24X8 has no logical stencil plane. Backends differ on whether a
-        // stencil-only clear is accepted as a no-op or rejected. Calibrate on
-        // the still-bound original before any application clear/draw; never
-        // clear color or depth here. No application depth epoch has begun.
-        depth.stencil_clear_result = node->native_->Clear(0, nullptr, D3DCLEAR_STENCIL, 0, 1, 0);
-        hr = node->native_->GetRenderTarget(0, &color);
+        DWORD point_size = 0;
+        hr = node->native_->GetRenderState(D3DRS_POINTSIZE, &point_size);
         if (FAILED(hr)) return hr;
-        D3DSURFACE_DESC color_desc{};
-        hr = color->GetDesc(&color_desc);
-        if (FAILED(hr)) return hr;
-        if (color_desc.MultiSampleType != D3DMULTISAMPLE_NONE ||
-            color_desc.Width != description.Width || color_desc.Height != description.Height) return S_FALSE;
         D3DDEVICE_CREATION_PARAMETERS creation{};
         D3DDISPLAYMODE mode{};
         hr = node->native_->GetCreationParameters(&creation);
@@ -480,100 +487,95 @@ void initialize_auto_depth(Device* node, const D3DPRESENT_PARAMETERS& requested)
         hr = factory->native_->GetAdapterDisplayMode(creation.AdapterOrdinal, &mode);
         if (FAILED(hr)) return hr;
         hr = factory->native_->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType,
-            mode.Format, D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_TEXTURE, intz);
+            mode.Format, D3DUSAGE_RENDERTARGET, D3DRTYPE_SURFACE,
+            D3DFORMAT(MAKEFOURCC('R', 'E', 'S', 'Z')));
         if (FAILED(hr)) return hr;
-        hr = factory->native_->CheckDepthStencilMatch(creation.AdapterOrdinal, creation.DeviceType,
-            mode.Format, color_desc.Format, intz);
+        hr = factory->native_->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType,
+            mode.Format, D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_TEXTURE, D3DFMT_D24X8);
         if (FAILED(hr)) return hr;
-        hr = node->native_->CreateTexture(description.Width, description.Height, 1,
-            D3DUSAGE_DEPTHSTENCIL, intz, D3DPOOL_DEFAULT, &texture, nullptr);
-        if (FAILED(hr)) return hr;
-        hr = texture->GetSurfaceLevel(0, &replacement);
-        if (FAILED(hr)) return hr;
-        return node->native_->SetDepthStencilSurface(replacement);
+        return node->native_->CreateTexture(desc.Width, desc.Height, 1,
+            D3DUSAGE_DEPTHSTENCIL, D3DFMT_D24X8, D3DPOOL_DEFAULT, &texture, nullptr);
     };
     const HRESULT hr = attempt();
-    depth.view.status = hr;
+    copy.view.status = hr;
     if (hr == S_OK) {
-        depth.original = original;
-        depth.replacement = replacement;
-        depth.view.texture = texture;
-        depth.view.available = true;
-        depth.view.bound = true;
-        depth.view.clear_epoch = 0;
-        ++depth.view.generation;
+        copy.original = original;
+        copy.view.texture = texture;
+        copy.view.available = true;
+        copy.view.copy_valid = false;
+        copy.view.source_bound = true;
+        copy.view.source_epoch = 0;
+        copy.view.copy_epoch = 0;
+        ++copy.view.generation;
     } else {
-        // Selection occurs before CreateDevice/Reset returns. The untouched
-        // original allocation remains authoritative for this whole generation.
-        if (replacement) replacement->Release();
         if (texture) texture->Release();
         if (original) original->Release();
     }
-    if (color) color->Release();
+    if (sampled) sampled->Release();
+    // Optional setup can observe device loss too. Retire only after temporary
+    // native references are released, and reject later renderer adoption.
+    observe_result(node, hr);
 }
 
-HRESULT get_depth(Device* node, IDirect3DSurface9** out) {
-    // The backend can retain the physical target after loss while our external
-    // refs are retired. Ordinary calls after failed Reset are not valid D3D9;
-    // never expose that target as a new logical INTZ resource in this interval.
-    if (node->lost && node->auto_depth.lost_mapping) {
-        if (!out) return D3DERR_INVALIDCALL;
-        *out = nullptr;
-        return D3DERR_DEVICELOST;
-    }
-    IDirect3DSurface9* owned = untouched_output<IDirect3DSurface9>();
-    const HRESULT hr = node->native_->GetDepthStencilSurface(out ? &owned : nullptr);
-    if (owned == untouched_output<IDirect3DSurface9>()) return hr;
-    if (SUCCEEDED(hr) && owned && node->auto_depth.view.available &&
-        same_surface(owned, node->auto_depth.replacement)) {
-        owned->Release();
-        owned = node->auto_depth.original;
-        owned->AddRef();
-    }
-    return output(node, hr, owned, out);
-}
-
-HRESULT set_depth(Device* node, IDirect3DSurface9* surface) {
-    return node->native_->SetDepthStencilSurface(unwrap_physical_surface(node, surface));
-}
-
-template<class Draw> HRESULT draw_device(Device* node, Draw draw) {
-    auto& depth = node->auto_depth;
-    if (!depth.view.available) return draw();
-    HRESULT bound_status;
-    const bool bound = replacement_bound(node, &bound_status);
-    if (FAILED(bound_status)) { depth.view.status = bound_status; return bound_status; }
-    if (!bound) return draw();
-    if (FAILED(depth.view.status)) return depth.view.status;
-    DWORD stencil = FALSE;
-    HRESULT hr = node->native_->GetRenderState(D3DRS_STENCILENABLE, &stencil);
-    if (FAILED(hr)) { depth.view.status = hr; return hr; }
-    if (!stencil) return draw();
-    hr = node->native_->SetRenderState(D3DRS_STENCILENABLE, FALSE);
-    if (FAILED(hr)) { depth.view.status = hr; return hr; }
-    const HRESULT drawn = draw();
-    const HRESULT restored = node->native_->SetRenderState(D3DRS_STENCILENABLE, stencil);
-    if (FAILED(restored)) depth.view.status = restored;
-    // Always restore even if the original draw failed. Never move to the stale
-    // original surface if an unexpected guard failure occurs mid-generation.
-    return FAILED(drawn) ? drawn : restored;
-}
-
-HRESULT clear_device(Device* node, DWORD count, const D3DRECT* rects, DWORD flags,
-                     D3DCOLOR color, float depth, DWORD stencil) {
+HRESULT copy_depth(Device* node) {
+    auto& copy = node->copy_depth;
+    auto reject = [&](HRESULT hr) {
+        copy.view.status = hr;
+        // Call only after any saved native references have been released.
+        // A pre-mutation loss invalidates an earlier successful snapshot too.
+        return observe_result(node, hr);
+    };
+    if (node->lost) return reject(copy.view.status == D3DERR_DEVICENOTRESET
+        ? D3DERR_DEVICENOTRESET : D3DERR_DEVICELOST);
+    if (node->resetting || node->retiring || node->recording_state_block ||
+        !copy.view.available) return reject(D3DERR_INVALIDCALL);
     HRESULT bound_status = S_OK;
-    const bool active = node->auto_depth.view.available && replacement_bound(node, &bound_status);
-    if (FAILED(bound_status)) { node->auto_depth.view.status = bound_status; return bound_status; }
-    // Preserve this backend's measured no-stencil behavior, rather than using
-    // INTZ's extra physical stencil plane or assuming D3DERR_INVALIDCALL.
-    if (active && (flags & D3DCLEAR_STENCIL)) {
-        if (FAILED(node->auto_depth.stencil_clear_result)) return node->auto_depth.stencil_clear_result;
-        flags &= ~D3DCLEAR_STENCIL;
-        if (!flags) return node->auto_depth.stencil_clear_result;
+    const bool bound = copy_source_bound(node, &bound_status);
+    if (FAILED(bound_status)) return reject(bound_status);
+    if (!bound) return reject(D3DERR_INVALIDCALL);
+    IDirect3DBaseTexture9* texture0 = nullptr;
+    DWORD point_size = 0;
+    HRESULT hr = node->native_->GetTexture(0, &texture0);
+    if (FAILED(hr)) { if (texture0) texture0->Release(); return reject(hr); }
+    hr = node->native_->GetRenderState(D3DRS_POINTSIZE, &point_size);
+    if (FAILED(hr)) { if (texture0) texture0->Release(); return reject(hr); }
+
+    // Verified on Preview with native D24X8 source/destination and no dummy
+    // draw. Do not open/close a scene or change the original depth binding.
+    copy.view.copy_valid = false;
+    hr = node->native_->SetTexture(0, copy.view.texture);
+    auto loss = [](HRESULT value) {
+        return value == D3DERR_DEVICELOST || value == D3DERR_DEVICENOTRESET;
+    };
+    if (loss(hr)) {
+        if (texture0) texture0->Release();
+        return reject(hr); // No ordinary Set calls after observed loss.
     }
-    const HRESULT hr = node->native_->Clear(count, rects, flags, color, depth, stencil);
-    if (SUCCEEDED(hr) && active && (flags & D3DCLEAR_ZBUFFER)) ++node->auto_depth.view.clear_epoch;
-    return hr;
+    HRESULT point_restored = S_OK;
+    if (SUCCEEDED(hr)) {
+        hr = node->native_->SetRenderState(D3DRS_POINTSIZE, 0x7fa05000u);
+        if (loss(hr)) {
+            if (texture0) texture0->Release();
+            return reject(hr);
+        }
+        point_restored = node->native_->SetRenderState(D3DRS_POINTSIZE, point_size);
+        if (loss(point_restored)) {
+            if (texture0) texture0->Release();
+            return reject(point_restored);
+        }
+    }
+    const HRESULT texture_restored = node->native_->SetTexture(0, texture0);
+    if (texture0) texture0->Release();
+    // A restoration loss takes precedence over an earlier ordinary failure:
+    // otherwise its dead-device state could leave a borrowed snapshot exposed.
+    if (loss(texture_restored)) return reject(texture_restored);
+    if (FAILED(hr)) return reject(hr);
+    if (FAILED(point_restored)) return reject(point_restored);
+    if (FAILED(texture_restored)) return reject(texture_restored);
+    copy.view.copy_valid = true;
+    copy.view.copy_epoch = copy.view.source_epoch;
+    copy.view.status = S_OK;
+    return S_OK;
 }
 
 #include "d3d9_forwarders_inc.h"
@@ -596,7 +598,7 @@ IDirect3DDevice9* borrowed_native_device(IDirect3DDevice9* wrapped) noexcept {
         ? static_cast<IDirect3DDevice9*>(found->second->backend) : nullptr;
 }
 
-HRESULT get_depth_view(IDirect3DDevice9* wrapped, DepthView* out) noexcept {
+HRESULT get_copy_depth_view(IDirect3DDevice9* wrapped, CopyDepthView* out) noexcept {
     if (!out) return E_POINTER;
     *out = {};
     Device* device;
@@ -605,14 +607,28 @@ HRESULT get_depth_view(IDirect3DDevice9* wrapped, DepthView* out) noexcept {
         const auto found = application_nodes.find(wrapped);
         if (found == application_nodes.end() || found->second->kind != Kind::Device) return E_INVALIDARG;
         device = static_cast<Device*>(found->second);
-        *out = device->auto_depth.view;
+        *out = device->copy_depth.view;
     }
-    // As with the borrowed-device seam, the caller owns a live wrapper reference
-    // and serializes rendering/reset. No backend Release runs under registry lock.
     HRESULT bound_status = S_OK;
-    out->bound = out->available && replacement_bound(device, &bound_status);
-    if (FAILED(bound_status)) out->status = bound_status;
+    out->source_bound = out->available && copy_source_bound(device, &bound_status);
+    if (FAILED(bound_status)) {
+        if (bound_status == D3DERR_DEVICELOST || bound_status == D3DERR_DEVICENOTRESET) {
+            observe_result(device, bound_status);
+            *out = device->copy_depth.view;
+        } else out->status = bound_status;
+    }
     return S_OK;
+}
+
+HRESULT copy_auto_depth(IDirect3DDevice9* wrapped) noexcept {
+    Device* device;
+    {
+        std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+        const auto found = application_nodes.find(wrapped);
+        if (found == application_nodes.end() || found->second->kind != Kind::Device) return E_INVALIDARG;
+        device = static_cast<Device*>(found->second);
+    }
+    return copy_depth(device);
 }
 
 HRESULT retain_renderer_resource(IDirect3DDevice9* wrapped, IUnknown* owned_resource) noexcept {

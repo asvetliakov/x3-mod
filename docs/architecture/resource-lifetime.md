@@ -5,9 +5,11 @@ is now implemented and has passed [actual-DLL integration](../../verification/pr
 in an opt-in, uninstalled 0.4 build. It uses weak registries for live wrappers
 and lets native bindings/stateblocks retain native resources. The original
 capture-only hazard below still explains why this ownership boundary is needed.
-The later [automatic-depth experiment](../verification/auto-depth.md) uses the
-auto-depth allocation identified by the completed game trace; numeric success
-does not resolve its depth-copy and stateblock-recording compatibility gates.
+The later [automatic-depth experiment](../verification/auto-depth.md) was removed
+after exposing depth-copy and stateblock-recording compatibility problems. Its
+replacement [copies the original D24X8](../verification/copied-depth.md) without
+substituting it; borrowed snapshots and renderer resources retire before Reset,
+final release, and observed device loss. It is not enabled in the game.
 The remaining text preserves the design and acceptance requirements that led to
 this work; it is not a claim that substitution has passed all of them.
 

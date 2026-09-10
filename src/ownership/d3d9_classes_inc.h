@@ -28,7 +28,8 @@ struct Device final : IDirect3DDevice9, Node {
     Options options;
     std::vector<IUnknown*> renderer_resources;
     bool retiring = false, resetting = false, lost = false;
-    AutoDepth auto_depth;
+    CopyDepth copy_depth;
+    bool recording_state_block = false;
     Device(IDirect3DDevice9* native, Node* owner)
         : Node(Kind::Device, native, owner), native_(native) { application = static_cast<IDirect3DDevice9*>(this); }
     HRESULT WINAPI QueryInterface(REFIID riid, void** ppvObject) override;

@@ -1,0 +1,11 @@
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /Users/asvetl/x3-mod/build-ownership
+[ 14%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
+[ 28%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
+[ 42%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj
+[ 57%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/telemetry.cpp.obj
+[ 71%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loading_trace.cpp.obj
+[ 85%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/d3d9_ownership.cpp.obj
+[100%] Linking CXX shared library d3d9.dll
+[100%] Built target d3d9

@@ -12,12 +12,20 @@ from verify_capture_state import verify as verify_capture
 
 def verify():
     build=json.loads((results/'ownership-integration-build.json').read_text())
+    assert build['result']=='PASS' and build['sources_before_build']==build['sources_at_start']==build['sources'],'Source provenance mismatch'
+    assert build['binaries_at_start']==build['binaries_at_end'],'Binary provenance mismatch'
+    assert build['source_tree_unchanged_during_run'] and build['binaries_unchanged_during_run']
     assert len(build['cases'])==12 and all(c['exit']==0 for c in build['cases'].values()),'Incomplete integration run'
     report={'result':'PASS','dll_sha256':build['dll_sha256'],'cases':{}}
-    for mode in ('off','on','depth_only','sample_depth'):
-        names=('smoke',) if mode=='depth_only' else ('auto',) if mode=='sample_depth' else ('smoke','capture','lifetime','contracts','auto')
+    for mode in ('off','on','depth_only','copy_depth'):
+        names=('smoke',) if mode=='depth_only' else ('auto',) if mode=='copy_depth' else ('smoke','capture','lifetime','contracts','auto')
         for name in names:
             prefix=f'ownership-integration-{mode}-{name}'
+            import hashlib
+            case=build['cases'][prefix]
+            assert hashlib.sha256((results/(prefix+'.txt')).read_bytes()).hexdigest()==case['report_sha256']
+            assert hashlib.sha256((results/(prefix+'-capture.log')).read_bytes()).hexdigest()==case['trace_sha256']
+            assert case['dll_sha256']==build['dll_sha256']
             text=(results/(prefix+'.txt')).read_text();trace=(results/(prefix+'-capture.log')).read_text()
             assert 'FAIL' not in text,(mode,name)
             hooks=[fields(line) for line in trace.splitlines() if line.startswith('device_hooked ')]
@@ -27,15 +35,18 @@ def verify():
             assert {h['device'] for h in hooks}=={h['device'] for h in destroyed}
             assert len({h['device'] for h in hooks})==expected
             wrapped=[line for line in trace.splitlines() if line.startswith('ownership_factory mode=wrapped ')]
-            if mode in ('on','sample_depth'):assert len(wrapped)==(16 if name=='lifetime' else 1),(mode,name,wrapped)
+            if mode in ('on','copy_depth'):assert len(wrapped)==(16 if name=='lifetime' else 1),(mode,name,wrapped)
             else:assert not wrapped,(mode,name)
             assert 'mode=native_fallback' not in trace,(mode,name)
-            if mode=='depth_only':assert 'requested=0 sampleable_depth_requested=1 sampleable_depth_enabled=0' in trace
-            depth=[fields(line) for line in trace.splitlines() if line.startswith('ownership_depth ')]
-            if mode in ('on','sample_depth'):
+            if mode=='depth_only':assert 'requested=0 depth_copy_requested=1 depth_copy_enabled=0' in trace
+            depth=[fields(line) for line in trace.splitlines() if line.startswith('ownership_copy_depth ')]
+            if mode in ('on','copy_depth'):
                 assert len([d for d in depth if d['phase']=='create_after'])==expected
                 if mode=='on':assert all(d['requested']=='0' and d['available']=='0' for d in depth)
-                else:assert all(d['requested']=='1' for d in depth)
+                else:
+                    assert all(d['requested']=='1' and d['available']=='1' and d['source_bound']=='1' for d in depth)
+                    assert all(d['copy_valid']=='0' and d['copy_epoch']=='0' and d['source_format']=='77' for d in depth),'No automatic copy should occur'
+                    assert int(depth[-1]['generation'])>int(depth[0]['generation']),'Reset must replace copy storage'
                 if name=='auto':assert len([d for d in depth if d['phase']=='reset_after'])==1
             else:assert not depth
             if name in ('smoke','capture'):
@@ -53,8 +64,8 @@ def verify():
         # Numeric native Release results are diagnostics, not wrapper semantics.
         normalize=lambda value:[line for line in value.splitlines() if not line.startswith('OBSERVE device_release_with_child=')]
         assert normalize(a)==normalize(b),(name,'API report differs')
-    assert (results/'ownership-integration-off-auto.txt').read_text()==(results/'ownership-integration-sample_depth-auto.txt').read_text(),'Auto-depth loader smoke changes app-visible outcomes'
-    report['limits']=['Synthetic DLL integration, not gameplay validation.','Direct3D9Ex remains native and uninstrumented.','Sampleable-depth loader wiring smoke only; numerical/content behavior has a separate fixture.']
+    assert (results/'ownership-integration-off-auto.txt').read_text()==(results/'ownership-integration-copy_depth-auto.txt').read_text(),'Auto-depth loader smoke changes app-visible outcomes'
+    report['limits']=['Synthetic DLL integration, not gameplay validation.','Direct3D9Ex remains native and uninstrumented.','Original-preserving depth-copy allocation smoke only; numerical/content behavior has a separate fixture.']
     (results/'ownership-integration-verification.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(report))
 if __name__=='__main__':

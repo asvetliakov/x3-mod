@@ -10,6 +10,8 @@ User preferences recorded 2026-09-10:
 - Work in testable iterations. TAA is required; spatial AA alone does not satisfy it.
 - Commit after each logical checkpoint, including relevant documentation and
   verification evidence. Keep generated build products and raw captures untracked.
+- Review code changes before checkpoint commits. Use an independent reviewer
+  when practical, fix concrete findings, and rerun affected verification.
 - Batch tracing needs into a consolidated diagnostic build before asking for
   another load/test cycle. Use targeted disassembly where needed. Investigate
   loading time alongside rendering; track the double cursor after alt-tab and

@@ -1,10 +1,12 @@
-# Automatic-depth substitution experiment
+# Historical automatic-depth substitution experiment
 
-The experimental ownership layer can replace a newly created single-sample
+At commit `22146a1`, the experimental ownership layer could replace a newly created single-sample
 D24X8 automatic depth surface with private INTZ storage while preserving its
 application-facing wrapper, descriptor and container behavior. This is an input
 experiment for TAA, **not a gameplay-ready feature**. It is disabled by default
-and has not been installed into X3.
+and was never installed into X3. The active implementation now uses a copy of the
+original D24X8 source; the rejected substitution code and its fixture have been
+removed from the current tree. Their exact source remains in that commit.
 
 ## Verified behavior
 
@@ -68,6 +70,8 @@ alone cannot establish that such a copy transfers real depth values.
 ## Reproduction
 
 ```sh
+git worktree add --detach /tmp/x3-intz-substitution-history 22146a1
+cd /tmp/x3-intz-substitution-history
 sh verification/probe/build_auto_depth.sh
 python3 verification/probe/run_auto_depth.py
 ```

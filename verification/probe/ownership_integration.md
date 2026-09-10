@@ -2,40 +2,37 @@
 
 The isolated experimental 0.4 DLL includes the canonical ownership implementation before the existing capture hooks. Its default path still captures native normal-D3D9 objects. `X3M_OWNERSHIP=1` selects wrapper adoption; failure logs the HRESULT and continues using the caller-owned native factory. `Direct3DCreate9Ex` remains native and uninstrumented. The switches are read once during first backend initialization, outside `DllMain`.
 
-`X3M_SAMPLEABLE_DEPTH=1` additionally requests sampleable auto-depth, but is effective only with ownership enabled. The launcher has corresponding `--ownership` and `--sampleable-depth` options; the latter requires the former. Both are off by default. This verification does not authorize or perform game installation or gameplay.
+`X3M_DEPTH_COPY=1` additionally requests original-preserving depth-copy storage, but is effective only with ownership enabled. The launcher has corresponding `--ownership` and `--depth-copy` options; the latter requires the former. Both are off by default. This verification does not authorize or perform game installation or gameplay.
 
 ## Reproduction
 
 ```sh
-cmake -S . -B build-ownership -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=Release
-cmake --build build-ownership
-verification/probe/build_ownership_integration.sh
 python3 verification/probe/run_ownership_integration.py
 python3 verification/probe/verify_ownership_integration.py
 python3 verification/probe/run_ownership_integration_fallback.py
 ```
 
-The runner also consumes the existing smoke, capture-state and baseline-contract fixture executables built by their respective scripts. It copies the DLL and executables into disposable verification directories and uses `/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine --bottle Steam --no-update`, with app-local D3D9 override. It does not mutate bottle settings, launch X3, install a DLL, or replace `build/d3d9.dll`.
+The runner performs a clean CMake build and recompiles every consumed fixture before launching any case. Source hashes are recorded before compilation, after compilation and after execution. It rejects changes across those checkpoints and checks EXE/DLL hashes before and after execution, plus hashes of each isolated copy and report. The fallback run requires that fresh-build manifest still match current inputs and checks the five linked proxy objects before and after execution. It copies the DLL and executables into disposable verification directories and uses `/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine --bottle Steam --no-update`, with app-local D3D9 override. It does not mutate bottle settings, launch X3, install a DLL, or replace `build/d3d9.dll`.
 
 ## Verified checkpoint
 
-Experimental DLL SHA256: `ecdc8614a088e8c7f66a99b84df735ce06646580f89d97280649e8fbe65410e6`.
-Ownership source SHA256: `5262c47ed58152cb7f5a93a0a0aace970db5b723421ff4fd6fb479ef4d43f08c`.
+Experimental DLL SHA256: `c6ade9b9d9835c628556895fc9dcff20b08247e14f78ff7a1d676ae5e0d3f08e`.
+Ownership source SHA256: `c71dbe311c76d2dfa8b1a71ad22941cd46757c9ee77f7b730cc93261f19deb14`.
 
 The 12-case matrix passed:
 
 | Mode | Fixtures | Result |
 | --- | --- | --- |
 | Native/default | Smoke, capture state, lifetime, 370 baseline contracts, auto-depth API smoke | 5 passed |
-| Ownership; sampleable-depth off | Same five fixtures | 5 passed |
-| Sampleable-depth requested without ownership | Smoke; logs effective depth switch off | Passed |
-| Ownership plus sampleable-depth | Auto-depth API smoke through create, clear, Present and Reset | Passed |
+| Ownership; depth-copy off | Same five fixtures | 5 passed |
+| Depth-copy requested without ownership | Smoke; logs effective depth switch off | Passed |
+| Ownership plus depth-copy | Auto-depth API smoke through create, clear, Present and Reset | Passed |
 
-The capture verifier still passes with ownership enabled, and snapshots include all 13 stencil renderstates. Logical texture/surface identities, getter behavior, stateblock restoration, Reset and application-visible fixture results match native mode. Synthetic lifecycle runs release the application factory first, release the device while a texture remains, recover device/factory identities from that child, and release the child last. All 16 device contexts were destroyed in each mode; ownership mode reused 13 device addresses without leaving stale capture hooks. Every case's hooked device IDs has a matching final-destruction record.
+The capture verifier still passes with ownership enabled, and snapshots include all 13 stencil renderstates. Logical texture/surface identities, getter behavior, stateblock restoration, Reset and application-visible fixture results match native mode. Synthetic lifecycle runs release the application factory first, release the device while a texture remains, recover device/factory identities from that child, and release the child last. All 16 device contexts were destroyed in each mode; ownership mode reused 12 device addresses without leaving stale capture hooks. Every case's hooked device IDs has a matching final-destruction record.
 
-The depth-enabled smoke observed requested/available/bound true, logical `D24X8` (77), generation 1 at creation and generation 3 after resizing Reset. This establishes loader wiring and diagnostics only. Separate root-owned numerical/content tests found that physical INTZ versus ordinary D24X8 depth copies do not reproduce every native StretchRect result in this checkpoint. Sampleable-depth is experimental and is not claimed transparent or ready for game use.
+The depth-copy smoke observed requested/available/source_bound true and original source format `D24X8` (77), with a new generation after resizing Reset. `copy_valid` remained false and `copy_epoch` remained zero: the proxy does not inject an automatic copy. This establishes option wiring, native application-depth preservation and allocation diagnostics only. Explicit copy content, state restoration and loss recovery have separate fixtures. The earlier INTZ substitution route and its option/API have been removed; old `sample_depth` logs are historical results and are not included in this checkpoint manifest.
 
-Reports and exact per-file provenance are in `verification/results/ownership-integration-build.json`, `ownership-integration-verification.json`, and the corresponding case text/capture/Wine logs. Source hashes were unchanged across the matrix. The installed 0.3 artifact was not changed by these runs.
+Reports and exact per-file provenance are in `verification/results/ownership-integration-build.json`, `ownership-integration-verification.json`, and the corresponding case text/capture/Wine logs. Source hashes were unchanged across the matrix. The installed 0.3 artifact was not changed by these runs. Raw startup and reset diagnostics are emitted as `ownership_copy_depth` with requested/available/source_bound/copy_valid, generation/source_epoch/copy_epoch and the complete source description.
 
 ## Adoption failure and ABI audit
 

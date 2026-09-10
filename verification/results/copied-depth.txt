@@ -1,0 +1,1240 @@
+CHECK production depth decoder loaded PASS
+CHECK hidden window PASS
+CHECK native factory PASS
+API wrap factory copy enabled result=00000000
+CHECK wrap factory copy enabled PASS
+API create ordinary auto-depth device result=00000000
+CHECK create ordinary auto-depth device PASS
+CHECK native seam PASS
+CASE copy flags=00000040 generation=0 size=64x64
+API copy view result=00000000
+CHECK copy view PASS
+CHECK copy storage ready with no stale content PASS
+CHECK copy generation advances PASS
+API logical original depth result=00000000
+CHECK logical original depth PASS
+API native original depth result=00000000
+CHECK native original depth PASS
+API logical descriptor result=00000000
+CHECK logical descriptor PASS
+API native descriptor result=00000000
+CHECK native descriptor PASS
+CHECK native depth remains original D24X8 PASS
+API other depth allocation result=00000000
+CHECK other depth allocation PASS
+API unbind depth for copy parity result=00000000
+CHECK unbind depth for copy parity PASS
+CHECK no copy from an unbound source PASS
+API native depth-copy original to other result=00000000
+CHECK native depth-copy original to other PASS
+API native depth-copy other to original result=00000000
+CHECK native depth-copy other to original PASS
+API bind other depth result=00000000
+CHECK bind other depth PASS
+CHECK no copy from unrelated depth PASS
+API rebind original result=00000000
+CHECK rebind original PASS
+API native stencil no-op clear result=00000000
+CHECK native stencil no-op clear PASS
+API logical stencil enable result=00000000
+CHECK logical stencil enable PASS
+API logical stencil never result=00000000
+CHECK logical stencil never PASS
+API copy view result=00000000
+CHECK copy view PASS
+API background epoch result=00000000
+CHECK background epoch PASS
+API main scene epoch result=00000000
+CHECK main scene epoch PASS
+API copy view result=00000000
+CHECK copy view PASS
+CHECK source clear epochs PASS
+API geometry no VS result=00000000
+CHECK geometry no VS PASS
+API geometry no PS result=00000000
+CHECK geometry no PS PASS
+API geometry FVF result=00000000
+CHECK geometry FVF PASS
+API geometry no texture result=00000000
+CHECK geometry no texture PASS
+API geometry diffuse result=00000000
+CHECK geometry diffuse PASS
+API geometry diffuse arg result=00000000
+CHECK geometry diffuse arg PASS
+API geometry Z result=00000000
+CHECK geometry Z PASS
+API geometry write Z result=00000000
+CHECK geometry write Z PASS
+API geometry less result=00000000
+CHECK geometry less PASS
+API geometry cull result=00000000
+CHECK geometry cull PASS
+API geometry begin result=00000000
+CHECK geometry begin PASS
+API geometry draw result=00000000
+CHECK geometry draw PASS
+API geometry end result=00000000
+CHECK geometry end PASS
+API sentinel texture result=00000000
+CHECK sentinel texture PASS
+API bind sentinel texture result=00000000
+CHECK bind sentinel texture PASS
+API sentinel pointsize result=00000000
+CHECK sentinel pointsize PASS
+API begin application stateblock result=00000000
+CHECK begin application stateblock PASS
+CHECK explicit copy rejected during recording PASS
+API end application stateblock result=00000000
+CHECK end application stateblock PASS
+API copy original depth outside scene result=00000000
+CHECK copy original depth outside scene PASS
+API copy view result=00000000
+CHECK copy view PASS
+CHECK valid copy epoch PASS
+API restored sampler getter result=00000000
+CHECK restored sampler getter PASS
+API restored pointsize getter result=00000000
+CHECK restored pointsize getter PASS
+CHECK copy restores exact sampler and pointsize PASS
+API copy keeps source bound result=00000000
+CHECK copy keeps source bound PASS
+CHECK source logical identity unchanged PASS
+API copy keeps native source bound result=00000000
+CHECK copy keeps native source bound PASS
+CHECK source native identity unchanged PASS
+API overlay destroys original depth result=00000000
+CHECK overlay destroys original depth PASS
+API copy view result=00000000
+CHECK copy view PASS
+CHECK saved copy survives source clear PASS
+API snapshot target result=00000000
+CHECK snapshot target PASS
+API snapshot readback result=00000000
+CHECK snapshot readback PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=preserved-original-scene-depth xy=8,8 expected=0.250000 actual=0.250000 PASS
+SAMPLE epoch=preserved-original-scene-depth xy=56,8 expected=0.750000 actual=0.750000 PASS
+SAMPLE epoch=preserved-original-scene-depth xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=preserved-original-scene-depth xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK preserved-original-scene-depth PASS
+API begin scene for second resolve result=00000000
+CHECK begin scene for second resolve PASS
+API copy original depth inside scene result=00000000
+CHECK copy original depth inside scene PASS
+API end scene for second resolve result=00000000
+CHECK end scene for second resolve PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=8,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=56,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK fresh-copy-after-source-clear PASS
+API unbind sentinel result=00000000
+CHECK unbind sentinel PASS
+API held-source Reset result=8876086c
+CHECK held logical source still rejects Reset PASS
+API copy view result=00000000
+CHECK copy view PASS
+CHECK failed Reset retires copied storage PASS
+API copy reset retry result=00000000
+CHECK copy reset retry PASS
+CASE copy flags=00000040 generation=1 size=80x48
+API copy view result=00000000
+CHECK copy view PASS
+CHECK copy storage ready with no stale content PASS
+CHECK copy generation advances PASS
+API logical original depth result=00000000
+CHECK logical original depth PASS
+API native original depth result=00000000
+CHECK native original depth PASS
+API logical descriptor result=00000000
+CHECK logical descriptor PASS
+API native descriptor result=00000000
+CHECK native descriptor PASS
+CHECK native depth remains original D24X8 PASS
+API other depth allocation result=00000000
+CHECK other depth allocation PASS
+API unbind depth for copy parity result=00000000
+CHECK unbind depth for copy parity PASS
+CHECK no copy from an unbound source PASS
+API native depth-copy original to other result=00000000
+CHECK native depth-copy original to other PASS
+API native depth-copy other to original result=00000000
+CHECK native depth-copy other to original PASS
+API bind other depth result=00000000
+CHECK bind other depth PASS
+CHECK no copy from unrelated depth PASS
+API rebind original result=00000000
+CHECK rebind original PASS
+API native stencil no-op clear result=00000000
+CHECK native stencil no-op clear PASS
+API logical stencil enable result=00000000
+CHECK logical stencil enable PASS
+API logical stencil never result=00000000
+CHECK logical stencil never PASS
+API copy view result=00000000
+CHECK copy view PASS
+API background epoch result=00000000
+CHECK background epoch PASS
+API main scene epoch result=00000000
+CHECK main scene epoch PASS
+API copy view result=00000000
+CHECK copy view PASS
+CHECK source clear epochs PASS
+API geometry no VS result=00000000
+CHECK geometry no VS PASS
+API geometry no PS result=00000000
+CHECK geometry no PS PASS
+API geometry FVF result=00000000
+CHECK geometry FVF PASS
+API geometry no texture result=00000000
+CHECK geometry no texture PASS
+API geometry diffuse result=00000000
+CHECK geometry diffuse PASS
+API geometry diffuse arg result=00000000
+CHECK geometry diffuse arg PASS
+API geometry Z result=00000000
+CHECK geometry Z PASS
+API geometry write Z result=00000000
+CHECK geometry write Z PASS
+API geometry less result=00000000
+CHECK geometry less PASS
+API geometry cull result=00000000
+CHECK geometry cull PASS
+API geometry begin result=00000000
+CHECK geometry begin PASS
+API geometry draw result=00000000
+CHECK geometry draw PASS
+API geometry end result=00000000
+CHECK geometry end PASS
+API sentinel texture result=00000000
+CHECK sentinel texture PASS
+API bind sentinel texture result=00000000
+CHECK bind sentinel texture PASS
+API sentinel pointsize result=00000000
+CHECK sentinel pointsize PASS
+API begin application stateblock result=00000000
+CHECK begin application stateblock PASS
+CHECK explicit copy rejected during recording PASS
+API end application stateblock result=00000000
+CHECK end application stateblock PASS
+API copy original depth outside scene result=00000000
+CHECK copy original depth outside scene PASS
+API copy view result=00000000
+CHECK copy view PASS
+CHECK valid copy epoch PASS
+API restored sampler getter result=00000000
+CHECK restored sampler getter PASS
+API restored pointsize getter result=00000000
+CHECK restored pointsize getter PASS
+CHECK copy restores exact sampler and pointsize PASS
+API copy keeps source bound result=00000000
+CHECK copy keeps source bound PASS
+CHECK source logical identity unchanged PASS
+API copy keeps native source bound result=00000000
+CHECK copy keeps native source bound PASS
+CHECK source native identity unchanged PASS
+API overlay destroys original depth result=00000000
+CHECK overlay destroys original depth PASS
+API copy view result=00000000
+CHECK copy view PASS
+CHECK saved copy survives source clear PASS
+API snapshot target result=00000000
+CHECK snapshot target PASS
+API snapshot readback result=00000000
+CHECK snapshot readback PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=preserved-original-scene-depth xy=8,8 expected=0.250000 actual=0.250000 PASS
+SAMPLE epoch=preserved-original-scene-depth xy=56,8 expected=0.750000 actual=0.750000 PASS
+SAMPLE epoch=preserved-original-scene-depth xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=preserved-original-scene-depth xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK preserved-original-scene-depth PASS
+API begin scene for second resolve result=00000000
+CHECK begin scene for second resolve PASS
+API copy original depth inside scene result=00000000
+CHECK copy original depth inside scene PASS
+API end scene for second resolve result=00000000
+CHECK end scene for second resolve PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=8,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=56,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK fresh-copy-after-source-clear PASS
+API unbind sentinel result=00000000
+CHECK unbind sentinel PASS
+CHECK copy device reaches final release PASS
+API create ordinary auto-depth device result=00000000
+CHECK create ordinary auto-depth device PASS
+CHECK native seam PASS
+CASE copy flags=00000050 generation=0 size=64x64
+API copy view result=00000000
+CHECK copy view PASS
+CHECK copy storage ready with no stale content PASS
+CHECK copy generation advances PASS
+API logical original depth result=00000000
+CHECK logical original depth PASS
+API native original depth result=00000000
+CHECK native original depth PASS
+API logical descriptor result=00000000
+CHECK logical descriptor PASS
+API native descriptor result=00000000
+CHECK native descriptor PASS
+CHECK native depth remains original D24X8 PASS
+API other depth allocation result=00000000
+CHECK other depth allocation PASS
+API unbind depth for copy parity result=00000000
+CHECK unbind depth for copy parity PASS
+CHECK no copy from an unbound source PASS
+API native depth-copy original to other result=00000000
+CHECK native depth-copy original to other PASS
+API native depth-copy other to original result=00000000
+CHECK native depth-copy other to original PASS
+API bind other depth result=00000000
+CHECK bind other depth PASS
+CHECK no copy from unrelated depth PASS
+API rebind original result=00000000
+CHECK rebind original PASS
+API native stencil no-op clear result=00000000
+CHECK native stencil no-op clear PASS
+API logical stencil enable result=00000000
+CHECK logical stencil enable PASS
+API logical stencil never result=00000000
+CHECK logical stencil never PASS
+API copy view result=00000000
+CHECK copy view PASS
+API background epoch result=00000000
+CHECK background epoch PASS
+API main scene epoch result=00000000
+CHECK main scene epoch PASS
+API copy view result=00000000
+CHECK copy view PASS
+CHECK source clear epochs PASS
+API geometry no VS result=00000000
+CHECK geometry no VS PASS
+API geometry no PS result=00000000
+CHECK geometry no PS PASS
+API geometry FVF result=00000000
+CHECK geometry FVF PASS
+API geometry no texture result=00000000
+CHECK geometry no texture PASS
+API geometry diffuse result=00000000
+CHECK geometry diffuse PASS
+API geometry diffuse arg result=00000000
+CHECK geometry diffuse arg PASS
+API geometry Z result=00000000
+CHECK geometry Z PASS
+API geometry write Z result=00000000
+CHECK geometry write Z PASS
+API geometry less result=00000000
+CHECK geometry less PASS
+API geometry cull result=00000000
+CHECK geometry cull PASS
+API geometry begin result=00000000
+CHECK geometry begin PASS
+API geometry draw result=00000000
+CHECK geometry draw PASS
+API geometry end result=00000000
+CHECK geometry end PASS
+API sentinel texture result=00000000
+CHECK sentinel texture PASS
+API bind sentinel texture result=00000000
+CHECK bind sentinel texture PASS
+API sentinel pointsize result=00000000
+CHECK sentinel pointsize PASS
+API begin application stateblock result=00000000
+CHECK begin application stateblock PASS
+CHECK explicit copy rejected during recording PASS
+API end application stateblock result=00000000
+CHECK end application stateblock PASS
+API copy original depth outside scene result=00000000
+CHECK copy original depth outside scene PASS
+API copy view result=00000000
+CHECK copy view PASS
+CHECK valid copy epoch PASS
+API restored sampler getter result=00000000
+CHECK restored sampler getter PASS
+API restored pointsize getter result=00000000
+CHECK restored pointsize getter PASS
+CHECK copy restores exact sampler and pointsize PASS
+API copy keeps source bound result=00000000
+CHECK copy keeps source bound PASS
+CHECK source logical identity unchanged PASS
+API copy keeps native source bound result=00000000
+CHECK copy keeps native source bound PASS
+CHECK source native identity unchanged PASS
+API overlay destroys original depth result=00000000
+CHECK overlay destroys original depth PASS
+API copy view result=00000000
+CHECK copy view PASS
+CHECK saved copy survives source clear PASS
+API snapshot target result=00000000
+CHECK snapshot target PASS
+API snapshot readback result=00000000
+CHECK snapshot readback PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=preserved-original-scene-depth xy=8,8 expected=0.250000 actual=0.250000 PASS
+SAMPLE epoch=preserved-original-scene-depth xy=56,8 expected=0.750000 actual=0.750000 PASS
+SAMPLE epoch=preserved-original-scene-depth xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=preserved-original-scene-depth xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK preserved-original-scene-depth PASS
+API begin scene for second resolve result=00000000
+CHECK begin scene for second resolve PASS
+API copy original depth inside scene result=00000000
+CHECK copy original depth inside scene PASS
+API end scene for second resolve result=00000000
+CHECK end scene for second resolve PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=8,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=56,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK fresh-copy-after-source-clear PASS
+API unbind sentinel result=00000000
+CHECK unbind sentinel PASS
+API held-source Reset result=8876086c
+CHECK held logical source still rejects Reset PASS
+API copy view result=00000000
+CHECK copy view PASS
+CHECK failed Reset retires copied storage PASS
+API copy reset retry result=00000000
+CHECK copy reset retry PASS
+CASE copy flags=00000050 generation=1 size=80x48
+API copy view result=00000000
+CHECK copy view PASS
+CHECK copy storage ready with no stale content PASS
+CHECK copy generation advances PASS
+API logical original depth result=00000000
+CHECK logical original depth PASS
+API native original depth result=00000000
+CHECK native original depth PASS
+API logical descriptor result=00000000
+CHECK logical descriptor PASS
+API native descriptor result=00000000
+CHECK native descriptor PASS
+CHECK native depth remains original D24X8 PASS
+API other depth allocation result=00000000
+CHECK other depth allocation PASS
+API unbind depth for copy parity result=00000000
+CHECK unbind depth for copy parity PASS
+CHECK no copy from an unbound source PASS
+API native depth-copy original to other result=00000000
+CHECK native depth-copy original to other PASS
+API native depth-copy other to original result=00000000
+CHECK native depth-copy other to original PASS
+API bind other depth result=00000000
+CHECK bind other depth PASS
+CHECK no copy from unrelated depth PASS
+API rebind original result=00000000
+CHECK rebind original PASS
+API native stencil no-op clear result=00000000
+CHECK native stencil no-op clear PASS
+API logical stencil enable result=00000000
+CHECK logical stencil enable PASS
+API logical stencil never result=00000000
+CHECK logical stencil never PASS
+API copy view result=00000000
+CHECK copy view PASS
+API background epoch result=00000000
+CHECK background epoch PASS
+API main scene epoch result=00000000
+CHECK main scene epoch PASS
+API copy view result=00000000
+CHECK copy view PASS
+CHECK source clear epochs PASS
+API geometry no VS result=00000000
+CHECK geometry no VS PASS
+API geometry no PS result=00000000
+CHECK geometry no PS PASS
+API geometry FVF result=00000000
+CHECK geometry FVF PASS
+API geometry no texture result=00000000
+CHECK geometry no texture PASS
+API geometry diffuse result=00000000
+CHECK geometry diffuse PASS
+API geometry diffuse arg result=00000000
+CHECK geometry diffuse arg PASS
+API geometry Z result=00000000
+CHECK geometry Z PASS
+API geometry write Z result=00000000
+CHECK geometry write Z PASS
+API geometry less result=00000000
+CHECK geometry less PASS
+API geometry cull result=00000000
+CHECK geometry cull PASS
+API geometry begin result=00000000
+CHECK geometry begin PASS
+API geometry draw result=00000000
+CHECK geometry draw PASS
+API geometry end result=00000000
+CHECK geometry end PASS
+API sentinel texture result=00000000
+CHECK sentinel texture PASS
+API bind sentinel texture result=00000000
+CHECK bind sentinel texture PASS
+API sentinel pointsize result=00000000
+CHECK sentinel pointsize PASS
+API begin application stateblock result=00000000
+CHECK begin application stateblock PASS
+CHECK explicit copy rejected during recording PASS
+API end application stateblock result=00000000
+CHECK end application stateblock PASS
+API copy original depth outside scene result=00000000
+CHECK copy original depth outside scene PASS
+API copy view result=00000000
+CHECK copy view PASS
+CHECK valid copy epoch PASS
+API restored sampler getter result=00000000
+CHECK restored sampler getter PASS
+API restored pointsize getter result=00000000
+CHECK restored pointsize getter PASS
+CHECK copy restores exact sampler and pointsize PASS
+API copy keeps source bound result=00000000
+CHECK copy keeps source bound PASS
+CHECK source logical identity unchanged PASS
+API copy keeps native source bound result=00000000
+CHECK copy keeps native source bound PASS
+CHECK source native identity unchanged PASS
+API overlay destroys original depth result=00000000
+CHECK overlay destroys original depth PASS
+API copy view result=00000000
+CHECK copy view PASS
+CHECK saved copy survives source clear PASS
+API snapshot target result=00000000
+CHECK snapshot target PASS
+API snapshot readback result=00000000
+CHECK snapshot readback PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=preserved-original-scene-depth xy=8,8 expected=0.250000 actual=0.250000 PASS
+SAMPLE epoch=preserved-original-scene-depth xy=56,8 expected=0.750000 actual=0.750000 PASS
+SAMPLE epoch=preserved-original-scene-depth xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=preserved-original-scene-depth xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK preserved-original-scene-depth PASS
+API begin scene for second resolve result=00000000
+CHECK begin scene for second resolve PASS
+API copy original depth inside scene result=00000000
+CHECK copy original depth inside scene PASS
+API end scene for second resolve result=00000000
+CHECK end scene for second resolve PASS
+API save RT result=00000000
+CHECK save RT PASS
+API save depth result=00000000
+CHECK save depth PASS
+API save viewport result=00000000
+CHECK save viewport PASS
+API save state result=00000000
+CHECK save state PASS
+API vs_3_0 result=00000000
+CHECK vs_3_0 PASS
+API ps_3_0 result=00000000
+CHECK ps_3_0 PASS
+API snapshot VS result=00000000
+CHECK snapshot VS PASS
+API snapshot PS result=00000000
+CHECK snapshot PS PASS
+API snapshot decl result=00000000
+CHECK snapshot decl PASS
+API snapshot unbind depth result=00000000
+CHECK snapshot unbind depth PASS
+API snapshot RT result=00000000
+CHECK snapshot RT PASS
+API snapshot viewport result=00000000
+CHECK snapshot viewport PASS
+API snapshot bind VS result=00000000
+CHECK snapshot bind VS PASS
+API snapshot bind PS result=00000000
+CHECK snapshot bind PS PASS
+API snapshot bind decl result=00000000
+CHECK snapshot bind decl PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot disable state result=00000000
+CHECK snapshot disable state PASS
+API snapshot cull result=00000000
+CHECK snapshot cull PASS
+API snapshot fill result=00000000
+CHECK snapshot fill PASS
+API snapshot color write result=00000000
+CHECK snapshot color write PASS
+API snapshot texture result=00000000
+CHECK snapshot texture PASS
+API snapshot point min result=00000000
+CHECK snapshot point min PASS
+API snapshot point mag result=00000000
+CHECK snapshot point mag PASS
+API snapshot no mip result=00000000
+CHECK snapshot no mip PASS
+API snapshot clamp U result=00000000
+CHECK snapshot clamp U PASS
+API snapshot clamp V result=00000000
+CHECK snapshot clamp V PASS
+API snapshot no srgb result=00000000
+CHECK snapshot no srgb PASS
+API snapshot begin result=00000000
+CHECK snapshot begin PASS
+API snapshot draw result=00000000
+CHECK snapshot draw PASS
+API snapshot end result=00000000
+CHECK snapshot end PASS
+API snapshot unbind texture result=00000000
+CHECK snapshot unbind texture PASS
+API restore RT result=00000000
+CHECK restore RT PASS
+API restore depth result=00000000
+CHECK restore depth PASS
+API restore state result=00000000
+CHECK restore state PASS
+API restore viewport result=00000000
+CHECK restore viewport PASS
+API read snapshot result=00000000
+CHECK read snapshot PASS
+API lock snapshot result=00000000
+CHECK lock snapshot PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=8,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=56,8 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=32,40 expected=1.000000 actual=1.000000 PASS
+SAMPLE epoch=fresh-copy-after-source-clear xy=24,24 expected=1.000000 actual=1.000000 PASS
+API unlock snapshot result=00000000
+CHECK unlock snapshot PASS
+CHECK fresh-copy-after-source-clear PASS
+API unbind sentinel result=00000000
+CHECK unbind sentinel PASS
+CHECK copy device reaches final release PASS
+RESULT PASS checks=634 samples=32

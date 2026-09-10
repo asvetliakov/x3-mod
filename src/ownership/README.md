@@ -2,20 +2,17 @@
 
 This layer forwards normal D3D9 through canonical COM wrappers. The loader offers
 it through the process-local `X3M_OWNERSHIP=1` opt-in; default behavior stays on the
-native capture path. `X3M_SAMPLEABLE_DEPTH=1` additionally requests experimental
-automatic-depth substitution only when ownership is enabled. Ownership establishes
-safe persistent resource lifetime; neither mode implements TAA or HDR.
-
-**Automatic-depth substitution is not ready for game enablement.** Numeric depth
-sampling works, but depth copies to/from ordinary D24X8 surfaces are incompatible
-with the physical INTZ format on this backend. The limits below remain gates.
+native capture path. `X3M_DEPTH_COPY=1` additionally requests private automatic-depth
+snapshot storage when ownership is enabled. The original application depth target
+remains unchanged. Ownership establishes safe persistent resource lifetime; neither
+mode implements TAA or HDR.
 
 `d3d9_ownership.h` exposes:
 
 - `wrap_factory(owned_native, out, options = {})`: consumes one owned native factory reference
   only on success. On failure the caller retains it. Ex factories are rejected.
-  `Options::sampleable_auto_depth` defaults false and is copied into created
-  devices before their first application clear/draw. Rewrapping a live factory
+  `Options::capture_auto_depth` defaults false and is copied into created devices
+  before their first application clear/draw. Rewrapping a live factory
   with conflicting options fails rather than changing existing policy.
 - `borrowed_native_device(wrapped)`: renderer-only access while a caller holds a
   live wrapper reference. It does not add a reference and must not escape into
@@ -23,10 +20,11 @@ with the physical INTZ format on this backend. The limits below remain gates.
 - `retain_renderer_resource(wrapped, owned_resource)`: adopts one owned native
   reference, releasing it before Reset or backend-device destruction. Failure
   leaves ownership with the caller. Known application wrappers are rejected.
-- `get_depth_view(wrapped, out)`: exposes a renderer-only borrowed INTZ texture
-  and its allocation generation, clear epoch, logical descriptor, status and
-  available/bound flags. Valid wrappers return `S_OK`; consumers must inspect
-  both `status` and `available`. Sampling requires unbinding the depth target.
+- `copy_auto_depth(wrapped)`: explicitly snapshots the bound original automatic
+  depth surface into a private native D24X8 texture when capture mode is enabled.
+- `get_copy_depth_view(wrapped, out)`: returns that borrowed snapshot, generation,
+  source/copy epochs, validity, availability, binding and last-operation status.
+  Native D24X8 comparison sampling requires a separate numeric decode.
 
 The caller of the renderer seam must pass a valid native object created for that
 borrowed backend device. It must restore all application-visible bindings before
@@ -88,10 +86,11 @@ the wrapper leaves the caller's slot untouched too; if the backend clears it, th
 wrapper clears it. The marker is never dereferenced or released. This distinction
 matters on Preview: an invalid `GetRenderTarget` index preserves its output while
 several failed creation/getter calls clear theirs.
-With depth substitution off, native HRESULTs, swap-chain enumeration
-peculiarities, descriptors and resource contents are preserved unless wrapper
-allocation itself fails. The enabled substitution path has the limits below;
-there is no blanket enabled-mode API-equivalence claim.
+Application depth, draw and surface APIs use ordinary native forwarding; no depth
+format substitution, stencil calibration, draw masking or surface aliasing occurs.
+Native HRESULTs, swap-chain enumeration peculiarities and descriptors are preserved
+unless wrapper allocation itself fails. Explicit snapshot operations have their own
+status and do not replace application method results.
 
 On Reset, renderer-owned resources are released first. A failed reset keeps the
 logical wrapper alive but disables further renderer-resource adoption until a
@@ -99,68 +98,67 @@ successful reset. Present/TestCooperativeLevel loss results also retire renderer
 resources. This layer does not manufacture successful resets or release the
 application's child references.
 
-## Experimental automatic depth substitution
+## Original-preserving automatic depth snapshots
 
-The new station trace establishes repeated clears of a single automatically
-allocated D24X8 scene surface. The opt-in targets only automatic D24X8,
-single-sample, default-pool surfaces matching the initial color target dimensions.
-D16, stencil formats, lockable formats, multisampling, no-auto-depth devices and
-Ex remain ineligible. INTZ format/depth-color matching and actual allocation/bind
-must succeed. Native `GetRenderState(STENCILENABLE)` must work even on a pure
-device; otherwise the feature declines before application rendering starts.
+`Options::capture_auto_depth` targets an automatic, single-sample, default-pool
+D24X8 surface. It retains native references to that original surface and a private
+D24X8 depth texture of equal dimensions. It never replaces the application's depth
+surface, clears it during setup, or changes its format. Application descriptors,
+containers, private data, depth copies and stencil behavior therefore continue to
+use the actual original allocation. Unsupported source formats, multisampling,
+missing RESZ/D24X8 texture support, unsupported required getters or allocation
+failure leave normal rendering intact and report capture unavailable.
 
-The device keeps only native references to the original automatic surface and
-the private INTZ texture/surface. `GetDepthStencilSurface` maps the physical INTZ
-result back to the original before normal canonical wrapping. Setting that
-logical original routes to INTZ; null and unrelated surfaces retain their native
-meaning. The real original supplies its descriptor, private data and container
-semantics, with no hidden INTZ texture escaping through application getters.
-Native state blocks still control their normal state; no logical depth-binding
-state is added to them.
+The renderer explicitly calls `copy_auto_depth` before the depth interval it needs
+is overwritten. The original must currently be bound. The helper saves texture
+stage 0 and POINTSIZE, binds the private destination texture, writes RESZ trigger
+`0x7fa05000` to POINTSIZE, then restores both values. It performs no dummy draw,
+BeginScene/EndScene or target switch. Native D24X8-to-D24X8 copies through this
+sequence were numerically verified on the installed Preview backend both outside
+and inside an existing scene, including pure-device getters and preservation after
+the original surface is cleared. Capability acceptance alone is not that proof.
+The private texture uses comparison sampling on this backend; reading its red
+channel as raw depth is incorrect. Numeric decoding is a separate renderer step.
 
-Every successful Z clear while INTZ is bound advances `clear_epoch`, including
-partial clears. Allocation creation/retirement advances `generation`. These are
-resource/content-interval markers, not proof that a full scene was captured.
-The source trace clears the same scene depth before Present, so a consumer must
-sample/copy the needed epoch before the next destructive clear. This layer does
-not select that scene boundary or make a depth snapshot itself.
+Allocation/retirement changes `generation`. Successful Z clears of the original
+source advance `source_epoch`, including partial clears. Successful copies store
+that value in `copy_epoch` and set `copy_valid`. A later source clear preserves the
+saved snapshot and its epoch. These markers describe storage and clear intervals;
+they do not select a gameplay scene boundary or prove that its geometry is complete.
+Ordinary preflight rejection (wrong/unbound source or state-block recording) keeps
+an earlier valid snapshot. Once copy-state mutation begins, validity stays false
+unless the trigger and both restorations succeed. Callers inspect `status` as well
+as `available` and `copy_valid`; a recognized wrapper alone returns `S_OK` from the
+view accessor even when capture is unavailable.
 
-Before Reset or normal teardown, the implementation restores the original native
-binding when INTZ is bound, then releases all substitution references. A still
-externally held original surface continues to make native Reset fail. Successful
-reset allocates a fresh generation before returning; selection failure leaves the
-original allocation authoritative for that whole generation. No allocation retry
-or stale-original fallback occurs during rendering. During already-known loss,
-only owned references are released, without calling otherwise-invalid Get/Set
-methods. A lost getter for a formerly active mapping returns `D3DERR_DEVICELOST`
-rather than exposing a backend-retained INTZ surface; held original wrappers keep
-their own identity and metadata.
+Wrapped BeginStateBlock/EndStateBlock results update the recording guard only on
+native success. Copying during recording is rejected before mutation because
+state setters would otherwise record commands instead of restoring live state.
+Renderer code must not bypass this guard by recording directly through the borrowed
+native device. Rendering, snapshot use and Reset must be serialized by the caller.
+The snapshot is borrowed without AddRef and is invalid after Reset, observed loss,
+or final logical device release. Saved temporary native references are released
+before loss retirement. Any observed DEVICELOST/DEVICENOTRESET from initialization,
+stateblock operations, copy preflight, mutation or restoration retires the snapshot
+and renderer resources; loss takes
+precedence over an earlier ordinary mutation error. After known loss the helper
+issues no further ordinary state setters. Reset retires all private references
+before forwarding, and successful Reset prepares new storage before returning.
+An application-held original surface still causes the backend's usual failed
+Reset, followed by recovery when that reference is released.
 
-INTZ has physical stencil bits while logical D24X8 does not. Initialization
-measures a stencil-only Clear on the still-bound original before any application
-rendering, touching no color or Z data. It records whether this backend accepts
-the no-op or rejects it. Active clears reproduce that decision and do not clear
-INTZ's physical stencil. On Preview the original accepts the stencil-only clear.
-Draws with live stencil enabled temporarily disable it, render and restore the
-native value. A failed bound-state query/stencil guard latches failure status and
-does not draw with unintended physical stencil; reset is required to recover.
+This layer supplies storage and an explicit copy operation. It does not choose a
+capture hook, automatically copy every clear, decode depth, or implement temporal
+history/reprojection. Game enablement requires those separate integration checks.
 
-GPU-content calls (`StretchRect`, `UpdateSurface`, `GetRenderTargetData`,
-`GetFrontBufferData`, `ColorFill`) map the selected logical depth surface to its
-physical INTZ representation so they never read or write stale original content.
-**This does not make INTZ/D24X8 copies compatible.** Preview accepts full-surface
-ordinary D24X8-to-D24X8 depth copies but rejects INTZ-to-D24X8 and the reverse.
-The wrapper forwards that physical failure and does not claim enabled-mode parity.
-A verified original-depth resolve route such as RESZ is under investigation and
-could remove the need to substitute the application's depth surface at all.
+## Retired substitution experiment
 
-Another unresolved case is drawing during `BeginStateBlock`/`EndStateBlock`
-recording with live stencil enabled. Native Wine records SetRenderState changes
-without replacing the current live state; a temporary draw mask can therefore
-affect recorded state instead of the draw. Completed-state-block Apply behavior
-does not prove this case. Resolve it or avoid substitution before game enablement;
-no shadow state-block model is claimed here. These limitations are separate from
-the verified ordinary ownership, reset and numeric sample tests.
+Commit `22146a1` preserves the earlier INTZ automatic-depth substitution experiment
+and its verification history. That path was removed from current production code:
+INTZ-to-D24X8 copies failed where ordinary D24X8 copies succeeded, and scoped stencil
+masking did not cover draws during state-block recording. Original-preserving RESZ
+snapshots avoid both changes to application behavior. Old substitution reports are
+historical evidence, not tests of the current API.
 
 ## Generated forwarding code
 
@@ -181,7 +179,7 @@ unwrapping. Building does not require running the generator. Verification lives
 under `verification/`; SDK ABI overrides and concrete class instantiation provide
 compile-time coverage for missing or mismatched methods.
 
-Review standalone ownership, actual-DLL integration and auto-depth fixture results
-before opting into a game test. Actual game compatibility, concurrent lifecycle
-calls, the depth-copy/recording limitations above, Ex and visual acceptance remain
-separate gates. Generated build products and raw runtime captures stay untracked.
+Review standalone ownership, actual-DLL integration, copied-depth numeric and
+loss-injection fixture results before opting into a game test. Actual game
+compatibility, concurrent lifecycle calls, snapshot boundary selection, Ex and
+visual acceptance remain separate gates. Generated build products and raw runtime captures stay untracked.

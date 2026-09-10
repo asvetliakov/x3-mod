@@ -7,7 +7,7 @@ namespace {
 HMODULE self_module;
 HMODULE backend;
 bool ownership_enabled = false;
-bool sampleable_depth_enabled = false;
+bool depth_copy_enabled = false;
 INIT_ONCE once = INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     x3m::initialize_log(self_module);
@@ -15,10 +15,10 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     // path. Read once, outside loader lock, before exposing any factory.
     wchar_t setting[8]{};
     ownership_enabled = GetEnvironmentVariableW(L"X3M_OWNERSHIP", setting, 8) == 1 && setting[0] == L'1';
-    const bool depth_requested = GetEnvironmentVariableW(L"X3M_SAMPLEABLE_DEPTH", setting, 8) == 1 && setting[0] == L'1';
-    sampleable_depth_enabled = ownership_enabled && depth_requested;
+    const bool depth_requested = GetEnvironmentVariableW(L"X3M_DEPTH_COPY", setting, 8) == 1 && setting[0] == L'1';
+    depth_copy_enabled = ownership_enabled && depth_requested;
     if (ownership_enabled || depth_requested)
-        x3m::log("ownership_mode requested=%u sampleable_depth_requested=%u sampleable_depth_enabled=%u scope=normal9 fallback=native", ownership_enabled, depth_requested, sampleable_depth_enabled);
+        x3m::log("ownership_mode requested=%u depth_copy_requested=%u depth_copy_enabled=%u scope=normal9 fallback=native", ownership_enabled, depth_requested, depth_copy_enabled);
     wchar_t path[32768]{};
     // Absolute system path avoids reloading this app-local proxy. Never search PATH.
     UINT length = GetSystemDirectoryW(path, 32750);
@@ -58,7 +58,7 @@ extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
     if (result && ownership_enabled) {
         IDirect3D9* wrapped = nullptr;
         x3m::ownership::Options options{};
-        options.sampleable_auto_depth = sampleable_depth_enabled;
+        options.capture_auto_depth = depth_copy_enabled;
         const HRESULT adopted = x3m::ownership::wrap_factory(result, &wrapped, options);
         if (SUCCEEDED(adopted)) {
             // Successful adoption consumes the native factory reference. Capture

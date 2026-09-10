@@ -13,7 +13,7 @@ and [roadmap](architecture/roadmap.md).
   configuration preserved. User test setting: 1280×768 windowed (was 5120×1440
   borderless). No unused launcher is intentionally left open.
 - Independent FP16/depth/D3D11-scRGB capabilities; baseline/proxy smoke passes;
-  62 analysis tests and compile-time ABI guards pass.
+  70 analysis tests and compile-time ABI guards pass.
 - Static archive/PE analysis, targeted Ghidra renderer map, shader index and CTAB
   register mapping, documented separately in `docs/reverse-engineering/`.
 - Animated menu capture: 690 draws; user-assisted flight: two complete 122-draw
@@ -129,21 +129,35 @@ reach the capture hooks; repeated device address reuse leaves no stale contexts.
 Stencil states and depth selection status are included in consolidated capture
 diagnostics. See [integration verification](../verification/probe/ownership_integration.md).
 
-Opt-in automatic D24X8-to-INTZ substitution passes 758 API/lifetime checks and 48
-numeric samples, including preservation before a destructive depth clear and
-three allocation-failure rollback cases. **It is not ready for gameplay:** depth
-copies between INTZ and ordinary D24X8 fail where the original copies succeed,
-and stencil handling during stateblock recording is unresolved. See
-[automatic-depth experiment](verification/auto-depth.md). Investigation of a
-compatible RESZ copy path continues before choosing the production depth route.
+The incompatible D24X8-to-INTZ substitution experiment has been removed. The
+replacement preserves the original application surface and explicitly copies it
+to native D24X8 storage through RESZ. The installed binary investigation and
+numeric positive/negative controls establish why D24X8-to-INTZ fails despite a
+successful trigger HRESULT. See [RESZ verification](verification/depth-resolve.md)
+and [backend investigation](reverse-engineering/depth-resolve-backend.md).
+The opt-in `X3M_DEPTH_COPY=1` switch allocates storage and reports diagnostics;
+no game boundary currently invokes the explicit copy. See
+[copy verification](verification/copied-depth.md): 634 checks / 32 samples pass,
+with 357 additional loss-regression checks across 33 cases.
 
 The bounded original mesh-adjacency reuse fixture passes 1,218 checks and complete
 downstream mesh parity. It demonstrates a synthetic speed benefit for repeated
 identical meshes, not a game loading improvement; actual repetition/cost remains
 unmeasured. See [mesh preparation](verification/mesh-preparation.md).
 
-A standalone temporal resolve shader and GPU verification are in progress;
-camera/object-motion routing and gameplay TAA remain incomplete.
+A standalone temporal resolve shader now passes 58 numeric GPU checks including
+camera/object reprojection, disocclusion, HDR preservation, actual jittered
+history accumulation and Reset. Independent review caught and corrected a raw
+D3D9 viewport half-texel error using a rasterized-geometry regression. See
+[temporal resolve](verification/temporal-resolve.md). Camera/object-motion routing,
+scene-boundary integration and gameplay TAA remain incomplete.
+
+The native D24X8 snapshot exposes shadow comparisons rather than raw depth. A
+separate GPU decoder reconstructs R32F device depth with 26 comparisons per pixel;
+precision and cost limits are recorded in [decoder verification](verification/depth-decode.md).
+Its isolated timings do not establish frame cost at the user's full resolution.
+Independent [code review findings and fixes](verification/review-04.md) are
+recorded with the checkpoint evidence.
 
 No game was launched by the agent. No visual enhancement has been enabled.
 Commit each completed logical checkpoint.

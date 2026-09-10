@@ -2,15 +2,14 @@
 #include <d3d9.h>
 #include <cstdint>
 
-// Experimental normal-D3D9 ownership boundary. Not connected to the installed
-// capture proxy. Application COM references are separate from renderer-owned
+// Opt-in normal-D3D9 ownership boundary. Application COM references are separate from renderer-owned
 // backend resources, so persistent history cannot keep its own owner alive.
 namespace x3m::ownership {
 
 struct Options {
-    // Initial automatic D24X8, single-sample surfaces only. Default is inert.
-    // Copied into each device before its first application clear or draw.
-    bool sampleable_auto_depth = false;
+    // Prepare a private snapshot of automatic, single-sample D24X8 through RESZ.
+    // Copied into devices before their first application clear/draw. Default inert.
+    bool capture_auto_depth = false;
 };
 
 // On success, consumes exactly the caller's owned native reference. On failure,
@@ -18,22 +17,28 @@ struct Options {
 HRESULT wrap_factory(IDirect3D9* owned_native, IDirect3D9** out,
                      const Options& options = {}) noexcept;
 
-struct DepthView {
-    IDirect3DTexture9* texture = nullptr; // Borrowed native INTZ, never app-visible.
-    std::uint64_t generation = 0; // Changes whenever active storage is created/retired.
-    std::uint64_t clear_epoch = 0; // Successful Z clears of this active allocation.
-    D3DSURFACE_DESC logical_desc{};
-    HRESULT status = S_FALSE; // S_OK active; S_FALSE off/ineligible; failure reason.
+struct CopyDepthView {
+    // Borrowed native D24X8 snapshot. On verified Preview this texture uses
+    // comparison sampling, not raw red-channel depth; GPU decode is separate.
+    IDirect3DTexture9* texture = nullptr;
+    std::uint64_t generation = 0;
+    std::uint64_t source_epoch = 0; // Successful clears of the original source.
+    std::uint64_t copy_epoch = 0; // Source epoch of the last successful copy.
+    D3DSURFACE_DESC source_desc{};
+    HRESULT status = S_FALSE;
     bool requested = false;
     bool available = false;
-    bool bound = false; // Physical INTZ is the current depth target.
+    bool copy_valid = false;
+    bool source_bound = false;
 };
 
-// Renderer-only snapshot: valid wrapper returns S_OK even when unavailable;
-// inspect status/available. No AddRef. Hold the wrapper while using the borrowed
-// texture, and stop using it before Reset, device loss or final wrapper Release.
-// Unbind the native depth target before sampling and restore it afterwards.
-HRESULT get_depth_view(IDirect3DDevice9* wrapped, DepthView* out) noexcept;
+// Both calls require a live wrapper and rendering/reset serialization by caller.
+// get_copy_depth_view returns S_OK for a recognized wrapper; inspect its fields.
+// copy_auto_depth performs no app draw/clear/target substitution. The original
+// source must currently be bound, and no state block may be recording. Texture 0
+// and POINTSIZE are restored. A source clear does not invalidate a saved copy.
+HRESULT get_copy_depth_view(IDirect3DDevice9* wrapped, CopyDepthView* out) noexcept;
+HRESULT copy_auto_depth(IDirect3DDevice9* wrapped) noexcept;
 
 // Renderer-only borrowed pointer. No AddRef; caller must hold a live application
 // wrapper reference throughout use. Never return this pointer to application code.

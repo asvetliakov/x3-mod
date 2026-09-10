@@ -1,4 +1,53 @@
 {
+  "sources_before_and_after": {
+    "CMakeLists.txt": "6871517461ed1b5e0dfa5cc89216149a60fd3797bf6cb8494a41c37e04e9e12e",
+    "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
+    "src/ownership/d3d9_classes_inc.h": "bf8869f7e7121f7fe6c5a90d24ead19451f03c3607ae505aa92900af720d9cb0",
+    "src/ownership/d3d9_forwarders_inc.h": "93889251ea09626b8844c4bcf802658b77f6291dc2192a03216b7143060ee656",
+    "src/ownership/d3d9_ownership.cpp": "c71dbe311c76d2dfa8b1a71ad22941cd46757c9ee77f7b730cc93261f19deb14",
+    "src/ownership/d3d9_ownership.h": "bd577a058ee79a0031d0ab94546b99a3a13e001a181ade37681c9dd535d74930",
+    "src/proxy/capture.cpp": "516421347f784f168776c1fa1c33ffef83ae34ea250c1d058d6677c771fc68ef",
+    "src/proxy/capture.h": "609b232874932ca584ec259eb7eead463c9ed9bc3231cfb26467d393f95ec0f8",
+    "src/proxy/capture_state.cpp": "0c362a3d14ea3a18e7ba216fd08ab77fe5d812cf1edb8b95c14f32584aae061b",
+    "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
+    "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
+    "src/proxy/loader.cpp": "f6750967ef34d37f51317956097f3c59c719afa5751c4446e54867784bee595e",
+    "src/proxy/loading_trace.cpp": "5a1e470d9e86b40814360a928fa2e6e35eb6fc7ccd08f2a4d0589c8d3fb36389",
+    "src/proxy/loading_trace.h": "a2cb9334f5fb2c3e1734de61fa76de33019cb29ead2e9cae0d7e9cdfa27e861e",
+    "src/proxy/telemetry.cpp": "0cae95895de6613c4d72db7e8ff5ea89250802c78b37469005e52c5ecc7074b5",
+    "src/proxy/telemetry.h": "88dd36aa1755c2b61175aa3060e9c1843294c69e9ddceaa7d2c0a8bbbb54da37",
+    "tools/analysis/summarize_capture.py": "8a400332c23bac22cb8825a595cc7ba5d188e61ea0963b74932a00b2f55b2bd8",
+    "verification/probe/abi_check.cpp": "763971c861bae4f1ec7757eb7e2960977be8a10b15ef18868d79523a25255338",
+    "verification/probe/build.sh": "2f94068301881c3737cafb069d76dee2fbefed8898ddfa6f19881789345fa497",
+    "verification/probe/build_ownership.sh": "5a332fa3823ad4cfe087743d3b73e4cbee991d502d6c8c646d0ce205b7c61cce",
+    "verification/probe/build_ownership_integration.sh": "ae63a604eecb46b596433976a8aa68729e85751c39e022f0429a0a4c53a4fda4",
+    "verification/probe/capability_probe.cpp": "8ea9fd8e026a8f6a8bb86ce65521935fb924ed7704855fb7abcb40557fa32348",
+    "verification/probe/capture_state_fixture.cpp": "563446acede96c541ff8d99cac8a927c213d5e26d115722b30e6168e222cea74",
+    "verification/probe/d3d9_smoke.cpp": "7c89399825fd820ee70d4167e04fb1aac26ca4920c057b1cbf5a3ab2ad2a24b0",
+    "verification/probe/ownership_fixture.cpp": "a14cba769cf99fd3f8a6fbb8cd4c61418033db2470dab1e2dfbd4929b1dac5ea",
+    "verification/probe/ownership_integration_auto_depth.cpp": "c9855011f6dd6033dff68245c7076782387590ca4acece66a7a3ef87a73cd5bc",
+    "verification/probe/ownership_integration_fallback_stub.cpp": "2a95c936c67782e65d355cda13f3652dccbb2a0a77504a729da1381fb23450bf",
+    "verification/probe/ownership_integration_lifetime.cpp": "101c0b6260f97df2be544b98a7d1ddfdaf59a07233d47a3b7d6eeba9bdf40347",
+    "verification/probe/run_ownership_integration.py": "d273e9741da79f5a0a98cff9fe5ab4b557b81a5f04d8eca9c945a318136586e4",
+    "verification/probe/run_ownership_integration_fallback.py": "ef610ba5a456e4442522c4ebc257acdd20673fa163b58a5fbb10942131b788be",
+    "verification/probe/verify_capture_state.py": "f547608020782ba09a107c7633b7b1d6036cf9e480b995df29bc12a40c065dac",
+    "verification/probe/verify_ownership_integration.py": "1b2cd01516623a0f5091260b930a20836aa728f87b28541b08d912ed26947c02"
+  },
+  "binaries_before_and_after": {
+    "build-ownership/d3d9.dll": "c6ade9b9d9835c628556895fc9dcff20b08247e14f78ff7a1d676ae5e0d3f08e",
+    "verification/probe/build/d3d9_smoke.exe": "b2a4bd5bdcbcafa3d45c9fcff54fb5a9b0cd252f911775ee5636b3626e7c2956",
+    "verification/probe/build/capture_state_fixture.exe": "80f16eeeb56eff0a2d54a89a5962aa3e7e1872eab4a336c3a925960ba4b22031",
+    "verification/probe/build/ownership_integration_lifetime.exe": "ff0dbd06b209dac532158b4b4d8faaa942a5aed0a727f5aa65c24e3b8005a5f1",
+    "verification/probe/build/ownership_baseline.exe": "4e37542c7c6a9ab3b1f60b09be55fb7ae395b4818a49999714ece73b5a448894",
+    "verification/probe/build/ownership_integration_auto_depth.exe": "1f213cb77c96eb7fb2ee8723a96c4da7028345cb7a661678b495fec60e5e162c"
+  },
+  "production_object_hashes": {
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj": "a15239a1667cc778e9b434364c95050931b4be580e0e1612d7d97dec792ad165",
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj": "fa510548107f6d65d2010fc914fdcbb40c95df06756d5a812e0fd87dba127564",
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj": "09fa3df3585c3e33a1afb43cd7f915015f7551a6d008af10567cc4330388bc38",
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/loading_trace.cpp.obj": "63566c732d7c6ac68437476fc14f878059db43e98f548c3df80d88ce8ba25f53",
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/telemetry.cpp.obj": "052800b60b56e369bd6721565fba773e9cfb6d190ff93bda867fb8b1d59bfbda"
+  },
   "result": "PASS",
   "fault": "wrap_factory E_OUTOFMEMORY without consuming native ref",
   "production_objects": [
@@ -8,9 +57,9 @@
     "src/proxy/loading_trace.cpp.obj",
     "src/proxy/telemetry.cpp.obj"
   ],
-  "verification_dll_sha256": "b90b3be2f2098a1c419366a2866b7106f6d802b380cbf2a7e3b9bb0e88d85907",
-  "production_dll_sha256": "ecdc8614a088e8c7f66a99b84df735ce06646580f89d97280649e8fbe65410e6",
-  "trace_sha256": "10e8fddfc5aae8f2c0ed402995418e5120a7e9da380678d35614d16e99e96122",
-  "stub_sha256": "a5873c3352b1d2153d9e6dd32826160f22d718753ef22980b84ecad7927e8902",
+  "verification_dll_sha256": "413726b08574b3a989079c0442d319ed166508e330dbbd92ddc21965a4c32b26",
+  "production_dll_sha256": "c6ade9b9d9835c628556895fc9dcff20b08247e14f78ff7a1d676ae5e0d3f08e",
+  "trace_sha256": "5e6bdba0aee74f2190abd00b0216277be9836832b68240a05abcd660ef36f68c",
+  "stub_sha256": "2a95c936c67782e65d355cda13f3652dccbb2a0a77504a729da1381fb23450bf",
   "installed": false
 }

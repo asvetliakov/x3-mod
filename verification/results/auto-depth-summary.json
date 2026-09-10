@@ -51,5 +51,8 @@
       "Real device loss, multithreaded callers, and gameplay remain unverified."
     ]
   },
-  "passed": true
+  "passed": true,
+  "tested_commit": "22146a1",
+  "historical_experiment": true,
+  "superseded_by": "Original-preserving native D24X8 RESZ snapshots"
 }

@@ -8,5 +8,5 @@ HRESULT wrap_factory(IDirect3D9*,IDirect3D9** out,const Options&) noexcept {
     return E_OUTOFMEMORY;
 }
 IDirect3DDevice9* borrowed_native_device(IDirect3DDevice9*) noexcept {return nullptr;}
-HRESULT get_depth_view(IDirect3DDevice9*,DepthView*) noexcept {return E_INVALIDARG;}
+HRESULT get_copy_depth_view(IDirect3DDevice9*,CopyDepthView*) noexcept {return E_INVALIDARG;}
 }

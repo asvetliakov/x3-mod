@@ -129,12 +129,12 @@ void ownership_depth_info(IDirect3DDevice9* d, uint64_t device, const char* phas
     // This is a borrowed diagnostic snapshot, never a resource adoption or a
     // GPU allocation. Native/default mode must not query ownership internals.
     if (!ownership::borrowed_native_device(d)) return;
-    ownership::DepthView view{};
-    const HRESULT result = ownership::get_depth_view(d, &view);
-    const auto& desc = view.logical_desc;
-    log("ownership_depth phase=%s device=%llu result=%08lx status=%08lx requested=%u available=%u bound=%u generation=%llu clear_epoch=%llu logical_width=%u logical_height=%u logical_format=%u logical_type=%u logical_usage=%lu logical_pool=%u logical_msaa=%u logical_quality=%lu",
-        phase,device,result,view.status,view.requested,view.available,view.bound,
-        view.generation,view.clear_epoch,desc.Width,desc.Height,desc.Format,desc.Type,
+    ownership::CopyDepthView view{};
+    const HRESULT result = ownership::get_copy_depth_view(d, &view);
+    const auto& desc = view.source_desc;
+    log("ownership_copy_depth phase=%s device=%llu result=%08lx status=%08lx requested=%u available=%u source_bound=%u copy_valid=%u generation=%llu source_epoch=%llu copy_epoch=%llu source_width=%u source_height=%u source_format=%u source_type=%u source_usage=%lu source_pool=%u source_msaa=%u source_quality=%lu",
+        phase,device,result,view.status,view.requested,view.available,view.source_bound,view.copy_valid,
+        view.generation,view.source_epoch,view.copy_epoch,desc.Width,desc.Height,desc.Format,desc.Type,
         desc.Usage,desc.Pool,desc.MultiSampleType,desc.MultiSampleQuality);
 }
 void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT primitives, bool user_memory=false) {
