@@ -1,0 +1,60 @@
+{
+  "passed": true,
+  "scope": "portable CPU execution-state core; no native hook/GPU claim",
+  "sources": {
+    "src/ownership/execution_state.h": "88e6ad56d1440d353953bc558c177a2eb226e486d7f3bf371cb3087180d08836",
+    "src/ownership/execution_state.cpp": "f8d690a65eef657a055f4a248aba9762137515daa25a61aafd13ab901196fcdc",
+    "verification/probe/execution_state_fixture.cpp": "469099b6fbd8c0fae82c36aa46f49adb717f0c2b70f72e81ea4ba62a0ab01639",
+    "verification/probe/run_execution_state.py": "0852e66f4a1b96224ac610d6f1f843fb8409ac1a26b1c2260eef8e8e693e8820"
+  },
+  "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "flags": [
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror"
+  ],
+  "runs": [
+    {
+      "command": [
+        "clang++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "/Users/asvetl/x3-mod/src/ownership/execution_state.cpp",
+        "/Users/asvetl/x3-mod/verification/probe/execution_state_fixture.cpp",
+        "-o",
+        "/Users/asvetl/x3-mod/build/verification/execution-state/fixture"
+      ],
+      "executable_sha256": "7fc1ac3ea25f16985dec2b20357e672a9857acb8326354da01ff5c9b25b8f9a7",
+      "log": "verification/results/execution-state.txt",
+      "log_sha256": "d506491a36a68303ef22e94312facdcbead3153c0f02dc126a443305e33088fb",
+      "checks": 60365,
+      "elapsed_seconds": 0.8453884999999999
+    },
+    {
+      "command": [
+        "clang++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "/Users/asvetl/x3-mod/src/ownership/execution_state.cpp",
+        "/Users/asvetl/x3-mod/verification/probe/execution_state_fixture.cpp",
+        "-o",
+        "/Users/asvetl/x3-mod/build/verification/execution-state/fixture-sanitized"
+      ],
+      "executable_sha256": "b46d374f5e13ab2a319e311d772ef4c7a32dfc8871d1901eb5179552ec476b3e",
+      "log": "verification/results/execution-state-sanitized.txt",
+      "log_sha256": "d506491a36a68303ef22e94312facdcbead3153c0f02dc126a443305e33088fb",
+      "checks": 60365,
+      "elapsed_seconds": 0.6561517080000003
+    }
+  ]
+}

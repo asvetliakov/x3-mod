@@ -217,4 +217,45 @@ CHECK native IB pointer cannot claim observer-owned certificate PASS
 CHECK reader preserves queried caller state PASS
 CHECK reader releases getter references PASS
 CHECK Reset invalidates old upload attestation PASS
-RESULT PASS checks=219 reads=63 state_checks=63
+CHECK actual archive bytecode independently qualifies replay source PASS
+CHECK begin caller owned reader geometry frame PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK synthetic source cannot acquire geometry lease PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK empty frame retains nothing despite complete local admission PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK qualified finite draw acquires lease without inventing lifetime proof PASS
+CHECK nonindexed lease retains exact native VB and finite generation PASS
+CHECK failed application submission leaves explicit caller lease cleanup PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK indexed reader lease retains actual VB IB pair and certificate PASS
+CHECK release indexed reader lease PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK raster blocker prevents lease acquisition PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK missing object scope prevents lease acquisition PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK pending VB write prevents lease acquisition PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK nonfinite XYZ prevents lease acquisition PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK actual index extrema outside declared range prevent lease acquisition PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK nonindexed lease ignores bound out of range IB PASS
+CHECK post acquisition content mutation refuses retained geometry inspection PASS
+CHECK caller ends frame and releases remaining lease PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK stale requested frame reports failed acquisition without lease PASS
+CHECK ended frame exposes no borrowed native pointers PASS
+RESULT PASS checks=260 reads=74 state_checks=74

@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <cstring>
 #include <limits>
+#include <fstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -66,7 +67,7 @@ struct Fixture {
     void baseline(){api(device->SetVertexShader(vs[0].p),"bind VS");api(device->SetPixelShader(ps.p),"bind PS");api(device->SetVertexDeclaration(float_decl.p),"bind declaration");api(device->SetStreamSource(0,vb.p,0,12),"bind stream");api(device->SetIndices(ib.p),"bind IB");
         for(unsigned i=0;i<3;++i)api(device->SetVertexShaderConstantF(vertices[i].profile.matrix_register,rows.data(),4),"set rows");
         const DWORD values[]={1,1,D3DCMP_LESSEQUAL,D3DCULL_NONE,15,0,0,0,D3DFILL_SOLID,0,0,1,0,0,0x3f800000,0};for(unsigned i=0;i<std::size(states);++i)api(device->SetRenderState(states[i],values[i]),"baseline state");D3DVIEWPORT9 vp{0,0,32,32,0,1};api(device->SetViewport(&vp),"baseline viewport");}
-    DrawInput read(DrawArguments args={DrawMethod::Primitive,D3DPT_TRIANGLELIST,1,0,0,0,0},const object_trace::Snapshot* s=nullptr,bool missing_scope=false){auto before=snapshot(device.p);auto dref=references(device.p),vref=references(vb.p),iref=references(ib.p);auto result=reader.read(device.p,args,missing_scope?nullptr:s?s:&scope);++reads;check(snapshot(device.p)==before,"reader preserves queried caller state");++state_checks;check(references(device.p)==dref&&references(vb.p)==vref&&references(ib.p)==iref,"reader releases getter references");return result;}
+    DrawInput read(DrawArguments args={DrawMethod::Primitive,D3DPT_TRIANGLELIST,1,0,0,0,0},const object_trace::Snapshot* s=nullptr,bool missing_scope=false,ownership::GeometryFrameHandle frame={}){auto before=snapshot(device.p);auto dref=references(device.p),vref=references(vb.p),iref=references(ib.p);auto result=reader.read(device.p,args,missing_scope?nullptr:s?s:&scope,frame);++reads;check(snapshot(device.p)==before,"reader preserves queried caller state");++state_checks;check(references(device.p)==dref&&references(vb.p)==vref&&references(ib.p)==iref,"reader releases getter references");return result;}
 };
 // Original fault seam, restored before snapshots: one application getter can
 // report failure after writing plausible data, so HRESULT cannot be ignored.
@@ -194,6 +195,72 @@ void run_finite(Fixture& f){
     api(f.device->Reset(&f.pp),"finite observer Reset with managed allocations retained");f.baseline();
     expect(false,"Reset invalidates old upload attestation",ordinary);
 }
+
+// Real archive bytes are local input only. Bind but never execute this VS:
+// production source qualification must admit it independently of fixture lookups.
+void run_leases(Fixture& f,const char* path){
+    std::ifstream file(path,std::ios::binary|std::ios::ate);
+    if(!file||file.tellg()!=2080)throw std::runtime_error("expected reviewed local archive VS");
+    std::array<std::uint32_t,520> words{};file.seekg(0);file.read(reinterpret_cast<char*>(words.data()),sizeof words);
+    check(bool(file)&&hash(words.data(),sizeof words)==0xb0602757fce6e870ull&&
+          renderer::qualify_rigid_replay_source(words.data(),words.size()).qualified(),
+          "actual archive bytecode independently qualifies replay source");
+    Com<IDirect3DVertexShader9> archive;api(f.device->CreateVertexShader(reinterpret_cast<const DWORD*>(words.data()),&archive.p),"create reviewed archive VS without executing it");
+    const DrawArguments ordinary{DrawMethod::Primitive,D3DPT_TRIANGLELIST,1,0,0,0,0};
+    const DrawArguments indexed{DrawMethod::Indexed,D3DPT_TRIANGLELIST,1,0,0,0,3};
+    ownership::GeometryFrameHandle frame{};
+    check(ownership::begin_geometry_frame(f.device.p,&frame)==S_OK&&frame.value,"begin caller owned reader geometry frame");
+    auto synthetic=f.read(ordinary,nullptr,false,frame);
+    check(synthetic.vertex_finite_verified&&!synthetic.replay_source.qualified()&&
+          synthetic.lease_status==S_FALSE&&!synthetic.geometry_lease.value,"synthetic source cannot acquire geometry lease");
+    auto bind_archive=[&]{f.baseline();f.reader.fixture_profiles(renderer::find_rigid_position,pixel_lookup);
+        api(f.device->SetVertexShader(archive.p),"bind reviewed archive VS");};
+    bind_archive();auto unrequested=f.read();
+    check(!unrequested.blockers&&unrequested.replay_source.qualified()&&unrequested.vertex_finite_verified&&
+          unrequested.lease_status==S_FALSE&&!unrequested.geometry_lease.value,"empty frame retains nothing despite complete local admission");
+    auto acquired=f.read(ordinary,nullptr,false,frame);ownership::GeometryLeaseView view{};
+    auto* native_vb=ownership::borrowed_native_buffer_for_lock_contract(f.vb.p);
+    auto* native_ib=ownership::borrowed_native_buffer_for_lock_contract(f.ib.p);
+    check(acquired.lease_status==S_OK&&acquired.geometry_lease.value&&
+          !(acquired.observation.proofs&renderer::LifetimeVerified),"qualified finite draw acquires lease without inventing lifetime proof");
+    check(ownership::inspect_geometry_lease(frame,acquired.geometry_lease,&view)==S_OK&&view.status==S_OK&&
+          view.vertex_buffer==native_vb&&!view.index_buffer&&view.positions.revision==acquired.finite_positions.revision&&
+          view.generation==acquired.finite_positions.generation,"nonindexed lease retains exact native VB and finite generation");
+    DrawInputReader::complete(acquired,E_FAIL);
+    check(acquired.geometry_lease.value&&acquired.lease_status==S_OK&&(acquired.blockers&SubmissionFailure)&&
+          ownership::release_geometry_lease(frame,acquired.geometry_lease)==S_OK,
+          "failed application submission leaves explicit caller lease cleanup");
+    auto pair=f.read(indexed,nullptr,false,frame);
+    check(pair.lease_status==S_OK&&pair.geometry_lease.value&&
+          ownership::inspect_geometry_lease(frame,pair.geometry_lease,&view)==S_OK&&
+          view.vertex_buffer==native_vb&&view.index_buffer==native_ib&&view.indices.known&&
+          view.indices.revision==pair.indices.revision,"indexed reader lease retains actual VB IB pair and certificate");
+    check(ownership::release_geometry_lease(frame,pair.geometry_lease)==S_OK,"release indexed reader lease");
+    auto refused=[&](const DrawInput& d,const char* label){check(d.lease_status==S_FALSE&&!d.geometry_lease.value,label);};
+    api(f.device->SetRenderState(D3DRS_ALPHABLENDENABLE,1),"lease hostile blend");
+    refused(f.read(ordinary,nullptr,false,frame),"raster blocker prevents lease acquisition");bind_archive();
+    refused(f.read(ordinary,nullptr,true,frame),"missing object scope prevents lease acquisition");
+    void* mapped=nullptr;api(f.vb->Lock(0,12,&mapped,0),"lease pending VB write");
+    refused(f.read(ordinary,nullptr,false,frame),"pending VB write prevents lease acquisition");
+    const std::uint32_t nan=0x7f812345u;std::memcpy(mapped,&nan,4);api(f.vb->Unlock(),"lease nonfinite upload");
+    refused(f.read(ordinary,nullptr,false,frame),"nonfinite XYZ prevents lease acquisition");
+    const float triangle[9]={-.5f,-.5f,.5f,.5f,-.5f,.5f,0,.5f,.5f};
+    api(f.vb->Lock(0,0,&mapped,0),"lease restore VB");std::memset(mapped,0,256);std::memcpy(mapped,triangle,sizeof triangle);api(f.vb->Unlock(),"lease publish VB");
+    api(f.ib->Lock(0,0,&mapped,0),"lease out of range IB");const unsigned short bad[12]={0,1,5};std::memcpy(mapped,bad,sizeof bad);api(f.ib->Unlock(),"lease publish bad IB");
+    refused(f.read(indexed,nullptr,false,frame),"actual index extrema outside declared range prevent lease acquisition");
+    auto ignores_ib=f.read(ordinary,nullptr,false,frame);
+    check(ignores_ib.lease_status==S_OK&&ownership::inspect_geometry_lease(frame,ignores_ib.geometry_lease,&view)==S_OK&&
+          !view.index_buffer,"nonindexed lease ignores bound out of range IB");
+    api(f.vb->Lock(0,12,&mapped,0),"change leased VB");std::memcpy(mapped,triangle,12);api(f.vb->Unlock(),"publish changed leased VB");
+    check(ownership::inspect_geometry_lease(frame,ignores_ib.geometry_lease,&view)==S_FALSE&&
+          !view.vertex_buffer&&!view.index_buffer,"post acquisition content mutation refuses retained geometry inspection");
+    check(ownership::end_geometry_frame(frame)==S_OK,"caller ends frame and releases remaining lease");
+    auto stale=f.read(ordinary,nullptr,false,frame);
+    check(stale.lease_status==E_INVALIDARG&&!stale.geometry_lease.value,"stale requested frame reports failed acquisition without lease");
+    check(ownership::inspect_geometry_lease(frame,ignores_ib.geometry_lease,&view)==E_INVALIDARG&&
+          !view.vertex_buffer&&!view.index_buffer,"ended frame exposes no borrowed native pointers");
+}
+
 }
 int main(int argc,char**argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=1;HMODULE d3d=nullptr,d3dx=nullptr;WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3DrawInputFixture";RegisterClassA(&cls);HWND window=CreateWindowA(cls.lpszClassName,"X3 draw input fixture",WS_OVERLAPPEDWINDOW,0,0,64,64,nullptr,nullptr,cls.hInstance,nullptr);
-    try{if(argc!=2)throw std::runtime_error("expected native D3DX path");d3d=LoadLibraryA("d3d9.dll");d3dx=LoadLibraryA(argv[1]);check(d3d&&d3dx&&window,"native libraries and hidden window");auto fn=symbol<Assemble>(d3dx,"D3DXAssembleShader");const unsigned registers[]={0,6,24};for(unsigned i=0;i<3;++i){const auto r=registers[i];auto source=std::string("vs_2_0\ndcl_position v0\ndef c31, 1, 0, 0, 0\nmov r0.xyz, v0\nmov r0.w, c31.x\ndp4 oPos.x, r0, c")+std::to_string(r)+"\ndp4 oPos.y, r0, c"+std::to_string(r+1)+"\ndp4 oPos.z, r0, c"+std::to_string(r+2)+"\ndp4 oPos.w, r0, c"+std::to_string(r+3)+"\n";auto& v=vertices[i];v.words=assemble(fn,source);v.profile={hash(v.words.data(),v.words.size()*4),std::uint32_t(v.words.size()),std::uint16_t(r),true};}pixel=assemble(fn,"ps_2_0\ndef c0, 0.25, 0.5, 0.75, 1\nmov oC0, c0\n");pixel_profile={hash(pixel.data(),pixel.size()*4),std::uint32_t(pixel.size())};auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(d3d,"Direct3DCreate9");{Fixture fixture(create(D3D_SDK_VERSION),window);run(fixture);}{Fixture fixture(create(D3D_SDK_VERSION),window,true);run_finite(fixture);}std::printf("RESULT PASS checks=%u reads=%u state_checks=%u\n",checks,reads,state_checks);result=0;}catch(const std::exception&e){std::printf("RESULT FAIL %s checks=%u\n",e.what(),checks);}if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);if(d3dx)FreeLibrary(d3dx);if(d3d)FreeLibrary(d3d);return result;}
+    try{if(argc!=3)throw std::runtime_error("expected native D3DX and reviewed local archive VS paths");d3d=LoadLibraryA("d3d9.dll");d3dx=LoadLibraryA(argv[1]);check(d3d&&d3dx&&window,"native libraries and hidden window");auto fn=symbol<Assemble>(d3dx,"D3DXAssembleShader");const unsigned registers[]={0,6,24};for(unsigned i=0;i<3;++i){const auto r=registers[i];auto source=std::string("vs_2_0\ndcl_position v0\ndef c31, 1, 0, 0, 0\nmov r0.xyz, v0\nmov r0.w, c31.x\ndp4 oPos.x, r0, c")+std::to_string(r)+"\ndp4 oPos.y, r0, c"+std::to_string(r+1)+"\ndp4 oPos.z, r0, c"+std::to_string(r+2)+"\ndp4 oPos.w, r0, c"+std::to_string(r+3)+"\n";auto& v=vertices[i];v.words=assemble(fn,source);v.profile={hash(v.words.data(),v.words.size()*4),std::uint32_t(v.words.size()),std::uint16_t(r),true};}pixel=assemble(fn,"ps_2_0\ndef c0, 0.25, 0.5, 0.75, 1\nmov oC0, c0\n");pixel_profile={hash(pixel.data(),pixel.size()*4),std::uint32_t(pixel.size())};auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(d3d,"Direct3DCreate9");{Fixture fixture(create(D3D_SDK_VERSION),window);run(fixture);}{Fixture fixture(create(D3D_SDK_VERSION),window,true);run_finite(fixture);}{Fixture fixture(create(D3D_SDK_VERSION),window,true);run_leases(fixture,argv[2]);}std::printf("RESULT PASS checks=%u reads=%u state_checks=%u\n",checks,reads,state_checks);result=0;}catch(const std::exception&e){std::printf("RESULT FAIL %s checks=%u\n",e.what(),checks);}if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);if(d3dx)FreeLibrary(d3dx);if(d3d)FreeLibrary(d3d);return result;}

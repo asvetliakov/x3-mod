@@ -137,8 +137,11 @@ void SceneCapture::begin_frame(IDirect3DDevice9* device, std::uint64_t device_id
         log("scene_depth_frame phase=begin device=%llu frame=%llu generation=%llu", device_id, frame, view.generation);
     } catch (...) { invalidate(); }
 }
-void SceneCapture::end_frame(HRESULT result) noexcept {
-    if (!impl_ || !impl_->active) return;
+bool SceneCapture::collecting_scene() const noexcept {
+    return impl_ && impl_->active && impl_->selector.state() == renderer::BoundaryState::Scene;
+}
+bool SceneCapture::end_frame(HRESULT result) noexcept {
+    if (!impl_ || !impl_->active) return false;
     auto& state = *impl_;
     if (FAILED(result)) state.selector.invalidate();
     state.confirmed = state.confirmed && state.selector.state() == renderer::BoundaryState::Selected;
@@ -147,6 +150,7 @@ void SceneCapture::end_frame(HRESULT result) noexcept {
         state.copied, state.confirmed, unsigned(state.selector.state()),
         unsigned(state.selector.rejection()), state.selector.rejection_sequence(), result);
     state.active = false;
+    return state.confirmed;
 }
 void SceneCapture::before_draw(IDirect3DDevice9* device, D3DPRIMITIVETYPE topology, UINT primitives) noexcept {
     if (!impl_ || !impl_->active) return;
@@ -175,9 +179,9 @@ void SceneCapture::after_draw(HRESULT result) noexcept {
     if (!impl_->pending_draw) { invalidate(); return; }
     impl_->pending_draw = false; impl_->complete(impl_->pending, result);
 }
-void SceneCapture::before_clear(IDirect3DDevice9* device, DWORD count, const D3DRECT*,
+renderer::Selection SceneCapture::before_clear(IDirect3DDevice9* device, DWORD count, const D3DRECT*,
                                 DWORD flags, float depth) noexcept {
-    if (!impl_ || !impl_->active) return;
+    if (!impl_ || !impl_->active) return {};
     try {
         auto& state = *impl_;
         auto event = state.event(renderer::EventKind::Clear);
@@ -185,7 +189,7 @@ void SceneCapture::before_clear(IDirect3DDevice9* device, DWORD count, const D3D
         event.clear_flags = flags; event.rect_count = count; event.clear_z = depth;
         state.pending = event; state.pending_clear = true;
         const auto selection = state.selector.before_clear(event);
-        if (!selection.valid) return;
+        if (!selection.valid) return {};
         state.attempted = true;
         ownership::CopyDepthView before{}, after{};
         const HRESULT before_hr = ownership::get_copy_depth_view(device, &before);
@@ -199,15 +203,16 @@ void SceneCapture::before_clear(IDirect3DDevice9* device, DWORD count, const D3D
         log("scene_depth_copy device=%llu frame=%llu event=%llu result=%08lx valid=%u generation=%llu source_epoch=%llu copy_epoch=%llu color=%llu depth=%llu",
             state.device_id, state.frame, event.sequence, result, state.copied, after.generation,
             after.source_epoch, after.copy_epoch, selection.color.identity, selection.depth.identity);
-    } catch (...) { invalidate(); }
+        return state.copied ? selection : renderer::Selection{};
+    } catch (...) { invalidate(); return {}; }
 }
-void SceneCapture::after_clear(IDirect3DDevice9* device, HRESULT result) noexcept {
-    if (!impl_ || !impl_->active) return;
-    if (!impl_->pending_clear) { invalidate(); return; }
+bool SceneCapture::after_clear(IDirect3DDevice9* device, HRESULT result) noexcept {
+    if (!impl_ || !impl_->active) return false;
+    if (!impl_->pending_clear) { invalidate(); return false; }
     auto& state = *impl_; state.pending_clear = false;
     state.pending.result_known = true; state.pending.result = static_cast<std::uint32_t>(result);
     const auto selection = state.complete(state.pending, result);
-    if (!selection.valid) return;
+    if (!selection.valid) return false;
     ownership::CopyDepthView view{};
     const HRESULT hr = ownership::get_copy_depth_view(device, &view);
     state.confirmed = state.copied && SUCCEEDED(hr) && SUCCEEDED(view.status) &&
@@ -217,6 +222,7 @@ void SceneCapture::after_clear(IDirect3DDevice9* device, HRESULT result) noexcep
     log("scene_depth_boundary device=%llu frame=%llu event=%llu confirmed=%u generation=%llu copy_epoch=%llu source_epoch=%llu",
         state.device_id, state.frame, state.pending.sequence, state.confirmed, view.generation,
         view.copy_epoch, view.source_epoch);
+    return state.confirmed;
 }
 void SceneCapture::after_set_rt(IDirect3DDevice9* device, DWORD index, HRESULT result) noexcept {
     if (!impl_ || !impl_->active) return;

@@ -29,6 +29,7 @@ struct Device final : IDirect3DDevice9, Node {
     std::vector<IUnknown*> renderer_resources;
     bool retiring = false, resetting = false, lost = false;
     CopyDepth copy_depth;
+    ObservedExecutionState execution;
     bool recording_state_block = false;
     HRESULT buffer_tracking_status = S_OK;
     std::shared_ptr<FiniteOwner> finite_owner;
@@ -355,6 +356,7 @@ struct StateBlock final : IDirect3DStateBlock9, Node {
 };
 struct Query final : IDirect3DQuery9, Node {
     IDirect3DQuery9* native_;
+    ExecutionQuery execution_query;
     Query(IDirect3DQuery9* native, Node* owner)
         : Node(Kind::Query, native, owner), native_(native) { application = static_cast<IDirect3DQuery9*>(this); }
     HRESULT WINAPI QueryInterface(REFIID riid, void** ppvObject) override;

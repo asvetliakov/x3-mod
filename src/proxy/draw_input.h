@@ -10,8 +10,9 @@
 
 namespace x3m {
 // A live input reader shared by capture diagnostics and later motion routing.
-// Reads actual application state; never retains COM objects, rewrites state,
-// reconstructs matrices, or invents lifetime/whole-scene coverage evidence.
+// Reads actual application state without rewriting it or reconstructing matrices.
+// Optional geometry reservations belong to the caller's ownership frame; the
+// reader owns no persistent COM references and invents no lifetime/coverage proof.
 enum class DrawMethod { Primitive, Indexed, UserMemory, IndexedUserMemory };
 struct DrawArguments {
     DrawMethod method = DrawMethod::Primitive;
@@ -41,6 +42,12 @@ struct DrawInput {
     ownership::FinitePositionView finite_positions{};
     ownership::IndexRangeView indices{};
     bool index_range_verified = false, vertex_finite_verified = false;
+    // Non-owning opaque value. S_FALSE also means no frame or unmet admission
+    // gates. S_OK grants a caller-owned reservation in the supplied frame; the
+    // caller must release it/end that frame even if the application draw fails.
+    // Copying DrawInput does not acquire another lease or transfer cleanup duty.
+    ownership::GeometryLeaseHandle geometry_lease{};
+    HRESULT lease_status = S_FALSE;
     std::uint32_t blockers = 0;
     renderer::VertexPositionPath position_path = renderer::VertexPositionPath::Unknown;
     std::uint64_t vertex_program = 0, pixel_program = 0;
@@ -52,8 +59,11 @@ class DrawInputReader {
 public:
     // Requires the same serialization as application draws and resource writes.
     // A supplied scope must be sampled immediately before this same draw.
+    // Empty geometry_frame preserves diagnostic-only behavior without retained
+    // geometry. A nonempty frame must belong to this device and be caller-owned.
     DrawInput read(IDirect3DDevice9* application, const DrawArguments&,
-                   const object_trace::Snapshot* scope) noexcept;
+                   const object_trace::Snapshot* scope,
+                   ownership::GeometryFrameHandle geometry_frame = {}) noexcept;
     static void complete(DrawInput& input, HRESULT result) noexcept;
 #ifdef X3M_DRAW_INPUT_FIXTURE
     // Original synthetic shader contracts only; absent from production builds.

@@ -40,7 +40,8 @@ std::uint32_t bits(float value) noexcept {
 }
 }
 DrawInput DrawInputReader::read(IDirect3DDevice9* device,const DrawArguments& args,
-                                const object_trace::Snapshot* scope) noexcept {
+                                const object_trace::Snapshot* scope,
+                                ownership::GeometryFrameHandle geometry_frame) noexcept {
     DrawInput result{};
     auto& observation=result.observation;auto& key=observation.key;
     auto reject=[&](std::uint32_t bits){result.blockers|=bits;};
@@ -117,7 +118,7 @@ DrawInput DrawInputReader::read(IDirect3DDevice9* device,const DrawArguments& ar
             if(layout)key.declaration=hash(elements,count*sizeof(elements[0]));
         }
         if(!layout)reject(PositionLayout);
-        Ref<IDirect3DVertexBuffer9> vb;UINT frequency=0;D3DVERTEXBUFFER_DESC vb_desc{};
+        Ref<IDirect3DVertexBuffer9> vb;Ref<IDirect3DIndexBuffer9> ib;UINT frequency=0;D3DVERTEXBUFFER_DESC vb_desc{};
         const HRESULT stream_hr=device->GetStreamSource(0,&vb.p,&key.stream_offset,&key.stride);
         const HRESULT frequency_hr=device->GetStreamSourceFreq(0,&frequency);
         if(FAILED(stream_hr)||!vb.p||FAILED(vb.p->GetDesc(&vb_desc))||!(key.vertex_buffer=resource_id(vb.p)))reject(BufferDescription);
@@ -136,27 +137,30 @@ DrawInput DrawInputReader::read(IDirect3DDevice9* device,const DrawArguments& ar
             first_vertex=first;
             if(first<0||!args.vertex_count)reject(DrawRange);
             else last=std::uint64_t(first)+args.vertex_count-1;
-            Ref<IDirect3DIndexBuffer9> ib;D3DINDEXBUFFER_DESC ib_desc{};
+            D3DINDEXBUFFER_DESC ib_desc{};
             if(FAILED(device->GetIndices(&ib.p))||!ib.p||FAILED(ib.p->GetDesc(&ib_desc))||!(key.index_buffer=resource_id(ib.p)))reject(BufferDescription);
             key.index_format=ib_desc.Format;
             if(!revision(ib.p,key.index_revision))reject(BufferRevision);
             const UINT bytes=ib_desc.Format==D3DFMT_INDEX16?2:ib_desc.Format==D3DFMT_INDEX32?4:0;
             if(!bytes||(std::uint64_t(args.first)+consumed)>ib_desc.Size/bytes)reject(DrawRange);
-            if(!(result.blockers&(BufferDescription|BufferRevision|DrawRange|UserMemory))){
-                ownership::IndexRangeRequest request{};
-                request.expected_revision=key.index_revision;request.format=ib_desc.Format;
-                request.start_index=args.first;request.index_count=consumed;
-                const auto hr=ownership::get_index_range_view(ib.p,request,&result.indices);
-                const auto& view=result.indices;
-                result.index_range_verified=hr==S_OK&&view.status==S_OK&&view.requested&&
-                    view.generation&&view.revision==key.index_revision&&view.known&&
-                    view.minimum<=view.maximum&&view.minimum>=args.minimum_vertex&&
-                    std::uint64_t(view.maximum)<std::uint64_t(args.minimum_vertex)+args.vertex_count&&
-                    first_vertex>=0;
-            }
         }else{
             // A bound IB is irrelevant to DrawPrimitive. Its fields remain zero.
             last=std::uint64_t(args.first)+consumed-1;
+        }
+        // These immutable request snapshots are reused unchanged for optional
+        // acquisition after all local gates have been checked. Getter-owned VB
+        // and IB references remain alive throughout that final acquisition.
+        const ownership::IndexRangeRequest index_request=key.indexed
+            ?ownership::IndexRangeRequest{key.index_revision,static_cast<D3DFORMAT>(key.index_format),args.first,consumed}
+            :ownership::IndexRangeRequest{};
+        if(key.indexed&&!(result.blockers&(BufferDescription|BufferRevision|DrawRange|UserMemory))){
+            const auto hr=ownership::get_index_range_view(ib.p,index_request,&result.indices);
+            const auto& view=result.indices;
+            result.index_range_verified=hr==S_OK&&view.status==S_OK&&view.requested&&
+                view.generation&&view.revision==key.index_revision&&view.known&&
+                view.minimum<=view.maximum&&view.minimum>=args.minimum_vertex&&
+                std::uint64_t(view.maximum)<std::uint64_t(args.minimum_vertex)+args.vertex_count&&
+                first_vertex>=0;
         }
         const std::uint64_t start=std::uint64_t(key.stream_offset)+key.position_offset;
         if(!key.stride||start>vb_desc.Size||position_bytes>vb_desc.Size-start||
@@ -167,13 +171,11 @@ DrawInput DrawInputReader::read(IDirect3DDevice9* device,const DrawArguments& ar
         // subdraw. Never use declared min/count alone as index content evidence.
         constexpr auto geometry_blockers=PositionLayout|BufferDescription|BufferRevision|DrawRange|UserMemory;
         if(!key.indexed&&!(result.blockers&geometry_blockers))result.index_range_verified=true;
+        const ownership::FinitePositionRequest position_request{key.vertex_revision,key.stream_offset,
+            key.stride,key.position_offset,first_vertex,key.indexed?args.vertex_count:consumed,
+            static_cast<D3DDECLTYPE>(key.position_type)};
         if(!(result.blockers&geometry_blockers)&&result.index_range_verified){
-            ownership::FinitePositionRequest request{};
-            request.expected_revision=key.vertex_revision;request.stream_offset=key.stream_offset;
-            request.stride=key.stride;request.position_offset=key.position_offset;
-            request.first_vertex=first_vertex;request.vertex_count=key.indexed?args.vertex_count:consumed;
-            request.position_type=static_cast<D3DDECLTYPE>(key.position_type);
-            const auto hr=ownership::get_finite_position_view(vb.p,request,&result.finite_positions);
+            const auto hr=ownership::get_finite_position_view(vb.p,position_request,&result.finite_positions);
             const auto& view=result.finite_positions;
             result.vertex_finite_verified=hr==S_OK&&view.status==S_OK&&view.requested&&
                 view.state==ownership::FiniteStatus::Finite&&view.generation&&
@@ -222,7 +224,24 @@ DrawInput DrawInputReader::read(IDirect3DDevice9* device,const DrawArguments& ar
         if(!(result.blockers&(PositionProgram|PositionLayout|BufferDescription|DrawRange|SubmittedRows|PixelCoverage|RasterState|TargetLayout|UserMemory)))observation.proofs|=renderer::CoverageSupported;
         if(result.blockers&QueryFailure)observation.proofs=0;
         if(result.blockers&PositionLayout)result.vertex_finite_verified=false;
-    }catch(...){shader_words_.fill(0);reject(QueryFailure);observation.proofs=0;result.vertex_finite_verified=false;result.index_range_verified=false;}
+        constexpr auto local_proofs=renderer::GeometryUnchanged|renderer::PositionReviewed|renderer::CoverageSupported;
+        if(geometry_frame.value&&!result.blockers&&
+           (observation.proofs&local_proofs)==local_proofs&&result.replay_source.qualified()&&
+           result.vertex_finite_verified&&result.index_range_verified){
+            const ownership::GeometryLeaseRequest request{result.finite_positions.generation,
+                position_request,key.indexed,index_request};
+            result.lease_status=ownership::acquire_geometry_lease(geometry_frame,vb.p,
+                key.indexed?ib.p:nullptr,request,&result.geometry_lease);
+        }
+    }catch(...){
+        // Normal cleanup belongs to the caller. If a future throwing operation
+        // is added after acquisition, never leak an unpublished reservation.
+        if(result.geometry_lease.value)ownership::release_geometry_lease(geometry_frame,result.geometry_lease);
+        result.geometry_lease={};
+        if(geometry_frame.value)result.lease_status=E_FAIL;
+        shader_words_.fill(0);reject(QueryFailure);observation.proofs=0;
+        result.vertex_finite_verified=false;result.index_range_verified=false;
+    }
     return result;
 }
 void DrawInputReader::complete(DrawInput& input,HRESULT result) noexcept {

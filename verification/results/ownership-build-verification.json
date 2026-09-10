@@ -4,7 +4,7 @@
   "game_launched": false,
   "fixtures": {
     "baseline": {
-      "exe_sha256": "21731bfca7e54b871838b2940961622e4eb45c1f04b492f66bede4d0d4945cfb",
+      "exe_sha256": "70ffdc221772438c27461aa282216cea0e60f36bdb1830cd91560e25e2ec1597",
       "report_sha256": "37c55d1f8719ccc87faf3686c2176e598205f0dec1c88868fa95a25526078d37",
       "exit": 0,
       "command": [
@@ -15,12 +15,12 @@
         "--dll",
         "d3d9=b",
         "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build/ownership-20260911-030337-447744-baseline",
-        "/Users/asvetl/x3-mod/verification/probe/build/ownership-20260911-030337-447744-baseline/ownership_baseline.exe"
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership-20260911-033546-047196-baseline",
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership-20260911-033546-047196-baseline/ownership_baseline.exe"
       ]
     },
     "wrapped": {
-      "exe_sha256": "a797eb0b0d22c50d4f635829eea9c76395e9fafab8dc89663d2c19e2863d627c",
+      "exe_sha256": "8dcff553ae610d96b991eadef0529ba90d217cd6a21ef7287b00e7599eb0da47",
       "report_sha256": "df18b641a153b19bba413cec62947f70b51b4cf4090e233182a7cb82dcfa9295",
       "exit": 0,
       "command": [
@@ -31,8 +31,8 @@
         "--dll",
         "d3d9=b",
         "--workdir",
-        "/Users/asvetl/x3-mod/verification/probe/build/ownership-20260911-030343-178878-wrapped",
-        "/Users/asvetl/x3-mod/verification/probe/build/ownership-20260911-030343-178878-wrapped/ownership_wrapped.exe"
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership-20260911-033553-800343-wrapped",
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership-20260911-033553-800343-wrapped/ownership_wrapped.exe"
       ]
     }
   },
@@ -41,14 +41,16 @@
   "phase": "complete",
   "sources_before_build": {
     "verification/probe/ownership_fixture.cpp": "a14cba769cf99fd3f8a6fbb8cd4c61418033db2470dab1e2dfbd4929b1dac5ea",
-    "verification/probe/build_ownership.sh": "e9f7ba6cad2e76ab34ce1538466afcba2a0994aea43c3b3a33ca47d237512630",
+    "verification/probe/build_ownership.sh": "e6c37f902ce5ee96987ad19981bf82d55b149cd4cfe37bbd5ce097d072cae73e",
     "verification/probe/run_ownership.py": "e9862709459b21917d805b0052f6191f59884a132892b291770e16b780e3f9c4",
     "verification/probe/verify_ownership.py": "a4b07fc4a9221890945485f768f4d0df03ee7e9927079d8e99816c8edc02a8fc",
-    "tools/ownership/generate_d3d9_forwarders.py": "9522930cce1c7587abf23d0e5b92a5a39d8b711258bc58952a90980dc6dbd290",
-    "src/ownership/d3d9_classes_inc.h": "71f29eb2d99c68c3f7837594219d74f1b1b618fd2bba80993bab349b5d7df5e4",
-    "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
-    "src/ownership/d3d9_ownership.cpp": "d1e8f7842756e529f3e5e2167b34727f2ff8291297e9ca62f2881891f83fbe08",
-    "src/ownership/d3d9_ownership.h": "684dd32e962d6146dfff40e831a9281808f548b0a03f1232feee08838d540931",
+    "tools/ownership/generate_d3d9_forwarders.py": "0f7ea6c583d8434a3c59e2327a313f30651012b159918a085115b878910672a9",
+    "src/ownership/d3d9_classes_inc.h": "97c661a1098441025c24a273885d082669169143d3e72cb23d98e12ddde2d195",
+    "src/ownership/d3d9_forwarders_inc.h": "30986054619e5bd1ba7f2bec9315cb1934c356138bba79fddc788c31d8b202af",
+    "src/ownership/d3d9_ownership.cpp": "68a06235c0f23b83ebaca368ddec60adc74d3827b723b9e8fd2812cf7c724b4f",
+    "src/ownership/d3d9_ownership.h": "6251f048bd49782d919f74705ab9c7f0aec61ee7f2a71799c4a03c117fe90d33",
+    "src/ownership/execution_state.cpp": "f8d690a65eef657a055f4a248aba9762137515daa25a61aafd13ab901196fcdc",
+    "src/ownership/execution_state.h": "88e6ad56d1440d353953bc558c177a2eb226e486d7f3bf371cb3087180d08836",
     "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
     "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
     "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
@@ -56,41 +58,45 @@
   },
   "sources_after_build": {
     "verification/probe/ownership_fixture.cpp": "a14cba769cf99fd3f8a6fbb8cd4c61418033db2470dab1e2dfbd4929b1dac5ea",
-    "verification/probe/build_ownership.sh": "e9f7ba6cad2e76ab34ce1538466afcba2a0994aea43c3b3a33ca47d237512630",
+    "verification/probe/build_ownership.sh": "e6c37f902ce5ee96987ad19981bf82d55b149cd4cfe37bbd5ce097d072cae73e",
     "verification/probe/run_ownership.py": "e9862709459b21917d805b0052f6191f59884a132892b291770e16b780e3f9c4",
     "verification/probe/verify_ownership.py": "a4b07fc4a9221890945485f768f4d0df03ee7e9927079d8e99816c8edc02a8fc",
-    "tools/ownership/generate_d3d9_forwarders.py": "9522930cce1c7587abf23d0e5b92a5a39d8b711258bc58952a90980dc6dbd290",
-    "src/ownership/d3d9_classes_inc.h": "71f29eb2d99c68c3f7837594219d74f1b1b618fd2bba80993bab349b5d7df5e4",
-    "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
-    "src/ownership/d3d9_ownership.cpp": "d1e8f7842756e529f3e5e2167b34727f2ff8291297e9ca62f2881891f83fbe08",
-    "src/ownership/d3d9_ownership.h": "684dd32e962d6146dfff40e831a9281808f548b0a03f1232feee08838d540931",
+    "tools/ownership/generate_d3d9_forwarders.py": "0f7ea6c583d8434a3c59e2327a313f30651012b159918a085115b878910672a9",
+    "src/ownership/d3d9_classes_inc.h": "97c661a1098441025c24a273885d082669169143d3e72cb23d98e12ddde2d195",
+    "src/ownership/d3d9_forwarders_inc.h": "30986054619e5bd1ba7f2bec9315cb1934c356138bba79fddc788c31d8b202af",
+    "src/ownership/d3d9_ownership.cpp": "68a06235c0f23b83ebaca368ddec60adc74d3827b723b9e8fd2812cf7c724b4f",
+    "src/ownership/d3d9_ownership.h": "6251f048bd49782d919f74705ab9c7f0aec61ee7f2a71799c4a03c117fe90d33",
+    "src/ownership/execution_state.cpp": "f8d690a65eef657a055f4a248aba9762137515daa25a61aafd13ab901196fcdc",
+    "src/ownership/execution_state.h": "88e6ad56d1440d353953bc558c177a2eb226e486d7f3bf371cb3087180d08836",
     "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
     "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
     "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
     "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949"
   },
   "binaries_before": {
-    "baseline": "21731bfca7e54b871838b2940961622e4eb45c1f04b492f66bede4d0d4945cfb",
-    "wrapped": "a797eb0b0d22c50d4f635829eea9c76395e9fafab8dc89663d2c19e2863d627c"
+    "baseline": "70ffdc221772438c27461aa282216cea0e60f36bdb1830cd91560e25e2ec1597",
+    "wrapped": "8dcff553ae610d96b991eadef0529ba90d217cd6a21ef7287b00e7599eb0da47"
   },
   "sources": {
     "verification/probe/ownership_fixture.cpp": "a14cba769cf99fd3f8a6fbb8cd4c61418033db2470dab1e2dfbd4929b1dac5ea",
-    "verification/probe/build_ownership.sh": "e9f7ba6cad2e76ab34ce1538466afcba2a0994aea43c3b3a33ca47d237512630",
+    "verification/probe/build_ownership.sh": "e6c37f902ce5ee96987ad19981bf82d55b149cd4cfe37bbd5ce097d072cae73e",
     "verification/probe/run_ownership.py": "e9862709459b21917d805b0052f6191f59884a132892b291770e16b780e3f9c4",
     "verification/probe/verify_ownership.py": "a4b07fc4a9221890945485f768f4d0df03ee7e9927079d8e99816c8edc02a8fc",
-    "tools/ownership/generate_d3d9_forwarders.py": "9522930cce1c7587abf23d0e5b92a5a39d8b711258bc58952a90980dc6dbd290",
-    "src/ownership/d3d9_classes_inc.h": "71f29eb2d99c68c3f7837594219d74f1b1b618fd2bba80993bab349b5d7df5e4",
-    "src/ownership/d3d9_forwarders_inc.h": "9c87713d40152e1efbb3ec42c9b20c1e999907a6ed9bf302e0bda923ca735749",
-    "src/ownership/d3d9_ownership.cpp": "d1e8f7842756e529f3e5e2167b34727f2ff8291297e9ca62f2881891f83fbe08",
-    "src/ownership/d3d9_ownership.h": "684dd32e962d6146dfff40e831a9281808f548b0a03f1232feee08838d540931",
+    "tools/ownership/generate_d3d9_forwarders.py": "0f7ea6c583d8434a3c59e2327a313f30651012b159918a085115b878910672a9",
+    "src/ownership/d3d9_classes_inc.h": "97c661a1098441025c24a273885d082669169143d3e72cb23d98e12ddde2d195",
+    "src/ownership/d3d9_forwarders_inc.h": "30986054619e5bd1ba7f2bec9315cb1934c356138bba79fddc788c31d8b202af",
+    "src/ownership/d3d9_ownership.cpp": "68a06235c0f23b83ebaca368ddec60adc74d3827b723b9e8fd2812cf7c724b4f",
+    "src/ownership/d3d9_ownership.h": "6251f048bd49782d919f74705ab9c7f0aec61ee7f2a71799c4a03c117fe90d33",
+    "src/ownership/execution_state.cpp": "f8d690a65eef657a055f4a248aba9762137515daa25a61aafd13ab901196fcdc",
+    "src/ownership/execution_state.h": "88e6ad56d1440d353953bc558c177a2eb226e486d7f3bf371cb3087180d08836",
     "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
     "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
     "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
     "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949"
   },
   "binaries_after": {
-    "baseline": "21731bfca7e54b871838b2940961622e4eb45c1f04b492f66bede4d0d4945cfb",
-    "wrapped": "a797eb0b0d22c50d4f635829eea9c76395e9fafab8dc89663d2c19e2863d627c"
+    "baseline": "70ffdc221772438c27461aa282216cea0e60f36bdb1830cd91560e25e2ec1597",
+    "wrapped": "8dcff553ae610d96b991eadef0529ba90d217cd6a21ef7287b00e7599eb0da47"
   },
-  "source_sha256": "d1e8f7842756e529f3e5e2167b34727f2ff8291297e9ca62f2881891f83fbe08"
+  "source_sha256": "68a06235c0f23b83ebaca368ddec60adc74d3827b723b9e8fd2812cf7c724b4f"
 }

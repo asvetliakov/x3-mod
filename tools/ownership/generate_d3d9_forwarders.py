@@ -66,7 +66,9 @@ def generate(parsed, directory):
             classes.append("    Options options;\n")
         if kind == "Device":
             classes.append("    std::vector<IUnknown*> renderer_resources;\n    bool retiring = false, resetting = false, lost = false;\n")
-            classes.append("    CopyDepth copy_depth;\n    bool recording_state_block = false;\n    HRESULT buffer_tracking_status = S_OK;\n    std::shared_ptr<FiniteOwner> finite_owner;\n    HRESULT finite_status = S_FALSE;\n")
+            classes.append("    CopyDepth copy_depth;\n    ObservedExecutionState execution;\n    bool recording_state_block = false;\n    HRESULT buffer_tracking_status = S_OK;\n    std::shared_ptr<FiniteOwner> finite_owner;\n    HRESULT finite_status = S_FALSE;\n")
+        if kind == "Query":
+            classes.append("    ExecutionQuery execution_query;\n")
         classes.append(f"    {kind}({interface}* native, Node* owner)\n        : Node(Kind::{kind}, native, owner), native_(native) {{ application = static_cast<{interface}*>(this); }}\n")
         for ret, name, params in methods:
             count += 1
@@ -100,6 +102,12 @@ def generate(parsed, directory):
                 body = f"return buffer_private_result(this, {args[0]}, native_->{name}({', '.join(args)}));"
             elif kind == "Device" and name == "ProcessVertices":
                 body = f"return process_vertices(this, {', '.join(args)});"
+            elif kind == "Device" and name in {"BeginScene", "EndScene"}:
+                body = f"return scene_transition(this, {'true' if name == 'BeginScene' else 'false'});"
+            elif kind == "Device" and name == "CreateQuery":
+                body = f"return create_query(this, {', '.join(args)});"
+            elif kind == "Query" and name == "Issue":
+                body = f"return issue_query(this, {args[0]});"
             elif kind == "Device" and name == "BeginStateBlock":
                 body = "return begin_state_block(this);"
             elif kind == "Device" and name == "EndStateBlock":
@@ -119,7 +127,7 @@ def generate(parsed, directory):
                             f"    return output(device_of(this), hr, owned, {arg});")
                     if kind == "Device" and name in {"CreateVertexBuffer", "CreateIndexBuffer"}:
                         body = body.replace("    return output", f"    if (SUCCEEDED(hr) && owned && owned != untouched_output<{interface_out}>())\n        initialize_buffer(this, owned);\n    return output")
-                elif name in {"Present", "TestCooperativeLevel"}:
+                elif ret == "HRESULT" and kind != "Factory":
                     body = f"return observe_result(device_of(this), native_->{name}({', '.join(actual)}));"
                 else:
                     body = f"return native_->{name}({', '.join(actual)});"

@@ -5,6 +5,7 @@ if(NOT WIN32 OR NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
 endif()
 add_library(d3d9 SHARED
   src/proxy/loader.cpp src/proxy/capture.cpp src/proxy/capture_state.cpp
+  src/ownership/execution_state.cpp
   src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/telemetry.cpp
   src/proxy/loading_trace.cpp src/ownership/d3d9_ownership.cpp
   src/ownership/finite_buffer_evidence.cpp src/ownership/managed_upload_contract.cpp

@@ -14,8 +14,9 @@ The original Win32 fixture builds that production reader together with the real
 ownership and resource-ID implementations. It creates an actual D3D9 device in
 CrossOver Preview with `track_buffer_writes=true`. Compile-only callbacks accept
 only the fixture's exact original shader bytes; neither callback nor the
-original shader contracts are included in production. The archive shader
-registry is verified separately. The fixture stubs only capture log output.
+original shader contracts are included in production. A separate lease-admission case binds a pinned, locally extracted reviewed
+archive VS and uses the production position-profile lookup. It does not execute
+that game shader. Its pixel shader remains an original fixture contract. The fixture stubs only capture log output.
 
 Run without launching the game:
 
@@ -30,7 +31,7 @@ command and report hash. A previous PASS is invalidated before reading sources
 or invoking the compiler. Build and run must preserve all recorded inputs.
 The build uses SSE2 and realigns the four-byte incoming Win32 stack contract.
 
-The extended native run passes **219 checks**, including **63 ordinary caller-state
+The preceding finite-upload checkpoint passed **219 checks**, including **63 ordinary caller-state
 comparisons** and seven getter-failure controls. The original 167-check default-off
 behavior remains covered alongside the opt-in finite-upload cases.
 
@@ -91,6 +92,39 @@ it does not guess an exact index subrange from incomplete metadata. The observer
 still requires serialized uploads, draw queries and later replay, and cannot
 certify foreign writes that bypass the ownership boundary.
 
-This checkpoint verifies input gathering and conservative refusal. It does not
-supply whole-scene temporal coverage, object-lifetime hooks, geometry retention,
-jitter, motion replay or a game TAA acceptance result.
+## Optional caller-owned geometry lease
+
+`read` accepts a `GeometryFrameHandle`, defaulting to an empty handle. The empty
+handle preserves diagnostic-only behavior without retaining geometry. A nonempty
+handle permits acquisition only after all local blockers are absent, actual
+shader bytes qualify a production replay source, finite XYZ and index bounds
+are verified, and local position/geometry/coverage proofs pass. The exact immutable
+finite/index requests used by the reader are passed to ownership while its
+getter-owned VB/IB references are still live. Nonindexed acquisition passes no IB.
+
+`DrawInput.geometry_lease` is an opaque value and `lease_status` records the
+acquisition HRESULT; `S_FALSE` also covers unrequested or locally refused
+acquisition. The caller owns release/end-frame cleanup, including after a failed
+application draw. Copying `DrawInput` does not acquire another lease or transfer
+cleanup responsibility. Retention proves neither engine object lifetimes nor
+that later writes leave geometry unchanged; inspection must revalidate the
+retained native allocation and exact revision before replay.
+
+The added fixture passes **260 checks / 74 caller-state snapshots** in the final
+fresh native run. The runner requires local archive program
+`vs_b0602757fce6e870.bin` from `/tmp/x3-shader-sweep/programs`, SHA-256
+`33cef191db2668aadef869a140b2185b1576212535bdae7d607da49573d8d785`.
+It hashes that input before and after build/run without retaining copyrighted
+bytes in the repository. The reviewed shader is created and bound only, never
+executed. This tests genuine reader admission without substituting a synthetic
+production source qualifier.
+
+Controls cover no-frame and synthetic-source refusal, nonindexed and indexed
+native leases, caller cleanup after failed submission, raster/scope/pending-write/
+nonfinite/index-range refusal, nonindexed independence from a bad bound IB,
+content mutation after acquisition, and stale frame rejection. Ordinary state
+and public wrapper reference comparisons also surround every new reader call.
+
+This verifies input gathering, conservative refusal and optional geometry
+reservation. It does not supply whole-scene temporal coverage, object-lifetime
+hooks, jitter, motion replay or a game TAA acceptance result.

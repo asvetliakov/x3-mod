@@ -3,7 +3,7 @@
   "phase": "complete",
   "fresh_build": true,
   "game_launched": false,
-  "started_utc": "2026-09-10T23:33:58.303571+00:00",
+  "started_utc": "2026-09-10T23:31:22.361665+00:00",
   "source_hashes_before_build": {
     "src/ownership/d3d9_ownership.h": "6251f048bd49782d919f74705ab9c7f0aec61ee7f2a71799c4a03c117fe90d33",
     "src/ownership/d3d9_ownership.cpp": "68a06235c0f23b83ebaca368ddec60adc74d3827b723b9e8fd2812cf7c724b4f",
@@ -16,9 +16,9 @@
     "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949",
     "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
     "tools/ownership/generate_d3d9_forwarders.py": "0f7ea6c583d8434a3c59e2327a313f30651012b159918a085115b878910672a9",
-    "verification/probe/finite_upload_fixture.cpp": "e8ee28afe2685d9fcbb8366f7d95a22b50e4fca895c5ae18abfa56d273f3ad7f",
-    "verification/probe/build_finite_upload.sh": "b5026e9d9ec5c7abd8889748bd1685c83b65237fab43d2a5387b327a2774b8d6",
-    "verification/probe/run_finite_upload.py": "d0013a024f0b9bf6919666469bc8edf29b64b1c7c663fd1c9b269ef67a0ce34d",
+    "verification/probe/geometry_lease_fixture.cpp": "0ba708c899ecba2ee3d54755cf567336b4ddc8cf5944fb8b8934e3d6b95c482f",
+    "verification/probe/build_geometry_lease.sh": "f3a6d38fcd40964decc509bc4bc71cf2a5d046adee32d42cb219738139bad579",
+    "verification/probe/run_geometry_lease.py": "a3f3b38ab76751f72a594ee2178a1144f3c6ba66af9d53a1c86f86ed6867e6c8",
     "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
     "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
   },
@@ -34,13 +34,13 @@
     "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949",
     "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
     "tools/ownership/generate_d3d9_forwarders.py": "0f7ea6c583d8434a3c59e2327a313f30651012b159918a085115b878910672a9",
-    "verification/probe/finite_upload_fixture.cpp": "e8ee28afe2685d9fcbb8366f7d95a22b50e4fca895c5ae18abfa56d273f3ad7f",
-    "verification/probe/build_finite_upload.sh": "b5026e9d9ec5c7abd8889748bd1685c83b65237fab43d2a5387b327a2774b8d6",
-    "verification/probe/run_finite_upload.py": "d0013a024f0b9bf6919666469bc8edf29b64b1c7c663fd1c9b269ef67a0ce34d",
+    "verification/probe/geometry_lease_fixture.cpp": "0ba708c899ecba2ee3d54755cf567336b4ddc8cf5944fb8b8934e3d6b95c482f",
+    "verification/probe/build_geometry_lease.sh": "f3a6d38fcd40964decc509bc4bc71cf2a5d046adee32d42cb219738139bad579",
+    "verification/probe/run_geometry_lease.py": "a3f3b38ab76751f72a594ee2178a1144f3c6ba66af9d53a1c86f86ed6867e6c8",
     "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
     "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
   },
-  "executable_sha256": "af462a1bbf630467105964a828344210c5b2e2f4ac998a55e49607e716c75895",
+  "executable_sha256": "6b7a2ba977ae886c5816bfce569b7bb54250751d9db3fe77fe1d330539abe9da",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -50,10 +50,10 @@
     "d3d9=b",
     "--workdir",
     "/Users/asvetl/x3-mod/verification/probe/build",
-    "/Users/asvetl/x3-mod/verification/probe/build/finite_upload_fixture.exe"
+    "/Users/asvetl/x3-mod/verification/probe/build/geometry_lease_fixture.exe"
   ],
   "exit_code": 0,
-  "checks": 385,
+  "checks": 319,
   "source_hashes_after": {
     "src/ownership/d3d9_ownership.h": "6251f048bd49782d919f74705ab9c7f0aec61ee7f2a71799c4a03c117fe90d33",
     "src/ownership/d3d9_ownership.cpp": "68a06235c0f23b83ebaca368ddec60adc74d3827b723b9e8fd2812cf7c724b4f",
@@ -66,18 +66,18 @@
     "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949",
     "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
     "tools/ownership/generate_d3d9_forwarders.py": "0f7ea6c583d8434a3c59e2327a313f30651012b159918a085115b878910672a9",
-    "verification/probe/finite_upload_fixture.cpp": "e8ee28afe2685d9fcbb8366f7d95a22b50e4fca895c5ae18abfa56d273f3ad7f",
-    "verification/probe/build_finite_upload.sh": "b5026e9d9ec5c7abd8889748bd1685c83b65237fab43d2a5387b327a2774b8d6",
-    "verification/probe/run_finite_upload.py": "d0013a024f0b9bf6919666469bc8edf29b64b1c7c663fd1c9b269ef67a0ce34d",
+    "verification/probe/geometry_lease_fixture.cpp": "0ba708c899ecba2ee3d54755cf567336b4ddc8cf5944fb8b8934e3d6b95c482f",
+    "verification/probe/build_geometry_lease.sh": "f3a6d38fcd40964decc509bc4bc71cf2a5d046adee32d42cb219738139bad579",
+    "verification/probe/run_geometry_lease.py": "a3f3b38ab76751f72a594ee2178a1144f3c6ba66af9d53a1c86f86ed6867e6c8",
     "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
     "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
   },
-  "report_sha256": "6509dde9dc10fec2eef2befc6d2c15e660c86a2199572c30859ce7b2d6b1af2b",
+  "report_sha256": "8a48d0b3c41605c6742b2c65fa17fc6c5160b342f58971fee7d2e7e237ebc002",
   "wine_log_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
   "binary_unchanged": true,
   "limits": [
     "Synthetic original D3D9 on the pinned Preview runtime; no live-game cost or renderer eligibility claim.",
-    "Fixture-only registry/addref scheduling seam changes no production observer branch.",
-    "Arbitrary borrowed-native mutation is outside observer coverage; native GUID foreign-IUnknown tamper may retain one untrusted reference before permanent refusal."
+    "Public leases hold native references only; no production replay/capture hook is enabled by this fixture.",
+    "Leases preserve allocation lifetime, not contents; replay must revalidate immutable evidence requests and obey serialized native access."
   ]
 }

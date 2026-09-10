@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <array>
 #include "finite_buffer_evidence.h"
+#include "execution_state.h"
 
 // Opt-in normal-D3D9 ownership boundary. Application COM references are separate from renderer-owned
 // backend resources, so persistent history cannot keep its own owner alive.
@@ -14,6 +15,8 @@ struct Options {
     bool capture_auto_depth = false;
     // Diagnostic revisions of observed VB/IB writes; never captures payload.
     bool track_buffer_writes = false;
+    // Observe scene/state-block/query intervals from pristine device creation.
+    bool track_execution_state = false;
     // Opt-in finite XYZ evidence from verified existing MANAGED write mappings.
     // Requires track_buffer_writes. No extra Lock or GPU readback is performed.
     bool capture_finite_positions = false;
@@ -26,6 +29,15 @@ struct Options {
 // the caller retains it. Native Ex factories are rejected before wrapper mode.
 HRESULT wrap_factory(IDirect3D9* owned_native, IDirect3D9** out,
                      const Options& options = {}) noexcept;
+
+// S_OK means recognized wrapper; inspect requested/known before using any bits.
+// Serialize application calls, this snapshot and injected work. All application
+// execution must cross this boundary; native renderer access is trusted to leave
+// scene/state-block/query scopes unchanged. Foreign native bypass is unknowable.
+HRESULT get_execution_view(IDirect3DDevice9* application, ExecutionView* out) noexcept;
+// Call after uncertain injected-native execution/restoration, or known bypass.
+// Permanent for the living device, including successful Reset. No native calls.
+HRESULT invalidate_execution_state(IDirect3DDevice9* application) noexcept;
 
 struct BufferContentView {
     std::uint64_t revision = 0; // Observed successful write operations, not a hash.
@@ -123,6 +135,49 @@ HRESULT get_index_range_view(IDirect3DIndexBuffer9* application,
     const IndexRangeRequest& request, IndexRangeView* out) noexcept;
 HRESULT get_finite_upload_statistics(IDirect3DDevice9* application,
     FiniteUploadStatistics* out) noexcept;
+
+// Frame-scoped native geometry reservations for a renderer. These opaque values
+// never own an application wrapper reference and are never reused in a process.
+struct GeometryFrameHandle { std::uint64_t value=0; };
+struct GeometryLeaseHandle { std::uint64_t value=0; };
+constexpr std::uint32_t geometry_frame_limit=64;
+constexpr std::uint32_t geometry_leases_per_frame=4096;
+constexpr std::uint32_t geometry_lease_limit=8192;
+constexpr std::uint64_t geometry_native_byte_limit=512ull*1024ull*1024ull;
+struct GeometryLeaseRequest {
+    std::uint64_t expected_generation=0;
+    FinitePositionRequest positions;
+    bool indexed=false;
+    IndexRangeRequest indices; // Ignored only when indexed=false and IB=null.
+};
+struct GeometryLeaseView {
+    HRESULT status=S_FALSE;
+    FiniteEvidenceReason reason=FiniteEvidenceReason::Unrecognized;
+    GeometryFrameHandle frame;
+    GeometryLeaseHandle lease;
+    std::uint64_t generation=0;
+    IDirect3DVertexBuffer9* vertex_buffer=nullptr; // Borrowed native, never application-visible.
+    IDirect3DIndexBuffer9* index_buffer=nullptr;
+    FinitePositionView positions;
+    IndexRangeView indices;
+};
+// Caller holds the device and actual getter VB/IB references during acquisition;
+// serialize all frame/lease operations with writes, reset, teardown and mutation.
+// One active frame per device. Capacity refusal never evicts existing leases.
+// Indexedness must match IB presence. Requests are copied, never reinterpreted.
+// S_OK acquisition consumes no caller refs; it acquires its own native refs.
+// S_FALSE means evidence refused; failed HRESULT means invalid handle/arguments,
+// unavailable device or capacity. Every failed acquisition leaves out->value=0.
+HRESULT begin_geometry_frame(IDirect3DDevice9* application,GeometryFrameHandle* out) noexcept;
+HRESULT acquire_geometry_lease(GeometryFrameHandle frame,IDirect3DVertexBuffer9* vertex_buffer,
+    IDirect3DIndexBuffer9* index_buffer,const GeometryLeaseRequest& request,GeometryLeaseHandle* out) noexcept;
+// Revalidates the exact stored requests on held native allocations without
+// recreating wrappers. S_OK/status S_OK alone exposes borrowed native pointers.
+// Content refusal returns S_FALSE with null pointers; stale handles E_INVALIDARG.
+// Borrowed pointers expire on release/end/Reset/loss/final logical device release.
+HRESULT inspect_geometry_lease(GeometryFrameHandle frame,GeometryLeaseHandle lease,GeometryLeaseView* out) noexcept;
+HRESULT release_geometry_lease(GeometryFrameHandle frame,GeometryLeaseHandle lease) noexcept;
+HRESULT end_geometry_frame(GeometryFrameHandle frame) noexcept;
 
 struct CopyDepthView {
     // Borrowed native D24X8 snapshot. On verified Preview this texture uses

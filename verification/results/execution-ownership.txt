@@ -1,0 +1,18 @@
+CASE basic pure=0 PASS
+CASE basic pure=1 PASS
+CASE loss method=0 hr=80004005 PASS
+CASE loss method=0 hr=88760868 PASS
+CASE loss method=0 hr=88760869 PASS
+CASE loss method=1 hr=80004005 PASS
+CASE loss method=1 hr=88760868 PASS
+CASE loss method=1 hr=88760869 PASS
+CASE loss method=2 hr=80004005 PASS
+CASE loss method=2 hr=88760868 PASS
+CASE loss method=2 hr=88760869 PASS
+CASE loss method=3 hr=80004005 PASS
+CASE loss method=3 hr=88760868 PASS
+CASE loss method=3 hr=88760869 PASS
+CASE loss method=4 hr=80004005 PASS
+CASE loss method=4 hr=88760868 PASS
+CASE loss method=4 hr=88760869 PASS
+RESULT PASS checks=132 failures=0

@@ -22,16 +22,19 @@ public:
     void configure(bool requested) noexcept;
     void begin_frame(IDirect3DDevice9* device, std::uint64_t device_id,
                      std::uint64_t frame, bool capturing) noexcept;
-    void end_frame(HRESULT present_result) noexcept;
+    bool end_frame(HRESULT present_result) noexcept;
+    // True only during the main depth-writing scene, excluding background,
+    // bloom and overlays. This is a collection boundary, not color coverage.
+    bool collecting_scene() const noexcept;
     void invalidate() noexcept;
     void unsupported(const char* operation, HRESULT result) noexcept;
 
     void before_draw(IDirect3DDevice9* device, D3DPRIMITIVETYPE topology,
                      UINT primitives) noexcept;
     void after_draw(HRESULT result) noexcept;
-    void before_clear(IDirect3DDevice9* device, DWORD count, const D3DRECT* rects,
+    renderer::Selection before_clear(IDirect3DDevice9* device, DWORD count, const D3DRECT* rects,
                       DWORD flags, float depth) noexcept;
-    void after_clear(IDirect3DDevice9* device, HRESULT result) noexcept;
+    bool after_clear(IDirect3DDevice9* device, HRESULT result) noexcept;
     void after_set_rt(IDirect3DDevice9* device, DWORD index, HRESULT result) noexcept;
     void after_set_depth(IDirect3DDevice9* device, HRESULT result) noexcept;
     void after_stretch(IDirect3DDevice9* device, IDirect3DSurface9* source,

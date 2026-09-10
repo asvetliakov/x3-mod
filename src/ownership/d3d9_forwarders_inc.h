@@ -67,22 +67,22 @@ UINT WINAPI Device::GetAvailableTextureMem() {
     return native_->GetAvailableTextureMem();
 }
 HRESULT WINAPI Device::EvictManagedResources() {
-    return native_->EvictManagedResources();
+    return observe_result(device_of(this), native_->EvictManagedResources());
 }
 HRESULT WINAPI Device::GetDirect3D(IDirect3D9** ppD3D9) {
     return get_factory(this, ppD3D9);
 }
 HRESULT WINAPI Device::GetDeviceCaps(D3DCAPS9* pCaps) {
-    return native_->GetDeviceCaps(pCaps);
+    return observe_result(device_of(this), native_->GetDeviceCaps(pCaps));
 }
 HRESULT WINAPI Device::GetDisplayMode(UINT iSwapChain, D3DDISPLAYMODE* pMode) {
-    return native_->GetDisplayMode(iSwapChain, pMode);
+    return observe_result(device_of(this), native_->GetDisplayMode(iSwapChain, pMode));
 }
 HRESULT WINAPI Device::GetCreationParameters(D3DDEVICE_CREATION_PARAMETERS * pParameters) {
-    return native_->GetCreationParameters(pParameters);
+    return observe_result(device_of(this), native_->GetCreationParameters(pParameters));
 }
 HRESULT WINAPI Device::SetCursorProperties(UINT XHotSpot, UINT YHotSpot, IDirect3DSurface9* pCursorBitmap) {
-    return native_->SetCursorProperties(XHotSpot, YHotSpot, unwrap(device_of(this), pCursorBitmap));
+    return observe_result(device_of(this), native_->SetCursorProperties(XHotSpot, YHotSpot, unwrap(device_of(this), pCursorBitmap)));
 }
 void WINAPI Device::SetCursorPosition(int X, int Y, DWORD Flags) {
     return native_->SetCursorPosition(X, Y, Flags);
@@ -115,10 +115,10 @@ HRESULT WINAPI Device::GetBackBuffer(UINT iSwapChain, UINT iBackBuffer, D3DBACKB
     return output(device_of(this), hr, owned, ppBackBuffer);
 }
 HRESULT WINAPI Device::GetRasterStatus(UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus) {
-    return native_->GetRasterStatus(iSwapChain, pRasterStatus);
+    return observe_result(device_of(this), native_->GetRasterStatus(iSwapChain, pRasterStatus));
 }
 HRESULT WINAPI Device::SetDialogBoxMode(WINBOOL bEnableDialogs) {
-    return native_->SetDialogBoxMode(bEnableDialogs);
+    return observe_result(device_of(this), native_->SetDialogBoxMode(bEnableDialogs));
 }
 void WINAPI Device::SetGammaRamp(UINT swapchain_idx, DWORD flags, const D3DGAMMARAMP * ramp) {
     return native_->SetGammaRamp(swapchain_idx, flags, ramp);
@@ -166,22 +166,22 @@ HRESULT WINAPI Device::CreateDepthStencilSurface(UINT Width, UINT Height, D3DFOR
     return output(device_of(this), hr, owned, ppSurface);
 }
 HRESULT WINAPI Device::UpdateSurface(IDirect3DSurface9 * src_surface, const RECT * src_rect, IDirect3DSurface9 * dst_surface, const POINT * dst_point) {
-    return native_->UpdateSurface(unwrap(device_of(this), src_surface), src_rect, unwrap(device_of(this), dst_surface), dst_point);
+    return observe_result(device_of(this), native_->UpdateSurface(unwrap(device_of(this), src_surface), src_rect, unwrap(device_of(this), dst_surface), dst_point));
 }
 HRESULT WINAPI Device::UpdateTexture(IDirect3DBaseTexture9* pSourceTexture, IDirect3DBaseTexture9* pDestinationTexture) {
-    return native_->UpdateTexture(unwrap(device_of(this), pSourceTexture), unwrap(device_of(this), pDestinationTexture));
+    return observe_result(device_of(this), native_->UpdateTexture(unwrap(device_of(this), pSourceTexture), unwrap(device_of(this), pDestinationTexture)));
 }
 HRESULT WINAPI Device::GetRenderTargetData(IDirect3DSurface9* pRenderTarget, IDirect3DSurface9* pDestSurface) {
-    return native_->GetRenderTargetData(unwrap(device_of(this), pRenderTarget), unwrap(device_of(this), pDestSurface));
+    return observe_result(device_of(this), native_->GetRenderTargetData(unwrap(device_of(this), pRenderTarget), unwrap(device_of(this), pDestSurface)));
 }
 HRESULT WINAPI Device::GetFrontBufferData(UINT iSwapChain, IDirect3DSurface9* pDestSurface) {
-    return native_->GetFrontBufferData(iSwapChain, unwrap(device_of(this), pDestSurface));
+    return observe_result(device_of(this), native_->GetFrontBufferData(iSwapChain, unwrap(device_of(this), pDestSurface)));
 }
 HRESULT WINAPI Device::StretchRect(IDirect3DSurface9 * src_surface, const RECT * src_rect, IDirect3DSurface9 * dst_surface, const RECT * dst_rect, D3DTEXTUREFILTERTYPE filter) {
-    return native_->StretchRect(unwrap(device_of(this), src_surface), src_rect, unwrap(device_of(this), dst_surface), dst_rect, filter);
+    return observe_result(device_of(this), native_->StretchRect(unwrap(device_of(this), src_surface), src_rect, unwrap(device_of(this), dst_surface), dst_rect, filter));
 }
 HRESULT WINAPI Device::ColorFill(IDirect3DSurface9 * surface, const RECT * rect, D3DCOLOR color) {
-    return native_->ColorFill(unwrap(device_of(this), surface), rect, color);
+    return observe_result(device_of(this), native_->ColorFill(unwrap(device_of(this), surface), rect, color));
 }
 HRESULT WINAPI Device::CreateOffscreenPlainSurface(UINT Width, UINT Height, D3DFORMAT Format, D3DPOOL Pool, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) {
     IDirect3DSurface9* owned = untouched_output<IDirect3DSurface9>();
@@ -189,7 +189,7 @@ HRESULT WINAPI Device::CreateOffscreenPlainSurface(UINT Width, UINT Height, D3DF
     return output(device_of(this), hr, owned, ppSurface);
 }
 HRESULT WINAPI Device::SetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9* pRenderTarget) {
-    return native_->SetRenderTarget(RenderTargetIndex, unwrap(device_of(this), pRenderTarget));
+    return observe_result(device_of(this), native_->SetRenderTarget(RenderTargetIndex, unwrap(device_of(this), pRenderTarget)));
 }
 HRESULT WINAPI Device::GetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9** ppRenderTarget) {
     IDirect3DSurface9* owned = untouched_output<IDirect3DSurface9>();
@@ -197,7 +197,7 @@ HRESULT WINAPI Device::GetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface
     return output(device_of(this), hr, owned, ppRenderTarget);
 }
 HRESULT WINAPI Device::SetDepthStencilSurface(IDirect3DSurface9* pNewZStencil) {
-    return native_->SetDepthStencilSurface(unwrap(device_of(this), pNewZStencil));
+    return observe_result(device_of(this), native_->SetDepthStencilSurface(unwrap(device_of(this), pNewZStencil)));
 }
 HRESULT WINAPI Device::GetDepthStencilSurface(IDirect3DSurface9** ppZStencilSurface) {
     IDirect3DSurface9* owned = untouched_output<IDirect3DSurface9>();
@@ -205,58 +205,58 @@ HRESULT WINAPI Device::GetDepthStencilSurface(IDirect3DSurface9** ppZStencilSurf
     return output(device_of(this), hr, owned, ppZStencilSurface);
 }
 HRESULT WINAPI Device::BeginScene() {
-    return native_->BeginScene();
+    return scene_transition(this, true);
 }
 HRESULT WINAPI Device::EndScene() {
-    return native_->EndScene();
+    return scene_transition(this, false);
 }
 HRESULT WINAPI Device::Clear(DWORD rect_count, const D3DRECT * rects, DWORD flags, D3DCOLOR color, float z, DWORD stencil) {
     return clear_device(this, rect_count, rects, flags, color, z, stencil);
 }
 HRESULT WINAPI Device::SetTransform(D3DTRANSFORMSTATETYPE state, const D3DMATRIX * matrix) {
-    return native_->SetTransform(state, matrix);
+    return observe_result(device_of(this), native_->SetTransform(state, matrix));
 }
 HRESULT WINAPI Device::GetTransform(D3DTRANSFORMSTATETYPE State, D3DMATRIX* pMatrix) {
-    return native_->GetTransform(State, pMatrix);
+    return observe_result(device_of(this), native_->GetTransform(State, pMatrix));
 }
 HRESULT WINAPI Device::MultiplyTransform(D3DTRANSFORMSTATETYPE state, const D3DMATRIX * matrix) {
-    return native_->MultiplyTransform(state, matrix);
+    return observe_result(device_of(this), native_->MultiplyTransform(state, matrix));
 }
 HRESULT WINAPI Device::SetViewport(const D3DVIEWPORT9 * viewport) {
-    return native_->SetViewport(viewport);
+    return observe_result(device_of(this), native_->SetViewport(viewport));
 }
 HRESULT WINAPI Device::GetViewport(D3DVIEWPORT9* pViewport) {
-    return native_->GetViewport(pViewport);
+    return observe_result(device_of(this), native_->GetViewport(pViewport));
 }
 HRESULT WINAPI Device::SetMaterial(const D3DMATERIAL9 * material) {
-    return native_->SetMaterial(material);
+    return observe_result(device_of(this), native_->SetMaterial(material));
 }
 HRESULT WINAPI Device::GetMaterial(D3DMATERIAL9* pMaterial) {
-    return native_->GetMaterial(pMaterial);
+    return observe_result(device_of(this), native_->GetMaterial(pMaterial));
 }
 HRESULT WINAPI Device::SetLight(DWORD index, const D3DLIGHT9 * light) {
-    return native_->SetLight(index, light);
+    return observe_result(device_of(this), native_->SetLight(index, light));
 }
 HRESULT WINAPI Device::GetLight(DWORD Index, D3DLIGHT9* arg1) {
-    return native_->GetLight(Index, arg1);
+    return observe_result(device_of(this), native_->GetLight(Index, arg1));
 }
 HRESULT WINAPI Device::LightEnable(DWORD Index, WINBOOL Enable) {
-    return native_->LightEnable(Index, Enable);
+    return observe_result(device_of(this), native_->LightEnable(Index, Enable));
 }
 HRESULT WINAPI Device::GetLightEnable(DWORD Index, WINBOOL* pEnable) {
-    return native_->GetLightEnable(Index, pEnable);
+    return observe_result(device_of(this), native_->GetLightEnable(Index, pEnable));
 }
 HRESULT WINAPI Device::SetClipPlane(DWORD index, const float * plane) {
-    return native_->SetClipPlane(index, plane);
+    return observe_result(device_of(this), native_->SetClipPlane(index, plane));
 }
 HRESULT WINAPI Device::GetClipPlane(DWORD Index, float* pPlane) {
-    return native_->GetClipPlane(Index, pPlane);
+    return observe_result(device_of(this), native_->GetClipPlane(Index, pPlane));
 }
 HRESULT WINAPI Device::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
-    return native_->SetRenderState(State, Value);
+    return observe_result(device_of(this), native_->SetRenderState(State, Value));
 }
 HRESULT WINAPI Device::GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue) {
-    return native_->GetRenderState(State, pValue);
+    return observe_result(device_of(this), native_->GetRenderState(State, pValue));
 }
 HRESULT WINAPI Device::CreateStateBlock(D3DSTATEBLOCKTYPE Type, IDirect3DStateBlock9** ppSB) {
     IDirect3DStateBlock9* owned = untouched_output<IDirect3DStateBlock9>();
@@ -270,10 +270,10 @@ HRESULT WINAPI Device::EndStateBlock(IDirect3DStateBlock9** ppSB) {
     return end_state_block(this, ppSB);
 }
 HRESULT WINAPI Device::SetClipStatus(const D3DCLIPSTATUS9 * clip_status) {
-    return native_->SetClipStatus(clip_status);
+    return observe_result(device_of(this), native_->SetClipStatus(clip_status));
 }
 HRESULT WINAPI Device::GetClipStatus(D3DCLIPSTATUS9* pClipStatus) {
-    return native_->GetClipStatus(pClipStatus);
+    return observe_result(device_of(this), native_->GetClipStatus(pClipStatus));
 }
 HRESULT WINAPI Device::GetTexture(DWORD Stage, IDirect3DBaseTexture9** ppTexture) {
     IDirect3DBaseTexture9* owned = untouched_output<IDirect3DBaseTexture9>();
@@ -281,64 +281,64 @@ HRESULT WINAPI Device::GetTexture(DWORD Stage, IDirect3DBaseTexture9** ppTexture
     return output(device_of(this), hr, owned, ppTexture);
 }
 HRESULT WINAPI Device::SetTexture(DWORD Stage, IDirect3DBaseTexture9* pTexture) {
-    return native_->SetTexture(Stage, unwrap(device_of(this), pTexture));
+    return observe_result(device_of(this), native_->SetTexture(Stage, unwrap(device_of(this), pTexture)));
 }
 HRESULT WINAPI Device::GetTextureStageState(DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD* pValue) {
-    return native_->GetTextureStageState(Stage, Type, pValue);
+    return observe_result(device_of(this), native_->GetTextureStageState(Stage, Type, pValue));
 }
 HRESULT WINAPI Device::SetTextureStageState(DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD Value) {
-    return native_->SetTextureStageState(Stage, Type, Value);
+    return observe_result(device_of(this), native_->SetTextureStageState(Stage, Type, Value));
 }
 HRESULT WINAPI Device::GetSamplerState(DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD* pValue) {
-    return native_->GetSamplerState(Sampler, Type, pValue);
+    return observe_result(device_of(this), native_->GetSamplerState(Sampler, Type, pValue));
 }
 HRESULT WINAPI Device::SetSamplerState(DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value) {
-    return native_->SetSamplerState(Sampler, Type, Value);
+    return observe_result(device_of(this), native_->SetSamplerState(Sampler, Type, Value));
 }
 HRESULT WINAPI Device::ValidateDevice(DWORD* pNumPasses) {
-    return native_->ValidateDevice(pNumPasses);
+    return observe_result(device_of(this), native_->ValidateDevice(pNumPasses));
 }
 HRESULT WINAPI Device::SetPaletteEntries(UINT palette_idx, const PALETTEENTRY * entries) {
-    return native_->SetPaletteEntries(palette_idx, entries);
+    return observe_result(device_of(this), native_->SetPaletteEntries(palette_idx, entries));
 }
 HRESULT WINAPI Device::GetPaletteEntries(UINT PaletteNumber, PALETTEENTRY* pEntries) {
-    return native_->GetPaletteEntries(PaletteNumber, pEntries);
+    return observe_result(device_of(this), native_->GetPaletteEntries(PaletteNumber, pEntries));
 }
 HRESULT WINAPI Device::SetCurrentTexturePalette(UINT PaletteNumber) {
-    return native_->SetCurrentTexturePalette(PaletteNumber);
+    return observe_result(device_of(this), native_->SetCurrentTexturePalette(PaletteNumber));
 }
 HRESULT WINAPI Device::GetCurrentTexturePalette(UINT * PaletteNumber) {
-    return native_->GetCurrentTexturePalette(PaletteNumber);
+    return observe_result(device_of(this), native_->GetCurrentTexturePalette(PaletteNumber));
 }
 HRESULT WINAPI Device::SetScissorRect(const RECT * rect) {
-    return native_->SetScissorRect(rect);
+    return observe_result(device_of(this), native_->SetScissorRect(rect));
 }
 HRESULT WINAPI Device::GetScissorRect(RECT* pRect) {
-    return native_->GetScissorRect(pRect);
+    return observe_result(device_of(this), native_->GetScissorRect(pRect));
 }
 HRESULT WINAPI Device::SetSoftwareVertexProcessing(WINBOOL bSoftware) {
-    return native_->SetSoftwareVertexProcessing(bSoftware);
+    return observe_result(device_of(this), native_->SetSoftwareVertexProcessing(bSoftware));
 }
 WINBOOL WINAPI Device::GetSoftwareVertexProcessing() {
     return native_->GetSoftwareVertexProcessing();
 }
 HRESULT WINAPI Device::SetNPatchMode(float nSegments) {
-    return native_->SetNPatchMode(nSegments);
+    return observe_result(device_of(this), native_->SetNPatchMode(nSegments));
 }
 float WINAPI Device::GetNPatchMode() {
     return native_->GetNPatchMode();
 }
 HRESULT WINAPI Device::DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount) {
-    return native_->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
+    return observe_result(device_of(this), native_->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount));
 }
 HRESULT WINAPI Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE arg0, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount) {
-    return native_->DrawIndexedPrimitive(arg0, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
+    return observe_result(device_of(this), native_->DrawIndexedPrimitive(arg0, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount));
 }
 HRESULT WINAPI Device::DrawPrimitiveUP(D3DPRIMITIVETYPE primitive_type, UINT primitive_count, const void * data, UINT stride) {
-    return native_->DrawPrimitiveUP(primitive_type, primitive_count, data, stride);
+    return observe_result(device_of(this), native_->DrawPrimitiveUP(primitive_type, primitive_count, data, stride));
 }
 HRESULT WINAPI Device::DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE primitive_type, UINT min_vertex_idx, UINT vertex_count, UINT primitive_count, const void * index_data, D3DFORMAT index_format, const void * data, UINT stride) {
-    return native_->DrawIndexedPrimitiveUP(primitive_type, min_vertex_idx, vertex_count, primitive_count, index_data, index_format, data, stride);
+    return observe_result(device_of(this), native_->DrawIndexedPrimitiveUP(primitive_type, min_vertex_idx, vertex_count, primitive_count, index_data, index_format, data, stride));
 }
 HRESULT WINAPI Device::ProcessVertices(UINT SrcStartIndex, UINT DestIndex, UINT VertexCount, IDirect3DVertexBuffer9* pDestBuffer, IDirect3DVertexDeclaration9* pVertexDecl, DWORD Flags) {
     return process_vertices(this, SrcStartIndex, DestIndex, VertexCount, pDestBuffer, pVertexDecl, Flags);
@@ -349,7 +349,7 @@ HRESULT WINAPI Device::CreateVertexDeclaration(const D3DVERTEXELEMENT9 * element
     return output(device_of(this), hr, owned, declaration);
 }
 HRESULT WINAPI Device::SetVertexDeclaration(IDirect3DVertexDeclaration9* pDecl) {
-    return native_->SetVertexDeclaration(unwrap(device_of(this), pDecl));
+    return observe_result(device_of(this), native_->SetVertexDeclaration(unwrap(device_of(this), pDecl)));
 }
 HRESULT WINAPI Device::GetVertexDeclaration(IDirect3DVertexDeclaration9** ppDecl) {
     IDirect3DVertexDeclaration9* owned = untouched_output<IDirect3DVertexDeclaration9>();
@@ -357,10 +357,10 @@ HRESULT WINAPI Device::GetVertexDeclaration(IDirect3DVertexDeclaration9** ppDecl
     return output(device_of(this), hr, owned, ppDecl);
 }
 HRESULT WINAPI Device::SetFVF(DWORD FVF) {
-    return native_->SetFVF(FVF);
+    return observe_result(device_of(this), native_->SetFVF(FVF));
 }
 HRESULT WINAPI Device::GetFVF(DWORD* pFVF) {
-    return native_->GetFVF(pFVF);
+    return observe_result(device_of(this), native_->GetFVF(pFVF));
 }
 HRESULT WINAPI Device::CreateVertexShader(const DWORD * byte_code, IDirect3DVertexShader9 ** shader) {
     IDirect3DVertexShader9* owned = untouched_output<IDirect3DVertexShader9>();
@@ -368,7 +368,7 @@ HRESULT WINAPI Device::CreateVertexShader(const DWORD * byte_code, IDirect3DVert
     return output(device_of(this), hr, owned, shader);
 }
 HRESULT WINAPI Device::SetVertexShader(IDirect3DVertexShader9* pShader) {
-    return native_->SetVertexShader(unwrap(device_of(this), pShader));
+    return observe_result(device_of(this), native_->SetVertexShader(unwrap(device_of(this), pShader)));
 }
 HRESULT WINAPI Device::GetVertexShader(IDirect3DVertexShader9** ppShader) {
     IDirect3DVertexShader9* owned = untouched_output<IDirect3DVertexShader9>();
@@ -376,25 +376,25 @@ HRESULT WINAPI Device::GetVertexShader(IDirect3DVertexShader9** ppShader) {
     return output(device_of(this), hr, owned, ppShader);
 }
 HRESULT WINAPI Device::SetVertexShaderConstantF(UINT reg_idx, const float * data, UINT count) {
-    return native_->SetVertexShaderConstantF(reg_idx, data, count);
+    return observe_result(device_of(this), native_->SetVertexShaderConstantF(reg_idx, data, count));
 }
 HRESULT WINAPI Device::GetVertexShaderConstantF(UINT StartRegister, float* pConstantData, UINT Vector4fCount) {
-    return native_->GetVertexShaderConstantF(StartRegister, pConstantData, Vector4fCount);
+    return observe_result(device_of(this), native_->GetVertexShaderConstantF(StartRegister, pConstantData, Vector4fCount));
 }
 HRESULT WINAPI Device::SetVertexShaderConstantI(UINT reg_idx, const int * data, UINT count) {
-    return native_->SetVertexShaderConstantI(reg_idx, data, count);
+    return observe_result(device_of(this), native_->SetVertexShaderConstantI(reg_idx, data, count));
 }
 HRESULT WINAPI Device::GetVertexShaderConstantI(UINT StartRegister, int* pConstantData, UINT Vector4iCount) {
-    return native_->GetVertexShaderConstantI(StartRegister, pConstantData, Vector4iCount);
+    return observe_result(device_of(this), native_->GetVertexShaderConstantI(StartRegister, pConstantData, Vector4iCount));
 }
 HRESULT WINAPI Device::SetVertexShaderConstantB(UINT reg_idx, const WINBOOL * data, UINT count) {
-    return native_->SetVertexShaderConstantB(reg_idx, data, count);
+    return observe_result(device_of(this), native_->SetVertexShaderConstantB(reg_idx, data, count));
 }
 HRESULT WINAPI Device::GetVertexShaderConstantB(UINT StartRegister, WINBOOL* pConstantData, UINT BoolCount) {
-    return native_->GetVertexShaderConstantB(StartRegister, pConstantData, BoolCount);
+    return observe_result(device_of(this), native_->GetVertexShaderConstantB(StartRegister, pConstantData, BoolCount));
 }
 HRESULT WINAPI Device::SetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer9* pStreamData, UINT OffsetInBytes, UINT Stride) {
-    return native_->SetStreamSource(StreamNumber, unwrap(device_of(this), pStreamData), OffsetInBytes, Stride);
+    return observe_result(device_of(this), native_->SetStreamSource(StreamNumber, unwrap(device_of(this), pStreamData), OffsetInBytes, Stride));
 }
 HRESULT WINAPI Device::GetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer9** ppStreamData, UINT* OffsetInBytes, UINT* pStride) {
     IDirect3DVertexBuffer9* owned = untouched_output<IDirect3DVertexBuffer9>();
@@ -402,13 +402,13 @@ HRESULT WINAPI Device::GetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer9
     return output(device_of(this), hr, owned, ppStreamData);
 }
 HRESULT WINAPI Device::SetStreamSourceFreq(UINT StreamNumber, UINT Divider) {
-    return native_->SetStreamSourceFreq(StreamNumber, Divider);
+    return observe_result(device_of(this), native_->SetStreamSourceFreq(StreamNumber, Divider));
 }
 HRESULT WINAPI Device::GetStreamSourceFreq(UINT StreamNumber, UINT* Divider) {
-    return native_->GetStreamSourceFreq(StreamNumber, Divider);
+    return observe_result(device_of(this), native_->GetStreamSourceFreq(StreamNumber, Divider));
 }
 HRESULT WINAPI Device::SetIndices(IDirect3DIndexBuffer9* pIndexData) {
-    return native_->SetIndices(unwrap(device_of(this), pIndexData));
+    return observe_result(device_of(this), native_->SetIndices(unwrap(device_of(this), pIndexData)));
 }
 HRESULT WINAPI Device::GetIndices(IDirect3DIndexBuffer9** ppIndexData) {
     IDirect3DIndexBuffer9* owned = untouched_output<IDirect3DIndexBuffer9>();
@@ -421,7 +421,7 @@ HRESULT WINAPI Device::CreatePixelShader(const DWORD * byte_code, IDirect3DPixel
     return output(device_of(this), hr, owned, shader);
 }
 HRESULT WINAPI Device::SetPixelShader(IDirect3DPixelShader9* pShader) {
-    return native_->SetPixelShader(unwrap(device_of(this), pShader));
+    return observe_result(device_of(this), native_->SetPixelShader(unwrap(device_of(this), pShader)));
 }
 HRESULT WINAPI Device::GetPixelShader(IDirect3DPixelShader9** ppShader) {
     IDirect3DPixelShader9* owned = untouched_output<IDirect3DPixelShader9>();
@@ -429,36 +429,34 @@ HRESULT WINAPI Device::GetPixelShader(IDirect3DPixelShader9** ppShader) {
     return output(device_of(this), hr, owned, ppShader);
 }
 HRESULT WINAPI Device::SetPixelShaderConstantF(UINT reg_idx, const float * data, UINT count) {
-    return native_->SetPixelShaderConstantF(reg_idx, data, count);
+    return observe_result(device_of(this), native_->SetPixelShaderConstantF(reg_idx, data, count));
 }
 HRESULT WINAPI Device::GetPixelShaderConstantF(UINT StartRegister, float* pConstantData, UINT Vector4fCount) {
-    return native_->GetPixelShaderConstantF(StartRegister, pConstantData, Vector4fCount);
+    return observe_result(device_of(this), native_->GetPixelShaderConstantF(StartRegister, pConstantData, Vector4fCount));
 }
 HRESULT WINAPI Device::SetPixelShaderConstantI(UINT reg_idx, const int * data, UINT count) {
-    return native_->SetPixelShaderConstantI(reg_idx, data, count);
+    return observe_result(device_of(this), native_->SetPixelShaderConstantI(reg_idx, data, count));
 }
 HRESULT WINAPI Device::GetPixelShaderConstantI(UINT StartRegister, int* pConstantData, UINT Vector4iCount) {
-    return native_->GetPixelShaderConstantI(StartRegister, pConstantData, Vector4iCount);
+    return observe_result(device_of(this), native_->GetPixelShaderConstantI(StartRegister, pConstantData, Vector4iCount));
 }
 HRESULT WINAPI Device::SetPixelShaderConstantB(UINT reg_idx, const WINBOOL * data, UINT count) {
-    return native_->SetPixelShaderConstantB(reg_idx, data, count);
+    return observe_result(device_of(this), native_->SetPixelShaderConstantB(reg_idx, data, count));
 }
 HRESULT WINAPI Device::GetPixelShaderConstantB(UINT StartRegister, WINBOOL* pConstantData, UINT BoolCount) {
-    return native_->GetPixelShaderConstantB(StartRegister, pConstantData, BoolCount);
+    return observe_result(device_of(this), native_->GetPixelShaderConstantB(StartRegister, pConstantData, BoolCount));
 }
 HRESULT WINAPI Device::DrawRectPatch(UINT handle, const float * segment_count, const D3DRECTPATCH_INFO * patch_info) {
-    return native_->DrawRectPatch(handle, segment_count, patch_info);
+    return observe_result(device_of(this), native_->DrawRectPatch(handle, segment_count, patch_info));
 }
 HRESULT WINAPI Device::DrawTriPatch(UINT handle, const float * segment_count, const D3DTRIPATCH_INFO * patch_info) {
-    return native_->DrawTriPatch(handle, segment_count, patch_info);
+    return observe_result(device_of(this), native_->DrawTriPatch(handle, segment_count, patch_info));
 }
 HRESULT WINAPI Device::DeletePatch(UINT Handle) {
-    return native_->DeletePatch(Handle);
+    return observe_result(device_of(this), native_->DeletePatch(Handle));
 }
 HRESULT WINAPI Device::CreateQuery(D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery) {
-    IDirect3DQuery9* owned = untouched_output<IDirect3DQuery9>();
-    const HRESULT hr = native_->CreateQuery(Type, ppQuery ? &owned : nullptr);
-    return output(device_of(this), hr, owned, ppQuery);
+    return create_query(this, Type, ppQuery);
 }
 HRESULT WINAPI Texture::QueryInterface(REFIID riid, void** ppvObject) {
     return query(this, riid, ppvObject);
@@ -473,13 +471,13 @@ HRESULT WINAPI Texture::GetDevice(IDirect3DDevice9** ppDevice) {
     return get_device(this, ppDevice);
 }
 HRESULT WINAPI Texture::SetPrivateData(REFGUID guid, const void * data, DWORD data_size, DWORD flags) {
-    return native_->SetPrivateData(guid, data, data_size, flags);
+    return observe_result(device_of(this), native_->SetPrivateData(guid, data, data_size, flags));
 }
 HRESULT WINAPI Texture::GetPrivateData(REFGUID refguid, void* pData, DWORD* pSizeOfData) {
-    return native_->GetPrivateData(refguid, pData, pSizeOfData);
+    return observe_result(device_of(this), native_->GetPrivateData(refguid, pData, pSizeOfData));
 }
 HRESULT WINAPI Texture::FreePrivateData(REFGUID refguid) {
-    return native_->FreePrivateData(refguid);
+    return observe_result(device_of(this), native_->FreePrivateData(refguid));
 }
 DWORD WINAPI Texture::SetPriority(DWORD PriorityNew) {
     return native_->SetPriority(PriorityNew);
@@ -503,7 +501,7 @@ DWORD WINAPI Texture::GetLevelCount() {
     return native_->GetLevelCount();
 }
 HRESULT WINAPI Texture::SetAutoGenFilterType(D3DTEXTUREFILTERTYPE FilterType) {
-    return native_->SetAutoGenFilterType(FilterType);
+    return observe_result(device_of(this), native_->SetAutoGenFilterType(FilterType));
 }
 D3DTEXTUREFILTERTYPE WINAPI Texture::GetAutoGenFilterType() {
     return native_->GetAutoGenFilterType();
@@ -512,7 +510,7 @@ void WINAPI Texture::GenerateMipSubLevels() {
     return native_->GenerateMipSubLevels();
 }
 HRESULT WINAPI Texture::GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) {
-    return native_->GetLevelDesc(Level, pDesc);
+    return observe_result(device_of(this), native_->GetLevelDesc(Level, pDesc));
 }
 HRESULT WINAPI Texture::GetSurfaceLevel(UINT Level, IDirect3DSurface9** ppSurfaceLevel) {
     IDirect3DSurface9* owned = untouched_output<IDirect3DSurface9>();
@@ -520,13 +518,13 @@ HRESULT WINAPI Texture::GetSurfaceLevel(UINT Level, IDirect3DSurface9** ppSurfac
     return output(device_of(this), hr, owned, ppSurfaceLevel);
 }
 HRESULT WINAPI Texture::LockRect(UINT level, D3DLOCKED_RECT * locked_rect, const RECT * rect, DWORD flags) {
-    return native_->LockRect(level, locked_rect, rect, flags);
+    return observe_result(device_of(this), native_->LockRect(level, locked_rect, rect, flags));
 }
 HRESULT WINAPI Texture::UnlockRect(UINT Level) {
-    return native_->UnlockRect(Level);
+    return observe_result(device_of(this), native_->UnlockRect(Level));
 }
 HRESULT WINAPI Texture::AddDirtyRect(const RECT * dirty_rect) {
-    return native_->AddDirtyRect(dirty_rect);
+    return observe_result(device_of(this), native_->AddDirtyRect(dirty_rect));
 }
 HRESULT WINAPI CubeTexture::QueryInterface(REFIID riid, void** ppvObject) {
     return query(this, riid, ppvObject);
@@ -541,13 +539,13 @@ HRESULT WINAPI CubeTexture::GetDevice(IDirect3DDevice9** ppDevice) {
     return get_device(this, ppDevice);
 }
 HRESULT WINAPI CubeTexture::SetPrivateData(REFGUID guid, const void * data, DWORD data_size, DWORD flags) {
-    return native_->SetPrivateData(guid, data, data_size, flags);
+    return observe_result(device_of(this), native_->SetPrivateData(guid, data, data_size, flags));
 }
 HRESULT WINAPI CubeTexture::GetPrivateData(REFGUID refguid, void* pData, DWORD* pSizeOfData) {
-    return native_->GetPrivateData(refguid, pData, pSizeOfData);
+    return observe_result(device_of(this), native_->GetPrivateData(refguid, pData, pSizeOfData));
 }
 HRESULT WINAPI CubeTexture::FreePrivateData(REFGUID refguid) {
-    return native_->FreePrivateData(refguid);
+    return observe_result(device_of(this), native_->FreePrivateData(refguid));
 }
 DWORD WINAPI CubeTexture::SetPriority(DWORD PriorityNew) {
     return native_->SetPriority(PriorityNew);
@@ -571,7 +569,7 @@ DWORD WINAPI CubeTexture::GetLevelCount() {
     return native_->GetLevelCount();
 }
 HRESULT WINAPI CubeTexture::SetAutoGenFilterType(D3DTEXTUREFILTERTYPE FilterType) {
-    return native_->SetAutoGenFilterType(FilterType);
+    return observe_result(device_of(this), native_->SetAutoGenFilterType(FilterType));
 }
 D3DTEXTUREFILTERTYPE WINAPI CubeTexture::GetAutoGenFilterType() {
     return native_->GetAutoGenFilterType();
@@ -580,7 +578,7 @@ void WINAPI CubeTexture::GenerateMipSubLevels() {
     return native_->GenerateMipSubLevels();
 }
 HRESULT WINAPI CubeTexture::GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) {
-    return native_->GetLevelDesc(Level, pDesc);
+    return observe_result(device_of(this), native_->GetLevelDesc(Level, pDesc));
 }
 HRESULT WINAPI CubeTexture::GetCubeMapSurface(D3DCUBEMAP_FACES FaceType, UINT Level, IDirect3DSurface9** ppCubeMapSurface) {
     IDirect3DSurface9* owned = untouched_output<IDirect3DSurface9>();
@@ -588,13 +586,13 @@ HRESULT WINAPI CubeTexture::GetCubeMapSurface(D3DCUBEMAP_FACES FaceType, UINT Le
     return output(device_of(this), hr, owned, ppCubeMapSurface);
 }
 HRESULT WINAPI CubeTexture::LockRect(D3DCUBEMAP_FACES face, UINT level, D3DLOCKED_RECT * locked_rect, const RECT * rect, DWORD flags) {
-    return native_->LockRect(face, level, locked_rect, rect, flags);
+    return observe_result(device_of(this), native_->LockRect(face, level, locked_rect, rect, flags));
 }
 HRESULT WINAPI CubeTexture::UnlockRect(D3DCUBEMAP_FACES FaceType, UINT Level) {
-    return native_->UnlockRect(FaceType, Level);
+    return observe_result(device_of(this), native_->UnlockRect(FaceType, Level));
 }
 HRESULT WINAPI CubeTexture::AddDirtyRect(D3DCUBEMAP_FACES face, const RECT * dirty_rect) {
-    return native_->AddDirtyRect(face, dirty_rect);
+    return observe_result(device_of(this), native_->AddDirtyRect(face, dirty_rect));
 }
 HRESULT WINAPI VolumeTexture::QueryInterface(REFIID riid, void** ppvObject) {
     return query(this, riid, ppvObject);
@@ -609,13 +607,13 @@ HRESULT WINAPI VolumeTexture::GetDevice(IDirect3DDevice9** ppDevice) {
     return get_device(this, ppDevice);
 }
 HRESULT WINAPI VolumeTexture::SetPrivateData(REFGUID guid, const void * data, DWORD data_size, DWORD flags) {
-    return native_->SetPrivateData(guid, data, data_size, flags);
+    return observe_result(device_of(this), native_->SetPrivateData(guid, data, data_size, flags));
 }
 HRESULT WINAPI VolumeTexture::GetPrivateData(REFGUID refguid, void* pData, DWORD* pSizeOfData) {
-    return native_->GetPrivateData(refguid, pData, pSizeOfData);
+    return observe_result(device_of(this), native_->GetPrivateData(refguid, pData, pSizeOfData));
 }
 HRESULT WINAPI VolumeTexture::FreePrivateData(REFGUID refguid) {
-    return native_->FreePrivateData(refguid);
+    return observe_result(device_of(this), native_->FreePrivateData(refguid));
 }
 DWORD WINAPI VolumeTexture::SetPriority(DWORD PriorityNew) {
     return native_->SetPriority(PriorityNew);
@@ -639,7 +637,7 @@ DWORD WINAPI VolumeTexture::GetLevelCount() {
     return native_->GetLevelCount();
 }
 HRESULT WINAPI VolumeTexture::SetAutoGenFilterType(D3DTEXTUREFILTERTYPE FilterType) {
-    return native_->SetAutoGenFilterType(FilterType);
+    return observe_result(device_of(this), native_->SetAutoGenFilterType(FilterType));
 }
 D3DTEXTUREFILTERTYPE WINAPI VolumeTexture::GetAutoGenFilterType() {
     return native_->GetAutoGenFilterType();
@@ -648,7 +646,7 @@ void WINAPI VolumeTexture::GenerateMipSubLevels() {
     return native_->GenerateMipSubLevels();
 }
 HRESULT WINAPI VolumeTexture::GetLevelDesc(UINT Level, D3DVOLUME_DESC * pDesc) {
-    return native_->GetLevelDesc(Level, pDesc);
+    return observe_result(device_of(this), native_->GetLevelDesc(Level, pDesc));
 }
 HRESULT WINAPI VolumeTexture::GetVolumeLevel(UINT Level, IDirect3DVolume9** ppVolumeLevel) {
     IDirect3DVolume9* owned = untouched_output<IDirect3DVolume9>();
@@ -656,13 +654,13 @@ HRESULT WINAPI VolumeTexture::GetVolumeLevel(UINT Level, IDirect3DVolume9** ppVo
     return output(device_of(this), hr, owned, ppVolumeLevel);
 }
 HRESULT WINAPI VolumeTexture::LockBox(UINT level, D3DLOCKED_BOX * locked_box, const D3DBOX * box, DWORD flags) {
-    return native_->LockBox(level, locked_box, box, flags);
+    return observe_result(device_of(this), native_->LockBox(level, locked_box, box, flags));
 }
 HRESULT WINAPI VolumeTexture::UnlockBox(UINT Level) {
-    return native_->UnlockBox(Level);
+    return observe_result(device_of(this), native_->UnlockBox(Level));
 }
 HRESULT WINAPI VolumeTexture::AddDirtyBox(const D3DBOX * dirty_box) {
-    return native_->AddDirtyBox(dirty_box);
+    return observe_result(device_of(this), native_->AddDirtyBox(dirty_box));
 }
 HRESULT WINAPI Surface::QueryInterface(REFIID riid, void** ppvObject) {
     return query(this, riid, ppvObject);
@@ -677,13 +675,13 @@ HRESULT WINAPI Surface::GetDevice(IDirect3DDevice9** ppDevice) {
     return get_device(this, ppDevice);
 }
 HRESULT WINAPI Surface::SetPrivateData(REFGUID guid, const void * data, DWORD data_size, DWORD flags) {
-    return native_->SetPrivateData(guid, data, data_size, flags);
+    return observe_result(device_of(this), native_->SetPrivateData(guid, data, data_size, flags));
 }
 HRESULT WINAPI Surface::GetPrivateData(REFGUID refguid, void* pData, DWORD* pSizeOfData) {
-    return native_->GetPrivateData(refguid, pData, pSizeOfData);
+    return observe_result(device_of(this), native_->GetPrivateData(refguid, pData, pSizeOfData));
 }
 HRESULT WINAPI Surface::FreePrivateData(REFGUID refguid) {
-    return native_->FreePrivateData(refguid);
+    return observe_result(device_of(this), native_->FreePrivateData(refguid));
 }
 DWORD WINAPI Surface::SetPriority(DWORD PriorityNew) {
     return native_->SetPriority(PriorityNew);
@@ -701,19 +699,19 @@ HRESULT WINAPI Surface::GetContainer(REFIID riid, void** ppContainer) {
     return get_container(this, riid, ppContainer);
 }
 HRESULT WINAPI Surface::GetDesc(D3DSURFACE_DESC* pDesc) {
-    return native_->GetDesc(pDesc);
+    return observe_result(device_of(this), native_->GetDesc(pDesc));
 }
 HRESULT WINAPI Surface::LockRect(D3DLOCKED_RECT * locked_rect, const RECT * rect, DWORD flags) {
-    return native_->LockRect(locked_rect, rect, flags);
+    return observe_result(device_of(this), native_->LockRect(locked_rect, rect, flags));
 }
 HRESULT WINAPI Surface::UnlockRect() {
-    return native_->UnlockRect();
+    return observe_result(device_of(this), native_->UnlockRect());
 }
 HRESULT WINAPI Surface::GetDC(HDC* phdc) {
-    return native_->GetDC(phdc);
+    return observe_result(device_of(this), native_->GetDC(phdc));
 }
 HRESULT WINAPI Surface::ReleaseDC(HDC hdc) {
-    return native_->ReleaseDC(hdc);
+    return observe_result(device_of(this), native_->ReleaseDC(hdc));
 }
 HRESULT WINAPI Volume::QueryInterface(REFIID riid, void** ppvObject) {
     return query(this, riid, ppvObject);
@@ -728,25 +726,25 @@ HRESULT WINAPI Volume::GetDevice(IDirect3DDevice9** ppDevice) {
     return get_device(this, ppDevice);
 }
 HRESULT WINAPI Volume::SetPrivateData(REFGUID guid, const void * data, DWORD data_size, DWORD flags) {
-    return native_->SetPrivateData(guid, data, data_size, flags);
+    return observe_result(device_of(this), native_->SetPrivateData(guid, data, data_size, flags));
 }
 HRESULT WINAPI Volume::GetPrivateData(REFGUID refguid, void* pData, DWORD* pSizeOfData) {
-    return native_->GetPrivateData(refguid, pData, pSizeOfData);
+    return observe_result(device_of(this), native_->GetPrivateData(refguid, pData, pSizeOfData));
 }
 HRESULT WINAPI Volume::FreePrivateData(REFGUID refguid) {
-    return native_->FreePrivateData(refguid);
+    return observe_result(device_of(this), native_->FreePrivateData(refguid));
 }
 HRESULT WINAPI Volume::GetContainer(REFIID riid, void** ppContainer) {
     return get_container(this, riid, ppContainer);
 }
 HRESULT WINAPI Volume::GetDesc(D3DVOLUME_DESC* pDesc) {
-    return native_->GetDesc(pDesc);
+    return observe_result(device_of(this), native_->GetDesc(pDesc));
 }
 HRESULT WINAPI Volume::LockBox(D3DLOCKED_BOX * locked_box, const D3DBOX * box, DWORD flags) {
-    return native_->LockBox(locked_box, box, flags);
+    return observe_result(device_of(this), native_->LockBox(locked_box, box, flags));
 }
 HRESULT WINAPI Volume::UnlockBox() {
-    return native_->UnlockBox();
+    return observe_result(device_of(this), native_->UnlockBox());
 }
 HRESULT WINAPI VertexBuffer::QueryInterface(REFIID riid, void** ppvObject) {
     return query(this, riid, ppvObject);
@@ -764,7 +762,7 @@ HRESULT WINAPI VertexBuffer::SetPrivateData(REFGUID guid, const void * data, DWO
     return buffer_private_result(this, guid, native_->SetPrivateData(guid, data, data_size, flags));
 }
 HRESULT WINAPI VertexBuffer::GetPrivateData(REFGUID refguid, void* pData, DWORD* pSizeOfData) {
-    return native_->GetPrivateData(refguid, pData, pSizeOfData);
+    return observe_result(device_of(this), native_->GetPrivateData(refguid, pData, pSizeOfData));
 }
 HRESULT WINAPI VertexBuffer::FreePrivateData(REFGUID refguid) {
     return buffer_private_result(this, refguid, native_->FreePrivateData(refguid));
@@ -788,7 +786,7 @@ HRESULT WINAPI VertexBuffer::Unlock() {
     return buffer_unlock(this);
 }
 HRESULT WINAPI VertexBuffer::GetDesc(D3DVERTEXBUFFER_DESC* pDesc) {
-    return native_->GetDesc(pDesc);
+    return observe_result(device_of(this), native_->GetDesc(pDesc));
 }
 HRESULT WINAPI IndexBuffer::QueryInterface(REFIID riid, void** ppvObject) {
     return query(this, riid, ppvObject);
@@ -806,7 +804,7 @@ HRESULT WINAPI IndexBuffer::SetPrivateData(REFGUID guid, const void * data, DWOR
     return buffer_private_result(this, guid, native_->SetPrivateData(guid, data, data_size, flags));
 }
 HRESULT WINAPI IndexBuffer::GetPrivateData(REFGUID refguid, void* pData, DWORD* pSizeOfData) {
-    return native_->GetPrivateData(refguid, pData, pSizeOfData);
+    return observe_result(device_of(this), native_->GetPrivateData(refguid, pData, pSizeOfData));
 }
 HRESULT WINAPI IndexBuffer::FreePrivateData(REFGUID refguid) {
     return buffer_private_result(this, refguid, native_->FreePrivateData(refguid));
@@ -830,7 +828,7 @@ HRESULT WINAPI IndexBuffer::Unlock() {
     return buffer_unlock(this);
 }
 HRESULT WINAPI IndexBuffer::GetDesc(D3DINDEXBUFFER_DESC* pDesc) {
-    return native_->GetDesc(pDesc);
+    return observe_result(device_of(this), native_->GetDesc(pDesc));
 }
 HRESULT WINAPI VertexDeclaration::QueryInterface(REFIID riid, void** ppvObject) {
     return query(this, riid, ppvObject);
@@ -845,7 +843,7 @@ HRESULT WINAPI VertexDeclaration::GetDevice(IDirect3DDevice9** ppDevice) {
     return get_device(this, ppDevice);
 }
 HRESULT WINAPI VertexDeclaration::GetDeclaration(D3DVERTEXELEMENT9* arg0, UINT* pNumElements) {
-    return native_->GetDeclaration(arg0, pNumElements);
+    return observe_result(device_of(this), native_->GetDeclaration(arg0, pNumElements));
 }
 HRESULT WINAPI VertexShader::QueryInterface(REFIID riid, void** ppvObject) {
     return query(this, riid, ppvObject);
@@ -860,7 +858,7 @@ HRESULT WINAPI VertexShader::GetDevice(IDirect3DDevice9** ppDevice) {
     return get_device(this, ppDevice);
 }
 HRESULT WINAPI VertexShader::GetFunction(void* arg0, UINT* pSizeOfData) {
-    return native_->GetFunction(arg0, pSizeOfData);
+    return observe_result(device_of(this), native_->GetFunction(arg0, pSizeOfData));
 }
 HRESULT WINAPI PixelShader::QueryInterface(REFIID riid, void** ppvObject) {
     return query(this, riid, ppvObject);
@@ -875,7 +873,7 @@ HRESULT WINAPI PixelShader::GetDevice(IDirect3DDevice9** ppDevice) {
     return get_device(this, ppDevice);
 }
 HRESULT WINAPI PixelShader::GetFunction(void* arg0, UINT* pSizeOfData) {
-    return native_->GetFunction(arg0, pSizeOfData);
+    return observe_result(device_of(this), native_->GetFunction(arg0, pSizeOfData));
 }
 HRESULT WINAPI StateBlock::QueryInterface(REFIID riid, void** ppvObject) {
     return query(this, riid, ppvObject);
@@ -890,10 +888,10 @@ HRESULT WINAPI StateBlock::GetDevice(IDirect3DDevice9** ppDevice) {
     return get_device(this, ppDevice);
 }
 HRESULT WINAPI StateBlock::Capture() {
-    return native_->Capture();
+    return observe_result(device_of(this), native_->Capture());
 }
 HRESULT WINAPI StateBlock::Apply() {
-    return native_->Apply();
+    return observe_result(device_of(this), native_->Apply());
 }
 HRESULT WINAPI Query::QueryInterface(REFIID riid, void** ppvObject) {
     return query(this, riid, ppvObject);
@@ -914,10 +912,10 @@ DWORD WINAPI Query::GetDataSize() {
     return native_->GetDataSize();
 }
 HRESULT WINAPI Query::Issue(DWORD dwIssueFlags) {
-    return native_->Issue(dwIssueFlags);
+    return issue_query(this, dwIssueFlags);
 }
 HRESULT WINAPI Query::GetData(void* pData, DWORD dwSize, DWORD dwGetDataFlags) {
-    return native_->GetData(pData, dwSize, dwGetDataFlags);
+    return observe_result(device_of(this), native_->GetData(pData, dwSize, dwGetDataFlags));
 }
 HRESULT WINAPI SwapChain::QueryInterface(REFIID riid, void ** ppvObject) {
     return query(this, riid, ppvObject);
@@ -932,7 +930,7 @@ HRESULT WINAPI SwapChain::Present(const RECT * src_rect, const RECT * dst_rect, 
     return observe_result(device_of(this), native_->Present(src_rect, dst_rect, dst_window_override, dirty_region, flags));
 }
 HRESULT WINAPI SwapChain::GetFrontBufferData(IDirect3DSurface9 * pDestSurface) {
-    return native_->GetFrontBufferData(unwrap(device_of(this), pDestSurface));
+    return observe_result(device_of(this), native_->GetFrontBufferData(unwrap(device_of(this), pDestSurface)));
 }
 HRESULT WINAPI SwapChain::GetBackBuffer(UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9 ** ppBackBuffer) {
     IDirect3DSurface9* owned = untouched_output<IDirect3DSurface9>();
@@ -940,14 +938,14 @@ HRESULT WINAPI SwapChain::GetBackBuffer(UINT iBackBuffer, D3DBACKBUFFER_TYPE Typ
     return output(device_of(this), hr, owned, ppBackBuffer);
 }
 HRESULT WINAPI SwapChain::GetRasterStatus(D3DRASTER_STATUS * pRasterStatus) {
-    return native_->GetRasterStatus(pRasterStatus);
+    return observe_result(device_of(this), native_->GetRasterStatus(pRasterStatus));
 }
 HRESULT WINAPI SwapChain::GetDisplayMode(D3DDISPLAYMODE * pMode) {
-    return native_->GetDisplayMode(pMode);
+    return observe_result(device_of(this), native_->GetDisplayMode(pMode));
 }
 HRESULT WINAPI SwapChain::GetDevice(IDirect3DDevice9 ** ppDevice) {
     return get_device(this, ppDevice);
 }
 HRESULT WINAPI SwapChain::GetPresentParameters(D3DPRESENT_PARAMETERS * pPresentationParameters) {
-    return native_->GetPresentParameters(pPresentationParameters);
+    return observe_result(device_of(this), native_->GetPresentParameters(pPresentationParameters));
 }

@@ -1,0 +1,320 @@
+CHECK native module PASS
+CHECK native entry PASS
+CHECK window PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK IB PASS
+CHECK IB upload Lock PASS
+CHECK IB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK begin never silently evicts active frame PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK one independent native reference per buffer PASS
+CHECK bind original VB PASS
+CHECK bind original IB PASS
+CHECK inspect PASS
+CHECK valid borrowed view PASS
+CHECK inspect survives wrapper external zero without recreation PASS
+CHECK recreate VB wrapper PASS
+CHECK recreate IB wrapper PASS
+CHECK inspect PASS
+CHECK valid borrowed view PASS
+CHECK same allocation evidence survives recreation PASS
+CHECK native fixed vertex PASS
+CHECK native fixed pixel PASS
+CHECK native FVF PASS
+CHECK native lighting PASS
+CHECK native cull PASS
+CHECK native Z PASS
+CHECK native color PASS
+CHECK native colorop PASS
+CHECK native colorarg PASS
+CHECK native world PASS
+CHECK native view PASS
+CHECK native projection PASS
+CHECK clear PASS
+CHECK native scene PASS
+CHECK actual native draw from leased allocation PASS
+CHECK native end PASS
+CHECK backbuffer PASS
+CHECK backbuffer desc PASS
+CHECK readback surface PASS
+CHECK fixture pixel readback PASS
+CHECK readback Lock PASS
+CHECK readback Unlock PASS
+CHECK leased native draw produced white center pixel PASS
+CHECK unbind VB PASS
+CHECK unbind IB PASS
+CHECK release single pair PASS
+CHECK released lease stale PASS
+CHECK double release rejected PASS
+CHECK end frame PASS
+CHECK double end rejected PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK IB PASS
+CHECK IB upload Lock PASS
+CHECK IB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK IB PASS
+CHECK IB upload Lock PASS
+CHECK IB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK cross-device pair refused atomically PASS
+CHECK partial failed pair retains no VB ref PASS
+CHECK stale IB revision refused before retention PASS
+CHECK failed second evidence retains no first native ref PASS
+CHECK original generation must match PASS
+CHECK nonindexed cannot retain stale bound IB PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK pending write PASS
+CHECK pending write prevents replay PASS
+CHECK write completed PASS
+CHECK rewritten finite bytes do not satisfy old revision PASS
+CHECK end invalidated frame PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK IB rewrite PASS
+CHECK IB rewritten PASS
+CHECK IB changed between draw and replay refused PASS
+CHECK end IB mutation PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK Reset retires leases PASS
+CHECK Reset stale handle refused PASS
+CHECK Reset balances lease native refs PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK IB PASS
+CHECK IB upload Lock PASS
+CHECK IB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK retirement native HRESULT preserved PASS
+CHECK loss or failed Reset invalidates frame PASS
+CHECK recover native device PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK IB PASS
+CHECK IB upload Lock PASS
+CHECK IB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK retirement native HRESULT preserved PASS
+CHECK loss or failed Reset invalidates frame PASS
+CHECK recover native device PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK IB PASS
+CHECK IB upload Lock PASS
+CHECK IB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK last logical parent release drains lease without cycle PASS
+CHECK factory final logical release returns zero PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK IB PASS
+CHECK IB upload Lock PASS
+CHECK IB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK new device and slots never reuse old serials PASS
+CHECK old lease cannot target reused slot PASS
+CHECK new frame cleanup PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK full bounded frame capacity accepted PASS
+CHECK frame capacity refuses without eviction PASS
+CHECK inspect PASS
+CHECK valid borrowed view PASS
+CHECK release capacity slot PASS
+CHECK capacity slot reusable PASS
+CHECK reused slot has fresh handle PASS
+CHECK capacity frame drained PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK conservative native byte budget exact bound PASS
+CHECK byte budget refusal clears output PASS
+CHECK byte reservations returned PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK returned byte budget admits later frame PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK IB PASS
+CHECK IB upload Lock PASS
+CHECK IB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK current canonical wrapper foreign Lock refuses retained replay PASS
+CHECK inspect PASS
+CHECK valid borrowed view PASS
+CHECK current canonical wrapper foreign Unlock refuses retained replay PASS
+CHECK native foreign Release refuses replay PASS
+CHECK stored certified Release balances retained reference PASS
+CHECK cleanup never dispatches foreign Release PASS
+CHECK certified cleanup released actual original native ref PASS
+CHECK foreign AddRef cannot fake acquisition PASS
+CHECK foreign AddRef not called PASS
+CHECK endpoint frame cleanup PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK attach destructor lock-order probe PASS
+CHECK retire last native reference PASS
+CHECK native destruction occurs outside global registry PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK IB PASS
+CHECK IB upload Lock PASS
+CHECK IB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK all lease operations succeed under seeded FP PASS
+CHECK lease operations preserve live x87 MXCSR LastError PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK two frames fill exact global lease bound PASS
+CHECK global capacity refuses third frame without native retention PASS
+CHECK attach delayed quota release probe PASS
+CHECK release pending native destructor at global bound PASS
+CHECK detached native refs remain globally charged until Release finishes PASS
+CHECK completed native cleanup returns global reservation PASS
+CHECK first global frame releases capacity PASS
+CHECK second global frame cleanup PASS
+CHECK third global frame cleanup PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK final global accounting PASS
+CHECK all lease native and CPU references returned PASS
+RESULT PASS checks=319

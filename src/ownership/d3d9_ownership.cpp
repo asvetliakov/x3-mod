@@ -2,6 +2,7 @@
 #include <mutex>
 #include <memory>
 #include <atomic>
+#include <cstring>
 #include "managed_upload_contract.h"
 #include <limits>
 #include <type_traits>
@@ -21,6 +22,7 @@ enum class Kind {
 struct Node;
 struct Factory;
 struct Device;
+struct Query;
 struct FiniteOwner;
 void retire_finite(Device*, bool permanent, FiniteEvidenceReason);
 void initialize_finite(Device*);
@@ -65,6 +67,9 @@ HRESULT clear_device(Device* node, DWORD count, const D3DRECT* rects, DWORD flag
 void initialize_copy_depth(Device* node, const D3DPRESENT_PARAMETERS& requested);
 void retire_copy_depth(Device* node, HRESULT status);
 bool copy_source_bound(Device* node, HRESULT* query_status = nullptr);
+HRESULT scene_transition(Device* node, bool begin);
+HRESULT create_query(Device* node, D3DQUERYTYPE type, IDirect3DQuery9** out);
+HRESULT issue_query(Query* node, DWORD flags);
 HRESULT begin_state_block(Device* node);
 HRESULT end_state_block(Device* node, IDirect3DStateBlock9** out);
 void initialize_buffer(Device* device, IDirect3DResource9* native);
@@ -328,6 +333,93 @@ bool own_buffer_slots(Node* node) {
     return table&&table[11]==expected.lock&&table[12]==expected.unlock;
 }
 
+using GeometryRelease = ULONG (WINAPI*)(IUnknown*);
+struct GeometryFrameRecord {
+    std::uint64_t id=0,generation=0;
+    Device* device=nullptr; // Weak; invalidated before the logical owner is deleted.
+    std::uint32_t count=0;
+};
+struct GeometryLeaseRecord {
+    std::uint64_t id=0,frame=0,bytes=0;
+    IDirect3DVertexBuffer9* vertex=nullptr;
+    IDirect3DIndexBuffer9* index=nullptr;
+    IUnknown* vertex_identity=nullptr;
+    IUnknown* index_identity=nullptr;
+    FiniteSidecar* vertex_side=nullptr;
+    FiniteSidecar* index_side=nullptr;
+    GeometryRelease vertex_release=nullptr,index_release=nullptr;
+    GeometryLeaseRequest request;
+};
+std::array<GeometryFrameRecord,geometry_frame_limit> geometry_frames{};
+std::array<GeometryLeaseRecord,geometry_lease_limit> geometry_leases{};
+std::uint64_t geometry_serial=0,geometry_bytes=0;
+std::uint32_t geometry_count=0;
+GeometryFrameRecord* geometry_frame(std::uint64_t id){
+    if(!id)return nullptr;
+    for(auto& frame:geometry_frames)if(frame.id==id)return &frame;
+    return nullptr;
+}
+GeometryLeaseRecord* geometry_lease(std::uint64_t frame,std::uint64_t id){
+    if(!frame||!id)return nullptr;
+    for(auto& lease:geometry_leases)if(lease.id==id&&lease.frame==frame)return &lease;
+    return nullptr;
+}
+void release_geometry_record(const GeometryLeaseRecord& lease){
+    // These entrypoints were certified at acquisition against pinned native code.
+    // Do not dispatch through a possibly replaced later vtable during cleanup.
+    if(lease.index)lease.index_release(lease.index);
+    if(lease.vertex)lease.vertex_release(lease.vertex);
+    if(lease.index_side)lease.index_side->Release();
+    if(lease.vertex_side)lease.vertex_side->Release();
+    // Detached references still consume the process reservation until their
+    // native callbacks and CPU-side cleanup have actually completed.
+    {std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+     geometry_bytes-=lease.bytes;--geometry_count;}
+}
+GeometryLeaseRecord detach_geometry_record(GeometryLeaseRecord& lease){
+    GeometryLeaseRecord result=lease;
+    if(auto* frame=geometry_frame(lease.frame))--frame->count;
+    lease={};return result;
+}
+void drain_geometry_frame(std::uint64_t frame){
+    // Bounded small stack chunks. The frame lookup was already invalidated, so
+    // no caller can regain a borrowed pointer while references are draining.
+    for(;;){
+        std::array<GeometryLeaseRecord,16> retired{};unsigned count=0;
+        {std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+         for(auto& lease:geometry_leases)if(lease.id&&lease.frame==frame){retired[count++]=detach_geometry_record(lease);if(count==retired.size())break;}}
+        for(unsigned n=0;n<count;++n)release_geometry_record(retired[n]);
+        if(count<retired.size())break;
+    }
+    {std::lock_guard<std::recursive_mutex> lock(registry_mutex);drain_finite_retired();}
+}
+void retire_geometry(Device* device){
+    PreserveExecution preserve;std::uint64_t frame=0;
+    {std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+     for(auto& entry:geometry_frames)if(entry.id&&entry.device==device){frame=entry.id;entry={};break;}}
+    if(frame)drain_geometry_frame(frame);
+}
+bool geometry_owner_ready(Device* device){
+    return device&&!device->retiring&&!device->resetting&&!device->lost&&
+        device->options.capture_finite_positions&&SUCCEEDED(device->buffer_tracking_status)&&
+        device->finite_owner&&device->finite_owner->healthy;
+}
+bool geometry_ref_endpoints(FiniteSidecar* side,GeometryRelease& release){
+    // managed_upload inspection already proved the exact module hash/imports
+    // and native buffer endpoints. Add a narrow lease-specific AddRef/Release
+    // proof so a foreign reference-count interceptor cannot fake retention.
+    const auto table=*reinterpret_cast<void* const* const*>(side->contract.borrowed_native);
+    HMODULE module=nullptr;
+    if(!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        reinterpret_cast<LPCSTR>(table[12]),&module))return false;
+    const auto base=reinterpret_cast<std::uintptr_t>(module);
+    const bool vertex=side->contract.type==D3DRTYPE_VERTEXBUFFER;
+    if(reinterpret_cast<std::uintptr_t>(table[1])!=base+(vertex?0x1950u:0x2430u)||
+       reinterpret_cast<std::uintptr_t>(table[2])!=base+(vertex?0x19d0u:0x24b0u))return false;
+    static_assert(sizeof(release)==sizeof(table[2]));std::memcpy(&release,&table[2],sizeof release);
+    return true;
+}
+
 bool supports(Kind kind, REFIID iid) {
     if (iid == IID_IUnknown) return true;
     switch (kind) {
@@ -389,9 +481,14 @@ ULONG release(Node* node) {
     Node* parent = node->parent;
     if (node->kind == Kind::Device) {
         auto device = static_cast<Device*>(node);
+        retire_geometry(device);
         retire_finite(device);
         retire_copy_depth(device, S_FALSE);
         discard_renderer_resources(device);
+    }
+    if (node->kind == Kind::Query) {
+        auto q = static_cast<Query*>(node);
+        device_of(q)->execution.query_destroyed(q->execution_query);
     }
     node->backend->Release();
     {std::lock_guard<std::recursive_mutex> lock(registry_mutex);drain_finite_retired();}
@@ -475,6 +572,7 @@ HRESULT adopt(Node* parent, Kind kind, IUnknown* owned, REFIID iid, void** out,
             if (kind == Kind::Factory && options &&
                 (static_cast<Factory*>(existing)->options.capture_auto_depth != options->capture_auto_depth ||
                  static_cast<Factory*>(existing)->options.track_buffer_writes != options->track_buffer_writes ||
+                 static_cast<Factory*>(existing)->options.track_execution_state != options->track_execution_state ||
                  static_cast<Factory*>(existing)->options.capture_finite_positions != options->capture_finite_positions ||
                  static_cast<Factory*>(existing)->options.finite_payload_budget != options->finite_payload_budget ||
                  static_cast<Factory*>(existing)->options.finite_sidecar_limit != options->finite_sidecar_limit))
@@ -670,7 +768,7 @@ HRESULT buffer_private_result(Node* node, REFGUID guid, HRESULT hr) {
         if(device->options.track_buffer_writes&&guid==buffer_content_guid)fail_buffer_tracking(device,E_FAIL);
         if(device->options.capture_finite_positions)retire_finite(device,true,FiniteEvidenceReason::MetadataTampered);
     }
-    return hr;
+    return observe_result(device,hr);
 }
 HRESULT process_vertices(Device* node, UINT first, UINT destination, UINT count,
     IDirect3DVertexBuffer9* buffer, IDirect3DVertexDeclaration9* declaration, DWORD flags) {
@@ -682,6 +780,7 @@ HRESULT process_vertices(Device* node, UINT first, UINT destination, UINT count,
     const HRESULT hr=node->native_->ProcessVertices(first,destination,count,native,native_declaration,flags);
     ExecutionState outgoing;
     if(SUCCEEDED(hr)&&native)record_buffer_event(node,native,BufferEvent::ProcessVertices);
+    observe_result(node,hr);
     outgoing.restore();return hr;
 }
 
@@ -715,40 +814,41 @@ X3M_TRAIT(IDirect3DSwapChain9, SwapChain)
 #undef X3M_TRAIT
 
 template<class T> HRESULT output(Device* owner, HRESULT hr, T* owned, T** out) {
-    if (owned == untouched_output<T>()) return hr;
+    if (owned == untouched_output<T>()) return observe_result(owner, hr);
     if (out) *out = nullptr;
-    if (FAILED(hr) || !owned) { if (owned) owned->Release(); return hr; }
+    if (FAILED(hr) || !owned) { if (owned) owned->Release(); return observe_result(owner, hr); }
     const HRESULT wrapped = adopt(owner, Traits<T>::kind, owned, Traits<T>::iid(), reinterpret_cast<void**>(out));
     if (FAILED(wrapped)) owned->Release();
-    return FAILED(wrapped) ? wrapped : hr;
+    return observe_result(owner, FAILED(wrapped) ? wrapped : hr);
 }
 template<> HRESULT output(Device* owner, HRESULT hr, IDirect3DBaseTexture9* owned,
                           IDirect3DBaseTexture9** out) {
-    if (owned == untouched_output<IDirect3DBaseTexture9>()) return hr;
+    if (owned == untouched_output<IDirect3DBaseTexture9>()) return observe_result(owner, hr);
     if (out) *out = nullptr;
-    if (FAILED(hr) || !owned) { if (owned) owned->Release(); return hr; }
+    if (FAILED(hr) || !owned) { if (owned) owned->Release(); return observe_result(owner, hr); }
     Kind kind;
     switch (owned->GetType()) {
     case D3DRTYPE_TEXTURE: kind = Kind::Texture; break;
     case D3DRTYPE_CUBETEXTURE: kind = Kind::CubeTexture; break;
     case D3DRTYPE_VOLUMETEXTURE: kind = Kind::VolumeTexture; break;
-    default: owned->Release(); return E_NOINTERFACE;
+    default: owned->Release(); return observe_result(owner, E_NOINTERFACE);
     }
     const HRESULT wrapped = adopt(owner, kind, owned, IID_IDirect3DBaseTexture9, reinterpret_cast<void**>(out));
     if (FAILED(wrapped)) owned->Release();
-    return FAILED(wrapped) ? wrapped : hr;
+    return observe_result(owner, FAILED(wrapped) ? wrapped : hr);
 }
 
 HRESULT get_container(Node* node, REFIID iid, void** out) {
+    Device* owner = device_of(node);
     IUnknown* owned = untouched_output<IUnknown>();
     HRESULT hr;
     if (node->kind == Kind::Surface)
         hr = static_cast<IDirect3DSurface9*>(node->backend)->GetContainer(iid, out ? reinterpret_cast<void**>(&owned) : nullptr);
     else
         hr = static_cast<IDirect3DVolume9*>(node->backend)->GetContainer(iid, out ? reinterpret_cast<void**>(&owned) : nullptr);
-    if (owned == untouched_output<IUnknown>()) return hr;
+    if (owned == untouched_output<IUnknown>()) return observe_result(owner, hr);
     if (out) *out = nullptr;
-    if (FAILED(hr) || !owned) { if (owned) owned->Release(); return hr; }
+    if (FAILED(hr) || !owned) { if (owned) owned->Release(); return observe_result(owner, hr); }
     Device* device = device_of(node);
     // Classify only known COM interfaces, and always return a canonical wrapper.
     // Unknown requested IIDs never escape as backend interfaces.
@@ -761,16 +861,24 @@ HRESULT get_container(Node* node, REFIID iid, void** out) {
     for (const auto& candidate : candidates) {
         if (!supports(candidate.kind, iid)) continue;
         IUnknown* typed = nullptr;
-        if (FAILED(owned->QueryInterface(*candidate.iid, reinterpret_cast<void**>(&typed)))) continue;
+        const HRESULT typed_result = owned->QueryInterface(*candidate.iid, reinterpret_cast<void**>(&typed));
+        if (FAILED(typed_result)) {
+            if (typed) typed->Release();
+            if (typed_result == D3DERR_DEVICELOST || typed_result == D3DERR_DEVICENOTRESET) {
+                owned->Release(); return observe_result(owner, typed_result);
+            }
+            continue;
+        }
+        if (!typed) { owned->Release(); return observe_result(owner, E_FAIL); }
         Node* parent = candidate.kind == Kind::Factory ? nullptr :
                        candidate.kind == Kind::Device ? device->parent : static_cast<Node*>(device);
         const HRESULT wrapped = adopt(parent, candidate.kind, typed, iid, out);
         if (FAILED(wrapped)) typed->Release();
         owned->Release();
-        return FAILED(wrapped) ? wrapped : hr;
+        return observe_result(owner, FAILED(wrapped) ? wrapped : hr);
     }
     owned->Release();
-    return E_NOINTERFACE;
+    return observe_result(owner, E_NOINTERFACE);
 }
 
 HRESULT create_device(Factory* node, UINT adapter, D3DDEVTYPE type, HWND window,
@@ -786,6 +894,7 @@ HRESULT create_device(Factory* node, UINT adapter, D3DDEVTYPE type, HWND window,
     if (FAILED(wrapped)) owned->Release();
     else {
         auto device = static_cast<Device*>(*out);
+        device->execution.initialize(device->options.track_execution_state);
         initialize_finite(device);
         initialize_copy_depth(device, requested);
     }
@@ -793,12 +902,15 @@ HRESULT create_device(Factory* node, UINT adapter, D3DDEVTYPE type, HWND window,
 }
 
 HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp) {
+    node->execution.before_reset();
     const D3DPRESENT_PARAMETERS requested = pp ? *pp : D3DPRESENT_PARAMETERS{};
     { std::lock_guard<std::recursive_mutex> lock(registry_mutex); node->resetting = true; }
+    retire_geometry(node);
     retire_finite(node);
     retire_copy_depth(node, S_FALSE);
     discard_renderer_resources(node);
     const HRESULT hr = node->native_->Reset(pp);
+    node->execution.after_reset(hr);
     {
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         node->resetting = false;
@@ -814,8 +926,10 @@ HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp) {
     return hr;
 }
 HRESULT observe_result(Device* node, HRESULT hr) {
+    node->execution.observe_result(hr);
     if (hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET) {
         { std::lock_guard<std::recursive_mutex> lock(registry_mutex); node->lost = true; }
+        retire_geometry(node);
         retire_finite(node);
         retire_copy_depth(node, hr);
         discard_renderer_resources(node);
@@ -851,8 +965,31 @@ HRESULT clear_device(Device* node, DWORD count, const D3DRECT* rects, DWORD flag
     return hr;
 }
 
+HRESULT scene_transition(Device* node, bool begin) {
+    const HRESULT hr = begin ? node->native_->BeginScene() : node->native_->EndScene();
+    if (begin) node->execution.begin_scene(hr); else node->execution.end_scene(hr);
+    return observe_result(node, hr);
+}
+HRESULT create_query(Device* node, D3DQUERYTYPE type, IDirect3DQuery9** out) {
+    IDirect3DQuery9* owned = untouched_output<IDirect3DQuery9>();
+    const HRESULT hr = node->native_->CreateQuery(type, out ? &owned : nullptr);
+    const HRESULT result = output(node, hr, owned, out);
+    if (SUCCEEDED(hr) && SUCCEEDED(result) && owned != untouched_output<IDirect3DQuery9>() && out && *out) {
+        auto wrapped = static_cast<Query*>(*out);
+        node->execution.query_created(wrapped->execution_query, static_cast<std::uint32_t>(type));
+        if (hr != S_OK) node->execution.unknown_native_execution();
+    }
+    return result;
+}
+HRESULT issue_query(Query* node, DWORD flags) {
+    const HRESULT hr = node->native_->Issue(flags);
+    auto owner = device_of(node);
+    owner->execution.query_issue(node->execution_query, flags, hr);
+    return observe_result(owner, hr);
+}
 HRESULT begin_state_block(Device* node) {
     const HRESULT hr = node->native_->BeginStateBlock();
+    node->execution.begin_stateblock(hr);
     if (SUCCEEDED(hr)) node->recording_state_block = true;
     return observe_result(node, hr);
 }
@@ -860,10 +997,10 @@ HRESULT begin_state_block(Device* node) {
 HRESULT end_state_block(Device* node, IDirect3DStateBlock9** out) {
     IDirect3DStateBlock9* owned = untouched_output<IDirect3DStateBlock9>();
     const HRESULT hr = node->native_->EndStateBlock(out ? &owned : nullptr);
+    node->execution.end_stateblock(hr);
     if (SUCCEEDED(hr)) node->recording_state_block = false;
     const HRESULT result = output(node, hr, owned, out);
-    // Clean up/adopt the backend output before retiring resources on loss.
-    observe_result(node, hr);
+    // output() cleans/adopts before observing native loss.
     return result;
 }
 
@@ -1037,6 +1174,23 @@ HRESULT wrap_factory(IDirect3D9* owned_native, IDirect3D9** out, const Options& 
     return adopt(nullptr, Kind::Factory, owned_native, IID_IDirect3D9, reinterpret_cast<void**>(out), &options);
 }
 
+HRESULT get_execution_view(IDirect3DDevice9* application, ExecutionView* out) noexcept {
+    if (!out) return E_POINTER;
+    *out = {};
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    const auto found = application_nodes.find(application);
+    if (found == application_nodes.end() || found->second->kind != Kind::Device) return E_INVALIDARG;
+    *out = static_cast<Device*>(found->second)->execution.view();
+    return S_OK;
+}
+HRESULT invalidate_execution_state(IDirect3DDevice9* application) noexcept {
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    const auto found = application_nodes.find(application);
+    if (found == application_nodes.end() || found->second->kind != Kind::Device) return E_INVALIDARG;
+    static_cast<Device*>(found->second)->execution.unknown_native_execution();
+    return S_OK;
+}
+
 IDirect3DDevice9* borrowed_native_device(IDirect3DDevice9* wrapped) noexcept {
     std::lock_guard<std::recursive_mutex> lock(registry_mutex);
     const auto found = application_nodes.find(wrapped);
@@ -1080,8 +1234,7 @@ const char* finite_evidence_reason_name(FiniteEvidenceReason reason) noexcept {
     const auto index=static_cast<unsigned>(reason);return index<finite_evidence_reason_count?names[index]:"invalid";
 }
 namespace {
-FiniteEvidenceReason finite_query_ready(Node* node,std::uint64_t expected,SideReference& hold,BufferMetadata& metadata) {
-    Device* device=device_of(node);
+FiniteEvidenceReason finite_native_ready(Device* device,IDirect3DResource9* resource,std::uint64_t expected,SideReference& hold,BufferMetadata& metadata) {
     if(!device->options.capture_finite_positions)return FiniteEvidenceReason::Disabled;
     if(device->retiring||device->resetting||device->lost)return FiniteEvidenceReason::DeviceUnavailable;
     if(FAILED(device->buffer_tracking_status))return FiniteEvidenceReason::TrackingUnavailable;
@@ -1089,8 +1242,6 @@ FiniteEvidenceReason finite_query_ready(Node* node,std::uint64_t expected,SideRe
     if(!owner)return FiniteEvidenceReason::AllocationFailure;
     ++owner->stats.queries;
     if(!owner->healthy)return owner->permanent?FiniteEvidenceReason::MetadataTampered:FiniteEvidenceReason::DeviceUnavailable;
-    if(!own_buffer_slots(node))return FiniteEvidenceReason::NativeContract;
-    auto* resource=static_cast<IDirect3DResource9*>(node->backend);
     if(FAILED(read_buffer_metadata(device,resource,metadata)))return FiniteEvidenceReason::TrackingUnavailable;
     if(metadata.pending)return FiniteEvidenceReason::Pending;
     if(metadata.ambiguous)return FiniteEvidenceReason::Ambiguous;
@@ -1100,6 +1251,10 @@ FiniteEvidenceReason finite_query_ready(Node* node,std::uint64_t expected,SideRe
     if(!finite_closed(hold.value)){invalidate_finite(hold.value,FiniteEvidenceReason::NativeContract);return FiniteEvidenceReason::NativeContract;}
     if(hold.value->reason!=FiniteEvidenceReason::None)return hold.value->reason;
     return FiniteEvidenceReason::None;
+}
+FiniteEvidenceReason finite_query_ready(Node* node,std::uint64_t expected,SideReference& hold,BufferMetadata& metadata){
+    if(!own_buffer_slots(node))return FiniteEvidenceReason::NativeContract;
+    return finite_native_ready(device_of(node),static_cast<IDirect3DResource9*>(node->backend),expected,hold,metadata);
 }
 }
 HRESULT get_finite_position_view(IDirect3DVertexBuffer9* application,const FinitePositionRequest& request,FinitePositionView* out) noexcept {
@@ -1162,6 +1317,138 @@ HRESULT get_finite_upload_statistics(IDirect3DDevice9* application,FiniteUploadS
     if(device->finite_owner)*out=device->finite_owner->stats;
     else {out->requested=device->options.capture_finite_positions;out->status=device->finite_status;}
     out->global_payload_bytes=finite_payload_used;out->global_sidecars=finite_sidecars_used;return S_OK;
+}
+
+namespace {
+HRESULT validate_geometry_record(Device* device,GeometryLeaseRecord& record,std::uint64_t generation,
+                                 GeometryLeaseView& view,bool retain_sides){
+    view.generation=generation;view.positions.requested=true;view.positions.generation=generation;
+    view.indices.requested=record.request.indexed;view.indices.generation=generation;
+    if(!geometry_owner_ready(device)||device->finite_owner->stats.generation!=generation||
+       record.request.expected_generation!=generation){view.reason=FiniteEvidenceReason::DeviceUnavailable;return S_FALSE;}
+    // A dead wrapper is never retained or dereferenced. If a canonical wrapper
+    // currently exists, its visible forwarding route must still be ours.
+    const auto current_vertex=native_nodes.find(record.vertex_identity);
+    const auto current_index=native_nodes.find(record.index_identity);
+    if((current_vertex!=native_nodes.end()&&(current_vertex->second->kind!=Kind::VertexBuffer||
+        current_vertex->second->parent!=device||current_vertex->second->backend!=record.vertex||!own_buffer_slots(current_vertex->second)))||
+       (record.index&&current_index!=native_nodes.end()&&(current_index->second->kind!=Kind::IndexBuffer||
+        current_index->second->parent!=device||current_index->second->backend!=record.index||!own_buffer_slots(current_index->second)))){
+        view.reason=FiniteEvidenceReason::NativeContract;return S_FALSE;
+    }
+    BufferMetadata vertex_metadata{},index_metadata{};SideReference vertex,index;
+    view.reason=finite_native_ready(device,record.vertex,record.request.positions.expected_revision,vertex,vertex_metadata);
+    view.positions.revision=vertex_metadata.revision;view.positions.reason=view.reason;
+    if(view.reason!=FiniteEvidenceReason::None)return S_FALSE;
+    if(record.vertex_side&&vertex.value!=record.vertex_side){view.reason=FiniteEvidenceReason::MetadataTampered;return S_FALSE;}
+    GeometryRelease vertex_release=nullptr,index_release=nullptr;
+    if(!geometry_ref_endpoints(vertex.value,vertex_release)){view.reason=FiniteEvidenceReason::NativeContract;return S_FALSE;}
+    if(record.request.indexed){
+        view.reason=finite_native_ready(device,record.index,record.request.indices.expected_revision,index,index_metadata);
+        view.indices.revision=index_metadata.revision;view.indices.reason=view.reason;
+        if(view.reason!=FiniteEvidenceReason::None)return S_FALSE;
+        if(record.index_side&&index.value!=record.index_side){view.reason=FiniteEvidenceReason::MetadataTampered;return S_FALSE;}
+        if(!geometry_ref_endpoints(index.value,index_release)){view.reason=FiniteEvidenceReason::NativeContract;return S_FALSE;}
+        if(record.request.indices.format!=index.value->contract.format){view.reason=FiniteEvidenceReason::InvalidLayout;return S_FALSE;}
+        const auto bounds=index.value->evidence.query_indices(record.request.indices.expected_revision,
+            record.request.indices.start_index,record.request.indices.index_count);
+        view.indices.known=bounds.known;view.indices.minimum=bounds.minimum;view.indices.maximum=bounds.maximum;
+        view.indices.exact_range=bounds.exact_range;view.indices.status=bounds.known?S_OK:S_FALSE;
+        view.indices.reason=bounds.known?FiniteEvidenceReason::None:FiniteEvidenceReason::IndexUnknown;
+        if(!bounds.known){view.reason=FiniteEvidenceReason::IndexUnknown;return S_FALSE;}
+    }
+    const auto& request=record.request.positions;
+    const auto storage=request.position_type==D3DDECLTYPE_FLOAT3?PositionStorage::Float3:
+        request.position_type==D3DDECLTYPE_FLOAT16_4?PositionStorage::Half4:PositionStorage::Unknown;
+    if(storage==PositionStorage::Unknown){view.reason=FiniteEvidenceReason::InvalidLayout;return S_FALSE;}
+    const auto before=vertex.value->evidence.counters();
+    view.positions.state=vertex.value->evidence.query_positions(request.expected_revision,
+        {request.stream_offset,request.stride,request.position_offset,request.first_vertex,request.vertex_count,storage});
+    const auto after=vertex.value->evidence.counters();
+    device->finite_owner->stats.query_cache_hits+=after.cache_hits-before.cache_hits;
+    device->finite_owner->stats.position_components+=after.position_components-before.position_components;
+    view.positions.status=view.positions.state==FiniteStatus::Unknown?S_FALSE:S_OK;
+    view.positions.reason=view.positions.state==FiniteStatus::Finite?FiniteEvidenceReason::None:
+        view.positions.state==FiniteStatus::NonFinite?FiniteEvidenceReason::NonFinite:FiniteEvidenceReason::UnknownCells;
+    view.reason=view.positions.reason;
+    if(view.positions.state!=FiniteStatus::Finite)return S_FALSE;
+    if(retain_sides){
+        // Transfer both temporary CPU references only after the entire pair passed.
+        record.vertex_side=vertex.value;vertex.value=nullptr;
+        record.index_side=index.value;index.value=nullptr;
+        record.vertex_release=vertex_release;record.index_release=index_release;
+        record.bytes=record.vertex_side->contract.size+(record.index_side?std::uint64_t(record.index_side->contract.size):0);
+    }
+    view.status=S_OK;view.reason=FiniteEvidenceReason::None;return S_OK;
+}
+}
+HRESULT begin_geometry_frame(IDirect3DDevice9* application,GeometryFrameHandle* out) noexcept {
+    PreserveExecution preserve;if(!out)return E_POINTER;*out={};
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    const auto found=application_nodes.find(application);
+    if(found==application_nodes.end()||found->second->kind!=Kind::Device)return E_INVALIDARG;
+    auto* device=static_cast<Device*>(found->second);
+    if(!geometry_owner_ready(device))return D3DERR_INVALIDCALL;
+    GeometryFrameRecord* available=nullptr;
+    for(auto& frame:geometry_frames){if(frame.id&&frame.device==device)return D3DERR_INVALIDCALL;if(!frame.id&&!available)available=&frame;}
+    if(!available||geometry_serial==UINT64_MAX)return E_OUTOFMEMORY;
+    *available={++geometry_serial,device->finite_owner->stats.generation,device,0};out->value=available->id;return S_OK;
+}
+HRESULT acquire_geometry_lease(GeometryFrameHandle frame,IDirect3DVertexBuffer9* vertex_buffer,
+    IDirect3DIndexBuffer9* index_buffer,const GeometryLeaseRequest& request,GeometryLeaseHandle* out) noexcept {
+    PreserveExecution preserve;if(!out)return E_POINTER;*out={};
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    auto* owner=geometry_frame(frame.value);if(!owner)return E_INVALIDARG;
+    if(!geometry_owner_ready(owner->device))return D3DERR_INVALIDCALL;
+    if(!vertex_buffer||request.indexed!=(index_buffer!=nullptr)||!request.expected_generation)return E_INVALIDARG;
+    const auto vertex=application_nodes.find(vertex_buffer),index=application_nodes.find(index_buffer);
+    if(vertex==application_nodes.end()||vertex->second->kind!=Kind::VertexBuffer||vertex->second->parent!=owner->device||
+       (index_buffer&&(index==application_nodes.end()||index->second->kind!=Kind::IndexBuffer||index->second->parent!=owner->device)))return E_INVALIDARG;
+    if(!own_buffer_slots(vertex->second)||(index_buffer&&!own_buffer_slots(index->second)))return S_FALSE;
+    if(owner->count>=geometry_leases_per_frame||geometry_count>=geometry_lease_limit||geometry_serial==UINT64_MAX)return E_OUTOFMEMORY;
+    GeometryLeaseRecord* available=nullptr;for(auto& entry:geometry_leases)if(!entry.id){available=&entry;break;}
+    if(!available)return E_OUTOFMEMORY;
+    GeometryLeaseRecord candidate;candidate.frame=frame.value;candidate.request=request;
+    candidate.vertex=static_cast<IDirect3DVertexBuffer9*>(vertex->second->backend);
+    candidate.vertex_identity=vertex->second->identity;candidate.index_identity=index_buffer?index->second->identity:nullptr;
+    candidate.index=index_buffer?static_cast<IDirect3DIndexBuffer9*>(index->second->backend):nullptr;
+    GeometryLeaseView validated;
+    const HRESULT hr=validate_geometry_record(owner->device,candidate,owner->generation,validated,true);
+    if(hr!=S_OK)return hr;
+    if(candidate.bytes>geometry_native_byte_limit-geometry_bytes){
+        if(candidate.index_side)candidate.index_side->Release();
+        candidate.vertex_side->Release();return E_OUTOFMEMORY;
+    }
+    // Verified native AddRef cannot fail. No fallible allocation follows it.
+    candidate.vertex->AddRef();if(candidate.index)candidate.index->AddRef();
+    candidate.id=++geometry_serial;*available=candidate;++owner->count;++geometry_count;geometry_bytes+=candidate.bytes;
+    out->value=candidate.id;return S_OK;
+}
+HRESULT inspect_geometry_lease(GeometryFrameHandle frame,GeometryLeaseHandle lease,GeometryLeaseView* out) noexcept {
+    PreserveExecution preserve;if(!out)return E_POINTER;*out={};
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    auto* owner=geometry_frame(frame.value);if(!owner)return E_INVALIDARG;
+    auto* record=geometry_lease(frame.value,lease.value);if(!record)return E_INVALIDARG;
+    out->frame=frame;out->lease=lease;
+    const HRESULT hr=validate_geometry_record(owner->device,*record,owner->generation,*out,false);
+    if(hr==S_OK){out->vertex_buffer=record->vertex;out->index_buffer=record->index;}
+    return hr;
+}
+HRESULT release_geometry_lease(GeometryFrameHandle frame,GeometryLeaseHandle lease) noexcept {
+    PreserveExecution preserve;GeometryLeaseRecord retired;
+    {std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+     if(!geometry_frame(frame.value))return E_INVALIDARG;
+     auto* record=geometry_lease(frame.value,lease.value);if(!record)return E_INVALIDARG;
+     retired=detach_geometry_record(*record);}
+    release_geometry_record(retired);
+    {std::lock_guard<std::recursive_mutex> lock(registry_mutex);drain_finite_retired();}
+    return S_OK;
+}
+HRESULT end_geometry_frame(GeometryFrameHandle frame) noexcept {
+    PreserveExecution preserve;
+    {std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+     auto* owner=geometry_frame(frame.value);if(!owner)return E_INVALIDARG;*owner={};}
+    drain_geometry_frame(frame.value);return S_OK;
 }
 
 HRESULT get_copy_depth_view(IDirect3DDevice9* wrapped, CopyDepthView* out) noexcept {
