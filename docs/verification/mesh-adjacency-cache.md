@@ -1,9 +1,10 @@
-# Detached production adjacency cache
+# Production adjacency cache core
 
 `src/proxy/mesh_adjacency_cache.{h,cpp}` implements bounded, process-local reuse of
-successful native `ID3DXMesh::GenerateAdjacency` results. It is **not linked into the
-proxy, installed, or connected to a mesh hook**. No game loading improvement is
-claimed. This advances the [original synthetic prototype](mesh-preparation.md)
+successful native `ID3DXMesh::GenerateAdjacency` results. The original checkpoint
+and the 721-check evidence below test this core detached from the game. The later
+[off-by-default live hook](mesh-cache-hook.md) connects it to the proxy with additional
+verified runtime gates and separate evidence. No game loading improvement is claimed. This advances the [original synthetic prototype](mesh-preparation.md)
 by acquiring the current mesh through its real native readonly buffer locks and
 calling the actual reusable production module in the fixture.
 
@@ -188,7 +189,8 @@ host-memory key timing is not substituted for real acquisition cost.
 
 Raw evidence is [mesh-adjacency-cache.txt](../../verification/results/mesh-adjacency-cache.txt).
 [The summary](../../verification/results/mesh-adjacency-cache-summary.json) records
-exact source/build/DLL/report hashes and the complete command. Game mesh eligibility,
-repeat-hit rate, retained memory pressure, cleanup-failure integration and live
-benefit still require a separately reviewed opt-in integration. No hooks or options
-were enabled by this task.
+exact source/build/DLL/report hashes and the complete command for the detached
+checkpoint. The later [live hook checkpoint](mesh-cache-hook.md) adds reviewed
+opt-in wiring, endpoint gates and explicit cleanup-failure handling. Game mesh
+eligibility, repeat-hit rate, retained memory pressure and live benefit remain
+unmeasured; neither checkpoint installs or launches the game.

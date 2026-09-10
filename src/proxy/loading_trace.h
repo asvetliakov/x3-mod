@@ -2,9 +2,15 @@
 #include <windows.h>
 #include <array>
 #include <cstdint>
+#ifdef X3M_LOADING_TRACE_FIXTURE
+#include "mesh_adjacency_cache.h"
+#endif
 
-// Optional, read-only loading diagnostics. Only the main EXE's verified named
-// imports and validated shared native mesh-vtable slots are intercepted; steady-state timing callbacks never log/inspect payloads or allocate events.
+// Optional loading diagnostics and separately requested experimental adjacency cache.
+// Only the main EXE's verified named
+// imports and validated shared native mesh-vtable slots are intercepted. Timing-only
+// callbacks never inspect payloads; X3M_MESH_CACHE=1 explicitly permits bounded
+// exact mesh-byte acquisition/reuse after additional native endpoint verification.
 // Bounded first-mesh setup verifies/pins the native DLL and emits setup records;
 // that one-time file read and table work are measured in the wrapper tail.
 // Runtime thread-local storage may initialize on a thread's first callback.
@@ -30,7 +36,9 @@ bool active();
 Snapshot take_snapshot();
 void report();
 // Explicit quiescent teardown only, not safe during active callbacks or DllMain.
-// Restores a slot only if it still points at this module's interceptor.
+// Restores a slot only if it still points at this module's interceptor. A cache
+// cleanup fault requires stopping application mesh work/restarting; teardown is
+// not repair, and restored/unobserved native methods are outside fault coverage.
 void shutdown();
 #ifdef X3M_LOADING_TRACE_FIXTURE
 // Compile-only fixture seam: these symbols do not exist in the production DLL.
@@ -40,5 +48,13 @@ bool fixture_initialize(HMODULE target,uint64_t expected_hash);
 void fixture_fail_mesh_patch(unsigned step);
 void fixture_fail_protection_restores(unsigned calls);
 unsigned fixture_protection_debts();
+mesh_adjacency_cache::Statistics fixture_cache_statistics();
+bool fixture_cache_constructed();
+bool fixture_cache_faulted();
+uint64_t fixture_cache_gate_rejections();
+uint64_t fixture_cache_blocked();
+void fixture_cache_cleanup_failure(HRESULT hr); // Outcome seam; no real buffer is left locked.
+void fixture_cache_reenter_once();
+bool fixture_cache_contract(ID3DXMesh* mesh); // Preflight only; never dispatches adjacency.
 #endif
 }

@@ -1,0 +1,21 @@
+METHOD options=00000110 slot=9 rva=0018c297
+METHOD options=00000110 slot=13 rva=0018c2ae
+METHOD options=00000110 slot=14 rva=0018c2e0
+METHOD options=00000110 slot=15 rva=0018c57d
+METHOD options=00000110 slot=16 rva=0018c1a3
+METHOD options=00000110 slot=17 rva=0018c1c0
+METHOD options=00000110 slot=18 rva=0018c1ee
+BACKEND path=C:\windows\system32\d3d9.dll module=7b300000 lock_rva=00001f90 unlock_rva=00002060
+BACKEND path=C:\windows\system32\d3d9.dll module=7b300000 lock_rva=00002a70 unlock_rva=00002b40
+UNLOCK options=00000110 lock_v=00000000 unlock_v=00000000 extra_unlock_v=00000000 lock_i=00000000 unlock_i=00000000 extra_unlock_i=00000000
+METHOD options=00000111 slot=9 rva=0018c297
+METHOD options=00000111 slot=13 rva=0018c2ae
+METHOD options=00000111 slot=14 rva=0018c2e0
+METHOD options=00000111 slot=15 rva=0018c57d
+METHOD options=00000111 slot=16 rva=0018c1a3
+METHOD options=00000111 slot=17 rva=0018c1c0
+METHOD options=00000111 slot=18 rva=0018c1ee
+BACKEND path=C:\windows\system32\d3d9.dll module=7b300000 lock_rva=00001f90 unlock_rva=00002060
+BACKEND path=C:\windows\system32\d3d9.dll module=7b300000 lock_rva=00002a70 unlock_rva=00002b40
+UNLOCK options=00000111 lock_v=00000000 unlock_v=00000000 extra_unlock_v=00000000 lock_i=00000000 unlock_i=00000000 extra_unlock_i=00000000
+RESULT PASS checks=10
