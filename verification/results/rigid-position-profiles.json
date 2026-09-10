@@ -1,0 +1,1514 @@
+{
+  "schema": 1,
+  "inventory_sha256": "794be7b6ceccfc2db45f29369982a4f61a568114f08cef303a75fd3ce9bbc737",
+  "inspector_sha256": "69428f4ece3f65df8844b99531f101bd2741adb3bd2c0c121e182e892f671168",
+  "scope": "Captured VS subset of complete archive inventory; structural position proof only",
+  "program_count": 21,
+  "qualified_count": 16,
+  "programs": [
+    {
+      "qualified_position_math": false,
+      "version": "0xfffe0300",
+      "bytes": 672,
+      "word_count": 168,
+      "fnv1a64": "1279d081455f5815",
+      "sha256": "3d03781ab7129448b3a3cc694525a3f7ae95606e17c23267eedced0e475205cc",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 141
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 144
+        }
+      ],
+      "reason": "position_is_not_four_row_dots"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0300",
+      "bytes": 2264,
+      "word_count": 566,
+      "fnv1a64": "167eb2d5629ab9d3",
+      "sha256": "fe2bc3e8b3a76315a4225d409fcf0a25b3d2eb456745dd3dd3bcf0da81e222c6",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 308
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 311
+        },
+        {
+          "register": 2,
+          "usage": 3,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 314
+        },
+        {
+          "register": 3,
+          "usage": 7,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 317
+        },
+        {
+          "register": 4,
+          "usage": 6,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 320
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 6,
+      "output_register": 0,
+      "matrix_first_register": 24,
+      "matrix_names_only": [
+        "g_mWorldViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        471,
+        475,
+        479,
+        483
+      ],
+      "constructor_dword": 347,
+      "constructor_temp_register": 2,
+      "literal_def_dword": 302,
+      "literal_register": 42,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [
+        {
+          "instruction_dword": 396,
+          "base_register": 0
+        },
+        {
+          "instruction_dword": 423,
+          "base_register": 2
+        },
+        {
+          "instruction_dword": 431,
+          "base_register": 1
+        }
+      ],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": false,
+      "version": "0xfffe0101",
+      "bytes": 512,
+      "word_count": 128,
+      "fnv1a64": "36f98d151fd6b0c6",
+      "sha256": "c7b0605507c4cda6c1cb26afe98e6a5affa313a2f5c0aeaf6f88768fb270efaf",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 67
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 70
+        },
+        {
+          "register": 2,
+          "usage": 5,
+          "usage_index": 1,
+          "mask": 15,
+          "declaration_dword": 73
+        },
+        {
+          "register": 3,
+          "usage": 10,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 76
+        }
+      ],
+      "reason": "position_temp_not_single_definition_through_final_use"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0300",
+      "bytes": 3072,
+      "word_count": 768,
+      "fnv1a64": "37c34a7478544c14",
+      "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 458
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 461
+        },
+        {
+          "register": 2,
+          "usage": 3,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 464
+        },
+        {
+          "register": 3,
+          "usage": 7,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 467
+        },
+        {
+          "register": 4,
+          "usage": 6,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 470
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 6,
+      "output_register": 0,
+      "matrix_first_register": 24,
+      "matrix_names_only": [
+        "g_mWorldViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        633,
+        637,
+        641,
+        645
+      ],
+      "constructor_dword": 500,
+      "constructor_temp_register": 2,
+      "literal_def_dword": 452,
+      "literal_register": 47,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [
+        {
+          "instruction_dword": 558,
+          "base_register": 0
+        },
+        {
+          "instruction_dword": 585,
+          "base_register": 2
+        },
+        {
+          "instruction_dword": 593,
+          "base_register": 1
+        }
+      ],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0101",
+      "bytes": 408,
+      "word_count": 102,
+      "fnv1a64": "41c960621d22671f",
+      "sha256": "9b207275fcead40af151c3b2d77e9f841d503a82e9569fcdba207ec207c51c5b",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 64
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 67
+        },
+        {
+          "register": 2,
+          "usage": 10,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 70
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 4,
+      "output_register": 0,
+      "matrix_first_register": 0,
+      "matrix_names_only": [
+        "g_mWorldViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        78,
+        82,
+        86,
+        90
+      ],
+      "constructor_dword": 73,
+      "constructor_temp_register": 0,
+      "literal_def_dword": 58,
+      "literal_register": 4,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0300",
+      "bytes": 2224,
+      "word_count": 556,
+      "fnv1a64": "4944d81dfe531b37",
+      "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 308
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 311
+        },
+        {
+          "register": 2,
+          "usage": 3,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 314
+        },
+        {
+          "register": 3,
+          "usage": 7,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 317
+        },
+        {
+          "register": 4,
+          "usage": 6,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 320
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 6,
+      "output_register": 0,
+      "matrix_first_register": 24,
+      "matrix_names_only": [
+        "g_mWorldViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        477,
+        481,
+        485,
+        489
+      ],
+      "constructor_dword": 344,
+      "constructor_temp_register": 2,
+      "literal_def_dword": 302,
+      "literal_register": 42,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [
+        {
+          "instruction_dword": 402,
+          "base_register": 0
+        },
+        {
+          "instruction_dword": 429,
+          "base_register": 2
+        },
+        {
+          "instruction_dword": 437,
+          "base_register": 1
+        }
+      ],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0300",
+      "bytes": 2104,
+      "word_count": 526,
+      "fnv1a64": "494fe349b8bc12ec",
+      "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 308
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 311
+        },
+        {
+          "register": 2,
+          "usage": 3,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 314
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 6,
+      "output_register": 0,
+      "matrix_first_register": 24,
+      "matrix_names_only": [
+        "g_mWorldViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        450,
+        454,
+        458,
+        462
+      ],
+      "constructor_dword": 335,
+      "constructor_temp_register": 1,
+      "literal_def_dword": 302,
+      "literal_register": 42,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [
+        {
+          "instruction_dword": 393,
+          "base_register": 0
+        },
+        {
+          "instruction_dword": 420,
+          "base_register": 2
+        },
+        {
+          "instruction_dword": 428,
+          "base_register": 1
+        }
+      ],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0300",
+      "bytes": 2104,
+      "word_count": 526,
+      "fnv1a64": "53a0a641107ed76c",
+      "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 308
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 311
+        },
+        {
+          "register": 2,
+          "usage": 3,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 314
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 6,
+      "output_register": 0,
+      "matrix_first_register": 24,
+      "matrix_names_only": [
+        "g_mWorldViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        450,
+        454,
+        458,
+        462
+      ],
+      "constructor_dword": 335,
+      "constructor_temp_register": 1,
+      "literal_def_dword": 302,
+      "literal_register": 42,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [
+        {
+          "instruction_dword": 393,
+          "base_register": 0
+        },
+        {
+          "instruction_dword": 420,
+          "base_register": 2
+        },
+        {
+          "instruction_dword": 428,
+          "base_register": 1
+        }
+      ],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0101",
+      "bytes": 404,
+      "word_count": 101,
+      "fnv1a64": "5e484a06672e28fb",
+      "sha256": "2c5815b04b4797d6a9e2feb9192a140ab3a95843f2c438a7da8e5350ff16379f",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 63
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 66
+        },
+        {
+          "register": 2,
+          "usage": 10,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 69
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 4,
+      "output_register": 0,
+      "matrix_first_register": 0,
+      "matrix_names_only": [
+        "g_mViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        77,
+        81,
+        85,
+        89
+      ],
+      "constructor_dword": 72,
+      "constructor_temp_register": 0,
+      "literal_def_dword": 57,
+      "literal_register": 4,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": false,
+      "version": "0xfffe0300",
+      "bytes": 656,
+      "word_count": 164,
+      "fnv1a64": "6059306306203243",
+      "sha256": "fb0ee43d316d3738e3134aa95d4efcb865e2689e96577ff3e5af98c8d591ee79",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 144
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 147
+        }
+      ],
+      "reason": "position_is_not_four_row_dots"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0101",
+      "bytes": 512,
+      "word_count": 128,
+      "fnv1a64": "7b6393fe2d3e1d85",
+      "sha256": "5efc6bda105f178cc9044047f3981e5b05b020ad96876021fb938d51daa46363",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 84
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 87
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 4,
+      "output_register": 0,
+      "matrix_first_register": 0,
+      "matrix_names_only": [
+        "g_mWorldViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        95,
+        99,
+        103,
+        112
+      ],
+      "constructor_dword": 90,
+      "constructor_temp_register": 0,
+      "literal_def_dword": 78,
+      "literal_register": 6,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0101",
+      "bytes": 380,
+      "word_count": 95,
+      "fnv1a64": "803ebfd17f79e413",
+      "sha256": "858a6003ce4fa82eef067f0379b910c4a2e78a6adfca808303ac0b095a73d2f3",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 64
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 67
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 4,
+      "output_register": 0,
+      "matrix_first_register": 0,
+      "matrix_names_only": [
+        "g_mWorldViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        75,
+        79,
+        83,
+        87
+      ],
+      "constructor_dword": 70,
+      "constructor_temp_register": 0,
+      "literal_def_dword": 58,
+      "literal_register": 4,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0200",
+      "bytes": 884,
+      "word_count": 221,
+      "fnv1a64": "89193868c61c3846",
+      "sha256": "83e106b5cef3e814d095909adb55816f9fdac98723ee11bea209f2772557c8eb",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 120
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 123
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 4,
+      "output_register": 0,
+      "matrix_first_register": 0,
+      "matrix_names_only": [
+        "g_mViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        135,
+        139,
+        143,
+        131
+      ],
+      "constructor_dword": 126,
+      "constructor_temp_register": 0,
+      "literal_def_dword": 114,
+      "literal_register": 12,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0200",
+      "bytes": 512,
+      "word_count": 128,
+      "fnv1a64": "ac2319bc3953efc6",
+      "sha256": "47182f0137b4b944ecc4b5df56202183d5ea5b204e50ce50984ea29f419f6521",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 84
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 87
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 4,
+      "output_register": 0,
+      "matrix_first_register": 0,
+      "matrix_names_only": [
+        "g_mWorldViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        95,
+        99,
+        103,
+        112
+      ],
+      "constructor_dword": 90,
+      "constructor_temp_register": 0,
+      "literal_def_dword": 78,
+      "literal_register": 6,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0300",
+      "bytes": 2080,
+      "word_count": 520,
+      "fnv1a64": "b0602757fce6e870",
+      "sha256": "33cef191db2668aadef869a140b2185b1576212535bdae7d607da49573d8d785",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 308
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 311
+        },
+        {
+          "register": 2,
+          "usage": 3,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 314
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 6,
+      "output_register": 0,
+      "matrix_first_register": 24,
+      "matrix_names_only": [
+        "g_mWorldViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        441,
+        445,
+        449,
+        453
+      ],
+      "constructor_dword": 335,
+      "constructor_temp_register": 1,
+      "literal_def_dword": 302,
+      "literal_register": 42,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [
+        {
+          "instruction_dword": 384,
+          "base_register": 0
+        },
+        {
+          "instruction_dword": 411,
+          "base_register": 2
+        },
+        {
+          "instruction_dword": 419,
+          "base_register": 1
+        }
+      ],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0101",
+      "bytes": 1124,
+      "word_count": 281,
+      "fnv1a64": "be199829a9bb78db",
+      "sha256": "7abd2ffa1bd3881de4ed395210c6241d9c594ebd99070cf1a65a487b4d65c72a",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 116
+        },
+        {
+          "register": 1,
+          "usage": 3,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 119
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 4,
+      "output_register": 0,
+      "matrix_first_register": 0,
+      "matrix_names_only": [
+        "g_mWorldViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        127,
+        197,
+        212,
+        219
+      ],
+      "constructor_dword": 122,
+      "constructor_temp_register": 1,
+      "literal_def_dword": 98,
+      "literal_register": 14,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0300",
+      "bytes": 2200,
+      "word_count": 550,
+      "fnv1a64": "c30104cb0efb6675",
+      "sha256": "05a64b50c80704c0ef80ed818f790b1fabf3bb2ca8dbdee134ade54d6ec2fa8b",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 308
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 311
+        },
+        {
+          "register": 2,
+          "usage": 3,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 314
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 6,
+      "output_register": 0,
+      "matrix_first_register": 24,
+      "matrix_names_only": [
+        "g_mWorldViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        453,
+        457,
+        461,
+        465
+      ],
+      "constructor_dword": 338,
+      "constructor_temp_register": 1,
+      "literal_def_dword": 302,
+      "literal_register": 42,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [
+        {
+          "instruction_dword": 396,
+          "base_register": 0
+        },
+        {
+          "instruction_dword": 423,
+          "base_register": 2
+        },
+        {
+          "instruction_dword": 431,
+          "base_register": 1
+        }
+      ],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0101",
+      "bytes": 356,
+      "word_count": 89,
+      "fnv1a64": "c78b4c68a87fce74",
+      "sha256": "c200952c40506c880c897728bceea85208283715d76b951f082254edc5bc5a42",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 64
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 4,
+      "output_register": 0,
+      "matrix_first_register": 0,
+      "matrix_names_only": [
+        "g_mWorldViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        72,
+        76,
+        80,
+        84
+      ],
+      "constructor_dword": 67,
+      "constructor_temp_register": 0,
+      "literal_def_dword": 58,
+      "literal_register": 4,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": false,
+      "version": "0xfffe0300",
+      "bytes": 600,
+      "word_count": 150,
+      "fnv1a64": "cbbf26102694c961",
+      "sha256": "4d3170630d0e27dfedbd14445845dcb2329a9d5fc7e76c284def8ac61e2bcd31",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 106
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 109
+        }
+      ],
+      "reason": "position_is_not_four_row_dots"
+    },
+    {
+      "qualified_position_math": true,
+      "version": "0xfffe0200",
+      "bytes": 1012,
+      "word_count": 253,
+      "fnv1a64": "d5e1c75351ed3f04",
+      "sha256": "a1db7ff10b8a6c81a830a095417133e37571a055674914df09136cc91f454114",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 142
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 145
+        }
+      ],
+      "contract": "FloatXYZForceWOneSubmittedRowDots",
+      "input_register": 0,
+      "input_w_used": false,
+      "output_register_type": 4,
+      "output_register": 0,
+      "matrix_first_register": 0,
+      "matrix_names_only": [
+        "g_mWorldViewProjection"
+      ],
+      "position_dot_dwords_xyzw": [
+        157,
+        161,
+        170,
+        153
+      ],
+      "constructor_dword": 148,
+      "constructor_temp_register": 0,
+      "literal_def_dword": 136,
+      "literal_register": 14,
+      "direct_matrix_nonposition_uses": [],
+      "relative_constant_reads": [],
+      "position_modifiers": [],
+      "conditional_position_writes": false,
+      "scope": "Algebraic contract for ordinary finite inputs; not bitwise behavior for NaN/Inf/subnormals or a temporal-rigidity proof"
+    },
+    {
+      "qualified_position_math": false,
+      "version": "0xfffe0101",
+      "bytes": 220,
+      "word_count": 55,
+      "fnv1a64": "f36fc43f30b19d71",
+      "sha256": "e27aa47ad706256380673c67eda5004498e24ce90b336461e9f7de61285d3fc6",
+      "declared_inputs": [
+        {
+          "register": 0,
+          "usage": 0,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 33
+        },
+        {
+          "register": 1,
+          "usage": 5,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 36
+        },
+        {
+          "register": 2,
+          "usage": 10,
+          "usage_index": 0,
+          "mask": 15,
+          "declaration_dword": 39
+        }
+      ],
+      "reason": "position_is_not_four_row_dots"
+    }
+  ],
+  "declaration_coverage": {
+    "source_basename": "session-20260910-234001-212.log",
+    "source_sha256": "f8a9f43e18c16d132e5337ba9dd3f69aabc54343c71b4ef57532d8125d9e5196",
+    "scope": "Recorded POSITION0 declaration occurrences; not successful draw/pass eligibility",
+    "programs": {
+      "1279d081455f5815": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 3,
+          "method": 0,
+          "count": 20
+        }
+      ],
+      "167eb2d5629ab9d3": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 16,
+          "method": 0,
+          "count": 304
+        }
+      ],
+      "36f98d151fd6b0c6": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 2,
+          "method": 0,
+          "count": 16
+        }
+      ],
+      "37c34a7478544c14": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 16,
+          "method": 0,
+          "count": 1605
+        }
+      ],
+      "4944d81dfe531b37": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 16,
+          "method": 0,
+          "count": 1331
+        }
+      ],
+      "494fe349b8bc12ec": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 16,
+          "method": 0,
+          "count": 3306
+        }
+      ],
+      "53a0a641107ed76c": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 16,
+          "method": 0,
+          "count": 5314
+        }
+      ],
+      "5e484a06672e28fb": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 2,
+          "method": 0,
+          "count": 16
+        }
+      ],
+      "6059306306203243": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 3,
+          "method": 0,
+          "count": 40
+        }
+      ],
+      "7b6393fe2d3e1d85": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 16,
+          "method": 0,
+          "count": 228
+        }
+      ],
+      "803ebfd17f79e413": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 16,
+          "method": 0,
+          "count": 24
+        }
+      ],
+      "ac2319bc3953efc6": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 16,
+          "method": 0,
+          "count": 8
+        }
+      ],
+      "b0602757fce6e870": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 16,
+          "method": 0,
+          "count": 940
+        }
+      ],
+      "be199829a9bb78db": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 16,
+          "method": 0,
+          "count": 4
+        }
+      ],
+      "c30104cb0efb6675": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 16,
+          "method": 0,
+          "count": 27
+        }
+      ],
+      "c78b4c68a87fce74": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 16,
+          "method": 0,
+          "count": 155
+        }
+      ],
+      "cbbf26102694c961": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 3,
+          "method": 0,
+          "count": 20
+        }
+      ],
+      "d5e1c75351ed3f04": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 16,
+          "method": 0,
+          "count": 41
+        }
+      ],
+      "f36fc43f30b19d71": [
+        {
+          "stream": 0,
+          "offset": 0,
+          "type": 2,
+          "method": 0,
+          "count": 32
+        }
+      ]
+    },
+    "stream0_bindings": {
+      "1279d081455f5815": [
+        {
+          "offset": 0,
+          "stride": 24,
+          "frequency": 1,
+          "count": 20
+        }
+      ],
+      "167eb2d5629ab9d3": [
+        {
+          "offset": 0,
+          "stride": 40,
+          "frequency": 1,
+          "count": 304
+        }
+      ],
+      "36f98d151fd6b0c6": [
+        {
+          "offset": 0,
+          "stride": 32,
+          "frequency": 1,
+          "count": 16
+        }
+      ],
+      "37c34a7478544c14": [
+        {
+          "offset": 0,
+          "stride": 40,
+          "frequency": 1,
+          "count": 1605
+        }
+      ],
+      "4944d81dfe531b37": [
+        {
+          "offset": 0,
+          "stride": 40,
+          "frequency": 1,
+          "count": 1331
+        }
+      ],
+      "494fe349b8bc12ec": [
+        {
+          "offset": 0,
+          "stride": 24,
+          "frequency": 1,
+          "count": 132
+        },
+        {
+          "offset": 0,
+          "stride": 40,
+          "frequency": 1,
+          "count": 3174
+        }
+      ],
+      "53a0a641107ed76c": [
+        {
+          "offset": 0,
+          "stride": 40,
+          "frequency": 1,
+          "count": 5314
+        }
+      ],
+      "5e484a06672e28fb": [
+        {
+          "offset": 0,
+          "stride": 24,
+          "frequency": 1,
+          "count": 16
+        }
+      ],
+      "6059306306203243": [
+        {
+          "offset": 0,
+          "stride": 24,
+          "frequency": 1,
+          "count": 40
+        }
+      ],
+      "7b6393fe2d3e1d85": [
+        {
+          "offset": 0,
+          "stride": 24,
+          "frequency": 1,
+          "count": 228
+        }
+      ],
+      "803ebfd17f79e413": [
+        {
+          "offset": 0,
+          "stride": 40,
+          "frequency": 1,
+          "count": 24
+        }
+      ],
+      "ac2319bc3953efc6": [
+        {
+          "offset": 0,
+          "stride": 40,
+          "frequency": 1,
+          "count": 8
+        }
+      ],
+      "b0602757fce6e870": [
+        {
+          "offset": 0,
+          "stride": 40,
+          "frequency": 1,
+          "count": 940
+        }
+      ],
+      "be199829a9bb78db": [
+        {
+          "offset": 0,
+          "stride": 24,
+          "frequency": 1,
+          "count": 4
+        }
+      ],
+      "c30104cb0efb6675": [
+        {
+          "offset": 0,
+          "stride": 40,
+          "frequency": 1,
+          "count": 27
+        }
+      ],
+      "c78b4c68a87fce74": [
+        {
+          "offset": 0,
+          "stride": 40,
+          "frequency": 1,
+          "count": 155
+        }
+      ],
+      "cbbf26102694c961": [
+        {
+          "offset": 0,
+          "stride": 24,
+          "frequency": 1,
+          "count": 20
+        }
+      ],
+      "d5e1c75351ed3f04": [
+        {
+          "offset": 0,
+          "stride": 24,
+          "frequency": 1,
+          "count": 41
+        }
+      ],
+      "f36fc43f30b19d71": [
+        {
+          "offset": 0,
+          "stride": 24,
+          "frequency": 1,
+          "count": 32
+        }
+      ]
+    },
+    "integer_i0_x": {
+      "1279d081455f5815": {
+        "0": 20
+      },
+      "167eb2d5629ab9d3": {
+        "0": 304
+      },
+      "36f98d151fd6b0c6": {
+        "0": 16
+      },
+      "37c34a7478544c14": {
+        "0": 1605
+      },
+      "4944d81dfe531b37": {
+        "0": 1251,
+        "1": 28,
+        "2": 52
+      },
+      "494fe349b8bc12ec": {
+        "0": 3306
+      },
+      "53a0a641107ed76c": {
+        "0": 5314
+      },
+      "5e484a06672e28fb": {
+        "0": 16
+      },
+      "6059306306203243": {
+        "0": 40
+      },
+      "7b6393fe2d3e1d85": {
+        "0": 228
+      },
+      "803ebfd17f79e413": {
+        "0": 24
+      },
+      "ac2319bc3953efc6": {
+        "0": 8
+      },
+      "b0602757fce6e870": {
+        "0": 940
+      },
+      "be199829a9bb78db": {
+        "0": 4
+      },
+      "c30104cb0efb6675": {
+        "0": 11,
+        "1": 4,
+        "2": 12
+      },
+      "c78b4c68a87fce74": {
+        "0": 155
+      },
+      "cbbf26102694c961": {
+        "0": 20
+      },
+      "d5e1c75351ed3f04": {
+        "0": 41
+      },
+      "f36fc43f30b19d71": {
+        "0": 32
+      }
+    }
+  }
+}
