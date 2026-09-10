@@ -1,0 +1,53 @@
+{
+  "scope": "offline exact-program patch derivation and D3DX disassembly; no device/game execution",
+  "profile_count": 5,
+  "site_count": 8,
+  "all_profiles_disassembled_hresult": "0x00000000",
+  "failures": 0,
+  "manifest_sha256": "6a5de7b9723eac43b546c489aaa5d517ac080ba0da097d2f37a743f2f87341a0",
+  "inspector_sha256": "5ada3b1966018fa1502a4107e581277eb54fdbd9b9e56c7e0b4793d2ddf71ac3",
+  "d3dx_module_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "disassembler_executable_sha256": "81cccd0187a37feecd7f614da53e32fc330e78f90ae8b333063f9a751eccc439",
+  "profiles": [
+    {
+      "original_fnv1a64": "5f82ecacd39529cd",
+      "modified_fnv1a64": "647b5ca721f98b29",
+      "changed_instruction_count": 2,
+      "only_expected_disassembly_changes": true,
+      "original_disassembly_sha256": "27f8b484d09da1c18c752d1e51c2bd2bba86bd45d8c02a6bbb1c0d75d4c9c51d",
+      "modified_disassembly_sha256": "788fcda178eea6167429e9f1bc65fd79769fe68eae4184bb19f4add977ae645b"
+    },
+    {
+      "original_fnv1a64": "fffdabd910793aba",
+      "modified_fnv1a64": "f2c8aa734b90dca2",
+      "changed_instruction_count": 2,
+      "only_expected_disassembly_changes": true,
+      "original_disassembly_sha256": "d773ebedcb18a3a9cab551fe5cbda888a8c07f391989f525ae2717f599ed6e15",
+      "modified_disassembly_sha256": "da5451352130fe61d721742acfa9b46ff5ca9659c7b327f6398d138022d26f58"
+    },
+    {
+      "original_fnv1a64": "7c83ed50c9894e44",
+      "modified_fnv1a64": "5ffaea78cd5bdf44",
+      "changed_instruction_count": 1,
+      "only_expected_disassembly_changes": true,
+      "original_disassembly_sha256": "81d9cc4f77bba7fe5be078f0b74d643db344f0c39e13f2e459b6c865bacd63a0",
+      "modified_disassembly_sha256": "4e2160516771b14242275e7f350308d2509e8d0abad460899dced2a624fb4f31"
+    },
+    {
+      "original_fnv1a64": "8759c7838bbc86c2",
+      "modified_fnv1a64": "7aa76c58f9169be6",
+      "changed_instruction_count": 1,
+      "only_expected_disassembly_changes": true,
+      "original_disassembly_sha256": "dedf133b800ad818123aaa6f4a997d077ff7fc6b732859e8cb7ac0a1284b061b",
+      "modified_disassembly_sha256": "8627356fb81260c3d118497eecaafb0c365b6e40391e3428bfd145ecbd6f549a"
+    },
+    {
+      "original_fnv1a64": "f1b0e820c7b488c3",
+      "modified_fnv1a64": "3179b22d42ce48b3",
+      "changed_instruction_count": 2,
+      "only_expected_disassembly_changes": true,
+      "original_disassembly_sha256": "343bef28b25702280a491002da1876c6ce0e86f93f9000e45408115d4786e0e9",
+      "modified_disassembly_sha256": "63a552c2564c751ee02d90cd2765b8ca61a84bb2c08f41bad9fa1627fe43849d"
+    }
+  ]
+}

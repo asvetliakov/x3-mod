@@ -1,0 +1,233 @@
+{
+  "schema": 1,
+  "offset_units": "zero-based DWORD index from version token; byte offsets also supplied",
+  "transformation": "mov_sat_pp temp.xyz, v0 -> max_pp temp.xyz, v0, shader-local DEF zero",
+  "profiles": [
+    {
+      "fnv1a64": "5f82ecacd39529cd",
+      "sha256": "e62d0f041430e54fdea5800ef6576d812a2486f12a980f921553e7292349d8c2",
+      "version": "0xffff0300",
+      "byte_count": 7060,
+      "word_count": 1765,
+      "zero_def_dword": 1307,
+      "zero_register": 24,
+      "zero_component": 1,
+      "zero_literal_dword": 1310,
+      "zero_source_token": "0xa0550018",
+      "sites": [
+        {
+          "instruction_dword": 1692,
+          "destination_dword": 1693,
+          "instruction_byte": 6768,
+          "destination_byte": 6772,
+          "expected": [
+            "0x02000001",
+            "0x80370005",
+            "0x90e40000"
+          ],
+          "replacement": [
+            "0x0300000b",
+            "0x80270005",
+            "0x90e40000",
+            "0xa0550018"
+          ]
+        },
+        {
+          "instruction_dword": 1709,
+          "destination_dword": 1710,
+          "instruction_byte": 6836,
+          "destination_byte": 6840,
+          "expected": [
+            "0x02000001",
+            "0x80370004",
+            "0x90e40000"
+          ],
+          "replacement": [
+            "0x0300000b",
+            "0x80270004",
+            "0x90e40000",
+            "0xa0550018"
+          ]
+        }
+      ],
+      "patched_byte_count": 7068,
+      "patched_word_count": 1767,
+      "patched_fnv1a64": "647b5ca721f98b29",
+      "patched_sha256": "e11e5b5da6ba058a6afe45725ba121f2b78f51f502b796e5441647762056bead"
+    },
+    {
+      "fnv1a64": "fffdabd910793aba",
+      "sha256": "8fc110cf9cf4631ac0f7052b8f61ec6c5908bcaa7be830853570404ddfa95b72",
+      "version": "0xffff0300",
+      "byte_count": 6592,
+      "word_count": 1648,
+      "zero_def_dword": 1268,
+      "zero_register": 22,
+      "zero_component": 1,
+      "zero_literal_dword": 1271,
+      "zero_source_token": "0xa0550016",
+      "sites": [
+        {
+          "instruction_dword": 1575,
+          "destination_dword": 1576,
+          "instruction_byte": 6300,
+          "destination_byte": 6304,
+          "expected": [
+            "0x02000001",
+            "0x80370005",
+            "0x90e40000"
+          ],
+          "replacement": [
+            "0x0300000b",
+            "0x80270005",
+            "0x90e40000",
+            "0xa0550016"
+          ]
+        },
+        {
+          "instruction_dword": 1592,
+          "destination_dword": 1593,
+          "instruction_byte": 6368,
+          "destination_byte": 6372,
+          "expected": [
+            "0x02000001",
+            "0x80370004",
+            "0x90e40000"
+          ],
+          "replacement": [
+            "0x0300000b",
+            "0x80270004",
+            "0x90e40000",
+            "0xa0550016"
+          ]
+        }
+      ],
+      "patched_byte_count": 6600,
+      "patched_word_count": 1650,
+      "patched_fnv1a64": "f2c8aa734b90dca2",
+      "patched_sha256": "75150712a6582057e777542cb9bb528139d63458600fe97dc633fa08b270617d"
+    },
+    {
+      "fnv1a64": "7c83ed50c9894e44",
+      "sha256": "a171c7d7e3dcdfc87816fc651bf93918399594ec457ce1822dcd47a0cff2374a",
+      "version": "0xffff0300",
+      "byte_count": 5192,
+      "word_count": 1298,
+      "zero_def_dword": 1091,
+      "zero_register": 12,
+      "zero_component": 1,
+      "zero_literal_dword": 1094,
+      "zero_source_token": "0xa055000c",
+      "sites": [
+        {
+          "instruction_dword": 1252,
+          "destination_dword": 1253,
+          "instruction_byte": 5008,
+          "destination_byte": 5012,
+          "expected": [
+            "0x02000001",
+            "0x80370004",
+            "0x90e40000"
+          ],
+          "replacement": [
+            "0x0300000b",
+            "0x80270004",
+            "0x90e40000",
+            "0xa055000c"
+          ]
+        }
+      ],
+      "patched_byte_count": 5196,
+      "patched_word_count": 1299,
+      "patched_fnv1a64": "5ffaea78cd5bdf44",
+      "patched_sha256": "fa70f013def3ea7eac0680295e7fb372568c0bc768ca679cc794014424c1c3c5"
+    },
+    {
+      "fnv1a64": "8759c7838bbc86c2",
+      "sha256": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
+      "version": "0xffff0300",
+      "byte_count": 5040,
+      "word_count": 1260,
+      "zero_def_dword": 1041,
+      "zero_register": 8,
+      "zero_component": 1,
+      "zero_literal_dword": 1044,
+      "zero_source_token": "0xa0550008",
+      "sites": [
+        {
+          "instruction_dword": 1206,
+          "destination_dword": 1207,
+          "instruction_byte": 4824,
+          "destination_byte": 4828,
+          "expected": [
+            "0x02000001",
+            "0x80370001",
+            "0x90e40000"
+          ],
+          "replacement": [
+            "0x0300000b",
+            "0x80270001",
+            "0x90e40000",
+            "0xa0550008"
+          ]
+        }
+      ],
+      "patched_byte_count": 5044,
+      "patched_word_count": 1261,
+      "patched_fnv1a64": "7aa76c58f9169be6",
+      "patched_sha256": "3b0393fd19c12087a54a50ea77825486e91c144748b0d94b1b7d003ce35ec051"
+    },
+    {
+      "fnv1a64": "f1b0e820c7b488c3",
+      "sha256": "8f6517d6730a53d52712a335253d272663e34d05e3cdcdccc93c05249014515e",
+      "version": "0xffff0300",
+      "byte_count": 7164,
+      "word_count": 1791,
+      "zero_def_dword": 1307,
+      "zero_register": 24,
+      "zero_component": 2,
+      "zero_literal_dword": 1311,
+      "zero_source_token": "0xa0aa0018",
+      "sites": [
+        {
+          "instruction_dword": 1718,
+          "destination_dword": 1719,
+          "instruction_byte": 6872,
+          "destination_byte": 6876,
+          "expected": [
+            "0x02000001",
+            "0x80370005",
+            "0x90e40000"
+          ],
+          "replacement": [
+            "0x0300000b",
+            "0x80270005",
+            "0x90e40000",
+            "0xa0aa0018"
+          ]
+        },
+        {
+          "instruction_dword": 1735,
+          "destination_dword": 1736,
+          "instruction_byte": 6940,
+          "destination_byte": 6944,
+          "expected": [
+            "0x02000001",
+            "0x80370004",
+            "0x90e40000"
+          ],
+          "replacement": [
+            "0x0300000b",
+            "0x80270004",
+            "0x90e40000",
+            "0xa0aa0018"
+          ]
+        }
+      ],
+      "patched_byte_count": 7172,
+      "patched_word_count": 1793,
+      "patched_fnv1a64": "3179b22d42ce48b3",
+      "patched_sha256": "66ea7914e8f4c31bc5dcc0e5142678c45c7b1b6ed0f2bdbf02bfd50ac692f986"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "started_utc": "2026-09-10T19:58:27.765663+00:00",
+  "source_sha256": {
+    "verification/probe/material_radiance_fixture.cpp": "d2eb3f1f9fab0066a1dfe7f9050de73b9ef62cd639840fa5071c3db0773896b2",
+    "verification/probe/build_material_radiance.sh": "b6adee5e594a45667ef4b20ddcedf087f3fe1e5841e42ddf2584fb200be335c8",
+    "verification/probe/run_material_radiance.py": "d541866be8fcda4b18006a8298ba3f6b69e55539e05ed495a4013a7537d6265b",
+    "src/renderer/material_radiance.cpp": "eb94856002a93d66b0e26aba98e4a44b683a458c384941e991d0164603cdeada",
+    "src/renderer/material_radiance.h": "a0df98c526cdd2ed5146ff460abe0c0f2a8ff46e9e95dcaed38336e372f6a3dc",
+    "src/renderer/material_radiance_profiles_inc.h": "1c0bc9af732a4d6faddfde90dd5a6d63b32cb0aa3aec85c09c4e4714307ec3b3"
+  },
+  "process_local_override": "d3d9=b",
+  "timeout_seconds": 60,
+  "build_exit_code": 0,
+  "fresh_build": true,
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/material_radiance_fixture.exe",
+    "C:\\X3\\d3dx9_37.dll"
+  ],
+  "executable_sha256": "390a5c7e899a393317f79c61ece421cec1fd4709dea2ec315d31138d1dfa4672",
+  "exit_code": 0,
+  "checks": 42,
+  "samples": 192,
+  "reset_passed": true,
+  "failed_checks": [],
+  "source_unchanged_during_run": true,
+  "executable_unchanged_during_run": true,
+  "passed": true
+}

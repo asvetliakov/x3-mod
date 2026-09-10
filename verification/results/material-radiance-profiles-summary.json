@@ -1,0 +1,53 @@
+{
+  "sources": {
+    "src/renderer/material_radiance.cpp": "eb94856002a93d66b0e26aba98e4a44b683a458c384941e991d0164603cdeada",
+    "src/renderer/material_radiance.h": "a0df98c526cdd2ed5146ff460abe0c0f2a8ff46e9e95dcaed38336e372f6a3dc",
+    "src/renderer/material_radiance_profiles_inc.h": "1c0bc9af732a4d6faddfde90dd5a6d63b32cb0aa3aec85c09c4e4714307ec3b3",
+    "verification/probe/material_radiance_profiles.cpp": "595c4e4e0358b9762781bd20d3b9121434b91188a9e390c2c9de1d9ae6d4cb5d",
+    "verification/probe/run_material_radiance_profiles.py": "9e9334861f08e2897e732d0bd54f9305be788bde1ea4741ca2572bde07fbbb3a",
+    "docs/reverse-engineering/material-radiance-profiles.json": "6a5de7b9723eac43b546c489aaa5d517ac080ba0da097d2f37a743f2f87341a0"
+  },
+  "executable_sha256": "948880da4c29e619f35e3641ae1480ee5cc0d52c3a20913892b0af86548b7ade",
+  "fresh_build": true,
+  "game_launched": false,
+  "gpu_rendered": false,
+  "cases": [
+    {
+      "original_fnv": "5f82ecacd39529cd",
+      "original_sha256": "e62d0f041430e54fdea5800ef6576d812a2486f12a980f921553e7292349d8c2",
+      "variant_sha256": "e11e5b5da6ba058a6afe45725ba121f2b78f51f502b796e5441647762056bead",
+      "sites": 2,
+      "passed": true
+    },
+    {
+      "original_fnv": "fffdabd910793aba",
+      "original_sha256": "8fc110cf9cf4631ac0f7052b8f61ec6c5908bcaa7be830853570404ddfa95b72",
+      "variant_sha256": "75150712a6582057e777542cb9bb528139d63458600fe97dc633fa08b270617d",
+      "sites": 2,
+      "passed": true
+    },
+    {
+      "original_fnv": "7c83ed50c9894e44",
+      "original_sha256": "a171c7d7e3dcdfc87816fc651bf93918399594ec457ce1822dcd47a0cff2374a",
+      "variant_sha256": "fa70f013def3ea7eac0680295e7fb372568c0bc768ca679cc794014424c1c3c5",
+      "sites": 1,
+      "passed": true
+    },
+    {
+      "original_fnv": "8759c7838bbc86c2",
+      "original_sha256": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
+      "variant_sha256": "3b0393fd19c12087a54a50ea77825486e91c144748b0d94b1b7d003ce35ec051",
+      "sites": 1,
+      "passed": true
+    },
+    {
+      "original_fnv": "f1b0e820c7b488c3",
+      "original_sha256": "8f6517d6730a53d52712a335253d272663e34d05e3cdcdccc93c05249014515e",
+      "variant_sha256": "66ea7914e8f4c31bc5dcc0e5142678c45c7b1b6ed0f2bdbf02bfd50ac692f986",
+      "sites": 2,
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "source_and_executable_unchanged": true
+}
