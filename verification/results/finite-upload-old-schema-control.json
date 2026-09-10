@@ -1,0 +1,27 @@
+{
+  "result": "PASS",
+  "scope": "Completed iteration-5 capture compatibility; absent finite-upload records remain unknown",
+  "provenance": {
+    "snapshot": "/tmp/x3-iteration05-completed-snapshot.log",
+    "bytes": 216605445,
+    "sha256": "e5beaa861d04659fe9c7df05a01845bd05d656a33c643f4b484ff379cf3ccaf8",
+    "analyzer_sha256": "5c1dc4da156ac317fecdbc0a7c6de16770b01d74cd11d9097ef5da735a111f04"
+  },
+  "totals": {
+    "draws": 12957,
+    "finite_flag_0": 12957,
+    "motion_geometry_unknown": 12957,
+    "legacy_local_gates_and_lifetime": 9246,
+    "input_candidates": 0,
+    "complete_successful_frames": 28,
+    "source_unknown": 12957,
+    "finite_unknown": 12957,
+    "index_gate_unknown": 12957
+  },
+  "parse_diagnostics": {},
+  "owner_metric_batches": 0,
+  "analyzer_focused_tests": 30,
+  "full_analysis_tests": 279,
+  "test_source_sha256": "54293ecb833c362f6445ca6767b3f29e9a9bbd81b755da9fdae2595be65c1f34",
+  "reproduce": "python3 tools/analysis/analyze_finite_upload_capture.py /tmp/x3-iteration05-completed-snapshot.log --expected-sha256 e5beaa861d04659fe9c7df05a01845bd05d656a33c643f4b484ff379cf3ccaf8 --output /tmp/finite-upload-iteration05-control.json"
+}
