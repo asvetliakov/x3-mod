@@ -1,0 +1,318 @@
+{
+  "source": {
+    "name": "session-20260910-214701-212.log",
+    "sha256": "81cd598428312b709889b0fb892c6243a20818f20d0a3bf400eacdc33af017f0"
+  },
+  "assumptions": [
+    "Full clear-time viewport (0.3 did not query it).",
+    "No additional MRTs (0.3 omitted failed/absent RT getter records)."
+  ],
+  "frames": [
+    {
+      "device": 1,
+      "frame": 2754,
+      "draws": 103,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 102,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 92
+          }
+        ],
+        "state": 8,
+        "rejection": 0
+      }
+    },
+    {
+      "device": 1,
+      "frame": 2755,
+      "draws": 103,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 102,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 92
+          }
+        ],
+        "state": 8,
+        "rejection": 0
+      }
+    },
+    {
+      "device": 1,
+      "frame": 2756,
+      "draws": 108,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 107,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 97
+          }
+        ],
+        "state": 8,
+        "rejection": 0
+      }
+    },
+    {
+      "device": 1,
+      "frame": 2757,
+      "draws": 108,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 107,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 97
+          }
+        ],
+        "state": 8,
+        "rejection": 0
+      }
+    },
+    {
+      "device": 1,
+      "frame": 2934,
+      "draws": 295,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 294,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 284
+          }
+        ],
+        "state": 8,
+        "rejection": 0
+      }
+    },
+    {
+      "device": 1,
+      "frame": 2935,
+      "draws": 389,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 388,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 378
+          }
+        ],
+        "state": 8,
+        "rejection": 0
+      }
+    },
+    {
+      "device": 1,
+      "frame": 2936,
+      "draws": 412,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 411,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 401
+          }
+        ],
+        "state": 8,
+        "rejection": 0
+      }
+    },
+    {
+      "device": 1,
+      "frame": 2937,
+      "draws": 454,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 453,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 443
+          }
+        ],
+        "state": 8,
+        "rejection": 0
+      }
+    },
+    {
+      "device": 1,
+      "frame": 3104,
+      "draws": 411,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 410,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 400
+          }
+        ],
+        "state": 8,
+        "rejection": 0
+      }
+    },
+    {
+      "device": 1,
+      "frame": 3105,
+      "draws": 351,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 350,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 340
+          }
+        ],
+        "state": 8,
+        "rejection": 0
+      }
+    },
+    {
+      "device": 1,
+      "frame": 3106,
+      "draws": 243,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 242,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 232
+          }
+        ],
+        "state": 8,
+        "rejection": 0
+      }
+    },
+    {
+      "device": 1,
+      "frame": 3107,
+      "draws": 154,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 153,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 143
+          }
+        ],
+        "state": 8,
+        "rejection": 0
+      }
+    }
+  ],
+  "sources_sha256": {
+    "src/renderer/scene_boundary.h": "14da317d222da448e6829b851f51fef067f227641edd14e5cb2cd09702ec865d",
+    "verification/probe/scene_boundary_replay.cpp": "55880f12a8596d6e8f5ae530a42e70d9f45404acac02f561f5fc909119c99b58",
+    "tools/analysis/replay_scene_boundary.py": "c766da3d7f5a6fb8dca1e6076da0d73ddb775b1e7da6f0bf9cd6a52a6a893d1d",
+    "verification/fixtures/station-scene-boundaries.json": "a41f83e3f425aad05598021c141083eadff6a0724fa17b9427056ac6bd34d030"
+  }
+}
