@@ -8,6 +8,12 @@ algorithm verified in isolation. It is **not yet connected to X3** and does not
 establish actual game motion vectors, scene-depth routing, jitter eligibility or
 final TAA visual quality.
 
+The current shader also supports current/previous reactive RGB coverage. Its
+owned-history and original particle-blending tests are documented separately in
+[reactive-history verification](reactive-history.md). This 58-sample fixture
+explicitly exercises scenes without reactive contributors and remains passing
+against the extended shader.
+
 The original fixture uses a hidden standalone 16×16 D3D9 pure device in CrossOver
 Preview's Steam bottle with process-local `d3d9=b`. It compiles the production
 `resolve.hlsl` directly using the local D3DX compiler, uploads synthetic FP16 color, RGBA32F motion

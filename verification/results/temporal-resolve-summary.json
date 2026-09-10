@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-10T18:54:37.049368+00:00",
+  "started_utc": "2026-09-10T21:12:34.929882+00:00",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -15,14 +15,14 @@
   "timeout_seconds": 60,
   "source_sha256": {
     "verification/probe/temporal_resolve.cpp": "3995c219d236dc5df70459cfc1e177abadf922efdcb8cad858c0c3603ad2704e",
-    "verification/probe/temporal_build.sh": "541be02d75027469c1d491d0db3adf776aefa149069412929ca7a3affaee62d8",
+    "verification/probe/temporal_build.sh": "46d38add5f799bc5ba039988306bc97988a11a9d054c18e8419846af433e5259",
     "verification/probe/temporal_run.py": "8339a77f4b038ea73c5f3aae0afc36259e14b4764eeb00bd57cbe3a99feb358f",
-    "src/temporal/resolve.h": "998a427f20aa5a11aacb5b97d71b404ee0dbbd7dbfeb641b2fa8263f11a9be6c",
-    "src/temporal/resolve.hlsl": "1c2b36356d8754fc1354dbd35eb9e0ec6749f25aad90f909625c331a82e43a3c"
+    "src/temporal/resolve.h": "e62dee55cf60b423e58481d47c0d5c65112ae6ebc53d0f516c0646436229a582",
+    "src/temporal/resolve.hlsl": "6e2d4b2701e97d4db8088479d29833a828d38ae438baaeb8e1ce65c8efbe2df5"
   },
   "freshly_built": true,
   "build_exit_code": 0,
-  "executable_sha256": "e1fd9dd9701ba6da06a8e0bbeb786a5a7fd5a5408f14203a15464934256e312e",
+  "executable_sha256": "baada00798f5b4c182408f2fdd114160d0d0c6cd1ed4d54ce87d1c5f499a44fa",
   "exit_code": 0,
   "sample_checks": 58,
   "passed_sample_checks": 58,

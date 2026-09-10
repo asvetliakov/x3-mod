@@ -4,6 +4,8 @@ sampler2D currentDepth : register(s1);
 sampler2D previousColor : register(s2);
 sampler2D previousDepth : register(s3);
 sampler2D motionOverride : register(s4);
+sampler2D currentReactive : register(s5);
+sampler2D previousReactive : register(s6);
 float4 reprojection0 : register(c0);
 float4 reprojection1 : register(c1);
 float4 reprojection2 : register(c2);
@@ -11,16 +13,23 @@ float4 reprojection3 : register(c3);
 float4 sizeJitter : register(c4); // 1/W, 1/H, current jitter UV xy
 float4 history : register(c5); // previous jitter UV xy, weight, valid
 float4 rejection : register(c6); // absolute device-depth tolerance, relative tolerance, HDR limit, minimum W
-float4 options : register(c7); // motion texture enabled; remaining components reserved
+float4 options : register(c7); // motion enabled, reactive enabled, mask snapshot mode, reserved
 
 bool finiteColor(float3 v) { return all(v == v) && all(abs(v) <= rejection.z); }
 bool validDepth(float v) { return v == v && v >= 0 && v <= 1; }
 float3 cleanColor(float3 v) { return finiteColor(v) ? v : float3(0, 0, 0); }
+// Exactly zero is safe. Positive, negative and nonfinite mask values reject.
+// Bounds comparisons avoid depending on a NaN self-comparison surviving compile.
+bool maskSafe(float v) { return v >= 0 && v <= 0; }
 
 // Filtering depth across geometry edges is prohibited. Each bilinear color tap
 // carries its own point-sampled depth test; rejected taps contribute no energy.
-void historyTap(float2 uv, float weight, float expected, inout float3 sum, inout float total) {
+void historyTap(float2 uv, float weight, float expected, inout float3 sum, inout float total,
+                inout bool reactive) {
     if (weight > 0 && all(uv >= 0) && all(uv <= 1)) {
+        // A contaminated contributor invalidates the entire footprint; do not
+        // renormalize around it and blend in a neighboring particle history.
+        if (options.y > 0.5 && !maskSafe(tex2D(previousReactive, uv).r)) reactive = true;
         float depth = tex2D(previousDepth, uv).r;
         float3 color = tex2D(previousColor, uv).rgb;
         float tolerance = rejection.x + rejection.y * abs(expected);
@@ -31,10 +40,16 @@ void historyTap(float2 uv, float weight, float expected, inout float3 sum, inout
     }
 }
 float4 main(float2 uv : TEXCOORD0) : COLOR0 {
+    // Explicit GPU snapshot mode, used by TemporalPass only after validating s5.
+    // Canonicalize coverage into owned R32F history; never infer it from alpha.
+    if (options.z > 0.5)
+        return float4(maskSafe(tex2D(currentReactive, uv).r) ? 0 : 1, 0, 0, 1);
     float3 raw = tex2D(currentColor, uv).rgb;
     float3 color = cleanColor(raw);
     float depth = tex2D(currentDepth, uv).r;
     if (history.w < 0.5 || history.z <= 0 || !finiteColor(raw) || !validDepth(depth))
+        return float4(color, 1);
+    if (options.y > 0.5 && !maskSafe(tex2D(currentReactive, uv).r))
         return float4(color, 1);
 
     // Texture centers use (pixel + .5)/size, but the raw D3D9 viewport maps
@@ -68,11 +83,12 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float2 tap = (base + 0.5) * sizeJitter.xy;
     float3 accumulated = 0;
     float total = 0;
-    historyTap(tap, (1-f.x)*(1-f.y), expectedDepth, accumulated, total);
-    historyTap(tap + float2(sizeJitter.x,0), f.x*(1-f.y), expectedDepth, accumulated, total);
-    historyTap(tap + float2(0,sizeJitter.y), (1-f.x)*f.y, expectedDepth, accumulated, total);
-    historyTap(tap + sizeJitter.xy, f.x*f.y, expectedDepth, accumulated, total);
-    if (total < 0.001) return float4(color, 1);
+    bool reactive = false;
+    historyTap(tap, (1-f.x)*(1-f.y), expectedDepth, accumulated, total, reactive);
+    historyTap(tap + float2(sizeJitter.x,0), f.x*(1-f.y), expectedDepth, accumulated, total, reactive);
+    historyTap(tap + float2(0,sizeJitter.y), (1-f.x)*f.y, expectedDepth, accumulated, total, reactive);
+    historyTap(tap + sizeJitter.xy, f.x*f.y, expectedDepth, accumulated, total, reactive);
+    if (reactive || total < 0.001) return float4(color, 1);
 
     float3 low = color, high = color;
     // Invalid neighboring values cannot poison the clipping box.

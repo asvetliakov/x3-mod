@@ -152,7 +152,7 @@ struct Fixture {
         float constants[32];for(UINT i=0;i<32;++i)constants[i]=i*.125f+3;check("hostile PS constants",d->SetPixelShaderConstantF(0,constants,8));check("hostile VS constants",d->SetVertexShaderConstantF(0,constants,8));
         for(UINT n=0;n<20;++n){UINT slot=n<16?n:D3DVERTEXTEXTURESAMPLER0+n-16;check("hostile texture",d->SetTexture(slot,sentinel.p));for(auto p:{std::pair<D3DSAMPLERSTATETYPE,DWORD>{D3DSAMP_MINFILTER,D3DTEXF_LINEAR},{D3DSAMP_MAGFILTER,D3DTEXF_LINEAR},{D3DSAMP_MIPFILTER,D3DTEXF_LINEAR},{D3DSAMP_ADDRESSU,D3DTADDRESS_WRAP},{D3DSAMP_ADDRESSV,D3DTADDRESS_MIRROR},{D3DSAMP_SRGBTEXTURE,TRUE},{D3DSAMP_MAXMIPLEVEL,1}})check("hostile sampler",d->SetSamplerState(slot,p.first,p.second));}
     }
-    FrameInputs inputs(){FrameInputs in;in.color=color.p;in.depth_snapshot=depth.p;in.width=W;in.height=H;in.epoch=1;std::copy(identity,identity+16,in.clip_to_previous);in.motion_policy=MotionPolicy::KnownCameraOnly;in.weight=.5f;in.history_allowed=true;in.caller_queries_idle=true;return in;}
+    FrameInputs inputs(){FrameInputs in;in.color=color.p;in.depth_snapshot=depth.p;in.width=W;in.height=H;in.epoch=1;std::copy(identity,identity+16,in.clip_to_previous);in.motion_policy=MotionPolicy::KnownCameraOnly;in.reactive_policy=x3m::renderer::ReactivePolicy::KnownNonReactive;in.weight=.5f;in.history_allowed=true;in.caller_queries_idle=true;return in;}
     void sample(const Output& out,float color_value,float z,const char* label){
         for(UINT which=0;which<2;++which){IDirect3DTexture9* texture=which?out.depth:out.color;Com<IDirect3DSurface9> surface,readback;check("output surface",texture->GetSurfaceLevel(0,&surface.p));check("readback surface",d->CreateOffscreenPlainSurface(W,H,which?D3DFMT_R32F:D3DFMT_A16B16G16R16F,D3DPOOL_SYSTEMMEM,&readback.p,nullptr));check("readback validation only",d->GetRenderTargetData(surface.p,readback.p));D3DLOCKED_RECT lock{};check("lock readback",readback->LockRect(&lock,nullptr,D3DLOCK_READONLY));float actual=0;if(which)std::memcpy(&actual,static_cast<char*>(lock.pBits)+8*lock.Pitch+8*4,4);else {unsigned short h;std::memcpy(&h,static_cast<char*>(lock.pBits)+8*lock.Pitch+8*8,2);actual=halfFloat(h);}check("unlock readback",readback->UnlockRect());float expected=which?z:color_value,tolerance=which?2.f/16777215.f:.002f;bool okay=std::isfinite(actual)&&std::fabs(actual-expected)<=tolerance;++numeric_checks;std::printf("SAMPLE %s plane=%s actual=%.9f expected=%.9f %s\n",label,which?"depth":"color",actual,expected,okay?"PASS":"FAIL");if(!okay)throw std::runtime_error(label);}
     }
@@ -193,8 +193,103 @@ void cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const DWOR
     in.color=epoch.color;f.hostile();Snapshot aliasBefore(d);require(pass.run(in,&missing)==E_INVALIDARG&&!missing.color&&!missing.depth&&!pass.diagnostics().history_valid,"prior output cannot alias current input");aliasBefore.equals(d,"history alias refusal preserves state");
     pass.invalidate();require(!pass.diagnostics().history_valid,"explicit invalidate");pass.before_reset();require(pass.run(in,&missing)==E_INVALIDARG,"before_reset shuts down runtime");
 }
+using x3m::renderer::ReactivePolicy;
+struct Particle {RECT rect;float rgb;float alpha=0;};
+struct ReactiveScene {
+    Fixture& f;IDirect3DDevice9* d;
+    Com<IDirect3DTexture9> color,mask;Com<IDirect3DSurface9> colorSurface,maskSurface;
+    Com<IDirect3DPixelShader9> textured,constant;
+    ReactiveScene(Fixture& fixture,Compiler compiler):f(fixture),d(f.d){
+        check("reactive color",d->CreateTexture(W,H,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&color.p,nullptr));check("reactive color surface",color->GetSurfaceLevel(0,&colorSurface.p));
+        check("reactive mask",d->CreateTexture(W,H,1,D3DUSAGE_RENDERTARGET,D3DFMT_R32F,D3DPOOL_DEFAULT,&mask.p,nullptr));check("reactive mask surface",mask->GetSurfaceLevel(0,&maskSurface.p));
+        Com<ID3DXBuffer> a,b;compile(compiler,"sampler2D source:register(s0);float4 main(float2 uv:TEXCOORD0):COLOR0{return tex2D(source,uv);}","ps_3_0",&a.p);
+        compile(compiler,"float4 color:register(c0);float4 main():COLOR0{return color;}","ps_3_0",&b.p);
+        check("reactive base PS",d->CreatePixelShader(static_cast<DWORD*>(a->GetBufferPointer()),&textured.p));check("reactive particle PS",d->CreatePixelShader(static_cast<DWORD*>(b->GetBufferPointer()),&constant.p));
+    }
+    ~ReactiveScene(){for(UINT i=0;i<7;++i)d->SetTexture(i,nullptr);d->SetRenderTarget(0,f.rt[0].p);d->SetPixelShader(nullptr);}
+    void quad(const RECT& r,float z){struct V{float x,y,z,rhw,u,v;};
+        const V v[]={{float(r.left)-.5f,float(r.top)-.5f,z,1,float(r.left)/W,float(r.top)/H},
+            {float(r.right)-.5f,float(r.top)-.5f,z,1,float(r.right)/W,float(r.top)/H},
+            {float(r.left)-.5f,float(r.bottom)-.5f,z,1,float(r.left)/W,float(r.bottom)/H},
+            {float(r.right)-.5f,float(r.bottom)-.5f,z,1,float(r.right)/W,float(r.bottom)/H}};
+        check("original reactive raster",d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,2,v,sizeof(V)));
+    }
+    void render(std::initializer_list<Particle> particles,float a=.25f,float b=1,float opaque_depth=.5f){
+        f.upload(a,b);
+        for(UINT n=0;n<20;++n)check("particle unbind",d->SetTexture(n<16?n:D3DVERTEXTEXTURESAMPLER0+n-16,nullptr));
+        check("particle MRT",d->SetRenderTarget(1,nullptr));check("particle DS",d->SetDepthStencilSurface(f.depthSurface.p));check("particle RT",d->SetRenderTarget(0,colorSurface.p));
+        D3DVIEWPORT9 vp{0,0,W,H,0,1};check("particle VP",d->SetViewport(&vp));
+        check("particle stream freq0",d->SetStreamSourceFreq(0,1));check("particle stream freq1",d->SetStreamSourceFreq(1,1));
+        check("particle VS",d->SetVertexShader(nullptr));check("particle FVF",d->SetFVF(D3DFVF_XYZRHW|D3DFVF_TEX1));check("particle IB",d->SetIndices(nullptr));
+        for(auto state:{D3DRS_STENCILENABLE,D3DRS_ALPHATESTENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_SEPARATEALPHABLENDENABLE,D3DRS_FOGENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_SCISSORTESTENABLE,D3DRS_CLIPPLANEENABLE,D3DRS_CLIPPING,D3DRS_LIGHTING,D3DRS_INDEXEDVERTEXBLENDENABLE,D3DRS_POINTSPRITEENABLE,D3DRS_DITHERENABLE,D3DRS_ANTIALIASEDLINEENABLE})check("particle state disable",d->SetRenderState(state,FALSE));
+        for(auto p:{std::pair<D3DRENDERSTATETYPE,DWORD>{D3DRS_ZENABLE,TRUE},{D3DRS_ZWRITEENABLE,TRUE},{D3DRS_ZFUNC,D3DCMP_LESSEQUAL},{D3DRS_VERTEXBLEND,D3DVBF_DISABLE},{D3DRS_FILLMODE,D3DFILL_SOLID},{D3DRS_CULLMODE,D3DCULL_NONE},{D3DRS_COLORWRITEENABLE,15},{D3DRS_MULTISAMPLEMASK,0xffffffff},{D3DRS_DEPTHBIAS,0},{D3DRS_SLOPESCALEDEPTHBIAS,0},{D3DRS_WRAP0,0}})check("particle render state",d->SetRenderState(p.first,p.second));
+        for(auto p:{std::pair<D3DSAMPLERSTATETYPE,DWORD>{D3DSAMP_MINFILTER,D3DTEXF_POINT},{D3DSAMP_MAGFILTER,D3DTEXF_POINT},{D3DSAMP_MIPFILTER,D3DTEXF_NONE},{D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP},{D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP},{D3DSAMP_SRGBTEXTURE,FALSE},{D3DSAMP_MAXMIPLEVEL,0}})check("particle sampler",d->SetSamplerState(0,p.first,p.second));
+        check("particle clear",d->Clear(0,nullptr,D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER,0,1,0));check("particle Begin",d->BeginScene());
+        check("base texture",d->SetTexture(0,f.color.p));check("base shader",d->SetPixelShader(textured.p));quad({0,0,W,H},opaque_depth);
+        check("particle no depth writes",d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE));check("particle constant shader",d->SetPixelShader(constant.p));
+        check("actual source-color blend",d->SetRenderState(D3DRS_SRCBLEND,D3DBLEND_SRCCOLOR));check("actual inverse-source-color blend",d->SetRenderState(D3DRS_DESTBLEND,D3DBLEND_INVSRCCOLOR));check("actual additive blend op",d->SetRenderState(D3DRS_BLENDOP,D3DBLENDOP_ADD));check("particle blend enabled",d->SetRenderState(D3DRS_ALPHABLENDENABLE,TRUE));
+        for(auto p:particles){const float rgb[]={p.rgb,p.rgb,p.rgb,p.alpha};check("particle RGB not alpha",d->SetPixelShaderConstantF(0,rgb,1));quad(p.rect,.5f);}
+        // Independent binary visible coverage: same submitted rectangles/depth,
+        // depth test retained, no blending, and no inference from source alpha.
+        check("mask target",d->SetRenderTarget(0,maskSurface.p));check("mask no blend",d->SetRenderState(D3DRS_ALPHABLENDENABLE,FALSE));check("mask clear",d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));
+        const float marked[]={1,0,0,0};check("mask coverage value",d->SetPixelShaderConstantF(0,marked,1));
+        for(auto p:particles)quad(p.rect,.5f);
+        check("particle End",d->EndScene());
+    }
+    FrameInputs inputs(){auto in=f.inputs();in.color=color.p;in.reactive=mask.p;in.reactive_policy=ReactivePolicy::RequiredMask;return in;}
+    Output run(TemporalPass& pass,FrameInputs in,const char* label,bool valid=true){
+        f.hostile();Snapshot before(d);check("reactive caller Begin",d->BeginScene());Output out;check(label,pass.run(in,&out));check("reactive caller End",d->EndScene());before.equals(d,label);
+        require(out.color&&out.depth&&pass.diagnostics().history_valid==valid,"reactive atomic output validity");
+        require(bool(out.reactive)==(in.reactive_policy==ReactivePolicy::RequiredMask),"reactive snapshot policy");return out;
+    }
+};
+void reactive_sample(IDirect3DDevice9* d,IDirect3DTexture9* texture,UINT x,UINT y,float expected,const char* label,UINT component=0){
+    require(texture!=nullptr,"sample texture exists");D3DSURFACE_DESC desc{};check("reactive sample desc",texture->GetLevelDesc(0,&desc));Com<IDirect3DSurface9> source,read;check("reactive sample source",texture->GetSurfaceLevel(0,&source.p));check("reactive sample readback",d->CreateOffscreenPlainSurface(W,H,desc.Format,D3DPOOL_SYSTEMMEM,&read.p,nullptr));check("reactive test-only readback",d->GetRenderTargetData(source.p,read.p));D3DLOCKED_RECT lock{};check("reactive read lock",read->LockRect(&lock,nullptr,D3DLOCK_READONLY));float actual;
+    if(desc.Format==D3DFMT_R32F)std::memcpy(&actual,static_cast<char*>(lock.pBits)+y*lock.Pitch+x*4,4);
+    else{unsigned short h;std::memcpy(&h,static_cast<char*>(lock.pBits)+y*lock.Pitch+x*8+component*2,2);actual=halfFloat(h);}
+    check("reactive read unlock",read->UnlockRect());bool okay=std::isfinite(actual)&&std::fabs(actual-expected)<=.002f;++numeric_checks;
+    std::printf("SAMPLE %s actual=%.9f expected=%.9f %s\n",label,actual,expected,okay?"PASS":"FAIL");if(!okay)throw std::runtime_error(label);
+}
+void reactive_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const DWORD* resolver){
+    std::puts("REACTIVE_CASES");Fixture f(d,compiler);ReactiveScene scene(f,compiler);TemporalPass pass;check("reactive initialize",pass.initialize(d,decoder,resolver));
+    const Particle a{{7,7,10,10},.5f,0},b{{7,7,10,10},.75f,0},right{{10,7,13,10},.5f,0},tap{{9,7,10,10},.5f,0};
+    auto in=scene.inputs();scene.render({},.75f,.75f);scene.run(pass,in,"reactive warmup");
+    scene.render({a});reactive_sample(d,scene.color.p,8,8,.375f,"actual SRC_COLOR particle RGB with zero source alpha");reactive_sample(d,scene.color.p,8,8,1,"particle preserves destination alpha",3);
+    auto born=scene.run(pass,in,"particle born current coverage");reactive_sample(d,born.color,8,8,.375f,"birth rejects old unmarked color");reactive_sample(d,born.reactive,8,8,1,"current mask copied to owned history");
+    scene.render({});reactive_sample(d,born.reactive,8,8,1,"owned mask survives caller target reuse");auto gone=scene.run(pass,in,"particle disappears previous coverage");reactive_sample(d,gone.color,8,8,.25f,"disappearance rejects stale RGB");
+    in.camera_cut=true;scene.render({a});scene.run(pass,in,"movement prior coverage");in.camera_cut=false;scene.render({right});auto moved=scene.run(pass,in,"particle moves");reactive_sample(d,moved.color,8,8,.25f,"movement old position rejects history");reactive_sample(d,moved.color,11,8,.75f,"movement new position rejects history");
+    in.camera_cut=true;scene.render({a,b});auto ab=scene.run(pass,in,"particle order AB");reactive_sample(d,ab.color,8,8,.65625f,"noncommutative RGB blend AB");in.camera_cut=false;scene.render({b,a});auto ba=scene.run(pass,in,"particle order BA");reactive_sample(d,ba.color,8,8,.5625f,"reordering uses actual current RGB");
+    in.camera_cut=true;scene.render({},.75f,.75f,.25f);scene.run(pass,in,"opaque occlusion warmup");in.camera_cut=false;scene.render({a},.25f,1,.25f);reactive_sample(d,scene.mask.p,8,8,0,"opaque depth occludes reactive contributor");auto opaque=scene.run(pass,in,"opaque occlusion retains stable accumulation");reactive_sample(d,opaque.color,8,8,.5f,"occluded particle does not invalidate opaque history");
+    in.camera_cut=true;scene.render({},4,8);scene.run(pass,in,"HDR prior");in.camera_cut=false;scene.render({a},4,8);auto hdr=scene.run(pass,in,"HDR reactive color");reactive_sample(d,hdr.color,8,8,2.25f,"HDR exceeds one with reactive rejection");
+    in.camera_cut=true;scene.render({tap},.75f,.75f);scene.run(pass,in,"history lookup prior mask");in.camera_cut=false;scene.render({});f.uploadMotion(1);in.motion_policy=MotionPolicy::PerPixel;in.motion=f.motion.p;
+    auto correspondence=[&](float u){D3DLOCKED_RECT lock{};check("reactive motion lock",f.motion->LockRect(0,&lock,nullptr,0));const float value[]={u,8.5f/H,.5f,1};std::memcpy(static_cast<char*>(lock.pBits)+8*lock.Pitch+8*16,value,16);check("reactive motion unlock",f.motion->UnlockRect(0));};
+    correspondence(9.5f/W);auto object=scene.run(pass,in,"object motion looks up previous reactive coverage");reactive_sample(d,object.color,8,8,.25f,"previous mask follows object correspondence");
+    in=scene.inputs();in.camera_cut=true;scene.render({tap},.75f,.75f);scene.run(pass,in,"footprint mask warmup");in.camera_cut=false;scene.render({});in.motion_policy=MotionPolicy::PerPixel;in.motion=f.motion.p;correspondence(9.f/W);
+    auto footprint=scene.run(pass,in,"positive-weight reactive history tap");reactive_sample(d,footprint.color,8,8,.25f,"whole bilinear footprint rejects contaminated tap");
+    in=scene.inputs();in.camera_cut=true;scene.render({tap},.75f,.75f);scene.run(pass,in,"zero-weight mask warmup");in.camera_cut=false;scene.render({});in.motion_policy=MotionPolicy::PerPixel;in.motion=f.motion.p;correspondence(8.5f/W);
+    auto zero=scene.run(pass,in,"zero-weight masked neighbor");reactive_sample(d,zero.color,8,8,.5f,"zero-weight reactive tap does not reject");
+    // Mask values are canonicalized independently of application alpha or sign.
+    Com<IDirect3DTexture9> values;check("mask values",d->CreateTexture(W,H,1,0,D3DFMT_R32F,D3DPOOL_MANAGED,&values.p,nullptr));
+    IDirect3DTexture9* lastSnapshot=nullptr;
+    for(float value:{-1.f,NAN,INFINITY,.25f}){D3DLOCKED_RECT lock{};check("mask value lock",values->LockRect(0,&lock,nullptr,0));for(UINT y=0;y<H;++y)for(UINT x=0;x<W;++x)std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*4,&value,4);check("mask value unlock",values->UnlockRect(0));in=scene.inputs();in.reactive=values.p;auto invalid=scene.run(pass,in,"nonzero or invalid mask values conservative");lastSnapshot=invalid.reactive;reactive_sample(d,invalid.color,8,8,.25f,"invalid mask uses current RGB");reactive_sample(d,invalid.reactive,8,8,1,"invalid mask canonicalized to one");}
+    values.p->Release();values.p=nullptr;reactive_sample(d,lastSnapshot,8,8,1,"owned snapshot survives caller mask release");
+    in=scene.inputs();f.hostile();Snapshot missingBefore(d);Output failed;in.reactive=nullptr;require(pass.run(in,&failed)==E_INVALIDARG&&!failed.color&&!failed.depth&&!failed.reactive&&!pass.diagnostics().history_valid,"required missing mask fails closed");missingBefore.equals(d,"missing mask preserves state");
+    in=scene.inputs();in.reactive=f.color.p;require(pass.run(in,&failed)==E_INVALIDARG&&!failed.reactive,"wrong mask format refused");
+    Com<IDirect3DTexture9> wrongSize;check("wrong mask dimensions",d->CreateTexture(W+1,H,1,0,D3DFMT_R32F,D3DPOOL_MANAGED,&wrongSize.p,nullptr));in.reactive=wrongSize.p;require(pass.run(in,&failed)==E_INVALIDARG&&!failed.reactive,"wrong mask dimensions refused");
+    in=scene.inputs();in.reactive_policy=static_cast<ReactivePolicy>(99);require(pass.run(in,&failed)==E_INVALIDARG&&!failed.reactive,"unknown reactive policy refused");
+    in=scene.inputs();scene.render({});auto recovered=scene.run(pass,in,"missing mask recovery");require(!recovered.used_history,"missing mask invalidated history");reactive_sample(d,recovered.color,8,8,.25f,"missing mask recovery current only");
+    in.reactive=recovered.reactive;require(pass.run(in,&failed)==E_INVALIDARG&&!failed.reactive,"owned mask cannot alias current input");
+    in=scene.inputs();f.hostile();Snapshot snapshotBefore(d);check("snapshot fault Begin",d->BeginScene());{Fault fault(d,3);require(pass.run(in,&failed)==E_FAIL&&!failed.color&&!failed.depth&&!failed.reactive&&!pass.diagnostics().history_valid,"third mask-copy draw failure rejects entire history set");}check("snapshot fault End",d->EndScene());snapshotBefore.equals(d,"third draw failure restores state");
+    auto afterCopyFailure=scene.run(pass,in,"mask-copy failure recovery");require(!afterCopyFailure.used_history,"mask-copy failure invalidates old history");
+    f.hostile();Snapshot restorationBefore(d);check("reactive restore fault Begin",d->BeginScene());{Fault fault(d,0,true,false);require(pass.run(in,&failed)==E_FAIL&&pass.diagnostics().operation==S_OK&&!failed.color&&!failed.depth&&!failed.reactive&&!pass.diagnostics().history_valid,"restore failure rejects color depth and mask");}check("reactive restore fault End",d->EndScene());restorationBefore.equals(d,"reactive restoration failure remaining state");
+    in=scene.inputs();in.reactive_policy=ReactivePolicy::Unavailable;in.reactive=nullptr;scene.render({},.75f,.75f);auto unavailable=scene.run(pass,in,"unavailable coverage current only",false);require(!unavailable.used_history,"unavailable cannot consume history");scene.render({});auto unavailableAgain=scene.run(pass,in,"unavailable repeated current only",false);reactive_sample(d,unavailableAgain.color,8,8,.25f,"unknown coverage cannot accumulate");
+    in=scene.inputs();auto restored=scene.run(pass,in,"required policy restored");require(!restored.used_history,"Required Unavailable Required invalidates history");
+    in.reactive_policy=ReactivePolicy::KnownNonReactive;in.reactive=nullptr;auto known=scene.run(pass,in,"explicit known nonreactive transition");require(!known.used_history&&!known.reactive,"Required to Known changes history policy");
+    in=scene.inputs();auto required=scene.run(pass,in,"required after known");require(!required.used_history&&required.reactive,"Known to Required demands owned mask history");
+    pass.before_reset();require(pass.run(in,&failed)==E_INVALIDARG&&!failed.reactive,"reactive reset releases runtime");
+}
 int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=1;WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3TemporalPassFixture";RegisterClassA(&cls);HWND window=CreateWindowA(cls.lpszClassName,"X3 temporal production module",WS_OVERLAPPEDWINDOW,90,90,128,128,nullptr,nullptr,cls.hInstance,nullptr);
     try{if(argc!=4||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve>");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);compile(compiler,file(argv[3]),"ps_3_0",&rc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
-        for(unsigned generation=0;generation<2;++generation){cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()),generation);if(!generation){check("Reset",d->Reset(&pp));std::puts("RESET PASS");}}
+        for(unsigned generation=0;generation<2;++generation){cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()),generation);reactive_cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()));if(!generation){check("Reset",d->Reset(&pp));std::puts("RESET PASS");}}
         std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);result=0;
     }catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());}if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);return result;}

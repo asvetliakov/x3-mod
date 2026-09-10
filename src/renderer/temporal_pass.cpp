@@ -78,7 +78,7 @@ HRESULT normalize(IDirect3DDevice9* d,UINT rt_count,UINT streams,UINT w,UINT h) 
     STEP(d->SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE));
     STEP(d->SetRenderState(D3DRS_COLORWRITEENABLE,15));
     STEP(d->SetRenderState(D3DRS_MULTISAMPLEMASK,0xffffffff));
-    for(UINT i=0;i<5;++i){
+    for(UINT i=0;i<7;++i){
         STEP(d->SetSamplerState(i,D3DSAMP_MINFILTER,D3DTEXF_POINT));
         STEP(d->SetSamplerState(i,D3DSAMP_MAGFILTER,D3DTEXF_POINT));
         STEP(d->SetSamplerState(i,D3DSAMP_MIPFILTER,D3DTEXF_NONE));
@@ -96,8 +96,11 @@ TemporalPass::~TemporalPass(){shutdown();}
 void TemporalPass::invalidate() noexcept {history_.invalidate();diagnostics_.history_valid=false;++generation_;}
 void TemporalPass::release_history() noexcept {
     invalidate();for(auto& p:color_surfaces_)drop(p);for(auto& p:depth_surfaces_)drop(p);
+    for(auto& p:reactive_surfaces_)drop(p);
     for(auto& p:colors_)drop(p);
     for(auto& p:depths_)drop(p);
+    for(auto& p:reactive_)drop(p);
+    reactive_policy_=ReactivePolicy::Unavailable;
     width_=height_=current_=0;
 }
 void TemporalPass::shutdown() noexcept {release_history();drop(decoder_);drop(resolve_);device_=nullptr;render_targets_=streams_=0;}
@@ -112,14 +115,16 @@ HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const 
     if(FAILED(hr))shutdown();
     return hr;
 }
-HRESULT TemporalPass::allocate(UINT w,UINT h) noexcept {
-    if(width_==w&&height_==h)return S_OK;
+HRESULT TemporalPass::allocate(UINT w,UINT h,bool reactive) noexcept {
+    if(width_==w&&height_==h&&bool(reactive_[0])==reactive)return S_OK;
     release_history();HRESULT hr=S_OK;
     for(UINT i=0;i<2&&SUCCEEDED(hr);++i){
         hr=device_->CreateTexture(w,h,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&colors_[i],nullptr);
         if(SUCCEEDED(hr))hr=colors_[i]->GetSurfaceLevel(0,&color_surfaces_[i]);
         if(SUCCEEDED(hr))hr=device_->CreateTexture(w,h,1,D3DUSAGE_RENDERTARGET,D3DFMT_R32F,D3DPOOL_DEFAULT,&depths_[i],nullptr);
         if(SUCCEEDED(hr))hr=depths_[i]->GetSurfaceLevel(0,&depth_surfaces_[i]);
+        if(SUCCEEDED(hr)&&reactive)hr=device_->CreateTexture(w,h,1,D3DUSAGE_RENDERTARGET,D3DFMT_R32F,D3DPOOL_DEFAULT,&reactive_[i],nullptr);
+        if(SUCCEEDED(hr)&&reactive)hr=reactive_[i]->GetSurfaceLevel(0,&reactive_surfaces_[i]);
     }
     if(FAILED(hr)){release_history();return hr;}width_=w;height_=h;return S_OK;
 }
@@ -128,19 +133,25 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     diagnostics_.operation=diagnostics_.restoration=S_OK;
     auto fail=[&](HRESULT hr){invalidate();diagnostics_.operation=hr;return hr;};
     if(!out||!device_||!decoder_||!resolve_||!in.width||!in.height||in.caller_stateblock_recording||!in.caller_queries_idle||
-        (in.motion_policy!=MotionPolicy::KnownCameraOnly&&in.motion_policy!=MotionPolicy::PerPixel))return fail(E_INVALIDARG);
-    for(UINT i=0;i<2;++i)if((colors_[i]&&(in.color==colors_[i]||in.motion==colors_[i]))||
-        (depths_[i]&&(in.depth_snapshot==depths_[i]||in.color==depths_[i]||in.motion==depths_[i])))return fail(E_INVALIDARG);
+        (in.motion_policy!=MotionPolicy::KnownCameraOnly&&in.motion_policy!=MotionPolicy::PerPixel)||
+        (in.reactive_policy!=ReactivePolicy::Unavailable&&in.reactive_policy!=ReactivePolicy::KnownNonReactive&&
+         in.reactive_policy!=ReactivePolicy::RequiredMask)||
+        (in.reactive_policy!=ReactivePolicy::RequiredMask&&in.reactive))return fail(E_INVALIDARG);
+    for(UINT i=0;i<2;++i)for(auto* owned:{colors_[i],depths_[i],reactive_[i]})
+        if(owned&&(in.color==owned||in.depth_snapshot==owned||in.motion==owned||in.reactive==owned))return fail(E_INVALIDARG);
     HRESULT hr=texture_input(device_,in.color,in.width,in.height,D3DFMT_A16B16G16R16F);
     if(SUCCEEDED(hr))hr=texture_input(device_,in.depth_snapshot,in.width,in.height,D3DFMT_D24X8);
     if(SUCCEEDED(hr)&&in.motion_policy==MotionPolicy::PerPixel)hr=texture_input(device_,in.motion,in.width,in.height,D3DFMT_A32B32G32R32F);
+    if(SUCCEEDED(hr)&&in.reactive_policy==ReactivePolicy::RequiredMask)hr=texture_input(device_,in.reactive,in.width,in.height,D3DFMT_R32F);
     if(FAILED(hr))return fail(hr);
-    hr=allocate(in.width,in.height);if(FAILED(hr))return fail(hr);
+    hr=allocate(in.width,in.height,in.reactive_policy==ReactivePolicy::RequiredMask);if(FAILED(hr))return fail(hr);
     history_.begin(in.width,in.height,in.epoch);
-    if(in.camera_cut||!in.history_allowed)invalidate();
+    if(in.camera_cut||!in.history_allowed||in.reactive_policy==ReactivePolicy::Unavailable||
+       in.reactive_policy!=reactive_policy_)invalidate();
     x3::temporal::ResolveConstants constants{};std::copy(in.rejection,in.rejection+4,constants.rejection);
     if(!x3::temporal::prepare(constants,history_,in.clip_to_previous,in.current_jitter[0],in.current_jitter[1],
-        in.previous_jitter[0],in.previous_jitter[1],in.weight,in.motion_policy==MotionPolicy::PerPixel))return fail(E_INVALIDARG);
+        in.previous_jitter[0],in.previous_jitter[1],in.weight,in.motion_policy==MotionPolicy::PerPixel,
+        in.reactive_policy==ReactivePolicy::RequiredMask))return fail(E_INVALIDARG);
     const bool used=history_.valid&&in.weight>0;
     SavedState saved(device_,render_targets_);hr=saved.capture();if(FAILED(hr))return fail(hr);
     const UINT next=current_^1;
@@ -155,16 +166,25 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         step(device_->SetTexture(0,in.color))&&step(device_->SetTexture(1,depths_[next]))&&
         step(device_->SetTexture(2,history_.valid?colors_[current_]:nullptr))&&
         step(device_->SetTexture(3,history_.valid?depths_[current_]:nullptr))&&
-        step(device_->SetTexture(4,in.motion_policy==MotionPolicy::PerPixel?in.motion:nullptr)))hr=quad(device_,in.width,in.height);
+        step(device_->SetTexture(4,in.motion_policy==MotionPolicy::PerPixel?in.motion:nullptr))&&
+        step(device_->SetTexture(5,in.reactive))&&
+        step(device_->SetTexture(6,history_.valid&&in.reactive_policy==ReactivePolicy::RequiredMask?reactive_[current_]:nullptr)))hr=quad(device_,in.width,in.height);
+    if(SUCCEEDED(hr)&&in.reactive_policy==ReactivePolicy::RequiredMask){
+        constants.options[2]=1; // mask snapshot; current s5 stays borrowed only for this run
+        if(step(device_->SetRenderTarget(0,reactive_surfaces_[next]))&&
+           step(device_->SetPixelShaderConstantF(7,constants.options,1)))hr=quad(device_,in.width,in.height);
+    }
     if(own_scene&&!lost(hr)){const HRESULT end=device_->EndScene();if(SUCCEEDED(hr)||lost(end))hr=end;}
     diagnostics_.operation=hr;
     // Once loss is observed, ordinary state setters are not valid recovery. A
-    // failed pass never publishes either half of a newly written history pair.
+    // failed pass never publishes any member of a newly written history set.
     diagnostics_.restoration=lost(hr)?hr:saved.restore();
     if(FAILED(hr)||FAILED(diagnostics_.restoration)){
         invalidate();return FAILED(diagnostics_.restoration)?diagnostics_.restoration:hr;
     }
-    current_=next;history_.completed();diagnostics_.history_valid=true;++diagnostics_.completed_frames;++generation_;
-    *out={colors_[current_],depths_[current_],generation_,used};return S_OK;
+    current_=next;reactive_policy_=in.reactive_policy;
+    if(reactive_policy_!=ReactivePolicy::Unavailable)history_.completed();
+    diagnostics_.history_valid=history_.valid;++diagnostics_.completed_frames;++generation_;
+    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_]};return S_OK;
 }
 } // namespace x3m::renderer

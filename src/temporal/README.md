@@ -16,6 +16,8 @@ passes; those are required inputs from the renderer.
 | s2 | Previous resolved color | Same color space, exposure scale and dimensions as s0; FP16 |
 | s3 | Previous scene depth | Previous frame's **unfiltered original depth**, not blended depth |
 | s4 | Optional object reprojection | RGBA32F, interpretation below; FP16 absolute UV/depth is insufficient |
+| s5 | Current reactive coverage | R32F; exactly zero means known safe, every other value means reactive |
+| s6 | Previous reactive coverage | Owned R32F snapshot aligned with previous resolved color/depth |
 
 Every sampler uses POINT min/mag, no mip filter, CLAMP U/V and sRGB sampling off.
 The resolve performs its own four-tap history reconstruction so each color tap is
@@ -86,8 +88,10 @@ RGBA32F is required: at a 5120-pixel width, FP16 absolute UV can quantize by
 more than a pixel, and FP16 expected depth near 0.5 can lose more than the default
 1e-4 rejection tolerance. Using R32F history depth cannot repair precision lost in
 the motion input. The fixture checks expected depth 0.5002, which would round to
-0.5 in FP16 and falsely reject a matching surface. It tests RGBA32F sampling;
-a future GPU motion producer must separately validate render-target support.
+0.5 in FP16 and falsely reject a matching surface. The detached
+[rigid producer](../../docs/verification/rigid-motion.md) separately verifies
+RGBA32F rendering and this input contract. It is not live
+game routing or complete coverage of transparent contributors.
 
 The producer writes these exact states. Intermediate alpha values are reserved;
 invalid/nonfinite alpha is rejected. The default clear value is -1 when motion
@@ -106,8 +110,40 @@ A nonpositive previous W, out-of-bounds previous UV, nonfinite color/depth, or
 previous depth disagreement rejects history. Four previous pixel-center taps are
 validated independently and remaining weights renormalized. Previous RGB is then
 clipped to the finite current 3×3 RGB bounds before the blend. This is a bounded
-initial resolve; it has no variance statistics, reactive mask, sharpening or
+initial resolve; it has no variance statistics, sharpening or
 special transparency reconstruction.
+
+### Reactive RGB coverage
+
+`c7.y` enables current and previous reactive masks; `c7.x` independently enables
+object motion. Exactly-zero coverage is safe. Positive, negative and nonfinite
+values are reactive. This must describe **visible RGB contributions**, not source
+or destination alpha: `SRCCOLOR/INVSRCCOLOR` particles can change RGB even with
+source alpha zero. The producer must include all unsupported contributors or
+conservatively overmark them, aligned to the actual jittered color raster.
+
+A reactive current pixel returns current linear HDR RGB. After camera or object
+reprojection, **any positive-weight history tap** with reactive previous coverage
+rejects the entire lookup. No renormalization around a reactive tap is allowed;
+zero-weight taps do not reject. This prevents stale particle color when an effect
+disappears or moves away, while preserving accumulation behind genuinely occluded
+effects whose visible coverage is zero. It is rejection, not reconstruction of
+particle motion or transparent layers.
+
+`c7.z=1` is an explicit mask-snapshot dispatch: it reads only s5, canonicalizes
+safe/reactive to 0/1 and writes a distinct R32F target. Ordinary resolve uses zero;
+`prepare` initializes the mode and reserved component to zero. Runtime code must
+not use snapshot mode as a color resolve. `TemporalPass` uses this third GPU draw
+only under `ReactivePolicy::RequiredMask` and owns the resulting ping-pong masks.
+No CPU data transfer is involved.
+
+Runtime policy is explicit. `Unavailable` produces current-only output and
+cannot establish usable history. `KnownNonReactive` authorizes accumulation
+without masks. `RequiredMask` rejects missing, wrong-format, wrong-size or
+foreign-device inputs even on the first frame. Policy transitions invalidate
+history. A low-level shader caller that disables masks is responsible for the
+same known-nonreactive precondition; disabling masks is not a safe default for
+unclassified particle/effects color.
 
 Depth tolerance is `absolute + relative * abs(expected_previous_device_depth)`.
 Defaults are absolute 1e-4, relative zero. These are **device-depth units**, not
@@ -128,8 +164,9 @@ and clears in each frame do not invalidate history. Explicitly invalidate on
 device loss/reset, camera cuts, missing depth or motion, failed render/copy,
 changes between camera/depth-content regimes (background versus scene), and any
 exposure convention change. Use distinct state/epochs for distinct cameras.
-Call `completed()` only when **both** the next resolved color and corresponding
-current raw depth have been saved successfully. It owns no D3D objects; resource
+Call `completed()` only when the next resolved color, corresponding current raw
+depth **and any required reactive mask** have been saved successfully. Unknown
+reactive coverage must not complete usable history. It owns no D3D objects; resource
 lifetime, before-Reset release and atomic success belong to the renderer.
 
 The X3 trace clears the same depth allocation between background, scene and UI.
@@ -142,6 +179,8 @@ accumulated merely because they appear before Present.
 See [GPU verification](../../docs/verification/temporal-resolve.md). The fixture
 uses original synthetic inputs, FP16 color/history/output, R32F depth, the actual
 production shader, and the current CrossOver Preview builtin D3D9 backend.
+See [reactive-history verification](../../docs/verification/reactive-history.md)
+for original blended-particle GPU tests and owned-mask lifecycle evidence.
 
 ## Native D24X8 comparison decoder
 

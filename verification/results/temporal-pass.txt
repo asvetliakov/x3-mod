@@ -74,6 +74,162 @@ CHECK prior output cannot alias current input PASS
 CHECK history alias refusal preserves state PASS
 CHECK explicit invalidate PASS
 CHECK before_reset shuts down runtime PASS
+REACTIVE_CASES
+CHECK reactive warmup PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE actual SRC_COLOR particle RGB with zero source alpha actual=0.375000000 expected=0.375000000 PASS
+CHECK sample texture exists PASS
+SAMPLE particle preserves destination alpha actual=1.000000000 expected=1.000000000 PASS
+CHECK particle born current coverage PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE birth rejects old unmarked color actual=0.375000000 expected=0.375000000 PASS
+CHECK sample texture exists PASS
+SAMPLE current mask copied to owned history actual=1.000000000 expected=1.000000000 PASS
+CHECK sample texture exists PASS
+SAMPLE owned mask survives caller target reuse actual=1.000000000 expected=1.000000000 PASS
+CHECK particle disappears previous coverage PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE disappearance rejects stale RGB actual=0.250000000 expected=0.250000000 PASS
+CHECK movement prior coverage PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK particle moves PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE movement old position rejects history actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE movement new position rejects history actual=0.750000000 expected=0.750000000 PASS
+CHECK particle order AB PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE noncommutative RGB blend AB actual=0.656250000 expected=0.656250000 PASS
+CHECK particle order BA PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE reordering uses actual current RGB actual=0.562500000 expected=0.562500000 PASS
+CHECK opaque occlusion warmup PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE opaque depth occludes reactive contributor actual=0.000000000 expected=0.000000000 PASS
+CHECK opaque occlusion retains stable accumulation PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE occluded particle does not invalidate opaque history actual=0.500000000 expected=0.500000000 PASS
+CHECK HDR prior PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK HDR reactive color PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE HDR exceeds one with reactive rejection actual=2.250000000 expected=2.250000000 PASS
+CHECK history lookup prior mask PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK object motion looks up previous reactive coverage PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE previous mask follows object correspondence actual=0.250000000 expected=0.250000000 PASS
+CHECK footprint mask warmup PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK positive-weight reactive history tap PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE whole bilinear footprint rejects contaminated tap actual=0.250000000 expected=0.250000000 PASS
+CHECK zero-weight mask warmup PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK zero-weight masked neighbor PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE zero-weight reactive tap does not reject actual=0.500000000 expected=0.500000000 PASS
+CHECK nonzero or invalid mask values conservative PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask uses current RGB actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask canonicalized to one actual=1.000000000 expected=1.000000000 PASS
+CHECK nonzero or invalid mask values conservative PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask uses current RGB actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask canonicalized to one actual=1.000000000 expected=1.000000000 PASS
+CHECK nonzero or invalid mask values conservative PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask uses current RGB actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask canonicalized to one actual=1.000000000 expected=1.000000000 PASS
+CHECK nonzero or invalid mask values conservative PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask uses current RGB actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask canonicalized to one actual=1.000000000 expected=1.000000000 PASS
+CHECK sample texture exists PASS
+SAMPLE owned snapshot survives caller mask release actual=1.000000000 expected=1.000000000 PASS
+CHECK required missing mask fails closed PASS
+CHECK missing mask preserves state PASS
+CHECK wrong mask format refused PASS
+CHECK wrong mask dimensions refused PASS
+CHECK unknown reactive policy refused PASS
+CHECK missing mask recovery PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK missing mask invalidated history PASS
+CHECK sample texture exists PASS
+SAMPLE missing mask recovery current only actual=0.250000000 expected=0.250000000 PASS
+CHECK owned mask cannot alias current input PASS
+CHECK third mask-copy draw failure rejects entire history set PASS
+CHECK third draw failure restores state PASS
+CHECK mask-copy failure recovery PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK mask-copy failure invalidates old history PASS
+CHECK restore failure rejects color depth and mask PASS
+CHECK reactive restoration failure remaining state PASS
+CHECK unavailable coverage current only PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK unavailable cannot consume history PASS
+CHECK unavailable repeated current only PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE unknown coverage cannot accumulate actual=0.250000000 expected=0.250000000 PASS
+CHECK required policy restored PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK Required Unavailable Required invalidates history PASS
+CHECK explicit known nonreactive transition PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK Required to Known changes history policy PASS
+CHECK required after known PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK Known to Required demands owned mask history PASS
+CHECK reactive reset releases runtime PASS
 RESET PASS
 GENERATION 1
 CHECK first frame PASS
@@ -149,4 +305,160 @@ CHECK prior output cannot alias current input PASS
 CHECK history alias refusal preserves state PASS
 CHECK explicit invalidate PASS
 CHECK before_reset shuts down runtime PASS
-RESULT PASS numerical=44 state_restorations=40 generations=2
+REACTIVE_CASES
+CHECK reactive warmup PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE actual SRC_COLOR particle RGB with zero source alpha actual=0.375000000 expected=0.375000000 PASS
+CHECK sample texture exists PASS
+SAMPLE particle preserves destination alpha actual=1.000000000 expected=1.000000000 PASS
+CHECK particle born current coverage PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE birth rejects old unmarked color actual=0.375000000 expected=0.375000000 PASS
+CHECK sample texture exists PASS
+SAMPLE current mask copied to owned history actual=1.000000000 expected=1.000000000 PASS
+CHECK sample texture exists PASS
+SAMPLE owned mask survives caller target reuse actual=1.000000000 expected=1.000000000 PASS
+CHECK particle disappears previous coverage PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE disappearance rejects stale RGB actual=0.250000000 expected=0.250000000 PASS
+CHECK movement prior coverage PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK particle moves PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE movement old position rejects history actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE movement new position rejects history actual=0.750000000 expected=0.750000000 PASS
+CHECK particle order AB PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE noncommutative RGB blend AB actual=0.656250000 expected=0.656250000 PASS
+CHECK particle order BA PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE reordering uses actual current RGB actual=0.562500000 expected=0.562500000 PASS
+CHECK opaque occlusion warmup PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE opaque depth occludes reactive contributor actual=0.000000000 expected=0.000000000 PASS
+CHECK opaque occlusion retains stable accumulation PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE occluded particle does not invalidate opaque history actual=0.500000000 expected=0.500000000 PASS
+CHECK HDR prior PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK HDR reactive color PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE HDR exceeds one with reactive rejection actual=2.250000000 expected=2.250000000 PASS
+CHECK history lookup prior mask PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK object motion looks up previous reactive coverage PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE previous mask follows object correspondence actual=0.250000000 expected=0.250000000 PASS
+CHECK footprint mask warmup PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK positive-weight reactive history tap PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE whole bilinear footprint rejects contaminated tap actual=0.250000000 expected=0.250000000 PASS
+CHECK zero-weight mask warmup PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK zero-weight masked neighbor PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE zero-weight reactive tap does not reject actual=0.500000000 expected=0.500000000 PASS
+CHECK nonzero or invalid mask values conservative PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask uses current RGB actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask canonicalized to one actual=1.000000000 expected=1.000000000 PASS
+CHECK nonzero or invalid mask values conservative PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask uses current RGB actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask canonicalized to one actual=1.000000000 expected=1.000000000 PASS
+CHECK nonzero or invalid mask values conservative PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask uses current RGB actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask canonicalized to one actual=1.000000000 expected=1.000000000 PASS
+CHECK nonzero or invalid mask values conservative PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask uses current RGB actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE invalid mask canonicalized to one actual=1.000000000 expected=1.000000000 PASS
+CHECK sample texture exists PASS
+SAMPLE owned snapshot survives caller mask release actual=1.000000000 expected=1.000000000 PASS
+CHECK required missing mask fails closed PASS
+CHECK missing mask preserves state PASS
+CHECK wrong mask format refused PASS
+CHECK wrong mask dimensions refused PASS
+CHECK unknown reactive policy refused PASS
+CHECK missing mask recovery PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK missing mask invalidated history PASS
+CHECK sample texture exists PASS
+SAMPLE missing mask recovery current only actual=0.250000000 expected=0.250000000 PASS
+CHECK owned mask cannot alias current input PASS
+CHECK third mask-copy draw failure rejects entire history set PASS
+CHECK third draw failure restores state PASS
+CHECK mask-copy failure recovery PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK mask-copy failure invalidates old history PASS
+CHECK restore failure rejects color depth and mask PASS
+CHECK reactive restoration failure remaining state PASS
+CHECK unavailable coverage current only PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK unavailable cannot consume history PASS
+CHECK unavailable repeated current only PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK sample texture exists PASS
+SAMPLE unknown coverage cannot accumulate actual=0.250000000 expected=0.250000000 PASS
+CHECK required policy restored PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK Required Unavailable Required invalidates history PASS
+CHECK explicit known nonreactive transition PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK Required to Known changes history policy PASS
+CHECK required after known PASS
+CHECK reactive atomic output validity PASS
+CHECK reactive snapshot policy PASS
+CHECK Known to Required demands owned mask history PASS
+CHECK reactive reset releases runtime PASS
+RESULT PASS numerical=98 state_restorations=102 generations=2

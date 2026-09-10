@@ -5,10 +5,12 @@
 
 namespace x3m::renderer {
 enum class MotionPolicy { Unavailable, KnownCameraOnly, PerPixel };
+enum class ReactivePolicy { Unavailable, KnownNonReactive, RequiredMask };
 struct FrameInputs {
     IDirect3DTexture9* color = nullptr; // scene-linear FP16, native, complete local viewport
     IDirect3DTexture9* depth_snapshot = nullptr; // verified native D24X8 comparison snapshot
     IDirect3DTexture9* motion = nullptr; // RGBA32F if PerPixel; alpha ABI in temporal/README
+    IDirect3DTexture9* reactive = nullptr; // R32F if RequiredMask; exactly 0 safe, all else reactive
     UINT width = 0, height = 0;
     std::uint64_t epoch = 0; // stable camera/scene/resource regime, not frame/clear count
     float clip_to_previous[16]{}; // unjittered, row-major, column-vector multiplication
@@ -16,6 +18,10 @@ struct FrameInputs {
     float weight = .9f;
     float rejection[4]{.0001f, 0.f, 65000.f, .000001f};
     MotionPolicy motion_policy = MotionPolicy::Unavailable;
+    // Unknown coverage produces current-only output and cannot establish usable
+    // history. RequiredMask demands complete conservative visible RGB coverage,
+    // independent of alpha; missing/wrong input rejects the run.
+    ReactivePolicy reactive_policy = ReactivePolicy::Unavailable;
     bool history_allowed = false, camera_cut = false;
     bool caller_scene_open = true;
     bool caller_stateblock_recording = false;
@@ -28,6 +34,7 @@ struct Output {
     IDirect3DTexture9* depth = nullptr;
     std::uint64_t generation = 0;
     bool used_history = false;
+    IDirect3DTexture9* reactive = nullptr; // owned snapshot if RequiredMask; same borrowing rules
 };
 struct Diagnostics {
     HRESULT operation = S_OK, restoration = S_OK;
@@ -50,17 +57,20 @@ public:
     void shutdown() noexcept;
     Diagnostics diagnostics() const noexcept { return diagnostics_; }
 private:
-    HRESULT allocate(UINT width, UINT height) noexcept;
+    HRESULT allocate(UINT width, UINT height, bool reactive) noexcept;
     void release_history() noexcept;
     IDirect3DDevice9* device_ = nullptr;
     IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr;
     IDirect3DTexture9* colors_[2]{};
     IDirect3DTexture9* depths_[2]{};
+    IDirect3DTexture9* reactive_[2]{};
     IDirect3DSurface9* color_surfaces_[2]{};
     IDirect3DSurface9* depth_surfaces_[2]{};
+    IDirect3DSurface9* reactive_surfaces_[2]{};
     UINT width_ = 0, height_ = 0, render_targets_ = 0, streams_ = 0, current_ = 0;
     std::uint64_t generation_ = 0;
     x3::temporal::HistoryState history_{};
+    ReactivePolicy reactive_policy_ = ReactivePolicy::Unavailable;
     Diagnostics diagnostics_{};
 };
 } // namespace x3m::renderer
