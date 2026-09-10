@@ -83,6 +83,31 @@ template<class T> T* untouched_output() {
 // own every interface-return, identity, parent, reset and lifetime boundary.
 #include "d3d9_classes_inc.h"
 
+struct BufferForwardingSlots { const void* lock; const void* unlock; };
+template<class Wrapper> BufferForwardingSlots original_buffer_slots() noexcept {
+    // These unregistered local shells own no references and make no COM calls.
+    // Snapshot at module initialization, before any application can hook a live
+    // object (including a shared-vtable patch). Never derive trust from that
+    // object's possibly already replaced table.
+    const Wrapper shell(nullptr, nullptr);
+    const auto table = *reinterpret_cast<void* const* const*>(shell.application);
+    return {table[11], table[12]};
+}
+const BufferForwardingSlots vertex_buffer_slots = original_buffer_slots<VertexBuffer>();
+const BufferForwardingSlots index_buffer_slots = original_buffer_slots<IndexBuffer>();
+
+template<class Interface> Interface* buffer_contract_endpoint(Interface* wrapped,
+        Kind kind, const BufferForwardingSlots& expected) noexcept {
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    const auto found = application_nodes.find(wrapped);
+    if (found == application_nodes.end() || found->second->kind != kind) return nullptr;
+    // Unknown pointers are only registry keys; dereference only the recognized,
+    // live canonical interface. The caller serializes foreign vtable mutation.
+    const auto table = *reinterpret_cast<void* const* const*>(found->second->application);
+    if (!table || table[11] != expected.lock || table[12] != expected.unlock) return nullptr;
+    return static_cast<Interface*>(found->second->backend);
+}
+
 bool supports(Kind kind, REFIID iid) {
     if (iid == IID_IUnknown) return true;
     switch (kind) {
@@ -700,6 +725,13 @@ IDirect3DDevice9* borrowed_native_device(IDirect3DDevice9* wrapped) noexcept {
     const auto found = application_nodes.find(wrapped);
     return found != application_nodes.end() && found->second->kind == Kind::Device
         ? static_cast<IDirect3DDevice9*>(found->second->backend) : nullptr;
+}
+
+IDirect3DVertexBuffer9* borrowed_native_buffer_for_lock_contract(IDirect3DVertexBuffer9* wrapped) noexcept {
+    return buffer_contract_endpoint(wrapped, Kind::VertexBuffer, vertex_buffer_slots);
+}
+IDirect3DIndexBuffer9* borrowed_native_buffer_for_lock_contract(IDirect3DIndexBuffer9* wrapped) noexcept {
+    return buffer_contract_endpoint(wrapped, Kind::IndexBuffer, index_buffer_slots);
 }
 
 HRESULT get_buffer_content_view(IDirect3DResource9* application, BufferContentView* out) noexcept {

@@ -232,3 +232,27 @@ other external modifications are outside the contract. Revisions identify observ
 write events, not content equality, asset identity, semantic object identity or
 proof that geometry is immutable. The fixture and failure-output comparisons are
 recorded in [buffer-content verification](../../docs/verification/buffer-content.md).
+
+`borrowed_native_buffer_for_lock_contract` has typed VB/IB overloads for inspecting
+the backend endpoint of a known wrapper. It returns null for native pointers,
+unrecognized pointers, wrong interface types, or replaced wrapper Lock/Unlock
+slots. The expected slots are captured from unregistered null-backed shells at
+module initialization; these shells make no COM calls and own no references.
+Both copied object vtables and shared-table modifications are checked against
+that original snapshot. Unrelated slots are not certified by this helper.
+
+The result is borrowed without AddRef and is for endpoint inspection only. It
+does not attest native implementation identity, success behavior, or buffer
+state; the consumer must verify those separately. Continue actual Lock/Unlock
+through the normal mesh/wrapper route so tracking observes them. The caller must
+hold a live wrapper reference and serialize final Release, buffer operations and
+foreign vtable changes until the inspection and associated operation finish.
+Unknown pointers are tested as registry keys without dereferencing them.
+
+An extra successful READONLY acquisition does not advance revision and, once
+unlocked, restores the previous known/pending state for a previously known,
+unlocked buffer. It does update `last_lock_flags`. Nested acquisition or a failed
+Unlock makes tracking ambiguous under the existing rules. Skipping a native
+operation that would acquire writable locks can skip revision events even when
+the final bytes match; any loading cache must verify that operation's actual
+lock flags and account for this distinction before claiming tracking parity.

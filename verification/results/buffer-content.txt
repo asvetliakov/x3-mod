@@ -43,6 +43,90 @@ CHECK parity Unlock PASS
 CHECK tracking off performs no private calls PASS
 CHECK bind IB PASS
 CHECK IB failure outputs match baseline PASS
+CHECK create VB PASS
+CHECK bind VB PASS
+CHECK get VB PASS
+CHECK endpoint null rejected PASS
+CHECK endpoint unknown pointer not dereferenced PASS
+CHECK endpoint native input rejected PASS
+CHECK endpoint nonbuffer wrapper rejected PASS
+CHECK endpoint wrong buffer kind rejected PASS
+CHECK content view PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint LastError unchanged PASS
+CHECK endpoint adds no wrapper references PASS
+CHECK endpoint adds no native references PASS
+CHECK content view PASS
+CHECK endpoint does not mutate tracking PASS
+CHECK endpoint copied unchanged slots accepted PASS
+CHECK endpoint replaced Lock or Unlock rejected PASS
+CHECK endpoint replaced Lock or Unlock rejected PASS
+CHECK endpoint unrelated slot not certified PASS
+CHECK endpoint shared table writable PASS
+CHECK endpoint shared Unlock replacement rejected PASS
+CHECK endpoint shared table protection restored PASS
+CHECK endpoint restored slots accepted PASS
+CHECK endpoint retired wrapper rejected without dereference PASS
+CHECK get VB PASS
+CHECK endpoint recreated wrapper accepted PASS
+CHECK bind VB PASS
+CHECK create IB PASS
+CHECK bind IB PASS
+CHECK get IB PASS
+CHECK endpoint null rejected PASS
+CHECK endpoint unknown pointer not dereferenced PASS
+CHECK endpoint native input rejected PASS
+CHECK endpoint nonbuffer wrapper rejected PASS
+CHECK endpoint wrong buffer kind rejected PASS
+CHECK content view PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint LastError unchanged PASS
+CHECK endpoint adds no wrapper references PASS
+CHECK endpoint adds no native references PASS
+CHECK content view PASS
+CHECK endpoint does not mutate tracking PASS
+CHECK endpoint copied unchanged slots accepted PASS
+CHECK endpoint replaced Lock or Unlock rejected PASS
+CHECK endpoint replaced Lock or Unlock rejected PASS
+CHECK endpoint unrelated slot not certified PASS
+CHECK endpoint shared table writable PASS
+CHECK endpoint shared Unlock replacement rejected PASS
+CHECK endpoint shared table protection restored PASS
+CHECK endpoint restored slots accepted PASS
+CHECK endpoint retired wrapper rejected without dereference PASS
+CHECK get IB PASS
+CHECK endpoint recreated wrapper accepted PASS
+CHECK bind IB PASS
 CHECK native factory PASS
 CHECK wrap factory PASS
 CHECK device PASS
@@ -76,6 +160,90 @@ CHECK parity writable Lock PASS
 CHECK parity Unlock PASS
 CHECK bind IB PASS
 CHECK IB failure outputs match baseline PASS
+CHECK create VB PASS
+CHECK bind VB PASS
+CHECK get VB PASS
+CHECK endpoint null rejected PASS
+CHECK endpoint unknown pointer not dereferenced PASS
+CHECK endpoint native input rejected PASS
+CHECK endpoint nonbuffer wrapper rejected PASS
+CHECK endpoint wrong buffer kind rejected PASS
+CHECK content view PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint LastError unchanged PASS
+CHECK endpoint adds no wrapper references PASS
+CHECK endpoint adds no native references PASS
+CHECK content view PASS
+CHECK endpoint does not mutate tracking PASS
+CHECK endpoint copied unchanged slots accepted PASS
+CHECK endpoint replaced Lock or Unlock rejected PASS
+CHECK endpoint replaced Lock or Unlock rejected PASS
+CHECK endpoint unrelated slot not certified PASS
+CHECK endpoint shared table writable PASS
+CHECK endpoint shared Unlock replacement rejected PASS
+CHECK endpoint shared table protection restored PASS
+CHECK endpoint restored slots accepted PASS
+CHECK endpoint retired wrapper rejected without dereference PASS
+CHECK get VB PASS
+CHECK endpoint recreated wrapper accepted PASS
+CHECK bind VB PASS
+CHECK create IB PASS
+CHECK bind IB PASS
+CHECK get IB PASS
+CHECK endpoint null rejected PASS
+CHECK endpoint unknown pointer not dereferenced PASS
+CHECK endpoint native input rejected PASS
+CHECK endpoint nonbuffer wrapper rejected PASS
+CHECK endpoint wrong buffer kind rejected PASS
+CHECK content view PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint exact borrowed native PASS
+CHECK endpoint LastError unchanged PASS
+CHECK endpoint adds no wrapper references PASS
+CHECK endpoint adds no native references PASS
+CHECK content view PASS
+CHECK endpoint does not mutate tracking PASS
+CHECK endpoint copied unchanged slots accepted PASS
+CHECK endpoint replaced Lock or Unlock rejected PASS
+CHECK endpoint replaced Lock or Unlock rejected PASS
+CHECK endpoint unrelated slot not certified PASS
+CHECK endpoint shared table writable PASS
+CHECK endpoint shared Unlock replacement rejected PASS
+CHECK endpoint shared table protection restored PASS
+CHECK endpoint restored slots accepted PASS
+CHECK endpoint retired wrapper rejected without dereference PASS
+CHECK get IB PASS
+CHECK endpoint recreated wrapper accepted PASS
+CHECK bind IB PASS
 CASE normal_tracking pure=0
 CHECK native factory PASS
 CHECK wrap factory PASS
@@ -542,4 +710,4 @@ CHECK known managed Reset PASS
 CHECK content view PASS
 CHECK content view PASS
 CHECK known managed revision persists Reset PASS
-RESULT PASS checks=530
+RESULT PASS checks=698

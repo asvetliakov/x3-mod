@@ -48,3 +48,30 @@ These revisions describe writes observed at the ownership boundary. They do not
 prove immutable content or establish engine object/asset identity. Direct native
 writes bypassing the wrapper remain outside the contract. Baseline ownership,
 copied-depth and loss fixtures are separate regression gates after source freeze.
+
+## Borrowed buffer endpoint inspection
+
+The current fixture passes **698 checks**, including the original 530 tracking
+checks and 168 additional endpoint checks. It builds our x86 code with SSE2 and
+four-byte incoming stack realignment. The source and executable hashes are
+recorded in the summary above; no game process is launched.
+
+Both typed `borrowed_native_buffer_for_lock_contract` overloads are exercised
+with tracking enabled and disabled. They return the exact separately acquired
+native pointer without changing logical/native reference counts or content
+metadata. Null, unknown, native, nonbuffer-wrapper and wrong-buffer-kind inputs
+are rejected. Each replaced Lock/Unlock slot in a copied table is rejected;
+restoring the slots accepts the object. A shared original-table Unlock
+replacement is also rejected, proving that a changed table cannot redefine the
+pristine expected method. An unrelated slot mutation is deliberately accepted:
+this API certifies only our Lock/Unlock forwarding endpoints. Retired wrapper
+addresses are rejected without dereference; a later canonical wrapper recreation
+is accepted. The fixture also checks LastError preservation around inspection.
+
+The helper makes no backend calls. Existing tests verify exact forwarded failed
+Lock/Unlock HRESULTs and failure-output behavior. Native endpoint success and
+native D3DX adjacency lock behavior are separate cache-integration evidence;
+this helper does not certify either. In particular extra READONLY acquisition
+changes diagnostic `last_lock_flags`, while skipping a native writable lock
+would also omit a revision event. Full cache tracking parity must be established
+with the actual native mesh call, not inferred from unchanged mesh bytes.

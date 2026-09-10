@@ -37,6 +37,16 @@ struct BufferContentView {
 // Native writes plus metadata updates are not a transaction for concurrent callers.
 HRESULT get_buffer_content_view(IDirect3DResource9* application, BufferContentView* out) noexcept;
 
+// Inspection-only native endpoint for a recognized VB/IB wrapper whose actual
+// Lock/Unlock slots still use our original forwarding methods. No COM calls or
+// AddRef; null, native, wrong-kind and replaced-slot inputs return null. This
+// does NOT certify the native endpoint: the caller separately verifies it.
+// Hold a live wrapper reference and serialize buffer operations, final Release
+// and vtable changes throughout inspection and subsequent normal wrapper calls.
+// Never call Lock/Unlock through the result: that would bypass write tracking.
+IDirect3DVertexBuffer9* borrowed_native_buffer_for_lock_contract(IDirect3DVertexBuffer9* wrapped) noexcept;
+IDirect3DIndexBuffer9* borrowed_native_buffer_for_lock_contract(IDirect3DIndexBuffer9* wrapped) noexcept;
+
 struct CopyDepthView {
     // Borrowed native D24X8 snapshot. On verified Preview this texture uses
     // comparison sampling, not raw red-channel depth; GPU decode is separate.

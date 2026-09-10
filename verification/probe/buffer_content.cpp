@@ -114,10 +114,44 @@ void unknownCases(Create create,HWND window,unsigned faultKind){
 void creationFailure(Create create,HWND window){Session s(create,window,true,true);Com<IDirect3DVertexBuffer9> buffer;{DeviceFault fault(s.native(),true);createBuffer(s,buffer);}require(buffer.p&&!view(buffer.p).known&&view(buffer.p).status==E_OUTOFMEMORY,"creation metadata failure preserves buffer output");}
 void knownReset(Create create,HWND window){Session s(create,window,true,true);Com<IDirect3DVertexBuffer9> buffer;createBuffer(s,buffer);void* data=nullptr;okay(buffer->Lock(0,16,&data,0),"managed beforeReset Lock");okay(buffer->Unlock(),"managed beforeReset Unlock");okay(s.device->Reset(&s.pp),"known managed Reset");require(view(buffer.p).known&&view(buffer.p).revision==1,"known managed revision persists Reset");}
 void untaggedCase(Create create,HWND window){Session s(create,window,true,true);Com<IDirect3DVertexBuffer9> raw,application;okay(s.native()->CreateVertexBuffer(256,0,D3DFVF_XYZ,D3DPOOL_MANAGED,&raw.p,nullptr),"native preexisting buffer");okay(s.native()->SetStreamSource(0,raw.p,0,12),"native preexisting binding");get(s,application);auto v=view(application.p);require(!v.known&&v.ambiguous&&v.status==D3DERR_NOTFOUND,"untagged adoption unknown");void* p=nullptr;okay(application->Lock(0,16,&p,0),"untagged write Lock");okay(application->Unlock(),"untagged write Unlock");v=view(application.p);require(!v.known&&v.ambiguous&&v.revision==1,"untagged write cannot fabricate known");bind<IDirect3DVertexBuffer9>(s,nullptr);}
+template<class T> void endpointCases(Session& s) {
+    Com<T> buffer,raw;createBuffer(s,buffer);bind(s,buffer.p);get(s,raw,true);
+    require(!borrowed_native_buffer_for_lock_contract(static_cast<T*>(nullptr)),"endpoint null rejected");
+    require(!borrowed_native_buffer_for_lock_contract(reinterpret_cast<T*>(0x1234)),"endpoint unknown pointer not dereferenced");
+    require(!borrowed_native_buffer_for_lock_contract(raw.p),"endpoint native input rejected");
+    require(!borrowed_native_buffer_for_lock_contract(reinterpret_cast<T*>(s.device.p)),"endpoint nonbuffer wrapper rejected");
+    if constexpr(std::is_same_v<T,IDirect3DVertexBuffer9>)
+        require(!borrowed_native_buffer_for_lock_contract(reinterpret_cast<IDirect3DIndexBuffer9*>(buffer.p)),"endpoint wrong buffer kind rejected");
+    else require(!borrowed_native_buffer_for_lock_contract(reinterpret_cast<IDirect3DVertexBuffer9*>(buffer.p)),"endpoint wrong buffer kind rejected");
+    const auto appRefs=buffer->AddRef();buffer->Release();const auto nativeRefs=raw->AddRef();raw->Release();
+    const auto before=view(buffer.p);SetLastError(0x5a1c23);
+    for(unsigned i=0;i<16;++i)require(borrowed_native_buffer_for_lock_contract(buffer.p)==raw.p,"endpoint exact borrowed native");
+    require(GetLastError()==0x5a1c23,"endpoint LastError unchanged");
+    require(buffer->AddRef()==appRefs,"endpoint adds no wrapper references");buffer->Release();
+    require(raw->AddRef()==nativeRefs,"endpoint adds no native references");raw->Release();
+    const auto after=view(buffer.p);
+    require(before.revision==after.revision&&before.pending_locks==after.pending_locks&&before.known==after.known&&before.last_lock_flags==after.last_lock_flags,"endpoint does not mutate tracking");
+    auto original=*reinterpret_cast<void***>(buffer.p);void* table[14];std::copy(original,original+14,table);
+    *reinterpret_cast<void***>(buffer.p)=table;
+    require(borrowed_native_buffer_for_lock_contract(buffer.p)==raw.p,"endpoint copied unchanged slots accepted");
+    for(unsigned slot:{11u,12u}){table[slot]=nullptr;require(!borrowed_native_buffer_for_lock_contract(buffer.p),"endpoint replaced Lock or Unlock rejected");table[slot]=original[slot];}
+    table[10]=nullptr;require(borrowed_native_buffer_for_lock_contract(buffer.p)==raw.p,"endpoint unrelated slot not certified");
+    *reinterpret_cast<void***>(buffer.p)=original;
+    // Shared-table changes must not redefine the pristine expected method.
+    DWORD protection=0;okay(VirtualProtect(original+11,sizeof(void*)*2,PAGE_EXECUTE_READWRITE,&protection)?S_OK:E_FAIL,"endpoint shared table writable");
+    void* oldSlot=original[12];original[12]=nullptr;
+    const bool rejected=!borrowed_native_buffer_for_lock_contract(buffer.p);original[12]=oldSlot;
+    DWORD ignored=0;const bool restored=VirtualProtect(original+11,sizeof(void*)*2,protection,&ignored)!=FALSE;
+    require(rejected,"endpoint shared Unlock replacement rejected");require(restored,"endpoint shared table protection restored");
+    require(borrowed_native_buffer_for_lock_contract(buffer.p)==raw.p,"endpoint restored slots accepted");
+    auto retired=buffer.p;buffer.reset();require(!borrowed_native_buffer_for_lock_contract(retired),"endpoint retired wrapper rejected without dereference");
+    get(s,buffer);require(borrowed_native_buffer_for_lock_contract(buffer.p)==raw.p,"endpoint recreated wrapper accepted");
+    bind<T>(s,nullptr);
+}
 int main(){std::setvbuf(stdout,nullptr,_IONBF,0);int result=1;HMODULE dll=LoadLibraryA("d3d9.dll");WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3BufferContent";RegisterClassA(&cls);HWND window=CreateWindowA(cls.lpszClassName,"X3 buffer tracking fixture",WS_OVERLAPPEDWINDOW,0,0,64,64,nullptr,nullptr,cls.hInstance,nullptr);
     try{require(dll&&window,"hidden fixture initialized");auto address=GetProcAddress(dll,"Direct3DCreate9");Create create=nullptr;std::memcpy(&create,&address,sizeof create);require(create!=nullptr,"factory entrypoint");
         std::vector<Outcome> baselineVB,baselineIB;{Session s(create,window,false,false);baselineVB=parity<IDirect3DVertexBuffer9>(s,false);baselineIB=parity<IDirect3DIndexBuffer9>(s,false);}
-        for(bool tracked:{false,true}){Session s(create,window,true,tracked);require(parity<IDirect3DVertexBuffer9>(s,tracked)==baselineVB,"VB failure outputs match baseline");require(parity<IDirect3DIndexBuffer9>(s,tracked)==baselineIB,"IB failure outputs match baseline");}
+        for(bool tracked:{false,true}){Session s(create,window,true,tracked);require(parity<IDirect3DVertexBuffer9>(s,tracked)==baselineVB,"VB failure outputs match baseline");require(parity<IDirect3DIndexBuffer9>(s,tracked)==baselineIB,"IB failure outputs match baseline");endpointCases<IDirect3DVertexBuffer9>(s);endpointCases<IDirect3DIndexBuffer9>(s);}
         for(bool pure:{false,true}){std::printf("CASE normal_tracking pure=%u\n",pure);Session s(create,window,true,true,pure);bufferCases<IDirect3DVertexBuffer9>(s);bufferCases<IDirect3DIndexBuffer9>(s);processCases(s);}
         for(unsigned n=0;n<4;++n){std::printf("CASE bookkeeping_fault kind=%u\n",n);unknownCases(create,window,n);}untaggedCase(create,window);creationFailure(create,window);knownReset(create,window);
         std::printf("RESULT PASS checks=%u\n",checks);result=0;
