@@ -66,6 +66,25 @@ class CaptureSummaryTests(unittest.TestCase):
         frame=summarize(trace.replace('draws=0','draws=1'),{})['frames']['1:4']
         self.assertFalse(frame['draw_count_matches'])
 
+    def test_ordered_clear_is_not_attached_to_previous_draw(self):
+        trace='\n'.join([
+            'frame_begin device=1 frame=3',
+            'capture_event device=1 frame=3 seq=1 after_draw=0 op=draw_begin result=00000000',
+            'draw device=1 frame=3 index=1 kind=up topology=4 primitives=1 vs=0 ps=0',
+            'surface role=rt0 identity=3',
+            'draw_result result=00000000',
+            'capture_event device=1 frame=3 seq=2 after_draw=1 op=clear result=00000000',
+            'clear flags=2 color=0 z=1 stencil=0 rect_count=0',
+            'surface role=clear_depth identity=4',
+            'frame_end device=1 frame=3 draws=1 capture=1 present=00000000'])
+        frame=summarize(trace,{})['frames']['1:3']
+        self.assertTrue(frame['event_sequence_contiguous'])
+        self.assertEqual(len(frame['draws'][0]['targets']),1)
+        self.assertEqual(frame['events'][1]['details'][1]['identity'],'4')
+        self.assertNotIn('depth',frame['draws'][0])
+        frame=summarize(trace.replace('seq=2','seq=3'),{})['frames']['1:3']
+        self.assertFalse(frame['event_sequence_contiguous'])
+
 
 if __name__ == '__main__':
     unittest.main()

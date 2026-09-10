@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-10. **Iteration 2 capture inputs and numeric depth/camera probes are verified. The overall renderer
+Updated 2026-09-10. **Iteration 3 consolidated diagnostics are verified and installed. The overall renderer
 modernization objective is not complete.** No HDR/TAA/AgX/material/clustered-lighting
 visual enhancement is enabled yet. See the [full user objective](user-objective.md)
 and [roadmap](architecture/roadmap.md).
@@ -13,7 +13,7 @@ and [roadmap](architecture/roadmap.md).
   configuration preserved. User test setting: 1280×768 windowed (was 5120×1440
   borderless). No unused launcher is intentionally left open.
 - Independent FP16/depth/D3D11-scRGB capabilities; baseline/proxy smoke passes;
-  45 analysis tests and compile-time ABI guards pass.
+  51 analysis tests and compile-time ABI guards pass.
 - Static archive/PE analysis, targeted Ghidra renderer map, shader index and CTAB
   register mapping, documented separately in `docs/reverse-engineering/`.
 - Animated menu capture: 690 draws; user-assisted flight: two complete 122-draw
@@ -48,9 +48,10 @@ and [roadmap](architecture/roadmap.md).
 
 ## Concrete next work
 
-1. Complete one consolidated telemetry build covering loading CPU spans, render
-   boundaries, capture overhead and cursor/focus transitions. Avoid asking for
-   separate load/test cycles for each hook. No speedup or cursor fix is claimed.
+1. Await the requested single user-run 0.3 telemetry session, then attribute loading
+   spans, inspect render/depth/copy boundaries and correlate cursor/focus changes.
+   Fourteen import hooks and graphics/cursor timing are batched into one build.
+   No speedup or cursor fix is claimed.
 2. Map camera conventions and object identity across controlled motion; correlate
    world/WVP/view-inverse values to depth and projection. The capture has useful
    names/registers, not yet validated motion vectors.
@@ -84,7 +85,11 @@ Raw shader bytes remain local beside X3. The large generated archive shader inde
 was `/tmp/x3-shader-index.json`; regenerate with `tools/analysis/index_shaders.py`
 if missing. Raw game logs are also beside X3, not redistributed source assets.
 
-The installed DLL is capture 0.2 and matches `build/d3d9.dll`. See
-`docs/verification/iteration-02.md` for checksum and checks. The user supplied two four-frame turning bursts; all captured draws succeeded.
-A still-running game retains its startup DLL until restart. No visual enhancement
-has been enabled. Commit each completed logical checkpoint.
+The installed DLL is diagnostics 0.3 and matches `build/d3d9.dll`, owned checksum
+`71f59c8e6422d5bbf2f55c116e2c0388026d956ba45a3a03eee53c4d85a232a6`. See
+`docs/verification/iteration-03.md` for the command, coverage and test evidence.
+The user supplied two four-frame turning bursts from 0.2; all captured draws
+succeeded and camera/light/motion analysis is complete. A combined 0.3 session
+has now been requested with loading, turning and alt-tab observations. No game
+was launched by the agent. No visual enhancement has been enabled. Commit each
+completed logical checkpoint.

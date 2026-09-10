@@ -1,0 +1,33 @@
+loading_trace disabled=fingerprint_mismatch hash=cd064361263440bf bytes=483946
+loading_trace disabled=fingerprint_mismatch hash=cd064361263440bf bytes=483946
+loading_hook name=CreateFileA installed=1
+loading_hook name=ReadFile installed=1
+loading_hook name=SetFilePointer installed=1
+loading_hook name=D3DXCreateEffect installed=1
+loading_hook name=D3DXCreateTextureFromFileInMemoryEx installed=1
+loading_hook name=D3DXCreateCubeTextureFromFileInMemoryEx installed=1
+loading_hook name=D3DXLoadSurfaceFromFileInMemory installed=1
+loading_hook name=SetCursor installed=1
+loading_hook name=SetCursorPos installed=1
+loading_hook name=gzopen installed=1
+loading_hook name=gzread installed=1
+loading_hook name=gzseek installed=1
+loading_hook name=inflate installed=1
+loading_hook name=xmlReadMemory installed=1
+loading_trace coverage_begin=7915822115297 frequency=10000000 hooks=14 module=main inclusive=1 paths=0 hash=cd064361263440bf
+loading_benchmark synthetic=1 calls=20000 raw_us_per_call=0.003165 hooked_us_per_call=0.306575
+loading_hook name=CreateFileA restored=1 owned=1
+loading_hook name=ReadFile restored=0 owned=0
+loading_hook name=SetFilePointer restored=1 owned=1
+loading_hook name=D3DXCreateEffect restored=1 owned=1
+loading_hook name=D3DXCreateTextureFromFileInMemoryEx restored=1 owned=1
+loading_hook name=D3DXCreateCubeTextureFromFileInMemoryEx restored=1 owned=1
+loading_hook name=D3DXLoadSurfaceFromFileInMemory restored=1 owned=1
+loading_hook name=SetCursor restored=1 owned=1
+loading_hook name=SetCursorPos restored=1 owned=1
+loading_hook name=gzopen restored=1 owned=1
+loading_hook name=gzread restored=1 owned=1
+loading_hook name=gzseek restored=1 owned=1
+loading_hook name=inflate restored=1 owned=1
+loading_hook name=xmlReadMemory restored=1 owned=1
+loading_fixture checks=57 failures=0

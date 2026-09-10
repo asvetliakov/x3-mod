@@ -24,6 +24,7 @@ def summarize(trace, index, include_floats=False):
     shaders = {}
     frames = {}
     current = None
+    boundary = None
     resources = {}
     def frame_key(f):
         return f"{f['device']}:{f['frame']}" if 'device' in f else f['frame']
@@ -38,6 +39,15 @@ def summarize(trace, index, include_floats=False):
         elif event == 'frame_begin':
             frames.setdefault(frame_key(f), {'draws': [], 'complete': False})
             current = None
+            boundary = None
+        elif event == 'capture_event':
+            boundary = dict(f, details=[])
+            frames.setdefault(frame_key(f), {'draws': [], 'complete': False}).setdefault('events', []).append(boundary)
+            current = None
+        elif boundary is not None and boundary['op'] != 'draw_begin' and event in (
+                'clear', 'clear_rect', 'clear_rects', 'set_rt', 'set_depth', 'stretch_rect', 'stretch_source_rect',
+                'stretch_dest_rect', 'surface'):
+            boundary['details'].append(dict(event=event, **f))
         elif event == 'draw':
             current = dict(index=int(f['index']), kind=f['kind'], vs=f['vs'], ps=f['ps'],
                            primitives=int(f['primitives']), topology=int(f['topology']), targets=[], states={})
@@ -72,7 +82,11 @@ def summarize(trace, index, include_floats=False):
                 frame['reported_draws'] = int(f['draws'])
                 frame['draw_count_matches'] = len(frame['draws']) == int(f['draws'])
             current = None
+            boundary = None
     for frame in frames.values():
+        if 'events' in frame:
+            sequence = [int(e['seq']) for e in frame['events']]
+            frame['event_sequence_contiguous'] = sequence == list(range(1, len(sequence)+1))
         frame['shader_pairs'] = [dict(vs=v, ps=p, draws=n) for (v,p),n in
                                  Counter((d['vs'], d['ps']) for d in frame['draws']).most_common()]
     return dict(shader_count=len(shaders), matched_shader_count=sum(bool(s['effect_candidates']) for s in shaders.values()),

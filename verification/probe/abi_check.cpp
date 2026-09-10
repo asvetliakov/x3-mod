@@ -5,6 +5,18 @@
 #define SLOT(type, method, index) static_assert(offsetof(type, method) == (index)*sizeof(void*), #method)
 SLOT(IDirect3D9Vtbl, Release, 2);
 SLOT(IDirect3D9Vtbl, CreateDevice, 16);
+SLOT(IDirect3DDevice9Vtbl, SetCursorProperties, 10);
+SLOT(IDirect3DDevice9Vtbl, SetCursorPosition, 11);
+SLOT(IDirect3DDevice9Vtbl, ShowCursor, 12);
+SLOT(IDirect3DDevice9Vtbl, CreateTexture, 23);
+SLOT(IDirect3DDevice9Vtbl, CreateVolumeTexture, 24);
+SLOT(IDirect3DDevice9Vtbl, CreateCubeTexture, 25);
+SLOT(IDirect3DDevice9Vtbl, CreateVertexBuffer, 26);
+SLOT(IDirect3DDevice9Vtbl, CreateIndexBuffer, 27);
+SLOT(IDirect3DDevice9Vtbl, CreateRenderTarget, 28);
+SLOT(IDirect3DDevice9Vtbl, CreateDepthStencilSurface, 29);
+SLOT(IDirect3DDevice9Vtbl, StretchRect, 34);
+SLOT(IDirect3DDevice9Vtbl, SetDepthStencilSurface, 39);
 SLOT(IDirect3DDevice9Vtbl, Reset, 16);
 SLOT(IDirect3DDevice9Vtbl, Present, 17);
 SLOT(IDirect3DDevice9Vtbl, SetRenderTarget, 37);

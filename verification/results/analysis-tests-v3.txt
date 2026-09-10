@@ -1,0 +1,56 @@
+test_invalid_pe_rejected (test_analysis.CatalogueTests) ... ok
+test_stale_header_and_spaces_in_paths (test_analysis.CatalogueTests) ... ok
+test_adjacent_streams_exclude_container_padding (test_analysis.ShaderParsingTests) ... ok
+test_comment_end_marker_does_not_truncate_shader (test_analysis.ShaderParsingTests) ... ok
+test_fnv_public_test_vectors (test_analysis.ShaderParsingTests) ... ok
+test_sm1_def_literal_end_marker_is_not_end (test_analysis.ShaderParsingTests) ... ok
+test_truncated_stream_rejected (test_analysis.ShaderParsingTests) ... ok
+test_failed_draw_result_is_excluded_and_reported (test_camera_analysis.CameraAnalysisTests) ... ok
+test_incomplete_frame_is_not_evidence (test_camera_analysis.CameraAnalysisTests) ... ok
+test_inconsistent_second_draw_is_detectable (test_camera_analysis.CameraAnalysisTests) ... ok
+test_integer_query_failure_does_not_invalidate_float (test_camera_analysis.CameraAnalysisTests) ... ok
+test_invalid_matrices_rejected (test_camera_analysis.CameraAnalysisTests) ... ok
+test_noncommuting_world_view_projection_cross_draw_fit (test_camera_analysis.CameraAnalysisTests) ... ok
+test_reported_draw_count_mismatch_rejects_frame (test_camera_analysis.CameraAnalysisTests) ... ok
+test_sparse_rows_are_zero_without_cross_draw_leakage (test_camera_analysis.CameraAnalysisTests) ... ok
+test_typed_registers_do_not_alias_float_namespace (test_camera_analysis.CameraAnalysisTests) ... ok
+test_unavailable_queries_exclude_draws (test_camera_analysis.CameraAnalysisTests) ... ok
+test_v2_devices_reusing_frame_numbers_stay_separate (test_camera_analysis.CameraAnalysisTests) ... ok
+test_v2_missing_draw_result_rejected (test_camera_analysis.CameraAnalysisTests) ... ok
+test_v2_missing_float_status_rejected (test_camera_analysis.CameraAnalysisTests) ... ok
+test_v2_short_float_query_does_not_supply_missing_zero_rows (test_camera_analysis.CameraAnalysisTests) ... ok
+test_empty_frame_and_missing_draws_are_explicit (test_capture_summary.CaptureSummaryTests) ... ok
+test_matches_preserve_effect_ambiguity_and_ignore_binding_events (test_capture_summary.CaptureSummaryTests) ... ok
+test_ordered_clear_is_not_attached_to_previous_draw (test_capture_summary.CaptureSummaryTests) ... ok
+test_truncated_frame_is_not_reported_complete (test_capture_summary.CaptureSummaryTests) ... ok
+test_typed_namespaces_device_frames_and_failed_draw (test_capture_summary.CaptureSummaryTests) ... ok
+test_active_layout_and_sparse_zero (test_light_analysis.LightTests) ... ok
+test_bad_frame_excludes_evidence (test_light_analysis.LightTests) ... ok
+test_failed_draw_and_nonfinite (test_light_analysis.LightTests) ... ok
+test_impossible_float_namespace_and_word (test_light_analysis.LightTests) ... ok
+test_impossible_integer_namespace (test_light_analysis.LightTests) ... ok
+test_invalid_count_and_layout (test_light_analysis.LightTests) ... ok
+test_missing_count_is_not_zero (test_light_analysis.LightTests) ... ok
+test_query_failure_and_coverage (test_light_analysis.LightTests) ... ok
+test_zero_count_ignores_stale_array (test_light_analysis.LightTests) ... ok
+test_duplicate_instance_keys_are_excluded (test_motion_analysis.MotionAnalysisTests) ... ok
+test_reordered_draws_match_without_index_identity (test_motion_analysis.MotionAnalysisTests) ... ok
+test_resource_range_device_and_topology_distinguish_keys (test_motion_analysis.MotionAnalysisTests) ... ok
+test_up_and_failed_stream_queries_are_not_candidates (test_motion_analysis.MotionAnalysisTests) ... ok
+test_world_change_is_separate_from_camera_motion (test_motion_analysis.MotionAnalysisTests) ... ok
+test_invalid_constant_range_rejected (test_shader_constants.ConstantTests) ... ok
+test_member_range_rejected (test_shader_constants.ConstantTests) ... ok
+test_offsets_relative_to_header_and_register_namespace (test_shader_constants.ConstantTests) ... ok
+test_recursive_member_type_rejected (test_shader_constants.ConstantTests) ... ok
+test_struct_array_members_and_types (test_shader_constants.ConstantTests) ... ok
+test_truncated_comment_rejected (test_shader_constants.ConstantTests) ... ok
+test_invalid_counts_and_nan_rejected (test_telemetry_summary.TelemetryTests) ... ok
+test_loading_deltas_may_straddle_counts (test_telemetry_summary.TelemetryTests) ... ok
+test_qpc_span_and_marker (test_telemetry_summary.TelemetryTests) ... ok
+test_span_without_clock_and_reversed (test_telemetry_summary.TelemetryTests) ... ok
+test_windows_merge_but_devices_and_capture_stay_separate (test_telemetry_summary.TelemetryTests) ... ok
+
+----------------------------------------------------------------------
+Ran 51 tests in 0.010s
+
+OK

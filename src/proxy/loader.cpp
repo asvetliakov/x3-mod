@@ -1,4 +1,5 @@
 #include "capture.h"
+#include "telemetry.h"
 #include <string>
 
 namespace {
@@ -12,7 +13,12 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     UINT length = GetSystemDirectoryW(path, 32750);
     if (!length || length >= 32750) return TRUE;
     std::wstring full = std::wstring(path) + L"\\d3d9.dll";
+    const auto load_begin = x3m::telemetry::now();
     backend = LoadLibraryExW(full.c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
+    const DWORD load_error = GetLastError();
+    const auto load_end = x3m::telemetry::now();
+    if (x3m::telemetry::enabled())
+        x3m::log("telemetry_span name=backend_load qpc_begin=%llu qpc_end=%llu thread=%lu success=%u error=%lu",load_begin,load_end,GetCurrentThreadId(),backend!=nullptr,load_error);
     if (backend == self_module) {
         FreeLibrary(backend);
         backend = nullptr;
@@ -21,7 +27,7 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
         GetModuleFileNameW(backend, path, 32768);
         x3m::log("backend path=%ls", path);
     } else {
-        x3m::log("ERROR backend load failed error=%lu", GetLastError());
+        x3m::log("ERROR backend load failed error=%lu", load_error);
     }
     return TRUE;
 }
@@ -33,7 +39,11 @@ FARPROC entry(const char* name) {
 
 extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
     auto fn = reinterpret_cast<IDirect3D9* (WINAPI*)(UINT)>(entry("Direct3DCreate9"));
+    const auto begin = x3m::telemetry::now();
     IDirect3D9* result = fn ? fn(sdk) : nullptr;
+    const auto end = x3m::telemetry::now();
+    if (x3m::telemetry::enabled())
+        x3m::log("telemetry_span name=direct3d_create9 qpc_begin=%llu qpc_end=%llu thread=%lu success=%u",begin,end,GetCurrentThreadId(),result!=nullptr);
     if (result) x3m::hook_direct3d(result);
     return result;
 }

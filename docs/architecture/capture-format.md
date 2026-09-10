@@ -67,3 +67,15 @@ invalidate a separately successful float query.
 Pure-device getter support is backend-dependent. The current Preview WineD3D
 fixture successfully queries these namespaces and bindings with flags 0x52.
 This does not guarantee that another backend supports every query.
+## Additive telemetry in build 0.3
+
+Schema 2 remains the draw/constant format. With `--telemetry`, ordered
+`capture_event` records add device/frame/sequence, preceding draw count, operation,
+result and QPC; detailed Clear/RT/depth/copy arguments follow. The summary tool
+keeps these under each frame's `events` and checks sequence continuity. They are
+not attached to the previous draw's targets. `draw_begin` precedes the backend
+draw; its placeholder success does not override the later `draw_result`.
+
+CPU timing and loading aggregates use separate `telemetry_*` and `loading_*`
+events. See [telemetry documentation](../verification/telemetry.md). Existing
+schema-2 captures remain readable; telemetry is not required to decode them.

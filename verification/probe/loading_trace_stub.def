@@ -1,0 +1,6 @@
+LIBRARY d3dx9_37.dll
+EXPORTS
+ D3DXCreateEffect@36
+ D3DXCreateTextureFromFileInMemoryEx@60
+ D3DXCreateCubeTextureFromFileInMemoryEx@56
+ D3DXLoadSurfaceFromFileInMemory@36

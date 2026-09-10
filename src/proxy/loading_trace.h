@@ -1,0 +1,36 @@
+#pragma once
+#include <windows.h>
+#include <array>
+#include <cstdint>
+
+// Optional, read-only loading diagnostics. Only the main EXE's verified named
+// imports are intercepted; callbacks never log or inspect payloads and make no explicit payload/event allocations.
+// Runtime thread-local storage may initialize on a thread's first callback.
+// Initialize outside DllMain, after telemetry initialization. Call report from
+// the existing periodic telemetry summary. No engine code/prologues are patched.
+namespace x3m::loading_trace {
+enum class Operation : unsigned {
+    FileOpen, FileRead, FileSeek, Effect, Texture, CubeTexture, Surface,
+    CursorSet, CursorPosition, GzOpen, GzRead, GzSeek, Inflate, XmlRead, Count
+};
+struct Sample {
+    uint64_t count=0, failures=0, pending=0, ambiguous=0, bytes=0;
+    uint64_t inclusive_ticks=0, exclusive_ticks=0, maximum_ticks=0;
+    uint64_t overhead_ticks=0;
+};
+using Snapshot=std::array<Sample,static_cast<unsigned>(Operation::Count)>;
+bool initialize();
+bool active();
+// Per-field atomic exchange: concurrent calls can straddle adjacent reports.
+// Totals over the complete run are conserved, but a delta is not a transaction.
+Snapshot take_snapshot();
+void report();
+// Explicit quiescent teardown only, not safe during active callbacks or DllMain.
+// Restores a slot only if it still points at this module's interceptor.
+void shutdown();
+#ifdef X3M_LOADING_TRACE_FIXTURE
+// Compile-only fixture seam: these symbols do not exist in the production DLL.
+uint64_t fixture_fingerprint(HMODULE target);
+bool fixture_initialize(HMODULE target,uint64_t expected_hash);
+#endif
+}

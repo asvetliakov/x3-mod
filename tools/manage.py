@@ -30,6 +30,7 @@ def main():
     parser.add_argument('--capture-frames', type=int, choices=range(0, 9), default=1)
     parser.add_argument('--direct', action='store_true', help='Skip launcher and intro using X3 command-line switches')
     parser.add_argument('--vanilla', action='store_true', help='Launch with builtin D3D9, ignoring the installed proxy')
+    parser.add_argument('--telemetry', action='store_true', help='Enable bounded loading, presentation and cursor diagnostics')
     args = parser.parse_args()
     game = args.game_dir.resolve()
     dll = game / 'd3d9.dll'
@@ -71,6 +72,7 @@ def main():
         env = os.environ.copy()
         env['X3M_CAPTURE_START'] = str(max(1, args.capture_start))
         env['X3M_CAPTURE_FRAMES'] = str(args.capture_frames)
+        env['X3M_TELEMETRY'] = '1' if args.telemetry else '0'
         # --dll applies to this child only, preserving the user's other overrides.
         command = [str(WINE), '--bottle', args.bottle, '--no-update',
                    '--dll', 'd3d9=b' if args.vanilla else 'd3d9=n,b',

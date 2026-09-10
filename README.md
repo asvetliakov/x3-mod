@@ -39,6 +39,18 @@ expect a hitch. `--capture-start 1000` delays the automatic capture;
 Capture records live queried state, including stateblock changes, rather than
 assuming setter calls describe all current state.
 
+For one combined loading/render-boundary/cursor diagnostic session:
+
+```sh
+python3 tools/manage.py launch --direct --telemetry --capture-start 999999 --capture-frames 4
+```
+
+Additional telemetry is opt-in. Ctrl+Shift+F7 optionally marks a phase while
+Present is running; F8 captures four frames with this command. See the
+[single-session test steps](docs/verification/iteration-03.md) and
+[coverage limits](docs/verification/telemetry.md). Timing is CPU-side elapsed
+time, not GPU timing. Loading optimization and the alt-tab cursor fix remain pending.
+
 ```sh
 python3 tools/manage.py status
 python3 tools/manage.py launch --vanilla
@@ -68,6 +80,7 @@ research proxy for this specific game, not a universal D3D9 compatibility layer.
 
 - [Capture format 2 and identity semantics](docs/architecture/capture-format.md)
 - [Iteration 2 verification](docs/verification/iteration-02.md)
+- [Iteration 3 consolidated diagnostics](docs/verification/iteration-03.md)
 
 - [Current status and next implementation tasks](docs/status.md)
 

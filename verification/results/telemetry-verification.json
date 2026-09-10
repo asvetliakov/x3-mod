@@ -1,0 +1,37 @@
+{
+  "result": "PASS",
+  "checks": [
+    "baseline/off/on API and readback equivalence",
+    "telemetry off emits no telemetry",
+    "loading summary before Present",
+    "bounded operation counts and failure counts",
+    "cursor position rate limit",
+    "capture event order/result/context",
+    "capture interval separation and reset gap isolation",
+    "SDK vtable slot compilation"
+  ],
+  "metrics": {
+    "texture": 3,
+    "present_normal": 2,
+    "present_capture": 1,
+    "frame_capture": 1,
+    "draw_backend": 1,
+    "capture_cpu": 9,
+    "snapshot": 1,
+    "shader_ps_backend": 1,
+    "cube_texture": 1,
+    "volume_texture": 1,
+    "render_target": 1,
+    "depth_stencil": 1,
+    "vertex_buffer": 1,
+    "index_buffer": 1,
+    "reset": 1,
+    "log_flush": 5,
+    "cursor_properties": 1,
+    "cursor_position": 300,
+    "cursor_show": 3
+  },
+  "capture_events": 9,
+  "cursor_position_events": 1,
+  "cursor_positions_suppressed": 299
+}

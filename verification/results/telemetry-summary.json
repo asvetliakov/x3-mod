@@ -1,0 +1,604 @@
+{
+  "clock": {
+    "frequency": 10000000,
+    "anchor": "proxy_initialize",
+    "start_qpc": 7916154984786
+  },
+  "metrics": {
+    "0:lock_wait": {
+      "device": "0",
+      "name": "lock_wait",
+      "count": 344,
+      "failures": 0,
+      "total_us": 894.6,
+      "min_us": 0.0,
+      "max_us": 438.9,
+      "bytes": 0,
+      "buckets": [
+        342,
+        0,
+        2,
+        0,
+        0,
+        0
+      ],
+      "windows": 2,
+      "mean_us": 2.6005813953488373
+    },
+    "0:create_device": {
+      "device": "0",
+      "name": "create_device",
+      "count": 1,
+      "failures": 0,
+      "total_us": 56977.699,
+      "min_us": 56977.699,
+      "max_us": 56977.699,
+      "bytes": 0,
+      "buckets": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 56977.699
+    },
+    "1:texture": {
+      "device": "1",
+      "name": "texture",
+      "count": 3,
+      "failures": 1,
+      "total_us": 312.2,
+      "min_us": 2.8,
+      "max_us": 270.5,
+      "bytes": 0,
+      "buckets": [
+        1,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 104.06666666666666
+    },
+    "1:present_normal": {
+      "device": "1",
+      "name": "present_normal",
+      "count": 2,
+      "failures": 0,
+      "total_us": 312.59999999999997,
+      "min_us": 18.4,
+      "max_us": 294.2,
+      "bytes": 0,
+      "buckets": [
+        0,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      "windows": 2,
+      "mean_us": 156.29999999999998
+    },
+    "1:present_capture": {
+      "device": "1",
+      "name": "present_capture",
+      "count": 1,
+      "failures": 0,
+      "total_us": 20.5,
+      "min_us": 20.5,
+      "max_us": 20.5,
+      "bytes": 0,
+      "buckets": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 20.5
+    },
+    "1:frame_capture": {
+      "device": "1",
+      "name": "frame_capture",
+      "count": 1,
+      "failures": 0,
+      "total_us": 22211.102,
+      "min_us": 22211.102,
+      "max_us": 22211.102,
+      "bytes": 0,
+      "buckets": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 22211.102
+    },
+    "1:draw_backend": {
+      "device": "1",
+      "name": "draw_backend",
+      "count": 1,
+      "failures": 0,
+      "total_us": 3507.9,
+      "min_us": 3507.9,
+      "max_us": 3507.9,
+      "bytes": 0,
+      "buckets": [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 3507.9
+    },
+    "1:capture_cpu": {
+      "device": "1",
+      "name": "capture_cpu",
+      "count": 9,
+      "failures": 0,
+      "total_us": 3374.8,
+      "min_us": 6.0,
+      "max_us": 2809.7,
+      "bytes": 0,
+      "buckets": [
+        2,
+        4,
+        2,
+        1,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 374.9777777777778
+    },
+    "1:snapshot": {
+      "device": "1",
+      "name": "snapshot",
+      "count": 1,
+      "failures": 0,
+      "total_us": 1545.6,
+      "min_us": 1545.6,
+      "max_us": 1545.6,
+      "bytes": 0,
+      "buckets": [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 1545.6
+    },
+    "1:shader_ps_backend": {
+      "device": "1",
+      "name": "shader_ps_backend",
+      "count": 1,
+      "failures": 0,
+      "total_us": 735.6,
+      "min_us": 735.6,
+      "max_us": 735.6,
+      "bytes": 0,
+      "buckets": [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 735.6
+    },
+    "1:cube_texture": {
+      "device": "1",
+      "name": "cube_texture",
+      "count": 1,
+      "failures": 0,
+      "total_us": 308.3,
+      "min_us": 308.3,
+      "max_us": 308.3,
+      "bytes": 0,
+      "buckets": [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 308.3
+    },
+    "1:volume_texture": {
+      "device": "1",
+      "name": "volume_texture",
+      "count": 1,
+      "failures": 0,
+      "total_us": 222.9,
+      "min_us": 222.9,
+      "max_us": 222.9,
+      "bytes": 0,
+      "buckets": [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 222.9
+    },
+    "1:render_target": {
+      "device": "1",
+      "name": "render_target",
+      "count": 1,
+      "failures": 0,
+      "total_us": 246.5,
+      "min_us": 246.5,
+      "max_us": 246.5,
+      "bytes": 0,
+      "buckets": [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 246.5
+    },
+    "1:depth_stencil": {
+      "device": "1",
+      "name": "depth_stencil",
+      "count": 1,
+      "failures": 0,
+      "total_us": 50.3,
+      "min_us": 50.3,
+      "max_us": 50.3,
+      "bytes": 0,
+      "buckets": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 50.3
+    },
+    "1:vertex_buffer": {
+      "device": "1",
+      "name": "vertex_buffer",
+      "count": 1,
+      "failures": 0,
+      "total_us": 413.2,
+      "min_us": 413.2,
+      "max_us": 413.2,
+      "bytes": 64,
+      "buckets": [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 413.2
+    },
+    "1:index_buffer": {
+      "device": "1",
+      "name": "index_buffer",
+      "count": 1,
+      "failures": 0,
+      "total_us": 127.9,
+      "min_us": 127.9,
+      "max_us": 127.9,
+      "bytes": 12,
+      "buckets": [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 127.9
+    },
+    "1:reset": {
+      "device": "1",
+      "name": "reset",
+      "count": 1,
+      "failures": 0,
+      "total_us": 21726.1,
+      "min_us": 21726.1,
+      "max_us": 21726.1,
+      "bytes": 0,
+      "buckets": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 21726.1
+    },
+    "1:log_flush": {
+      "device": "1",
+      "name": "log_flush",
+      "count": 5,
+      "failures": 0,
+      "total_us": 5.6,
+      "min_us": 0.2,
+      "max_us": 3.3,
+      "bytes": 0,
+      "buckets": [
+        5,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "windows": 2,
+      "mean_us": 1.1199999999999999
+    },
+    "1:cursor_properties": {
+      "device": "1",
+      "name": "cursor_properties",
+      "count": 1,
+      "failures": 0,
+      "total_us": 2216.7,
+      "min_us": 2216.7,
+      "max_us": 2216.7,
+      "bytes": 0,
+      "buckets": [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 2216.7
+    },
+    "1:cursor_position": {
+      "device": "1",
+      "name": "cursor_position",
+      "count": 300,
+      "failures": 0,
+      "total_us": 6211.5,
+      "min_us": 8.5,
+      "max_us": 162.5,
+      "bytes": 0,
+      "buckets": [
+        18,
+        280,
+        2,
+        0,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 20.705
+    },
+    "1:cursor_show": {
+      "device": "1",
+      "name": "cursor_show",
+      "count": 3,
+      "failures": 0,
+      "total_us": 215.1,
+      "min_us": 30.1,
+      "max_us": 144.2,
+      "bytes": 0,
+      "buckets": [
+        0,
+        2,
+        1,
+        0,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 71.7
+    },
+    "0:shader_inspect": {
+      "device": "0",
+      "name": "shader_inspect",
+      "count": 2,
+      "failures": 0,
+      "total_us": 1766.5,
+      "min_us": 3.3,
+      "max_us": 1763.2,
+      "bytes": 0,
+      "buckets": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 883.25
+    },
+    "0:shader_getfunction": {
+      "device": "0",
+      "name": "shader_getfunction",
+      "count": 2,
+      "failures": 0,
+      "total_us": 211.2,
+      "min_us": 0.9,
+      "max_us": 210.3,
+      "bytes": 0,
+      "buckets": [
+        1,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 105.6
+    },
+    "0:shader_hash": {
+      "device": "0",
+      "name": "shader_hash",
+      "count": 2,
+      "failures": 0,
+      "total_us": 0.7,
+      "min_us": 0.2,
+      "max_us": 0.5,
+      "bytes": 40,
+      "buckets": [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 0.35
+    },
+    "0:shader_dump": {
+      "device": "0",
+      "name": "shader_dump",
+      "count": 1,
+      "failures": 0,
+      "total_us": 1533.0,
+      "min_us": 1533.0,
+      "max_us": 1533.0,
+      "bytes": 20,
+      "buckets": [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 1533.0
+    },
+    "0:log_flush": {
+      "device": "0",
+      "name": "log_flush",
+      "count": 1,
+      "failures": 0,
+      "total_us": 196.1,
+      "min_us": 196.1,
+      "max_us": 196.1,
+      "bytes": 0,
+      "buckets": [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "windows": 1,
+      "mean_us": 196.1
+    }
+  },
+  "spans": [
+    {
+      "name": "backend_load",
+      "qpc_begin": "7916154994374",
+      "qpc_end": "7916155877639",
+      "thread": "336",
+      "success": "1",
+      "error": "0",
+      "duration_us": 88326.5
+    },
+    {
+      "name": "direct3d_create9",
+      "qpc_begin": "7916155878919",
+      "qpc_end": "7916161087144",
+      "thread": "336",
+      "success": "1",
+      "duration_us": 520822.5
+    }
+  ],
+  "markers": [],
+  "first_presents": [
+    {
+      "device": "1",
+      "frame": "0",
+      "qpc": "7916173001614",
+      "since_start_us": "1801682.750",
+      "capture": "0",
+      "reset_count": "0"
+    },
+    {
+      "device": "1",
+      "frame": "2",
+      "qpc": "7916173462252",
+      "since_start_us": "1847746.500",
+      "capture": "0",
+      "reset_count": "1"
+    }
+  ],
+  "event_counts": {
+    "telemetry_start": 1,
+    "loading_trace": 1,
+    "telemetry_span": 2,
+    "telemetry_presentation": 4,
+    "telemetry_summary": 5,
+    "telemetry_metric": 29,
+    "telemetry_cursor_api": 2,
+    "telemetry_first_present": 2,
+    "telemetry_window_context": 1,
+    "telemetry_window": 1,
+    "telemetry_cursor_poll": 1,
+    "telemetry_present_window": 1,
+    "capture_event": 9
+  },
+  "loading_events": [
+    {
+      "event": "loading_trace",
+      "disabled": "fingerprint_mismatch",
+      "hash": "3b9bd7a4f94e36b4",
+      "bytes": "252544"
+    }
+  ],
+  "loading_metrics": {},
+  "rejected": [],
+  "limits": [
+    "CPU-side wall-clock spans, not GPU execution time.",
+    "Metrics can overlap or nest; do not sum totals across names or devices.",
+    "Captured frame intervals include diagnostic disturbance.",
+    "Observed post-initialization hooks do not cover the whole process.",
+    "Summary windows flush on observed calls; no events does not prove idle time.",
+    "Loading deltas use per-field atomics; concurrent calls may straddle adjacent reports."
+  ],
+  "source": {
+    "trace": "telemetry-on-capture.log",
+    "sha256": "e92ca9be6d8a04dc47429e4872645225fe20d619b532cf40dacc5c66c646b87a"
+  }
+}

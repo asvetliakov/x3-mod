@@ -1,0 +1,15 @@
+{
+  "dll_sha256": "71f59c8e6422d5bbf2f55c116e2c0388026d956ba45a3a03eee53c4d85a232a6",
+  "fixtures": {
+    "d3d9-smoke-v3": {
+      "exe_sha256": "fe6fb4c8835979f271ac7ff15b5e2a252a6452b7cb7ff8235f61633ff29d7d13",
+      "trace_sha256": "18decd14c99ccfa59c0d6e8a51f544e1123f3cc4a126dc31ae4a99abfc26079b",
+      "exit": 0
+    },
+    "capture-state-v3": {
+      "exe_sha256": "aeebe1946ec5e5e773d7796fbc6e4da31b66daeb40ba2a671e34e34819a03a2b",
+      "trace_sha256": "baa8e9ca48da87b10a77722dbbbc7e360894d24066cf05697ea750f60fad7e0f",
+      "exit": 0
+    }
+  }
+}

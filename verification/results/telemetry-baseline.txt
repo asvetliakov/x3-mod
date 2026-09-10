@@ -1,0 +1,48 @@
+device hr=00000000 PASS
+texture hr=00000000 PASS
+invalid texture forwarded PASS
+texture after load gap hr=00000000 PASS
+cube hr=00000000 PASS
+volume hr=00000000 PASS
+vb hr=00000000 PASS
+ib hr=00000000 PASS
+rt hr=00000000 PASS
+depth hr=00000000 PASS
+back hr=00000000 PASS
+readback hr=00000000 PASS
+cursor surface hr=00000000 PASS
+cursor lock hr=00000000 PASS
+cursor unlock hr=00000000 PASS
+cursor properties hr=00000000 PASS
+D3D ShowCursor previous bool PASS
+cursor show last_error=00004139
+cursor position last_error=00004137
+first present hr=00000000 PASS
+set rt hr=00000000 PASS
+set depth hr=00000000 PASS
+clear target depth hr=00000000 PASS
+depth only clear hr=00000000 PASS
+unset depth hr=00000000 PASS
+invalid RT forwarded PASS
+readback copy hr=00000000 PASS
+readback lock hr=00000000 PASS
+clear pixel preserved PASS
+readback unlock hr=00000000 PASS
+stretch hr=00000000 PASS
+restore rt hr=00000000 PASS
+shader hr=00000000 PASS
+bind shader hr=00000000 PASS
+constants hr=00000000 PASS
+fvf hr=00000000 PASS
+lighting hr=00000000 PASS
+cull hr=00000000 PASS
+begin hr=00000000 PASS
+draw hr=00000000 PASS
+end hr=00000000 PASS
+captured present hr=00000000 PASS
+unbind shader hr=00000000 PASS
+reset hr=00000000 PASS
+after reset present hr=00000000 PASS
+device refs zero PASS
+api refs zero PASS
+TELEMETRY FIXTURE: 0 failures
