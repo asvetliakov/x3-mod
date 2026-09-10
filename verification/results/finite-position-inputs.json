@@ -1,0 +1,64 @@
+{
+  "profile_filter": "Reviewed homogeneous_row_dots and shader_version == 0xfffe0300",
+  "selected_archive_profiles": 32,
+  "captured_successful_profiles": 7,
+  "successful_candidate_draws": 11382,
+  "successful_indexed_candidates": 11382,
+  "successful_nonindexed_candidates": 0,
+  "complete_capture_frames": 28,
+  "descriptor_combinations": [
+    {
+      "vb_usage": "8",
+      "vb_pool": "1",
+      "ib_usage": "8",
+      "ib_pool": "1",
+      "stride": "24",
+      "position_type": "16",
+      "method": "indexed",
+      "draws": 204
+    },
+    {
+      "vb_usage": "8",
+      "vb_pool": "1",
+      "ib_usage": "8",
+      "ib_pool": "1",
+      "stride": "40",
+      "position_type": "16",
+      "method": "indexed",
+      "draws": 11178
+    }
+  ],
+  "extra_counts": {
+    "entire_vb_declared": 11382,
+    "entire_ib_drawn": 11382,
+    "vb_revision_one": 11382,
+    "ib_revision_one": 11382,
+    "fvf_zero": 11382,
+    "zero_offsets_unit_frequency": 11382,
+    "known_unambiguous_nonpending": 11382
+  },
+  "unique_vbs": 1035,
+  "unique_ibs": 1035,
+  "sum_historical_vb_allocation_bytes": 115059368,
+  "sum_historical_ib_allocation_bytes": 12356076,
+  "vbs_observed_in_multiple_frames": 1032,
+  "vb_revision_count_distribution": {
+    "1": 1035
+  },
+  "unique_declared_ranges": 1035,
+  "xyz_bytes_in_unique_declared_ranges": 17259750,
+  "vb_last_lock_flags": {
+    "00000800": 11382
+  },
+  "ib_last_lock_flags": {
+    "00000800": 11382
+  },
+  "provenance": {
+    "snapshot": "/tmp/x3-iteration05-completed-snapshot.log",
+    "snapshot_bytes": 216605445,
+    "snapshot_sha256": "e5beaa861d04659fe9c7df05a01845bd05d656a33c643f4b484ff379cf3ccaf8",
+    "registry": "/Users/asvetl/x3-mod/verification/results/shader-profile-registry.json",
+    "registry_sha256": "7794751b6f134189c9bf1160fab28a6580c0641c130a25ef886baf37dbb01127",
+    "analyzer_sha256": "d0420bc105089f16c7409b564c5a300d23e6efaa8346148bc45b200d913c2248"
+  }
+}
