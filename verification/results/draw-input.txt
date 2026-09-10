@@ -1,0 +1,168 @@
+CHECK native libraries and hidden window PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK valid draw has intrinsic proofs only PASS
+CHECK nonindexed ignores bound IB PASS
+CHECK scope fields never invent lifetime PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK c0 c6 c24 submitted rows copied bitwise PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK c0 c6 c24 submitted rows copied bitwise PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK c0 c6 c24 submitted rows copied bitwise PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK missing scope cannot prove lifetime PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK partial scope rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK successful submission still lacks lifetime PASS
+CHECK failed submission revokes success PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK indexed range and revision captured PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK nonindexed ignores pending bound IB PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK indexed pending IB rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK indexed changed revision reported PASS
+CHECK actual indexed submission succeeds PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK nonzero stream offset preserved PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK INDEX32 accepted with exact range PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK indexed missing IB rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK nonindexed missing IB accepted PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK triangle strip accepted PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK zero write revision rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK pending VB rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK VB revision changes after write PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK native half4 input accepted PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK float4 layout rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK UP lacks buffer and coverage proof PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK UP lacks buffer and coverage proof PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK UP lacks buffer and coverage proof PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK invalid or overflowing range rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK invalid or overflowing range rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK invalid or overflowing range rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK invalid or overflowing range rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK invalid or overflowing range rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK invalid or overflowing range rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK unsupported raster coverage rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK unsupported raster coverage rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK unsupported raster coverage rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK unsupported raster coverage rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK unsupported raster coverage rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK unsupported raster coverage rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK unsupported raster coverage rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK unsupported raster coverage rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK unsupported raster coverage rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK unsupported raster coverage rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK partial viewport rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK unreviewed pixel shader rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK unknown position program rejected PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK invalid submitted rows rejected without bit normalization PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK invalid submitted rows rejected without bit normalization PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK invalid submitted rows rejected without bit normalization PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK invalid submitted rows rejected without bit normalization PASS
+CHECK reader preserves queried caller state PASS
+CHECK reader releases getter references PASS
+CHECK invalid submitted rows rejected without bit normalization PASS
+CHECK failed getter cannot claim coverage PASS
+CHECK failed getter preserves state and releases outputs PASS
+CHECK failed getter cannot claim coverage PASS
+CHECK failed getter preserves state and releases outputs PASS
+CHECK failed getter cannot claim coverage PASS
+CHECK failed getter preserves state and releases outputs PASS
+CHECK failed getter cannot claim coverage PASS
+CHECK failed getter preserves state and releases outputs PASS
+CHECK failed getter cannot claim coverage PASS
+CHECK failed getter preserves state and releases outputs PASS
+CHECK failed VB GetDesc supplies plausible descriptor PASS
+CHECK failed VB description refuses geometry and coverage PASS
+CHECK failed VB description preserves state and releases references PASS
+CHECK failed IB GetDesc supplies plausible descriptor PASS
+CHECK failed IB description refuses geometry and coverage PASS
+CHECK failed IB description preserves state and releases references PASS
+CHECK null device explicit failure PASS
+CHECK Reset succeeds without retained DEFAULT references PASS
+RESULT PASS checks=167 reads=48 state_checks=48
