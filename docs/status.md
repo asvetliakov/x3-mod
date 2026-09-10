@@ -1,9 +1,43 @@
 # Project status
 
-Updated 2026-09-10. **Iteration 4 consolidated diagnostics are verified and installed; the user gameplay test is pending. The overall renderer
+Updated 2026-09-11. **Iteration 4 gameplay analysis is complete; source corrections and the archive-wide shader review are verified separately from the installed build. The overall renderer
 modernization objective is not complete.** No HDR/TAA/AgX/material/clustered-lighting
 visual enhancement is enabled yet. See the [full user objective](user-objective.md)
 and [roadmap](architecture/roadmap.md).
+
+## Latest checkpoint
+
+The user-run 0.4 session has 20 complete captured frames and 13,431 successful
+draws, including a final third-person burst. The installed selector rejected all
+frames and attempted no depth copy: planet haze was unnecessarily mandatory,
+and later ColorFill invalidation masked the first cause. Source corrections
+remove the haze requirement while retaining verified background/binding rules,
+check scratch-fill targets, and preserve the first rejection. The revised
+adapter is synthetically verified, but game acceptance is not yet established.
+These corrections are not installed.
+
+New [camera/object evidence](reverse-engineering/iteration04-camera-motion.md)
+shows independent object motion with a stationary camera; camera-only history is
+insufficient. Four changing unscoped vertex buffers require separate handling.
+[Active one-/two-light inputs](reverse-engineering/iteration04-lights.md) are now
+observed. [Loading analysis](reverse-engineering/iteration04-loading.md) finds
+21.287 seconds of adjacency work and recurring activity, without proving exact
+mesh reuse or explaining the entire 87-second presentation gap.
+
+The [full shader sweep](reverse-engineering/shader-sweep.md) covers 751 programs
+across all 3,480 effect files; all disassemble and all 57 runtime-dumped programs
+match archive bytes. Static review retains unknowns and does not prove runtime
+coverage. A detached, reviewed material transformer preserves HDR RGB for five
+exact profiles; 42 structural checks and 192 GPU samples pass. It remains
+disconnected from game rendering and needs the FP16 scene path.
+
+Our arithmetic uses SSE2 with explicit four-byte incoming stack alignment;
+[ABI verification](verification/sse2-abi.md) and object/temporal/material
+regressions pass. This leaves ABI-required ST0 transfers intact.
+[HDR transfer investigation](architecture/hdr-transfer.md) rejects stock
+WineD3D-to-DXMT shared handles as a pixel-sharing route, while a native FP16
+IOSurface GPU proof preserves values above one. Wine integration, EDR
+presentation and the requested visual features remain unfinished.
 
 ## Completed
 
@@ -48,22 +82,21 @@ and [roadmap](architecture/roadmap.md).
 
 ## Concrete next work
 
-1. Use the completed 0.3 session to guide scene-depth preservation and batched
-   follow-up work. All 12 captured frames are complete (3,131 successful draws).
-   The same depth allocation is cleared between background, main scene and
-   overlays; scene depth must be used/preserved before its post-bloom clear.
-   See [station-session passes](reverse-engineering/station-session-passes.md).
-2. Map camera conventions and object identity across controlled motion; correlate
-   world/WVP/view-inverse values to depth and projection. The capture has useful
-   names/registers, not yet validated motion vectors.
-3. Identify complete scene/transparent/HUD boundaries. Bloom is at flight draws
-   95–98, but substantial effects rendering follows. Never use a blanket final
-   bloom boundary or gui2d PS-only heuristic.
-4. Validate sampleable scene depth and a reversible jitter experiment, then temporal
-   reprojection/rejection. TAA is a core target.
-5. Separately preserve pre-clamp FP16 lighting and choose a GPU-native HDR output
-   route; the current 8-bit scene cannot produce true HDR by output conversion alone.
-6. Continue the remaining roadmap features once these inputs are verified.
+1. Batch the corrected scene selector and any further required diagnostics before
+   another user-managed run. Obtain target identities for the observed ColorFill
+   calls and prove successful pre-clear depth preservation in the game.
+2. Build conservative rigid-object correspondence from the verified submitted
+   transforms, with reload/reuse generations, camera cuts and geometry revision
+   gates. Account separately for CPU-changing particles/stardust and overlays.
+3. Validate jitter placement and a motion producer against the full shader-family
+   inventory, then connect matched color/depth/motion inputs to temporal resolve.
+   Camera-only reprojection cannot satisfy the observed scene; TAA remains required.
+4. Establish the FP16 scene path and enable only reviewed material variants there.
+   Integrate a GPU-native HDR presentation route; output conversion of clipped
+   8-bit color is insufficient. Continue all remaining roadmap features.
+5. Measure exact mesh-key reuse and real acquisition/lookup cost before enabling
+   bounded adjacency caching. Investigate the still-unattributed loading gap.
+   Revisit native/game cursor behavior with presentation changes.
 
 ## Test coordination
 
@@ -109,7 +142,7 @@ for a scoped synthetic investigation; no cursor fix is deployed.
 An independent canonical D3D9 ownership layer passes 370 baseline / 431 wrapped
 fixture checks with matching shared HRESULTs and output mutations. It releases
 renderer-owned resources before Reset and native device teardown. It is not yet
-enabled by default; opt-in 0.4 gameplay validation is pending. See [ownership source](../src/ownership/README.md)
+enabled by default; opt-in 0.4 produced 13,431 successful captured draws, without a terminal teardown summary in that log. See [ownership source](../src/ownership/README.md)
 and [verification](../verification/probe/ownership.md). Generated fragments use
 `*_inc.h` per the user's editor preference.
 
@@ -120,7 +153,7 @@ still clips both paths. See [HDR varying verification](verification/vertex-color
 This supports targeted SM3 material changes once the FP16 scene path exists;
 it is not a game HDR implementation.
 
-## Experimental 0.4 checkpoint (installed; gameplay test pending)
+## Experimental 0.4 checkpoint (installed; gameplay analyzed above)
 
 The ownership layer is connected to the loader behind `X3M_OWNERSHIP=1` in the
 separate `build-ownership/` build. All 15 actual-DLL integration cases and a forced
@@ -136,7 +169,7 @@ numeric positive/negative controls establish why D24X8-to-INTZ fails despite a
 successful trigger HRESULT. See [RESZ verification](verification/depth-resolve.md)
 and [backend investigation](reverse-engineering/depth-resolve-backend.md).
 The opt-in `X3M_DEPTH_COPY=1` switch allocates storage and reports diagnostics;
-the optional scene adapter now invokes the explicit copy before a recognized destructive clear in requested capture frames. Game validation is still pending. See
+the optional scene adapter invokes the explicit copy before a recognized destructive clear in requested capture frames. The installed rules rejected this game session; successful game depth preservation remains pending. See
 [copy verification](verification/copied-depth.md): 634 checks / 32 samples pass,
 with 357 additional loss-regression checks across 33 cases.
 
@@ -167,7 +200,7 @@ scene adapter passes 20 scenarios / 2,228 checks / eight samples; buffer trackin
 passes 530 checks, and mesh timing passes 68 ABI plus 123 native mesh checks.
 Independent reviews found and fixed post-clear query confirmation and hook
 recovery/foreign-chain defects. See [review](verification/review-04.md) and the
-[next coordinated run](verification/iteration-04.md).
+[completed coordinated run](verification/iteration-04.md).
 
 The detached production temporal runtime has paired FP16 color/R32F depth history,
 explicit motion policy, failure-safe publication and caller-state restoration;

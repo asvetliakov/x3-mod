@@ -4,7 +4,9 @@ Reviewed 2026-09-10 before checkpoint commits, as requested by the user. Reviewe
 were separate from the ownership and temporal authors. The review covered the
 canonical ownership cleanup, explicit scene-depth copy, loader/capture wiring,
 temporal resolve, depth decoder and the verification runners. These components
-remain uninstalled; gameplay rendering and state integration are separate gates.
+were uninstalled at that initial review; the consolidated diagnostic build was
+subsequently installed and tested by the user. Later corrections described below
+remain uninstalled. Gameplay visual integration is a separate gate.
 
 ## Findings and corrections
 
@@ -81,3 +83,26 @@ Final experimental DLL SHA256:
 `81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516`.
 This identifies the combined standalone-verified artifact, not a completed
 gameplay visual acceptance test.
+
+## Review after the completed user session
+
+Reviewed 2026-09-11, before the subsequent checkpoint commits:
+
+| Component | Review and correction |
+| --- | --- |
+| Capture analysis | Guard absent camera identity before attempting camera deltas; require exactly four finite components in each distinct matrix row 0–3. Regression cases preserve unknowns rather than invent motion. Independent light review verified trace, analyzer and regenerated CTAB hashes. Loading claims remain inclusive observed spans, with no inferred cache hit rate. |
+| Material radiance | Independent review of exact hash/length/profile gates, instruction boundaries, local zero constants, unchanged alpha/PP/unrelated clamps, atomic rejection and aliases. Five full-program comparisons match independent expected bytes; original GPU fixture passes 42 structural checks and 192 samples through Reset. No game shader replacement is enabled. |
+| Full shader sweep | Independent counts/provenance check covers all 17 catalogues, 3,480 effect entries, 751 programs and 57 runtime-dump matches. Review caught unsupported `sincos` arity being treated as complete; it now stays unknown with eight regression cases. No archive program uses it, so program inventory records remain unchanged. The complete analysis suite passes 148 tests. |
+| SSE2 compilation | Use `-msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2`, retaining Win32 conventions and ST0 returns. Independent policy review agrees with the ABI probe: 36 callback cases and three scalar returns pass; deliberately incompatible incoming-16 assumptions fail alignment checks. The production naked thunk instructions are unchanged. Object tracing passes 139 checks, temporal rendering passes 44 samples / 40 state comparisons, and material rendering retains its 42 / 192 result. |
+| Scene selector and diagnostics | Independent review accepted optional haze with verified background, narrow nonalias scratch-fill acceptance and first-rejection retention. Root review then found failed ColorFill diagnostics could dereference rejected arguments; inspection found the analogous adapter StretchRect path. Both now query arguments only on success. Callback-only invalid-pointer controls are never submitted to native D3D. Final independent delta review verifies matching source hashes and 36 scenarios / 4,908 checks / 16 GPU samples. |
+
+These changes do not establish successful game depth capture: the old trace
+lacks ColorFill target identities. They also do not turn camera/object observations
+into lifetime-safe motion vectors or the detached material module into FP16 scene
+rendering. The current installed diagnostic DLL still has the historical hash
+above; source corrections and standalone verification are separate artifacts.
+
+After the final pointer-safety changes, a fresh combined build again passes all
+15 DLL integration cases, log/cleanup verification and the forced native fallback.
+Uninstalled corrected DLL SHA256:
+`b81af5d3c0c9c0fd7cbed54ee7fe613453f8309288b17d7602916e3fa0bd1896`.

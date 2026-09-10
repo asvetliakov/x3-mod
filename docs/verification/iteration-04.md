@@ -1,17 +1,17 @@
 # Iteration 4: consolidated scene and loading diagnostics
 
 The combined build, independent reviews and all 15 integration cases pass.
-The verified diagnostic DLL is installed; the user-managed gameplay test is pending. This checkpoint
+The verified diagnostic DLL is installed; the user-managed gameplay test is complete. This checkpoint
 does not enable gameplay TAA, HDR or a loading optimization.
 
-## One coordinated game run
+## Completed coordinated game run
 
-The next build combines original-preserving scene-depth capture, exact-executable
+The installed build combines original-preserving scene-depth capture, exact-executable
 engine submission context, observed vertex/index buffer write revisions, and
 mesh loading timings. This batches the evidence needed for temporal motion and
 loading work into one user-managed load cycle.
 
-Launch the installed build through CrossOver Preview with:
+The command supplied for the user-managed CrossOver Preview run was:
 
 ```sh
 python3 tools/manage.py launch --direct --telemetry --ownership --depth-copy --scene-depth-capture --object-trace --capture-frames 4
@@ -27,6 +27,45 @@ loading interval cannot be marked in real time through this key.
 
 Record whether the game and macOS cursors both remain visible after returning
 from alt-tab. No cursor or presentation fix is included yet.
+
+## Results and follow-up
+
+The completed session `session-20260910-234001-212.log` contains 20 complete
+captured frames and 13,431 successful draws, including a user-reported final
+third-person burst. The user selected a different game start/sector; no repeat
+of the previous planet scene is needed just to diagnose this run.
+
+- [Camera/object analysis](../reverse-engineering/iteration04-camera-motion.md)
+  verifies submitted transforms and independent object motion. Node handles are
+  still observations, not lifetime guarantees; four changing unscoped vertex
+  buffers need separate temporal handling.
+- The installed selector attempted no depth copies. It unnecessarily required
+  planet haze, and later ColorFill invalidation obscured the first rejection.
+  Source fixes permit verified background without haze and positively identified
+  nonalias scratch texture fills, log their targets, and retain the first failure.
+  Old logs lack ColorFill targets, so acceptance in the game remains unproven.
+- [Point-light analysis](../reverse-engineering/iteration04-lights.md) finds
+  active one- and two-light inputs; these are the engine's selected per-draw
+  inputs, not its complete light population.
+- [Loading analysis](../reverse-engineering/iteration04-loading.md) measures
+  21.287 seconds in adjacency generation and recurring activity. Exact content
+  reuse still needs validation; no loading cache is enabled.
+- The [archive-wide shader sweep](../reverse-engineering/shader-sweep.md)
+  covers 751 unique programs in all 3,480 effect files, including uncaptured
+  material/effect paths. Its unknowns remain explicit.
+- Our CPU arithmetic now targets SSE2 with an explicit legacy stack contract;
+  see [ABI evidence](sse2-abi.md). Source changes made after this session have
+  not been installed. The installed hash below still identifies the tested 0.4.
+
+Further diagnostics should be batched before another user-managed gameplay run.
+
+The corrected source build passes all 15 actual-DLL integration cases, the
+forced adoption-failure native fallback, and 148 Python analysis tests. The
+scene adapter separately passes 36 scenarios / 4,908 checks / 16 GPU samples.
+Its freshly built `build-ownership/d3d9.dll` SHA256 is
+`b81af5d3c0c9c0fd7cbed54ee7fe613453f8309288b17d7602916e3fa0bd1896`.
+This is an uninstalled source checkpoint, distinct from the historical installed
+artifact below. The preserved 0.3 rollback DLL is also unchanged.
 
 ## Evidence and boundaries
 
