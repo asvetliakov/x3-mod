@@ -79,3 +79,75 @@ draw; its placeholder success does not override the later `draw_result`.
 CPU timing and loading aggregates use separate `telemetry_*` and `loading_*`
 events. See [telemetry documentation](../verification/telemetry.md). Existing
 schema-2 captures remain readable; telemetry is not required to decode them.
+
+## Additive object and buffer diagnostics in build 0.4
+
+`--object-trace` observes one fingerprint-verified engine submission scope. When
+that observer is active, each captured draw includes an `object_context` record
+with its explicit `device`, `frame`, `index`, `scoped`, `valid`, observer `session`
+and nesting `scope_depth`. Pointer/handle/model/LOD fields are observations from
+that scope, not globally stable entity identifiers. A missing record means no
+observation was emitted; it must not be converted into an all-zero valid object.
+`scoped=0` means the current draw has no observed submission scope. `scoped=1`
+alone does not establish that any optional memory read succeeded.
+
+The decimal `valid` mask separately identifies successful bounded reads:
+
+| Bit | Read group |
+| --- | --- |
+| 1 | Node position/basis/scale and node metadata |
+| 2 | Camera handle |
+| 4 | Engine/registry pointers |
+| 8 | World matrix storage |
+| 16 | World-basis matrix storage |
+| 32 | View matrix storage |
+| 64 | Projection matrix storage |
+
+Matrices are emitted as `object_matrix role=<world|world_basis|view|projection>`
+with four rows of four hexadecimal words. Node position uses `object_position`
+with three words; node basis uses three `object_basis` rows of three words.
+The four node scale words are **`object_matrix role=scale row=0`**, not a separate
+`object_scale` event. These are copied raw words. Row/role labels alone do not
+establish engine matrix multiplication, coordinate units, handedness, normalized
+basis, or the meaning of every scale component. Shader-constant conventions
+verified elsewhere must not automatically be applied to these engine-memory rows.
+
+The summary preserves `object_context` as a raw field dictionary and
+`object_matrix`, `object_position`, and `object_basis` as ordered lists of raw
+field dictionaries under each draw. Hexadecimal `bits` strings remain unchanged,
+including signed zero, NaN payloads and infinities; no Python float conversion or
+implicit transpose occurs. These bounded diagnostic rows are retained regardless
+of `--include-floats`, whose existing purpose remains optional shader float-register
+retention. Unknown roles/fields and unavailable status values remain visible.
+
+`object_context_matches_draw` is true only when all three recorded scope
+coordinates equal the enclosing draw's device/frame/index. It checks record
+attachment only: it does not interpret `scoped`/`valid` or establish object matching.
+A mismatched context and its raw rows remain visible for diagnosis; consumers
+must reject them as scope evidence. Rows without a context remain raw observations,
+not inferred valid matrices. Records outside a current draw, including after a
+separate capture-event boundary, are not attributed to an earlier draw. No object
+context or row is carried forward into a later draw.
+
+Ownership mode can also record observed vertex/index buffer writes, enabled when
+the object observer is actually active. After each queried buffer descriptor,
+`buffer_content` records `kind`, allocation `identity`, API `result`, metadata
+`status`, `requested`, `known`, `ambiguous`, `revision`, `pending` lock count and
+last lock `flags`. The summary stores these records as an ordered per-draw list,
+including repeated identities from multiple stream bindings. It does not collapse
+vertex/index namespaces or invent metadata for UP/user-memory geometry.
+
+`result=00000000` means a recognized ownership wrapper, not necessarily usable
+metadata. Native pointers, disabled tracking, failed metadata queries, pending
+locks and sticky ambiguity retain their explicit statuses. Revision zero is not
+stable-content evidence. Even requested, known, nonambiguous metadata with no
+pending locks describes only writes observed through this ownership boundary;
+it is not a payload hash or proof that unobserved native writes did not occur.
+Revision equality therefore does not establish engine-object correspondence or
+valid motion vectors. No summary field automatically labels a buffer stable.
+
+The additive fields do not alter existing geometry/constant/resource summary
+fields. Older captures simply lack these keys. Original metadata-only parser
+fixtures cover valid/missing/unscoped/unknown contexts, mismatched coordinates,
+raw matrix bits, disabled/pending/ambiguous/failed buffer tracking and draw/frame
+isolation in `verification/analysis/test_capture_object_summary.py`.

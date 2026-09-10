@@ -24,6 +24,7 @@ def summarize(trace, index, include_floats=False):
     shaders = {}
     frames = {}
     current = None
+    current_coordinates = None
     boundary = None
     resources = {}
     def frame_key(f):
@@ -39,21 +40,36 @@ def summarize(trace, index, include_floats=False):
         elif event == 'frame_begin':
             frames.setdefault(frame_key(f), {'draws': [], 'complete': False})
             current = None
+            current_coordinates = None
             boundary = None
         elif event == 'capture_event':
             boundary = dict(f, details=[])
             frames.setdefault(frame_key(f), {'draws': [], 'complete': False}).setdefault('events', []).append(boundary)
             current = None
+            current_coordinates = None
         elif boundary is not None and boundary['op'] != 'draw_begin' and event in (
                 'clear', 'clear_rect', 'clear_rects', 'set_rt', 'set_depth', 'stretch_rect', 'stretch_source_rect',
                 'stretch_dest_rect', 'surface'):
             boundary['details'].append(dict(event=event, **f))
         elif event == 'draw':
+            current_coordinates = {key: f.get(key) for key in ('device', 'frame', 'index')}
             current = dict(index=int(f['index']), kind=f['kind'], vs=f['vs'], ps=f['ps'],
                            primitives=int(f['primitives']), topology=int(f['topology']), targets=[], states={})
             if 'device' in f:
                 current['device'] = int(f['device'])
             frames.setdefault(frame_key(f), {'draws': [], 'complete': False})['draws'].append(current)
+        elif event == 'object_context' and current is not None:
+            # Keep producer status/pointers verbatim. Matching scope coordinates
+            # only establishes record attachment, never object correspondence.
+            current['object_context'] = f
+            current['object_context_matches_draw'] = all(
+                key in f and current_coordinates.get(key) is not None and
+                f[key] == current_coordinates[key] for key in ('device', 'frame', 'index'))
+        elif event in ('object_matrix', 'object_position', 'object_basis', 'buffer_content') and current is not None:
+            # Exact bit strings and explicit off/unknown/pending statuses survive
+            # even without --include-floats. Missing records are never invented.
+            # Scale is object_matrix role=scale, not a separate event in schema 2.
+            current.setdefault(event, []).append(f)
         elif event == 'surface' and current is not None and re.fullmatch(r'rt\d', f.get('role', '')):
             current['targets'].append(f)
         elif event == 'state' and current is not None:
@@ -82,6 +98,7 @@ def summarize(trace, index, include_floats=False):
                 frame['reported_draws'] = int(f['draws'])
                 frame['draw_count_matches'] = len(frame['draws']) == int(f['draws'])
             current = None
+            current_coordinates = None
             boundary = None
     for frame in frames.values():
         if 'events' in frame:
