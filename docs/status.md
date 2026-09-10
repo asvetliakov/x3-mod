@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-10. **Iteration 3 consolidated diagnostics are verified and installed. The overall renderer
+Updated 2026-09-10. **Iteration 4 consolidated diagnostics are verified and installed; the user gameplay test is pending. The overall renderer
 modernization objective is not complete.** No HDR/TAA/AgX/material/clustered-lighting
 visual enhancement is enabled yet. See the [full user objective](user-objective.md)
 and [roadmap](architecture/roadmap.md).
@@ -86,7 +86,7 @@ Raw shader bytes remain local beside X3. The large generated archive shader inde
 was `/tmp/x3-shader-index.json`; regenerate with `tools/analysis/index_shaders.py`
 if missing. Raw game logs are also beside X3, not redistributed source assets.
 
-The installed DLL is diagnostics 0.3 and matches `build/d3d9.dll`, owned checksum
+The preserved 0.3 rollback DLL is `build/d3d9.dll`, checksum
 `71f59c8e6422d5bbf2f55c116e2c0388026d956ba45a3a03eee53c4d85a232a6`. See
 `docs/verification/iteration-03.md` for the command, coverage and test evidence.
 The user supplied two four-frame turning bursts from 0.2; all captured draws
@@ -109,7 +109,7 @@ for a scoped synthetic investigation; no cursor fix is deployed.
 An independent canonical D3D9 ownership layer passes 370 baseline / 431 wrapped
 fixture checks with matching shared HRESULTs and output mutations. It releases
 renderer-owned resources before Reset and native device teardown. It is not yet
-enabled in the installed DLL; see [ownership source](../src/ownership/README.md)
+enabled by default; opt-in 0.4 gameplay validation is pending. See [ownership source](../src/ownership/README.md)
 and [verification](../verification/probe/ownership.md). Generated fragments use
 `*_inc.h` per the user's editor preference.
 
@@ -120,7 +120,7 @@ still clips both paths. See [HDR varying verification](verification/vertex-color
 This supports targeted SM3 material changes once the FP16 scene path exists;
 it is not a game HDR implementation.
 
-## Experimental 0.4 checkpoint (not installed)
+## Experimental 0.4 checkpoint (installed; gameplay test pending)
 
 The ownership layer is connected to the loader behind `X3M_OWNERSHIP=1` in the
 separate `build-ownership/` build. All 15 actual-DLL integration cases and a forced
@@ -159,7 +159,8 @@ Its isolated timings do not establish frame cost at the user's full resolution.
 Independent [code review findings and fixes](verification/review-04.md) are
 recorded with the checkpoint evidence.
 
-The consolidated 0.4 diagnostic build is verified and ready to install. It includes
+The consolidated 0.4 diagnostic build is verified and installed, with SHA256
+`81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516`. It includes
 an exact-executable engine submission scope, buffer write revisions, scene-depth
 preservation during requested captures, and mesh loading timings. The standalone
 scene adapter passes 20 scenarios / 2,228 checks / eight samples; buffer tracking

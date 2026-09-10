@@ -1,0 +1,11 @@
+{
+  "installed_utc": "2026-09-10T19:39:23.044082+00:00",
+  "installed_dll_sha256": "81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516",
+  "rollback_dll_sha256": "71f59c8e6422d5bbf2f55c116e2c0388026d956ba45a3a03eee53c4d85a232a6",
+  "executable_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "game_launched": false,
+  "bottle_settings_changed": false,
+  "source": "build-ownership/d3d9.dll",
+  "review": "docs/verification/review-04.md",
+  "integration_commit": "4f4dc24"
+}

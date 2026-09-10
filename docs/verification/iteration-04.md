@@ -1,7 +1,7 @@
 # Iteration 4: consolidated scene and loading diagnostics
 
 The combined build, independent reviews and all 15 integration cases pass.
-The verified diagnostic DLL is ready for reversible installation. This checkpoint
+The verified diagnostic DLL is installed; the user-managed gameplay test is pending. This checkpoint
 does not enable gameplay TAA, HDR or a loading optimization.
 
 ## One coordinated game run
@@ -11,7 +11,7 @@ engine submission context, observed vertex/index buffer write revisions, and
 mesh loading timings. This batches the evidence needed for temporal motion and
 loading work into one user-managed load cycle.
 
-Once the verified build is installed, launch through CrossOver Preview with:
+Launch the installed build through CrossOver Preview with:
 
 ```sh
 python3 tools/manage.py launch --direct --telemetry --ownership --depth-copy --scene-depth-capture --object-trace --capture-frames 4
@@ -58,3 +58,7 @@ Neither command changes executable/assets or bottle-wide overrides.
 
 Verified DLL SHA256: `81e3b121659c0fa1811641a5dbe019f668341477a787c6729fb5a848e056c516`.
 The [review report](review-04.md) records findings, fixes and bounded verification.
+
+[Installation record](../../verification/results/iteration-04-install.json) verifies
+the installed hash, preserved 0.3 rollback hash and unchanged X3 executable hash.
+The agent did not launch the game.
