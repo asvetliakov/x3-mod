@@ -1,0 +1,20 @@
+HALF_OBSERVATION lane=0 bits=0000 current=3e100000,3e980000,3f1e0000,3f870000
+HALF_OBSERVATION lane=0 bits=8000 current=3e100000,3e980000,3f1e0000,3f870000
+HALF_OBSERVATION lane=0 bits=0001 current=3e100003,3e980000,3f1e0000,3f870000
+HALF_OBSERVATION lane=0 bits=7c00 current=7f7fffff,7f7fffff,7f7fffff,7f7fffff
+HALF_OBSERVATION lane=0 bits=7e00 current=7f7fffff,7f7fffff,7f7fffff,7f7fffff
+HALF_SWEEP lane=0 encodings=65536 cumulative_mismatches=0
+HALF_OBSERVATION lane=1 bits=0000 current=3e880000,bd400000,3f220000,3f870000
+HALF_OBSERVATION lane=1 bits=8000 current=3e880000,bd400000,3f220000,3f870000
+HALF_OBSERVATION lane=1 bits=0001 current=3e880000,bd3ffff6,3f220000,3f870000
+HALF_OBSERVATION lane=1 bits=7c00 current=7f7fffff,7f7fffff,ff7fffff,7f7fffff
+HALF_OBSERVATION lane=1 bits=7e00 current=7f7fffff,7f7fffff,7f7fffff,7f7fffff
+HALF_SWEEP lane=1 encodings=65536 cumulative_mismatches=0
+HALF_OBSERVATION lane=2 bits=0000 current=3ec00000,3e600000,3e800000,3f820000
+HALF_OBSERVATION lane=2 bits=8000 current=3ec00000,3e600000,3e800000,3f820000
+HALF_OBSERVATION lane=2 bits=0001 current=3ec00000,3e600000,3e800001,3f820000
+HALF_OBSERVATION lane=2 bits=7c00 current=ff7fffff,7f7fffff,7f7fffff,7f7fffff
+HALF_OBSERVATION lane=2 bits=7e00 current=7f7fffff,7f7fffff,7f7fffff,7f7fffff
+HALF_SWEEP lane=2 encodings=65536 cumulative_mismatches=0
+FLOAT_SWEEP vertices=66 cumulative_mismatches=0
+RESULT PASS checks=393496 arithmetic_components=1573392 nan_pairs=0 raster_cases=134 covered=80 empty=54 mismatches=0 finite_gate_retained=1
