@@ -7,11 +7,24 @@ namespace x3m::renderer {
 inline constexpr std::size_t kMaxReviewedVertexShaderWords = 769;
 inline constexpr std::size_t kMaxReviewedPixelShaderWords = 1883;
 
+enum class PositionWriteOrder : std::uint8_t { Unknown, XYZW, WXYZ };
+enum class HomogeneousConstructor : std::uint8_t {
+    Unknown,
+    // MAD temp, input.xyzx, literal.xxxy, literal.yyyx; literal.xy=(1,+0).
+    // Algebraically (xyz,1) for ordinary finite inputs, not an arbitrary-payload
+    // equivalence claim. Literal Z/W and stored input W are not consumed.
+    MadXYZIdentityWFromX
+};
 struct RigidPositionProfile {
     std::uint64_t hash;
     std::uint32_t word_count;
     std::uint16_t matrix_register;
     bool named_world_view_projection; // CTAB hint only, not an eligibility gate.
+    // Preserve source-model/operation distinctions for replay qualification.
+    // Trailing unknown defaults cannot qualify a hand-written legacy profile.
+    std::uint32_t shader_version = 0;
+    PositionWriteOrder position_write_order = PositionWriteOrder::Unknown;
+    HomogeneousConstructor homogeneous_constructor = HomogeneousConstructor::Unknown;
 };
 // Whole-program FNV-1a/length whitelist from independently reviewed shader bytes.
 // A match establishes the reviewed shader's POSITION.xyz / forced W=1 row-dot

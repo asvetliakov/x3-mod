@@ -49,7 +49,8 @@ removing the algebraic-substitution concern, not permission to drop payload gate
 Start qualification with the 32 archive SM3 row-dot programs, which include the
 captured main materials. The other 202 row-dot programs use legacy models; six
 legacy programs also write output lanes in a different order. Production profile
-metadata must retain those distinctions before claiming exact replay. Compare
+metadata now retains those distinctions, verified independently against raw
+tokens; this alone does not establish exact replay. Compare
 generated tokens and actual depth/raster coverage against original synthetic
 references, including signed zero, subnormals, finite extremes, NaNs/infinities
 and every half-float encoding in each XYZ lane. Stored W remains independent and

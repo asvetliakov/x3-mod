@@ -24,6 +24,27 @@ reports. The extra 218 rigid entries are backed by the same independently
 reviewed structural proof, without assuming that unseen live draws meet the
 input, state or history requirements.
 
+The row-dot metadata also retains the original shader version, position output
+issue order and homogeneous constructor. These distinguish replay contracts that
+the finite-input algebra alone collapses:
+
+| Source model | XYZW order | WXYZ order |
+| --- | ---: | ---: |
+| VS 1.1 | 124 | 0 |
+| VS 2.0 | 48 | 6 |
+| VS 2.1 | 24 | 0 |
+| VS 3.0 | 32 | 0 |
+
+All 234 use `MAD temp, input.xyzx, literal.xxxy, literal.yyyx`, with local
+literal X exactly +1 and Y exactly +0. Original DP4 operands are temporary/row.
+Literal Z/W and stored POSITION W are unused by this constructor. The generator
+derives issue order from the pinned proof's original instruction offsets after
+reproducing the proof from raw bytes. Unsupported model/order/constructor values
+reject; a hand-written four-field legacy profile defaults its added fields to
+zero/Unknown. None of these fields grants exceptional-payload, raster or temporal
+equivalence. The initial token-exact replay investigation targets the 32 SM3
+contracts; legacy shader-model qualification remains separate.
+
 ## Generation and provenance
 
 [`generate_shader_profiles.py`](../../tools/analysis/generate_shader_profiles.py)
@@ -44,9 +65,10 @@ python3 -m unittest verification.analysis.test_shader_profile_generation \
 python3 verification/probe/run_rigid_position_profiles.py
 ```
 
-Generation is deterministic. Its eight original-metadata tests cover stage
+Generation is deterministic. Its ten original-metadata tests cover stage
 bounds, layout/category rejection, duplicate/invalid fingerprints, missing
-coverage evidence and pinned digest mismatch. The coverage proof has 29 original
+coverage evidence and pinned digest mismatch, as well as original issue-order
+derivation and rejection of missing/unknown replay metadata. The coverage proof has 29 original
 token tests. The existing 16 position-proof tests remain unchanged.
 
 ## Pixel coverage proof and limits
@@ -89,6 +111,7 @@ not a cryptographic authenticity boundary.
 
 The fresh x86 Win32 fixture validates all 751 local programs through the actual
 production functions: all 256 position categories, 234 row registers/name hints,
+shader models, constructor semantics and original write orders,
 and 494 pixel coverage positives agree. Every DWORD's low bit is independently
 flipped; all **547,927 mutations** reject. Baseline tests also reject null, zero,
 SIZE_MAX, over-cap, truncated and appended lengths. Source files, executable,
@@ -99,8 +122,12 @@ and [log](../../verification/results/rigid-position-lookup-wine.log) retain only
 derived facts. This is CPU-only verification: no D3D device, game launch or
 production installation occurs.
 
-Independent review reproduced deterministic generation and all 53 synthetic
+Independent review reproduced deterministic generation and the 55 synthetic
 checks, verified every raw-program identity and retained Win32 provenance, and
 accepted the production lookup/coverage gates. The runner now invalidates an
 older PASS before reading any source; the complete Win32 sweep was rerun after
 that hardening with the same 751 classifications and 547,927 rejected mutations.
+The replay-metadata extension was independently checked against version words,
+MAD operands/literals and original DP4 tokens at pinned proof offsets; fixture
+expectations do not import the production generator. Its fresh sweep retains
+the same coverage totals and explicitly verifies unknown aggregate defaults.

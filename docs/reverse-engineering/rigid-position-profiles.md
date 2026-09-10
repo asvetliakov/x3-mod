@@ -194,7 +194,10 @@ profile does not permit ignoring those states.
 
 The 234-entry archive exact-profile registry attests only: full byte hash + length,
 `FloatXYZForceWOneSubmittedRowDots`, POSITION0 input register, first matrix row,
-and a CTAB WVP-name hint. The relative-light-read jitter guard is documented
+and a CTAB WVP-name hint. Source metadata now also retains shader version,
+position write order and the exact homogeneous MAD constructor category for
+separate replay qualification; these fields do not broaden ordinary finite-input
+or raster guarantees. The relative-light-read jitter guard is documented
 separately and must be enforced by any constant-row jitter owner. The owning draw gate
 must additionally establish matching object/instance, draw range and buffers,
 unchanged known buffer revisions across history, supported input declaration,

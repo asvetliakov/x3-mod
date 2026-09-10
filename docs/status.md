@@ -26,7 +26,10 @@ single-word mutation controls. The other five captured
 programs require explicit separate handling; they are not excluded from final
 TAA/composition scope. Particle RGB blending and missing prior particle identity
 are documented in [particle inputs](reverse-engineering/particle-motion-inputs.md).
-The full Python analysis suite passes **213 tests**.
+The full Python analysis suite passes **215 tests**.
+The post-install source registry also retains original shader model, constructor
+and position-write order, independently verified for all 234 row-dot profiles.
+This metadata extension has not replaced the installed iteration-5 DLL.
 
 The [live draw-input reader](verification/draw-input.md) passes 167 checks,
 48 caller-state comparisons and seven failed-getter controls. It reads exact

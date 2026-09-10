@@ -19,6 +19,8 @@ SWEEP_SHA256 = '794be7b6ceccfc2db45f29369982a4f61a568114f08cef303a75fd3ce9bbc737
 CATEGORIES = {'homogeneous_row_dots': 'HomogeneousRowDots', 'direct_clip_xyzw': 'DirectClipXYZW',
               'direct_clip_xyz_w_one': 'DirectClipXYZWOne',
               'view_xy_billboard_projection': 'ViewXYBillboardProjection'}
+REVIEWED_VERSIONS = (0xfffe0101, 0xfffe0200, 0xfffe0201, 0xfffe0300)
+CONSTRUCTOR = 'MadXYZIdentityWFromX'
 
 
 def digest(path):
@@ -30,6 +32,27 @@ def read_pinned(path, expected):
     if hashlib.sha256(data).hexdigest() != expected:
         raise ValueError('Inventory differs from independently reviewed digest: ' + str(path))
     return json.loads(data)
+
+
+def replay_metadata(proof):
+    """Retain distinctions lost by the ordinary finite-input algebraic contract.
+
+    The caller first reproduces this complete proof from the pinned raw program.
+    Offsets select original issue order, not a guessed order of matrix rows.
+    Constructor semantics are already fixed by prove()'s exact operand checks.
+    These facts enable separate replay qualification; they do not grant it.
+    """
+    if (proof['qualified_position_math'] is not True or
+            proof['contract'] != 'FloatXYZForceWOneSubmittedRowDots' or
+            proof['input_w_used'] is not False):
+        raise ValueError('Unproved homogeneous position contract')
+    offsets = proof['position_dot_dwords_xyzw']
+    if (len(offsets) != 4 or any(type(n) is not int or n <= 0 for n in offsets) or
+            len(set(offsets)) != 4):
+        raise ValueError('Invalid position instruction offsets')
+    order = ''.join('XYZW'[lane] for lane in sorted(range(4), key=lambda lane: offsets[lane]))
+    return dict(shader_version=int(proof['version'], 0), position_write_order=order,
+                homogeneous_constructor=CONSTRUCTOR)
 
 
 def emit_tables(vertices, pixels):
@@ -58,7 +81,17 @@ def emit_tables(vertices, pixels):
             if item['matrix_register'] not in (0, 6, 24):
                 raise ValueError('Unreviewed matrix layout')
             named = 'true' if item['named_world_view_projection'] else 'false'
-            rigid.append(f"{head}, {item['matrix_register']}, {named}}},")
+            version = item['shader_version']
+            order = item['position_write_order']
+            constructor = item['homogeneous_constructor']
+            if type(version) is not int or version not in REVIEWED_VERSIONS:
+                raise ValueError('Unreviewed vertex shader model')
+            if order not in ('XYZW', 'WXYZ') or (order == 'WXYZ' and version != 0xfffe0200):
+                raise ValueError('Unreviewed position issue order/model combination')
+            if constructor != CONSTRUCTOR:
+                raise ValueError('Unreviewed homogeneous constructor')
+            rigid.append(f"{head}, {item['matrix_register']}, {named}, 0x{version:08x}u, "
+                         f"PositionWriteOrder::{order}, HomogeneousConstructor::{constructor}}},")
         else:
             exceptions.append(f'{head}, VertexPositionPath::{CATEGORIES[category]}}},')
     for item in sorted(pixels, key=lambda p: int(p['fnv1a64'], 16)):
@@ -91,6 +124,7 @@ def generate(archive_path, sweep_path, raw_directory):
         if item['category'] == 'homogeneous_row_dots':
             result.update(matrix_register=proof['matrix_first_register'],
                 named_world_view_projection='g_mWorldViewProjection' in proof['matrix_names_only'])
+            result.update(replay_metadata(proof))
         vertices.append(result)
     for p in sweep['programs']:
         if p['stage'] != 'ps':
@@ -101,7 +135,7 @@ def generate(archive_path, sweep_path, raw_directory):
         pixels.append({'id': p['id'], 'fnv1a64': p['fnv1a64'], 'sha256': p['sha256'],
                        'word_count': len(code) // 4, 'coverage': inspect_coverage(code, p['features'])})
     tables = emit_tables(vertices, pixels)
-    result = {'schema': 1, 'scope': 'Generated exact shader metadata; runtime input/history/coverage states remain separate',
+    result = {'schema': 2, 'scope': 'Generated exact shader metadata; runtime input/history/coverage and replay qualification remain separate',
               'reviewed_archive_sha256': ARCHIVE_SHA256, 'reviewed_sweep_sha256': SWEEP_SHA256,
               'vertex_program_count': len(vertices), 'rigid_profile_count': sum(p['position_path'] == 'homogeneous_row_dots' for p in vertices),
               'pixel_program_count': len(pixels), 'pixel_coverage_profile_count': sum(p['coverage']['qualified'] for p in pixels),
