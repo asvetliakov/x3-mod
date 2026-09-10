@@ -1,0 +1,504 @@
+{
+  "schema": 2,
+  "scope": "Derived input-availability review, no vertex bytes or motion correspondence captured",
+  "source": {
+    "name": "session-20260910-234001-212.log",
+    "bytes": 214204690,
+    "sha256": "f8a9f43e18c16d132e5337ba9dd3f69aabc54343c71b4ef57532d8125d9e5196"
+  },
+  "extractor_sha256": "dac8f6d1c4c03dd91f572fbc59fef5718f90ef940715998fd073d04e6ca61ddb",
+  "particle_vs": "36f98d151fd6b0c6",
+  "particle_ps": "222bee0defcb1852",
+  "archive_alternate_vs": "2eea471bc86935f2",
+  "archive_alternate_captured_draws": 0,
+  "draw_count": 16,
+  "complete_frame_count": 20,
+  "captured_frame_begin_count": 20,
+  "ignored_telemetry_frame_end_count": 14,
+  "all_draws_succeeded": true,
+  "all_particle_frames_complete": true,
+  "declaration": [
+    {
+      "stream": "0",
+      "offset": "0",
+      "type": "2",
+      "method": "0",
+      "usage": "0",
+      "index": "0"
+    },
+    {
+      "stream": "0",
+      "offset": "12",
+      "type": "1",
+      "method": "0",
+      "usage": "5",
+      "index": "0"
+    },
+    {
+      "stream": "0",
+      "offset": "20",
+      "type": "1",
+      "method": "0",
+      "usage": "5",
+      "index": "1"
+    },
+    {
+      "stream": "0",
+      "offset": "28",
+      "type": "4",
+      "method": "0",
+      "usage": "10",
+      "index": "0"
+    },
+    {
+      "stream": "255",
+      "offset": "0",
+      "type": "17",
+      "method": "0",
+      "usage": "0",
+      "index": "0"
+    }
+  ],
+  "stream": {
+    "slot": "0",
+    "result": "00000000",
+    "identity": "1659",
+    "offset": "0",
+    "stride": "32",
+    "frequency": "1",
+    "frequency_result": "00000000"
+  },
+  "vertex_buffer": {
+    "identity": "1659",
+    "bytes": "3840000",
+    "usage": "520",
+    "pool": "0",
+    "fvf": "0"
+  },
+  "bound_but_unused_index_buffer": {
+    "identity": "1657",
+    "bytes": "2160",
+    "usage": "8",
+    "pool": "1",
+    "format": "101"
+  },
+  "render_states": {
+    "7": 1,
+    "14": 0,
+    "23": 4,
+    "15": 0,
+    "24": 1,
+    "25": 7,
+    "27": 1,
+    "19": 3,
+    "20": 4,
+    "171": 1,
+    "22": 1,
+    "168": 7,
+    "194": 0,
+    "206": 0,
+    "52": 0,
+    "56": 8,
+    "57": 0,
+    "58": 4294967295,
+    "59": 4294967295,
+    "53": 1,
+    "54": 1,
+    "55": 1,
+    "185": 0,
+    "189": 8,
+    "186": 1,
+    "187": 1,
+    "188": 1
+  },
+  "all_particle_draw_states_equal": true,
+  "all_unscoped": true,
+  "particle_rows": [
+    {
+      "device": 1,
+      "frame": 2775,
+      "draw": 448,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "2775",
+          "index": "448",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 114,
+      "vertex_count": 342,
+      "consumed_bytes": 10944,
+      "vertex_revision": 1354,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "6b9dd9db77ee4708194eefa11f5a57bd0fde2c06b46c97dc0a090303191e5d28",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 2776,
+      "draw": 434,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "2776",
+          "index": "434",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 114,
+      "vertex_count": 342,
+      "consumed_bytes": 10944,
+      "vertex_revision": 1355,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "fcf7378e4852988fd080efbabb51e7a4c8b5224843d7140037ce7d5fdbeb7e25",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 2777,
+      "draw": 472,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "2777",
+          "index": "472",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 116,
+      "vertex_count": 348,
+      "consumed_bytes": 11136,
+      "vertex_revision": 1356,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "703158d9dbc080f1af95fd76ca33ed489309d1d682656c2f7722817e6e40ee7d",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 2778,
+      "draw": 470,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "2778",
+          "index": "470",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 116,
+      "vertex_count": 348,
+      "consumed_bytes": 11136,
+      "vertex_revision": 1357,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "572e554a05fff1accaa2d7889648b7f9db043cee1f857d17b37d9df00bc0ad69",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 2878,
+      "draw": 917,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "2878",
+          "index": "917",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 114,
+      "vertex_count": 342,
+      "consumed_bytes": 10944,
+      "vertex_revision": 1457,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "ec5694a89e2ba9b62e47bbdbf3edb391f24f93f4634c5b101ede02d1b0c0cfad",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 2879,
+      "draw": 896,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "2879",
+          "index": "896",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 122,
+      "vertex_count": 366,
+      "consumed_bytes": 11712,
+      "vertex_revision": 1458,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "7b747ea6c2eab2018edeb2d68d1f6bcb74e39affa244dd9a704ff7b7274ccf67",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 2880,
+      "draw": 840,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "2880",
+          "index": "840",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 116,
+      "vertex_count": 348,
+      "consumed_bytes": 11136,
+      "vertex_revision": 1459,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "263dc2788353da7d3463c76d75f171efd88ee18bc77110707bc11665bcea49b2",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 2881,
+      "draw": 828,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "2881",
+          "index": "828",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 116,
+      "vertex_count": 348,
+      "consumed_bytes": 11136,
+      "vertex_revision": 1460,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "c44a651e126d56f02fd6a3f5476573c1a8ec7349ecdb650bf6280be915298d98",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 3241,
+      "draw": 663,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "3241",
+          "index": "663",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 112,
+      "vertex_count": 336,
+      "consumed_bytes": 10752,
+      "vertex_revision": 1820,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "55dbb7fcf054beea71f46cdb4ef91118be7b30bf154d4e36eb4c7fede4ececf7",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 3242,
+      "draw": 663,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "3242",
+          "index": "663",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 114,
+      "vertex_count": 342,
+      "consumed_bytes": 10944,
+      "vertex_revision": 1821,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "5253c704014de595b7ab0c01e82f8eb060bf69b75a871e4cc2f6dc04d1e767ec",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 3243,
+      "draw": 663,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "3243",
+          "index": "663",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 116,
+      "vertex_count": 348,
+      "consumed_bytes": 11136,
+      "vertex_revision": 1822,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "b4a74521114de3aa207f73706b04014d6b8543bb6f452096786cfee4b7c0cc78",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 3244,
+      "draw": 665,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "3244",
+          "index": "665",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 114,
+      "vertex_count": 342,
+      "consumed_bytes": 10944,
+      "vertex_revision": 1823,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "07eaae97354552399e5b7868e27d5cda9adecb6e1b4bbc9222c2a158384f8539",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 3462,
+      "draw": 671,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "3462",
+          "index": "671",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 46,
+      "vertex_count": 138,
+      "consumed_bytes": 4416,
+      "vertex_revision": 2041,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "103c8e845f9d96f84e8b4a07c6a0e6683c1409ee377b03dede16b8e6340a2e10",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 3463,
+      "draw": 671,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "3463",
+          "index": "671",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 46,
+      "vertex_count": 138,
+      "consumed_bytes": 4416,
+      "vertex_revision": 2042,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "103c8e845f9d96f84e8b4a07c6a0e6683c1409ee377b03dede16b8e6340a2e10",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 3464,
+      "draw": 671,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "3464",
+          "index": "671",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 44,
+      "vertex_count": 132,
+      "consumed_bytes": 4224,
+      "vertex_revision": 2043,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "103c8e845f9d96f84e8b4a07c6a0e6683c1409ee377b03dede16b8e6340a2e10",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    },
+    {
+      "device": 1,
+      "frame": 3465,
+      "draw": 671,
+      "draw_result": [
+        {
+          "device": "1",
+          "frame": "3465",
+          "index": "671",
+          "result": "00000000"
+        }
+      ],
+      "topology": 4,
+      "start_vertex": 0,
+      "primitive_count": 42,
+      "vertex_count": 126,
+      "consumed_bytes": 4032,
+      "vertex_revision": 2044,
+      "last_lock_flags": "00002000",
+      "view_rows_sha256": "103c8e845f9d96f84e8b4a07c6a0e6683c1409ee377b03dede16b8e6340a2e10",
+      "projection_rows_sha256": "5296f066968ec937a3588ed8d5defa7b4cef2b6c44941ac4aa4f9f9e3e062bd9"
+    }
+  ],
+  "related_vs_draw_counts": {
+    "cbbf26102694c961": 20,
+    "6059306306203243": 40,
+    "1279d081455f5815": 20,
+    "36f98d151fd6b0c6": 16,
+    "5e484a06672e28fb": 16,
+    "f36fc43f30b19d71": 32
+  },
+  "matrix_digest_encoding": "SHA256 of four captured row bit strings joined with ASCII comma; not a binary float digest",
+  "view_variants": 13,
+  "projection_variants": 1,
+  "adjacent_capture_pairs": 12,
+  "adjacent_revision_increments_one": true,
+  "all_vertex_revisions_known": true,
+  "all_buffer_statuses_successful_unambiguous_no_pending": true,
+  "all_particle_layout_stream_and_buffer_descriptions_equal": true,
+  "all_particle_constant_queries_successful": true,
+  "shader_provenance": [
+    {
+      "id": "ps_222bee0defcb1852",
+      "sha256": "76ccadf8c1e677abd4b4c5b6826a5ef0f6a20b720dae25a4d5865d86dcfbfc7a",
+      "disassembly_sha256": "12e129c5569bf2bec263c13299979f60a22226b72fdaa6146125e96c94552a96"
+    },
+    {
+      "id": "vs_2eea471bc86935f2",
+      "sha256": "82054529f1aad13708080e13b3eb92b921e3d1a577838dee7b00d5df3720c86e",
+      "disassembly_sha256": "7bfc24e5e856165b5c059f4126319f438cf53b71ffb0dba243258465861cc5cd"
+    },
+    {
+      "id": "vs_36f98d151fd6b0c6",
+      "sha256": "c7b0605507c4cda6c1cb26afe98e6a5affa313a2f5c0aeaf6f88768fb270efaf",
+      "disassembly_sha256": "4ef45358e9e893fe1079ea4abf3d62d3f88ac31e8db07d0973232efff543a2cc"
+    }
+  ]
+}

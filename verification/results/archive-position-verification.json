@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "scope": "Archive VS structural position coverage; no production registry expansion",
+  "category_counts": {
+    "direct_clip_xyz_w_one": 2,
+    "direct_clip_xyzw": 18,
+    "homogeneous_row_dots": 234,
+    "view_xy_billboard_projection": 2
+  },
+  "captured_category_counts": {
+    "direct_clip_xyz_w_one": 1,
+    "direct_clip_xyzw": 3,
+    "homogeneous_row_dots": 16,
+    "view_xy_billboard_projection": 1
+  },
+  "unknown_program_count": 0,
+  "synthetic_tests": {
+    "command": "python3 -m unittest verification.analysis.test_archive_positions verification.analysis.test_rigid_positions verification.analysis.test_particle_inputs",
+    "passed": 21,
+    "failures": 0
+  },
+  "artifacts_sha256": {
+    "tools/analysis/inspect_archive_positions.py": "394bab92c81ff8f7dd0faaf67b10c22f508729a0c24bd067f31998b8959e51c0",
+    "verification/analysis/test_archive_positions.py": "4974b32a1f7b4393fcc51830f1f48463f8dfca434675422c2e22c578efc5080b",
+    "verification/results/archive-position-paths.json": "1617691f1c4e21737cf1bb604b4e3155510d11947acc78b2e40877b10bde431c",
+    "docs/reverse-engineering/archive-position-paths.md": "5d5ddea05da0cb850be2c62cd01a2b9e88029562053d67c1d524675b3e7f52c9",
+    "docs/reverse-engineering/particle-motion-inputs.md": "f09c022acc4d0b5a5c158a8394d96826897074b083191803f83ee90ad6aef183",
+    "verification/results/particle-motion-inputs.json": "8aaf72cf5239c49963edad8952e5774b20ba4349b8cf7d0e3070db7291fee96f",
+    "tools/analysis/inspect_particle_inputs.py": "dac8f6d1c4c03dd91f572fbc59fef5718f90ef940715998fd073d04e6ca61ddb",
+    "verification/analysis/test_particle_inputs.py": "d4563a6c1f844985b54926fbe9e055779394af5d6f57cb64faea8fcaa3cf86bf"
+  },
+  "prior_checkpoint": "b83572c",
+  "prior_proof_and_registry_byte_identical": {
+    "tools/analysis/inspect_rigid_positions.py": true,
+    "verification/analysis/test_rigid_positions.py": true,
+    "verification/results/rigid-position-profiles.json": true,
+    "src/renderer/rigid_position_profiles_inc.h": true
+  },
+  "source_hashes_match_inventory": true,
+  "particle_reproduction": {
+    "exact_report_bytes_match": true,
+    "draw_count": 16,
+    "complete_capture_frames": 20,
+    "ignored_telemetry_frame_ends": 14,
+    "all_particle_draws_succeeded": true
+  },
+  "independent_review": {
+    "archive_classifier": "platform_architecture accepted; full256report reproduced and16structural tests pass",
+    "particle_fix": "parent reviewed extractor and5regressions; actualtrace report reproduces byte-exactly"
+  }
+}

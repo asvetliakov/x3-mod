@@ -11,6 +11,13 @@ clip.z = dot(p, submitted_row2)
 clip.w = dot(p, submitted_row3)
 ```
 
+The other five are **three direct-clip bloom shaders, one direct-position
+GUI/effects shader, and one particle billboard shader**. They require separate
+composition or temporal handling; they are not omitted from the renderer scope.
+The [full archive position review](archive-position-paths.md) now accounts for
+all 256 installed vertex shaders, and the
+[temporal coverage plan](../architecture/temporal-coverage.md) describes each route.
+
 There is no input-W dependency, billboard expansion, position deformation,
 position saturation, partial-precision modifier, divide or additional position
 offset in these paths. This establishes **position arithmetic**, not temporal
