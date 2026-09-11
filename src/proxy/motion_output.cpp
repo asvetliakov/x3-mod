@@ -13,6 +13,20 @@
 
 namespace x3m {
 namespace {
+// The shadow tracks one clip-row window and gate 4 applies one light-loop
+// bound for every routed pair, so every profile row must name exactly these;
+// a regenerated table with another matrix register or loop bound fails here
+// rather than routing draws whose rows the shadow never captured.
+constexpr UINT matrix_register = 24, matrix_register_end = 28;
+constexpr int light_loop_max_count = 8;
+constexpr bool rows_match_shadow() noexcept {
+    for (const auto& row : renderer::motion_output_profiles)
+        if (row.matrix_register != matrix_register || !row.light_loop_bound_required ||
+            row.light_loop_max_count != light_loop_max_count)
+            return false;
+    return true;
+}
+static_assert(rows_match_shadow(), "every profile row must use the shadowed c24-27 window and the i0.x <= 8 bound");
 // IDirect3DDevice9 vtable slots, verified against the MinGW d3d9.h method order
 // by verification/probe/abi_check.cpp (compile-time offsetof assertions).
 enum Slot : unsigned {
@@ -405,8 +419,12 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         entry.hash = hash;
         if (shadow_.vs == shader) { shadow_.vs_hash = hash; shadow_.vs_variant = nullptr; }
         if (!enabled_ || !code || bytes % 4) return;
+        // One variant per original program: rows sharing this VS agree on its
+        // side of the splice (static_assert in motion_output_profiles.h), so
+        // the same variant serves every reviewed pair it belongs to. Pair
+        // eligibility is decided per draw in before_draw (gate 3).
         bool candidate = false;
-        for (const auto& pair : renderer::material_motion_reviewed_pairs) candidate |= pair.vertex == hash;
+        for (const auto& pair : renderer::material_motion_reviewed_pairs) candidate |= pair.vertex_fingerprint == hash;
         if (!candidate) return;
         std::vector<std::uint32_t> words;
         const auto result = renderer::material_motion_vertex_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words);
@@ -429,7 +447,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         if (shadow_.ps == shader) { shadow_.ps_hash = hash; shadow_.ps_variant = nullptr; }
         if (!enabled_ || !code || bytes % 4) return;
         bool candidate = false;
-        for (const auto& pair : renderer::material_motion_reviewed_pairs) candidate |= pair.pixel == hash;
+        for (const auto& pair : renderer::material_motion_reviewed_pairs) candidate |= pair.pixel_fingerprint == hash;
         if (!candidate) return;
         std::vector<std::uint32_t> words;
         const auto result = renderer::material_motion_pixel_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words);
@@ -466,12 +484,13 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
 void MotionOutput::set_vertex_constants_f(UINT start, const float* data, UINT count) noexcept {
     if (!enabled_ || shadow_.recording || !data || !count || start > 4096 || count > 4096) return;
     const UINT end = start + count;
-    // Rows c24-27: the exact submitted position rows.
-    if (start < 28 && end > 24) {
-        const UINT lo = start > 24 ? start : 24, hi = end < 28 ? end : 28;
-        std::memcpy(shadow_.rows + (lo - 24) * 4, data + (lo - start) * 4, (hi - lo) * 16);
+    // Rows c24-27 (every row's matrix register): the exact submitted position rows.
+    if (start < matrix_register_end && end > matrix_register) {
+        const UINT lo = start > matrix_register ? start : matrix_register;
+        const UINT hi = end < matrix_register_end ? end : matrix_register_end;
+        std::memcpy(shadow_.rows + (lo - matrix_register) * 4, data + (lo - start) * 4, (hi - lo) * 16);
         // A partial row update keeps prior knowledge of the other rows.
-        shadow_.rows_known = shadow_.rows_known || (lo == 24 && hi == 28);
+        shadow_.rows_known = shadow_.rows_known || (lo == matrix_register && hi == matrix_register_end);
     }
     // Reserved c252-255: remember the application values so a routed draw can put them back.
     if (start < 256 && end > 252) {
@@ -558,7 +577,7 @@ void MotionOutput::resync_shadow() noexcept {
     release(vs);
     if (SUCCEEDED(native<GetPsFn>(GetPixelShader)(device_, &ps))) set_pixel_shader(ps);
     release(ps);
-    shadow_.rows_known = SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, 24, shadow_.rows, 4));
+    shadow_.rows_known = SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, matrix_register, shadow_.rows, 4));
     shadow_.vs_reserved_written = SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, 252, shadow_.vs_reserved, 4));
     shadow_.integer0_known = SUCCEEDED(native<GetConstantsIFn>(GetVertexShaderConstantI)(device_, 0, shadow_.integer0, 1));
     shadow_.ps_reserved_written = SUCCEEDED(native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, 216, shadow_.ps_reserved, 2));
@@ -776,7 +795,9 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     // Gate 2: scene phase with the latched main color/depth bound.
     if (!scene_bound()) { route.gate = MotionGate::Scene; ++counters_.gates[2]; return route; }
     route.scene = true;
-    // Gate 3: exact reviewed pair with both variants registered.
+    // Gate 3: exact reviewed pair (one profile-table row) with both variants
+    // registered. Variants are per program; the pair check is what keys
+    // eligibility, so a VS alias shared with an unreviewed PS never routes.
     if (!shadow_.vs_variant || !shadow_.ps_variant ||
         !renderer::material_motion_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash)) {
         route.gate = MotionGate::Pair; ++counters_.gates[3]; return route;
@@ -791,7 +812,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
         SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_COLORWRITEENABLE, &color)) && color == 15 &&
         SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency)) &&
         !(frequency & D3DSTREAMSOURCE_INDEXEDDATA) && (frequency & 0x3fffffffu) <= 1 &&
-        shadow_.rows_known && shadow_.integer0_known && shadow_.integer0[0] >= 0 && shadow_.integer0[0] <= 8 &&
+        shadow_.rows_known && shadow_.integer0_known && shadow_.integer0[0] >= 0 && shadow_.integer0[0] <= light_loop_max_count &&
         shadow_.stream0 && shadow_.stream0_stride && shadow_.declaration && call.primitives &&
         (!call.indexed || shadow_.indices);
     if (!draw_state_ok) { route.gate = MotionGate::DrawState; ++counters_.gates[4]; return route; }

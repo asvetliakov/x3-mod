@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Fresh-build same-draw prototype; exact local shader inputs, no game launch."""
+"""Fresh-build same-draw prototype; exact local shader inputs, no game launch.
+
+The Argon pair runs the full configuration/timing inventory; every row of the
+generated profile table then runs the color/motion/depth comparison (lights 0)
+on a third device, reading its originals from the local sweep directory.
+"""
 from pathlib import Path
 import hashlib
 import json
@@ -15,6 +20,7 @@ RESULTS = ROOT / 'verification/results'
 EXE = ROOT / 'verification/probe/build/material_motion_fixture.exe'
 SOURCES = (
     'src/renderer/material_motion.h', 'src/renderer/material_motion.cpp',
+    'src/renderer/motion_output_profiles.h', 'src/renderer/motion_output_profiles_inc.h',
     'src/renderer/rigid_replay_program.h', 'src/renderer/rigid_replay_program.cpp',
     'src/renderer/rigid_position.h', 'src/renderer/rigid_position.cpp',
     'src/renderer/rigid_position_profiles_inc.h', 'src/renderer/position_path_profiles_inc.h',
@@ -22,9 +28,42 @@ SOURCES = (
     'src/renderer/rigid_motion_pixel_program_inc.h', 'src/temporal/rigid_motion_ps.hlsl',
     'verification/probe/material_motion_fixture.cpp', 'verification/probe/build_material_motion.sh',
     'verification/probe/run_material_motion.py')
+PROGRAMS = Path('/tmp/x3-shader-sweep/programs')
 RAW = {
-    Path('/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin'): 'bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c',
-    Path('/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin'): '9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0'}
+    PROGRAMS / 'vs_53a0a641107ed76c.bin': 'bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c',
+    PROGRAMS / 'ps_8759c7838bbc86c2.bin': '9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0'}
+HEADER = ROOT / 'src/renderer/motion_output_profiles_inc.h'
+PROFILES = RESULTS / 'motion-output-profiles.json'
+ROW_PATTERN = re.compile(
+    r'\{0x([0-9a-f]{16})ull, (\d+), 0xfffe0300u,\s*0x([0-9a-f]{16})ull, (\d+), 0xffff0300u,\s*'
+    r'MotionOutputClass::(\w+),')
+CLASS_LETTER = {'ReferenceRegisters': 'A', 'RelocatedRegisters': 'B'}
+ROW_CHECKS_PER_CONFIG = 14  # same_draw, replay reference, 9 covered samples, 2 bilateral, changed depth
+ROW_SAMPLES_PER_CONFIG = 36
+
+def table_rows():
+    """Rows of the generated header: (vs, vs_dwords, ps, ps_dwords, class letter)."""
+    text = HEADER.read_text()
+    rows = [(m[1], int(m[2]), m[3], int(m[4]), CLASS_LETTER[m[5]]) for m in ROW_PATTERN.finditer(text)]
+    assert rows and text.count('{0x') == len(rows), 'generated header rows not parsed'
+    return rows
+
+def row_inputs(rows):
+    """Local originals per row with SHA-256 cross-checked against the derived profile JSON; None when absent."""
+    programs = json.loads(PROFILES.read_text())['programs']
+    result = []
+    for vs, vs_dwords, ps, ps_dwords, _ in rows:
+        entry = {}
+        for stage, fingerprint, dwords in (('vs', vs, vs_dwords), ('ps', ps, ps_dwords)):
+            path = PROGRAMS / f'{stage}_{fingerprint}.bin'
+            if path.exists():
+                digest = sha(path)
+                assert path.stat().st_size == dwords * 4 and programs[f'{stage}_{fingerprint}']['sha256'] == digest, path
+                entry[stage] = {'path': str(path), 'sha256': digest, 'bytes': dwords * 4}
+            else:
+                entry[stage] = None
+        result.append(entry)
+    return result
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -32,15 +71,81 @@ def sha(path):
 def source_hashes():
     return {name: sha(ROOT / name) for name in SOURCES}
 
+def validate_rows(lines, mixed, first_config, rows, inputs):
+    """Per-row blocks after ROWS_BEGIN: exact row inventory, config/color/sample/reference/check counts."""
+    assert lines[0] == 'DEVICE pure=0 mixed=%d' % mixed, lines[0]
+    at, config_id, results = 1, first_config, []
+    totals = dict(checks=0, numerical=0, color_components=0, depth_cases=0, configurations=0)
+    for index, ((vs, _, ps, _, letter), files) in enumerate(zip(rows, inputs)):
+        head = f'ROW index={index} vs={vs} ps={ps} class={letter} status='
+        if files['vs'] is None or files['ps'] is None:
+            assert lines[at] == head + 'SKIP reason=missing_local_program', lines[at]
+            results.append(dict(index=index, vs=vs, ps=ps, transformation_class=letter, status='SKIP',
+                                reason='missing_local_program'))
+            at += 1
+            continue
+        assert lines[at] == head + 'BEGIN' and lines[at + 1] == 'CHECK row local shader pair transformed PASS', lines[at:at + 2]
+        at += 2
+        end = next(k for k in range(at, len(lines)) if lines[k].startswith('ROW '))
+        block, at = lines[at:end], end + 1
+        configs = re.findall(r'^CONFIG id=(\d+) width=32 height=32 format=(\d+) packed=(\d) perspective=(\d) lights=0 valid=(\d) translation=([-\d.]+) jitter=([-\d.]+),([-\d.]+)$', '\n'.join(block), re.M)
+        formats = [116, 21] if mixed else [116]
+        assert [int(c[0]) for c in configs] == list(range(config_id, config_id + 3 * len(formats)))
+        assert [int(c[1]) for c in configs] == [f for f in formats for _ in range(3)]
+        assert [(c[2], c[3], c[4]) for c in configs] == [('0', '0', '1'), ('1', '1', '1'), ('1', '1', '0')] * len(formats)
+        config_id += len(configs)
+        color = re.findall(r'^COLOR (\w+) width=32 height=32 format=(\d+) components=(\d+) covered=(\d+) mismatches=(\d+) maximum=([^\s]+)$', '\n'.join(block), re.M)
+        # 32x32 targets: at least half the pixels must be covered original geometry for the identity to mean anything.
+        assert len(color) == 3 * len(configs) and all(int(c[3]) >= 512 and int(c[4]) == 0 and float(c[5]) == 0 for c in color)
+        assert sum(c[0] == 'bilateral_depth_equal' for c in color) == 2 * len(configs) and sum(c[0] == 'same_draw' for c in color) == len(configs)
+        samples = re.findall(r'^SAMPLE config=(\d+) x=(\d+) y=(\d+) channel=(\d) actual=([^ ]+) expected=([^ ]+) error=([^ ]+) pixel_error=([^ ]+) PASS$', '\n'.join(block), re.M)
+        assert len(samples) == ROW_SAMPLES_PER_CONFIG * len(configs)
+        uv = depth = 0.0
+        for _, x, y, channel, actual, want, error, pixel_error in samples:
+            k = int(channel); values = list(map(float, (actual, want, error, pixel_error)))
+            assert all(map(math.isfinite, values)) and abs(abs(values[0] - values[1]) - values[2]) <= 1e-8
+            assert values[3] <= .005 if k < 2 else values[2] <= 2e-6
+            if k < 2: uv = max(uv, values[3])
+            if k == 2: depth = max(depth, values[2])
+        reference = re.findall(r'^REFERENCE config=(\d+) components=4096 mismatches=(\d+) max=([^\s]+)$', '\n'.join(block), re.M)
+        assert len(reference) == len(configs) and all(int(r[1]) == 0 and float(r[2]) <= 2e-6 for r in reference)
+        checks = [l for l in block if l.startswith('CHECK ')]
+        assert len(checks) == ROW_CHECKS_PER_CONFIG * len(configs) and all(l.endswith(' PASS') for l in checks)
+        assert lines[end] == head + f'PASS configurations={len(configs)}', lines[end]
+        assert len(block) == len(configs) + len(color) + len(samples) + len(reference) + len(checks), 'unexpected lines in row block'
+        totals['checks'] += 1 + len(checks); totals['numerical'] += len(samples)
+        totals['color_components'] += sum(int(c[2]) for c in color)
+        totals['depth_cases'] += 2 * len(configs); totals['configurations'] += len(configs)
+        results.append(dict(index=index, vs=vs, ps=ps, transformation_class=letter, status='PASS',
+                            configurations=len(configs), checks=1 + len(checks), samples=len(samples),
+                            color_components=sum(int(c[2]) for c in color), min_covered=min(int(c[3]) for c in color),
+                            max_analytic_uv_error_pixels=uv, max_analytic_previous_depth_error=depth,
+                            max_replay_reference_error=max(float(r[2]) for r in reference)))
+    assert at == len(lines), 'trailing row output'
+    return results, totals
+
 def validate_report(text):
-    lines = text.splitlines()
-    devices = re.findall(r'^DEVICE pure=(\d) mixed=(\d)$', text, re.M)
+    all_lines = text.splitlines()
+    begin = [k for k, l in enumerate(all_lines) if l.startswith('ROWS_BEGIN ')]
+    assert len(begin) == 1 and all_lines[-1].startswith('RESULT ')
+    lines, row_lines, terminal_line = all_lines[:begin[0]], all_lines[begin[0] + 1:-1], all_lines[-1]
+    head = '\n'.join(lines) + '\n'
+    devices = re.findall(r'^DEVICE pure=(\d) mixed=(\d)$', head, re.M)
     assert len(devices) == 2 and [d[0] for d in devices] == ['0', '1'] and devices[0][1] == devices[1][1]
     mixed = devices[0][1] == '1'
     expected = (1182, 2952, 101318656, 164, 82) if mixed else (606, 1512, 100794368, 84, 42)
-    terminal = 'RESULT PASS checks=%u numerical=%u color_components=%u depth_cases=%u configurations=%u devices=2' % expected
-    assert lines[-1] == terminal and [s for s in lines if s.startswith('RESULT ')] == [terminal]
+    assert all_lines[begin[0]] == 'ROWS_BEGIN checks=%u numerical=%u color_components=%u depth_cases=%u configurations=%u' % expected
+    assert [s for s in all_lines if s.startswith('RESULT ')] == [terminal_line]
     assert 'FAIL' not in text
+    table = table_rows()  # Not `rows`: the timing loop below reuses that name.
+    row_results, row_totals = validate_rows(row_lines, mixed, expected[4] + 1, table, row_inputs(table))
+    transformed = sum(r['status'] == 'PASS' for r in row_results)
+    assert transformed >= 1 and row_results[0]['status'] == 'PASS', 'the Argon row must run'
+    terminal = 'RESULT PASS checks=%u numerical=%u color_components=%u depth_cases=%u configurations=%u devices=3 rows=%u row_transformed=%u row_skipped=%u' % (
+        expected[0] + row_totals['checks'], expected[1] + row_totals['numerical'], expected[2] + row_totals['color_components'],
+        expected[3] + row_totals['depth_cases'], expected[4] + row_totals['configurations'], len(table), transformed, len(table) - transformed)
+    assert terminal_line == terminal, (terminal_line, terminal)
+    text = head
     checks = [s for s in lines if s.startswith('CHECK ')]
     assert len(checks) == expected[0] and all(s.endswith(' PASS') for s in checks)
     assert lines.count('RESET PASS') == 2
@@ -103,7 +208,11 @@ def validate_report(text):
             timing_summary.append(dict(width=w,height=h,mode=mode,samples=6,mean_ms=statistics.mean(values),median_ms=statistics.median(values),minimum_ms=min(values),maximum_ms=max(values)))
     return dict(zip(('checks','numerical','color_components','depth_cases','configurations'),expected),mixed_bit_depth=mixed,
                 max_analytic_uv_error_pixels=maximum_uv_pixels,max_analytic_previous_depth_error=maximum_depth,
-                max_replay_reference_error=max(float(r[3]) for r in reference),timings=timing_summary)
+                max_replay_reference_error=max(float(r[3]) for r in reference),timings=timing_summary,
+                rows=len(table),row_transformed=transformed,row_skipped=len(table)-transformed,
+                row_configurations=row_totals['configurations'],row_checks=row_totals['checks'],
+                row_samples=row_totals['numerical'],row_color_components=row_totals['color_components'],
+                row_depth_cases=row_totals['depth_cases'],row_results=row_results)
 
 def no_game():
     p = subprocess.run(['pgrep','-ifl','[X]3AP[.]exe'],capture_output=True,text=True)
@@ -113,7 +222,7 @@ def main():
     result_path=RESULTS/'material-motion-summary.json'
     report_path=RESULTS/'material-motion.txt'
     result={'passed':False,'status':'RUNNING','game_launched':False,
-            'scope':'One exact local shader pair, original synthetic geometry/textures; detached zero-origin opaque prototype, no production draw routing',
+            'scope':'Argon pair full inventory plus every profile-table row (lights 0) with the same original synthetic geometry/textures/constants; detached zero-origin opaque prototype, no production draw routing',
             'timing_scope':'QPC through EVENT completion, including clear/draw/switches; common setup fenced before QPC; one Begin/EndScene pair per workload; modes0color,1same-draw,2color+authoredGPUreplay; no timed readback or isolatedGPUduration',
             'cpu_baseline':'SSE2; stack realignment; four-byte incoming Win32 stack'}
     result_path.write_text(json.dumps(result,indent=2)+'\n')
@@ -130,18 +239,21 @@ def main():
             assert data[offset:offset+6]==b'PE\0\0\x4c\x01', 'Expected actual x86 native module'
         result['sources_before_build']=source_hashes();result['native_before_build']=native_hashes()
         result['local_inputs']={str(p):sha(p) for p in RAW};assert all(sha(p)==h for p,h in RAW.items())
+        rows=table_rows();result['programs_directory']=str(PROGRAMS);result['profiles_json_sha256']=sha(PROFILES)
+        result['row_inputs']=row_inputs(rows)
+        def rows_unchanged(): return row_inputs(rows)==result['row_inputs']
         subprocess.run(['sh',str(ROOT/'verification/probe/build_material_motion.sh')],check=True,cwd=ROOT)
-        result['local_after_build']={str(p):sha(p) for p in RAW};assert result['local_after_build']==result['local_inputs']
+        result['local_after_build']={str(p):sha(p) for p in RAW};assert result['local_after_build']==result['local_inputs'] and rows_unchanged()
         result['sources_after_build']=source_hashes();assert result['sources_after_build']==result['sources_before_build']
         result['native_after_build']=native_hashes();assert result['native_after_build']==result['native_before_build']
         result['executable_sha256']=sha(EXE)
-        command=[str(wine),'--bottle','Steam','--no-update','--dll','d3d9=b',str(EXE)]+['Z:'+str(p) for p in RAW]
+        command=[str(wine),'--bottle','Steam','--no-update','--dll','d3d9=b',str(EXE)]+['Z:'+str(p) for p in RAW]+['Z:'+str(PROGRAMS)]
         result['command']=command;no_game()
         with report_path.open('w') as out,(RESULTS/'material-motion-wine.log').open('w') as err:
             process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=180)
         result['exit_code']=process.returncode;assert process.returncode==0
         result.update(validate_report(report_path.read_text()))
-        result['local_after_run']={str(p):sha(p) for p in RAW};assert result['local_after_run']==result['local_inputs']
+        result['local_after_run']={str(p):sha(p) for p in RAW};assert result['local_after_run']==result['local_inputs'] and rows_unchanged()
         result['sources_after_run']=source_hashes();result['native_after_run']=native_hashes()
         assert result['sources_after_run']==result['sources_before_build'] and result['native_after_run']==result['native_before_build']
         assert sha(EXE)==result['executable_sha256'] and all(sha(p)==h for p,h in RAW.items())

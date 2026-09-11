@@ -1,30 +1,41 @@
 # Same-draw material color and motion prototype
 
-The detached transformer adds motion output to one exact opaque SM3 material
-pair. It preserves the original vertex-position and pixel-color instructions,
+The table-driven transformer adds motion output to the exact opaque SM3
+material pairs listed in the generated profile table (12 rows, classes A and
+B). It preserves the original vertex-position and pixel-color instructions,
 adds previous homogeneous clip coordinates, and writes the existing RGBA32F
-previous-UV / previous-depth / validity ABI to COLOR1. It makes no D3D calls and
-is not connected to a game draw hook.
+previous-UV / previous-depth / validity ABI to COLOR1. It makes no D3D calls;
+the live route binds its output (see [motion-output.md](motion-output.md)).
 
-The actual transformed pair passes **1,182 checks, 2,952 analytic motion samples,
-101,318,656 color-component comparisons, and 164 bilateral D24 EQUAL cases**
-across 82 configurations. Every compared original color component is identical.
-The independently authored two-pass replay produces identical motion readback
-for every compared pixel, with maximum difference zero. Both normal and pure
-hardware vertex-processing devices pass, with an actual Reset on each.
+The Argon reference pair passes the full inventory: **1,182 checks, 2,952
+analytic motion samples, 101,318,656 color-component comparisons, and 164
+bilateral D24 EQUAL cases** across 82 configurations, on normal and pure
+hardware vertex-processing devices with an actual Reset on each. Every other
+table row then passes the same color/motion/depth comparison on a third
+device: **12 of 12 rows, 72 configurations, 1,020 checks, 2,592 analytic
+samples, 884,736 color components, 144 bilateral cases**, all with identical
+color, zero replay-reference difference and the same analytic maxima as the
+Argon row (0.00086 px UV, 8.7e-7 depth). See [Results per row](#results-per-row).
 
-This supports pursuing the same-draw approach for this material. It does not
+This supports the same-draw approach for these materials. It does not
 establish whole-scene motion, temporal continuity, complete transparency handling,
 TAA quality, live-game performance or native-Windows behavior.
 
-## Pair, inputs and output contract
+## Pairs, inputs and output contract
 
-Only the following complete local shader programs are supplied:
+The Argon reference pair is supplied explicitly:
 
 | Stage | FNV-1a64 | DWORDs | SHA-256 |
 | --- | --- | ---: | --- |
 | VS | `53a0a641107ed76c` | 526 | `bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c` |
 | PS | `8759c7838bbc86c2` | 1260 | `9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0` |
+
+The other rows' originals are read by both fixtures from
+`/tmp/x3-shader-sweep/programs/{vs,ps}_<fnv64>.bin` at run time; the runners
+cross-check each file's SHA-256 and length against
+`verification/results/motion-output-profiles.json` and record them in the
+summaries. A row whose files are absent is reported as skipped, never
+fabricated; the Argon row must always run.
 
 Raw game bytecode, preshader metadata and disassembly stay local and untracked.
 The fixture supplies original triangles, 2×2 diffuse/specular/lightmap textures,
@@ -42,8 +53,10 @@ inputs. This is not an exhaustive vertex-format or exceptional-input test.
 
 Reserved constants are VS c252–255 for previous WVP rows, PS c216 for inverse
 size and previous jitter UV, and c217.x for known-history mode. The extra VS
-output o6 / TEXCOORD4 feeds PS v5. The motion body is relocated from the project's
-embedded original motion PS, retaining its invalid mode and coordinate ABI.
+output (o6 / TEXCOORD4 feeding PS v5 for class A rows; the row's free
+registers for class B) carries previous clip position. The motion body is
+relocated from the project's embedded original motion PS, retaining its
+invalid mode and coordinate ABI.
 The prototype requires a **zero-origin viewport**, previous MinZ/MaxZ of 0/1,
 matching history dimensions and the existing jitter convention. Nonzero viewport origins are unsupported; the fixture does not
 silently interpret them as tested.
@@ -110,6 +123,53 @@ device depth**, with observed maxima `0.00100856683` pixel and
 The two-pass reference is a detached GPU reference, without geometry leases,
 object-history lookup or application-admission overhead.
 
+## Results per row
+
+Each row runs three configurations per render-target format on the third
+(non-pure) device, RGBA32F and A8R8G8B8 color with RGBA32F motion: FLOAT3
+stationary, FLOAT16_4 perspective + translation + jitter, and the same with
+unknown history (mode 0). Light loop count `i0.x = 0` throughout; the same
+synthetic geometry, textures and constants as the Argon inventory. Per
+configuration: one full-image color comparison, the two-pass replay
+reference, nine analytic samples, two bilateral D24 EQUAL controls and the
+changed-depth negative control. Numbers from
+`verification/results/material-motion-summary.json` (`row_results`).
+
+| Row | VS | PS | Class | Configs | Checks | Samples | Color components | Min covered | Max UV px | Max depth | Replay max |
+| ---: | --- | --- | :-: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | `53a0a641107ed76c` | `8759c7838bbc86c2` | A | 6 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-7 | 0 |
+| 1 | `4944d81dfe531b37` | `ca6bfa4a6cca7e2a` | B | 6 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-7 | 0 |
+| 2 | `b0602757fce6e870` | `517540ae6d5e5410` | A | 6 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-7 | 0 |
+| 3 | `4944d81dfe531b37` | `5e0a10fe752b6140` | B | 6 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-7 | 0 |
+| 4 | `53a0a641107ed76c` | `63f96eba9eea7880` | A | 6 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-7 | 0 |
+| 5 | `167eb2d5629ab9d3` | `d44db87778a43b61` | B | 6 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-7 | 0 |
+| 6 | `53a0a641107ed76c` | `3b94320087e81945` | A | 6 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-7 | 0 |
+| 7 | `53a0a641107ed76c` | `462342e3e5781384` | A | 6 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-7 | 0 |
+| 8 | `4944d81dfe531b37` | `64bac8bb307eb896` | B | 6 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-7 | 0 |
+| 9 | `494fe349b8bc12ec` | `7c83ed50c9894e44` | A | 6 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-7 | 0 |
+| 10 | `4944d81dfe531b37` | `0c1f3f0f440e4a0c` | B | 6 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-7 | 0 |
+| 11 | `c30104cb0efb6675` | `a66fb1981ba755b2` | B | 6 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-7 | 0 |
+
+The identical maxima are expected: every table VS transforms the same
+synthetic position through `c24–27`, so the interpolated previous clip
+coordinates are the same numbers in every row. What differs per row is the
+material color program (compared full-image and bit-identical) and the
+register relocation (checked structurally). The light-sensitivity and
+material-constant controls run only for the Argon pair, whose constant layout
+the fixture models; the other rows receive the same constant values, which is
+sufficient for the identity comparison but is not a claim that those values
+are meaningful for their materials.
+
+The host structural fixture (`run_material_motion_structure.py`) covers the
+same 12 rows: 121 check groups, 622,336 single-bit mutations (every input
+DWORD, every bit, for every row), 21 row perturbations and 24 program
+perturbations per row (perturbed originals under a row copy carrying their
+fingerprint, so the structural revalidation is exercised from the words) and
+72 alias layouts, in optimized and ASan/UBSan builds, and proves the Argon
+output is byte-identical to the earlier hand-written transformer. The GPU
+runner requires at least 512 of the 1,024 pixels of each per-row comparison
+to be covered original geometry (912 observed).
+
 ## Completed-work cost comparison
 
 Timestamp, timestamp-frequency and timestamp-disjoint creation all return
@@ -158,8 +218,9 @@ python3 -m unittest verification/analysis/test_material_motion_report.py
 ```
 
 The runner rebuilds the detached fixture, refuses a running X3AP process, bounds
-runtime, requires exact case/sample/device/Reset/terminal inventories and retains format
-query records. It passes fourteen offline parser tests, including rejection controls. Source, exact local shader inputs,
+runtime, requires exact case/sample/device/Reset/terminal inventories for the
+Argon section and an exact per-row block inventory for the table section, and
+retains format query records. It passes fourteen offline parser tests, including rejection controls. Source, exact local shader inputs,
 compiler, native modules, executable, stdout and stderr hashes are retained in
 `verification/results/material-motion-summary.json`.
 
@@ -172,8 +233,9 @@ execution. Generated executables and raw shader bytes remain untracked. The
 fixture unbinds/releases its resources before each successful Reset and closes
 its window on completion. This proves fixture cleanup, not live hook restoration.
 
-Independent review accepted the transformer, host optimized/ASan/UBSan evidence,
-GPU fixture, final artifact provenance and stated limits. Review corrected the
-native-module mapping and required one shared scene for the timed two-pass
-comparison. The final run includes both fixes. There are no remaining findings
-within this detached one-pair scope.
+Independent review accepted the one-pair transformer, host optimized/ASan/UBSan
+evidence, GPU fixture, final artifact provenance and stated limits. Review
+corrected the native-module mapping and required one shared scene for the
+timed two-pass comparison. The table-driven extension (2026-09-12) keeps that
+inventory unchanged and adds the per-row section; its independent review is
+[review-13.md](review-13.md).

@@ -5,10 +5,45 @@
 namespace x3m::renderer {
 namespace {
 using Words = std::vector<std::uint32_t>;
-constexpr std::uint32_t end = 0x0000ffff;
-constexpr std::size_t vertex_header_end = 335, pixel_header_end = 1074;
-constexpr std::size_t pixel_definition_end = 1047;
-constexpr std::size_t position_begin = 450, position_end = 466;
+
+// Direct3D 9 shader token encoding (documented in the DirectX SDK "Shader
+// Codes" reference). Instruction tokens carry the opcode in bits 0-15 and the
+// length in bits 24-27 (comments: bits 16-30); parameter tokens have bit 31
+// set, the register index in bits 0-10 and the register class split over bits
+// 28-30 and 11-12.
+constexpr std::uint32_t end_token = 0x0000ffffu;
+constexpr unsigned op_dp4 = 0x09, op_dcl = 0x1f, op_def = 0x51, op_defb = 0x2f, op_defi = 0x30;
+constexpr unsigned op_texkill = 0x41, op_comment = 0xfffe, op_end = 0xffff;
+constexpr unsigned temporary_class = 0, input_class = 1, constant_class = 2;
+constexpr unsigned output_class = 6, color_output_class = 8, depth_output_class = 9;
+constexpr std::uint32_t parameter_bit = 0x80000000u, relative_bit = 0x00002000u;
+constexpr std::uint32_t predicated_bit = 0x10000000u;
+constexpr unsigned position_usage = 0, texcoord_usage = 5;
+
+unsigned register_type(std::uint32_t token) noexcept {
+    return ((token >> 28) & 7) | ((token >> 8) & 0x18);
+}
+unsigned register_index(std::uint32_t token) noexcept { return token & 0x7ff; }
+unsigned declaration_usage(std::uint32_t token) noexcept { return token & 0x1f; }
+unsigned declaration_usage_index(std::uint32_t token) noexcept { return (token >> 16) & 0xf; }
+std::size_t instruction_length(std::uint32_t token) noexcept {
+    return (token & 0xffff) == op_comment ? ((token >> 16) & 0x7fff) : ((token >> 24) & 15);
+}
+bool definition_opcode(unsigned opcode) noexcept {
+    return opcode == op_def || opcode == op_defi || opcode == op_defb;
+}
+// Control-flow and predication opcodes. Classes A and B are straight-line
+// pixel programs, so any of these in a pixel program refuses the transform.
+bool control_flow_opcode(unsigned opcode) noexcept {
+    switch (opcode) {
+    case 0x19: case 0x1a: case 0x1b: case 0x1c: case 0x1d: case 0x1e: // call, callnz, loop, ret, endloop, label
+    case 0x26: case 0x27: case 0x28: case 0x29: case 0x2a: case 0x2b: // rep, endrep, if, ifc, else, endif
+    case 0x2c: case 0x2d: case 0x5e: case 0x60:                       // break, breakc, setp, breakp
+        return true;
+    default:
+        return false;
+    }
+}
 
 std::uint64_t fingerprint(const std::uint32_t* words, std::size_t count) noexcept {
     std::uint64_t value = 14695981039346656037ull;
@@ -20,42 +55,166 @@ std::uint64_t fingerprint(const std::uint32_t* words, std::size_t count) noexcep
     return value;
 }
 
-// Walk instruction boundaries, including opaque comments/preshader metadata.
-// Offsets are meaningful only after the full-program qualification below.
-bool framed(const std::uint32_t* words, std::size_t count,
-            std::size_t header_end) noexcept {
-    bool header_boundary = false;
+// Visit every instruction boundary in order, comments and preshader metadata
+// included as opaque instructions. fn(at, token, length) returns false to
+// refuse. Succeeds only if every instruction fits and END is the last word.
+template <class Fn>
+bool walk(const std::uint32_t* words, std::size_t count, Fn&& fn) noexcept {
     for (std::size_t at = 1; at < count;) {
-        if (at == header_end) header_boundary = true;
         const auto token = words[at];
         const auto opcode = token & 0xffff;
-        if (opcode == 0xffff)
-            return token == end && at == count - 1 && header_boundary;
-        const std::size_t operands = opcode == 0xfffe
-            ? ((token >> 16) & 0x7fff) : ((token >> 24) & 15);
-        if (operands > count - at - 1) return false;
-        if (at < header_end && opcode != 0xfffe && opcode != 0x51 && opcode != 0x1f)
-            return false;
-        at += operands + 1;
+        if (opcode == op_end) return token == end_token && at == count - 1;
+        const std::size_t length = instruction_length(token);
+        if (length > count - at - 1) return false;
+        if (!fn(at, token, length)) return false;
+        at += length + 1;
     }
     return false;
 }
-
-unsigned register_type(std::uint32_t token) noexcept {
-    return ((token >> 28) & 7) | ((token >> 8) & 0x18);
+// Visit every register parameter of an executable instruction (destination,
+// predicate and sources alike), skipping the address token that follows a
+// relatively addressed operand. Not for def/dcl/comment, whose trailing words
+// are literals. fn(token) returns false to refuse.
+template <class Fn>
+bool for_each_parameter(const std::uint32_t* words, std::size_t at, std::size_t length,
+                        bool& relative, Fn&& fn) noexcept {
+    for (std::size_t i = 1; i <= length; ++i) {
+        const auto token = words[at + i];
+        if (!(token & parameter_bit) || !fn(token)) return false;
+        if (token & relative_bit) {
+            relative = true;
+            if (++i > length || !(words[at + i] & parameter_bit)) return false;
+        }
+    }
+    return true;
 }
-bool relocate_register(std::uint32_t& token) noexcept {
-    if (!(token & 0x80000000u)) return false;
-    // Our fixed authored program has no relative addressing. Never reinterpret
-    // an extra relative operand or a literal as an ordinary register.
-    if (token & 0x00002000u) return false;
-    const auto type = register_type(token), index = token & 0x7ff;
+
+bool vertex_reserved(const MotionOutputProfile& row, std::uint32_t token) noexcept {
+    const auto type = register_type(token), index = register_index(token);
+    if (type == output_class) return index == row.vertex_output_register;
+    if (type == constant_class)
+        return index >= row.vertex_constant_base && index < row.vertex_constant_base + 4u;
+    return false;
+}
+bool pixel_reserved(const MotionOutputProfile& row, std::uint32_t token) noexcept {
+    const auto type = register_type(token), index = register_index(token);
+    switch (type) {
+    case temporary_class:
+        return index >= row.pixel_temporary_base && index < row.pixel_temporary_base + 3u;
+    case input_class: return index == row.pixel_input_register;
+    case constant_class:
+        return index >= row.pixel_constant_base && index < row.pixel_constant_base + 5u;
+    case color_output_class: return index == row.pixel_output_register;
+    default: return false;
+    }
+}
+
+// Revalidate the row's vertex-side facts against the actual words: contiguous
+// def/dcl header ending exactly at the declaration insert and declaring o0 as
+// POSITION0 (so the dots below are the clip position), the four position dots
+// at the recorded offsets with the recorded lane masks, temporary and matrix
+// rows, the arithmetic insert one past the last dot, and no original
+// declaration, write or read of the chosen output register, TEXCOORD index or
+// previous-row constants. Relative addressing is permitted only when the row
+// says the draw-time light-loop bound applies.
+bool vertex_structure(const MotionOutputProfile& row, const std::uint32_t* words,
+                      std::size_t count) noexcept {
+    if (words[0] != row.vertex_version) return false;
+    const std::size_t header_end = row.vertex_declaration_insert_dword;
+    bool header_boundary = false, arithmetic_boundary = false, relative = false;
+    bool position_declared = false;
+    unsigned dots = 0;
+    const bool framed = walk(words, count, [&](std::size_t at, std::uint32_t token, std::size_t length) {
+        if (at == header_end) header_boundary = true;
+        if (at == std::size_t(row.vertex_arithmetic_insert_dword)) arithmetic_boundary = true;
+        const auto opcode = token & 0xffff;
+        if (opcode == op_comment) return true;
+        const bool declaration = opcode == op_dcl, definition = definition_opcode(opcode);
+        if (at < header_end) {
+            if (declaration) {
+                if (length != 2) return false;
+                const auto usage = words[at + 1], target = words[at + 2];
+                if (!(usage & parameter_bit) || !(target & parameter_bit) || vertex_reserved(row, target))
+                    return false;
+                if (register_type(target) != output_class) return true;
+                if (register_index(target) == 0 && declaration_usage(usage) == position_usage &&
+                    declaration_usage_index(usage) == 0)
+                    position_declared = true;
+                return declaration_usage(usage) != texcoord_usage ||
+                    declaration_usage_index(usage) != row.texcoord_index;
+            }
+            if (definition)
+                return length >= 1 && (words[at + 1] & parameter_bit) && !vertex_reserved(row, words[at + 1]);
+            return false;
+        }
+        if (declaration || definition) return false;
+        for (unsigned lane = 0; lane < 4; ++lane)
+            if (at == std::size_t(row.position_dp4_dwords[lane])) {
+                if (token != ((3u << 24) | op_dp4) ||
+                    words[at + 1] != (0xe0000000u | (std::uint32_t(row.position_lane_masks[lane]) << 16)) ||
+                    words[at + 2] != (0x80e40000u | row.position_temporary) ||
+                    words[at + 3] != (0xa0e40000u | (row.matrix_register + lane)))
+                    return false;
+                ++dots;
+            }
+        return for_each_parameter(words, at, length, relative,
+                                  [&](std::uint32_t parameter) { return !vertex_reserved(row, parameter); });
+    });
+    return framed && header_boundary && position_declared && arithmetic_boundary && dots == 4 &&
+        (!relative || row.light_loop_bound_required);
+}
+
+// Revalidate the row's pixel-side facts: literal definitions up to the
+// definition insert, declarations up to the declaration insert, straight-line
+// executable code (no control flow, predication, texkill, oDepth write or
+// relative addressing; classes A and B are defined as straight-line programs
+// whose depth is the rasterized depth) up to the END at the append point, and
+// no original reference to the chosen input, TEXCOORD index, temporaries,
+// constants or color output.
+bool pixel_structure(const MotionOutputProfile& row, const std::uint32_t* words,
+                     std::size_t count) noexcept {
+    if (words[0] != row.pixel_version || std::size_t(row.pixel_append_dword) != count - 1) return false;
+    const std::size_t definition_end = row.pixel_definition_insert_dword;
+    const std::size_t header_end = row.pixel_declaration_insert_dword;
+    bool definition_boundary = false, header_boundary = false, relative = false;
+    const bool framed = walk(words, count, [&](std::size_t at, std::uint32_t token, std::size_t length) {
+        if (at == definition_end) definition_boundary = true;
+        if (at == header_end) header_boundary = true;
+        const auto opcode = token & 0xffff;
+        if (opcode == op_comment) return true;
+        if (at < definition_end)
+            return definition_opcode(opcode) && length >= 1 && (words[at + 1] & parameter_bit) &&
+                !pixel_reserved(row, words[at + 1]);
+        if (at < header_end) {
+            if (opcode != op_dcl || length != 2) return false;
+            const auto usage = words[at + 1], target = words[at + 2];
+            if (!(usage & parameter_bit) || !(target & parameter_bit) || pixel_reserved(row, target))
+                return false;
+            return register_type(target) != input_class ||
+                declaration_usage(usage) != texcoord_usage ||
+                declaration_usage_index(usage) != row.texcoord_index;
+        }
+        if (opcode == op_dcl || definition_opcode(opcode) || control_flow_opcode(opcode) ||
+            opcode == op_texkill || (token & predicated_bit))
+            return false;
+        return for_each_parameter(words, at, length, relative, [&](std::uint32_t parameter) {
+            return !pixel_reserved(row, parameter) && register_type(parameter) != depth_output_class;
+        });
+    });
+    return framed && definition_boundary && header_boundary && !relative;
+}
+
+// Move one operand of our authored motion program to the row's registers.
+// Never reinterprets a relative operand or a literal as an ordinary register.
+bool relocate_register(const MotionOutputProfile& row, std::uint32_t& token) noexcept {
+    if (!(token & parameter_bit) || (token & relative_bit)) return false;
+    const auto type = register_type(token), index = register_index(token);
     unsigned relocated;
     switch (type) {
-    case 0: if (index > 2) return false; relocated = index + 5; break; // r5..7
-    case 1: if (index != 0) return false; relocated = 5; break; // v5
-    case 2: if (index > 4) return false; relocated = index + 216; break; // c216..220
-    case 8: if (index != 0) return false; relocated = 1; break; // oC1
+    case temporary_class: if (index > 2) return false; relocated = row.pixel_temporary_base + index; break;
+    case input_class: if (index != 0) return false; relocated = row.pixel_input_register; break;
+    case constant_class: if (index > 4) return false; relocated = row.pixel_constant_base + index; break;
+    case color_output_class: if (index != 0) return false; relocated = row.pixel_output_register; break;
     default: return false;
     }
     token = (token & ~std::uint32_t(0x7ff)) | relocated;
@@ -64,34 +223,34 @@ bool relocate_register(std::uint32_t& token) noexcept {
 
 // Relocate only our authored motion program, not arbitrary game instructions.
 // Preserve its finite/W/depth checks, previous-jitter and invalid-history ABI.
-bool motion_fragment(Words& constants, Words& inputs, Words& body) {
+bool motion_fragment(const MotionOutputProfile& row, Words& constants, Words& inputs, Words& body) {
     const auto& code = rigid_motion_pixel_program();
     if (code[0] != 0xffff0300u) return false;
     bool body_started = false;
     unsigned definitions = 0, declarations = 0, outputs = 0;
     for (std::size_t at = 1; at < std::size(code);) {
         const auto token = code[at], opcode = token & 0xffff;
-        if (opcode == 0xffff)
-            return token == end && at == std::size(code) - 1 &&
+        if (opcode == op_end)
+            return token == end_token && at == std::size(code) - 1 &&
                 definitions == 3 && declarations == 1 && outputs == 1;
-        const std::size_t operands = opcode == 0xfffe
-            ? ((token >> 16) & 0x7fff) : ((token >> 24) & 15);
+        const std::size_t operands = instruction_length(token);
         if (operands > std::size(code) - at - 1) return false;
-        if (opcode == 0xfffe) { at += operands + 1; continue; }
-        if (opcode == 0x51) {
+        if (opcode == op_comment) { at += operands + 1; continue; }
+        if (opcode == op_def) {
             if (body_started || token != 0x05000051u || operands != 5 ||
                 code[at + 1] != (0xa00f0002u + definitions)) return false;
             constants.push_back(token);
             auto destination = code[at + 1];
-            if (!relocate_register(destination)) return false;
+            if (!relocate_register(row, destination)) return false;
             constants.push_back(destination);
             constants.insert(constants.end(), code + at + 2, code + at + 6);
             ++definitions;
-        } else if (opcode == 0x1f) {
+        } else if (opcode == op_dcl) {
             if (body_started || token != 0x0200001fu || operands != 2 ||
                 code[at + 1] != 0x80000005u || code[at + 2] != 0x900f0000u)
                 return false;
-            inputs.insert(inputs.end(), {token, 0x80040005u, 0x900f0005u});
+            inputs.insert(inputs.end(), {token, 0x80000005u | (std::uint32_t(row.texcoord_index) << 16),
+                                         0x900f0000u | row.pixel_input_register});
             ++declarations;
         } else {
             body_started = true;
@@ -107,8 +266,8 @@ bool motion_fragment(Words& constants, Words& inputs, Words& body) {
             body.push_back(token);
             for (std::size_t i = 1; i <= operands; ++i) {
                 auto operand = code[at + i];
-                if (i == 1 && register_type(operand) == 8) ++outputs;
-                if (!relocate_register(operand)) return false;
+                if (i == 1 && register_type(operand) == color_output_class) ++outputs;
+                if (!relocate_register(row, operand)) return false;
                 body.push_back(operand);
             }
         }
@@ -116,69 +275,131 @@ bool motion_fragment(Words& constants, Words& inputs, Words& body) {
     }
     return false;
 }
+
+bool supported_class(const MotionOutputProfile& row) noexcept {
+    return row.transformation_class == MotionOutputClass::ReferenceRegisters ||
+        row.transformation_class == MotionOutputClass::RelocatedRegisters;
+}
+// First row of a supported class for this program. A program shared with a
+// deferred-class row (none today) must still transform for its A/B pairs.
+const MotionOutputProfile* vertex_row(std::uint64_t hash, std::size_t count) noexcept {
+    if (!hash) return nullptr;
+    for (const auto& row : motion_output_profiles)
+        if (row.vertex_fingerprint == hash && row.vertex_dword_count == count && supported_class(row)) return &row;
+    return nullptr;
+}
+const MotionOutputProfile* pixel_row(std::uint64_t hash, std::size_t count) noexcept {
+    if (!hash) return nullptr;
+    for (const auto& row : motion_output_profiles)
+        if (row.pixel_fingerprint == hash && row.pixel_dword_count == count && supported_class(row)) return &row;
+    return nullptr;
+}
+
+// The route uploads the public ABI ranges for every routed draw, so every row
+// must reserve exactly those registers.
+constexpr bool rows_use_public_abi() noexcept {
+    for (const auto& row : motion_output_profiles)
+        if (row.vertex_constant_base != MaterialMotionAbi::previous_vertex_constant ||
+            row.pixel_constant_base != MaterialMotionAbi::pixel_coordinates_constant ||
+            row.pixel_constant_base + 1 != MaterialMotionAbi::pixel_mode_constant ||
+            row.pixel_output_register != MaterialMotionAbi::motion_render_target)
+            return false;
+    return true;
+}
+static_assert(rows_use_public_abi(), "every profile row must use the public MaterialMotionAbi registers");
 } // namespace
 
 std::uint64_t material_motion_fingerprint(const std::uint32_t* words, std::size_t count) noexcept {
     return words ? fingerprint(words, count) : 0;
 }
+const MotionOutputProfile* material_motion_profile(std::uint64_t vertex, std::uint64_t pixel) noexcept {
+    if (!vertex || !pixel) return nullptr;
+    for (const auto& row : motion_output_profiles)
+        if (row.vertex_fingerprint == vertex && row.pixel_fingerprint == pixel) return &row;
+    return nullptr;
+}
 bool material_motion_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept {
-    for (const auto& pair : material_motion_reviewed_pairs)
-        if (vertex && pixel && pair.vertex == vertex && pair.pixel == pixel) return true;
-    return false;
+    const auto* row = material_motion_profile(vertex, pixel);
+    return row && supported_class(*row);
+}
+
+MaterialMotionResult material_motion_vertex_variant_for(const MotionOutputProfile& row,
+    const std::uint32_t* vertex, std::size_t vertex_words, std::vector<std::uint32_t>& output) noexcept {
+    if (!vertex || vertex_words < 2) return MaterialMotionResult::InvalidInput;
+    if (!supported_class(row) || vertex_words != row.vertex_dword_count ||
+        fingerprint(vertex, vertex_words) != row.vertex_fingerprint)
+        return MaterialMotionResult::UnsupportedShader;
+    if (!motion_output_profile_valid(row) || !vertex_structure(row, vertex, vertex_words))
+        return MaterialMotionResult::ProfileMismatch;
+    const std::size_t declaration_at = row.vertex_declaration_insert_dword;
+    const std::size_t arithmetic_at = row.vertex_arithmetic_insert_dword;
+    try {
+        Words variant;
+        variant.reserve(vertex_words + 19);
+        variant.insert(variant.end(), vertex, vertex + declaration_at);
+        // New output o<n> is TEXCOORD<i> without centroid or precision modifiers;
+        // existing declarations and math are intact.
+        variant.insert(variant.end(), {0x0200001fu,
+            0x80000005u | (std::uint32_t(row.texcoord_index) << 16),
+            0xe00f0000u | row.vertex_output_register});
+        variant.insert(variant.end(), vertex + declaration_at, vertex + arithmetic_at);
+        // Previous clip position: the same position temporary against the
+        // previous rows, one lane per dot exactly like the original quad.
+        for (unsigned lane = 0; lane < 4; ++lane)
+            variant.insert(variant.end(), {(3u << 24) | op_dp4,
+                0xe0000000u | (std::uint32_t(row.position_lane_masks[lane]) << 16) | row.vertex_output_register,
+                0x80e40000u | row.position_temporary,
+                0xa0e40000u | (row.vertex_constant_base + lane)});
+        variant.insert(variant.end(), vertex + arithmetic_at, vertex + vertex_words);
+        output.swap(variant);
+        return MaterialMotionResult::Applied;
+    } catch (...) { return MaterialMotionResult::AllocationFailure; }
+}
+
+MaterialMotionResult material_motion_pixel_variant_for(const MotionOutputProfile& row,
+    const std::uint32_t* pixel, std::size_t pixel_words, std::vector<std::uint32_t>& output) noexcept {
+    if (!pixel || pixel_words < 2) return MaterialMotionResult::InvalidInput;
+    if (!supported_class(row) || pixel_words != row.pixel_dword_count ||
+        fingerprint(pixel, pixel_words) != row.pixel_fingerprint)
+        return MaterialMotionResult::UnsupportedShader;
+    if (!motion_output_profile_valid(row) || !pixel_structure(row, pixel, pixel_words))
+        return MaterialMotionResult::ProfileMismatch;
+    const std::size_t definition_at = row.pixel_definition_insert_dword;
+    const std::size_t declaration_at = row.pixel_declaration_insert_dword;
+    const std::size_t append_at = row.pixel_append_dword;
+    try {
+        Words constants, inputs, body;
+        if (!motion_fragment(row, constants, inputs, body)) return MaterialMotionResult::ProfileMismatch;
+        Words variant;
+        variant.reserve(pixel_words + constants.size() + inputs.size() + body.size());
+        variant.insert(variant.end(), pixel, pixel + definition_at);
+        variant.insert(variant.end(), constants.begin(), constants.end());
+        variant.insert(variant.end(), pixel + definition_at, pixel + declaration_at);
+        variant.insert(variant.end(), inputs.begin(), inputs.end());
+        variant.insert(variant.end(), pixel + declaration_at, pixel + append_at);
+        variant.insert(variant.end(), body.begin(), body.end());
+        variant.push_back(end_token);
+        output.swap(variant);
+        return MaterialMotionResult::Applied;
+    } catch (...) { return MaterialMotionResult::AllocationFailure; }
 }
 
 MaterialMotionResult material_motion_vertex_variant(const std::uint32_t* vertex,
     std::size_t vertex_words, std::vector<std::uint32_t>& output) noexcept {
     if (!vertex || vertex_words < 2) return MaterialMotionResult::InvalidInput;
-    if (vertex_words != 526 || fingerprint(vertex, vertex_words) != 0x53a0a641107ed76cull)
-        return MaterialMotionResult::UnsupportedShader;
-    if (vertex[0] != 0xfffe0300u || !framed(vertex, vertex_words, vertex_header_end))
-        return MaterialMotionResult::ProfileMismatch;
-    for (unsigned lane = 0; lane < 4; ++lane) {
-        const auto at = position_begin + 4 * lane;
-        if (vertex[at] != 0x03000009u ||
-            vertex[at + 1] != (0xe0000000u | (1u << (16 + lane))) ||
-            vertex[at + 2] != 0x80e40001u || vertex[at + 3] != 0xa0e40018u + lane)
-            return MaterialMotionResult::ProfileMismatch;
-    }
-    try {
-        Words variant;
-        variant.reserve(vertex_words + 19);
-        variant.insert(variant.end(), vertex, vertex + vertex_header_end);
-        // New output o6 is TEXCOORD4; existing declarations and math are intact.
-        variant.insert(variant.end(), {0x0200001fu, 0x80040005u, 0xe00f0006u});
-        variant.insert(variant.end(), vertex + vertex_header_end, vertex + position_end);
-        for (unsigned lane = 0; lane < 4; ++lane)
-            variant.insert(variant.end(), {0x03000009u,
-                0xe0000006u | (1u << (16 + lane)), 0x80e40001u, 0xa0e400fcu + lane});
-        variant.insert(variant.end(), vertex + position_end, vertex + vertex_words);
-        output.swap(variant);
-        return MaterialMotionResult::Applied;
-    } catch (...) { return MaterialMotionResult::AllocationFailure; }
+    // Rows sharing a vertex program agree on its side of the splice
+    // (static_assert in motion_output_profiles.h), so the first row serves.
+    const auto* row = vertex_row(fingerprint(vertex, vertex_words), vertex_words);
+    if (!row) return MaterialMotionResult::UnsupportedShader;
+    return material_motion_vertex_variant_for(*row, vertex, vertex_words, output);
 }
 
 MaterialMotionResult material_motion_pixel_variant(const std::uint32_t* pixel,
     std::size_t pixel_words, std::vector<std::uint32_t>& output) noexcept {
     if (!pixel || pixel_words < 2) return MaterialMotionResult::InvalidInput;
-    if (pixel_words != 1260 || fingerprint(pixel, pixel_words) != 0x8759c7838bbc86c2ull)
-        return MaterialMotionResult::UnsupportedShader;
-    if (pixel[0] != 0xffff0300u || !framed(pixel, pixel_words, pixel_header_end))
-        return MaterialMotionResult::ProfileMismatch;
-    try {
-        Words constants, inputs, body;
-        if (!motion_fragment(constants, inputs, body)) return MaterialMotionResult::ProfileMismatch;
-        Words variant;
-        variant.reserve(pixel_words + constants.size() + inputs.size() + body.size());
-        variant.insert(variant.end(), pixel, pixel + pixel_definition_end);
-        variant.insert(variant.end(), constants.begin(), constants.end());
-        variant.insert(variant.end(), pixel + pixel_definition_end, pixel + pixel_header_end);
-        variant.insert(variant.end(), inputs.begin(), inputs.end());
-        variant.insert(variant.end(), pixel + pixel_header_end, pixel + pixel_words - 1);
-        variant.insert(variant.end(), body.begin(), body.end());
-        variant.push_back(end);
-        output.swap(variant);
-        return MaterialMotionResult::Applied;
-    } catch (...) { return MaterialMotionResult::AllocationFailure; }
+    const auto* row = pixel_row(fingerprint(pixel, pixel_words), pixel_words);
+    if (!row) return MaterialMotionResult::UnsupportedShader;
+    return material_motion_pixel_variant_for(*row, pixel, pixel_words, output);
 }
 
 MaterialMotionResult material_motion_variant(const std::uint32_t* vertex,
@@ -186,16 +407,17 @@ MaterialMotionResult material_motion_variant(const std::uint32_t* vertex,
     MaterialMotionVariant& output) noexcept {
     if (!vertex || !pixel || vertex_words < 2 || pixel_words < 2)
         return MaterialMotionResult::InvalidInput;
-    // Qualify both fingerprints before either stage transforms, so a wrong pair
-    // reports UnsupportedShader whichever stage is wrong and nothing is published.
-    if (vertex_words != 526 || pixel_words != 1260 ||
-        fingerprint(vertex, vertex_words) != 0x53a0a641107ed76cull ||
-        fingerprint(pixel, pixel_words) != 0x8759c7838bbc86c2ull)
+    // Qualify both fingerprints against one row before either stage transforms,
+    // so a wrong pair reports UnsupportedShader whichever stage is wrong and
+    // nothing is published.
+    const auto* row = material_motion_profile(fingerprint(vertex, vertex_words),
+                                              fingerprint(pixel, pixel_words));
+    if (!row || vertex_words != row->vertex_dword_count || pixel_words != row->pixel_dword_count)
         return MaterialMotionResult::UnsupportedShader;
     MaterialMotionVariant variant;
-    const auto vertex_result = material_motion_vertex_variant(vertex, vertex_words, variant.vertex);
+    const auto vertex_result = material_motion_vertex_variant_for(*row, vertex, vertex_words, variant.vertex);
     if (vertex_result != MaterialMotionResult::Applied) return vertex_result;
-    const auto pixel_result = material_motion_pixel_variant(pixel, pixel_words, variant.pixel);
+    const auto pixel_result = material_motion_pixel_variant_for(*row, pixel, pixel_words, variant.pixel);
     if (pixel_result != MaterialMotionResult::Applied) return pixel_result;
     output.vertex.swap(variant.vertex);
     output.pixel.swap(variant.pixel);

@@ -1,8 +1,14 @@
-// Actual locally supplied shader pair, original geometry/textures; no game assets copied.
+// Actual locally supplied shader pairs, original geometry/textures; no game assets copied.
+// argv: <argon vs> <argon ps> <programs directory>. The Argon pair runs the full
+// configuration/timing inventory; every profile-table row then runs the
+// color/motion/depth comparison with the same geometry and constants, light
+// loop count i0.x = 0, reading its originals from the directory (rows whose
+// files are absent are reported as skipped).
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <d3d9.h>
 #include "../../src/renderer/material_motion.h"
+#include "../../src/renderer/motion_output_profiles.h"
 #include "../../src/renderer/rigid_replay_program.h"
 #include "../../src/renderer/rigid_motion_pixel_program.h"
 #include <algorithm>
@@ -12,6 +18,7 @@
 #include <cstring>
 #include <fstream>
 #include <stdexcept>
+#include <string>
 #include <vector>
 using namespace x3m::renderer;
 using Words=std::vector<std::uint32_t>;
@@ -20,6 +27,7 @@ void api(HRESULT h){if(FAILED(h)){std::printf("API FAIL %08lx\n",h);throw std::r
 void require(bool b,const char* label){++checks;std::printf("CHECK %s %s\n",label,b?"PASS":"FAIL");if(!b)throw std::runtime_error(label);}
 template<class T>struct Com{T* p=nullptr;Com()=default;Com(const Com&)=delete;~Com(){if(p)p->Release();}T*operator->()const{return p;}};
 template<class T>T symbol(HMODULE m,const char* name){auto raw=GetProcAddress(m,name);T fn=nullptr;std::memcpy(&fn,&raw,sizeof fn);if(!fn)throw std::runtime_error(name);return fn;}
+bool load_optional(const std::string& name,Words& w){std::ifstream f(name,std::ios::binary|std::ios::ate);if(!f)return false;auto size=f.tellg();if(size<=0||size%4||size>65536)throw std::runtime_error("shader size");w.assign(std::size_t(size)/4,0);f.seekg(0);f.read(reinterpret_cast<char*>(w.data()),size);if(!f)throw std::runtime_error("shader read");return true;}
 Words load(const char* name){std::ifstream f(name,std::ios::binary|std::ios::ate);if(!f)throw std::runtime_error("local shader missing");auto size=f.tellg();if(size<=0||size%4||size>65536)throw std::runtime_error("shader size");Words w(std::size_t(size)/4);f.seekg(0);f.read(reinterpret_cast<char*>(w.data()),size);if(!f)throw std::runtime_error("shader read");return w;}
 const float identity[16]={1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
 unsigned short half(float x){ // Original fixture values are exact half-representable.
@@ -78,7 +86,8 @@ struct Gpu {
         for(UINT y=0;y<h;++y)for(UINT x=0;x<w;++x){auto& p=result[std::size_t(y)*w+x];auto* ptr=static_cast<char*>(lock.pBits)+y*lock.Pitch+x*(f==D3DFMT_A8R8G8B8?4:16);if(f==D3DFMT_A8R8G8B8){DWORD value;std::memcpy(&value,ptr,4);p={{float(value>>16&255)/255,float(value>>8&255)/255,float(value&255)/255,float(value>>24)/255}};}else std::memcpy(&p,ptr,16);}
         api(sys->UnlockRect());return result;}
     std::vector<Pixel> render(const Configuration& c,bool variant){state(c,variant);api(d->Clear(0,nullptr,D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER,0,1,0));draw();return read(color.p,format);}
-    void compare(const std::vector<Pixel>& a,const std::vector<Pixel>& b,const char* label){unsigned mismatch=0,covered=0;float maximum=0;for(std::size_t i=0;i<a.size();++i){covered+=a[i].value[3]!=0;for(unsigned k=0;k<4;++k){++colors;float error=std::fabs(a[i].value[k]-b[i].value[k]);maximum=std::max(maximum,error);if(!std::isfinite(a[i].value[k])||!std::isfinite(b[i].value[k])||error!=0)++mismatch;}}
+    static bool covered_pixel(const Pixel& p){return p.value[0]!=0||p.value[1]!=0||p.value[2]!=0||p.value[3]!=0;} // Differs from the zero clear.
+    void compare(const std::vector<Pixel>& a,const std::vector<Pixel>& b,const char* label){unsigned mismatch=0,covered=0;float maximum=0;for(std::size_t i=0;i<a.size();++i){covered+=covered_pixel(a[i]);for(unsigned k=0;k<4;++k){++colors;float error=std::fabs(a[i].value[k]-b[i].value[k]);maximum=std::max(maximum,error);if(!std::isfinite(a[i].value[k])||!std::isfinite(b[i].value[k])||error!=0)++mismatch;}}
         std::printf("COLOR %s width=%u height=%u format=%u components=%zu covered=%u mismatches=%u maximum=%.9g\n",label,w,h,unsigned(format),a.size()*4,covered,mismatch,maximum);require(!mismatch&&covered>0,"all original color channels unchanged and nonempty");}
     void replay(const Configuration& c,bool scene_open=false){
         api(d->SetRenderTarget(1,nullptr));api(d->SetRenderTarget(0,motion_surface.p));api(d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));
@@ -91,10 +100,10 @@ struct Gpu {
     void test(const Configuration& c){++configurations;std::printf("CONFIG id=%u width=%u height=%u format=%u packed=%u perspective=%u lights=%u valid=%u translation=%.6f jitter=%.6f,%.6f\n",configurations,w,h,unsigned(format),c.packed,c.perspective,c.lights,c.valid,c.translation,c.jx,c.jy);auto original=render(c,false);auto transformed=render(c,true);compare(original,transformed,"same_draw");auto output=read(motion_surface.p,D3DFMT_A32B32G32R32F);
         render(c,false);replay(c);auto reference=read(motion_surface.p,D3DFMT_A32B32G32R32F);unsigned reference_mismatches=0;float reference_max=0;for(std::size_t i=0;i<output.size();++i)for(unsigned k=0;k<4;++k){float error=std::fabs(output[i].value[k]-reference[i].value[k]);reference_max=std::max(reference_max,error);reference_mismatches+=!std::isfinite(error)||error>2e-6;}std::printf("REFERENCE config=%u components=%zu mismatches=%u max=%.9g\n",configurations,output.size()*4,reference_mismatches,reference_max);require(!reference_mismatches,"same-draw output matches independent authored replay");
         for(UINT y:{h/4,h/2,3*h/4})for(UINT x:{w/4,w/2,3*w/4}){double nx=2.*x/w-1,ny=1-2.*y/h;double object_x=c.perspective?(nx-c.translation)/(1-.125*nx):nx-c.translation;double current_w=1+(c.perspective?.125*object_x:0);double object_y=ny*current_w;double previous_w=1+(c.perspective?.0625*object_x:0);double expected[4]={.5*object_x/previous_w+.5+.5/w-c.jx/w,-.5*object_y/previous_w+.5+.5/h-c.jy/h,.5/previous_w,1};if(!c.valid){expected[0]=expected[1]=expected[2]=0;expected[3]=-1;}
-            require(original[std::size_t(y)*w+x].value[3]>0,"motion sample is covered original geometry");for(UINT k=0;k<4;++k){float actual=output[std::size_t(y)*w+x].value[k];double error=std::fabs(actual-expected[k]);++numerics;double pixel_error=error*(k==0?w:k==1?h:1);bool okay=std::isfinite(actual)&&(k<2?pixel_error<=.005:error<=2e-6);std::printf("SAMPLE config=%u x=%u y=%u channel=%u actual=%.9g expected=%.9g error=%.9g pixel_error=%.9g %s\n",configurations,x,y,k,actual,expected[k],error,pixel_error,okay?"PASS":"FAIL");if(!okay)throw std::runtime_error("motion numeric");}}
+            require(covered_pixel(original[std::size_t(y)*w+x]),"motion sample is covered original geometry");for(UINT k=0;k<4;++k){float actual=output[std::size_t(y)*w+x].value[k];double error=std::fabs(actual-expected[k]);++numerics;double pixel_error=error*(k==0?w:k==1?h:1);bool okay=std::isfinite(actual)&&(k<2?pixel_error<=.005:error<=2e-6);std::printf("SAMPLE config=%u x=%u y=%u channel=%u actual=%.9g expected=%.9g error=%.9g pixel_error=%.9g %s\n",configurations,x,y,k,actual,expected[k],error,pixel_error,okay?"PASS":"FAIL");if(!okay)throw std::runtime_error("motion numeric");}}
         for(unsigned reverse=0;reverse<2;++reverse){render(c,reverse);state(c,!reverse);api(d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE));api(d->SetRenderState(D3DRS_ZFUNC,D3DCMP_EQUAL));api(d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));draw();compare(original,read(color.p,format),"bilateral_depth_equal");++depth_cases;}
         // Changed depth must fail EQUAL instead of satisfying equality vacuously.
-        float row[4]={0,0,0,.8f};api(d->SetVertexShaderConstantF(26,row,1));api(d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));draw();auto negative=read(color.p,format);require(std::all_of(negative.begin(),negative.end(),[](const Pixel& p){return p.value[3]==0;}),"changed depth rejects all tested fragments");
+        float row[4]={0,0,0,.8f};api(d->SetVertexShaderConstantF(26,row,1));api(d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));draw();auto negative=read(color.p,format);require(std::none_of(negative.begin(),negative.end(),covered_pixel),"changed depth rejects all tested fragments");
     }
     void wait(IDirect3DQuery9* event){BOOL done=FALSE;auto limit=GetTickCount()+5000;for(;;){HRESULT hr=event->GetData(&done,sizeof done,D3DGETDATA_FLUSH);if(hr==S_OK&&done)return;if(FAILED(hr)||LONG(GetTickCount()-limit)>=0)throw std::runtime_error("event completion");Sleep(0);}}
     void timing(){Com<IDirect3DQuery9> event;api(d->CreateQuery(D3DQUERYTYPE_EVENT,&event.p));Configuration c;c.packed=true;c.perspective=true;c.lights=8;LARGE_INTEGER frequency;QueryPerformanceFrequency(&frequency);
@@ -105,7 +114,7 @@ struct Gpu {
     }
 };
 int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int exit=1;WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3MaterialMotion";RegisterClassA(&cls);HWND window=CreateWindowA(cls.lpszClassName,"Detached same-draw material motion",WS_OVERLAPPEDWINDOW,0,0,64,64,nullptr,nullptr,cls.hInstance,nullptr);HMODULE runtime=LoadLibraryA("d3d9.dll");
-    try{if(argc!=3||!window||!runtime)throw std::runtime_error("shader pair paths required");auto v=load(argv[1]),p=load(argv[2]);MaterialMotionVariant variant;require(material_motion_variant(v.data(),v.size(),p.data(),p.size(),variant)==MaterialMotionResult::Applied,"exact local shader pair transformed");
+    try{if(argc!=4||!window||!runtime)throw std::runtime_error("shader pair paths and programs directory required");auto v=load(argv[1]),p=load(argv[2]);const std::string directory=argv[3];MaterialMotionVariant variant;require(material_motion_variant(v.data(),v.size(),p.data(),p.size(),variant)==MaterialMotionResult::Applied,"exact local shader pair transformed");
         auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime,"Direct3DCreate9");Com<IDirect3D9> factory;factory.p=create(D3D_SDK_VERSION);if(!factory.p)throw std::runtime_error("factory");D3DCAPS9 caps{};api(factory->GetDeviceCaps(0,D3DDEVTYPE_HAL,&caps));std::printf("CAPS mrt=%lu misc=%08lx vs=%08lx ps=%08lx max_vs_const=%lu vs_slots=%lu ps_slots=%lu\n",caps.NumSimultaneousRTs,caps.PrimitiveMiscCaps,caps.VertexShaderVersion,caps.PixelShaderVersion,caps.MaxVertexShaderConst,caps.MaxVertexShader30InstructionSlots,caps.MaxPixelShader30InstructionSlots);
         require(caps.NumSimultaneousRTs>=2&&caps.MaxVertexShaderConst>=256,"MRT and high constant capacity");D3DDISPLAYMODE display{};api(factory->GetAdapterDisplayMode(0,&display));std::printf("ADAPTER_FORMAT %u\n",unsigned(display.Format));bool mixed=(caps.PrimitiveMiscCaps&D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS)!=0;
         for(auto f:{D3DFMT_A8R8G8B8,D3DFMT_A32B32G32R32F,D3DFMT_G16R16F})std::printf("FORMAT value=%u rt=%08lx postblend=%08lx depth_match=%08lx\n",unsigned(f),factory->CheckDeviceFormat(0,D3DDEVTYPE_HAL,display.Format,D3DUSAGE_RENDERTARGET,D3DRTYPE_TEXTURE,f),factory->CheckDeviceFormat(0,D3DDEVTYPE_HAL,display.Format,D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING,D3DRTYPE_TEXTURE,f),factory->CheckDepthStencilMatch(0,D3DDEVTYPE_HAL,display.Format,f,D3DFMT_D24X8));
@@ -117,6 +126,18 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int exit=1;
                 if(!generation){api(d->Reset(&pp));std::puts("RESET PASS");}}
             if(!pure){for(auto size:{std::pair<UINT,UINT>{1280,768},{5120,1440}}){Gpu gpu(d.p,v,p,variant,size.first,size.second,mixed?D3DFMT_A8R8G8B8:D3DFMT_A32B32G32R32F);Configuration c;c.packed=true;c.perspective=true;c.translation=.25f;c.lights=8;c.jx=.25f;c.jy=-.375f;gpu.test(c);gpu.timing();}}
         }
-        std::printf("RESULT PASS checks=%u numerical=%u color_components=%u depth_cases=%u configurations=%u devices=2\n",checks,numerics,colors,depth_cases,configurations);exit=0;
+        // Every profile-table row: same geometry, constants and oracle; lights 0.
+        std::printf("ROWS_BEGIN checks=%u numerical=%u color_components=%u depth_cases=%u configurations=%u\n",checks,numerics,colors,depth_cases,configurations);
+        unsigned row_transformed=0,row_skipped=0,row_index=0;
+        {std::printf("DEVICE pure=0 mixed=%u\n",mixed);D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=pp.BackBufferHeight=32;pp.BackBufferFormat=D3DFMT_A8R8G8B8;Com<IDirect3DDevice9> d;api(factory->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING,&pp,&d.p));
+            for(const auto& row:motion_output_profiles){char name[64];Words rv,rp;std::snprintf(name,sizeof name,"\\vs_%016llx.bin",static_cast<unsigned long long>(row.vertex_fingerprint));const bool have_vs=load_optional(directory+name,rv);std::snprintf(name,sizeof name,"\\ps_%016llx.bin",static_cast<unsigned long long>(row.pixel_fingerprint));const bool have_ps=load_optional(directory+name,rp);
+                const char letter=row.transformation_class==MotionOutputClass::ReferenceRegisters?'A':'B';
+                if(!have_vs||!have_ps){std::printf("ROW index=%u vs=%016llx ps=%016llx class=%c status=SKIP reason=missing_local_program\n",row_index,static_cast<unsigned long long>(row.vertex_fingerprint),static_cast<unsigned long long>(row.pixel_fingerprint),letter);++row_skipped;++row_index;continue;}
+                std::printf("ROW index=%u vs=%016llx ps=%016llx class=%c status=BEGIN\n",row_index,static_cast<unsigned long long>(row.vertex_fingerprint),static_cast<unsigned long long>(row.pixel_fingerprint),letter);
+                MaterialMotionVariant changed;require(material_motion_variant(rv.data(),rv.size(),rp.data(),rp.size(),changed)==MaterialMotionResult::Applied,"row local shader pair transformed");
+                const unsigned first=configurations;
+                for(auto f:{D3DFMT_A32B32G32R32F,D3DFMT_A8R8G8B8}){if(f==D3DFMT_A8R8G8B8&&!mixed)continue;Gpu gpu(d.p,rv,rp,changed,32,32,f);Configuration c;gpu.test(c);c.packed=true;c.perspective=true;c.translation=.25f;c.jx=.25f;c.jy=-.375f;gpu.test(c);c.valid=false;gpu.test(c);}
+                std::printf("ROW index=%u vs=%016llx ps=%016llx class=%c status=PASS configurations=%u\n",row_index,static_cast<unsigned long long>(row.vertex_fingerprint),static_cast<unsigned long long>(row.pixel_fingerprint),letter,configurations-first);++row_transformed;++row_index;}}
+        std::printf("RESULT PASS checks=%u numerical=%u color_components=%u depth_cases=%u configurations=%u devices=3 rows=%u row_transformed=%u row_skipped=%u\n",checks,numerics,colors,depth_cases,configurations,row_index,row_transformed,row_skipped);exit=0;
     }catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());}if(runtime)FreeLibrary(runtime);if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);return exit;
 }

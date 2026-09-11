@@ -1,13 +1,15 @@
 # Per-program motion-output profiles
 
 Static review, 2026-09-12. The [candidate review](motion-output-candidate.md)
-derived the splice facts for one Argon SM3 pair, and
-[`material_motion.cpp`](../../src/renderer/material_motion.cpp) hard-codes that
-pair's offsets (VS 335 / 450 / 466, PS 1047 / 1074, appending before the END
-at 1259; the original literal DEFs sit at 302 and 1041). This document
-derives the same facts for the other SM3 material programs the captured session
-draws, so the [live route](../architecture/live-motion-route.md) can broaden
-beyond one pair with a table rather than a second hand-written transformer.
+derived the splice facts for one Argon SM3 pair (VS 335 / 450 / 466, PS 1047 /
+1074, appending before the END at 1259; the original literal DEFs sit at 302
+and 1041), which the first
+[`material_motion.cpp`](../../src/renderer/material_motion.cpp) hard-coded.
+This document derives the same facts for the other SM3 material programs the
+captured session draws; the transformer is now driven by the generated table
+below (see [material-motion-prototype.md](../architecture/material-motion-prototype.md))
+so the [live route](../architecture/live-motion-route.md) covers the class A
+and B pairs without a second hand-written transformer.
 
 Everything here is derived structure: hashes, DWORD offsets, register numbers
 and counts. No shader words, literals or disassembly are reproduced. Original
@@ -117,7 +119,12 @@ temporary and **c252–255**, one new PS input **v5**, the relocated fragment in
 two position register numbers change between pairs; the emitted instruction
 words are the same as today's hard-coded fragment. One of
 these PS programs (`63f96eba9eea7880`) additionally declares `vFace`, which the
-fragment does not touch.
+fragment does not touch. No class A or B pixel program contains `texkill`,
+predication or an oDepth write (`texkill_dwords`, `predicated_or_coissued_dwords`
+and `depth_output_dwords` are empty for all twelve), and every class A or B
+vertex program declares `o0` as POSITION0; the transformer refuses programs
+that violate any of these, so the classes are defined as straight-line
+programs whose depth is the rasterized depth.
 
 **B — relocated registers (6 pairs, 21.90%).** Same shape and same offset table,
 but the reference indices are occupied and the transformer must substitute:
@@ -138,9 +145,12 @@ unconditional, but a table-driven transformer must verify balance and append
 depth rather than assume straight-line code as the current module does. These are
 the largest pairs by draw count, so this check cannot be deferred indefinitely.
 
-Because the PS side determines two of the four register choices, a variant must
-be keyed by the **pair**, not by the VS program. In this capture every pair
-sharing a VS happens to agree on the VS choice, but that is incidental.
+Because the PS side determines two of the four register choices, eligibility
+must be keyed by the **pair**, not by the VS program. In this capture every
+pair sharing a VS happens to agree on the VS choice; the consumer turns that
+from an incidental fact into a compile-time requirement (`static_assert` in
+`motion_output_profiles.h`) so it can keep one variant per original program,
+see the live route's "Pair keying" section.
 
 ## Generated table
 
@@ -160,7 +170,9 @@ python3 tools/analysis/inspect_motion_output_profiles.py \
 is deliberately left out until the transformer validates control-flow balance
 and append depth, but its enumerator name
 (`MotionOutputClass::RelocatedRegistersWithBranches`) is already reserved in the
-banner, so adding those four rows will not change the schema.
+banner and defined by the consumer, so adding those four rows will not change
+the schema (the transformer currently refuses that class with
+`UnsupportedShader`).
 
 Rows are ordered by descending captured Scene draws, then by vertex and pixel
 fingerprint, so regeneration is byte-reproducible. Field order, one row:
@@ -210,7 +222,9 @@ would need a different position contract, not a different offset table.
   `relative_addressing.bounded_by_static_analysis: false`. As the candidate
   review requires, `c252–255` may only be written when the integer count `i0.x`
   is checked in `[0, 8]` at draw time, which bounds the reads to c0–23. Refuse
-  the substitution otherwise.
+  the substitution otherwise. The live route applies exactly this bound and
+  shadows exactly `c24–27`; `motion_output.cpp` asserts at compile time that
+  every row's `matrix_register` and light-loop fields agree with it.
 - **Application constants.** Save and restore application `c252–255` (VS) and
   `c216–220` (PS) around the transformed draw; D3DX/effect uploads do not know
   about the extension.

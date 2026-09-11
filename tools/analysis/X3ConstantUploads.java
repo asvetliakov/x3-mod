@@ -3,9 +3,12 @@
 // Invoke headless with -readOnly -noanalysis against an already analyzed program.
 //
 // Usage: -postScript X3ConstantUploads.java /tmp/private-output.txt <request>...
-//   disp:0x178            tally and list every indirect CALL through that vtable
-//                         displacement (whole program), with call-site context
-//   tally                 print the count of indirect CALLs per displacement
+//   disp:0x178            list every instruction that references that vtable
+//                         displacement (whole program), with call-site context;
+//                         X3 emits "mov reg,[vtbl+disp]" then "call reg", so the
+//                         paired CALL/JMP is found in the printed context
+//   owner:0x004c0150      restrict site listing to this containing function
+//   tally                 print the reference count per displacement
 //   vtable:0x408ac4:24    print 24 pointer slots starting at that data address
 //   xref:0x00608b3c       print references to a data/code address
 //   dec:0x004c0150        decompile the function containing the address
@@ -39,9 +42,11 @@ public class X3ConstantUploads extends GhidraScript {
         if (args.length < 2) throw new IllegalArgumentException("Private output path and at least one request required");
 
         LinkedHashSet<Long> wanted = new LinkedHashSet<>();
+        LinkedHashSet<String> owners = new LinkedHashSet<>();
         boolean tally = false;
         for (int i = 1; i < args.length; ++i) {
             if (args[i].startsWith("disp:")) wanted.add(Long.decode(args[i].substring(5)));
+            else if (args[i].startsWith("owner:")) owners.add(toAddr(args[i].substring(6)).toString());
             else if (args[i].equals("tally")) tally = true;
         }
 
@@ -56,14 +61,15 @@ public class X3ConstantUploads extends GhidraScript {
                 var it = currentProgram.getListing().getInstructions(true);
                 while (it.hasNext()) {
                     Instruction ins = it.next();
-                    if (!ins.getMnemonicString().toUpperCase().startsWith("CALL")) continue;
                     String text = ins.toString();
                     Matcher m = DISP.matcher(text);
-                    if (!m.find()) continue;
-                    long disp = Long.decode(m.group(1));
-                    counts.merge(disp, 1, Integer::sum);
-                    List<Address> list = sites.get(disp);
-                    if (list != null) list.add(ins.getAddress());
+                    while (m.find()) {
+                        long disp = Long.decode(m.group(1));
+                        List<Address> list = sites.get(disp);
+                        if (list == null && (disp < 0x8 || disp > 0x400)) continue;
+                        counts.merge(disp, 1, Integer::sum);
+                        if (list != null) list.add(ins.getAddress());
+                    }
                 }
             }
 
@@ -79,14 +85,14 @@ public class X3ConstantUploads extends GhidraScript {
                     e.getKey(), e.getKey() / 4, e.getValue().size()));
                 for (Address a : e.getValue()) {
                     Function f = getFunctionContaining(a);
-                    out.println("SITE " + a + " owner " + (f == null ? "none" : f.getEntryPoint()));
+                    String owner = f == null ? "none" : f.getEntryPoint().toString();
+                    if (!owners.isEmpty() && !owners.contains(owner)) continue;
+                    out.println("SITE " + a + " owner " + owner);
                     Instruction ins = getInstructionAt(a);
                     Instruction back = ins;
                     for (int i = 0; i < 10 && back != null && back.getPrevious() != null; ++i) back = back.getPrevious();
-                    for (int i = 0; i < 12 && back != null; ++i, back = back.getNext()) {
+                    for (int i = 0; i < 32 && back != null; ++i, back = back.getNext())
                         out.println("  " + back.getAddress() + " " + back);
-                        if (back.getAddress().equals(a)) break;
-                    }
                 }
             }
 

@@ -21,13 +21,186 @@
       ],
       "fresh_build": true,
       "executable": "/Users/asvetl/x3-mod/verification/probe/build/material-motion-structure/release",
-      "executable_sha256_before": "1adc75168e6a2edb72bd97e0ca881914a906d614833f39da408130623fbc27a8",
-      "executable_sha256_after": "1adc75168e6a2edb72bd97e0ca881914a906d614833f39da408130623fbc27a8",
-      "checks": 8,
-      "single_bit_mutations": 57152,
-      "alias_layouts": 6,
+      "executable_sha256_before": "6bd820f33bf677a11b4bb9daf6a02ce3f20089c8716fd0a341f2c54c8dbc60d1",
+      "executable_sha256_after": "6bd820f33bf677a11b4bb9daf6a02ce3f20089c8716fd0a341f2c54c8dbc60d1",
+      "checks": 121,
+      "single_bit_mutations": 622336,
+      "alias_layouts": 72,
+      "rows": 12,
+      "transformed": 12,
+      "skipped": 0,
+      "row_results": [
+        {
+          "index": 0,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "class": "A",
+          "status": "PASS",
+          "checks": 11,
+          "vertex_words": 545,
+          "pixel_words": 1392,
+          "single_bit_mutations": 57152,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 1,
+          "vs": "4944d81dfe531b37",
+          "ps": "ca6bfa4a6cca7e2a",
+          "class": "B",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 575,
+          "pixel_words": 1460,
+          "single_bit_mutations": 60288,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 2,
+          "vs": "b0602757fce6e870",
+          "ps": "517540ae6d5e5410",
+          "class": "A",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 539,
+          "pixel_words": 529,
+          "single_bit_mutations": 29344,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 3,
+          "vs": "4944d81dfe531b37",
+          "ps": "5e0a10fe752b6140",
+          "class": "B",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 575,
+          "pixel_words": 1486,
+          "single_bit_mutations": 61120,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 4,
+          "vs": "53a0a641107ed76c",
+          "ps": "63f96eba9eea7880",
+          "class": "A",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 545,
+          "pixel_words": 1424,
+          "single_bit_mutations": 58176,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 5,
+          "vs": "167eb2d5629ab9d3",
+          "ps": "d44db87778a43b61",
+          "class": "B",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 585,
+          "pixel_words": 580,
+          "single_bit_mutations": 32448,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 6,
+          "vs": "53a0a641107ed76c",
+          "ps": "3b94320087e81945",
+          "class": "A",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 545,
+          "pixel_words": 1396,
+          "single_bit_mutations": 57280,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 7,
+          "vs": "53a0a641107ed76c",
+          "ps": "462342e3e5781384",
+          "class": "A",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 545,
+          "pixel_words": 1382,
+          "single_bit_mutations": 56832,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 8,
+          "vs": "4944d81dfe531b37",
+          "ps": "64bac8bb307eb896",
+          "class": "B",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 575,
+          "pixel_words": 1524,
+          "single_bit_mutations": 62336,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 9,
+          "vs": "494fe349b8bc12ec",
+          "ps": "7c83ed50c9894e44",
+          "class": "A",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 545,
+          "pixel_words": 1430,
+          "single_bit_mutations": 58368,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 10,
+          "vs": "4944d81dfe531b37",
+          "ps": "0c1f3f0f440e4a0c",
+          "class": "B",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 575,
+          "pixel_words": 1498,
+          "single_bit_mutations": 61504,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 11,
+          "vs": "c30104cb0efb6675",
+          "ps": "a66fb1981ba755b2",
+          "class": "B",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 569,
+          "pixel_words": 441,
+          "single_bit_mutations": 27488,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        }
+      ],
       "report": "verification/results/material-motion-structure-release.txt",
-      "report_sha256": "a31031868b8df496dc7b1ba287d8e29d2f6c07be784c34b55fd3f91ded349a2f",
+      "report_sha256": "0e707a1c83dfca5f000eeb0e350ba521cc869003f03af456e59ad326c14836de",
       "passed": true
     },
     {
@@ -49,64 +222,518 @@
       ],
       "fresh_build": true,
       "executable": "/Users/asvetl/x3-mod/verification/probe/build/material-motion-structure/asan-ubsan",
-      "executable_sha256_before": "85c9fc28c18b93281c9dcd3ef9c3a6d9b32c5cd5888636278afe88f67c1cb43b",
-      "executable_sha256_after": "85c9fc28c18b93281c9dcd3ef9c3a6d9b32c5cd5888636278afe88f67c1cb43b",
-      "checks": 8,
-      "single_bit_mutations": 57152,
-      "alias_layouts": 6,
+      "executable_sha256_before": "4dfc72aa5482019edd2d73f47a864934b830737f392fda3ff953efe66427062d",
+      "executable_sha256_after": "4dfc72aa5482019edd2d73f47a864934b830737f392fda3ff953efe66427062d",
+      "checks": 121,
+      "single_bit_mutations": 622336,
+      "alias_layouts": 72,
+      "rows": 12,
+      "transformed": 12,
+      "skipped": 0,
+      "row_results": [
+        {
+          "index": 0,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "class": "A",
+          "status": "PASS",
+          "checks": 11,
+          "vertex_words": 545,
+          "pixel_words": 1392,
+          "single_bit_mutations": 57152,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 1,
+          "vs": "4944d81dfe531b37",
+          "ps": "ca6bfa4a6cca7e2a",
+          "class": "B",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 575,
+          "pixel_words": 1460,
+          "single_bit_mutations": 60288,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 2,
+          "vs": "b0602757fce6e870",
+          "ps": "517540ae6d5e5410",
+          "class": "A",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 539,
+          "pixel_words": 529,
+          "single_bit_mutations": 29344,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 3,
+          "vs": "4944d81dfe531b37",
+          "ps": "5e0a10fe752b6140",
+          "class": "B",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 575,
+          "pixel_words": 1486,
+          "single_bit_mutations": 61120,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 4,
+          "vs": "53a0a641107ed76c",
+          "ps": "63f96eba9eea7880",
+          "class": "A",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 545,
+          "pixel_words": 1424,
+          "single_bit_mutations": 58176,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 5,
+          "vs": "167eb2d5629ab9d3",
+          "ps": "d44db87778a43b61",
+          "class": "B",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 585,
+          "pixel_words": 580,
+          "single_bit_mutations": 32448,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 6,
+          "vs": "53a0a641107ed76c",
+          "ps": "3b94320087e81945",
+          "class": "A",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 545,
+          "pixel_words": 1396,
+          "single_bit_mutations": 57280,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 7,
+          "vs": "53a0a641107ed76c",
+          "ps": "462342e3e5781384",
+          "class": "A",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 545,
+          "pixel_words": 1382,
+          "single_bit_mutations": 56832,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 8,
+          "vs": "4944d81dfe531b37",
+          "ps": "64bac8bb307eb896",
+          "class": "B",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 575,
+          "pixel_words": 1524,
+          "single_bit_mutations": 62336,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 9,
+          "vs": "494fe349b8bc12ec",
+          "ps": "7c83ed50c9894e44",
+          "class": "A",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 545,
+          "pixel_words": 1430,
+          "single_bit_mutations": 58368,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 10,
+          "vs": "4944d81dfe531b37",
+          "ps": "0c1f3f0f440e4a0c",
+          "class": "B",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 575,
+          "pixel_words": 1498,
+          "single_bit_mutations": 61504,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        },
+        {
+          "index": 11,
+          "vs": "c30104cb0efb6675",
+          "ps": "a66fb1981ba755b2",
+          "class": "B",
+          "status": "PASS",
+          "checks": 10,
+          "vertex_words": 569,
+          "pixel_words": 441,
+          "single_bit_mutations": 27488,
+          "row_perturbations": 21,
+          "program_perturbations": 24,
+          "alias_layouts": 6
+        }
+      ],
       "report": "verification/results/material-motion-structure-asan-ubsan.txt",
-      "report_sha256": "a31031868b8df496dc7b1ba287d8e29d2f6c07be784c34b55fd3f91ded349a2f",
+      "report_sha256": "0e707a1c83dfca5f000eeb0e350ba521cc869003f03af456e59ad326c14836de",
       "passed": true
     }
   ],
   "sources_before": {
-    "src/renderer/material_motion.cpp": "f999cc89e428ea073fbe883a5b5814db0500fed838fef2f53e8cbb7a62b311b5",
-    "src/renderer/material_motion.h": "8e3258f74d4d814fed07c1647f2b2cef2fa3441d813484ad1f76803e4e717e09",
+    "src/renderer/material_motion.cpp": "b37b5c8da211a1bd10c192fefc4e5670813f81e1d642bb3fe180b4fd80381881",
+    "src/renderer/material_motion.h": "44c86c4c152915d598333682a4799784caa6d19704f4bbb66f1b54a6f346b32f",
+    "src/renderer/motion_output_profiles.h": "57750cb5ef66e1697e2295b6f2a3a6a3c4d33e588064b24d6f0bd1c926039058",
+    "src/renderer/motion_output_profiles_inc.h": "421ab470284eb1c1abc0f500781a110858464b4f504d2c92938e0bc42919802e",
     "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
     "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
-    "verification/probe/material_motion_structure.cpp": "5b84e083615870b2a2697f396a8ee9bd22ad26a5a6efe3f226b25a4b169d1066",
-    "verification/probe/run_material_motion_structure.py": "cf8f250473724b48f159ab22ca5db61efd7ce62a58912ac7b27e54a13643c28b"
+    "verification/probe/material_motion_structure.cpp": "ec46e88e8ee338496bdf4435bcad5ff6286a80c2fab4e16e48341f3c76ec74b4",
+    "verification/probe/run_material_motion_structure.py": "8c6ce522d72eb24fe4252e8477d4c09583e3f0c43db62bd269d274bfc6876086"
   },
-  "inputs_before": {
-    "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": {
-      "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
-      "bytes": 2104
+  "programs_directory": "/tmp/x3-shader-sweep/programs",
+  "inputs_before": [
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
+        "sha256": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
+        "bytes": 5040
+      }
     },
-    "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": {
-      "sha256": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
-      "bytes": 5040
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_ca6bfa4a6cca7e2a.bin",
+        "sha256": "f2ba5da400ac78cb685f4a2a92e57a441378690af9689b538ef49f07a09d441b",
+        "bytes": 5312
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_b0602757fce6e870.bin",
+        "sha256": "33cef191db2668aadef869a140b2185b1576212535bdae7d607da49573d8d785",
+        "bytes": 2080
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_517540ae6d5e5410.bin",
+        "sha256": "e863f6196bad66465442a9a27923953ab11b71be6ab60d325237e2f5e2f85329",
+        "bytes": 1588
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_5e0a10fe752b6140.bin",
+        "sha256": "ffd612d6d0dcc9195322cfa71f11b6a76751c49e5b87fe660bfc7360bc0f1a19",
+        "bytes": 5416
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_63f96eba9eea7880.bin",
+        "sha256": "2046f15c8d3c761508a5abf8e4b540c7d6aa8902d131f02533377e68a9bfa75b",
+        "bytes": 5168
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_167eb2d5629ab9d3.bin",
+        "sha256": "fe2bc3e8b3a76315a4225d409fcf0a25b3d2eb456745dd3dd3bcf0da81e222c6",
+        "bytes": 2264
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_d44db87778a43b61.bin",
+        "sha256": "481ff206a4d729023fb44f930d6a30f9972318e9d1c24cab72b11869eb856dc8",
+        "bytes": 1792
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_3b94320087e81945.bin",
+        "sha256": "f4f228d05aef995c3a24a74ee4a494763103511f188a60cd695d8a1ec392a12c",
+        "bytes": 5056
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_462342e3e5781384.bin",
+        "sha256": "aef282706e75e9067803c175fc24d04ea452b0e660c0c1c6e446ce9e76e6e08f",
+        "bytes": 5000
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_64bac8bb307eb896.bin",
+        "sha256": "84eeded40acc811b109221fe5c7e1b5a898f3b9a34a1b4685937a24f6b1bc4a7",
+        "bytes": 5568
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_7c83ed50c9894e44.bin",
+        "sha256": "a171c7d7e3dcdfc87816fc651bf93918399594ec457ce1822dcd47a0cff2374a",
+        "bytes": 5192
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_0c1f3f0f440e4a0c.bin",
+        "sha256": "f3bb3510fa2b09cdfae2356202c18b51086308370a7cd91167ada4515f3e1ff3",
+        "bytes": 5464
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_c30104cb0efb6675.bin",
+        "sha256": "05a64b50c80704c0ef80ed818f790b1fabf3bb2ca8dbdee134ade54d6ec2fa8b",
+        "bytes": 2200
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_a66fb1981ba755b2.bin",
+        "sha256": "b50da3d3ad2e8e73b716c6c96d65e00b8aa06d156549d931c753962de2a84256",
+        "bytes": 1236
+      }
     }
-  },
+  ],
+  "profiles_json_sha256": "90d2404471a8f74edcee5da6c94389dd585f249513c29557e0c3216dfd5c45af",
   "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
   "compiler_path": "/usr/bin/clang++",
   "host_only": true,
-  "expected_checks": [
-    "reviewed_pair_applied_545_1392",
+  "expected_row_checks": [
+    "pair_and_per_stage_lookups_applied_identically",
     "all_original_words_preserved",
     "vertex_previous_clip_and_public_abi",
     "authored_fragment_register_bits_literals_and_opcodes",
     "invalid_wrong_pair_truncated_appended_atomic_refusal",
-    "every_input_dword_every_bit_57152_atomic_refusals",
+    "twenty_one_row_perturbations_refused_atomically",
+    "twenty_four_program_perturbations_refused_by_revalidation",
+    "every_input_dword_every_bit_atomic_refusals",
     "six_input_output_alias_layouts_applied",
     "cross_alias_refusal_atomic"
   ],
+  "expected_argon_check": "argon_output_byte_identical_to_previous_transformer",
   "sources_after": {
-    "src/renderer/material_motion.cpp": "f999cc89e428ea073fbe883a5b5814db0500fed838fef2f53e8cbb7a62b311b5",
-    "src/renderer/material_motion.h": "8e3258f74d4d814fed07c1647f2b2cef2fa3441d813484ad1f76803e4e717e09",
+    "src/renderer/material_motion.cpp": "b37b5c8da211a1bd10c192fefc4e5670813f81e1d642bb3fe180b4fd80381881",
+    "src/renderer/material_motion.h": "44c86c4c152915d598333682a4799784caa6d19704f4bbb66f1b54a6f346b32f",
+    "src/renderer/motion_output_profiles.h": "57750cb5ef66e1697e2295b6f2a3a6a3c4d33e588064b24d6f0bd1c926039058",
+    "src/renderer/motion_output_profiles_inc.h": "421ab470284eb1c1abc0f500781a110858464b4f504d2c92938e0bc42919802e",
     "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
     "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
-    "verification/probe/material_motion_structure.cpp": "5b84e083615870b2a2697f396a8ee9bd22ad26a5a6efe3f226b25a4b169d1066",
-    "verification/probe/run_material_motion_structure.py": "cf8f250473724b48f159ab22ca5db61efd7ce62a58912ac7b27e54a13643c28b"
+    "verification/probe/material_motion_structure.cpp": "ec46e88e8ee338496bdf4435bcad5ff6286a80c2fab4e16e48341f3c76ec74b4",
+    "verification/probe/run_material_motion_structure.py": "8c6ce522d72eb24fe4252e8477d4c09583e3f0c43db62bd269d274bfc6876086"
   },
-  "inputs_after": {
-    "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": {
-      "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
-      "bytes": 2104
+  "inputs_after": [
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
+        "sha256": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
+        "bytes": 5040
+      }
     },
-    "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": {
-      "sha256": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
-      "bytes": 5040
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_ca6bfa4a6cca7e2a.bin",
+        "sha256": "f2ba5da400ac78cb685f4a2a92e57a441378690af9689b538ef49f07a09d441b",
+        "bytes": 5312
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_b0602757fce6e870.bin",
+        "sha256": "33cef191db2668aadef869a140b2185b1576212535bdae7d607da49573d8d785",
+        "bytes": 2080
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_517540ae6d5e5410.bin",
+        "sha256": "e863f6196bad66465442a9a27923953ab11b71be6ab60d325237e2f5e2f85329",
+        "bytes": 1588
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_5e0a10fe752b6140.bin",
+        "sha256": "ffd612d6d0dcc9195322cfa71f11b6a76751c49e5b87fe660bfc7360bc0f1a19",
+        "bytes": 5416
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_63f96eba9eea7880.bin",
+        "sha256": "2046f15c8d3c761508a5abf8e4b540c7d6aa8902d131f02533377e68a9bfa75b",
+        "bytes": 5168
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_167eb2d5629ab9d3.bin",
+        "sha256": "fe2bc3e8b3a76315a4225d409fcf0a25b3d2eb456745dd3dd3bcf0da81e222c6",
+        "bytes": 2264
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_d44db87778a43b61.bin",
+        "sha256": "481ff206a4d729023fb44f930d6a30f9972318e9d1c24cab72b11869eb856dc8",
+        "bytes": 1792
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_3b94320087e81945.bin",
+        "sha256": "f4f228d05aef995c3a24a74ee4a494763103511f188a60cd695d8a1ec392a12c",
+        "bytes": 5056
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_462342e3e5781384.bin",
+        "sha256": "aef282706e75e9067803c175fc24d04ea452b0e660c0c1c6e446ce9e76e6e08f",
+        "bytes": 5000
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_64bac8bb307eb896.bin",
+        "sha256": "84eeded40acc811b109221fe5c7e1b5a898f3b9a34a1b4685937a24f6b1bc4a7",
+        "bytes": 5568
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_7c83ed50c9894e44.bin",
+        "sha256": "a171c7d7e3dcdfc87816fc651bf93918399594ec457ce1822dcd47a0cff2374a",
+        "bytes": 5192
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_0c1f3f0f440e4a0c.bin",
+        "sha256": "f3bb3510fa2b09cdfae2356202c18b51086308370a7cd91167ada4515f3e1ff3",
+        "bytes": 5464
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_c30104cb0efb6675.bin",
+        "sha256": "05a64b50c80704c0ef80ed818f790b1fabf3bb2ca8dbdee134ade54d6ec2fa8b",
+        "bytes": 2200
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_a66fb1981ba755b2.bin",
+        "sha256": "b50da3d3ad2e8e73b716c6c96d65e00b8aa06d156549d931c753962de2a84256",
+        "bytes": 1236
+      }
     }
-  },
+  ],
   "source_input_executable_unchanged": true
 }

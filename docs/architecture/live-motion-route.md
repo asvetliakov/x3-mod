@@ -58,7 +58,8 @@ failed gate draws the original pair with no RT1 bound, exactly as today.
    selector's main color surface with its D24X8 depth bound. Selection runs every
    frame in this mode, not only in requested capture frames.
 3. Shader pair: the currently bound VS and PS are both originals that have a
-   registered variant, and the pair is one of the reviewed pairs.
+   registered variant, and the pair is one row of the reviewed profile table
+   (12 class A/B pairs; see "Pair keying" below).
 4. Draw state: alpha blend off, alpha test off, sRGB write off, Z enable and Z
    write on, COLORWRITEENABLE 15, no instancing on stream 0, integer constant
    i0.x in [0, 8] for profiles with a relative light loop.
@@ -128,6 +129,9 @@ ambiguous sub-mesh splits. Broadening coverage requires per-profile insertion
 facts for the other SM3 material programs: 16 pairs covering 97.6% of scene
 draws fall into three transformation classes, tracked in
 [motion output profiles](../reverse-engineering/motion-output-profiles.md).
+The transformer is now table-driven for classes A and B (12 pairs, 56.9% of
+the captured scene draws); class C (four pairs, 40.7%) still needs the
+control-flow validation described there.
 Particles, stardust, overlays and SM2 programs remain outside this route and
 keep the sentinel, so the temporal resolve rejects history there.
 
@@ -144,7 +148,8 @@ captures are the next step.
 | --- | --- |
 | `src/proxy/motion_output.{h,cpp}` | Per-device route: variant registry, state shadow, motion target, capability self test, sentinel fill, gates, substitution/restoration, history, diagnostics |
 | `src/renderer/motion_row_history.{h,cpp}` | Pure in-frame previous-row table (lookup against the sealed previous frame while collecting); `MotionHistory` stays untouched as the replay reference |
-| `src/renderer/material_motion.{h,cpp}` | Transformer split into `material_motion_vertex_variant` / `material_motion_pixel_variant` (each stage is created separately by the game); the pair function remains for the detached fixtures; `material_motion_reviewed_pairs` lists the approved pair |
+| `src/renderer/material_motion.{h,cpp}` | Table-driven transformer, `material_motion_vertex_variant` / `material_motion_pixel_variant` (each stage is created separately by the game); the pair function remains for the detached fixtures; `material_motion_reviewed_pairs` is the profile table |
+| `src/renderer/motion_output_profiles.h` + `motion_output_profiles_inc.h` | Row struct, class enum and the generated 12-row table (classes A and B) with compile-time consistency checks; see [material-motion-prototype.md](material-motion-prototype.md) |
 | `src/proxy/capture.cpp` | Hook installation, state block wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT` parsing |
 | `src/proxy/scene_capture.{h,cpp}` | `describe_surface` shared with the route |
 | `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only) |
@@ -152,6 +157,36 @@ captures are the next step.
 `X3M_MOTION_OUTPUT=1` enables the route. Without `X3M_OBJECT_TRACE=1` and
 `X3M_OBJECT_LIFETIME=1` gate 5 never passes and every eligible draw writes the
 sentinel (mode 0); the selector, fill, substitution and restoration still run.
+
+### Pair keying
+
+Eligibility is keyed by the exact **pair**: gate 3 passes only when the bound
+VS and PS fingerprints appear together in one table row
+(`material_motion_pair_reviewed`), never on a VS alias alone. Variants,
+however, are created **per original program**, one VS variant per VS object
+and one PS variant per PS object, at creation time, because the game creates
+the two stages separately and a VS such as `53a0a641107ed76c` or
+`4944d81dfe531b37` serves four reviewed pairs each. This is correct only if
+every row sharing a VS uses the same VS-side splice (output register,
+TEXCOORD index, offsets, constant base), so that the one variant links with
+each row's PS variant; the same holds for a PS shared by rows. Inspecting the
+table: the four `53a0…` rows all use o6/TEXCOORD4, the four `4944…` rows all
+use o7/TEXCOORD5, and no PS appears in two rows. Rather than rely on that
+incidentally, `motion_output_profiles.h` proves it with a `static_assert`
+over the generated table (`motion_output_profiles_consistent`), so a
+regenerated table that broke the agreement would fail to compile instead of
+mislinking; the registry code in `motion_output.cpp` then needs no per-pair
+variant map, no extra device objects and no per-draw work beyond the existing
+row lookup. If a future table needs different VS registers for different
+pairs of one VS, the scheme to adopt is a per-pair VS variant keyed by
+`(vs, ps)` in the registry; the static_assert marks exactly that point.
+
+The route itself hard-codes two more table facts: the constant shadow
+captures the one clip-row window c24–27, and gate 4 applies the one bound
+`i0.x` in [0, 8]. A second `static_assert` in `motion_output.cpp`
+(`rows_match_shadow`) requires every row's `matrix_register` and light-loop
+fields to equal those, so a regenerated table with another matrix register
+would fail to build rather than route draws whose rows the shadow never saw.
 
 ### Hooked vtable slots
 
@@ -233,11 +268,30 @@ of these before and after each fill and each routed draw.
 
 ### Not covered
 
-Jitter, any temporal consumer, gameplay captures, other material pairs,
-instanced or user-memory draws, MSAA targets, Direct3D9Ex, native Windows
+Jitter, any temporal consumer, gameplay captures, class C pairs and the
+SM1/SM2/bloom programs outside the table, instanced or user-memory draws,
+MSAA targets, Direct3D9Ex, native Windows
 execution (cross-compiled only), and the measured cost of the setter hooks in
 the game (each still takes the capture mutex and the admission entry; the
 CPU-state boundary is the light one described above). Shader registry entries
 are keyed by object address and replaced on reuse, never removed: a variant
 whose original the game destroyed stays alive (one device reference each)
 until that address is reused or the device is released.
+
+## Engine constant-upload facts that the route depends on
+
+The [constant upload disassembly](../reverse-engineering/constant-uploads.md)
+shows that every shader/constant setter the game issues comes from its two
+`ID3DXEffectStateManager` implementations inside `BeginPass`; `CommitChanges`
+is never called, and no game code writes VS constants at or above c216 or PS
+constants above c23. Two consequences are load-bearing:
+
+- The pure-device state manager memoizes the last VS/PS pointer it forwarded.
+  The route must therefore restore the application's shader pointers after
+  every routed draw, or the next pass silently keeps rendering with the variant.
+- The reserved constant ranges are never written by the game, so the
+  conditional restore of c252–255 and c216–217 is a safety net, not a per-draw
+  cost. The integer register i0 is written every draw and stays shadowed.
+
+The setter hooks are on the per-draw path but shallow: at most about five VS
+float writes, one integer write and a few PS writes per material pass.

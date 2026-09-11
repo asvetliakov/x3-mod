@@ -39,10 +39,20 @@ Evidence at this checkpoint:
   in-frame duplicates; dropping buffer identity leaves 174 ambiguous sub-mesh
   splits. See [motion history key](reverse-engineering/motion-history-key.md).
 - Shader coverage: 16 SM3 material pairs covering 97.6% of scene draws fall into
-  three transformation classes; the generated table for classes A and B (12
-  pairs, 56.9%) is `src/renderer/motion_output_profiles_inc.h`. Only the Argon
-  pair (24.2% of scene draws) is transformed today. See
-  [motion output profiles](reverse-engineering/motion-output-profiles.md).
+  three transformation classes. The transformer is now table-driven from
+  `src/renderer/motion_output_profiles_inc.h` and transforms all 12 class A and
+  B pairs (56.9% of scene draws): 121 structural checks, 622,336 single-bit
+  mutations rejected, 24 program perturbations per row, and the GPU fixture
+  passes every row with color identical and motion within 0.00086 px. The four
+  class C pairs (40.7%) with static branches are still refused. See
+  [motion output profiles](reverse-engineering/motion-output-profiles.md),
+  [material motion](verification/material-motion.md) and
+  [review 13](verification/review-13.md).
+- [Constant upload disassembly](reverse-engineering/constant-uploads.md): all
+  game shader/constant setters come from its two D3DX effect state managers in
+  BeginPass; no game code writes the reserved constant ranges; the pure-device
+  manager memoizes the last shader pointer, so restoring VS/PS after a routed
+  draw is mandatory.
 - [Review 12](verification/review-12.md) fixed a possible terminate in a
   noexcept readback path, hook installation for refused devices and heavy
   FP-state saving on every constant setter; a new static checker proves the
@@ -55,10 +65,8 @@ cost in gameplay is unmeasured, and no temporal consumer reads the output.
 
 ## Concrete next work
 
-1. Generalize the transformer to the table-driven classes A and B, then C,
-   with per-pair structural fixtures and the same mutation rejection as the
-   Argon pair. Variants are keyed by pair because the PS fixes two register
-   choices.
+1. Extend the table-driven transformer to class C (balanced static branches in
+   the PS) with control-flow depth validation and the same fixtures.
 2. User-managed diagnostic run with `X3M_MOTION_OUTPUT=1`, object trace and
    lifetime enabled: capture frames with motion readback, compare against the
    CPU projection of stored previous rows, check color bit-identity against a
