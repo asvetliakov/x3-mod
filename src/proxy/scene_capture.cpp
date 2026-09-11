@@ -14,7 +14,8 @@ template<class T> struct Ref {
     Ref(const Ref&) = delete;
     Ref& operator=(const Ref&) = delete;
 };
-renderer::Surface describe(IDirect3DSurface9* surface) {
+} // namespace
+renderer::Surface describe_surface(IDirect3DSurface9* surface) noexcept {
     renderer::Surface result{};
     if (!surface) { result.known = true; return result; }
     D3DSURFACE_DESC desc{};
@@ -32,6 +33,8 @@ renderer::Surface describe(IDirect3DSurface9* surface) {
     return {true, id, container_id, desc.Width, desc.Height,
             static_cast<std::uint32_t>(desc.Format), static_cast<std::uint32_t>(desc.MultiSampleType)};
 }
+namespace {
+renderer::Surface describe(IDirect3DSurface9* surface) { return describe_surface(surface); }
 template<class T> std::uint64_t shader_hash(T* shader) {
     if (!shader) return 0;
     UINT size = 0;

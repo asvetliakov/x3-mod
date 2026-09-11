@@ -13,6 +13,7 @@ add_library(d3d9 SHARED
   src/proxy/draw_input.cpp src/proxy/object_lifetime.cpp src/proxy/mesh_adjacency_cache.cpp
   src/renderer/temporal_pass.cpp src/renderer/material_radiance.cpp
   src/renderer/motion_history.cpp src/renderer/rigid_position.cpp
+  src/renderer/material_motion.cpp src/renderer/motion_row_history.cpp src/proxy/motion_output.cpp
   src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/proxy/d3d9.def)
 target_compile_features(d3d9 PRIVATE cxx_std_17)
 # Keep compiler EH bookends out of the admission adapter's CPU-state boundary.

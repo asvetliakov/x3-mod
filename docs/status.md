@@ -1,19 +1,80 @@
 # Project status
 
-Updated 2026-09-11. **The iteration-5 user-managed run is complete. Its captured
-gameplay frames preserve scene depth, and every scoped draw has consistent
-observed storage lifetimes. The installed build remains unchanged while follow-up
-source work is reviewed. See [iteration 5](verification/iteration-05.md).
-The overall renderer modernization objective is not complete.**
-No HDR/TAA/AgX/material/clustered-lighting
-visual enhancement is enabled yet. See the [full user objective](user-objective.md)
-and [roadmap](architecture/roadmap.md).
-Native Windows/Direct3D is also a required feature target. The buffer evidence
-producer now uses public D3D9/COM instead of Wine layouts. Tests still run on
-CrossOver; native-Windows behavior and the depth-provider gap remain unverified.
-See [portability requirements and gaps](architecture/platform-portability.md).
+Updated 2026-09-12. **Direction change: per-pixel motion now comes from the
+game's own material draws through transformed shader variants writing a second
+render target, not from deferred geometry replay.** The replay, admission,
+execution-scope and geometry-lease modules stay in the tree as a numerical
+reference and are no longer a prerequisite for any visual feature. See the
+[live motion route](architecture/live-motion-route.md).
+The overall renderer modernization objective is not complete: no HDR, TAA, AgX,
+material or clustered-lighting enhancement is visible in the game yet. See the
+[full user objective](user-objective.md) and [roadmap](architecture/roadmap.md).
+Native Windows/Direct3D remains a required target alongside CrossOver Preview;
+tests still run only on CrossOver. See
+[portability requirements and gaps](architecture/platform-portability.md).
 
-## Latest checkpoint
+## Latest checkpoint: live same-draw motion route (source, not installed)
+
+The proxy can now, behind the off-by-default `X3M_MOTION_OUTPUT=1` switch,
+substitute the reviewed Argon SM3 pair with its motion variant during the main
+scene, bind an owned RGBA32F motion target as RT1, supply the previous frame's
+submitted WVP rows from a cross-frame history keyed by node/camera lifetime
+serials plus buffer identity and draw range, and restore all touched state
+after each draw. The motion target is filled with the invalid sentinel at the
+frame's latching Clear, released before Reset and on device release, and read
+back in requested capture frames as `motion_<device>_<frame>.rgba32f`. See the
+[implementation section](architecture/live-motion-route.md) for the exact
+hooked slots, gates, restoration list and failure behavior, and
+[motion output verification](verification/motion-output.md).
+
+Evidence at this checkpoint:
+
+- Synthetic actual-DLL fixture: color bit-identical with the route off and on,
+  39/39 full state restorations with zero differences, 44,284 motion pixels
+  against a CPU oracle with 10,261 matched (max 0.0016 px UV, 3.7e-8 depth),
+  Reset and shader recreation, sentinel-only mode without object scope, and
+  application writes to the reserved constants restored.
+- History key validation on the 24 iteration-5 gameplay frames: the full key
+  matches 99.97% of keyable scene draws across 18 adjacent frame pairs with no
+  in-frame duplicates; dropping buffer identity leaves 174 ambiguous sub-mesh
+  splits. See [motion history key](reverse-engineering/motion-history-key.md).
+- Shader coverage: 16 SM3 material pairs covering 97.6% of scene draws fall into
+  three transformation classes; the generated table for classes A and B (12
+  pairs, 56.9%) is `src/renderer/motion_output_profiles_inc.h`. Only the Argon
+  pair (24.2% of scene draws) is transformed today. See
+  [motion output profiles](reverse-engineering/motion-output-profiles.md).
+- [Review 12](verification/review-12.md) fixed a possible terminate in a
+  noexcept readback path, hook installation for refused devices and heavy
+  FP-state saving on every constant setter; a new static checker proves the
+  light hook path reaches no x87 instruction. Existing suites still pass:
+  26 ownership integration cases, the fallback link, material-motion structure
+  and GPU fixtures, and 388 Python analysis tests.
+
+This is CPU/synthetic evidence. The route has not run in the game, its per-draw
+cost in gameplay is unmeasured, and no temporal consumer reads the output.
+
+## Concrete next work
+
+1. Generalize the transformer to the table-driven classes A and B, then C,
+   with per-pair structural fixtures and the same mutation rejection as the
+   Argon pair. Variants are keyed by pair because the PS fixes two register
+   choices.
+2. User-managed diagnostic run with `X3M_MOTION_OUTPUT=1`, object trace and
+   lifetime enabled: capture frames with motion readback, compare against the
+   CPU projection of stored previous rows, check color bit-identity against a
+   route-off capture of the same scene, and measure frame time with the route
+   off/on. Include the constant-upload disassembly findings when choosing which
+   setter hooks stay on the hot path.
+3. Add projection jitter in the same hook and connect matched color/depth/motion
+   to the temporal resolve; define the camera-cut policy from the observed
+   camera-serial and view-delta evidence.
+4. Establish the FP16 scene path and enable only reviewed material variants
+   there; integrate a GPU-native HDR presentation route. Continue the remaining
+   roadmap features.
+5. Loading-time gap and alt-tab cursor remain tracked and unfixed.
+
+## Replay/admission line (reference only, superseded 2026-09-12)
+
 
 The detached [same-draw material prototype](verification/material-motion.md)
 now writes color and motion correspondence together for one common opaque SM3
@@ -275,7 +336,7 @@ presentation and the requested visual features remain unfinished.
   clamp vertex lighting/emissive RGB before the target, so FP16 alone is insufficient.
   See `docs/reverse-engineering/position-shaders.md`.
 
-## Concrete next work
+### Superseded next-work list (2026-09-11)
 
 1. Prepare limited live routing for the verified
    [motion output alongside color](architecture/motion-output-strategy.md).

@@ -51,6 +51,12 @@ Present is running; F8 captures four frames with this command. See the
 [coverage limits](docs/verification/telemetry.md). Timing is CPU-side elapsed
 time, not GPU timing. Loading optimization and the alt-tab cursor fix remain pending.
 
+The live motion route is opt-in and diagnostic: `--motion-output` (env
+`X3M_MOTION_OUTPUT=1`) draws the reviewed material pair through transformed
+variants into a private RGBA32F RT1 and writes it back in capture frames. Object
+history needs `--object-trace --object-lifetime`; without them the route runs in
+sentinel-only mode. See [live motion route](docs/architecture/live-motion-route.md).
+
 ```sh
 python3 tools/manage.py status
 python3 tools/manage.py launch --vanilla

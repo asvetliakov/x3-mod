@@ -21,8 +21,8 @@
       ],
       "fresh_build": true,
       "executable": "/Users/asvetl/x3-mod/verification/probe/build/material-motion-structure/release",
-      "executable_sha256_before": "14b549da28cca4486319df4f20428b2fc20c9e17bd7329a1cbf4da6cbd06ffaf",
-      "executable_sha256_after": "14b549da28cca4486319df4f20428b2fc20c9e17bd7329a1cbf4da6cbd06ffaf",
+      "executable_sha256_before": "1adc75168e6a2edb72bd97e0ca881914a906d614833f39da408130623fbc27a8",
+      "executable_sha256_after": "1adc75168e6a2edb72bd97e0ca881914a906d614833f39da408130623fbc27a8",
       "checks": 8,
       "single_bit_mutations": 57152,
       "alias_layouts": 6,
@@ -49,8 +49,8 @@
       ],
       "fresh_build": true,
       "executable": "/Users/asvetl/x3-mod/verification/probe/build/material-motion-structure/asan-ubsan",
-      "executable_sha256_before": "ae0be4ea5ef0b69b91d83b520ec5a45623a4f006f131a21e6c4ec3486507e7fe",
-      "executable_sha256_after": "ae0be4ea5ef0b69b91d83b520ec5a45623a4f006f131a21e6c4ec3486507e7fe",
+      "executable_sha256_before": "85c9fc28c18b93281c9dcd3ef9c3a6d9b32c5cd5888636278afe88f67c1cb43b",
+      "executable_sha256_after": "85c9fc28c18b93281c9dcd3ef9c3a6d9b32c5cd5888636278afe88f67c1cb43b",
       "checks": 8,
       "single_bit_mutations": 57152,
       "alias_layouts": 6,
@@ -60,8 +60,8 @@
     }
   ],
   "sources_before": {
-    "src/renderer/material_motion.cpp": "9ac0f3ef57ded23e8d357c8c4517c6e5c0be087db1c32c537f0ae4f7388ac2d6",
-    "src/renderer/material_motion.h": "b0db186f1aa9e11bb911b7ba9e0ac00c0a2cdc8350f529b698659b7c599c041a",
+    "src/renderer/material_motion.cpp": "f999cc89e428ea073fbe883a5b5814db0500fed838fef2f53e8cbb7a62b311b5",
+    "src/renderer/material_motion.h": "8e3258f74d4d814fed07c1647f2b2cef2fa3441d813484ad1f76803e4e717e09",
     "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
     "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
     "verification/probe/material_motion_structure.cpp": "5b84e083615870b2a2697f396a8ee9bd22ad26a5a6efe3f226b25a4b169d1066",
@@ -91,8 +91,8 @@
     "cross_alias_refusal_atomic"
   ],
   "sources_after": {
-    "src/renderer/material_motion.cpp": "9ac0f3ef57ded23e8d357c8c4517c6e5c0be087db1c32c537f0ae4f7388ac2d6",
-    "src/renderer/material_motion.h": "b0db186f1aa9e11bb911b7ba9e0ac00c0a2cdc8350f529b698659b7c599c041a",
+    "src/renderer/material_motion.cpp": "f999cc89e428ea073fbe883a5b5814db0500fed838fef2f53e8cbb7a62b311b5",
+    "src/renderer/material_motion.h": "8e3258f74d4d814fed07c1647f2b2cef2fa3441d813484ad1f76803e4e717e09",
     "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
     "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
     "verification/probe/material_motion_structure.cpp": "5b84e083615870b2a2697f396a8ee9bd22ad26a5a6efe3f226b25a4b169d1066",

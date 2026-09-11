@@ -1,0 +1,76 @@
+{
+  "result": "PASS",
+  "passed": true,
+  "game_launched": false,
+  "host_only": true,
+  "runs": [
+    {
+      "mode": "release",
+      "command": [
+        "/usr/bin/clang++",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "/Users/asvetl/x3-mod/src/renderer/motion_row_history.cpp",
+        "/Users/asvetl/x3-mod/verification/probe/motion_row_history.cpp",
+        "-o",
+        "/Users/asvetl/x3-mod/verification/probe/build/motion-row-history/release"
+      ],
+      "executable_sha256": "29786f1075696b3710e3664bcbc883a31ae26dd10d3dceabd41e117db8c1745d",
+      "checks": 8,
+      "report": "verification/results/motion-row-history-release.txt",
+      "report_sha256": "efa3b57765934efde7c3c7273c1d9808fea484f5cbbdc4e5026887644391dbf6",
+      "passed": true
+    },
+    {
+      "mode": "asan-ubsan",
+      "command": [
+        "/usr/bin/clang++",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "/Users/asvetl/x3-mod/src/renderer/motion_row_history.cpp",
+        "/Users/asvetl/x3-mod/verification/probe/motion_row_history.cpp",
+        "-o",
+        "/Users/asvetl/x3-mod/verification/probe/build/motion-row-history/asan-ubsan"
+      ],
+      "executable_sha256": "c6713d54b26f88dae7b8d47884e387716b6bfe504292dbf47a639e28fc1c96d5",
+      "checks": 8,
+      "report": "verification/results/motion-row-history-asan-ubsan.txt",
+      "report_sha256": "efa3b57765934efde7c3c7273c1d9808fea484f5cbbdc4e5026887644391dbf6",
+      "passed": true
+    }
+  ],
+  "sources_before": {
+    "src/renderer/motion_row_history.h": "33fdf843864926fe71aa19c47007fcaa1f3b74abbf8e8b03b57f140c394d7d9b",
+    "src/renderer/motion_row_history.cpp": "6263f441e910c83bb6eae37fd5fa841de318e86b304ac7c83a9969841a7cff83",
+    "src/renderer/motion_history.h": "a8bb9ef874282e83db1551cf741bc3648ed2e8b04ead2f7dc4c2919aa6447eda",
+    "verification/probe/motion_row_history.cpp": "223937f62d4cd93f9ca17fc4f9b14753575cc76d5de5805a5b985292a7983bc9",
+    "verification/probe/run_motion_row_history.py": "9a30df331284b03a4dab44a670bbf3d3612992bbeacaf3ab5d72333a12744572"
+  },
+  "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+  "expected_checks": [
+    "first_frame_records_without_history",
+    "match_consumes_previous_once",
+    "previous_duplicate_poisons_key",
+    "invalid_keys_rejected",
+    "regime_change_and_failed_present_invalidate",
+    "capacity_overflow_fails_closed",
+    "nonfinite_rows_and_uncommitted_frames_reject",
+    "not_ready_and_invalidate"
+  ],
+  "sources_after": {
+    "src/renderer/motion_row_history.h": "33fdf843864926fe71aa19c47007fcaa1f3b74abbf8e8b03b57f140c394d7d9b",
+    "src/renderer/motion_row_history.cpp": "6263f441e910c83bb6eae37fd5fa841de318e86b304ac7c83a9969841a7cff83",
+    "src/renderer/motion_history.h": "a8bb9ef874282e83db1551cf741bc3648ed2e8b04ead2f7dc4c2919aa6447eda",
+    "verification/probe/motion_row_history.cpp": "223937f62d4cd93f9ca17fc4f9b14753575cc76d5de5805a5b985292a7983bc9",
+    "verification/probe/run_motion_row_history.py": "9a30df331284b03a4dab44a670bbf3d3612992bbeacaf3ab5d72333a12744572"
+  }
+}

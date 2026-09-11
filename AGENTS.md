@@ -61,3 +61,14 @@ EXE/CAT/DAT files and unrelated bottle settings. Do not claim HDR/TAA/lighting a
 implemented when only capture or API capability testing exists. Keep extracted
 copyrighted game shader bytes/decompiler output local and untracked. Derived
 names, hashes and technical findings may be documented.
+
+Context discipline for agents (added 2026-09-12):
+
+- Never read large files whole: anything over about 50 KB under
+  `verification/results/`, capture logs, shader dumps and transcripts. Query them
+  with a short Python, `jq` or `grep` command that prints only the needed fields
+  or rows. Validate produced JSON with a script or its paired pytest, not by
+  reading it back.
+- Reports to the orchestrator carry numbers, conclusions and paths, never pasted
+  file contents. The main session keeps architecture decisions; subagents keep
+  the bulk reading.

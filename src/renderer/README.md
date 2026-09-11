@@ -39,3 +39,16 @@ Current checkpoint: **44 numerical checks and 40 complete fixture state comparis
 Production implementation SHA256: `b1ccd1bbc8d398c4a39f1f94980f83faa5a16c883eca20cd1d9a8ef1e52d1f5e`.
 Fixture executable SHA256 with the explicit SSE2/legacy-stack compiler policy:
 `b3161866e5dee80b4d03ef7f2f5bad7c6515cdc124744c30205df0eab7f15d74`.
+
+## Live motion route components
+
+`material_motion.{h,cpp}` transforms the reviewed material pair per stage
+(`material_motion_vertex_variant`, `material_motion_pixel_variant`; the pair
+function wraps both for the detached fixtures) and lists the approved pairs in
+`material_motion_reviewed_pairs`. `motion_row_history.{h,cpp}` is the live
+route's pure previous-row table: it answers lookups against the sealed previous
+frame while the current frame collects, poisons duplicate keys at commit,
+consumes a matched entry once, reserves its tables at construction and
+allocates nothing per draw. `MotionHistory` remains the two-phase replay
+reference. The device-facing route lives in `src/proxy/motion_output.cpp`; see
+[live motion route](../../docs/architecture/live-motion-route.md).

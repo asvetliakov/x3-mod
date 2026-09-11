@@ -118,18 +118,21 @@ bool motion_fragment(Words& constants, Words& inputs, Words& body) {
 }
 } // namespace
 
-MaterialMotionResult material_motion_variant(const std::uint32_t* vertex,
-    std::size_t vertex_words, const std::uint32_t* pixel, std::size_t pixel_words,
-    MaterialMotionVariant& output) noexcept {
-    if (!vertex || !pixel || vertex_words < 2 || pixel_words < 2)
-        return MaterialMotionResult::InvalidInput;
-    if (vertex_words != 526 || pixel_words != 1260 ||
-        fingerprint(vertex, vertex_words) != 0x53a0a641107ed76cull ||
-        fingerprint(pixel, pixel_words) != 0x8759c7838bbc86c2ull)
+std::uint64_t material_motion_fingerprint(const std::uint32_t* words, std::size_t count) noexcept {
+    return words ? fingerprint(words, count) : 0;
+}
+bool material_motion_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept {
+    for (const auto& pair : material_motion_reviewed_pairs)
+        if (vertex && pixel && pair.vertex == vertex && pair.pixel == pixel) return true;
+    return false;
+}
+
+MaterialMotionResult material_motion_vertex_variant(const std::uint32_t* vertex,
+    std::size_t vertex_words, std::vector<std::uint32_t>& output) noexcept {
+    if (!vertex || vertex_words < 2) return MaterialMotionResult::InvalidInput;
+    if (vertex_words != 526 || fingerprint(vertex, vertex_words) != 0x53a0a641107ed76cull)
         return MaterialMotionResult::UnsupportedShader;
-    if (vertex[0] != 0xfffe0300u || pixel[0] != 0xffff0300u ||
-        !framed(vertex, vertex_words, vertex_header_end) ||
-        !framed(pixel, pixel_words, pixel_header_end))
+    if (vertex[0] != 0xfffe0300u || !framed(vertex, vertex_words, vertex_header_end))
         return MaterialMotionResult::ProfileMismatch;
     for (unsigned lane = 0; lane < 4; ++lane) {
         const auto at = position_begin + 4 * lane;
@@ -139,29 +142,63 @@ MaterialMotionResult material_motion_variant(const std::uint32_t* vertex,
             return MaterialMotionResult::ProfileMismatch;
     }
     try {
-        Words constants, inputs, body;
-        if (!motion_fragment(constants, inputs, body)) return MaterialMotionResult::ProfileMismatch;
-        MaterialMotionVariant variant;
-        variant.vertex.reserve(vertex_words + 19);
-        variant.vertex.insert(variant.vertex.end(), vertex, vertex + vertex_header_end);
+        Words variant;
+        variant.reserve(vertex_words + 19);
+        variant.insert(variant.end(), vertex, vertex + vertex_header_end);
         // New output o6 is TEXCOORD4; existing declarations and math are intact.
-        variant.vertex.insert(variant.vertex.end(), {0x0200001fu, 0x80040005u, 0xe00f0006u});
-        variant.vertex.insert(variant.vertex.end(), vertex + vertex_header_end, vertex + position_end);
+        variant.insert(variant.end(), {0x0200001fu, 0x80040005u, 0xe00f0006u});
+        variant.insert(variant.end(), vertex + vertex_header_end, vertex + position_end);
         for (unsigned lane = 0; lane < 4; ++lane)
-            variant.vertex.insert(variant.vertex.end(), {0x03000009u,
+            variant.insert(variant.end(), {0x03000009u,
                 0xe0000006u | (1u << (16 + lane)), 0x80e40001u, 0xa0e400fcu + lane});
-        variant.vertex.insert(variant.vertex.end(), vertex + position_end, vertex + vertex_words);
-        variant.pixel.reserve(pixel_words + constants.size() + inputs.size() + body.size());
-        variant.pixel.insert(variant.pixel.end(), pixel, pixel + pixel_definition_end);
-        variant.pixel.insert(variant.pixel.end(), constants.begin(), constants.end());
-        variant.pixel.insert(variant.pixel.end(), pixel + pixel_definition_end, pixel + pixel_header_end);
-        variant.pixel.insert(variant.pixel.end(), inputs.begin(), inputs.end());
-        variant.pixel.insert(variant.pixel.end(), pixel + pixel_header_end, pixel + pixel_words - 1);
-        variant.pixel.insert(variant.pixel.end(), body.begin(), body.end());
-        variant.pixel.push_back(end);
-        output.vertex.swap(variant.vertex);
-        output.pixel.swap(variant.pixel);
+        variant.insert(variant.end(), vertex + position_end, vertex + vertex_words);
+        output.swap(variant);
         return MaterialMotionResult::Applied;
     } catch (...) { return MaterialMotionResult::AllocationFailure; }
+}
+
+MaterialMotionResult material_motion_pixel_variant(const std::uint32_t* pixel,
+    std::size_t pixel_words, std::vector<std::uint32_t>& output) noexcept {
+    if (!pixel || pixel_words < 2) return MaterialMotionResult::InvalidInput;
+    if (pixel_words != 1260 || fingerprint(pixel, pixel_words) != 0x8759c7838bbc86c2ull)
+        return MaterialMotionResult::UnsupportedShader;
+    if (pixel[0] != 0xffff0300u || !framed(pixel, pixel_words, pixel_header_end))
+        return MaterialMotionResult::ProfileMismatch;
+    try {
+        Words constants, inputs, body;
+        if (!motion_fragment(constants, inputs, body)) return MaterialMotionResult::ProfileMismatch;
+        Words variant;
+        variant.reserve(pixel_words + constants.size() + inputs.size() + body.size());
+        variant.insert(variant.end(), pixel, pixel + pixel_definition_end);
+        variant.insert(variant.end(), constants.begin(), constants.end());
+        variant.insert(variant.end(), pixel + pixel_definition_end, pixel + pixel_header_end);
+        variant.insert(variant.end(), inputs.begin(), inputs.end());
+        variant.insert(variant.end(), pixel + pixel_header_end, pixel + pixel_words - 1);
+        variant.insert(variant.end(), body.begin(), body.end());
+        variant.push_back(end);
+        output.swap(variant);
+        return MaterialMotionResult::Applied;
+    } catch (...) { return MaterialMotionResult::AllocationFailure; }
+}
+
+MaterialMotionResult material_motion_variant(const std::uint32_t* vertex,
+    std::size_t vertex_words, const std::uint32_t* pixel, std::size_t pixel_words,
+    MaterialMotionVariant& output) noexcept {
+    if (!vertex || !pixel || vertex_words < 2 || pixel_words < 2)
+        return MaterialMotionResult::InvalidInput;
+    // Qualify both fingerprints before either stage transforms, so a wrong pair
+    // reports UnsupportedShader whichever stage is wrong and nothing is published.
+    if (vertex_words != 526 || pixel_words != 1260 ||
+        fingerprint(vertex, vertex_words) != 0x53a0a641107ed76cull ||
+        fingerprint(pixel, pixel_words) != 0x8759c7838bbc86c2ull)
+        return MaterialMotionResult::UnsupportedShader;
+    MaterialMotionVariant variant;
+    const auto vertex_result = material_motion_vertex_variant(vertex, vertex_words, variant.vertex);
+    if (vertex_result != MaterialMotionResult::Applied) return vertex_result;
+    const auto pixel_result = material_motion_pixel_variant(pixel, pixel_words, variant.pixel);
+    if (pixel_result != MaterialMotionResult::Applied) return pixel_result;
+    output.vertex.swap(variant.vertex);
+    output.pixel.swap(variant.pixel);
+    return MaterialMotionResult::Applied;
 }
 } // namespace x3m::renderer

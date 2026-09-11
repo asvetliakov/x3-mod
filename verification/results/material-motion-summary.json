@@ -7,8 +7,8 @@
   "cpu_baseline": "SSE2; stack realignment; four-byte incoming Win32 stack",
   "native_module_mapping": "32-bit process logical C:\\windows\\system32 maps host bottle windows/syswow64 PE32 files",
   "sources_before_build": {
-    "src/renderer/material_motion.h": "b0db186f1aa9e11bb911b7ba9e0ac00c0a2cdc8350f529b698659b7c599c041a",
-    "src/renderer/material_motion.cpp": "9ac0f3ef57ded23e8d357c8c4517c6e5c0be087db1c32c537f0ae4f7388ac2d6",
+    "src/renderer/material_motion.h": "8e3258f74d4d814fed07c1647f2b2cef2fa3441d813484ad1f76803e4e717e09",
+    "src/renderer/material_motion.cpp": "f999cc89e428ea073fbe883a5b5814db0500fed838fef2f53e8cbb7a62b311b5",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
@@ -38,8 +38,8 @@
     "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
   },
   "sources_after_build": {
-    "src/renderer/material_motion.h": "b0db186f1aa9e11bb911b7ba9e0ac00c0a2cdc8350f529b698659b7c599c041a",
-    "src/renderer/material_motion.cpp": "9ac0f3ef57ded23e8d357c8c4517c6e5c0be087db1c32c537f0ae4f7388ac2d6",
+    "src/renderer/material_motion.h": "8e3258f74d4d814fed07c1647f2b2cef2fa3441d813484ad1f76803e4e717e09",
+    "src/renderer/material_motion.cpp": "f999cc89e428ea073fbe883a5b5814db0500fed838fef2f53e8cbb7a62b311b5",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
@@ -60,7 +60,7 @@
     "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/syswow64/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863",
     "/opt/homebrew/Cellar/mingw-w64/14.0.0_3/toolchain-i686/bin/i686-w64-mingw32-g++": "c8181d422f8a912b04fc6c87d770a169b7aa6a6fd37edbc59629b876c33dd947"
   },
-  "executable_sha256": "8efbaa9966d3409c57097d240ab2b6c62151bad28b7287619f60513ae0ed6314",
+  "executable_sha256": "b25b5380ea545b1e787e666b2972a8666192f681d14263cd96f8a3889828621d",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -88,60 +88,60 @@
       "height": 768,
       "mode": 0,
       "samples": 6,
-      "mean_ms": 0.62005,
-      "median_ms": 0.4851,
-      "minimum_ms": 0.4326,
-      "maximum_ms": 0.9395
+      "mean_ms": 0.61455,
+      "median_ms": 0.6077,
+      "minimum_ms": 0.4588,
+      "maximum_ms": 0.7627
     },
     {
       "width": 1280,
       "height": 768,
       "mode": 1,
       "samples": 6,
-      "mean_ms": 0.66485,
-      "median_ms": 0.6484,
-      "minimum_ms": 0.4483,
-      "maximum_ms": 0.9481
+      "mean_ms": 0.79045,
+      "median_ms": 0.7737,
+      "minimum_ms": 0.5178,
+      "maximum_ms": 1.1318
     },
     {
       "width": 1280,
       "height": 768,
       "mode": 2,
       "samples": 6,
-      "mean_ms": 0.7143166666666667,
-      "median_ms": 0.6994,
-      "minimum_ms": 0.5844,
-      "maximum_ms": 0.8643
+      "mean_ms": 1.3406500000000001,
+      "median_ms": 0.8293,
+      "minimum_ms": 0.5424,
+      "maximum_ms": 2.8416
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 0,
       "samples": 6,
-      "mean_ms": 1.4868833333333333,
-      "median_ms": 1.48675,
-      "minimum_ms": 1.0709,
-      "maximum_ms": 1.9099
+      "mean_ms": 1.7427166666666667,
+      "median_ms": 1.2531,
+      "minimum_ms": 0.5875,
+      "maximum_ms": 4.3139
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 1,
       "samples": 6,
-      "mean_ms": 1.6025999999999998,
-      "median_ms": 1.54405,
-      "minimum_ms": 1.1582,
-      "maximum_ms": 2.1765
+      "mean_ms": 1.6282166666666666,
+      "median_ms": 1.19715,
+      "minimum_ms": 0.8951,
+      "maximum_ms": 3.7466
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 2,
       "samples": 6,
-      "mean_ms": 2.235516666666667,
-      "median_ms": 2.0781,
-      "minimum_ms": 1.8799,
-      "maximum_ms": 2.6582
+      "mean_ms": 2.9453666666666667,
+      "median_ms": 2.64665,
+      "minimum_ms": 1.5238,
+      "maximum_ms": 4.634
     }
   ],
   "local_after_run": {
@@ -149,8 +149,8 @@
     "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
   },
   "sources_after_run": {
-    "src/renderer/material_motion.h": "b0db186f1aa9e11bb911b7ba9e0ac00c0a2cdc8350f529b698659b7c599c041a",
-    "src/renderer/material_motion.cpp": "9ac0f3ef57ded23e8d357c8c4517c6e5c0be087db1c32c537f0ae4f7388ac2d6",
+    "src/renderer/material_motion.h": "8e3258f74d4d814fed07c1647f2b2cef2fa3441d813484ad1f76803e4e717e09",
+    "src/renderer/material_motion.cpp": "f999cc89e428ea073fbe883a5b5814db0500fed838fef2f53e8cbb7a62b311b5",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
@@ -171,6 +171,6 @@
     "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/syswow64/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863",
     "/opt/homebrew/Cellar/mingw-w64/14.0.0_3/toolchain-i686/bin/i686-w64-mingw32-g++": "c8181d422f8a912b04fc6c87d770a169b7aa6a6fd37edbc59629b876c33dd947"
   },
-  "wine_stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
-  "report_sha256": "b61b19d89352d0eeb5165425d204449dea8bc8ff14550d65b8027666c0fd29ad"
+  "wine_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "report_sha256": "ef3a205185b7202cf869f3ca81714b04042bceb992d1bbdaf485ce87289235fb"
 }

@@ -10,4 +10,6 @@ namespace x3m {
 void initialize_log(HMODULE module);
 void log(const char* format, ...);
 void hook_direct3d(IDirect3D9* object);
+// Capture output directory (wide path, no trailing separator). Valid after initialize_log.
+const wchar_t* capture_directory();
 }

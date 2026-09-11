@@ -1,0 +1,38 @@
+test_dramatic_linear_change_against_a_static_neighbourhood_is_flagged (test_motion_history_key.KeyMatchingTests) ... ok
+test_duplicate_current_key_consumes_the_previous_entry_once (test_motion_history_key.KeyMatchingTests) ... ok
+test_duplicate_previous_key_is_poisoned_not_paired_by_order (test_motion_history_key.KeyMatchingTests) ... ok
+test_load_epoch_change_prevents_a_match (test_motion_history_key.KeyMatchingTests) ... ok
+test_nonadjacent_frames_are_not_compared (test_motion_history_key.KeyMatchingTests) ... ok
+test_ordinal_key_silently_repairs_when_a_submission_disappears (test_motion_history_key.KeyMatchingTests) ... ok
+test_separate_devices_reusing_frame_numbers_stay_separate (test_motion_history_key.KeyMatchingTests) ... ok
+test_stable_scene_matches_every_keyable_draw (test_motion_history_key.KeyMatchingTests) ... ok
+test_unchanged_rows_are_counted_as_static (test_motion_history_key.KeyMatchingTests) ... ok
+test_vertex_buffer_identity_disambiguates_what_K2_cannot (test_motion_history_key.KeyMatchingTests) ... ok
+test_vertex_buffer_switch_on_a_stable_node_serial_is_reported (test_motion_history_key.KeyMatchingTests) ... ok
+test_duplicate_frame_begin_is_rejected (test_motion_history_key.LimitTests) ... ok
+test_frame_draw_and_event_bounds_are_enforced (test_motion_history_key.LimitTests) ... ok
+test_color_only_first_clear_never_latches_main_targets (test_motion_history_key.SceneBoundaryTests) ... ok
+test_frame_without_confirmed_depth_boundary_is_not_gameplay (test_motion_history_key.SceneBoundaryTests) ... ok
+test_incomplete_frame_is_excluded (test_motion_history_key.SceneBoundaryTests) ... ok
+test_partial_or_non_depth_scene_clear_does_not_open_the_phase (test_motion_history_key.SceneBoundaryTests) ... ok
+test_scene_phase_excludes_background_and_bloom_draws (test_motion_history_key.SceneBoundaryTests) ... ok
+test_duplicate_lifetime_record_fails_closed (test_motion_history_key.ScopeAndRowTests) ... ok
+test_fnv1a64_matches_the_published_reference_vectors (test_motion_history_key.ScopeAndRowTests) ... ok
+test_lifetime_record_for_another_frame_is_not_attached (test_motion_history_key.ScopeAndRowTests) ... ok
+test_omitted_rows_accepted_only_under_successful_sparse_zero (test_motion_history_key.ScopeAndRowTests) ... ok
+test_registry_matrix_register_separates_verified_from_assumed (test_motion_history_key.ScopeAndRowTests) ... ok
+test_rows_hash_mismatch_never_becomes_zero_rows (test_motion_history_key.ScopeAndRowTests) ... ok
+test_submitted_rows_blocker_rejects_the_rows (test_motion_history_key.ScopeAndRowTests) ... ok
+test_unscoped_and_unknown_lifetime_draws_are_not_keyable (test_motion_history_key.ScopeAndRowTests) ... ok
+test_wrong_registry_matrix_register_is_rejected_not_silently_shifted (test_motion_history_key.ScopeAndRowTests) ... ok
+test_argon_pair_counts_never_exceed_the_scene_phase (test_motion_history_key.SummarySelfConsistencyTests) ... ok
+test_every_gameplay_frame_has_a_well_formed_scene_bracket (test_motion_history_key.SummarySelfConsistencyTests) ... ok
+test_key_totals_agree_with_the_per_transition_records (test_motion_history_key.SummarySelfConsistencyTests) ... ok
+test_no_transition_matches_more_draws_than_it_has (test_motion_history_key.SummarySelfConsistencyTests) ... ok
+test_provenance_names_the_expected_snapshot (test_motion_history_key.SummarySelfConsistencyTests) ... ok
+test_totals_equal_the_sum_over_gameplay_frames (test_motion_history_key.SummarySelfConsistencyTests) ... ok
+
+----------------------------------------------------------------------
+Ran 33 tests in 0.026s
+
+OK

@@ -44,4 +44,30 @@ public:
 private:
     CpuState incoming_,outgoing_;
 };
+// Same contract as CpuCallBoundary for hooks whose own code executes no x87
+// instruction: the legacy caller's x87 stack/control/status are then untouched
+// by construction, so only MXCSR and the thread's last error are saved and
+// restored. FNSAVE/FRSTOR dominate CpuCallBoundary's cost (four of them per
+// hook), which matters for setters the game calls thousands of times per frame.
+// Precondition for using it: the hook body and every non-native function it
+// reaches are built with -mfpmath=sse, return no float/double by value (the
+// i386 ABI returns those in st(0)) and contain no x87 opcode; in particular no
+// logging, since the printf formatter is x87 code. The shader, constant and
+// viewport setter hooks of src/proxy/capture.cpp meet this;
+// verification/probe/check_no_x87.py checks their disassembly in the built
+// DLL (docs/verification/motion-output.md).
+class LightCallBoundary {
+public:
+    LightCallBoundary() noexcept { capture(incoming_); outgoing_=incoming_; }
+    ~LightCallBoundary(){ restore(outgoing_); }
+    void before_original() const noexcept { restore(incoming_); }
+    void after_original() noexcept { capture(outgoing_); }
+    LightCallBoundary(const LightCallBoundary&)=delete;
+    LightCallBoundary& operator=(const LightCallBoundary&)=delete;
+private:
+    struct State { std::uint32_t mxcsr=0; DWORD error=0; };
+    static void capture(State& s) noexcept { s.error=GetLastError(); asm volatile("stmxcsr %0" : "=m"(s.mxcsr) :: "memory"); }
+    static void restore(const State& s) noexcept { asm volatile("ldmxcsr %0" :: "m"(s.mxcsr) : "memory"); SetLastError(s.error); }
+    State incoming_,outgoing_;
+};
 } // namespace x3m

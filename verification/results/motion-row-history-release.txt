@@ -1,0 +1,9 @@
+CHECK first_frame_records_without_history
+CHECK match_consumes_previous_once
+CHECK previous_duplicate_poisons_key
+CHECK invalid_keys_rejected
+CHECK regime_change_and_failed_present_invalidate
+CHECK capacity_overflow_fails_closed
+CHECK nonfinite_rows_and_uncommitted_frames_reject
+CHECK not_ready_and_invalidate
+RESULT PASS checks=8

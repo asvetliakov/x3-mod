@@ -5,6 +5,10 @@
 #include "../renderer/scene_boundary.h"
 
 namespace x3m {
+// Describes a surface binding for the selector: allocation identity (private
+// data), texture container identity, dimensions, format and MSAA. Unknown on
+// any failed query; a null surface is a known null binding.
+renderer::Surface describe_surface(IDirect3DSurface9* surface) noexcept;
 // Bounded runtime adapter for the scene-boundary selector. This is diagnostic
 // depth preservation, not a visual temporal pass. It runs only in requested
 // capture frames, holds no application COM references, and never changes the

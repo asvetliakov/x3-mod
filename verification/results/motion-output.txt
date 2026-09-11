@@ -1,0 +1,388 @@
+==== production-off exit=0
+CHECK DLL seam presence matches the requested mode PASS
+MODE seam=0 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-production-off-20260912-020757-124437\d3d9.dll
+CHECK local files are the reviewed pair PASS
+RESTORE frame=0 label=fill differences=0
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=2 object=A routed=0 matched=0
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=3 object=B routed=0 matched=0
+COLOR frame=0 hash=a51695c780c5616f
+RESTORE frame=1 label=fill differences=0
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=2 object=A routed=0 matched=0
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=3 object=B routed=0 matched=0
+COLOR frame=1 hash=c7eadaff02c31bc1
+RESTORE frame=2 label=fill differences=0
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=2 object=A routed=0 matched=0
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=3 object=B routed=0 matched=0
+COLOR frame=2 hash=c7eadaff02c31bc1
+RESTORE frame=3 label=fill differences=0
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=2 object=A routed=0 matched=0
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=3 object=B routed=0 matched=0
+COLOR frame=3 hash=2a9e6b66c5d46ba0
+RESTORE frame=4 label=fill differences=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=2 object=A routed=0 matched=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=3 object=B routed=0 matched=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=4 object=A routed=0 matched=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=5 object=A routed=0 matched=0
+COLOR frame=4 hash=7d77f11e99dc8c79
+RESTORE frame=5 label=fill differences=0
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=2 object=A routed=0 matched=0
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=3 object=A routed=0 matched=0
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=4 object=B routed=0 matched=0
+COLOR frame=5 hash=2a9e6b66c5d46ba0
+RESTORE frame=6 label=fill differences=0
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=2 object=A routed=0 matched=0
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=3 object=B routed=0 matched=0
+COLOR frame=6 hash=c7eadaff02c31bc1
+RESTORE frame=7 label=fill differences=0
+RESTORE frame=7 label=stateblock differences=0
+CHECK state block Apply rebinding is honored (flat PS still bound) PASS
+EXPECT frame=7 index=2 object=A routed=0 matched=0
+RESTORE frame=7 label=draw differences=0
+EXPECT frame=7 index=3 object=B routed=0 matched=0
+COLOR frame=7 hash=41706be8c35085d1
+RESTORE frame=8 label=fill differences=0
+RESTORE frame=8 label=draw differences=0
+EXPECT frame=8 index=2 object=A routed=0 matched=0
+RESTORE frame=8 label=draw differences=0
+EXPECT frame=8 index=3 object=B routed=0 matched=0
+COLOR frame=8 hash=65fd995c86b4e9fc
+RESET PASS
+RESTORE frame=9 label=fill differences=0
+RESTORE frame=9 label=draw differences=0
+EXPECT frame=9 index=2 object=A routed=0 matched=0
+RESTORE frame=9 label=draw differences=0
+EXPECT frame=9 index=3 object=B routed=0 matched=0
+COLOR frame=9 hash=8fefa5bdf241d7be
+RESTORE frame=10 label=fill differences=0
+RESTORE frame=10 label=draw differences=0
+EXPECT frame=10 index=2 object=A routed=0 matched=0
+RESTORE frame=10 label=draw differences=0
+EXPECT frame=10 index=3 object=B routed=0 matched=0
+COLOR frame=10 hash=65fd995c86b4e9fc
+RESTORE frame=11 label=fill differences=0
+RESTORE frame=11 label=draw differences=0
+EXPECT frame=11 index=2 object=A routed=0 matched=0
+RESTORE frame=11 label=draw differences=0
+EXPECT frame=11 index=3 object=B routed=0 matched=0
+COLOR frame=11 hash=91daa646d0444e0d
+CHECK every live frame verified against the oracle PASS
+CHECK device final Release reaches zero with the route's objects released PASS
+CHECK factory final Release reaches zero PASS
+RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
+==== production-on exit=0
+CHECK DLL seam presence matches the requested mode PASS
+MODE seam=0 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-production-on-20260912-020801-682175\d3d9.dll
+CHECK local files are the reviewed pair PASS
+RESTORE frame=0 label=fill differences=0
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=2 object=A routed=0 matched=0
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=3 object=B routed=0 matched=0
+COLOR frame=0 hash=a51695c780c5616f
+RESTORE frame=1 label=fill differences=0
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=2 object=A routed=0 matched=0
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=3 object=B routed=0 matched=0
+COLOR frame=1 hash=c7eadaff02c31bc1
+RESTORE frame=2 label=fill differences=0
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=2 object=A routed=0 matched=0
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=3 object=B routed=0 matched=0
+COLOR frame=2 hash=c7eadaff02c31bc1
+RESTORE frame=3 label=fill differences=0
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=2 object=A routed=0 matched=0
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=3 object=B routed=0 matched=0
+COLOR frame=3 hash=2a9e6b66c5d46ba0
+RESTORE frame=4 label=fill differences=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=2 object=A routed=0 matched=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=3 object=B routed=0 matched=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=4 object=A routed=0 matched=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=5 object=A routed=0 matched=0
+COLOR frame=4 hash=7d77f11e99dc8c79
+RESTORE frame=5 label=fill differences=0
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=2 object=A routed=0 matched=0
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=3 object=A routed=0 matched=0
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=4 object=B routed=0 matched=0
+COLOR frame=5 hash=2a9e6b66c5d46ba0
+RESTORE frame=6 label=fill differences=0
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=2 object=A routed=0 matched=0
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=3 object=B routed=0 matched=0
+COLOR frame=6 hash=c7eadaff02c31bc1
+RESTORE frame=7 label=fill differences=0
+RESTORE frame=7 label=stateblock differences=0
+CHECK state block Apply rebinding is honored (flat PS still bound) PASS
+EXPECT frame=7 index=2 object=A routed=0 matched=0
+RESTORE frame=7 label=draw differences=0
+EXPECT frame=7 index=3 object=B routed=0 matched=0
+COLOR frame=7 hash=41706be8c35085d1
+RESTORE frame=8 label=fill differences=0
+RESTORE frame=8 label=draw differences=0
+EXPECT frame=8 index=2 object=A routed=0 matched=0
+RESTORE frame=8 label=draw differences=0
+EXPECT frame=8 index=3 object=B routed=0 matched=0
+COLOR frame=8 hash=65fd995c86b4e9fc
+RESET PASS
+RESTORE frame=9 label=fill differences=0
+RESTORE frame=9 label=draw differences=0
+EXPECT frame=9 index=2 object=A routed=0 matched=0
+RESTORE frame=9 label=draw differences=0
+EXPECT frame=9 index=3 object=B routed=0 matched=0
+COLOR frame=9 hash=8fefa5bdf241d7be
+RESTORE frame=10 label=fill differences=0
+RESTORE frame=10 label=draw differences=0
+EXPECT frame=10 index=2 object=A routed=0 matched=0
+RESTORE frame=10 label=draw differences=0
+EXPECT frame=10 index=3 object=B routed=0 matched=0
+COLOR frame=10 hash=65fd995c86b4e9fc
+RESTORE frame=11 label=fill differences=0
+RESTORE frame=11 label=draw differences=0
+EXPECT frame=11 index=2 object=A routed=0 matched=0
+RESTORE frame=11 label=draw differences=0
+EXPECT frame=11 index=3 object=B routed=0 matched=0
+COLOR frame=11 hash=91daa646d0444e0d
+CHECK every live frame verified against the oracle PASS
+CHECK device final Release reaches zero with the route's objects released PASS
+CHECK factory final Release reaches zero PASS
+RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
+==== seam-off exit=0
+CHECK DLL seam presence matches the requested mode PASS
+MODE seam=1 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-off-20260912-020804-083534\d3d9.dll
+CHECK local files are the reviewed pair PASS
+RESTORE frame=0 label=fill differences=0
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=2 object=A routed=0 matched=0
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=3 object=B routed=0 matched=0
+COLOR frame=0 hash=a51695c780c5616f
+RESTORE frame=1 label=fill differences=0
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=2 object=A routed=0 matched=0
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=3 object=B routed=0 matched=0
+COLOR frame=1 hash=c7eadaff02c31bc1
+RESTORE frame=2 label=fill differences=0
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=2 object=A routed=0 matched=0
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=3 object=B routed=0 matched=0
+COLOR frame=2 hash=c7eadaff02c31bc1
+RESTORE frame=3 label=fill differences=0
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=2 object=A routed=0 matched=0
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=3 object=B routed=0 matched=0
+COLOR frame=3 hash=2a9e6b66c5d46ba0
+RESTORE frame=4 label=fill differences=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=2 object=A routed=0 matched=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=3 object=B routed=0 matched=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=4 object=A routed=0 matched=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=5 object=A routed=0 matched=0
+COLOR frame=4 hash=7d77f11e99dc8c79
+RESTORE frame=5 label=fill differences=0
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=2 object=A routed=0 matched=0
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=3 object=A routed=0 matched=0
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=4 object=B routed=0 matched=0
+COLOR frame=5 hash=2a9e6b66c5d46ba0
+RESTORE frame=6 label=fill differences=0
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=2 object=A routed=0 matched=0
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=3 object=B routed=0 matched=0
+COLOR frame=6 hash=c7eadaff02c31bc1
+RESTORE frame=7 label=fill differences=0
+RESTORE frame=7 label=stateblock differences=0
+CHECK state block Apply rebinding is honored (flat PS still bound) PASS
+EXPECT frame=7 index=2 object=A routed=0 matched=0
+RESTORE frame=7 label=draw differences=0
+EXPECT frame=7 index=3 object=B routed=0 matched=0
+COLOR frame=7 hash=41706be8c35085d1
+RESTORE frame=8 label=fill differences=0
+RESTORE frame=8 label=draw differences=0
+EXPECT frame=8 index=2 object=A routed=0 matched=0
+RESTORE frame=8 label=draw differences=0
+EXPECT frame=8 index=3 object=B routed=0 matched=0
+COLOR frame=8 hash=65fd995c86b4e9fc
+RESET PASS
+RESTORE frame=9 label=fill differences=0
+RESTORE frame=9 label=draw differences=0
+EXPECT frame=9 index=2 object=A routed=0 matched=0
+RESTORE frame=9 label=draw differences=0
+EXPECT frame=9 index=3 object=B routed=0 matched=0
+COLOR frame=9 hash=8fefa5bdf241d7be
+RESTORE frame=10 label=fill differences=0
+RESTORE frame=10 label=draw differences=0
+EXPECT frame=10 index=2 object=A routed=0 matched=0
+RESTORE frame=10 label=draw differences=0
+EXPECT frame=10 index=3 object=B routed=0 matched=0
+COLOR frame=10 hash=65fd995c86b4e9fc
+RESTORE frame=11 label=fill differences=0
+RESTORE frame=11 label=draw differences=0
+EXPECT frame=11 index=2 object=A routed=0 matched=0
+RESTORE frame=11 label=draw differences=0
+EXPECT frame=11 index=3 object=B routed=0 matched=0
+COLOR frame=11 hash=91daa646d0444e0d
+CHECK every live frame verified against the oracle PASS
+CHECK device final Release reaches zero with the route's objects released PASS
+CHECK factory final Release reaches zero PASS
+RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
+==== seam-on exit=0
+CHECK DLL seam presence matches the requested mode PASS
+MODE seam=1 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-on-20260912-020806-450726\d3d9.dll
+CHECK local files are the reviewed pair PASS
+RESTORE frame=0 label=fill differences=0
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=2 object=A routed=1 matched=0
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=3 object=B routed=1 matched=0
+COLOR frame=0 hash=a51695c780c5616f
+CHECK motion target matches the main dimensions PASS
+MOTION frame=0 checked=3665 skipped=431 sentinel=3665 matched=0 mismatches=0
+CHECK motion target matches the CPU oracle PASS
+RESTORE frame=1 label=fill differences=0
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=2 object=A routed=1 matched=1
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=3 object=B routed=1 matched=1
+COLOR frame=1 hash=c7eadaff02c31bc1
+CHECK motion target matches the main dimensions PASS
+MOTION frame=1 checked=3716 skipped=380 sentinel=1271 matched=2445 mismatches=0
+CHECK motion target matches the CPU oracle PASS
+RESTORE frame=2 label=fill differences=0
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=2 object=A routed=1 matched=0
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=3 object=B routed=1 matched=0
+COLOR frame=2 hash=c7eadaff02c31bc1
+CHECK motion target matches the main dimensions PASS
+MOTION frame=2 checked=3716 skipped=380 sentinel=3716 matched=0 mismatches=0
+CHECK motion target matches the CPU oracle PASS
+RESTORE frame=3 label=fill differences=0
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=2 object=A routed=1 matched=0
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=3 object=B routed=1 matched=0
+COLOR frame=3 hash=2a9e6b66c5d46ba0
+CHECK motion target matches the main dimensions PASS
+MOTION frame=3 checked=3665 skipped=431 sentinel=3665 matched=0 mismatches=0
+CHECK motion target matches the CPU oracle PASS
+RESTORE frame=4 label=fill differences=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=2 object=A routed=1 matched=1
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=3 object=B routed=1 matched=1
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=4 object=A routed=0 matched=0
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=5 object=A routed=0 matched=0
+COLOR frame=4 hash=7d77f11e99dc8c79
+CHECK motion target matches the main dimensions PASS
+MOTION frame=4 checked=3716 skipped=380 sentinel=1271 matched=2445 mismatches=0
+CHECK motion target matches the CPU oracle PASS
+RESTORE frame=5 label=fill differences=0
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=2 object=A routed=1 matched=1
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=3 object=A routed=1 matched=0
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=4 object=B routed=1 matched=1
+COLOR frame=5 hash=2a9e6b66c5d46ba0
+CHECK motion target matches the main dimensions PASS
+MOTION frame=5 checked=3665 skipped=431 sentinel=3545 matched=120 mismatches=0
+CHECK motion target matches the CPU oracle PASS
+RESTORE frame=6 label=fill differences=0
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=2 object=A routed=1 matched=0
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=3 object=B routed=1 matched=1
+COLOR frame=6 hash=c7eadaff02c31bc1
+CHECK motion target matches the main dimensions PASS
+MOTION frame=6 checked=3716 skipped=380 sentinel=3611 matched=105 mismatches=0
+CHECK motion target matches the CPU oracle PASS
+RESTORE frame=7 label=fill differences=0
+RESTORE frame=7 label=stateblock differences=0
+CHECK state block Apply rebinding is honored (flat PS still bound) PASS
+EXPECT frame=7 index=2 object=A routed=0 matched=0
+RESTORE frame=7 label=draw differences=0
+EXPECT frame=7 index=3 object=B routed=1 matched=1
+COLOR frame=7 hash=41706be8c35085d1
+CHECK motion target matches the main dimensions PASS
+MOTION frame=7 checked=3665 skipped=431 sentinel=3545 matched=120 mismatches=0
+CHECK motion target matches the CPU oracle PASS
+RESTORE frame=8 label=fill differences=0
+RESTORE frame=8 label=draw differences=0
+EXPECT frame=8 index=2 object=A routed=1 matched=0
+RESTORE frame=8 label=draw differences=0
+EXPECT frame=8 index=3 object=B routed=1 matched=1
+COLOR frame=8 hash=65fd995c86b4e9fc
+CHECK motion target matches the main dimensions PASS
+MOTION frame=8 checked=3668 skipped=428 sentinel=3563 matched=105 mismatches=0
+CHECK motion target matches the CPU oracle PASS
+RESET PASS
+RESTORE frame=9 label=fill differences=0
+RESTORE frame=9 label=draw differences=0
+EXPECT frame=9 index=2 object=A routed=1 matched=0
+RESTORE frame=9 label=draw differences=0
+EXPECT frame=9 index=3 object=B routed=1 matched=0
+COLOR frame=9 hash=8fefa5bdf241d7be
+CHECK motion target matches the main dimensions PASS
+MOTION frame=9 checked=3712 skipped=384 sentinel=3712 matched=0 mismatches=0
+CHECK motion target matches the CPU oracle PASS
+RESTORE frame=10 label=fill differences=0
+RESTORE frame=10 label=draw differences=0
+EXPECT frame=10 index=2 object=A routed=1 matched=1
+RESTORE frame=10 label=draw differences=0
+EXPECT frame=10 index=3 object=B routed=1 matched=1
+COLOR frame=10 hash=65fd995c86b4e9fc
+CHECK motion target matches the main dimensions PASS
+MOTION frame=10 checked=3668 skipped=428 sentinel=1207 matched=2461 mismatches=0
+CHECK motion target matches the CPU oracle PASS
+RESTORE frame=11 label=fill differences=0
+RESTORE frame=11 label=draw differences=0
+EXPECT frame=11 index=2 object=A routed=1 matched=1
+RESTORE frame=11 label=draw differences=0
+EXPECT frame=11 index=3 object=B routed=1 matched=1
+COLOR frame=11 hash=91daa646d0444e0d
+CHECK motion target matches the main dimensions PASS
+MOTION frame=11 checked=3712 skipped=384 sentinel=1252 matched=2460 mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK every live frame verified against the oracle PASS
+CHECK device final Release reaches zero with the route's objects released PASS
+CHECK factory final Release reaches zero PASS
+RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=44284 matched_pixels=10261 max_uv_pixels=0.00156247616 max_depth_error=3.69792081e-08

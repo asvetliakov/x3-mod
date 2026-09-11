@@ -2291,24 +2291,24 @@ CHECK all original color channels unchanged and nonempty PASS
 COLOR bilateral_depth_equal width=1280 height=768 format=21 components=3932160 covered=903241 mismatches=0 maximum=0
 CHECK all original color channels unchanged and nonempty PASS
 CHECK changed depth rejects all tested fragments PASS
-TIMING width=1280 height=768 format=21 iteration=0 mode=0 completed_ms=0.939500 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=1280 height=768 format=21 iteration=1 mode=1 completed_ms=0.701900 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=1280 height=768 format=21 iteration=2 mode=2 completed_ms=0.864300 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
-TIMING width=1280 height=768 format=21 iteration=3 mode=2 completed_ms=0.584400 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
-TIMING width=1280 height=768 format=21 iteration=4 mode=1 completed_ms=0.448300 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=1280 height=768 format=21 iteration=5 mode=0 completed_ms=0.913700 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=1280 height=768 format=21 iteration=6 mode=0 completed_ms=0.432600 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=1280 height=768 format=21 iteration=7 mode=1 completed_ms=0.489900 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=1280 height=768 format=21 iteration=8 mode=2 completed_ms=0.810000 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
-TIMING width=1280 height=768 format=21 iteration=9 mode=2 completed_ms=0.767500 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
-TIMING width=1280 height=768 format=21 iteration=10 mode=1 completed_ms=0.806000 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=1280 height=768 format=21 iteration=11 mode=0 completed_ms=0.464300 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=1280 height=768 format=21 iteration=12 mode=0 completed_ms=0.476600 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=1280 height=768 format=21 iteration=13 mode=1 completed_ms=0.948100 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=1280 height=768 format=21 iteration=14 mode=2 completed_ms=0.631300 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
-TIMING width=1280 height=768 format=21 iteration=15 mode=2 completed_ms=0.628400 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
-TIMING width=1280 height=768 format=21 iteration=16 mode=1 completed_ms=0.594900 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=1280 height=768 format=21 iteration=17 mode=0 completed_ms=0.493600 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=1280 height=768 format=21 iteration=0 mode=0 completed_ms=0.762700 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=1280 height=768 format=21 iteration=1 mode=1 completed_ms=0.659100 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=1280 height=768 format=21 iteration=2 mode=2 completed_ms=2.841600 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
+TIMING width=1280 height=768 format=21 iteration=3 mode=2 completed_ms=0.542400 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
+TIMING width=1280 height=768 format=21 iteration=4 mode=1 completed_ms=0.517800 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=1280 height=768 format=21 iteration=5 mode=0 completed_ms=0.546000 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=1280 height=768 format=21 iteration=6 mode=0 completed_ms=0.704400 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=1280 height=768 format=21 iteration=7 mode=1 completed_ms=0.747900 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=1280 height=768 format=21 iteration=8 mode=2 completed_ms=0.639600 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
+TIMING width=1280 height=768 format=21 iteration=9 mode=2 completed_ms=0.919000 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
+TIMING width=1280 height=768 format=21 iteration=10 mode=1 completed_ms=1.131800 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=1280 height=768 format=21 iteration=11 mode=0 completed_ms=0.599700 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=1280 height=768 format=21 iteration=12 mode=0 completed_ms=0.458800 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=1280 height=768 format=21 iteration=13 mode=1 completed_ms=0.799500 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=1280 height=768 format=21 iteration=14 mode=2 completed_ms=0.739600 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
+TIMING width=1280 height=768 format=21 iteration=15 mode=2 completed_ms=2.361700 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
+TIMING width=1280 height=768 format=21 iteration=16 mode=1 completed_ms=0.886600 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=1280 height=768 format=21 iteration=17 mode=0 completed_ms=0.615700 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
 CONFIG id=42 width=5120 height=1440 format=21 packed=1 perspective=1 lights=8 valid=1 translation=0.250000 jitter=0.250000,-0.375000
 COLOR same_draw width=5120 height=1440 format=21 components=29491200 covered=6777944 mismatches=0 maximum=0
 CHECK all original color channels unchanged and nonempty PASS
@@ -2364,24 +2364,24 @@ CHECK all original color channels unchanged and nonempty PASS
 COLOR bilateral_depth_equal width=5120 height=1440 format=21 components=29491200 covered=6777944 mismatches=0 maximum=0
 CHECK all original color channels unchanged and nonempty PASS
 CHECK changed depth rejects all tested fragments PASS
-TIMING width=5120 height=1440 format=21 iteration=0 mode=0 completed_ms=1.658700 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=5120 height=1440 format=21 iteration=1 mode=1 completed_ms=1.524600 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=5120 height=1440 format=21 iteration=2 mode=2 completed_ms=2.647200 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
-TIMING width=5120 height=1440 format=21 iteration=3 mode=2 completed_ms=2.083200 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
-TIMING width=5120 height=1440 format=21 iteration=4 mode=1 completed_ms=1.675700 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=5120 height=1440 format=21 iteration=5 mode=0 completed_ms=1.308300 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=5120 height=1440 format=21 iteration=6 mode=0 completed_ms=1.560400 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=5120 height=1440 format=21 iteration=7 mode=1 completed_ms=1.517100 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=5120 height=1440 format=21 iteration=8 mode=2 completed_ms=1.879900 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
-TIMING width=5120 height=1440 format=21 iteration=9 mode=2 completed_ms=2.073000 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
-TIMING width=5120 height=1440 format=21 iteration=10 mode=1 completed_ms=2.176500 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=5120 height=1440 format=21 iteration=11 mode=0 completed_ms=1.909900 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=5120 height=1440 format=21 iteration=12 mode=0 completed_ms=1.070900 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=5120 height=1440 format=21 iteration=13 mode=1 completed_ms=1.563500 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=5120 height=1440 format=21 iteration=14 mode=2 completed_ms=2.658200 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
-TIMING width=5120 height=1440 format=21 iteration=15 mode=2 completed_ms=2.071600 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
-TIMING width=5120 height=1440 format=21 iteration=16 mode=1 completed_ms=1.158200 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
-TIMING width=5120 height=1440 format=21 iteration=17 mode=0 completed_ms=1.413100 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=5120 height=1440 format=21 iteration=0 mode=0 completed_ms=0.797300 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=5120 height=1440 format=21 iteration=1 mode=1 completed_ms=1.347700 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=5120 height=1440 format=21 iteration=2 mode=2 completed_ms=2.641500 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
+TIMING width=5120 height=1440 format=21 iteration=3 mode=2 completed_ms=1.523800 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
+TIMING width=5120 height=1440 format=21 iteration=4 mode=1 completed_ms=3.746600 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=5120 height=1440 format=21 iteration=5 mode=0 completed_ms=1.009200 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=5120 height=1440 format=21 iteration=6 mode=0 completed_ms=0.587500 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=5120 height=1440 format=21 iteration=7 mode=1 completed_ms=1.046600 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=5120 height=1440 format=21 iteration=8 mode=2 completed_ms=4.587200 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
+TIMING width=5120 height=1440 format=21 iteration=9 mode=2 completed_ms=2.651800 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
+TIMING width=5120 height=1440 format=21 iteration=10 mode=1 completed_ms=0.979900 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=5120 height=1440 format=21 iteration=11 mode=0 completed_ms=2.251400 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=5120 height=1440 format=21 iteration=12 mode=0 completed_ms=1.497000 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=5120 height=1440 format=21 iteration=13 mode=1 completed_ms=1.753400 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=5120 height=1440 format=21 iteration=14 mode=2 completed_ms=4.634000 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
+TIMING width=5120 height=1440 format=21 iteration=15 mode=2 completed_ms=1.633900 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=2
+TIMING width=5120 height=1440 format=21 iteration=16 mode=1 completed_ms=0.895100 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
+TIMING width=5120 height=1440 format=21 iteration=17 mode=0 completed_ms=4.313900 timed_readback=0 gpu_timestamp=0 scene_pairs=1 draws=1
 DEVICE pure=1 mixed=1
 MODULE name=d3d9.dll path=C:\windows\system32\d3d9.dll
 MODULE name=wined3d.dll path=C:\windows\system32\wined3d.dll

@@ -1,6 +1,6 @@
 {
   "result": "PASS",
-  "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+  "dll_sha256": "93ad857d51259924c23bf4ed087e2d6d8f1094d38966647f24cef22f89f6802e",
   "cases": {
     "off-smoke": {
       "devices": 2,
@@ -51,7 +51,7 @@
     "off-lifetime": {
       "devices": 16,
       "destroyed": 16,
-      "reused_device_addresses": 15,
+      "reused_device_addresses": 14,
       "scoped_geometry_records": 0,
       "finite_metric_records": 0,
       "known_index_draws": 0,
@@ -166,7 +166,7 @@
     "on-lifetime": {
       "devices": 16,
       "destroyed": 16,
-      "reused_device_addresses": 9,
+      "reused_device_addresses": 11,
       "scoped_geometry_records": 0,
       "finite_metric_records": 0,
       "known_index_draws": 0,
@@ -189,7 +189,7 @@
     "on-contracts": {
       "devices": 3,
       "destroyed": 3,
-      "reused_device_addresses": 0,
+      "reused_device_addresses": 1,
       "scoped_geometry_records": 0,
       "finite_metric_records": 0,
       "known_index_draws": 0,
@@ -544,7 +544,7 @@
     "admission_on-contracts": {
       "devices": 3,
       "destroyed": 3,
-      "reused_device_addresses": 0,
+      "reused_device_addresses": 1,
       "scoped_geometry_records": 0,
       "finite_metric_records": 0,
       "known_index_draws": 0,
