@@ -17,9 +17,9 @@ EXPECTED_NATIVE = {
     'd3d9.dll': '58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf',
     'wined3d.dll': 'f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863',
 }
-EXPECTED_CASES = ['CASE basic pure=0 PASS', 'CASE basic pure=1 PASS'] + [
+EXPECTED_CASES = ['CASE cpu-state disabled=1 PASS', 'CASE basic pure=0 PASS', 'CASE basic pure=1 PASS'] + [
     f'CASE loss method={kind} hr={hr} PASS' for kind in range(5)
-    for hr in ('80004005', '88760868', '88760869')]
+    for hr in ('80004005', '88760868', '88760869')] + [f'CASE thread operation={i} PASS' for i in range(3)] + ['CASE cpu-state disabled=0 PASS', 'CASE dispatch-timing PASS']
 
 def require_no_game():
     active = subprocess.run(['pgrep', '-ifl', 'X3AP.exe'], capture_output=True, text=True, timeout=10)
@@ -61,7 +61,7 @@ def main():
         lines = LOG.read_text().splitlines(); terminal = [l for l in lines if l.startswith('RESULT')]
         if len(terminal) != 1 or not lines or lines[-1] != terminal[0]: raise RuntimeError('invalid terminal result')
         match = re.fullmatch(r'RESULT PASS checks=(\d+) failures=0', terminal[0])
-        if result.returncode or not match or int(match[1]) != 132: raise RuntimeError('native fixture failed')
+        if result.returncode or not match or int(match[1]) != 184: raise RuntimeError('native fixture failed')
         cases = [l for l in lines if l.startswith('CASE ')]
         if cases != EXPECTED_CASES: raise RuntimeError('unexpected completed case inventory')
         if hashes() != before or sha(exe) != report['executable_sha256']: raise RuntimeError('source/artifact changed')

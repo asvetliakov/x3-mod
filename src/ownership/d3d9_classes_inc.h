@@ -30,7 +30,7 @@ struct Device final : IDirect3DDevice9, Node {
     bool retiring = false, resetting = false, lost = false;
     CopyDepth copy_depth;
     ObservedExecutionState execution;
-    bool recording_state_block = false;
+    std::atomic<bool> recording_state_block{false};
     HRESULT buffer_tracking_status = S_OK;
     std::shared_ptr<FiniteOwner> finite_owner;
     HRESULT finite_status = S_FALSE;

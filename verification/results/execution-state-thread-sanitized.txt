@@ -1,0 +1,2 @@
+TIMING fast_hresult_calls=1000000 elapsed_ns=3587166 tickets=10000 ticket_elapsed_ns=4073875
+RESULT PASS checks=61408

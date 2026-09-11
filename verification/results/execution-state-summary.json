@@ -2,10 +2,10 @@
   "passed": true,
   "scope": "portable CPU execution-state core; no native hook/GPU claim",
   "sources": {
-    "src/ownership/execution_state.h": "88e6ad56d1440d353953bc558c177a2eb226e486d7f3bf371cb3087180d08836",
-    "src/ownership/execution_state.cpp": "f8d690a65eef657a055f4a248aba9762137515daa25a61aafd13ab901196fcdc",
-    "verification/probe/execution_state_fixture.cpp": "469099b6fbd8c0fae82c36aa46f49adb717f0c2b70f72e81ea4ba62a0ab01639",
-    "verification/probe/run_execution_state.py": "0852e66f4a1b96224ac610d6f1f843fb8409ac1a26b1c2260eef8e8e693e8820"
+    "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+    "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+    "verification/probe/execution_state_fixture.cpp": "d15fa1b666dd8d3b07637bdbd1824a8e655a06da6016259dea2c5e1d0996a870",
+    "verification/probe/run_execution_state.py": "c4388d7e9446681f98a801001efd5866370a2bca5c749fc1893487d31d531d90"
   },
   "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
   "flags": [
@@ -13,7 +13,8 @@
     "-O2",
     "-Wall",
     "-Wextra",
-    "-Werror"
+    "-Werror",
+    "-pthread"
   ],
   "runs": [
     {
@@ -24,16 +25,17 @@
         "-Wall",
         "-Wextra",
         "-Werror",
+        "-pthread",
         "/Users/asvetl/x3-mod/src/ownership/execution_state.cpp",
         "/Users/asvetl/x3-mod/verification/probe/execution_state_fixture.cpp",
         "-o",
         "/Users/asvetl/x3-mod/build/verification/execution-state/fixture"
       ],
-      "executable_sha256": "7fc1ac3ea25f16985dec2b20357e672a9857acb8326354da01ff5c9b25b8f9a7",
+      "executable_sha256": "a3c8c80bd2824cb070ced4027c7a5c07a1a4ca973ad4710ec9f204e0ae9eabcb",
       "log": "verification/results/execution-state.txt",
-      "log_sha256": "d506491a36a68303ef22e94312facdcbead3153c0f02dc126a443305e33088fb",
-      "checks": 60365,
-      "elapsed_seconds": 0.8453884999999999
+      "log_sha256": "d39dd848c8b43f6471072a2de5abd600d2af8a3f5d61a0193495aacab3675792",
+      "checks": 61408,
+      "elapsed_seconds": 0.8311958749999999
     },
     {
       "command": [
@@ -43,6 +45,7 @@
         "-Wall",
         "-Wextra",
         "-Werror",
+        "-pthread",
         "-fsanitize=address,undefined",
         "-fno-omit-frame-pointer",
         "/Users/asvetl/x3-mod/src/ownership/execution_state.cpp",
@@ -50,11 +53,33 @@
         "-o",
         "/Users/asvetl/x3-mod/build/verification/execution-state/fixture-sanitized"
       ],
-      "executable_sha256": "b46d374f5e13ab2a319e311d772ef4c7a32dfc8871d1901eb5179552ec476b3e",
+      "executable_sha256": "c6bb1357c563c82147072955b0b5970b65d019f0b71f3db59a7643e8ebbd37ef",
       "log": "verification/results/execution-state-sanitized.txt",
-      "log_sha256": "d506491a36a68303ef22e94312facdcbead3153c0f02dc126a443305e33088fb",
-      "checks": 60365,
-      "elapsed_seconds": 0.6561517080000003
+      "log_sha256": "9771b676aee75ccc731f071041a008464ab235097f430e5dde4d4fd890a17d79",
+      "checks": 61408,
+      "elapsed_seconds": 0.6596900419999998
+    },
+    {
+      "command": [
+        "clang++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pthread",
+        "-fsanitize=thread",
+        "-fno-omit-frame-pointer",
+        "/Users/asvetl/x3-mod/src/ownership/execution_state.cpp",
+        "/Users/asvetl/x3-mod/verification/probe/execution_state_fixture.cpp",
+        "-o",
+        "/Users/asvetl/x3-mod/build/verification/execution-state/fixture-thread-sanitized"
+      ],
+      "executable_sha256": "87be9f13365e50d13cf59e3b54127f0349dc58a26a0b7fda014c1a3c244163ac",
+      "log": "verification/results/execution-state-thread-sanitized.txt",
+      "log_sha256": "d2a27270ac62a5d745e30dabdc1b60298af784311f3c3911f4b0e6cd6a9a6386",
+      "checks": 61408,
+      "elapsed_seconds": 0.8595874160000001
     }
   ]
 }

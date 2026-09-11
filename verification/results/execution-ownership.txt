@@ -1,3 +1,4 @@
+CASE cpu-state disabled=1 PASS
 CASE basic pure=0 PASS
 CASE basic pure=1 PASS
 CASE loss method=0 hr=80004005 PASS
@@ -15,4 +16,10 @@ CASE loss method=3 hr=88760869 PASS
 CASE loss method=4 hr=80004005 PASS
 CASE loss method=4 hr=88760868 PASS
 CASE loss method=4 hr=88760869 PASS
-RESULT PASS checks=132 failures=0
+CASE thread operation=0 PASS
+CASE thread operation=1 PASS
+CASE thread operation=2 PASS
+CASE cpu-state disabled=0 PASS
+TIMING pairs=1000 native_ticks=780 observer_ticks=6081 frequency=10000000
+CASE dispatch-timing PASS
+RESULT PASS checks=184 failures=0

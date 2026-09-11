@@ -128,6 +128,28 @@ struct ExecutionState {
     void restore() const noexcept { asm volatile("frstor %0\n\tldmxcsr %1" :: "m"(fp),"m"(mxcsr) : "memory"); SetLastError(error); }
 };
 struct PreserveExecution { ExecutionState saved; ~PreserveExecution() { saved.restore(); } };
+// Bookkeeping mutexes never cover native dispatch/COM cleanup. Preserve both
+// incoming CPU state (before the first mutex) and native outgoing state through
+// all observation work, including the in-flight ticket's destructor.
+template<class Before, class Native, class After>
+auto execution_call(Device* node, Before&& before, Native&& native, After&& after) {
+    // Immutable device option: preserve the old forwarding route when disabled.
+    if (!node->options.track_execution_state) { before(); return after(native()); }
+    ExecutionState incoming, outgoing;
+    decltype(native()) result;
+    {
+        auto observation = node->execution.begin_native();
+        before();
+        incoming.restore();
+        result = native();
+        outgoing = ExecutionState{};
+        result = after(result);
+        observation.complete();
+    }
+    outgoing.restore();
+    return result;
+}
+
 struct FiniteSidecar;
 std::atomic<FiniteSidecar*> finite_retired{nullptr};
 thread_local FiniteSidecar* finite_private_expected=nullptr;
@@ -524,9 +546,9 @@ ULONG release(Node* node) {
     }
     if (node->kind == Kind::Query) {
         auto q = static_cast<Query*>(node);
-        device_of(q)->execution.query_destroyed(q->execution_query);
-    }
-    node->backend->Release();
+        execution_call(device_of(q), [&] { device_of(q)->execution.query_destroyed(q->execution_query); },
+            [&] { return node->backend->Release(); }, [](ULONG result) { return result; });
+    } else node->backend->Release();
     {std::lock_guard<std::recursive_mutex> lock(registry_mutex);drain_finite_retired();}
     delete node;
     // Dispatch through the application vtable: capture/observation hooks must
@@ -938,32 +960,33 @@ HRESULT create_device(Factory* node, UINT adapter, D3DDEVTYPE type, HWND window,
 }
 
 HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp) {
-    node->execution.before_reset();
     const D3DPRESENT_PARAMETERS requested = pp ? *pp : D3DPRESENT_PARAMETERS{};
-    { std::lock_guard<std::recursive_mutex> lock(registry_mutex); node->resetting = true; }
-    retire_geometry(node);
-    retire_finite(node);
-    retire_copy_depth(node, S_FALSE);
-    discard_renderer_resources(node);
-    const HRESULT hr = node->native_->Reset(pp);
-    node->execution.after_reset(hr);
-    {
-        std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-        node->resetting = false;
-        node->lost = FAILED(hr);
-    }
-    if (SUCCEEDED(hr)) {
-        node->recording_state_block = false;
-        if(node->finite_owner&&!node->finite_owner->permanent){node->finite_owner->healthy=true;node->finite_owner->stats.active=true;node->finite_owner->stats.status=S_OK;}
-        initialize_copy_depth(node, requested);
-    } else {
-        node->copy_depth.view.status = hr;
-    }
-    return hr;
+    return execution_call(node, [&] {
+        node->execution.before_reset();
+        { std::lock_guard<std::recursive_mutex> lock(registry_mutex); node->resetting = true; }
+        retire_geometry(node);
+        retire_finite(node);
+        retire_copy_depth(node, S_FALSE);
+        discard_renderer_resources(node);
+    }, [&] { return node->native_->Reset(pp); }, [&](HRESULT hr) {
+        node->execution.after_reset(hr);
+        {
+            std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+            node->resetting = false;
+            node->lost = FAILED(hr);
+        }
+        if (SUCCEEDED(hr)) {
+            node->recording_state_block = false;
+            if(node->finite_owner&&!node->finite_owner->permanent){node->finite_owner->healthy=true;node->finite_owner->stats.active=true;node->finite_owner->stats.status=S_OK;}
+            initialize_copy_depth(node, requested);
+        } else node->copy_depth.view.status = hr;
+        return hr;
+    });
 }
 HRESULT observe_result(Device* node, HRESULT hr) {
-    node->execution.observe_result(hr);
     if (hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET) {
+        PreserveExecution preserve;
+        node->execution.observe_result(hr);
         { std::lock_guard<std::recursive_mutex> lock(registry_mutex); node->lost = true; }
         retire_geometry(node);
         retire_finite(node);
@@ -1002,42 +1025,46 @@ HRESULT clear_device(Device* node, DWORD count, const D3DRECT* rects, DWORD flag
 }
 
 HRESULT scene_transition(Device* node, bool begin) {
-    const HRESULT hr = begin ? node->native_->BeginScene() : node->native_->EndScene();
-    if (begin) node->execution.begin_scene(hr); else node->execution.end_scene(hr);
-    return observe_result(node, hr);
+    return execution_call(node, [] {}, [&] {
+        return begin ? node->native_->BeginScene() : node->native_->EndScene();
+    }, [&](HRESULT hr) {
+        if (begin) node->execution.begin_scene(hr); else node->execution.end_scene(hr);
+        return observe_result(node, hr);
+    });
 }
 HRESULT create_query(Device* node, D3DQUERYTYPE type, IDirect3DQuery9** out) {
     IDirect3DQuery9* owned = untouched_output<IDirect3DQuery9>();
-    const HRESULT hr = node->native_->CreateQuery(type, out ? &owned : nullptr);
-    const HRESULT result = output(node, hr, owned, out);
-    if (SUCCEEDED(hr) && SUCCEEDED(result) && owned != untouched_output<IDirect3DQuery9>() && out && *out) {
-        auto wrapped = static_cast<Query*>(*out);
-        node->execution.query_created(wrapped->execution_query, static_cast<std::uint32_t>(type));
-        if (hr != S_OK) node->execution.unknown_native_execution();
-    }
-    return result;
+    return execution_call(node, [] {}, [&] { return node->native_->CreateQuery(type, out ? &owned : nullptr); }, [&](HRESULT hr) {
+        const HRESULT result = output(node, hr, owned, out);
+        if (SUCCEEDED(hr) && SUCCEEDED(result) && owned != untouched_output<IDirect3DQuery9>() && out && *out) {
+            auto wrapped = static_cast<Query*>(*out);
+            node->execution.query_created(wrapped->execution_query, static_cast<std::uint32_t>(type));
+            if (hr != S_OK) node->execution.unknown_native_execution();
+        }
+        return result;
+    });
 }
 HRESULT issue_query(Query* node, DWORD flags) {
-    const HRESULT hr = node->native_->Issue(flags);
     auto owner = device_of(node);
-    owner->execution.query_issue(node->execution_query, flags, hr);
-    return observe_result(owner, hr);
+    return execution_call(owner, [] {}, [&] { return node->native_->Issue(flags); }, [&](HRESULT hr) {
+        owner->execution.query_issue(node->execution_query, flags, hr);
+        return observe_result(owner, hr);
+    });
 }
 HRESULT begin_state_block(Device* node) {
-    const HRESULT hr = node->native_->BeginStateBlock();
-    node->execution.begin_stateblock(hr);
-    if (SUCCEEDED(hr)) node->recording_state_block = true;
-    return observe_result(node, hr);
+    return execution_call(node, [] {}, [&] { return node->native_->BeginStateBlock(); }, [&](HRESULT hr) {
+        node->execution.begin_stateblock(hr);
+        if (SUCCEEDED(hr)) node->recording_state_block = true;
+        return observe_result(node, hr);
+    });
 }
-
 HRESULT end_state_block(Device* node, IDirect3DStateBlock9** out) {
     IDirect3DStateBlock9* owned = untouched_output<IDirect3DStateBlock9>();
-    const HRESULT hr = node->native_->EndStateBlock(out ? &owned : nullptr);
-    node->execution.end_stateblock(hr);
-    if (SUCCEEDED(hr)) node->recording_state_block = false;
-    const HRESULT result = output(node, hr, owned, out);
-    // output() cleans/adopts before observing native loss.
-    return result;
+    return execution_call(node, [] {}, [&] { return node->native_->EndStateBlock(out ? &owned : nullptr); }, [&](HRESULT hr) {
+        node->execution.end_stateblock(hr);
+        if (SUCCEEDED(hr)) node->recording_state_block = false;
+        return output(node, hr, owned, out);
+    });
 }
 
 bool copy_source_bound(Device* node, HRESULT* query_status) {
@@ -1211,6 +1238,7 @@ HRESULT wrap_factory(IDirect3D9* owned_native, IDirect3D9** out, const Options& 
 }
 
 HRESULT get_execution_view(IDirect3DDevice9* application, ExecutionView* out) noexcept {
+    PreserveExecution preserve;
     if (!out) return E_POINTER;
     *out = {};
     std::lock_guard<std::recursive_mutex> lock(registry_mutex);
@@ -1220,6 +1248,7 @@ HRESULT get_execution_view(IDirect3DDevice9* application, ExecutionView* out) no
     return S_OK;
 }
 HRESULT invalidate_execution_state(IDirect3DDevice9* application) noexcept {
+    PreserveExecution preserve;
     std::lock_guard<std::recursive_mutex> lock(registry_mutex);
     const auto found = application_nodes.find(application);
     if (found == application_nodes.end() || found->second->kind != Kind::Device) return E_INVALIDARG;

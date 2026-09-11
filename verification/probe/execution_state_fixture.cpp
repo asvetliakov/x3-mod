@@ -4,6 +4,12 @@
 #include <cstdio>
 #include <cstdlib>
 #include <type_traits>
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+#include <stdexcept>
 using namespace x3m::ownership;
 namespace {
 unsigned checks = 0;
@@ -115,5 +121,59 @@ void randomized_intervals() {
     }
     healthy(s);check(s.view().refusals==0);check(s.view().observed_calls>=10032);
 }
+void threaded() {
+    ObservedExecutionState s;s.initialize(true);
+    std::mutex mutex;std::condition_variable changed;bool entered=false,resume=false;
+    std::thread native([&]{
+        auto ticket=s.begin_native();
+        {std::unique_lock<std::mutex> lock(mutex);entered=true;changed.notify_one();changed.wait(lock,[&]{return resume;});}
+        s.begin_scene(0);ticket.complete();
+    });
+    {std::unique_lock<std::mutex> lock(mutex);changed.wait(lock,[&]{return entered;});}
+    for(unsigned i=0;i<1000;++i){auto v=s.view();check(!v.known&&!v.queries_idle&&v.in_flight==1&&v.reason==ExecutionReason::NativeCallInFlight);}
+    {std::lock_guard<std::mutex> lock(mutex);resume=true;}changed.notify_one();native.join();healthy(s,true);
+    {auto ticket=s.begin_native();s.end_scene(0);ticket.complete();}healthy(s);
+    // Native completion order is reversed: neither return may clear overlap taint.
+    entered=resume=false;
+    std::thread delayed([&]{auto ticket=s.begin_native();
+        {std::unique_lock<std::mutex> lock(mutex);entered=true;changed.notify_one();changed.wait(lock,[&]{return resume;});}
+        s.begin_scene(0);ticket.complete();});
+    {std::unique_lock<std::mutex> lock(mutex);changed.wait(lock,[&]{return entered;});}
+    {auto ticket=s.begin_native();s.end_scene(0);ticket.complete();}
+    check(!s.view().known&&s.view().in_flight==1&&s.view().reason==ExecutionReason::OverlappingNativeCalls);
+    {std::lock_guard<std::mutex> lock(mutex);resume=true;}changed.notify_one();delayed.join();
+    check(!s.view().known&&s.view().in_flight==0);reset(s);check(!s.view().known);
+    for(unsigned failure=0;failure<3;++failure){
+        ObservedExecutionState d;d.initialize(true);
+        if(failure==0){try{auto ticket=d.begin_native();throw std::runtime_error("original unwind");}catch(const std::runtime_error&){} }
+        if(failure==1){auto ticket=d.begin_native();d.begin_scene(0);/* after-native bookkeeping abandoned */}
+        if(failure==2){auto ticket=d.begin_native();ticket.complete();ticket.complete();}
+        check(!d.view().known&&d.view().in_flight==0);reset(d);check(!d.view().known);
+    }
+    ObservedExecutionState d;d.initialize(true);
+    {auto ticket=d.begin_native();d.before_reset();
+     std::thread concurrent_loss([&]{d.observe_result(static_cast<std::int32_t>(0x88760868u));});concurrent_loss.join();
+     d.after_reset(0);ticket.complete();}
+    check(!d.view().known);reset(d);check(!d.view().known);
+    // Snapshot readers and both proper/foreign token users run concurrently.
+    ObservedExecutionState proper,foreign;proper.initialize(true);foreign.initialize(true);ExecutionQuery q;proper.query_created(q,9);
+    std::atomic<bool> finished{false};std::atomic<unsigned> mistakes{0};
+    std::thread writer([&]{for(unsigned i=0;i<10000;++i){auto ticket=proper.begin_native();proper.query_issue(q,2,0);proper.query_issue(q,1,0);ticket.complete();}finished=true;});
+    std::thread reader([&]{while(!finished.load()){auto v=proper.view();if((v.in_flight&&v.known)||(v.queries_idle&&(!v.known||v.active_queries)))++mistakes;proper.observe_result(0);}});
+    std::thread alien([&]{for(unsigned i=0;i<10000;++i){foreign.query_created(q,9);foreign.query_issue(q,1,0);foreign.query_destroyed(q);}});
+    writer.join();reader.join();alien.join();check(mistakes==0);healthy(proper);check(!foreign.view().known);proper.query_destroyed(q);healthy(proper);
 }
-int main(){basics();transitions();queries();randomized_intervals();std::printf("RESULT PASS checks=%u\n",checks);}
+void timings() {
+    ObservedExecutionState s;s.initialize(true);constexpr unsigned count=1000000;
+    auto start=std::chrono::steady_clock::now();
+    for(unsigned n=0;n<count;++n)s.observe_result(0);
+    auto fast=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-start).count();
+    start=std::chrono::steady_clock::now();
+    for(unsigned n=0;n<10000;++n){auto ticket=s.begin_native();ticket.complete();}
+    auto tickets=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-start).count();
+    check(s.view().known&&s.view().in_flight==0&&s.view().observed_calls==0);
+    std::printf("TIMING fast_hresult_calls=%u elapsed_ns=%lld tickets=10000 ticket_elapsed_ns=%lld\n",count,static_cast<long long>(fast),static_cast<long long>(tickets));
+}
+
+}
+int main(){basics();transitions();queries();randomized_intervals();threaded();timings();std::printf("RESULT PASS checks=%u\n",checks);}
