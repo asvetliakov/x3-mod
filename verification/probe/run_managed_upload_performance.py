@@ -11,14 +11,14 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
 FILES = [
-    'src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp',
+    'src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp', 'src/ownership/application_admission.h', 'src/ownership/application_admission.cpp', 'src/ownership/application_admission_abi.h', 'src/ownership/application_admission_abi.cpp',
     'src/ownership/execution_state.cpp', 'src/ownership/execution_state.h',
     'src/ownership/d3d9_classes_inc.h', 'src/ownership/d3d9_forwarders_inc.h',
     'src/ownership/finite_buffer_evidence.h', 'src/ownership/finite_buffer_evidence.cpp',
     'src/ownership/portable_managed_upload.h', 'src/ownership/portable_managed_upload.cpp',
     'tools/ownership/generate_d3d9_forwarders.py',
     'verification/probe/managed_upload_performance.cpp',
-    'verification/probe/build_managed_upload_performance.sh',
+    'verification/probe/build_managed_upload_performance.sh', 'verification/probe/build_admission_dependencies.sh',
     'verification/probe/run_managed_upload_performance.py',
 ]
 NATIVE_ROOT = Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/wine/i386-windows')
@@ -93,7 +93,7 @@ def main():
         wine = RESULTS / 'managed-upload-performance-wine.log'
         with report.open('wb') as output, wine.open('wb') as error:
             run = subprocess.run(command, cwd=ROOT, stdout=output, stderr=error,
-                                 env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'), timeout=120)
+                                 env=dict(os.environ, X3M_ADMISSION='0', WINEDLLOVERRIDES='d3d9=b'), timeout=120)
         meta.update(exit_code=run.returncode, source_hashes_after=hashes(),
                     report_sha256=digest(report), wine_log_sha256=digest(wine),
                     binary_unchanged=digest(EXE) == meta['executable_sha256'])

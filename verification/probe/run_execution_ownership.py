@@ -27,7 +27,7 @@ def require_no_game():
 def sha(path): return hashlib.sha256(path.read_bytes()).hexdigest()
 def hashes():
     paths = [ROOT / 'verification/probe/execution_ownership_fixture.cpp',
-             ROOT / 'verification/probe/build_execution_ownership.sh', Path(__file__).resolve(),
+             ROOT / 'verification/probe/build_execution_ownership.sh', ROOT / 'verification/probe/build_admission_dependencies.sh', Path(__file__).resolve(),
              ROOT / 'tools/ownership/generate_d3d9_forwarders.py']
     paths += sorted((ROOT / 'src/ownership').glob('*.cpp')) + sorted((ROOT / 'src/ownership').glob('*.h'))
     return {str(p.relative_to(ROOT)): sha(p) for p in paths}
@@ -57,7 +57,7 @@ def main():
         report['executable_sha256'] = sha(exe)
         command = [WINE, '--bottle', 'Steam', '--no-update', '--workdir', str(exe.parent), str(exe)]
         report.update(command=command, process_local_override='d3d9=b', timeout_seconds=90)
-        env = dict(os.environ, WINEDLLOVERRIDES='d3d9=b')
+        env = dict(os.environ, X3M_ADMISSION='0', WINEDLLOVERRIDES='d3d9=b')
         require_no_game()
         with LOG.open('w') as output, ERR.open('w') as errors:
             result = subprocess.run(command, env=env, stdout=output, stderr=errors, timeout=90)

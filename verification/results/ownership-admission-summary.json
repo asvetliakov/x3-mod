@@ -1,0 +1,1551 @@
+{
+  "passed": true,
+  "scope": "297 generated ownership entry accounting, selected actual COM dispatch/control witnesses, no live replay integration or whole-proxy ABI proof",
+  "runs": [
+    {
+      "mode": "disabled",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build",
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership_admission_fixture.exe",
+        "disabled"
+      ],
+      "environment": {
+        "X3M_ADMISSION": "0"
+      },
+      "exit_code": 0,
+      "report_sha256": "d4ebe179b9ebc6ecc0ca784225d5ad8ab74031a91abd8cd25fb3bbbfcd93600e",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "checks": 14,
+      "samples_ns": [
+        5.758,
+        5.752,
+        5.619,
+        5.806,
+        5.918,
+        5.882,
+        5.899
+      ],
+      "median_ns": 5.806
+    },
+    {
+      "mode": "enabled",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build",
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership_admission_fixture.exe",
+        "enabled"
+      ],
+      "environment": {
+        "X3M_ADMISSION": "1"
+      },
+      "exit_code": 0,
+      "report_sha256": "553b41f1f60dd6fd88e5ed3b324e370cfa2571bc52fd6d01c66a508069dff042",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "checks": 33,
+      "samples_ns": [
+        180.949,
+        183.755,
+        191.599,
+        190.99,
+        186.408,
+        181.965,
+        185.296
+      ],
+      "median_ns": 185.296
+    },
+    {
+      "mode": "private0",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build",
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership_admission_fixture.exe",
+        "private0"
+      ],
+      "environment": {
+        "X3M_ADMISSION": "1"
+      },
+      "exit_code": 0,
+      "report_sha256": "a06b672b1c78f2263cfbf8dc06e77ab73ab6f0beb173c946eba5f0525fdc1895",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "checks": 12,
+      "samples_ns": [],
+      "median_ns": null
+    },
+    {
+      "mode": "private1",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build",
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership_admission_fixture.exe",
+        "private1"
+      ],
+      "environment": {
+        "X3M_ADMISSION": "1"
+      },
+      "exit_code": 0,
+      "report_sha256": "0f613c7e802338511e67c69c75c4fc9070d41d3e932cfe158cf76f92b6bc5b3d",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "checks": 12,
+      "samples_ns": [],
+      "median_ns": null
+    },
+    {
+      "mode": "private2",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build",
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership_admission_fixture.exe",
+        "private2"
+      ],
+      "environment": {
+        "X3M_ADMISSION": "1"
+      },
+      "exit_code": 0,
+      "report_sha256": "692b034d2c7fdbd1af104155689506137cd0fd9df707776a0d7529e81d06a3e1",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "checks": 12,
+      "samples_ns": [],
+      "median_ns": null
+    },
+    {
+      "mode": "private3",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build",
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership_admission_fixture.exe",
+        "private3"
+      ],
+      "environment": {
+        "X3M_ADMISSION": "1"
+      },
+      "exit_code": 0,
+      "report_sha256": "56c4bc592953fb6cc6798226f3314e77c39e3b108095dbd3083e2039cd09837e",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "checks": 12,
+      "samples_ns": [],
+      "median_ns": null
+    },
+    {
+      "mode": "private4",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build",
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership_admission_fixture.exe",
+        "private4"
+      ],
+      "environment": {
+        "X3M_ADMISSION": "1"
+      },
+      "exit_code": 0,
+      "report_sha256": "3861fe0506f4a89a5468e5905abeb49f00d7e5440fa22114185545ff5f90cea0",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "checks": 12,
+      "samples_ns": [],
+      "median_ns": null
+    },
+    {
+      "mode": "private5",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build",
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership_admission_fixture.exe",
+        "private5"
+      ],
+      "environment": {
+        "X3M_ADMISSION": "1"
+      },
+      "exit_code": 0,
+      "report_sha256": "82894c097bf9c71454e7d50ff06db6c0198c3f5c02eba3beb26f4afe1c4816a5",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "checks": 12,
+      "samples_ns": [],
+      "median_ns": null
+    },
+    {
+      "mode": "private6",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build",
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership_admission_fixture.exe",
+        "private6"
+      ],
+      "environment": {
+        "X3M_ADMISSION": "1"
+      },
+      "exit_code": 0,
+      "report_sha256": "4fae05a241e62da9ca7374030d5c138130d700223c1b7122543268116b8a4e20",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "checks": 12,
+      "samples_ns": [],
+      "median_ns": null
+    },
+    {
+      "mode": "shared",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build",
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership_admission_fixture.exe",
+        "shared"
+      ],
+      "environment": {
+        "X3M_ADMISSION": "1"
+      },
+      "exit_code": 0,
+      "report_sha256": "f37f9e66e580afe8f7cea2113bbc8799797cdeecb800dd1420bd0cd9630896cf",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "checks": 6,
+      "samples_ns": [],
+      "median_ns": null
+    },
+    {
+      "mode": "foreign",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build",
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership_admission_fixture.exe",
+        "foreign"
+      ],
+      "environment": {
+        "X3M_ADMISSION": "1"
+      },
+      "exit_code": 0,
+      "report_sha256": "9876e30b07672194bbb817f3497333f8f8d7250df37f9ded6f5bfddd7df011f4",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "checks": 5,
+      "samples_ns": [],
+      "median_ns": null
+    },
+    {
+      "mode": "software",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build",
+        "/Users/asvetl/x3-mod/verification/probe/build/ownership_admission_fixture.exe",
+        "software"
+      ],
+      "environment": {
+        "X3M_ADMISSION": "1"
+      },
+      "exit_code": 0,
+      "report_sha256": "337c8de8c95588eb52c56007d558436cc4e28c11ea07206b81fc1a8e6146e45c",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "checks": 5,
+      "samples_ns": [],
+      "median_ns": null
+    }
+  ],
+  "source_hashes_before_build": {
+    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
+    "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+    "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+    "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+    "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+    "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+    "tools/ownership/generate_d3d9_forwarders.py": "20010dff7f01703a27a4ecb3a8c129c60b84e413e9bdd62c0483dc72aceaae38",
+    "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+    "verification/probe/ownership_admission_fixture.cpp": "33971b2553dada2a5b638447f2210cc9164d34b2a07939e9f27aa8bb9eda67ae",
+    "verification/probe/build_ownership_admission.sh": "40ba67151e5ef940808354eb24cc411e86355fae50a66c932c020aa596348724",
+    "verification/probe/run_ownership_admission.py": "572b1c23837a75a268df302464fa86f64668bd1432086b81753cf71661c62d80"
+  },
+  "wine_sha256_before": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96",
+  "source_hashes_after_build": {
+    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
+    "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+    "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+    "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+    "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+    "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+    "tools/ownership/generate_d3d9_forwarders.py": "20010dff7f01703a27a4ecb3a8c129c60b84e413e9bdd62c0483dc72aceaae38",
+    "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+    "verification/probe/ownership_admission_fixture.cpp": "33971b2553dada2a5b638447f2210cc9164d34b2a07939e9f27aa8bb9eda67ae",
+    "verification/probe/build_ownership_admission.sh": "40ba67151e5ef940808354eb24cc411e86355fae50a66c932c020aa596348724",
+    "verification/probe/run_ownership_admission.py": "572b1c23837a75a268df302464fa86f64668bd1432086b81753cf71661c62d80"
+  },
+  "entry_audit": {
+    "methods": {
+      "Factory::GetAdapterMonitor": {
+        "address": "000008b0",
+        "body_sha256": "58cca180925014f0871ad883bcc3d05643800c52322897a328a5a919e4bbf265"
+      },
+      "Factory::GetDeviceCaps": {
+        "address": "00000920",
+        "body_sha256": "31b89d774db0ee6684982ededb369ea641f0c41b7c3c27e77fac8ec6f1bf633d"
+      },
+      "Factory::CheckDeviceFormatConversion": {
+        "address": "000009b0",
+        "body_sha256": "b7b4b382cde5951c9a5c6185359c946134da33b6c3122fb9682186751759c675"
+      },
+      "Factory::CheckDepthStencilMatch": {
+        "address": "00000a50",
+        "body_sha256": "9f1ea2ea77f3594ef032084681258001ba59ed53822eb26dc69f8c6c5189ebc0"
+      },
+      "Factory::CheckDeviceMultiSampleType": {
+        "address": "00000b00",
+        "body_sha256": "2ccf10556abe47ef46cbd6cfaedb113a6fda1b1cc0c0c81dd0802ec97cce10de"
+      },
+      "Factory::CheckDeviceFormat": {
+        "address": "00000bb0",
+        "body_sha256": "ad57919374fb68d304796c07494fc810811be076e833ed4a0420db0cf09b2e13"
+      },
+      "Factory::CheckDeviceType": {
+        "address": "00000c60",
+        "body_sha256": "a3f1f9c869fa1b53117abbb517419bf165428640f8602fb5cede4b2ff53abd10"
+      },
+      "Factory::GetAdapterDisplayMode": {
+        "address": "00000d10",
+        "body_sha256": "329a219832f80e7a1848da72eca21fbdea2e21d53343f0078d0e2bc7b45d114a"
+      },
+      "Factory::EnumAdapterModes": {
+        "address": "00000d90",
+        "body_sha256": "1cd5776df3b400541f7f7cd128e0ab7184d5ce206b6fd84d227238a2ca1e6cfd"
+      },
+      "Factory::GetAdapterModeCount": {
+        "address": "00000e30",
+        "body_sha256": "3cf850fcc77a078fb0c4a5b69d0f7cdc0ad90461af029046035b3b791843fa24"
+      },
+      "Factory::GetAdapterIdentifier": {
+        "address": "00000eb0",
+        "body_sha256": "32afac9816c51d3d0ee4d245bdac78ed337ef1a04bbe9d7d06036244189ed4ea"
+      },
+      "Factory::GetAdapterCount": {
+        "address": "00000f40",
+        "body_sha256": "d77fe1f1a946926e60b1408914e9843ecb2425e3204a72411e5ed216d80660b6"
+      },
+      "Device::GetNPatchMode": {
+        "address": "00000fa0",
+        "body_sha256": "8cbfbd92912490265465f0f87f14fa46ec940ffd9a4bf18d81e08a361963c73d"
+      },
+      "Device::GetSoftwareVertexProcessing": {
+        "address": "00001000",
+        "body_sha256": "2bc4892b6826bfc1b603e8897b3fbb26985c76d63b72f2d0d68cba91f70f9fac"
+      },
+      "Device::GetGammaRamp": {
+        "address": "00001060",
+        "body_sha256": "1d59f50fe8562735113eb872cd9d0d3ea45928840cae87134d419a8e829fd5cf"
+      },
+      "Device::SetGammaRamp": {
+        "address": "000010e0",
+        "body_sha256": "1c5d946c86dac8f03c6385ae69839b96b46270cb59d522e2bd96cd0307a79204"
+      },
+      "Device::GetNumberOfSwapChains": {
+        "address": "00001170",
+        "body_sha256": "395617bfd94ecbb080f7886e4596d606cc52a27c4c65da5df3481d2d6774a4ee"
+      },
+      "Device::ShowCursor": {
+        "address": "000011d0",
+        "body_sha256": "88560183f30d9243f0330609012f8c8049a075a7fa8b82993cdf0d05b91a369c"
+      },
+      "Device::SetCursorPosition": {
+        "address": "00001240",
+        "body_sha256": "fae20c7842ecb4b7775f97b4233a33459a1d74a1be35ed0df80af7307013d956"
+      },
+      "Device::GetAvailableTextureMem": {
+        "address": "000012d0",
+        "body_sha256": "53eba0d5b91f31e2c94ee31936a08faa01fcf4be220d828dc459c81b3680a242"
+      },
+      "Texture::GetAutoGenFilterType": {
+        "address": "00001330",
+        "body_sha256": "cccc8a87075d82ec0fc08be4c145f0373530a96b1d802b3c07d30d1a91e8937c"
+      },
+      "Texture::GetLevelCount": {
+        "address": "00001390",
+        "body_sha256": "61458dbeb6c7aba120754a19322f371c8a1ca19317f0319838aa80c1b0a02cbc"
+      },
+      "Texture::GetLOD": {
+        "address": "000013f0",
+        "body_sha256": "55e844b22edb9fa2618ada3580453aaa4bf42166aee8ba5b721a30a3a4078e35"
+      },
+      "Texture::SetLOD": {
+        "address": "00001450",
+        "body_sha256": "78f893fa9403d3b09ad618570811e1df7644e95db0958739157cab4a9c482da5"
+      },
+      "Texture::GetType": {
+        "address": "000014c0",
+        "body_sha256": "b6f493115504961914a244c23b88f8a98bd30b663fdc328819e6e5b411eb6cbf"
+      },
+      "Texture::GetPriority": {
+        "address": "00001520",
+        "body_sha256": "0b939a4e72d34eb0a70e7aabac69fe728880664285d121760a008778a9c096b5"
+      },
+      "Texture::SetPriority": {
+        "address": "00001580",
+        "body_sha256": "a8560e0ace780e4627e630fdc83c53fe1026f57dd88464f9d5a88944ccd3bc23"
+      },
+      "CubeTexture::GetAutoGenFilterType": {
+        "address": "000015f0",
+        "body_sha256": "77954461e1f703d81b5bd11bcf9cae122338d532aaf795b6346737bc81f7b56f"
+      },
+      "CubeTexture::GetLevelCount": {
+        "address": "00001650",
+        "body_sha256": "99d0150168d90e3ecdbc197e8a4f582d27789c6d8d7ab60e82b60cdce33908d1"
+      },
+      "CubeTexture::GetLOD": {
+        "address": "000016b0",
+        "body_sha256": "3003595cc9322815c95d3a82144fc7461740566c47a00edbc77b157e39676cb8"
+      },
+      "CubeTexture::SetLOD": {
+        "address": "00001710",
+        "body_sha256": "b1d96c300f6a63e1e94711e663fda90c1f8ffcbc10dfc03df8f401b3bde077ea"
+      },
+      "CubeTexture::GetType": {
+        "address": "00001780",
+        "body_sha256": "330a6a2826a3e89ca0de017291b32ae5edf07e54434a022fcdd5ac24e39f6fdf"
+      },
+      "CubeTexture::GetPriority": {
+        "address": "000017e0",
+        "body_sha256": "e0ed78b9bc7043dd3c1562066f56d46e38a3bd6894f4f177ae7d62bd5db4947d"
+      },
+      "CubeTexture::SetPriority": {
+        "address": "00001840",
+        "body_sha256": "68063fcd6b27d0e7c6f373aed8277185e9b4c3dd59b1757b2764bca079ae7853"
+      },
+      "VolumeTexture::GetAutoGenFilterType": {
+        "address": "000018b0",
+        "body_sha256": "45d38168b97a7a6b462219f62f225c3f22ca58deeb97010aec50ec653f716a03"
+      },
+      "VolumeTexture::GetLevelCount": {
+        "address": "00001910",
+        "body_sha256": "aa2a714c6facf6f5d1183e9565c3b55a0c1b62c6c80e6c49bf672d5ffba067ee"
+      },
+      "VolumeTexture::GetLOD": {
+        "address": "00001970",
+        "body_sha256": "a99cfebf48e75e16e30f7f7962720557f15c3890e8bac9c34e6b9364d733e980"
+      },
+      "VolumeTexture::SetLOD": {
+        "address": "000019d0",
+        "body_sha256": "2a5a7b44597d0a4c404e5b96146c58fd0dd604735b27765d16a73faec2e7057a"
+      },
+      "VolumeTexture::GetType": {
+        "address": "00001a40",
+        "body_sha256": "d2770c2943299ddbf18fa7036744af9cca865004633717ef9c2cf307296567e6"
+      },
+      "VolumeTexture::GetPriority": {
+        "address": "00001aa0",
+        "body_sha256": "de2853143868a7662928acc19fa54f5cd90c45d15555220345de8874fdec7d3e"
+      },
+      "VolumeTexture::SetPriority": {
+        "address": "00001b00",
+        "body_sha256": "e4c73561f191d03b35b9f19b9066fdfc040d1a47f8e820f021f33841888c7762"
+      },
+      "Surface::GetType": {
+        "address": "00001b70",
+        "body_sha256": "6bc993d9a66b9ac2fb881d28bb904c776028819d063acd9ed951380773c4aec6"
+      },
+      "Surface::GetPriority": {
+        "address": "00001bd0",
+        "body_sha256": "0135298a7a44ded6ba052925630d2fe9006b2b1a0490ed686d519bef195d4405"
+      },
+      "Surface::SetPriority": {
+        "address": "00001c30",
+        "body_sha256": "60b9e97512735ad82aed236e67ea75fcd761842459a676eb353280ddf1d46ad9"
+      },
+      "VertexBuffer::GetType": {
+        "address": "00001ca0",
+        "body_sha256": "5e531ee2fc5b143b8e45a03af0face469516e6bb1b4c606ca717d5739ce747f3"
+      },
+      "VertexBuffer::GetPriority": {
+        "address": "00001d00",
+        "body_sha256": "e02090854edd840b2cee940b7507cad7a063be642d6c4a8c7deb320933d01b18"
+      },
+      "VertexBuffer::SetPriority": {
+        "address": "00001d60",
+        "body_sha256": "517fb4549c70bea3225101b78c363829d424d79d850da5d5ac1887ff80b66a8f"
+      },
+      "IndexBuffer::GetType": {
+        "address": "00001dd0",
+        "body_sha256": "b29b67badea25d87b78d01a4f71860a130bdb8f9e330b443f6a7c5a51fd9ee14"
+      },
+      "IndexBuffer::GetPriority": {
+        "address": "00001e30",
+        "body_sha256": "37e7f88e07fecbd37d7004c23a6f9e28ebeb2524b477720862c2dedc6fca3e9c"
+      },
+      "IndexBuffer::SetPriority": {
+        "address": "00001e90",
+        "body_sha256": "09608467e8639ea77b1c2c6b13ace1031a798aca509630226e509c75685ec303"
+      },
+      "Query::GetDataSize": {
+        "address": "00001f00",
+        "body_sha256": "936b92d8a1f8f5c7ed70cbae49b9e89b90c94ca7434da743bbd7fe8fd0e7296b"
+      },
+      "Query::GetType": {
+        "address": "00001f60",
+        "body_sha256": "cce1782df11dd5395c4bf618da705df5016ac0ba2b6a33bd35f9412a543b7154"
+      },
+      "Factory::RegisterSoftwareDevice": {
+        "address": "00002090",
+        "body_sha256": "1ebb6c160348974bcd728ac2679c1272f1b49a5415056243f2ba323fcdd38c94"
+      },
+      "Factory::AddRef": {
+        "address": "00002f20",
+        "body_sha256": "56312277dcff78425a6c0cdfb15acc611cd5123e482449a2de6047c144f60690"
+      },
+      "Device::GetDirect3D": {
+        "address": "00002f60",
+        "body_sha256": "d20fb5d7bf62540781e51729a3b2e758ccd905a2cba500ac784eb94fde98b885"
+      },
+      "Device::AddRef": {
+        "address": "00002fc0",
+        "body_sha256": "f85e956280282bfd999ef1f05b86b85a674e95ca61e2074aaf1767a3c515c881"
+      },
+      "Texture::AddRef": {
+        "address": "00003000",
+        "body_sha256": "fd4dfc7d7d65f9eb5928b7cc9ca2321bdd8221c108aeb2c8f67f058ee71ebb6c"
+      },
+      "CubeTexture::AddRef": {
+        "address": "00003040",
+        "body_sha256": "83f20e009aacda9ab0afe2b8f601d3d7dc4e45c9fdf6d791555d920ee21086fe"
+      },
+      "VolumeTexture::AddRef": {
+        "address": "00003080",
+        "body_sha256": "cca62008a5c00c243ab32291648ba515a438088ec35d5dee251ceb33171a3167"
+      },
+      "Surface::AddRef": {
+        "address": "000030c0",
+        "body_sha256": "e4ab22e97c183e6adf02685fd949f6c13ad7dfee3b5c0c1ef8690c6e07415d74"
+      },
+      "Volume::AddRef": {
+        "address": "00003100",
+        "body_sha256": "faaa1e40cde79811af3d4d80b31f72f6ef57ce705a2ab22d617ae59cffdf10b4"
+      },
+      "VertexBuffer::AddRef": {
+        "address": "00003140",
+        "body_sha256": "36557d3896c6343a3f45a5a347f30b46800f0c39c9eea20b4d2a07c266996e30"
+      },
+      "IndexBuffer::AddRef": {
+        "address": "00003180",
+        "body_sha256": "146615a25964f06eee0f455f72301fd57ee8357b7340a714ea3f654dccecb285"
+      },
+      "VertexDeclaration::AddRef": {
+        "address": "000031c0",
+        "body_sha256": "daf5f4886ce41c01421d3a43499a18ed2f4b13d0c3847bb041bc16ebf9f65ad5"
+      },
+      "VertexShader::AddRef": {
+        "address": "00003200",
+        "body_sha256": "aaa4a61fd50aa927ad51c275edd0d61d83d508a3cf80dea24a65538c1b2e49d0"
+      },
+      "PixelShader::AddRef": {
+        "address": "00003240",
+        "body_sha256": "293f21d1f674b041293f8fb4e8dc3123d135b57a1f7472d2f6d5255b761bca75"
+      },
+      "StateBlock::AddRef": {
+        "address": "00003280",
+        "body_sha256": "b2db85d4400ea573ad8efb65211e25daf5f0c251c3969dbbe37a90b5beb66bc2"
+      },
+      "Query::AddRef": {
+        "address": "000032c0",
+        "body_sha256": "65647a3af5eed3ded16d5821813f0b087b03b01a2ba9bb602bd97e842adc51f3"
+      },
+      "SwapChain::AddRef": {
+        "address": "00003300",
+        "body_sha256": "91bd504fe08e8c508b9ff987c161627e27805cafdcefa09c1982f82dab9883a3"
+      },
+      "Factory::QueryInterface": {
+        "address": "000035b0",
+        "body_sha256": "c2f720e41d9784a9ae98bc9d4e60720162266185dc48824a8c0880892184e06d"
+      },
+      "Device::QueryInterface": {
+        "address": "00003600",
+        "body_sha256": "afaa0c44e0df70479992fa41ffdf29813a92141432ea59265cecad558864b2ee"
+      },
+      "Texture::QueryInterface": {
+        "address": "00003650",
+        "body_sha256": "7ffec5f50944ee7ab618188f494aec64e8dcc96b249a90c4a595a5f19ed2ee2a"
+      },
+      "CubeTexture::QueryInterface": {
+        "address": "000036a0",
+        "body_sha256": "9eae7ebdbe9cd68c3670722d8b7c5e53c5c3b53d5b83cde95b3e92f0941cad6f"
+      },
+      "VolumeTexture::QueryInterface": {
+        "address": "000036f0",
+        "body_sha256": "e7aad9974d12e845a3267d4592f87ba26da755be4f67918c3e604e7825aee50e"
+      },
+      "Surface::QueryInterface": {
+        "address": "00003740",
+        "body_sha256": "b5e36e2892160ed7c9fde498041dad9d0ef3c68751bd4d5b6ad0de7a6c491b50"
+      },
+      "Volume::QueryInterface": {
+        "address": "00003790",
+        "body_sha256": "160d775f99bd612dd7c052736f49173d9251e8eed3dd42ac8cff9588a2286b10"
+      },
+      "VertexBuffer::QueryInterface": {
+        "address": "000037e0",
+        "body_sha256": "c1faaf2c17086f488c12047827c12bf6a8ed193f850ba7858cbbbd5ae52cad61"
+      },
+      "IndexBuffer::QueryInterface": {
+        "address": "00003830",
+        "body_sha256": "9d8d42c102ef2e71c09b8d2f6b2a80de5d271d27597372d5ee77c0deeb3b5529"
+      },
+      "VertexDeclaration::QueryInterface": {
+        "address": "00003880",
+        "body_sha256": "a094695f91f3745d4794f6f325352c1bbad40a9bac8c81d6d061b2ce040f65c9"
+      },
+      "VertexShader::QueryInterface": {
+        "address": "000038d0",
+        "body_sha256": "2f37de9a6e44cbd8e25beb0ac378155190414b4b5d5931c9650e6d2ab38615d0"
+      },
+      "PixelShader::QueryInterface": {
+        "address": "00003920",
+        "body_sha256": "b4d9e607f54a36e78429c7f9bf1be7798d1cec02a33c6bc1e587ba29c89389c0"
+      },
+      "StateBlock::QueryInterface": {
+        "address": "00003970",
+        "body_sha256": "8e3b4ccdd2948d85df4e9e96897eed11998fcc23172c38095b1bb0180922887d"
+      },
+      "Query::QueryInterface": {
+        "address": "000039c0",
+        "body_sha256": "947e4be7baeb798ffa1943ed27716dad1b2dbfe77190e03415f7829564727178"
+      },
+      "SwapChain::QueryInterface": {
+        "address": "00003a10",
+        "body_sha256": "d60cc0194206ea9047a241db56485c1821c278f17057b64874e82ca7de9026bb"
+      },
+      "IndexBuffer::PreLoad": {
+        "address": "00003de0",
+        "body_sha256": "d1fde745f4779c045f918f8b8c9ef41a74a16a2bbdaa7fdd73e718ccfe382c72"
+      },
+      "VertexBuffer::PreLoad": {
+        "address": "00004070",
+        "body_sha256": "e78155f908d0c953493754ef8bfefade56de6f80175dcbaad443fc6ff77634e2"
+      },
+      "Surface::PreLoad": {
+        "address": "00004300",
+        "body_sha256": "fa254e7d00274154da0b130fc4da825ef655521106e3fe35f21847c7ab5a50b5"
+      },
+      "VolumeTexture::GenerateMipSubLevels": {
+        "address": "00004590",
+        "body_sha256": "a4400423c9b8280ff44fa57c1c6ecdae27f226933ed52e2fb3450264c892d688"
+      },
+      "VolumeTexture::PreLoad": {
+        "address": "00004820",
+        "body_sha256": "05e87da1f83eb55e92d5525c65c395ec5f36075ba2d0aa8343c3931344a89d37"
+      },
+      "CubeTexture::GenerateMipSubLevels": {
+        "address": "00004ab0",
+        "body_sha256": "b53d3f43f8c18fff3bf37ea79c2c6ee38340e62a311b0bce6ec312b5fc3c2dda"
+      },
+      "CubeTexture::PreLoad": {
+        "address": "00004d40",
+        "body_sha256": "6fd0feeadd4bc87ca88adc6faa9c59a9bd03923322eb143d6d621b321bf63653"
+      },
+      "Texture::GenerateMipSubLevels": {
+        "address": "00004fd0",
+        "body_sha256": "99fcb67e1ca0479e0eac83157ddf0dbf82a52c008f896513c8a7117dee58b484"
+      },
+      "Texture::PreLoad": {
+        "address": "00005260",
+        "body_sha256": "513d0efa5d8e5212f88bc4ef5fc3d2572c498b1cdf7e046c076bbac67b994439"
+      },
+      "Texture::GetDevice": {
+        "address": "00005910",
+        "body_sha256": "52ac0557eb2b8c2bead3d34b2f183ffc4cd0117c654c46cf222d3d8ca95dd6f0"
+      },
+      "CubeTexture::GetDevice": {
+        "address": "00005950",
+        "body_sha256": "745c6542084022f61d892a00534f31d17c1f4fdb1ef6b2f71ebc16df6478e051"
+      },
+      "VolumeTexture::GetDevice": {
+        "address": "00005990",
+        "body_sha256": "3c8e25426d5616648edf92d9a13bb3dca320a1219f4a1b6fc063fa4c2c2269ad"
+      },
+      "Surface::GetDevice": {
+        "address": "000059d0",
+        "body_sha256": "9499290d10729ef5a017b90d54d4991e9746fcc4c6da37f52fd1d26c6f74bcb0"
+      },
+      "Volume::GetDevice": {
+        "address": "00005a10",
+        "body_sha256": "5ad1a349ac23263939bde823c7c12de47df76c4d8f6efff130dddec8b793d853"
+      },
+      "VertexBuffer::GetDevice": {
+        "address": "00005a50",
+        "body_sha256": "146550bb9242e01b5e911595d490066c330e6bb146cfb985fa8e7427dafea489"
+      },
+      "IndexBuffer::GetDevice": {
+        "address": "00005a90",
+        "body_sha256": "f11891d12a0a186ea8908742954f8dfbf4bd787bffb509eaf22cb02c922bf718"
+      },
+      "VertexDeclaration::GetDevice": {
+        "address": "00005ad0",
+        "body_sha256": "4bf3ef8f26e5119dc5687e3b18b7220e06a1601746ac8715bb9fbc48757707ff"
+      },
+      "VertexShader::GetDevice": {
+        "address": "00005b10",
+        "body_sha256": "ea9efab101403a86c44a2ef2a0eb237a11e29a2b0aa30b9c049ddef9b3e92905"
+      },
+      "PixelShader::GetDevice": {
+        "address": "00005b50",
+        "body_sha256": "ee51e1d4270e633d3b8db4562da35d50ef7fdc593e070419268bcdecaae5648f"
+      },
+      "StateBlock::GetDevice": {
+        "address": "00005b90",
+        "body_sha256": "cc70db297616b561cf5f9001ff57088c002ffc8628f90100ba73362106f5c0dc"
+      },
+      "Query::GetDevice": {
+        "address": "00005bd0",
+        "body_sha256": "5ee67c41ae41a41cf50bc79048255c9a7a0bd99759e623d45ed3378dd8f37122"
+      },
+      "SwapChain::GetDevice": {
+        "address": "00005c10",
+        "body_sha256": "0028b51a552c4c789716e1b6f649e47defd68c745701c058aa40bfe1165db10d"
+      },
+      "Device::DeletePatch": {
+        "address": "000084c0",
+        "body_sha256": "c05eb23e01219e6d5e5d951aabf27a39ed2eb6de8a3e5a85a605a2ad6f0ee000"
+      },
+      "Device::DrawTriPatch": {
+        "address": "00008530",
+        "body_sha256": "82afe109ef309ec275ad921087afa36cdc09ad6d6b67d8b62325472c0a0bc38a"
+      },
+      "Device::DrawRectPatch": {
+        "address": "000085b0",
+        "body_sha256": "ba30af695d846349087f54c9ab0ed6c8c2bf1439cfa7bac1e3c3f158dcc9581e"
+      },
+      "Device::GetPixelShaderConstantB": {
+        "address": "00008630",
+        "body_sha256": "a73e8f096a022f7afe90aa68eccef604438b0047f28447ae149b4840aadb8700"
+      },
+      "Device::SetPixelShaderConstantB": {
+        "address": "000086b0",
+        "body_sha256": "e1a68ce213aba0d10d2f1f92fcb3a0880410472cf8c2bc52380b1a159d4633aa"
+      },
+      "Device::GetPixelShaderConstantI": {
+        "address": "00008730",
+        "body_sha256": "26e0e59b51f504c0db0f8001abb27dce471ea7b5dabc963a19c76374840031b0"
+      },
+      "Device::SetPixelShaderConstantI": {
+        "address": "000087b0",
+        "body_sha256": "0b5b2d837772fb00dbeda3bdbd4546997b6f6749a44ff21932da29028fa12365"
+      },
+      "Device::GetPixelShaderConstantF": {
+        "address": "00008830",
+        "body_sha256": "2c0720ad664991580254f7ffb0d34fd28129c5bc6e0c548c8b0aabbf7d647bc2"
+      },
+      "Device::SetPixelShaderConstantF": {
+        "address": "000088b0",
+        "body_sha256": "dbe307c304e452b339cc5d8c6b23a2cfa779ede43cd85969523a365afa9b19f1"
+      },
+      "Device::SetPixelShader": {
+        "address": "00008930",
+        "body_sha256": "146baeda8fb76453500428fcfcaf411544506784bddee2318bd0914745a87588"
+      },
+      "Device::SetIndices": {
+        "address": "000089a0",
+        "body_sha256": "726c21c3690377d8b6b3a4416013f03780edec77e346709a88e564ecc442cfb0"
+      },
+      "Device::GetStreamSourceFreq": {
+        "address": "00008a10",
+        "body_sha256": "c8738030b3f87137f526c53e3adca9530b06ad2f63e95b7247f5b30daaa73279"
+      },
+      "Device::SetStreamSourceFreq": {
+        "address": "00008a80",
+        "body_sha256": "19b6e981ce4a98a8dbad95a77a07357038775df838db297fd30e6838c40c3837"
+      },
+      "Device::SetStreamSource": {
+        "address": "00008af0",
+        "body_sha256": "ab5a3966440d95a0550d47c1b61b129a52f244c32b6478e21129a14125eff4cd"
+      },
+      "Device::GetVertexShaderConstantB": {
+        "address": "00008b80",
+        "body_sha256": "87e60b901081ea3a514974c665cbfc6e48dd4150e5e3867320e62201f97d9948"
+      },
+      "Device::SetVertexShaderConstantB": {
+        "address": "00008c00",
+        "body_sha256": "59eb05c240602e67a972c09eb06cd4e52103fc9ec58b19734372131261a6dfa1"
+      },
+      "Device::GetVertexShaderConstantI": {
+        "address": "00008c80",
+        "body_sha256": "37985c3d5e40ce766216e53e2277d193f59bf7405698a096ff281f091d37bde9"
+      },
+      "Device::SetVertexShaderConstantI": {
+        "address": "00008d00",
+        "body_sha256": "fbcf22ddd4afa340b092ddffcba499e2b0d6557c7e26780586efe283b6e479bc"
+      },
+      "Device::GetVertexShaderConstantF": {
+        "address": "00008d80",
+        "body_sha256": "2a71879db3b26220b4e635a91e1c017abe573483b3fc24ae2566e0893766387a"
+      },
+      "Device::SetVertexShaderConstantF": {
+        "address": "00008e00",
+        "body_sha256": "eb009340ecabe39ecd5550e6c52c5452cf75833c07aafc45c3e65e842abf0134"
+      },
+      "Device::SetVertexShader": {
+        "address": "00008e80",
+        "body_sha256": "c229e72ff7e8726ffa585fb82654e604af9e0b76f8a481b750b6f700ab336f8a"
+      },
+      "Device::GetFVF": {
+        "address": "00008ef0",
+        "body_sha256": "9dff15dca65aa917f602f883d33d4ca1546d2887e3daa5f8d3f74d86ffcf2c29"
+      },
+      "Device::SetFVF": {
+        "address": "00008f60",
+        "body_sha256": "bfec94f6023036d2c3b222381a60f8d1ef4e2dc77773b7ebb14f41e36781d8c7"
+      },
+      "Device::SetVertexDeclaration": {
+        "address": "00008fd0",
+        "body_sha256": "225d6f80161424a37519531b5ff8ec154c042dace83bcc2a12ae7c23ae4daeb1"
+      },
+      "Device::DrawIndexedPrimitiveUP": {
+        "address": "00009040",
+        "body_sha256": "316744ad64b08b378820b849a8f33224ddd46565b29a24d6c89868db3686c052"
+      },
+      "Device::DrawPrimitiveUP": {
+        "address": "000090e0",
+        "body_sha256": "1aed4b6f027146c3c3cc750afd5469f5080bcd3e4cee47a7dd715462d9bcbd58"
+      },
+      "Device::DrawIndexedPrimitive": {
+        "address": "00009160",
+        "body_sha256": "ef22444f6f94dffb3aaa260d9b8c9aad10db4aa105d92591f3af293d9bfbc289"
+      },
+      "Device::DrawPrimitive": {
+        "address": "000091f0",
+        "body_sha256": "4e477e17c55eadf6d39f48aae1d126ccf36f01fbe6c3ae09f34d7b31aaaeb567"
+      },
+      "Device::SetNPatchMode": {
+        "address": "00009270",
+        "body_sha256": "7f47cd05bb82e2684b0d88b52e5751eddc7121819110f19c614adcf1b077a79e"
+      },
+      "Device::SetSoftwareVertexProcessing": {
+        "address": "000092e0",
+        "body_sha256": "9668d26a8e32ef235db4f738dddd93b4c84af9c182a0944ab03f169306c8a272"
+      },
+      "Device::GetScissorRect": {
+        "address": "00009350",
+        "body_sha256": "a881268caf30b076ced26d6789e92f67ab9e2223ad311731e1991d88d1ac81f5"
+      },
+      "Device::SetScissorRect": {
+        "address": "000093c0",
+        "body_sha256": "437b1313964c1e2ef34e4ca3abc39f5c463ee500d6f4cab72165d2269b22831e"
+      },
+      "Device::GetCurrentTexturePalette": {
+        "address": "00009430",
+        "body_sha256": "f4a29faee1b6c693eb7f4b685ed5bcf14836d43058fd5dd5aaf6f32cf1d69dbe"
+      },
+      "Device::SetCurrentTexturePalette": {
+        "address": "000094a0",
+        "body_sha256": "63d4a2f940271095cb72d8d28abd7b788c1e95e92283e7475ff669b31032b638"
+      },
+      "Device::GetPaletteEntries": {
+        "address": "00009510",
+        "body_sha256": "462d7585e2e58ed3c156a7fc80ce38ca7385531a6acda5883b9721a053ca915a"
+      },
+      "Device::SetPaletteEntries": {
+        "address": "00009580",
+        "body_sha256": "9468eaccfb6dfefd237ea9fd8fcd57d90f2011518230fb2c0ac65319636d8cdc"
+      },
+      "Device::ValidateDevice": {
+        "address": "000095f0",
+        "body_sha256": "e1e42b89e536eba39061738644548d33e3f2c49c1cc696f57517698dc7132101"
+      },
+      "Device::SetSamplerState": {
+        "address": "00009660",
+        "body_sha256": "c9ad378b91fd40894f867d6afcacf4775d7fa3f261b21d2cbc169d98fb1d71eb"
+      },
+      "Device::GetSamplerState": {
+        "address": "000096e0",
+        "body_sha256": "6bed671dc43f02eecc5ed867f0c8337cec3470eeb175aee312e0688c872fbfa0"
+      },
+      "Device::SetTextureStageState": {
+        "address": "00009760",
+        "body_sha256": "c7c62c11d2e8a9a40c8d34c393d0834bfde001fa292270daa6c38d97faa028ca"
+      },
+      "Device::GetTextureStageState": {
+        "address": "000097e0",
+        "body_sha256": "2a72f4c2ede5170ecdf0baee2db49f310a8475591eeddb8e7527f5484e0f792c"
+      },
+      "Device::SetTexture": {
+        "address": "00009860",
+        "body_sha256": "9c1b47d1df7707c1b60007b07ff78321af8c7050e27ca0c82932eae25477a0e5"
+      },
+      "Device::GetClipStatus": {
+        "address": "000098e0",
+        "body_sha256": "6caa76a156dadfcb3237930ab3f5b9f714836564ba915a44ae2072960d862835"
+      },
+      "Device::SetClipStatus": {
+        "address": "00009950",
+        "body_sha256": "170650d2f83536b9feef0c43b8296b3f1d583e35714ab697ca294f4aeb710979"
+      },
+      "Device::GetRenderState": {
+        "address": "000099c0",
+        "body_sha256": "e51d665f50799a693240c085677f10fd591d4786a6c71cbc7c43e47ab0817b42"
+      },
+      "Device::SetRenderState": {
+        "address": "00009a30",
+        "body_sha256": "8caceae6dd4fcc747dbbeb9e5661595fcbf62db811cc595d5bdf73a4d50f2ac1"
+      },
+      "Device::GetClipPlane": {
+        "address": "00009aa0",
+        "body_sha256": "7eb73f3bee4819c5a98ae302752155ef8efa5541af69db9379fb62c3c6a31f78"
+      },
+      "Device::SetClipPlane": {
+        "address": "00009b10",
+        "body_sha256": "76d5c64b1d7d5dc1d0528ba197440d83458f94f28cf1a9a7f004a5d8f6b3844b"
+      },
+      "Device::GetLightEnable": {
+        "address": "00009b80",
+        "body_sha256": "3168d5f7a043d6c38c835a0be48a70d522b96979595b4b0687b2b5a527085f7f"
+      },
+      "Device::LightEnable": {
+        "address": "00009bf0",
+        "body_sha256": "cdd65be02bfc7fd9d08eddc3f6990c462f804c0b352f99aea81f8ad0851b3152"
+      },
+      "Device::GetLight": {
+        "address": "00009c60",
+        "body_sha256": "03f7f4803692747e7f10eedd38a02bbb20252f2143e6e43ff02202539038b1e7"
+      },
+      "Device::SetLight": {
+        "address": "00009cd0",
+        "body_sha256": "dfc0bfde8425967c1c7ff3fe021a776c25c13967fc1dfeab1867f006a0dda560"
+      },
+      "Device::GetMaterial": {
+        "address": "00009d40",
+        "body_sha256": "49e005f06d88d62c6fc87f2a5eeda3b6a22a3576588c431d3b94c35207a72dbd"
+      },
+      "Device::SetMaterial": {
+        "address": "00009db0",
+        "body_sha256": "cd4505ef02e3be9feb494d8da6d8c541d3b12904cb32ec78469c05d52f260606"
+      },
+      "Device::GetViewport": {
+        "address": "00009e20",
+        "body_sha256": "07c78ef648849276ef7d9db8079609c5bf8334999b7f1371024b489a495c263f"
+      },
+      "Device::SetViewport": {
+        "address": "00009e90",
+        "body_sha256": "d50577333ad0e023c0d4336d378429799ab79ed87e37517b32fb84308704af7a"
+      },
+      "Device::MultiplyTransform": {
+        "address": "00009f00",
+        "body_sha256": "934da90dd1a38b95f9695d1016b7e335090b6d8f66bc8a473c1d9d183b587e96"
+      },
+      "Device::GetTransform": {
+        "address": "00009f70",
+        "body_sha256": "1e14468cf36ce22d1508a2dc6ff5f3518398815f9dd82d778209f6418d2afa2d"
+      },
+      "Device::SetTransform": {
+        "address": "00009fe0",
+        "body_sha256": "763422a7b8b6b271a5b2a81d8f64921023561bee4078b0f6b6a3148cafcaf54c"
+      },
+      "Device::SetDepthStencilSurface": {
+        "address": "0000a050",
+        "body_sha256": "1383f33c581d66e6f53d8df265a32b2ced95cfca5c15803329da27e550669b57"
+      },
+      "Device::SetRenderTarget": {
+        "address": "0000a0c0",
+        "body_sha256": "94ca869b96ee2bee42889d03cd2cd5083c71deb076722e11d25cb099ab51feb2"
+      },
+      "Device::ColorFill": {
+        "address": "0000a140",
+        "body_sha256": "7b5b1feb3f470ea15e4ee46274486819392cb6f2c195349ca013ca213008da68"
+      },
+      "Device::StretchRect": {
+        "address": "0000a1c0",
+        "body_sha256": "110657c5db19451a4def5cfb0ce03d15147bd6141f09aa7b4245d3bcbf776e5e"
+      },
+      "Device::GetFrontBufferData": {
+        "address": "0000a260",
+        "body_sha256": "2da7b5c8308f14a1dda03a293c512609395a2b24a6c8b9bb54863e95b03d90ff"
+      },
+      "Device::GetRenderTargetData": {
+        "address": "0000a2e0",
+        "body_sha256": "efdf5ddbadf6d919ff82457b31d5175c8c0729dd47d15427e373c055d95cc629"
+      },
+      "Device::UpdateTexture": {
+        "address": "0000a360",
+        "body_sha256": "2becfeabbf7071ddc290f68aa06876d8c4ebca2a41eb677efca430fc462e9673"
+      },
+      "Device::UpdateSurface": {
+        "address": "0000a3e0",
+        "body_sha256": "9a6dea22c3b38960ee1c34e4b9095b1485cac5e4b6eed37cb1466fd90ff869cb"
+      },
+      "Device::SetDialogBoxMode": {
+        "address": "0000a470",
+        "body_sha256": "9fb29817c909460d70d7ad35b0e526a2416bfb27cc4e202ca69acc272426c239"
+      },
+      "Device::GetRasterStatus": {
+        "address": "0000a4d0",
+        "body_sha256": "b040c3ece4510734afb0f46fb88f12a4274488722baf7bd65b74cb30088047cf"
+      },
+      "Device::Present": {
+        "address": "0000a540",
+        "body_sha256": "207dd3dadb30e32431202c12944b01e459b1c372ca5b22e2c8d69a73cac39d6d"
+      },
+      "Device::SetCursorProperties": {
+        "address": "0000a5c0",
+        "body_sha256": "cf890630d7b278124fca7b894874cfebbcc78378927dcdf5a7c919b19fc6b200"
+      },
+      "Device::GetCreationParameters": {
+        "address": "0000a640",
+        "body_sha256": "4e631644a805c4639ace071bfe55d85a1647e19e6c7fea5937604a73153c97cb"
+      },
+      "Device::GetDisplayMode": {
+        "address": "0000a6a0",
+        "body_sha256": "4d2820823ae4398510dd63adf6ae973c82cf598b3c0b273ff159a9c2fbb7296c"
+      },
+      "Device::GetDeviceCaps": {
+        "address": "0000a710",
+        "body_sha256": "4709575b7ac7f1cf041fa95ed1336e7d484a1e631f1cd13014df1f9d2335f716"
+      },
+      "Device::EvictManagedResources": {
+        "address": "0000a770",
+        "body_sha256": "d1c53353cb8eaeee623087369b8452fa0cd5d1b6601c183b47eb974bc3db664d"
+      },
+      "Device::TestCooperativeLevel": {
+        "address": "0000a7d0",
+        "body_sha256": "a3b3b440ed6871ef65a74835a2636e214a6b55b975e5000a610b7591c808d3b0"
+      },
+      "Texture::AddDirtyRect": {
+        "address": "0000a830",
+        "body_sha256": "c444af0c02be79f00db3557b3d32ebbb05083958f14a5198cf46906f9c29d509"
+      },
+      "Texture::UnlockRect": {
+        "address": "0000a890",
+        "body_sha256": "a18c905b696d8a6889fbabbe6951c3d99aa0d9fb7ffa0c8e169dace55872e082"
+      },
+      "Texture::LockRect": {
+        "address": "0000a8f0",
+        "body_sha256": "3fe5039c701bee057657078a799e7693111a038ff0016e6db87139bbe0aaa82a"
+      },
+      "Texture::GetLevelDesc": {
+        "address": "0000a970",
+        "body_sha256": "f698ed82532312a52231a2c42988cb3780b789f0f4885971c4277ae2718ecf73"
+      },
+      "Texture::SetAutoGenFilterType": {
+        "address": "0000a9e0",
+        "body_sha256": "eb5e1a756964dc4688e8c4adc9c314aa8d8a82aa55e7a9fd3e03ee7bc41f5024"
+      },
+      "Texture::FreePrivateData": {
+        "address": "0000aa40",
+        "body_sha256": "5bc921c3bcdf28a1f9475677250a12e46c0a8e631f5fcb9f53f504e9e7932ce5"
+      },
+      "Texture::GetPrivateData": {
+        "address": "0000aaa0",
+        "body_sha256": "a20e9cd96c777c6b63f12802f8bfbc32da6cd43c7a66c8a509bd1d86849eede6"
+      },
+      "Texture::SetPrivateData": {
+        "address": "0000ab10",
+        "body_sha256": "6d30cb3cf55165a36f070815c2c00dedff82df9b90b066abcf8c76d8512ecd67"
+      },
+      "CubeTexture::AddDirtyRect": {
+        "address": "0000abb0",
+        "body_sha256": "324e3ec5dacb2e477ffc8ea4e2847491cf4be69d1289ddf6df2ea8335c3037ba"
+      },
+      "CubeTexture::UnlockRect": {
+        "address": "0000ac20",
+        "body_sha256": "4c42ae90bbd45af242c1edebdb07a97858bc3643ec535a8f5f0fde04778f3b3f"
+      },
+      "CubeTexture::LockRect": {
+        "address": "0000ac90",
+        "body_sha256": "43eb166d728412e494ca3c0a6974036c2c996930bb5b2be9d5460f88af9d156f"
+      },
+      "CubeTexture::GetLevelDesc": {
+        "address": "0000ad10",
+        "body_sha256": "baac6fd0af762c25ea7335fbb269350576ed0a9b844d5fc003f5eccd7368dde1"
+      },
+      "CubeTexture::SetAutoGenFilterType": {
+        "address": "0000ad80",
+        "body_sha256": "f9fcbbdf918e4afc8ba769a9f04d3b936a31e39dfd0ef178704790d69649f5f7"
+      },
+      "CubeTexture::FreePrivateData": {
+        "address": "0000ade0",
+        "body_sha256": "cb258635451330d46d8ec44011916f4fb590f6c97fbc524a9a62be4678a7fd72"
+      },
+      "CubeTexture::GetPrivateData": {
+        "address": "0000ae40",
+        "body_sha256": "736de4ce7fd64df6fc103d9af6f379010831fdbcf56caf25c055f98a292c781c"
+      },
+      "CubeTexture::SetPrivateData": {
+        "address": "0000aeb0",
+        "body_sha256": "e282ae88ec79fc7e063a256645936d440165209c5c1468c54d8c4e8367d6852c"
+      },
+      "VolumeTexture::AddDirtyBox": {
+        "address": "0000af50",
+        "body_sha256": "be007c764e9a7aad4db5c84b01424f41d7161d86e64620b620d138ac4bb8231d"
+      },
+      "VolumeTexture::UnlockBox": {
+        "address": "0000afb0",
+        "body_sha256": "95860c561c0e2fda822b550bc9daf40b04356dc496fb28556529a0b9c18b760d"
+      },
+      "VolumeTexture::LockBox": {
+        "address": "0000b010",
+        "body_sha256": "e374e70b9b442d23e8e5fba24f85d9d06fae944665c0e6c648727c15d620c524"
+      },
+      "VolumeTexture::GetLevelDesc": {
+        "address": "0000b090",
+        "body_sha256": "c5616196710c5b50f6bfd2d54a7e5efd368fd470938d51c0e14ec017e9f18fb7"
+      },
+      "VolumeTexture::SetAutoGenFilterType": {
+        "address": "0000b100",
+        "body_sha256": "02b6adffcb82f736775310e9af100f6d3c1af526523857b27fd51dc70ee2ebf9"
+      },
+      "VolumeTexture::FreePrivateData": {
+        "address": "0000b160",
+        "body_sha256": "3b86864a8a73d07c373521f3ac21b4fec440905609e71c9068bcd1ce205de144"
+      },
+      "VolumeTexture::GetPrivateData": {
+        "address": "0000b1c0",
+        "body_sha256": "98bf985c23facad9bd91076f8f0e04c51ee4c4625d6c506ea75ec79baad8240a"
+      },
+      "VolumeTexture::SetPrivateData": {
+        "address": "0000b230",
+        "body_sha256": "ffffe56112d8d60423f47d2cbe8397724eb71b55aec808f8f3791a0a4e8283ca"
+      },
+      "Surface::ReleaseDC": {
+        "address": "0000b2d0",
+        "body_sha256": "877104379929b06ca40a98436b395efc96713509c1a6e460405530c5ec71605e"
+      },
+      "Surface::GetDC": {
+        "address": "0000b330",
+        "body_sha256": "e442b126b1a4efa392f72ab001b50dc85df04a09bda53c9b13098b8a0d1f9935"
+      },
+      "Surface::UnlockRect": {
+        "address": "0000b390",
+        "body_sha256": "ffc50dfd0efe9c85982fffe08796aa589728464cf34f29b97a191eb95bfdbfae"
+      },
+      "Surface::LockRect": {
+        "address": "0000b3f0",
+        "body_sha256": "4e56be0d06202744ee0785dbb39946819fa3150f9adc65fb4bfff8b5e1fc752e"
+      },
+      "Surface::GetDesc": {
+        "address": "0000b460",
+        "body_sha256": "d55b06ad048072b6d492f790417c9a701391bc8749d62c96e73cfbbd4fd622ff"
+      },
+      "Surface::FreePrivateData": {
+        "address": "0000b4c0",
+        "body_sha256": "37020232526b2a088835facf4407403f5e4521d70ff1647de42349cdcfc2b247"
+      },
+      "Surface::GetPrivateData": {
+        "address": "0000b520",
+        "body_sha256": "0fb29e2d353a90f98221a56ab8042d2ae134264c08b9bebefd082cc9843c21a0"
+      },
+      "Surface::SetPrivateData": {
+        "address": "0000b590",
+        "body_sha256": "ddde2f3755dc1944d300e0819b11851e3854e0ca97da7f7780b2310ce0e047df"
+      },
+      "Volume::UnlockBox": {
+        "address": "0000b630",
+        "body_sha256": "8c7d40247dd1d4e15fd93892daf5ced73daa74c0817738fbb053536a5d451f45"
+      },
+      "Volume::LockBox": {
+        "address": "0000b690",
+        "body_sha256": "1071221227f187dbcbdd5fec71899ad5dbe5f8b54ee70fc3456d72fd701314a4"
+      },
+      "Volume::GetDesc": {
+        "address": "0000b700",
+        "body_sha256": "fb9c71c01ffabe26b9bdf5f12a4a5cc73b044b12d7665f3af096c7519ccf97fe"
+      },
+      "Volume::FreePrivateData": {
+        "address": "0000b760",
+        "body_sha256": "fe70ee5df2ac8e2ea07cc517207db9944219a9b195fb5adad2c2166f47250585"
+      },
+      "Volume::GetPrivateData": {
+        "address": "0000b7c0",
+        "body_sha256": "4932f44a7de93f2fd9044bf69ac0de9a852e894fd708da96110db7dcfffaa115"
+      },
+      "Volume::SetPrivateData": {
+        "address": "0000b830",
+        "body_sha256": "df93a07854b411f6a3213cec063c2dec3e3ea8d65a14064e833341febb48458a"
+      },
+      "VertexBuffer::GetPrivateData": {
+        "address": "0000b8d0",
+        "body_sha256": "4d1cbcaf851422f3577f9c65ee7619cf2b559d7a5bf5f187d0a0bfa1ffa4a9d4"
+      },
+      "IndexBuffer::GetPrivateData": {
+        "address": "0000b940",
+        "body_sha256": "6005c9eb4b83b82d4167833e838a6127a571e68b4a75e9c832fc1842cae045e7"
+      },
+      "VertexDeclaration::GetDeclaration": {
+        "address": "0000b9b0",
+        "body_sha256": "8a9227f637295edf5d3edbbdbd9baf9805e72a97bf90b328749b2b9c78df7d7d"
+      },
+      "VertexShader::GetFunction": {
+        "address": "0000ba20",
+        "body_sha256": "44bfc22f2da3faacde1ce22094be3c981c0e592ba969c40b795ab31ef6392670"
+      },
+      "PixelShader::GetFunction": {
+        "address": "0000ba90",
+        "body_sha256": "9c7c418d2dc27ab2a4a6146a3a77e7d0c3d0466476d24adcc5f94d77b0ddfa41"
+      },
+      "StateBlock::Apply": {
+        "address": "0000bb00",
+        "body_sha256": "07c71e8f112873d5391fa0d95b7b4d34f054c200d0735479479934a335336aca"
+      },
+      "StateBlock::Capture": {
+        "address": "0000bb60",
+        "body_sha256": "8a4b05eaa97d3a02a9ac9d37f15b91594390ec05c615e08f1391bd24aa3cef1f"
+      },
+      "Query::GetData": {
+        "address": "0000bbc0",
+        "body_sha256": "027fd6b582555c812d25b88a921e4218496eefe277ff8c88dc14db18d82c1546"
+      },
+      "SwapChain::GetPresentParameters": {
+        "address": "0000bc30",
+        "body_sha256": "b3b07608af78fd26e54787dc82b486152f27ba9c4ee51897a72e6d7be88bdf3b"
+      },
+      "SwapChain::GetDisplayMode": {
+        "address": "0000bc90",
+        "body_sha256": "7675905b2cdbd5384d03e63a650dd2169d44cad08a647c2797dc72665daa3c98"
+      },
+      "SwapChain::GetRasterStatus": {
+        "address": "0000bcf0",
+        "body_sha256": "4525c4d9982965e877984c9a2fba0d75bfda263b0ad570d79d8050265a516a4e"
+      },
+      "SwapChain::GetFrontBufferData": {
+        "address": "0000bd50",
+        "body_sha256": "7b6496d5df7f91ffa438df85cffcee8a8a550b6dc4c258ee2d446331a9da9edf"
+      },
+      "SwapChain::Present": {
+        "address": "0000bdc0",
+        "body_sha256": "b40f5b9b812a84235ec9248deb2664c41810502dae778f4c5da919f624cd0dbf"
+      },
+      "Device::CreateQuery": {
+        "address": "0000c270",
+        "body_sha256": "f34fca6b89cd0edf22dd7cb6be0ac49e23ac8492ed3128b40725e80764cbacea"
+      },
+      "Device::GetPixelShader": {
+        "address": "0000c410",
+        "body_sha256": "be1973ddd1c7038cad93ebe131cb76a2d488d2d1faf193e1101ea6d8c4400355"
+      },
+      "Device::CreatePixelShader": {
+        "address": "0000c4b0",
+        "body_sha256": "8bba0bb1f2cb3ec688708226186c5b321e5f81ad8eb451ea42c7ee2ec0586d0d"
+      },
+      "Device::GetIndices": {
+        "address": "0000c630",
+        "body_sha256": "fe06a631f88dc85a2e126f2d3d456013ace185309f846b4abdee781736ae9976"
+      },
+      "Device::GetStreamSource": {
+        "address": "0000c7a0",
+        "body_sha256": "8bfee8d09ca82897cbd0196f55dbc67013998d46e8dc6658f3c7a1836d33e284"
+      },
+      "Device::GetVertexShader": {
+        "address": "0000c930",
+        "body_sha256": "cd1f10825f0ef32af79cf94812265a447393923db89f58b95afa91db3cde8c3b"
+      },
+      "Device::CreateVertexShader": {
+        "address": "0000c9d0",
+        "body_sha256": "462bacac895c55158604a26ddd50e87d8e3a0e666e170694e0fa4009f60ceed5"
+      },
+      "Device::GetVertexDeclaration": {
+        "address": "0000cb50",
+        "body_sha256": "b86bc1f9b0523e3b7e97db0f8dd3ab7ac67f3bf923a50a007cfad6a73241d8ae"
+      },
+      "Device::CreateVertexDeclaration": {
+        "address": "0000cbf0",
+        "body_sha256": "ca8dd96a2eb242d9024a03a5cd9bc9a2989430cfdf63b5e590e8b4b7efcae0a2"
+      },
+      "Device::GetTexture": {
+        "address": "0000cca0",
+        "body_sha256": "74b62539b067016a31b0574837b006ad79d442f8a67b89b91d8d8eb9979a9196"
+      },
+      "Device::CreateStateBlock": {
+        "address": "0000cf20",
+        "body_sha256": "e494dccc86f95de256907e3225dbb86a257b33fb77344648083e917f261b602e"
+      },
+      "Device::EndStateBlock": {
+        "address": "0000d340",
+        "body_sha256": "9e5812a0ec16cb7835485c577bec802d11789a0ad8f3fb93491d040b5c9c9182"
+      },
+      "Device::GetDepthStencilSurface": {
+        "address": "0000d4c0",
+        "body_sha256": "4bc6176f7957b020b105b4c978ff3f8e2a286007f1cbcafd4b06978e9d7553da"
+      },
+      "Device::Clear": {
+        "address": "0000d730",
+        "body_sha256": "e039c8b758589fae8fddaf73d5c6d8006587c650d35cfe0ca119fe39f60b3d7a"
+      },
+      "Device::GetRenderTarget": {
+        "address": "0000d910",
+        "body_sha256": "17b059675c08781bba831a83860fefbf5ff11581b8017b8adccc6562ec834fac"
+      },
+      "Device::CreateOffscreenPlainSurface": {
+        "address": "0000d9c0",
+        "body_sha256": "9a045926f81f5a0b740a7390e07068a922951c77a3cffc86ecb28632f8d37738"
+      },
+      "Device::CreateDepthStencilSurface": {
+        "address": "0000dab0",
+        "body_sha256": "4d1f63c6820ab69a62c1a3fd9aef57c26164887308a3030feecbb0acb440746b"
+      },
+      "Device::CreateRenderTarget": {
+        "address": "0000dbb0",
+        "body_sha256": "75ebef43fba0b60ab62aa94215fae5e9136e15e768220c8474e1de01b88a0efb"
+      },
+      "Device::GetBackBuffer": {
+        "address": "0000dcb0",
+        "body_sha256": "bd690cd4169c7037cbfdac55341e0737c8569f739aa59e1b2ef4f325bda1d180"
+      },
+      "Texture::GetSurfaceLevel": {
+        "address": "0000dd70",
+        "body_sha256": "6f55e068663d1756df857d6be51587676828719847ad4ade1d050951e57939ec"
+      },
+      "CubeTexture::GetCubeMapSurface": {
+        "address": "0000de20",
+        "body_sha256": "db8a21b0e22e36e27f047b4797ba582753b1d0c5fc67ce3e85ef95f086bb98fb"
+      },
+      "SwapChain::GetBackBuffer": {
+        "address": "0000ded0",
+        "body_sha256": "7fc4d44a914bfb59137a03f4ed7bd2b9b2f804bbdcf3d2f7ada5cea09d8a8e43"
+      },
+      "Device::GetSwapChain": {
+        "address": "0000e050",
+        "body_sha256": "72f2d64b95642989e4fad4b1806c392da7472e44b0db8062aed774cb139f0889"
+      },
+      "Device::CreateAdditionalSwapChain": {
+        "address": "0000e100",
+        "body_sha256": "988a18308871654044ba2ab1e09645de4625934f95c52d5f7a3a0b2e83862d6f"
+      },
+      "Surface::GetContainer": {
+        "address": "0000e4e0",
+        "body_sha256": "7052162f1a3bd7e0edc748b4b5eff3b3d30814440c23678335050f50e9a49a3a"
+      },
+      "Volume::GetContainer": {
+        "address": "0000e530",
+        "body_sha256": "ac29ba7873579aa3d471496a3c4edf86d8850ed240e3d9cb4899c5886c301dcc"
+      },
+      "Query::Issue": {
+        "address": "0000e880",
+        "body_sha256": "83fd5dc881b1e6dad1ca23972a561c9ae4bc531e766b07e619ecbfee1f78b496"
+      },
+      "Device::BeginScene": {
+        "address": "0000ec90",
+        "body_sha256": "cf0a5caf92ff1d38096c725e74a89ec4eae0b0a84f0a8daaecbe632c054dbd75"
+      },
+      "Device::EndScene": {
+        "address": "0000ed10",
+        "body_sha256": "9869dff55bced23cbefb01d8eb8425fc1897ca8f579ddea12c023045cd209acc"
+      },
+      "Device::BeginStateBlock": {
+        "address": "0000f0c0",
+        "body_sha256": "83ab758e59c67d9ec45e751abe0aa6a594b8e5af2ae6ad5de3e3d869e04d54fc"
+      },
+      "VertexBuffer::FreePrivateData": {
+        "address": "0000f790",
+        "body_sha256": "6d45574040c6f6f66a6b16b2cbedcc559bbbc2488163a6cf27e5e1407c053270"
+      },
+      "VertexBuffer::SetPrivateData": {
+        "address": "0000f7f0",
+        "body_sha256": "66b2426aa24ae0472b6e3d9abc69eddc4af075ddbcd4446102c39c2bfeab0260"
+      },
+      "IndexBuffer::FreePrivateData": {
+        "address": "0000f880",
+        "body_sha256": "059dc2d37d480259a392497f93a1e41b2cbace28b13a728bd56d78f8e332a69c"
+      },
+      "IndexBuffer::SetPrivateData": {
+        "address": "0000f8e0",
+        "body_sha256": "4d565df2b423cfd6f1a3ab0376358b7c0eab26d0f0fd82aa3f0f3f0f7e93abbc"
+      },
+      "Factory::Release": {
+        "address": "0000fbc0",
+        "body_sha256": "32ea3f3d29e5a86c3c1d7afcc8eec8dc87760c70395b9f052e820a7272036316"
+      },
+      "Device::Release": {
+        "address": "0000fc00",
+        "body_sha256": "08b3e7d92b0f9cf48ac4c4408bb850bd18e72e917abe5e0540afa4b851201171"
+      },
+      "Texture::Release": {
+        "address": "0000fc40",
+        "body_sha256": "0760e320b0e13adf8d0545cbf869d4b5e4b1dcbf3eea1d6dc2d18c79abb1f46d"
+      },
+      "CubeTexture::Release": {
+        "address": "0000fc80",
+        "body_sha256": "be4673afdbfcdbaee686aaab0f71fb2d800cd3cb66f59a8eba6f3f96958d0f1c"
+      },
+      "VolumeTexture::Release": {
+        "address": "0000fcc0",
+        "body_sha256": "042eded5bd196c588b53c17a367709f1c4591a2342b50fba915859add31df74f"
+      },
+      "Surface::Release": {
+        "address": "0000fd00",
+        "body_sha256": "090b4a544f2700078b15e24c9e0ddfe31823bfc009a22ff5a5f62a3a72a93174"
+      },
+      "Volume::Release": {
+        "address": "0000fd40",
+        "body_sha256": "930c99f37786a76e44e24022c299fafc2bb50758ac665adeb4ece7ce4bda4fb2"
+      },
+      "VertexBuffer::Release": {
+        "address": "0000fd80",
+        "body_sha256": "6427d195980d7e67fe520e0d095e28a4c4e8ac3d939231f5ae6eeb41dbafb230"
+      },
+      "IndexBuffer::Release": {
+        "address": "0000fdc0",
+        "body_sha256": "3863cf3281dcc2a9d6242ff6050bd1781bfd4b208d1c4060c9f81de3c1471519"
+      },
+      "VertexDeclaration::Release": {
+        "address": "0000fe00",
+        "body_sha256": "57ce18af32d254212a0cdf3467d866cbbda38ba13b573db14a72ee9a2244657c"
+      },
+      "VertexShader::Release": {
+        "address": "0000fe40",
+        "body_sha256": "20c72334ba99689eb81e7911e003bafbd514e0d0de665f15ef64d120d8b2c04a"
+      },
+      "PixelShader::Release": {
+        "address": "0000fe80",
+        "body_sha256": "79c7ee98a16c87788fc872edeb559ce74a1b4c19dc5ec45d20877408f3da5d56"
+      },
+      "StateBlock::Release": {
+        "address": "0000fec0",
+        "body_sha256": "c7eb836a0e32118995600b65b9f48656e5c168f368fac4441238b4b827640b3d"
+      },
+      "Query::Release": {
+        "address": "0000ff00",
+        "body_sha256": "a0d2c2e4245763d8b46c6186190eac031954121a5a9b002825229d9c6421e029"
+      },
+      "SwapChain::Release": {
+        "address": "0000ff40",
+        "body_sha256": "7f853068f0766ca5b5ea0be5dd4ccd7bbecc50998dc2ec548af84bc28f5cb152"
+      },
+      "VolumeTexture::GetVolumeLevel": {
+        "address": "0000ff80",
+        "body_sha256": "8c66bfb11fe07cad05b86f220258b1d5d8cb108d6f14990d6048b4448ee25394"
+      },
+      "Device::CreateCubeTexture": {
+        "address": "00010120",
+        "body_sha256": "8cb17bc8915ad0e60e2e404766206b074e0c305c631c957c6b62c7ea78afeda0"
+      },
+      "Device::CreateVolumeTexture": {
+        "address": "00010310",
+        "body_sha256": "2c6993d044cbabe1cea186a791f4801ab488fb9ea4fb6890b9c6a654e7ca5154"
+      },
+      "Device::CreateTexture": {
+        "address": "00010520",
+        "body_sha256": "5b9bc836338b1067848362b388299273d7d0abee577e7566bbf067acedae15c1"
+      },
+      "Factory::CreateDevice": {
+        "address": "00010be0",
+        "body_sha256": "4639a588068a4cb5b2982eff19cf5e76627113e43074543c25f2fb884562aeed"
+      },
+      "Device::Reset": {
+        "address": "00011360",
+        "body_sha256": "5d2c96e835c106095e65fd6c7a458f219ea023aff3e4b981883df3c60a27898d"
+      },
+      "Device::ProcessVertices": {
+        "address": "00011b40",
+        "body_sha256": "decfce2d53764d62cfd786c602e8d0172a16c2ef6d86cbec516d5ab63de2fac9"
+      },
+      "VertexBuffer::GetDesc": {
+        "address": "00011e10",
+        "body_sha256": "6ccb36e3f933b343a96f55497d286e12473d0365efb22b29149c96f29b3a6f62"
+      },
+      "VertexBuffer::Lock": {
+        "address": "00012510",
+        "body_sha256": "722b39614d79dc668e84bdad3e7df9b1d72d2a70192a704ee2283f99d6a9ab03"
+      },
+      "IndexBuffer::Lock": {
+        "address": "00012570",
+        "body_sha256": "42b7206e9cf9a774fe3954f61981acd05cde00eb42f88b9fdebd5f1c87c339aa"
+      },
+      "IndexBuffer::GetDesc": {
+        "address": "00012840",
+        "body_sha256": "192e3adc44fb339d648ed7a76dd84b3c00815b61a54b4f4e840f20527d3270cf"
+      },
+      "VertexBuffer::Unlock": {
+        "address": "00013300",
+        "body_sha256": "acb21915395c4f6a54e63103a8e825151cb487d6a21b92e69754c968ddc96e18"
+      },
+      "IndexBuffer::Unlock": {
+        "address": "00013340",
+        "body_sha256": "1176fe4d442100488619a157cd9cf199c515f73988413693d1b7303ef93dd54a"
+      },
+      "Device::CreateIndexBuffer": {
+        "address": "000144a0",
+        "body_sha256": "e96f46da00e7290b68ea0194bac6ee1137fe99bea70224470c7ea9af83034f7a"
+      },
+      "Device::CreateVertexBuffer": {
+        "address": "00014ab0",
+        "body_sha256": "713fb7b4681576a78a21141326d6f0c23608af92252714e81e1e1e0531ef566d"
+      }
+    },
+    "count": 297,
+    "object_sha256": "f65c36722edf8a0b006c973279ccf072e5dfc9173dae8d70ed42b792d14a86ac",
+    "local_disassembly_sha256": "6d121b93a5c0ae7dfc37b807aed71d426fc19e55313f134bff132d3d53092add",
+    "generated_eh_references": 0,
+    "handwritten_eh_retained": true
+  },
+  "executable_sha256_before": "42d79abc299aef41235361acb2ed887f0f32f771e6d479c60a4b99c9954ef336",
+  "source_hashes_after_run": {
+    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
+    "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+    "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+    "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+    "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+    "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+    "tools/ownership/generate_d3d9_forwarders.py": "20010dff7f01703a27a4ecb3a8c129c60b84e413e9bdd62c0483dc72aceaae38",
+    "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+    "verification/probe/ownership_admission_fixture.cpp": "33971b2553dada2a5b638447f2210cc9164d34b2a07939e9f27aa8bb9eda67ae",
+    "verification/probe/build_ownership_admission.sh": "40ba67151e5ef940808354eb24cc411e86355fae50a66c932c020aa596348724",
+    "verification/probe/run_ownership_admission.py": "572b1c23837a75a268df302464fa86f64668bd1432086b81753cf71661c62d80"
+  },
+  "executable_sha256_after": "42d79abc299aef41235361acb2ed887f0f32f771e6d479c60a4b99c9954ef336",
+  "wine_sha256_after": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96",
+  "checks": 147
+}

@@ -1,0 +1,105 @@
+{
+  "passed": true,
+  "scope": "process getter first-use publication and CPU state; no complete proxy/live replay claim",
+  "runs": [
+    {
+      "mode": "enabled",
+      "checks": 49,
+      "launch": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/process-admission",
+        "/Users/asvetl/x3-mod/verification/probe/build/process-admission/process_admission_fixture.exe",
+        "enabled"
+      ],
+      "log_sha256": "d1c79e09f12a36e75ff405166ab13e9e76eb819df2f3d07f0bcd4d53c3fc945f",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf"
+    },
+    {
+      "mode": "disabled",
+      "checks": 49,
+      "launch": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/process-admission",
+        "/Users/asvetl/x3-mod/verification/probe/build/process-admission/process_admission_fixture.exe",
+        "disabled"
+      ],
+      "log_sha256": "55c0907ae8c395fe0a56d77294890185a612ed595bc53c7cc5c3c8307c66cf1c",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf"
+    },
+    {
+      "mode": "malformed",
+      "checks": 49,
+      "launch": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/process-admission",
+        "/Users/asvetl/x3-mod/verification/probe/build/process-admission/process_admission_fixture.exe",
+        "malformed"
+      ],
+      "log_sha256": "55c0907ae8c395fe0a56d77294890185a612ed595bc53c7cc5c3c8307c66cf1c",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf"
+    },
+    {
+      "mode": "long",
+      "checks": 49,
+      "launch": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/process-admission",
+        "/Users/asvetl/x3-mod/verification/probe/build/process-admission/process_admission_fixture.exe",
+        "long"
+      ],
+      "log_sha256": "55c0907ae8c395fe0a56d77294890185a612ed595bc53c7cc5c3c8307c66cf1c",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf"
+    }
+  ],
+  "sources": {
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+    "verification/probe/process_admission_fixture.cpp": "641b4b6466f90e1c8df586e65135b9898e8c52ebd49f4891bdb577ab95502942",
+    "verification/probe/run_process_admission.py": "734e02cf65462373e294e2aa5c8c17d0804ba9180a2f0d98b4a4defee0b6ad38"
+  },
+  "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0\nCopyright (C) 2026 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+  "build_command": [
+    "i686-w64-mingw32-g++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-pthread",
+    "-static",
+    "-msse2",
+    "-mfpmath=sse",
+    "-mstackrealign",
+    "-mincoming-stack-boundary=2",
+    "/Users/asvetl/x3-mod/verification/probe/process_admission_fixture.cpp",
+    "/Users/asvetl/x3-mod/verification/probe/build/process-admission/application_admission.o",
+    "/Users/asvetl/x3-mod/verification/probe/build/process-admission/application_admission_abi.o",
+    "-o",
+    "/Users/asvetl/x3-mod/verification/probe/build/process-admission/process_admission_fixture.exe"
+  ],
+  "artifacts": {
+    "verification/probe/build/process-admission/process_admission_fixture.exe": "f9f3680466dc61101a884f07023bc045d0b14e0900a546edbb36c3f2476c8638",
+    "verification/probe/build/process-admission/application_admission.o": "6cbf447f44257b4756c4ba801c3342847cafe01b8699269e586a2e5b5d51f374",
+    "verification/probe/build/process-admission/application_admission_abi.o": "609c1ce02edc1a79a7f244d2719663e1bc5b48f6cf080160a457e2987526bfd8"
+  },
+  "runtime_sha256": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96"
+}

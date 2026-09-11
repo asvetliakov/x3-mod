@@ -1,9 +1,10 @@
 # Portable application admission core
 
-The standalone monitor in `src/ownership/application_admission.{h,cpp}` implements
+The monitor in `src/ownership/application_admission.{h,cpp}` implements
 the bookkeeping needed to keep ordinary application transactions out of a private
-replay interval. It is not linked into the production proxy yet. Entry coverage,
-callback restrictions and CPU-state preservation remain integration requirements
+replay interval. Production entrypoints now use it through the off-by-default
+[process configuration](process-admission.md) and ABI adapter. Complete entry
+coverage, callback restrictions and CPU-state preservation remain requirements
 in the [replay contract](../architecture/motion-replay-exclusion.md).
 `motion_live_replay_available` remains false.
 
@@ -71,10 +72,11 @@ The x86 executable uses `-msse2 -mfpmath=sse -mstackrealign
 -mincoming-stack-boundary=2` and static support libraries. This is cross-compilation
 and Preview evidence, not execution on native Windows. The core deliberately
 does not preserve floating-point state or LastError. The separate
-[x86 ABI adapter](../architecture/application-admission-abi.md) now passes 130
+[x86 ABI adapter](../architecture/application-admission-abi.md) passed 130
 checks for independent entry/retirement state preservation without undoing the
-application's intervening native result/state. Both modules remain disconnected
-from production entrypoints.
+application's intervening native result/state at its standalone checkpoint.
+Current production integration is verified separately for
+[ownership entries](ownership-admission.md) and [proxy hooks](proxy-application-admission.md).
 
 ## Review and cost
 

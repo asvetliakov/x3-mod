@@ -1,0 +1,42 @@
+mesh_cache requested=0 enabled=0 activation=await_public_mesh_and_buffer_contract adjacency_metric_scope=hook_service restart_on_cleanup_failure=1
+loading_hook name=CreateFileA installed=0
+loading_hook name=ReadFile installed=0
+loading_hook name=SetFilePointer installed=0
+loading_hook name=D3DXCreateEffect installed=0
+loading_hook name=D3DXCreateTextureFromFileInMemoryEx installed=0
+loading_hook name=D3DXCreateCubeTextureFromFileInMemoryEx installed=0
+loading_hook name=D3DXLoadSurfaceFromFileInMemory installed=0
+loading_hook name=SetCursor installed=0
+loading_hook name=SetCursorPos installed=0
+loading_hook name=gzopen installed=0
+loading_hook name=gzread installed=0
+loading_hook name=gzseek installed=0
+loading_hook name=inflate installed=0
+loading_hook name=xmlReadMemory installed=0
+loading_hook name=D3DXCreateMesh installed=1
+loading_hook name=D3DXCleanMesh installed=1
+loading_trace coverage_begin=8222399859291 frequency=10000000 hooks=2 module=main inclusive=1 paths=0 qualification=named_pe32_imports
+mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=8 objects_retained=0
+mesh_hook table=0 installed=1 owned_slots=3 scope=shared_native_vtable
+CASE name=closed_manifold parity=1
+CASE name=duplicated_seam parity=1
+CASE name=epsilon_seam parity=1
+CASE name=disconnected parity=1
+CASE name=degenerate parity=1
+mesh_hook table=1 installed=1 owned_slots=3 scope=shared_native_vtable
+LIVE32 parity=1 enabled=0
+DYNAMIC options=00000990 parity=1 write_after_hit_miss=0
+DYNAMIC options=00000991 parity=1 write_after_hit_miss=0
+DYNAMIC options=00018990 parity=1 write_after_hit_miss=0
+DYNAMIC options=00018991 parity=1 write_after_hit_miss=0
+loading_metric op=D3DXCreateMesh qpc=8222399979883 count=31 failures=0 pending=0 ambiguous=0 bytes=0 inclusive_ticks=2828 exclusive_ticks=2828 max_ticks=375 wrapper_tail_ticks=8397 total_us=282.800 exclusive_us=282.800 max_us=37.500 wrapper_tail_us=839.700
+loading_metric op=D3DXCleanMesh qpc=8222399979883 count=18 failures=2 pending=0 ambiguous=0 bytes=0 inclusive_ticks=1840 exclusive_ticks=1840 max_ticks=785 wrapper_tail_ticks=593 total_us=184.000 exclusive_us=184.000 max_us=78.500 wrapper_tail_us=59.300
+loading_metric op=ID3DXMesh::GenerateAdjacency qpc=8222399979883 count=36 failures=1 pending=0 ambiguous=0 bytes=0 inclusive_ticks=9487 exclusive_ticks=9487 max_ticks=1545 wrapper_tail_ticks=565 total_us=948.700 exclusive_us=948.700 max_us=154.500 wrapper_tail_us=56.500
+loading_metric op=ID3DXMesh::OptimizeInplace qpc=8222399979883 count=24 failures=0 pending=0 ambiguous=0 bytes=0 inclusive_ticks=20026 exclusive_ticks=20026 max_ticks=9532 wrapper_tail_ticks=600 total_us=2002.600 exclusive_us=2002.600 max_us=953.200 wrapper_tail_us=60.000
+CACHE_RESULT enabled=0 wrapped=0 fault=0 calls=0 hits=0 misses=0 native_calls=0 rejections=0 blocked=0 retained=0
+mesh_hook table=0 restored_slots=3 foreign_slots=0 remaining_owned_slots=0
+mesh_hook table=1 restored_slots=3 foreign_slots=0 remaining_owned_slots=0
+loading_hook name=D3DXCreateMesh restored=1 owned=1
+loading_hook name=D3DXCleanMesh restored=1 owned=1
+ADMISSION_WITNESS requested=1 enabled=1 active_roots=0 waiting_roots=0 admitted_roots=110 promotions=0 vetoes=0 valid=1
+RESULT PASS checks=1714

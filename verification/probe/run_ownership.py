@@ -21,7 +21,7 @@ def digest(path):
 
 def source_hashes():
     paths = [ROOT / name for name in (
-        'verification/probe/ownership_fixture.cpp', 'verification/probe/build_ownership.sh',
+        'verification/probe/ownership_fixture.cpp', 'verification/probe/build_ownership.sh', 'verification/probe/build_admission_dependencies.sh',
         'verification/probe/run_ownership.py', 'verification/probe/verify_ownership.py',
         'tools/ownership/generate_d3d9_forwarders.py')]
     paths.extend(path for path in sorted((ROOT / 'src/ownership').glob('*'))
@@ -60,7 +60,7 @@ def main():
             shutil.copy(PROBE / exe, directory)
             if digest(directory / exe) != binaries[mode]:
                 raise RuntimeError('Copied ownership executable does not match build')
-            env = dict(os.environ, WINEDLLOVERRIDES='d3d9=b')
+            env = dict(os.environ, X3M_ADMISSION='0', WINEDLLOVERRIDES='d3d9=b')
             env.pop('X3M_TELEMETRY', None)
             command = [WINE, '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=b',
                        '--workdir', str(directory), str(directory / exe)]
@@ -89,7 +89,7 @@ def main():
                                       for mode in ('baseline', 'wrapped')}
         if manifest['sources'] != before or manifest['binaries_after'] != binaries:
             raise RuntimeError('Ownership inputs changed during verification')
-        manifest['source_sha256'] = manifest['sources']['src/ownership/d3d9_ownership.cpp']
+        manifest['source_sha256'] = manifest['sources']['src/ownership/d3d9_ownership.cpp', 'src/ownership/application_admission.h', 'src/ownership/application_admission.cpp', 'src/ownership/application_admission_abi.h', 'src/ownership/application_admission_abi.cpp']
         manifest.update(passed=True, phase='complete')
     except (Exception, KeyboardInterrupt) as error:
         manifest.update(passed=False, phase='failed', error=repr(error))

@@ -1,0 +1,50 @@
+CHECK initial setting PASS
+CHECK start barrier PASS
+CHECK worker creation PASS
+CHECK worker creation PASS
+CHECK worker creation PASS
+CHECK worker creation PASS
+CHECK worker creation PASS
+CHECK worker creation PASS
+CHECK worker creation PASS
+CHECK worker creation PASS
+CHECK release first-access race PASS
+CHECK workers finish PASS
+CHECK cold getter preserves complete CPU state PASS
+CHECK exact setting selects expected mode PASS
+CHECK all threads share one published pointer PASS
+CHECK scope follows published mode PASS
+CHECK cold getter preserves complete CPU state PASS
+CHECK exact setting selects expected mode PASS
+CHECK all threads share one published pointer PASS
+CHECK scope follows published mode PASS
+CHECK cold getter preserves complete CPU state PASS
+CHECK exact setting selects expected mode PASS
+CHECK all threads share one published pointer PASS
+CHECK scope follows published mode PASS
+CHECK cold getter preserves complete CPU state PASS
+CHECK exact setting selects expected mode PASS
+CHECK all threads share one published pointer PASS
+CHECK scope follows published mode PASS
+CHECK cold getter preserves complete CPU state PASS
+CHECK exact setting selects expected mode PASS
+CHECK all threads share one published pointer PASS
+CHECK scope follows published mode PASS
+CHECK cold getter preserves complete CPU state PASS
+CHECK exact setting selects expected mode PASS
+CHECK all threads share one published pointer PASS
+CHECK scope follows published mode PASS
+CHECK cold getter preserves complete CPU state PASS
+CHECK exact setting selects expected mode PASS
+CHECK all threads share one published pointer PASS
+CHECK scope follows published mode PASS
+CHECK cold getter preserves complete CPU state PASS
+CHECK exact setting selects expected mode PASS
+CHECK all threads share one published pointer PASS
+CHECK scope follows published mode PASS
+CHECK all worker scopes retired PASS
+CHECK exact enabled root count PASS
+CHECK change setting after initialization PASS
+CHECK hot getter preserves complete CPU state PASS
+CHECK configuration remains immutable PASS
+RESULT PASS checks=49 failures=0 threads=8 enabled=0

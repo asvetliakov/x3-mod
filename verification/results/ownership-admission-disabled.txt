@@ -1,0 +1,22 @@
+CHECK process monitor matches explicit configuration PASS
+CHECK native scalar result unchanged PASS
+CHECK native receives complete incoming CPU state PASS
+CHECK wrapper returns complete native outgoing CPU state PASS
+CHECK native dispatch observes configured admission PASS
+CHECK ordinary wrapper ticket retires PASS
+CHECK timed native result inventory PASS
+CHECK timed native result inventory PASS
+SAMPLE trial=1 iterations=100000 ns_per_call=5.758
+CHECK timed native result inventory PASS
+SAMPLE trial=2 iterations=100000 ns_per_call=5.752
+CHECK timed native result inventory PASS
+SAMPLE trial=3 iterations=100000 ns_per_call=5.619
+CHECK timed native result inventory PASS
+SAMPLE trial=4 iterations=100000 ns_per_call=5.806
+CHECK timed native result inventory PASS
+SAMPLE trial=5 iterations=100000 ns_per_call=5.918
+CHECK timed native result inventory PASS
+SAMPLE trial=6 iterations=100000 ns_per_call=5.882
+CHECK timed native result inventory PASS
+SAMPLE trial=7 iterations=100000 ns_per_call=5.899
+RESULT PASS mode=disabled checks=14 failures=0

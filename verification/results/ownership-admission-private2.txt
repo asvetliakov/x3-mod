@@ -1,0 +1,13 @@
+CHECK process monitor matches explicit configuration PASS
+CHECK resource setup has no application private-IUnknown veto PASS
+CHECK failed private registration reaches native once unchanged PASS
+CHECK private-IUnknown veto precedes failed native dispatch and GUID spoof PASS
+CHECK native callback ordinary reentry remains nested and balanced PASS
+CHECK private registration native incoming CPU state unchanged PASS
+CHECK private registration native outgoing CPU state unchanged PASS
+CHECK failed registration permanently vetoes after return PASS
+CHECK actual native private registration succeeds unchanged PASS
+CHECK actual native callback retention remains nested and balanced PASS
+CHECK actual native private registration cleanup succeeds PASS
+CHECK actual native cleanup balances callback without clearing veto PASS
+RESULT PASS mode=private2 checks=12 failures=0

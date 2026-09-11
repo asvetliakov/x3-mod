@@ -8,6 +8,7 @@
 #include "../../src/proxy/loading_trace.h"
 #include "../../src/ownership/d3d9_ownership.h"
 #include <cstdarg>
+#include "loading_admission_witness.h"
 namespace x3m {void log(const char* format,...){va_list args;va_start(args,format);vprintf(format,args);va_end(args);putchar('\n');}}
 namespace lt=x3m::loading_trace;namespace own=x3m::ownership;
 using Generate=HRESULT(WINAPI*)(ID3DXMesh*,FLOAT,DWORD*);
@@ -207,6 +208,6 @@ int main(int argc,char**argv){std::setvbuf(stdout,nullptr,_IONBF,0);
       lt::shutdown();require(!lt::active(),"owned hooks fully restored");require(table[22]==reinterpret_cast<void*>(raw_generate),"native adjacency slot restored");
       auto after_shutdown=lt::fixture_cache_statistics();DWORD out[12]{};fp(seed);SetLastError(0x5678);auto h=retained_thunk(second.p,input.epsilon,out);require(h==(fault?E_FAIL:S_OK),"retained foreign-chain thunk after shutdown");require(lt::fixture_cache_statistics().calls==after_shutdown.calls,"shutdown disables further cache acquisition");
     }
-    require(device->Release()==0,"cache/hook retain no device references");require(api->Release()==0,"cache/hook retain no factory references");DestroyWindow(window);printf("RESULT PASS checks=%u\n",checks);return 0;
+    require(device->Release()==0,"cache/hook retain no device references");require(api->Release()==0,"cache/hook retain no factory references");DestroyWindow(window);if(!loading_admission_witness())throw std::runtime_error("admission witness");printf("RESULT PASS checks=%u\n",checks);return 0;
  }catch(const std::exception&e){printf("RESULT FAIL checks=%u error=%s\n",checks,e.what());return 1;}
 }

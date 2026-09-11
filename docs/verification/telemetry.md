@@ -251,3 +251,25 @@ it precedes the application's Clear and Present. `motion_frame` separately recor
 `temporal_history_committed=0` retain the distinction from gameplay TAA.
 The private RGBA32F target and replay shader resources are released inside the
 boundary callback. Captures do not read back game pixels or retain buffer payloads.
+
+## Application admission diagnostics
+
+The source build reads the off-by-default `X3M_ADMISSION=1` setting once, before
+its first exported operation initializes the backend. This diagnostic option
+accounts for installed application entrypoints; it does not enable replay.
+`application_admission_mode` reports the selected mode with
+`live_replay=0 coverage_complete=0`.
+
+When enabled, `admission_metric` follows the existing capture/300-frame Present
+cadence. It records active and waiting roots, cumulative admitted roots and
+promotions, permanent veto bits and the first reason. A root is one outer
+application transaction; intercepted calls nested within it do not add roots.
+The snapshot includes its own active Present transaction. These counters are
+neither per-draw timing nor proof of complete application coverage.
+
+Final Release reports `application_admission_final phase=factory|device` after
+the corresponding capture mutex and admission scope finish. A nested factory
+destruction can still see the outer device root; its subsequent device record
+must retire that root in the serial fixture. Other concurrently active callers
+can also appear in a real snapshot. See [entry coverage and verification
+limits](proxy-application-admission.md).

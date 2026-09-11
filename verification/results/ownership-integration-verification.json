@@ -1,6 +1,6 @@
 {
   "result": "PASS",
-  "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+  "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
   "cases": {
     "off-smoke": {
       "devices": 2,
@@ -14,7 +14,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 2,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "off-capture": {
       "devices": 2,
@@ -28,7 +37,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 2,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "off-lifetime": {
       "devices": 16,
@@ -42,7 +60,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 16,
+        "final_devices": 16,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "off-contracts": {
       "devices": 3,
@@ -56,7 +83,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 3,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "off-auto": {
       "devices": 1,
@@ -70,7 +106,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 1,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "on-smoke": {
       "devices": 2,
@@ -84,7 +129,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 2,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "on-capture": {
       "devices": 2,
@@ -98,12 +152,21 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 2,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "on-lifetime": {
       "devices": 16,
       "destroyed": 16,
-      "reused_device_addresses": 7,
+      "reused_device_addresses": 9,
       "scoped_geometry_records": 0,
       "finite_metric_records": 0,
       "known_index_draws": 0,
@@ -112,7 +175,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 16,
+        "final_devices": 16,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "on-contracts": {
       "devices": 3,
@@ -126,7 +198,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 3,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "on-auto": {
       "devices": 1,
@@ -140,12 +221,21 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 1,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "depth_only-smoke": {
       "devices": 2,
       "destroyed": 2,
-      "reused_device_addresses": 0,
+      "reused_device_addresses": 1,
       "scoped_geometry_records": 2,
       "finite_metric_records": 0,
       "known_index_draws": 0,
@@ -154,7 +244,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 2,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "copy_depth-auto": {
       "devices": 1,
@@ -168,7 +267,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 1,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "scene_depth-auto": {
       "devices": 1,
@@ -182,12 +290,21 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 1,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "scene_only-smoke": {
       "devices": 2,
       "destroyed": 2,
-      "reused_device_addresses": 0,
+      "reused_device_addresses": 1,
       "scoped_geometry_records": 2,
       "finite_metric_records": 0,
       "known_index_draws": 0,
@@ -196,7 +313,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 2,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "object_requested-smoke": {
       "devices": 2,
@@ -210,7 +336,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 2,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "finite_on-smoke": {
       "devices": 2,
@@ -224,7 +359,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 2,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "finite_on-capture": {
       "devices": 2,
@@ -248,7 +392,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 2,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "finite_without_ownership-capture": {
       "devices": 2,
@@ -262,7 +415,16 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 2,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "motion_requested-auto": {
       "devices": 1,
@@ -276,7 +438,16 @@
       "motion_configured": true,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 1,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
     },
     "motion_without_prereqs-capture": {
       "devices": 2,
@@ -290,7 +461,154 @@
       "motion_configured": false,
       "motion_enabled": false,
       "motion_disabled_reason": "write_exclusion_unavailable",
-      "motion_replay_records": 0
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": false,
+        "final_factories": 1,
+        "final_devices": 2,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 0,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
+    },
+    "admission_on-smoke": {
+      "devices": 2,
+      "destroyed": 2,
+      "reused_device_addresses": 0,
+      "scoped_geometry_records": 2,
+      "finite_metric_records": 0,
+      "known_index_draws": 0,
+      "portable_uploads": null,
+      "native_contract_rejection_reported": false,
+      "motion_configured": false,
+      "motion_enabled": false,
+      "motion_disabled_reason": "write_exclusion_unavailable",
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": true,
+        "final_factories": 1,
+        "final_devices": 2,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 126,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
+    },
+    "admission_on-capture": {
+      "devices": 2,
+      "destroyed": 2,
+      "reused_device_addresses": 0,
+      "scoped_geometry_records": 12,
+      "finite_metric_records": 0,
+      "known_index_draws": 0,
+      "portable_uploads": null,
+      "native_contract_rejection_reported": false,
+      "motion_configured": false,
+      "motion_enabled": false,
+      "motion_disabled_reason": "write_exclusion_unavailable",
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": true,
+        "final_factories": 1,
+        "final_devices": 2,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 194,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
+    },
+    "admission_on-lifetime": {
+      "devices": 16,
+      "destroyed": 16,
+      "reused_device_addresses": 7,
+      "scoped_geometry_records": 0,
+      "finite_metric_records": 0,
+      "known_index_draws": 0,
+      "portable_uploads": null,
+      "native_contract_rejection_reported": false,
+      "motion_configured": false,
+      "motion_enabled": false,
+      "motion_disabled_reason": "write_exclusion_unavailable",
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": true,
+        "final_factories": 16,
+        "final_devices": 16,
+        "nested_factory_witnesses": 16,
+        "admitted_roots": 176,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
+    },
+    "admission_on-contracts": {
+      "devices": 3,
+      "destroyed": 3,
+      "reused_device_addresses": 0,
+      "scoped_geometry_records": 0,
+      "finite_metric_records": 0,
+      "known_index_draws": 0,
+      "portable_uploads": null,
+      "native_contract_rejection_reported": false,
+      "motion_configured": false,
+      "motion_enabled": false,
+      "motion_disabled_reason": "write_exclusion_unavailable",
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": true,
+        "final_factories": 1,
+        "final_devices": 3,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 547,
+        "promotions": 0,
+        "final_vetoes": 3
+      }
+    },
+    "admission_on-auto": {
+      "devices": 1,
+      "destroyed": 1,
+      "reused_device_addresses": 0,
+      "scoped_geometry_records": 0,
+      "finite_metric_records": 0,
+      "known_index_draws": 0,
+      "portable_uploads": null,
+      "native_contract_rejection_reported": false,
+      "motion_configured": false,
+      "motion_enabled": false,
+      "motion_disabled_reason": "write_exclusion_unavailable",
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": true,
+        "final_factories": 1,
+        "final_devices": 1,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 17,
+        "promotions": 0,
+        "final_vetoes": 0
+      }
+    },
+    "admission_native-smoke": {
+      "devices": 2,
+      "destroyed": 2,
+      "reused_device_addresses": 1,
+      "scoped_geometry_records": 2,
+      "finite_metric_records": 0,
+      "known_index_draws": 0,
+      "portable_uploads": null,
+      "native_contract_rejection_reported": false,
+      "motion_configured": false,
+      "motion_enabled": false,
+      "motion_disabled_reason": "write_exclusion_unavailable",
+      "motion_replay_records": 0,
+      "admission": {
+        "enabled": true,
+        "final_factories": 1,
+        "final_devices": 2,
+        "nested_factory_witnesses": 0,
+        "admitted_roots": 49,
+        "promotions": 0,
+        "final_vetoes": 2
+      }
     }
   },
   "limits": [

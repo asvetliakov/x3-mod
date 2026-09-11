@@ -3,6 +3,8 @@
 #include "object_trace.h"
 #include "object_lifetime.h"
 #include "../ownership/d3d9_ownership.h"
+#include "../ownership/application_admission_abi.h"
+#include "cpu_state.h"
 #include <string>
 
 namespace {
@@ -14,6 +16,9 @@ bool finite_positions_enabled = false;
 INIT_ONCE once = INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     x3m::initialize_log(self_module);
+    const bool admission_requested=x3m::ownership::process_admission_monitor()!=nullptr;
+    x3m::log("application_admission_mode requested=%u enabled=%u live_replay=0 coverage_complete=0",
+        admission_requested,admission_requested);
     // Process-local experimental switch; default remains the native capture
     // path. Read once, outside loader lock, before exposing any factory.
     wchar_t setting[8]{};
@@ -63,9 +68,13 @@ FARPROC entry(const char* name) {
 }
 
 extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
+    x3m::CpuCallBoundary cpu;
+    x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
     auto fn = reinterpret_cast<IDirect3D9* (WINAPI*)(UINT)>(entry("Direct3DCreate9"));
     const auto begin = x3m::telemetry::now();
+    cpu.before_original();
     IDirect3D9* result = fn ? fn(sdk) : nullptr;
+    cpu.after_original();
     const auto end = x3m::telemetry::now();
     if (x3m::telemetry::enabled())
         x3m::log("telemetry_span name=direct3d_create9 qpc_begin=%llu qpc_end=%llu thread=%lu success=%u",begin,end,GetCurrentThreadId(),result!=nullptr);
@@ -89,52 +98,89 @@ extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
             result = wrapped;
         } else {
             // Failed adoption leaves the original reference with this caller.
+            x3m::ownership::admission_veto(x3m::ownership::process_admission_monitor(),
+                x3m::ownership::AdmissionVeto::UnobservedRoute);
             x3m::log("ownership_factory mode=native_fallback native=%p result=%08lx", result, adopted);
         }
+    } else if(result) {
+        // Capture patches only selected native slots; it is not full admission
+        // coverage for an unwrapped factory/device returned to the application.
+        x3m::ownership::admission_veto(x3m::ownership::process_admission_monitor(),
+            x3m::ownership::AdmissionVeto::UnobservedRoute);
     }
     if (result) x3m::hook_direct3d(result);
     return result;
 }
 extern "C" HRESULT WINAPI Direct3DCreate9Ex(UINT sdk, IDirect3D9Ex** out) {
-    // X3AP imports only Create9. Ex is transparently forwarded, uninstrumented.
+    x3m::CpuCallBoundary cpu;
+    x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
+    // X3AP imports only Create9. The native Ex object is not wrapped; its escape
+    // must permanently refuse replay, while keeping the original API result.
     auto fn = reinterpret_cast<HRESULT (WINAPI*)(UINT, IDirect3D9Ex**)>(entry("Direct3DCreate9Ex"));
     if (!fn) { if (out) *out = nullptr; return D3DERR_NOTAVAILABLE; }
-    return fn(sdk, out);
+    cpu.before_original();
+    const HRESULT result=fn(sdk,out);
+    cpu.after_original();
+    if(SUCCEEDED(result)&&out&&*out)
+        x3m::ownership::admission_veto(x3m::ownership::process_admission_monitor(),
+            x3m::ownership::AdmissionVeto::UnobservedRoute);
+    return result;
 }
 extern "C" int WINAPI D3DPERF_BeginEvent(D3DCOLOR c, LPCWSTR n) {
+    x3m::CpuCallBoundary cpu;
+    x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
     auto fn = reinterpret_cast<int (WINAPI*)(D3DCOLOR,LPCWSTR)>(entry("D3DPERF_BeginEvent"));
-    return fn ? fn(c,n) : -1;
+    cpu.before_original();const int result=fn ? fn(c,n) : -1;cpu.after_original();return result;
 }
 extern "C" int WINAPI D3DPERF_EndEvent() {
+    x3m::CpuCallBoundary cpu;
+    x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
     auto fn = reinterpret_cast<int (WINAPI*)()>(entry("D3DPERF_EndEvent"));
-    return fn ? fn() : -1;
+    cpu.before_original();const int result=fn ? fn() : -1;cpu.after_original();return result;
 }
 extern "C" DWORD WINAPI D3DPERF_GetStatus() {
+    x3m::CpuCallBoundary cpu;
+    x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
     auto fn = reinterpret_cast<DWORD (WINAPI*)()>(entry("D3DPERF_GetStatus"));
-    return fn ? fn() : 0;
+    cpu.before_original();const DWORD result=fn ? fn() : 0;cpu.after_original();return result;
 }
 extern "C" BOOL WINAPI D3DPERF_QueryRepeatFrame() {
+    x3m::CpuCallBoundary cpu;
+    x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
     auto fn = reinterpret_cast<BOOL (WINAPI*)()>(entry("D3DPERF_QueryRepeatFrame"));
-    return fn ? fn() : FALSE;
+    cpu.before_original();const BOOL result=fn ? fn() : FALSE;cpu.after_original();return result;
 }
 #define FORWARD_MARKER(name) \
 extern "C" void WINAPI name(D3DCOLOR c, LPCWSTR n) { \
+    x3m::CpuCallBoundary cpu; \
+    x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor()); \
     auto fn = reinterpret_cast<void (WINAPI*)(D3DCOLOR,LPCWSTR)>(entry(#name)); \
-    if (fn) fn(c,n); \
+    cpu.before_original();if (fn) fn(c,n);cpu.after_original(); \
 }
 FORWARD_MARKER(D3DPERF_SetMarker)
 FORWARD_MARKER(D3DPERF_SetRegion)
 extern "C" void WINAPI D3DPERF_SetOptions(DWORD o) {
+    x3m::CpuCallBoundary cpu;
+    x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
     auto fn = reinterpret_cast<void (WINAPI*)(DWORD)>(entry("D3DPERF_SetOptions"));
-    if (fn) fn(o);
+    cpu.before_original();if (fn) fn(o);cpu.after_original();
 }
 extern "C" void WINAPI DebugSetMute() {
+    x3m::CpuCallBoundary cpu;
+    x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
     auto fn = reinterpret_cast<void (WINAPI*)()>(entry("DebugSetMute"));
-    if (fn) fn();
+    cpu.before_original();if (fn) fn();cpu.after_original();
 }
 extern "C" void* WINAPI Direct3DShaderValidatorCreate9() {
+    x3m::CpuCallBoundary cpu;
+    x3m::ownership::ApplicationAdmissionAbi admission(x3m::ownership::process_admission_monitor());
     auto fn = reinterpret_cast<void* (WINAPI*)()>(entry("Direct3DShaderValidatorCreate9"));
-    return fn ? fn() : nullptr;
+    cpu.before_original();void* result=fn ? fn() : nullptr;cpu.after_original();
+    // A future validated D3DX helper may supply narrow lifetime authority.
+    // Nested admission by itself does not certify the returned native interface.
+    if(result)x3m::ownership::admission_veto(x3m::ownership::process_admission_monitor(),
+        x3m::ownership::AdmissionVeto::UnobservedRoute);
+    return result;
 }
 BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID) {
     // Backend loading, file I/O and hooks intentionally happen outside loader lock.

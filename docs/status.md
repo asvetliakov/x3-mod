@@ -34,18 +34,37 @@ or proof that complete live replay is affordable. See
 [performance measurements](verification/geometry-performance.md) and
 [review 10](verification/review-10.md). The installed DLL remains unchanged.
 
-The standalone [application admission core](verification/application-admission.md)
-now passes 4,865 checks in each of four builds, including ASan/UBSan,
+The [application admission core](verification/application-admission.md)
+passes 4,865 checks in each of four standalone builds, including ASan/UBSan,
 ThreadSanitizer and a CPU-only x86 Preview run. Independent review accepted its
 root counting, nesting, permanent vetoes and nonblocking replay promotion.
 The standalone x86 [ABI adapter](architecture/application-admission-abi.md)
-also passes 130 CPU-state/behavior checks and 21 timing samples. Its emitted
-code removes compiler exception bookends from the adapter; only that source file
-disables exceptions. Its disabled path makes no runtime calls.
-Neither module is linked into production: complete entry coverage, callback
-restrictions and mapping validation still gate live replay. The new
+passed 130 CPU-state/behavior checks and 21 timing samples at `127c3da`. Its emitted
+code removes compiler exception bookends from the adapter. CMake disables
+exceptions for that source file; generated ownership entry definitions use a
+separate scoped option, while handwritten helpers retain exception handling.
+The disabled adapter path makes no runtime calls.
+Both modules are now linked into production behind the off-by-default
+`X3M_ADMISSION=1` option. All 297 generated ownership entries, eleven loader
+exports, thirty capture bodies, sixteen loading IAT roots and twenty-four bounded
+mesh thunks enter the same process monitor before their work. The
+[ownership fixture](verification/ownership-admission.md) passes 147 checks in
+twelve modes, including actual callback registration and final child/parent
+release. [Process configuration](verification/process-admission.md) preserves
+CPU state and publishes one immutable mode. These are ordinary entry boundaries;
+complete callback/window coverage, trusted native-helper authority, mapping
+validation and the exclusive GPU segment still gate live replay. See
+[proxy integration](verification/proxy-application-admission.md). The
 [game callback disassembly](reverse-engineering/game-callback-registration.md)
 identifies D3DX device routes, effect-state callbacks and window-message hazards.
+
+The [actual-DLL cost comparison](verification/hook-admission-performance.md)
+passes seven cases and 196 timing samples. Admission adds about 134–154 ns to
+the tested single-boundary calls and 285–316 ns to capture-plus-ownership calls.
+These are synthetic CPU timings including their native operation, not replay
+GPU cost or game frame time. Loading/cache verification passes sixteen explicit
+off/on cases with balanced admission retirement. See
+[review 11](verification/review-11.md).
 
 A private motion producer now connects main-scene draw observations to
 bounded native geometry leases, CPU storage correspondence and an actual
@@ -129,13 +148,15 @@ SHA256 `ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5`.
 The [installation record](../verification/results/iteration-05-install.json) verifies
 unchanged game EXE and bottle configuration. The prior 0.4 DLL is preserved in
 `artifacts/rollback/d3d9-iteration04.dll`; the older 0.3 rollback also remains intact.
-The last combined source DLL, built before the sidecar-index checkpoint, passes
-20 actual-DLL integration cases, including native
-Clear CPU-state witnesses and explicit refusal of unsafe live motion dispatch.
+The latest combined source DLL passes 26 actual-DLL integration cases, including
+admission off/on, native escape vetoes, final transaction retirement and 24 native
+Clear CPU-state witnesses. Unsafe live motion dispatch remains explicitly refused.
 Its SHA256 is
-`aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9`; it is
-**not installed**. The 18-object forced native fallback also passes.
-See [review 10](verification/review-10.md). Earlier source evidence remains in
+`5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007`; it is
+**not installed**. The production link contains 23 objects; the 20-object forced
+native fallback also passes. See [review 11](verification/review-11.md).
+The earlier `aa61e7ff` build is retained for the hook-cost comparison and described
+in [review 10](verification/review-10.md). Earlier source evidence remains in
 [review 8](verification/review-08.md) at `5196f31`,
 [review 7](verification/review-07.md) at `0ce0814`,
 [review 6](verification/review-06.md) at `c4f3d45` and
@@ -243,7 +264,12 @@ presentation and the requested visual features remain unfinished.
 
 ## Concrete next work
 
-1. Prepare the next user-managed diagnostic run of the verified finite POSITION
+1. Prototype [motion output alongside color](architecture/motion-output-strategy.md)
+   in one common opaque SM3 material before extending live replay infrastructure.
+   The user approved this direction. Verify actual shader register headroom,
+   unchanged color/depth and numerical motion, then compare GPU cost. Replay
+   remains a reference/fallback candidate; no approach is enabled in gameplay.
+2. Prepare the next user-managed diagnostic run of the verified finite POSITION
    producer under the reviewed
    [managed-buffer upload contract](reverse-engineering/managed-buffer-write-mapping.md).
    The new [capture audit](verification/finite-upload-capture.md) reports source,
@@ -251,18 +277,18 @@ presentation and the requested visual features remain unfinished.
    The game's dynamic
    SYSTEMMEM mesh configuration now passes native tests; its actual cache hit rate
    still needs a future run.
-2. Establish explicit buffer-write/replay exclusion before enabling the private
+3. If replay remains part of the live renderer, establish explicit buffer-write/replay exclusion before enabling the private
    GPU motion diagnostic on live finite uploads. Complete
    camera-cut policy and scene-color/reactive masks before consuming its output
    in temporal resolve. Account separately for CPU-changing particles/stardust
    and overlays; storage correspondence alone does not prove temporal continuity.
-3. Validate live jitter placement and position/raster equivalence using the full
+4. Validate live jitter placement and position/raster equivalence using the full
    archive registry, then connect matched color/depth/motion inputs to temporal resolve.
    Camera-only reprojection cannot satisfy the observed scene; TAA remains required.
-4. Establish the FP16 scene path and enable only reviewed material variants there.
+5. Establish the FP16 scene path and enable only reviewed material variants there.
    Integrate a GPU-native HDR presentation route; output conversion of clipped
    8-bit color is insufficient. Continue all remaining roadmap features.
-5. Measure exact mesh-key reuse and real acquisition/lookup cost before enabling
+6. Measure exact mesh-key reuse and real acquisition/lookup cost before enabling
    bounded adjacency caching. Investigate the still-unattributed loading gap.
    Revisit native/game cursor behavior with presentation changes.
 

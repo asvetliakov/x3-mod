@@ -269,3 +269,54 @@ commands and actual CMake object inventory. These are combined API, metadata,
 lifetime and compilation checks on Preview. They are not native-Windows
 execution, gameplay, cache performance or enabled HDR/TAA evidence. The installed
 game DLL is unchanged, and the live replay/write-exclusion gate remains closed.
+
+## Application admission integration (verified)
+
+The fresh matrix passes **26 cases**. The original 20 cases explicitly set
+`X3M_ADMISSION=0`; five `admission_on` cases repeat ownership smoke, capture,
+lifetime, contracts and auto-depth controls with admission enabled. One
+`admission_native` smoke case exercises the native escape route. The forced
+adoption-failure DLL also requests admission. The existing public API reports
+must remain identical within each matched pair, excluding only the smoke
+fixture's distinct disposable DLL-directory line.
+
+Startup records must report the requested admission mode with `live_replay=0`
+and `coverage_complete=0`. Final records distinguish `phase=factory` from
+`phase=device`, with exact fixture-specific inventories. A child-driven final
+Release can expose a nested factory snapshot with one active device root; it
+must be immediately followed by a finished device snapshot with zero roots.
+The last serial teardown record must have zero active/waiting roots, and no
+record may show replay promotion. Disabled mode reports no admission activity;
+enabled mode must report positive, nondecreasing cumulative admitted roots.
+These witnesses establish observed entry bookkeeping, not complete callback
+coverage or authorization to enable live replay.
+
+CMake now supplies **23 production objects**. The forced fallback retains
+**20 current production objects**, including admission core and ABI adapter,
+while substituting only the ownership implementation. Standalone ownership and
+loading fixtures compile fresh target-local admission objects through
+`build_admission_dependencies.sh`; only the ABI adapter is compiled with
+`-fno-exceptions`. The core and callers retain their usual exception policy,
+SSE2 arithmetic and four-byte incoming stack contract. All source manifests
+include the helper and admission source/header dependencies.
+
+Ten original admission-log parser tests cover enabled/disabled modes, nested
+teardown completion, missing/duplicate fields and records, active/waiting roots,
+promotion, bad counters and unsupported coverage claims. They pass alongside
+seven existing portable-upload expectation tests. Veto bits cannot clear and the
+first veto reason cannot change; the native-route smoke and forced fallback
+must specifically retain the unobserved-route veto. The final native matrix and current-source verifier pass all 26 cases. The
+forced fallback passes with 20 current production objects, and all **24 actual
+Clear CPU-state witnesses** pass (12 successful calls and 12 failed calls).
+Exact empty-owner metadata controls require 8192 bytes for an enabled owner’s
+2048-pointer x86 index; native fallback requires zero, and both paths still
+reject unexpected payload, sidecar or publication activity.
+
+Final production DLL SHA-256:
+`5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007`.
+Disposable forced-fallback DLL SHA-256:
+`1f6c966e920a24104b67aed7b366c669b53af9f9576f3d00addb3795bd816693`.
+The [artifact audit](../results/admission-integration-artifact-audit.json)
+records all 23 linked production objects, the 20-object fallback subset, the
+83-file source map and current manifest hashes. No game was launched and no DLL
+was installed.

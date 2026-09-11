@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdarg>
 #include <cstring>
+#include "loading_admission_witness.h"
 #define PTR(T,n) reinterpret_cast<T*>(static_cast<uintptr_t>(n))
 extern "C" {
 void* __cdecl gzopen(const char*,const char*);
@@ -211,5 +212,6 @@ int main(){
     rawSeek(file,0,nullptr,FILE_BEGIN);read_fresh_import(file,actual,&read);
     check(sample(take_snapshot(),Operation::FileRead).count==0,"restored_import_not_intercepted");
     CloseHandle(file);
+    if(!loading_admission_witness())++failures;
     printf("loading_fixture checks=%u failures=%u\n",checks,failures);return failures?1:0;
 }

@@ -1,0 +1,7 @@
+CHECK process monitor matches explicit configuration PASS
+CHECK route starts without veto PASS
+CHECK shared failed native HRESULT unchanged PASS
+CHECK nonnull shared request forwarded exactly PASS
+CHECK unobserved route veto precedes exactly one native dispatch PASS
+CHECK route veto persists after ticket retirement PASS
+RESULT PASS mode=shared checks=6 failures=0

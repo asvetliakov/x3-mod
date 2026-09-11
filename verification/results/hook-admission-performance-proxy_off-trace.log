@@ -1,0 +1,14 @@
+motion_capture_mode requested=0 enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0
+x3-modern-renderer version=0.4 schema=2 capture_start=0 capture_frames=0 pointer_bits=32
+application_admission_mode requested=0 enabled=0 live_replay=0 coverage_complete=0
+backend path=C:\windows\system32\d3d9.dll
+object_trace active=0 status=disabled recovery_required=0
+object_lifetime active=0 status=disabled recovery_required=0 baseline_complete=0 baseline_entries=0
+adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
+create_device adapter=0 flags=00000040 width=16 height=16 format=21 windowed=1 msaa=0 interval=2147483648
+create_device_result hr=00000000
+capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
+device_hooked ptr=00e1aff8 device=1 ex=0
+device_destroy ptr=00e1aff8 device=1
+application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
+application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0

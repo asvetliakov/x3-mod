@@ -2,6 +2,8 @@
 #include "capture.h"
 #include "mesh_adjacency_cache.h"
 #include "../ownership/d3d9_ownership.h"
+#include "../ownership/application_admission_abi.h"
+#include "cpu_state.h"
 #include <new>
 #include <d3dx9.h>
 #include <algorithm>
@@ -146,24 +148,29 @@ HRESULT WINAPI fixture_reentry_call(ID3DXMesh* mesh,FLOAT epsilon,DWORD* adjacen
 }
 #endif
 template<unsigned Index> HRESULT WINAPI mesh_point_reps(ID3DXMesh* mesh,const DWORD* reps,DWORD* adjacency) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     if(cache_requested&&cache_faulted.load(std::memory_order_acquire)){cache_blocked.fetch_add(1);return E_FAIL;}
     Span span(Operation::MeshPointReps);
-    const HRESULT hr=reinterpret_cast<PointRepsFn>(mesh_tables[Index].slots[0].original)(mesh,reps,adjacency);
+    cpu.before_original();
+    const HRESULT hr=reinterpret_cast<PointRepsFn>(mesh_tables[Index].slots[0].original)(mesh,reps,adjacency);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,FAILED(hr));return hr;
 }
 template<unsigned Index> HRESULT WINAPI mesh_adjacency(ID3DXMesh* mesh,FLOAT epsilon,DWORD* adjacency) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     if(cache_requested&&cache_faulted.load(std::memory_order_acquire)){cache_blocked.fetch_add(1);return E_FAIL;}
     auto original=reinterpret_cast<AdjacencyFn>(mesh_tables[Index].slots[1].original);
     if(!cache_requested||!cache_enabled.load(std::memory_order_acquire)){
-        Span span(Operation::MeshAdjacency);const HRESULT hr=original(mesh,epsilon,adjacency);
+        Span span(Operation::MeshAdjacency);cpu.before_original();
+        const HRESULT hr=original(mesh,epsilon,adjacency);cpu.after_original();
         const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,FAILED(hr));return hr;
     }
-    const DWORD incoming_error=GetLastError();const auto incoming=computational_state();
     Span span(Operation::MeshAdjacency);const auto gate_begin=tick();
     auto* const instance=cache_instance.load(std::memory_order_acquire);
     const bool eligible=!instance?reject_gate(GateReason::Unavailable):(!mesh||!adjacency)?reject_gate(GateReason::Input):cache_buffer_contract(mesh);
     cache_gate_ticks.fetch_add(tick()-gate_begin,std::memory_order_relaxed);
-    restore_computational_state(incoming);SetLastError(incoming_error);
+    cpu.before_original();
     adjacency_cache::Outcome outcome;
     if(eligible){
 #ifdef X3M_LOADING_TRACE_FIXTURE
@@ -178,16 +185,20 @@ template<unsigned Index> HRESULT WINAPI mesh_adjacency(ID3DXMesh* mesh,FLOAT eps
 #endif
     }
     else{cache_gate_rejections.fetch_add(1,std::memory_order_relaxed);outcome={original(mesh,epsilon,adjacency),adjacency_cache::Origin::Native};}
-    const DWORD error=GetLastError();const auto outgoing=computational_state();const auto end=tick();
+    cpu.after_original();
+    const DWORD error=GetLastError();const auto end=tick();
     if(outcome.origin==adjacency_cache::Origin::CacheHit)cache_hit_outcomes.fetch_add(1,std::memory_order_relaxed);
     else if(outcome.origin==adjacency_cache::Origin::Native)cache_native_outcomes.fetch_add(1,std::memory_order_relaxed);
     else cache_fault(outcome.hr);
-    span.finish(end,error,FAILED(outcome.hr));restore_computational_state(outgoing);SetLastError(error);return outcome.hr;
+    span.finish(end,error,FAILED(outcome.hr));return outcome.hr;
 }
 template<unsigned Index> HRESULT WINAPI mesh_optimize(ID3DXMesh* mesh,DWORD flags,const DWORD* in,DWORD* out,DWORD* faces,ID3DXBuffer** vertices) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     if(cache_requested&&cache_faulted.load(std::memory_order_acquire)){cache_blocked.fetch_add(1);return E_FAIL;}
     Span span(Operation::MeshOptimize);
-    const HRESULT hr=reinterpret_cast<OptimizeFn>(mesh_tables[Index].slots[2].original)(mesh,flags,in,out,faces,vertices);
+    cpu.before_original();
+    const HRESULT hr=reinterpret_cast<OptimizeFn>(mesh_tables[Index].slots[2].original)(mesh,flags,in,out,faces,vertices);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,FAILED(hr));return hr;
 }
 #define MESH_THUNKS(i) {reinterpret_cast<PVOID>(mesh_point_reps<i>),reinterpret_cast<PVOID>(mesh_adjacency<i>),reinterpret_cast<PVOID>(mesh_optimize<i>)}
@@ -254,101 +265,141 @@ static_assert(std::is_same_v<decltype(&cursor_position),decltype(&SetCursorPos)>
 template<typename T>T original(Operation op){return reinterpret_cast<T>(hooks[static_cast<unsigned>(op)].original);}
 
 HANDLE WINAPI file_open(LPCSTR name,DWORD access,DWORD share,LPSECURITY_ATTRIBUTES security,DWORD creation,DWORD flags,HANDLE templ) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     Span span(Operation::FileOpen);
-    HANDLE result=original<decltype(&CreateFileA)>(span.op)(name,access,share,security,creation,flags,templ);
+    cpu.before_original();
+    HANDLE result=original<decltype(&CreateFileA)>(span.op)(name,access,share,security,creation,flags,templ);cpu.after_original();
     const DWORD error=GetLastError(); const auto end=tick();
     span.finish(end,error,result==INVALID_HANDLE_VALUE);return result;
 }
 BOOL WINAPI file_read(HANDLE file,LPVOID buffer,DWORD requested,LPDWORD read,LPOVERLAPPED overlapped) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     Span span(Operation::FileRead);
-    BOOL result=original<decltype(&ReadFile)>(span.op)(file,buffer,requested,read,overlapped);
+    cpu.before_original();
+    BOOL result=original<decltype(&ReadFile)>(span.op)(file,buffer,requested,read,overlapped);cpu.after_original();
     const DWORD error=GetLastError(); const auto end=tick();
     const bool pending=!result&&error==ERROR_IO_PENDING;
     span.finish(end,error,!result&&!pending,result&&read?*read:0,pending);return result;
 }
 DWORD WINAPI file_seek(HANDLE file,LONG distance,PLONG high,DWORD method) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     Span span(Operation::FileSeek);
-    DWORD result=original<decltype(&SetFilePointer)>(span.op)(file,distance,high,method);
+    cpu.before_original();
+    DWORD result=original<decltype(&SetFilePointer)>(span.op)(file,distance,high,method);cpu.after_original();
     const DWORD error=GetLastError(); const auto end=tick();
     // The sentinel can be a successful offset. Preserve caller LastError rather
     // than forcing it to zero just to make our failure classification convenient.
     span.finish(end,error,false,0,false,result==INVALID_SET_FILE_POINTER&&error!=NO_ERROR);return result;
 }
 HRESULT WINAPI effect(IDirect3DDevice9* d,const void* data,UINT size,const D3DXMACRO* defines,ID3DXInclude* include,DWORD flags,ID3DXEffectPool* pool,ID3DXEffect** out,ID3DXBuffer** errors) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     Span span(Operation::Effect);
-    HRESULT result=original<decltype(&D3DXCreateEffect)>(span.op)(d,data,size,defines,include,flags,pool,out,errors);
+    cpu.before_original();
+    HRESULT result=original<decltype(&D3DXCreateEffect)>(span.op)(d,data,size,defines,include,flags,pool,out,errors);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,FAILED(result),size);return result;
 }
 HRESULT WINAPI texture(IDirect3DDevice9* d,const void* data,UINT size,UINT width,UINT height,UINT levels,DWORD usage,D3DFORMAT format,D3DPOOL pool,DWORD filter,DWORD mipfilter,D3DCOLOR key,D3DXIMAGE_INFO* info,PALETTEENTRY* palette,IDirect3DTexture9** out) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     Span span(Operation::Texture);
-    HRESULT result=original<decltype(&D3DXCreateTextureFromFileInMemoryEx)>(span.op)(d,data,size,width,height,levels,usage,format,pool,filter,mipfilter,key,info,palette,out);
+    cpu.before_original();
+    HRESULT result=original<decltype(&D3DXCreateTextureFromFileInMemoryEx)>(span.op)(d,data,size,width,height,levels,usage,format,pool,filter,mipfilter,key,info,palette,out);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,FAILED(result),size);return result;
 }
 HRESULT WINAPI cube(IDirect3DDevice9* d,const void* data,UINT size,UINT edge,UINT levels,DWORD usage,D3DFORMAT format,D3DPOOL pool,DWORD filter,DWORD mipfilter,D3DCOLOR key,D3DXIMAGE_INFO* info,PALETTEENTRY* palette,IDirect3DCubeTexture9** out) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     Span span(Operation::CubeTexture);
-    HRESULT result=original<decltype(&D3DXCreateCubeTextureFromFileInMemoryEx)>(span.op)(d,data,size,edge,levels,usage,format,pool,filter,mipfilter,key,info,palette,out);
+    cpu.before_original();
+    HRESULT result=original<decltype(&D3DXCreateCubeTextureFromFileInMemoryEx)>(span.op)(d,data,size,edge,levels,usage,format,pool,filter,mipfilter,key,info,palette,out);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,FAILED(result),size);return result;
 }
 HRESULT WINAPI surface(IDirect3DSurface9* dest,const PALETTEENTRY* palette,const RECT* destrect,const void* data,UINT size,const RECT* srcrect,DWORD filter,D3DCOLOR key,D3DXIMAGE_INFO* info) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     Span span(Operation::Surface);
-    HRESULT result=original<decltype(&D3DXLoadSurfaceFromFileInMemory)>(span.op)(dest,palette,destrect,data,size,srcrect,filter,key,info);
+    cpu.before_original();
+    HRESULT result=original<decltype(&D3DXLoadSurfaceFromFileInMemory)>(span.op)(dest,palette,destrect,data,size,srcrect,filter,key,info);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,FAILED(result),size);return result;
 }
 HRESULT WINAPI mesh_create(DWORD faces,DWORD vertices,DWORD options,const D3DVERTEXELEMENT9* declaration,IDirect3DDevice9* device,ID3DXMesh** out) {
-    const bool preserve_fp=cache_requested;DWORD incoming_error=0;ComputationalState incoming;
-    if(preserve_fp){incoming_error=GetLastError();incoming=computational_state();}
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     Span span(Operation::MeshCreate);
-    if(preserve_fp){restore_computational_state(incoming);SetLastError(incoming_error);}
-    HRESULT result=original<decltype(&D3DXCreateMesh)>(span.op)(faces,vertices,options,declaration,device,out);
+    cpu.before_original();
+    HRESULT result=original<decltype(&D3DXCreateMesh)>(span.op)(faces,vertices,options,declaration,device,out);cpu.after_original();
     const DWORD error=GetLastError();
-    if(preserve_fp){const auto outgoing=computational_state();const auto end=tick();if(SUCCEEDED(result)&&out&&*out)observe_mesh(*out);span.finish(end,error,FAILED(result));restore_computational_state(outgoing);SetLastError(error);return result;}
     const auto end=tick();
     if(SUCCEEDED(result)&&out&&*out)observe_mesh(*out);
     span.finish(end,error,FAILED(result));return result;
 }
 HRESULT WINAPI mesh_clean(D3DXCLEANTYPE type,ID3DXMesh* input,const DWORD* adjacency_in,ID3DXMesh** output,DWORD* adjacency_out,ID3DXBuffer** errors) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     if(cache_requested&&cache_faulted.load(std::memory_order_acquire)){cache_blocked.fetch_add(1);return E_FAIL;}
-    const bool preserve_fp=cache_requested;DWORD incoming_error=0;ComputationalState incoming;
-    if(preserve_fp){incoming_error=GetLastError();incoming=computational_state();}
     Span span(Operation::MeshClean);
-    if(preserve_fp){restore_computational_state(incoming);SetLastError(incoming_error);}
-    HRESULT result=original<decltype(&D3DXCleanMesh)>(span.op)(type,input,adjacency_in,output,adjacency_out,errors);
+    cpu.before_original();
+    HRESULT result=original<decltype(&D3DXCleanMesh)>(span.op)(type,input,adjacency_in,output,adjacency_out,errors);cpu.after_original();
     const DWORD error=GetLastError();
-    if(preserve_fp){const auto outgoing=computational_state();const auto end=tick();if(SUCCEEDED(result)&&output&&*output)observe_mesh(*output);span.finish(end,error,FAILED(result));restore_computational_state(outgoing);SetLastError(error);return result;}
     const auto end=tick();
     if(SUCCEEDED(result)&&output&&*output)observe_mesh(*output);
     span.finish(end,error,FAILED(result));return result;
 }
 HCURSOR WINAPI cursor_set(HCURSOR value) {
-    Span span(Operation::CursorSet);HCURSOR result=original<decltype(&SetCursor)>(span.op)(value);
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    Span span(Operation::CursorSet);cpu.before_original();
+    HCURSOR result=original<decltype(&SetCursor)>(span.op)(value);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error);return result;
 }
 BOOL WINAPI cursor_position(int x,int y) {
-    Span span(Operation::CursorPosition);BOOL result=original<decltype(&SetCursorPos)>(span.op)(x,y);
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    Span span(Operation::CursorPosition);cpu.before_original();
+    BOOL result=original<decltype(&SetCursorPos)>(span.op)(x,y);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,!result);return result;
 }
 
 void* __cdecl gz_open(const char* path,const char* mode) {
-    Span span(Operation::GzOpen);void* result=original<GzOpenFn>(span.op)(path,mode);
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    Span span(Operation::GzOpen);cpu.before_original();
+    void* result=original<GzOpenFn>(span.op)(path,mode);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,!result);return result;
 }
 int __cdecl gz_read(void* file,void* data,unsigned size) {
-    Span span(Operation::GzRead);int result=original<GzReadFn>(span.op)(file,data,size);
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    Span span(Operation::GzRead);cpu.before_original();
+    int result=original<GzReadFn>(span.op)(file,data,size);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,result<0,result>0?result:0);return result;
 }
 LONG __cdecl gz_seek(void* file,LONG offset,int whence) {
-    Span span(Operation::GzSeek);LONG result=original<GzSeekFn>(span.op)(file,offset,whence);
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    Span span(Operation::GzSeek);cpu.before_original();
+    LONG result=original<GzSeekFn>(span.op)(file,offset,whence);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,result<0);return result;
 }
 int __cdecl inflate_stream(void* stream,int flush) {
-    Span span(Operation::Inflate);int result=original<InflateFn>(span.op)(stream,flush);
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    Span span(Operation::Inflate);cpu.before_original();
+    int result=original<InflateFn>(span.op)(stream,flush);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();
     // Z_BUF_ERROR (-5) is nonfatal no-progress, recorded as ambiguous instead of
     // treating it as failed decompression. No z_stream member is dereferenced.
     span.finish(end,error,result<0&&result!=-5,0,false,result==-5);return result;
 }
 void* __cdecl xml_read(const char* data,int size,const char* url,const char* encoding,int options) {
-    Span span(Operation::XmlRead);void* result=original<XmlReadFn>(span.op)(data,size,url,encoding,options);
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    Span span(Operation::XmlRead);cpu.before_original();
+    void* result=original<XmlReadFn>(span.op)(data,size,url,encoding,options);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,!result,size>0?size:0);return result;
 }
 

@@ -12,14 +12,14 @@ import shutil
 import statistics
 import subprocess
 ROOT = Path(__file__).resolve().parents[2]
-FILES = ['src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp',
+FILES = ['src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp', 'src/ownership/application_admission.h', 'src/ownership/application_admission.cpp', 'src/ownership/application_admission_abi.h', 'src/ownership/application_admission_abi.cpp',
          'src/ownership/d3d9_classes_inc.h', 'src/ownership/d3d9_forwarders_inc.h',
          'src/ownership/execution_state.h', 'src/ownership/execution_state.cpp',
          'src/ownership/finite_buffer_evidence.h', 'src/ownership/finite_buffer_evidence.cpp',
          'src/ownership/portable_managed_upload.h', 'src/ownership/portable_managed_upload.cpp',
          'tools/ownership/generate_d3d9_forwarders.py',
          'verification/probe/geometry_lease_benchmark.cpp',
-         'verification/probe/build_geometry_lease_benchmark.sh',
+         'verification/probe/build_geometry_lease_benchmark.sh', 'verification/probe/build_admission_dependencies.sh',
          'verification/probe/run_geometry_lease_benchmark.py']
 NATIVE_ROOT = Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/wine/i386-windows')
 # Runtime identity is recorded for reproducibility, never an admission allowlist.
@@ -72,7 +72,7 @@ def main():
         report, wine = Path(str(prefix) + '.txt'), Path(str(prefix) + '-wine.log')
         with report.open('wb') as out, wine.open('wb') as err:
             run = subprocess.run(command, cwd=ROOT, stdout=out, stderr=err, timeout=240,
-                                 env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'))
+                                 env=dict(os.environ, X3M_ADMISSION='0', WINEDLLOVERRIDES='d3d9=b'))
         text = report.read_text()
         terminal = [line for line in text.splitlines() if line.startswith('RESULT ')]
         match = re.fullmatch(r'RESULT PASS checks=(\d+) samples=84 draws=0', terminal[0]) if len(terminal) == 1 else None

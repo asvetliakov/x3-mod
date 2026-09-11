@@ -6,143 +6,185 @@
   "cases": {
     "ownership-integration-off-smoke": {
       "exit": 0,
-      "exe_sha256": "9b39f218c49a4844cb5e61c937396c8393bef84f7dc4b48389232bc4f2b4ad9a",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
-      "report_sha256": "3a09f4d0a6a0e7e67176db96c839d56db0838580c725720f7be5f283fedcf246",
-      "trace_sha256": "76cb87a965deda7591cdece896030af43936ba9ee42b9b49befc3b3385f189db"
+      "exe_sha256": "451d3d1fd1ed6272fc83ac01e0e90f2969c4fa92c036efbb4d1dbf279924c671",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "50601518a9df4b69c0996b9d577e0a9ba2293bb1ac15edc6f2a2f3b281ac1c27",
+      "trace_sha256": "4205116340aac51aeefe48ba6b2de2204efba0ecd3a5d77144d5e062c6f8b082"
     },
     "ownership-integration-off-capture": {
       "exit": 0,
-      "exe_sha256": "5b9939a701cf73077cfd0e1327c6264330dad9cc551b1b10708b90048fb6c963",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "exe_sha256": "fc70220bc24aa011f2bfa917ddedb80705e2ca583be875196b22a167f5009e63",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
       "report_sha256": "96512dc37dc49c751fd76434f8ac8d9ae39cf84cdfe982ef038e7a3ea634ccd4",
-      "trace_sha256": "d04162df79307b274b227afcffa5e13aad5d0c19ff685124c3e5b846dec8b8dc"
+      "trace_sha256": "df581c4ccc6e8c26c2cec32220fa35df854cd4cb6d1deb09c193595f48d2916d"
     },
     "ownership-integration-off-lifetime": {
       "exit": 0,
-      "exe_sha256": "0655c70d5b5a00de03943f4735779e8381d827a82ee4c65bcbdb06a7f15be5b7",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "exe_sha256": "a10432328fff7aca40bf443af78fc73a27169fec1e928c416c6f42c729ea28d7",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
       "report_sha256": "89ceaf9aba48d5ff2a086afb2fbb0951cc01bd4c2fba9057657c7ca2444d0ff6",
-      "trace_sha256": "308a9314d4cf73cef0528c210f13b8dfa21fc64141a44d7fe9a469ef8de9e033"
+      "trace_sha256": "44b0504613342d6aad70aa23a558f3eb33892667f3b705b6aaa496386c5d3b4f"
     },
     "ownership-integration-off-contracts": {
       "exit": 0,
-      "exe_sha256": "f8b4556459896c49bbe9f79370c54f0d080f80470e142d88936d3497d0a1a6fa",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "exe_sha256": "4fded2674261779f04b830ee9077265cd98f568cafbabf542ddb8bb9f58fcb8c",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
       "report_sha256": "37c55d1f8719ccc87faf3686c2176e598205f0dec1c88868fa95a25526078d37",
-      "trace_sha256": "225d0b8cc335b07786b53b28c32753eda839f69529532fee837a3948dbb0c4e5"
+      "trace_sha256": "e1d661f890f6710ce816d6218635521c5d4cff50fed8edba305ed8c4f3e6258e"
     },
     "ownership-integration-off-auto": {
       "exit": 0,
-      "exe_sha256": "d845ac65049a456d1fb9028ad961fe40406ad91c1b49bcfe504ee890b8eba79e",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "exe_sha256": "88e1580078f14de5200b4a365632cb5a3162b6a652c2f38bf0f943537f7ae0e2",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
       "report_sha256": "770aa6023e34ed92f9aad4d4fb46880aa2ef63386be345a5293c112f46ed8940",
-      "trace_sha256": "3fc1077966f3918a3bb45feecf0ba959fb32bbac70335b30e0ec3114d4c89028"
+      "trace_sha256": "f9f5c2e9ba420f2d5a297b0fed9e5dbb44c66ed50a61ea5cdfb99c8ad85e11a5"
     },
     "ownership-integration-on-smoke": {
       "exit": 0,
-      "exe_sha256": "9b39f218c49a4844cb5e61c937396c8393bef84f7dc4b48389232bc4f2b4ad9a",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
-      "report_sha256": "e4e80dc15e9069ee181d9ce499f348c0dfd4ee9226fae4e8d9af702656e4530a",
-      "trace_sha256": "c577ee6e1f8161c860929f8ba7266f48fa2333afed118968bfaf3a7e842f0132"
+      "exe_sha256": "451d3d1fd1ed6272fc83ac01e0e90f2969c4fa92c036efbb4d1dbf279924c671",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "8aa68960cf5be0fdabc5cea611a2189b67f0325da608453d63df62dbb227311c",
+      "trace_sha256": "79da63ebb16b3093c0cabf6fe987efd4071fc77f6dbed4587a4b88e3a2768f32"
     },
     "ownership-integration-on-capture": {
       "exit": 0,
-      "exe_sha256": "5b9939a701cf73077cfd0e1327c6264330dad9cc551b1b10708b90048fb6c963",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "exe_sha256": "fc70220bc24aa011f2bfa917ddedb80705e2ca583be875196b22a167f5009e63",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
       "report_sha256": "96512dc37dc49c751fd76434f8ac8d9ae39cf84cdfe982ef038e7a3ea634ccd4",
-      "trace_sha256": "d4ef0d217d139b35946a94fcc935b24d3f047a788839cb0345bbec27ae46bab8"
+      "trace_sha256": "c311dd96cc13a5ca2da641eff166b9b8da744e91a042a3e547172dae46edc5ce"
     },
     "ownership-integration-on-lifetime": {
       "exit": 0,
-      "exe_sha256": "0655c70d5b5a00de03943f4735779e8381d827a82ee4c65bcbdb06a7f15be5b7",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "exe_sha256": "a10432328fff7aca40bf443af78fc73a27169fec1e928c416c6f42c729ea28d7",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
       "report_sha256": "89ceaf9aba48d5ff2a086afb2fbb0951cc01bd4c2fba9057657c7ca2444d0ff6",
-      "trace_sha256": "3b870d115676a094fbfc31b1f26485aff71a9df9cfb52116d1baf3b46efefd93"
+      "trace_sha256": "616b79b9131f2945e94ac3ab5592a3e445e812ee472ca68fd6ff844104522e3c"
     },
     "ownership-integration-on-contracts": {
       "exit": 0,
-      "exe_sha256": "f8b4556459896c49bbe9f79370c54f0d080f80470e142d88936d3497d0a1a6fa",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "exe_sha256": "4fded2674261779f04b830ee9077265cd98f568cafbabf542ddb8bb9f58fcb8c",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
       "report_sha256": "37c55d1f8719ccc87faf3686c2176e598205f0dec1c88868fa95a25526078d37",
-      "trace_sha256": "2b33fcdeffd2db395f423a4724c37913091707332bb44ed0a34a533b1b13a2cf"
+      "trace_sha256": "e1c20cbc070f75b6bdf784cd2c254aec6216d80197593c3ca3a206d7407f7e86"
     },
     "ownership-integration-on-auto": {
       "exit": 0,
-      "exe_sha256": "d845ac65049a456d1fb9028ad961fe40406ad91c1b49bcfe504ee890b8eba79e",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "exe_sha256": "88e1580078f14de5200b4a365632cb5a3162b6a652c2f38bf0f943537f7ae0e2",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
       "report_sha256": "770aa6023e34ed92f9aad4d4fb46880aa2ef63386be345a5293c112f46ed8940",
-      "trace_sha256": "cc3b5d767351d215f5d2ed35e5f3813c1fb4f28d803da46de26973fa46f1e149"
+      "trace_sha256": "d1d6902ad73ca870342f349a31a394c25c1fde2580955deeb921f8b6366a21b3"
     },
     "ownership-integration-depth_only-smoke": {
       "exit": 0,
-      "exe_sha256": "9b39f218c49a4844cb5e61c937396c8393bef84f7dc4b48389232bc4f2b4ad9a",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
-      "report_sha256": "bb478206907d2144058361291ddcbce69d392a9dcb649a2862c4ad7ff6b1d6f1",
-      "trace_sha256": "843258218800b100fb33c12d7a8a0398df82cb2c6dcbe7881046305a90ff3f50"
+      "exe_sha256": "451d3d1fd1ed6272fc83ac01e0e90f2969c4fa92c036efbb4d1dbf279924c671",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "49203aecdfab7a95ee2b4b3d44c5af16ac0e8c04e34cd2b54a09093a9bb5cb25",
+      "trace_sha256": "861b1625a15eadc500cec6b643bdd70ac4018ad8ab2fd50504334f91b06849e3"
     },
     "ownership-integration-copy_depth-auto": {
       "exit": 0,
-      "exe_sha256": "d845ac65049a456d1fb9028ad961fe40406ad91c1b49bcfe504ee890b8eba79e",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "exe_sha256": "88e1580078f14de5200b4a365632cb5a3162b6a652c2f38bf0f943537f7ae0e2",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
       "report_sha256": "770aa6023e34ed92f9aad4d4fb46880aa2ef63386be345a5293c112f46ed8940",
-      "trace_sha256": "d0ad6c02cdd393bdfe1ad794c5ed11f4ca7af0c3c2eb7d2663372ef3564244ee"
+      "trace_sha256": "3c5e700ff61480edff51870232d1e3a2550ddff684d184c7c6bfd3eac749ec79"
     },
     "ownership-integration-scene_depth-auto": {
       "exit": 0,
-      "exe_sha256": "d845ac65049a456d1fb9028ad961fe40406ad91c1b49bcfe504ee890b8eba79e",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "exe_sha256": "88e1580078f14de5200b4a365632cb5a3162b6a652c2f38bf0f943537f7ae0e2",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
       "report_sha256": "770aa6023e34ed92f9aad4d4fb46880aa2ef63386be345a5293c112f46ed8940",
-      "trace_sha256": "be5f14fb7c38b39114179636de3d83f6e323e7cc4f7eebab1fa74c76795c71e4"
+      "trace_sha256": "56201a4b1f8fde74ace2d39595c6b37194f59c73460e92d978915ecdd204e5a7"
     },
     "ownership-integration-scene_only-smoke": {
       "exit": 0,
-      "exe_sha256": "9b39f218c49a4844cb5e61c937396c8393bef84f7dc4b48389232bc4f2b4ad9a",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
-      "report_sha256": "bfbb97e7625a15de2c8ed75d15a3103aca46d5dda80ec19c18a2f05f301ecff4",
-      "trace_sha256": "6bd506f46844c389bf26f5db2b1ec4328ae2dfc553c7e49d98c70afd96ee7c0e"
+      "exe_sha256": "451d3d1fd1ed6272fc83ac01e0e90f2969c4fa92c036efbb4d1dbf279924c671",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "eb42cd69cc999c9fc458b77cab451e76c6dfc9dddf1b35001392102ca80c6240",
+      "trace_sha256": "eebcd94344035b7e4e2081e2c5ff1276765ea7981cff9a4a5794e4e958e24d9c"
     },
     "ownership-integration-object_requested-smoke": {
       "exit": 0,
-      "exe_sha256": "9b39f218c49a4844cb5e61c937396c8393bef84f7dc4b48389232bc4f2b4ad9a",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
-      "report_sha256": "4dd4303def1e95e8192f66a979b4697984e4dd442c8a82f77c6440510c30e834",
-      "trace_sha256": "01471e742b2f684395297f247416fcb6483a11bd16da2041f231cfc5f9beeffb"
+      "exe_sha256": "451d3d1fd1ed6272fc83ac01e0e90f2969c4fa92c036efbb4d1dbf279924c671",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "f4f9a6a37dddad8bd6628094a038022f4fb3eb03698e3001d1d72a69cf4f5f0f",
+      "trace_sha256": "2d9277500d6c91d2e2e9094a6d8e9d0cb2cfb98b788f010599b6a2ddd5547cc4"
     },
     "ownership-integration-finite_on-smoke": {
       "exit": 0,
-      "exe_sha256": "9b39f218c49a4844cb5e61c937396c8393bef84f7dc4b48389232bc4f2b4ad9a",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
-      "report_sha256": "410e8bb3c282303b38605c7672bf710fd98cbdda184d8b26ad254d59b8f95bdc",
-      "trace_sha256": "3494845ee4385c8509b2204e66dc22e426d11c8724fed41c18a80b1807801171"
+      "exe_sha256": "451d3d1fd1ed6272fc83ac01e0e90f2969c4fa92c036efbb4d1dbf279924c671",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "c34d4d82218244d0f84bf13e4011b8ded0ccbe185a1d7f7c7f2d4f58f1be966c",
+      "trace_sha256": "6919a67784a27f0f59cedcae11ef5cdd92956a6f784f2479dc0fabb819f495ea"
     },
     "ownership-integration-finite_on-capture": {
       "exit": 0,
-      "exe_sha256": "5b9939a701cf73077cfd0e1327c6264330dad9cc551b1b10708b90048fb6c963",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "exe_sha256": "fc70220bc24aa011f2bfa917ddedb80705e2ca583be875196b22a167f5009e63",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
       "report_sha256": "96512dc37dc49c751fd76434f8ac8d9ae39cf84cdfe982ef038e7a3ea634ccd4",
-      "trace_sha256": "7ab7e58dc5ee31a0d2560875ac4d5baafdc1364a4fd87efa3fdb6537e28be94f"
+      "trace_sha256": "f35add8151bd9b74b03879cfe8845dc28100b20f15ab33c8db3dd928dcd4ad17"
     },
     "ownership-integration-finite_without_ownership-capture": {
       "exit": 0,
-      "exe_sha256": "5b9939a701cf73077cfd0e1327c6264330dad9cc551b1b10708b90048fb6c963",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "exe_sha256": "fc70220bc24aa011f2bfa917ddedb80705e2ca583be875196b22a167f5009e63",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
       "report_sha256": "96512dc37dc49c751fd76434f8ac8d9ae39cf84cdfe982ef038e7a3ea634ccd4",
-      "trace_sha256": "3dc110ee0646dc8da805b9ecb9d1ba5b8b2fc017419c64a57dd11a617c303d59"
+      "trace_sha256": "2af4d9524c20fd5b374b6fbd0b1a41025cb4363b848b3729976bdaef258c5360"
     },
     "ownership-integration-motion_requested-auto": {
       "exit": 0,
-      "exe_sha256": "d845ac65049a456d1fb9028ad961fe40406ad91c1b49bcfe504ee890b8eba79e",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "exe_sha256": "88e1580078f14de5200b4a365632cb5a3162b6a652c2f38bf0f943537f7ae0e2",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
       "report_sha256": "770aa6023e34ed92f9aad4d4fb46880aa2ef63386be345a5293c112f46ed8940",
-      "trace_sha256": "fa0a25193a24ee16b6c6834a5ddd4dc1c5405a7839d47809cf9aba32ebaa5d16"
+      "trace_sha256": "d04332fa985d849188b40bf14581c7325a4ab110d46e2656815b1ce028ad3185"
     },
     "ownership-integration-motion_without_prereqs-capture": {
       "exit": 0,
-      "exe_sha256": "5b9939a701cf73077cfd0e1327c6264330dad9cc551b1b10708b90048fb6c963",
-      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "exe_sha256": "fc70220bc24aa011f2bfa917ddedb80705e2ca583be875196b22a167f5009e63",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
       "report_sha256": "96512dc37dc49c751fd76434f8ac8d9ae39cf84cdfe982ef038e7a3ea634ccd4",
-      "trace_sha256": "1ed5b24fe825bbe0809619d37559dda7859370d6815571984f2fb1c48379e44c"
+      "trace_sha256": "68af272646b5dfcc2c5228913c51095afd56f6a779e35931855b3ba97df08574"
+    },
+    "ownership-integration-admission_on-smoke": {
+      "exit": 0,
+      "exe_sha256": "451d3d1fd1ed6272fc83ac01e0e90f2969c4fa92c036efbb4d1dbf279924c671",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "2dac1182ec9de35029a86d62747900ae484169bd3ce3d6d1ebd571067b79e838",
+      "trace_sha256": "201350d7d2b7cb260bb39f25835cca5a6989fa0263f7a5218c14d1cb69ae4733"
+    },
+    "ownership-integration-admission_on-capture": {
+      "exit": 0,
+      "exe_sha256": "fc70220bc24aa011f2bfa917ddedb80705e2ca583be875196b22a167f5009e63",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "96512dc37dc49c751fd76434f8ac8d9ae39cf84cdfe982ef038e7a3ea634ccd4",
+      "trace_sha256": "6becbcbf4b9ffcc2b951712aafaf3a2db31b600596e3e1a2a411ce59f34c21ed"
+    },
+    "ownership-integration-admission_on-lifetime": {
+      "exit": 0,
+      "exe_sha256": "a10432328fff7aca40bf443af78fc73a27169fec1e928c416c6f42c729ea28d7",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "89ceaf9aba48d5ff2a086afb2fbb0951cc01bd4c2fba9057657c7ca2444d0ff6",
+      "trace_sha256": "0842c914893d5f5ed328cfefb1f00042d4af153c0ca44a1a786c9159dce6ef1e"
+    },
+    "ownership-integration-admission_on-contracts": {
+      "exit": 0,
+      "exe_sha256": "4fded2674261779f04b830ee9077265cd98f568cafbabf542ddb8bb9f58fcb8c",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "37c55d1f8719ccc87faf3686c2176e598205f0dec1c88868fa95a25526078d37",
+      "trace_sha256": "a2b26430f161a66bd1d48a1f704ead772371185bfaf35a490f1624e535f2a242"
+    },
+    "ownership-integration-admission_on-auto": {
+      "exit": 0,
+      "exe_sha256": "88e1580078f14de5200b4a365632cb5a3162b6a652c2f38bf0f943537f7ae0e2",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "770aa6023e34ed92f9aad4d4fb46880aa2ef63386be345a5293c112f46ed8940",
+      "trace_sha256": "cdf30999f9676d1d0d0de845fc34522dbc2a15fd7e1459399e39f629a2263c75"
+    },
+    "ownership-integration-admission_native-smoke": {
+      "exit": 0,
+      "exe_sha256": "451d3d1fd1ed6272fc83ac01e0e90f2969c4fa92c036efbb4d1dbf279924c671",
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "f417ecfc576da09c333f4c94dd8e3c7f0281c987d791361f0bf7ba6d0e8d382c",
+      "trace_sha256": "a5423c14a54a9f1d9e3fbe2982b5b4ec8216dc4be050c783b12b9f74a0c68030"
     }
   },
   "build_commands": [
@@ -171,11 +213,15 @@
     ]
   ],
   "sources_before_build": {
-    "CMakeLists.txt": "765f397c8827765ba52b734de8b11cd6050b89c3e02eb4c99befaf08f67893a7",
+    "CMakeLists.txt": "9665902934a960c90a2b8dd45cd050024475774dd6b1584462632c85a06f5fee",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
     "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
-    "src/ownership/d3d9_forwarders_inc.h": "4827fafbeaa1818341d39f410d0188cd95ce8697127ae3e13e584340c3b7539b",
-    "src/ownership/d3d9_ownership.cpp": "365da457bfd0df7a8d791764e673596f89187a10c4fcd1f2c536f6d69ec90d8f",
+    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
     "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
     "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
     "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
@@ -183,7 +229,7 @@
     "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
     "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
-    "src/proxy/capture.cpp": "ced765613857a06c7768b3a84873810802926f7ff35c190bf4816c8096edbbc5",
+    "src/proxy/capture.cpp": "1796bca204ec3c792c8cbaa3a218835dcf4356e6c1050dd337f71f497ca48d3d",
     "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
@@ -191,8 +237,8 @@
     "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
     "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
     "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
-    "src/proxy/loader.cpp": "b35a60257a7eb3271aa1baa2efd1e2dbe422a01c3c560a7f8114a5f666728fd7",
-    "src/proxy/loading_trace.cpp": "3d63865fbf60b61eb2f458353191c0936aa87aeb43c086e83e8fa4504faa3ce1",
+    "src/proxy/loader.cpp": "aa2dede12db2e7f810bac277e8b6cb02858572056b149fce47b0b689620fcca0",
+    "src/proxy/loading_trace.cpp": "3ed55868676623a91506486ce05608ae500dce7c058a839a63739cf31bf94903",
     "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
     "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
     "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
@@ -231,11 +277,13 @@
     "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
     "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
     "tools/analysis/summarize_capture.py": "8a9d58368c883225732fe2e0ffbb27ee601a070bc09349a008cf4f22765c0cae",
-    "tools/ownership/generate_d3d9_forwarders.py": "6b0bb42d90ac3a1e6b38aec1a37330c140d0d23a986f11bb4f1015eea1b40b01",
-    "verification/analysis/test_portable_integration_expectations.py": "0520d8030f356545438ace62231372065e7a7413856c4f91769fc957d865dc37",
+    "tools/ownership/generate_d3d9_forwarders.py": "20010dff7f01703a27a4ecb3a8c129c60b84e413e9bdd62c0483dc72aceaae38",
+    "verification/analysis/test_admission_integration_expectations.py": "37386910d2955f95231469d8a27d605e9d7611b1ebe712a47a1bce57d4a83388",
+    "verification/analysis/test_portable_integration_expectations.py": "dfbac0118098c9e04db2f693e204160df9160717c349e6508392d00a880bac8a",
     "verification/probe/abi_check.cpp": "763971c861bae4f1ec7757eb7e2960977be8a10b15ef18868d79523a25255338",
     "verification/probe/build.sh": "1e9fb6f6f285ccda02f6cd6486b5499b3549a9e71768b8ffbe304b7e90708175",
-    "verification/probe/build_ownership.sh": "00ce6ea7e747f9f1892bc14ff660c2929b5b28cac9581dc05059b322c82ca548",
+    "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+    "verification/probe/build_ownership.sh": "7fef2e5c6481c83e62e375a43e2501cc08a6889cf8c30312581a38df4da04348",
     "verification/probe/build_ownership_integration.sh": "c34acf50e55024d67a17cd5f71c00806d031a2d3ea407814010a8be49b36b553",
     "verification/probe/capability_probe.cpp": "8ea9fd8e026a8f6a8bb86ce65521935fb924ed7704855fb7abcb40557fa32348",
     "verification/probe/capture_state_fixture.cpp": "bcb1e74c56bc8ddbabb65df6c2f9e8c21dbd975587532906ee5f77b14b1323b0",
@@ -244,17 +292,21 @@
     "verification/probe/ownership_integration_auto_depth.cpp": "c9855011f6dd6033dff68245c7076782387590ca4acece66a7a3ef87a73cd5bc",
     "verification/probe/ownership_integration_fallback_stub.cpp": "ff3e940c928c1694c1ea6e7d3f94bf9955fadc100a04ac6d4f5aebca8933cde1",
     "verification/probe/ownership_integration_lifetime.cpp": "101c0b6260f97df2be544b98a7d1ddfdaf59a07233d47a3b7d6eeba9bdf40347",
-    "verification/probe/run_ownership_integration.py": "51e00d879b757fbc590190b74e02a070858ee86e09a98c523ace5667e99c48f3",
-    "verification/probe/run_ownership_integration_fallback.py": "72142d359221012007a800dcdc0a6483430c136ad5f9fae2e64b5d44efb01654",
+    "verification/probe/run_ownership_integration.py": "84f6a51e7ec924086a9f4a2ff9c45ee72482f923db0135467d74ab0bce4bbbf4",
+    "verification/probe/run_ownership_integration_fallback.py": "b2c54c9983654e3bcdea1124b01e7f0d22b48ceb89cd4b6eb203e44d3c68a752",
     "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
-    "verification/probe/verify_ownership_integration.py": "875b040798c9966f7ae068697d068652a5111972c044a47cb2cbf0a87e2263d0"
+    "verification/probe/verify_ownership_integration.py": "dd980715c1ab04e63d0a22b7a5f83e948bed75ade759e472a12a7b727e5836af"
   },
   "sources_at_start": {
-    "CMakeLists.txt": "765f397c8827765ba52b734de8b11cd6050b89c3e02eb4c99befaf08f67893a7",
+    "CMakeLists.txt": "9665902934a960c90a2b8dd45cd050024475774dd6b1584462632c85a06f5fee",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
     "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
-    "src/ownership/d3d9_forwarders_inc.h": "4827fafbeaa1818341d39f410d0188cd95ce8697127ae3e13e584340c3b7539b",
-    "src/ownership/d3d9_ownership.cpp": "365da457bfd0df7a8d791764e673596f89187a10c4fcd1f2c536f6d69ec90d8f",
+    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
     "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
     "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
     "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
@@ -262,7 +314,7 @@
     "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
     "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
-    "src/proxy/capture.cpp": "ced765613857a06c7768b3a84873810802926f7ff35c190bf4816c8096edbbc5",
+    "src/proxy/capture.cpp": "1796bca204ec3c792c8cbaa3a218835dcf4356e6c1050dd337f71f497ca48d3d",
     "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
@@ -270,8 +322,8 @@
     "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
     "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
     "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
-    "src/proxy/loader.cpp": "b35a60257a7eb3271aa1baa2efd1e2dbe422a01c3c560a7f8114a5f666728fd7",
-    "src/proxy/loading_trace.cpp": "3d63865fbf60b61eb2f458353191c0936aa87aeb43c086e83e8fa4504faa3ce1",
+    "src/proxy/loader.cpp": "aa2dede12db2e7f810bac277e8b6cb02858572056b149fce47b0b689620fcca0",
+    "src/proxy/loading_trace.cpp": "3ed55868676623a91506486ce05608ae500dce7c058a839a63739cf31bf94903",
     "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
     "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
     "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
@@ -310,11 +362,13 @@
     "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
     "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
     "tools/analysis/summarize_capture.py": "8a9d58368c883225732fe2e0ffbb27ee601a070bc09349a008cf4f22765c0cae",
-    "tools/ownership/generate_d3d9_forwarders.py": "6b0bb42d90ac3a1e6b38aec1a37330c140d0d23a986f11bb4f1015eea1b40b01",
-    "verification/analysis/test_portable_integration_expectations.py": "0520d8030f356545438ace62231372065e7a7413856c4f91769fc957d865dc37",
+    "tools/ownership/generate_d3d9_forwarders.py": "20010dff7f01703a27a4ecb3a8c129c60b84e413e9bdd62c0483dc72aceaae38",
+    "verification/analysis/test_admission_integration_expectations.py": "37386910d2955f95231469d8a27d605e9d7611b1ebe712a47a1bce57d4a83388",
+    "verification/analysis/test_portable_integration_expectations.py": "dfbac0118098c9e04db2f693e204160df9160717c349e6508392d00a880bac8a",
     "verification/probe/abi_check.cpp": "763971c861bae4f1ec7757eb7e2960977be8a10b15ef18868d79523a25255338",
     "verification/probe/build.sh": "1e9fb6f6f285ccda02f6cd6486b5499b3549a9e71768b8ffbe304b7e90708175",
-    "verification/probe/build_ownership.sh": "00ce6ea7e747f9f1892bc14ff660c2929b5b28cac9581dc05059b322c82ca548",
+    "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+    "verification/probe/build_ownership.sh": "7fef2e5c6481c83e62e375a43e2501cc08a6889cf8c30312581a38df4da04348",
     "verification/probe/build_ownership_integration.sh": "c34acf50e55024d67a17cd5f71c00806d031a2d3ea407814010a8be49b36b553",
     "verification/probe/capability_probe.cpp": "8ea9fd8e026a8f6a8bb86ce65521935fb924ed7704855fb7abcb40557fa32348",
     "verification/probe/capture_state_fixture.cpp": "bcb1e74c56bc8ddbabb65df6c2f9e8c21dbd975587532906ee5f77b14b1323b0",
@@ -323,26 +377,30 @@
     "verification/probe/ownership_integration_auto_depth.cpp": "c9855011f6dd6033dff68245c7076782387590ca4acece66a7a3ef87a73cd5bc",
     "verification/probe/ownership_integration_fallback_stub.cpp": "ff3e940c928c1694c1ea6e7d3f94bf9955fadc100a04ac6d4f5aebca8933cde1",
     "verification/probe/ownership_integration_lifetime.cpp": "101c0b6260f97df2be544b98a7d1ddfdaf59a07233d47a3b7d6eeba9bdf40347",
-    "verification/probe/run_ownership_integration.py": "51e00d879b757fbc590190b74e02a070858ee86e09a98c523ace5667e99c48f3",
-    "verification/probe/run_ownership_integration_fallback.py": "72142d359221012007a800dcdc0a6483430c136ad5f9fae2e64b5d44efb01654",
+    "verification/probe/run_ownership_integration.py": "84f6a51e7ec924086a9f4a2ff9c45ee72482f923db0135467d74ab0bce4bbbf4",
+    "verification/probe/run_ownership_integration_fallback.py": "b2c54c9983654e3bcdea1124b01e7f0d22b48ceb89cd4b6eb203e44d3c68a752",
     "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
-    "verification/probe/verify_ownership_integration.py": "875b040798c9966f7ae068697d068652a5111972c044a47cb2cbf0a87e2263d0"
+    "verification/probe/verify_ownership_integration.py": "dd980715c1ab04e63d0a22b7a5f83e948bed75ade759e472a12a7b727e5836af"
   },
   "binaries_at_start": {
-    "build-ownership/d3d9.dll": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
-    "verification/probe/build/d3d9_smoke.exe": "9b39f218c49a4844cb5e61c937396c8393bef84f7dc4b48389232bc4f2b4ad9a",
-    "verification/probe/build/capture_state_fixture.exe": "5b9939a701cf73077cfd0e1327c6264330dad9cc551b1b10708b90048fb6c963",
-    "verification/probe/build/ownership_integration_lifetime.exe": "0655c70d5b5a00de03943f4735779e8381d827a82ee4c65bcbdb06a7f15be5b7",
-    "verification/probe/build/ownership_integration_baseline.exe": "f8b4556459896c49bbe9f79370c54f0d080f80470e142d88936d3497d0a1a6fa",
-    "verification/probe/build/ownership_integration_auto_depth.exe": "d845ac65049a456d1fb9028ad961fe40406ad91c1b49bcfe504ee890b8eba79e"
+    "build-ownership/d3d9.dll": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+    "verification/probe/build/d3d9_smoke.exe": "451d3d1fd1ed6272fc83ac01e0e90f2969c4fa92c036efbb4d1dbf279924c671",
+    "verification/probe/build/capture_state_fixture.exe": "fc70220bc24aa011f2bfa917ddedb80705e2ca583be875196b22a167f5009e63",
+    "verification/probe/build/ownership_integration_lifetime.exe": "a10432328fff7aca40bf443af78fc73a27169fec1e928c416c6f42c729ea28d7",
+    "verification/probe/build/ownership_integration_baseline.exe": "4fded2674261779f04b830ee9077265cd98f568cafbabf542ddb8bb9f58fcb8c",
+    "verification/probe/build/ownership_integration_auto_depth.exe": "88e1580078f14de5200b4a365632cb5a3162b6a652c2f38bf0f943537f7ae0e2"
   },
-  "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+  "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
   "sources": {
-    "CMakeLists.txt": "765f397c8827765ba52b734de8b11cd6050b89c3e02eb4c99befaf08f67893a7",
+    "CMakeLists.txt": "9665902934a960c90a2b8dd45cd050024475774dd6b1584462632c85a06f5fee",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
     "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
-    "src/ownership/d3d9_forwarders_inc.h": "4827fafbeaa1818341d39f410d0188cd95ce8697127ae3e13e584340c3b7539b",
-    "src/ownership/d3d9_ownership.cpp": "365da457bfd0df7a8d791764e673596f89187a10c4fcd1f2c536f6d69ec90d8f",
+    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
     "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
     "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
     "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
@@ -350,7 +408,7 @@
     "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
     "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
-    "src/proxy/capture.cpp": "ced765613857a06c7768b3a84873810802926f7ff35c190bf4816c8096edbbc5",
+    "src/proxy/capture.cpp": "1796bca204ec3c792c8cbaa3a218835dcf4356e6c1050dd337f71f497ca48d3d",
     "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
@@ -358,8 +416,8 @@
     "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
     "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
     "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
-    "src/proxy/loader.cpp": "b35a60257a7eb3271aa1baa2efd1e2dbe422a01c3c560a7f8114a5f666728fd7",
-    "src/proxy/loading_trace.cpp": "3d63865fbf60b61eb2f458353191c0936aa87aeb43c086e83e8fa4504faa3ce1",
+    "src/proxy/loader.cpp": "aa2dede12db2e7f810bac277e8b6cb02858572056b149fce47b0b689620fcca0",
+    "src/proxy/loading_trace.cpp": "3ed55868676623a91506486ce05608ae500dce7c058a839a63739cf31bf94903",
     "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
     "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
     "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
@@ -398,11 +456,13 @@
     "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
     "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
     "tools/analysis/summarize_capture.py": "8a9d58368c883225732fe2e0ffbb27ee601a070bc09349a008cf4f22765c0cae",
-    "tools/ownership/generate_d3d9_forwarders.py": "6b0bb42d90ac3a1e6b38aec1a37330c140d0d23a986f11bb4f1015eea1b40b01",
-    "verification/analysis/test_portable_integration_expectations.py": "0520d8030f356545438ace62231372065e7a7413856c4f91769fc957d865dc37",
+    "tools/ownership/generate_d3d9_forwarders.py": "20010dff7f01703a27a4ecb3a8c129c60b84e413e9bdd62c0483dc72aceaae38",
+    "verification/analysis/test_admission_integration_expectations.py": "37386910d2955f95231469d8a27d605e9d7611b1ebe712a47a1bce57d4a83388",
+    "verification/analysis/test_portable_integration_expectations.py": "dfbac0118098c9e04db2f693e204160df9160717c349e6508392d00a880bac8a",
     "verification/probe/abi_check.cpp": "763971c861bae4f1ec7757eb7e2960977be8a10b15ef18868d79523a25255338",
     "verification/probe/build.sh": "1e9fb6f6f285ccda02f6cd6486b5499b3549a9e71768b8ffbe304b7e90708175",
-    "verification/probe/build_ownership.sh": "00ce6ea7e747f9f1892bc14ff660c2929b5b28cac9581dc05059b322c82ca548",
+    "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+    "verification/probe/build_ownership.sh": "7fef2e5c6481c83e62e375a43e2501cc08a6889cf8c30312581a38df4da04348",
     "verification/probe/build_ownership_integration.sh": "c34acf50e55024d67a17cd5f71c00806d031a2d3ea407814010a8be49b36b553",
     "verification/probe/capability_probe.cpp": "8ea9fd8e026a8f6a8bb86ce65521935fb924ed7704855fb7abcb40557fa32348",
     "verification/probe/capture_state_fixture.cpp": "bcb1e74c56bc8ddbabb65df6c2f9e8c21dbd975587532906ee5f77b14b1323b0",
@@ -411,18 +471,18 @@
     "verification/probe/ownership_integration_auto_depth.cpp": "c9855011f6dd6033dff68245c7076782387590ca4acece66a7a3ef87a73cd5bc",
     "verification/probe/ownership_integration_fallback_stub.cpp": "ff3e940c928c1694c1ea6e7d3f94bf9955fadc100a04ac6d4f5aebca8933cde1",
     "verification/probe/ownership_integration_lifetime.cpp": "101c0b6260f97df2be544b98a7d1ddfdaf59a07233d47a3b7d6eeba9bdf40347",
-    "verification/probe/run_ownership_integration.py": "51e00d879b757fbc590190b74e02a070858ee86e09a98c523ace5667e99c48f3",
-    "verification/probe/run_ownership_integration_fallback.py": "72142d359221012007a800dcdc0a6483430c136ad5f9fae2e64b5d44efb01654",
+    "verification/probe/run_ownership_integration.py": "84f6a51e7ec924086a9f4a2ff9c45ee72482f923db0135467d74ab0bce4bbbf4",
+    "verification/probe/run_ownership_integration_fallback.py": "b2c54c9983654e3bcdea1124b01e7f0d22b48ceb89cd4b6eb203e44d3c68a752",
     "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
-    "verification/probe/verify_ownership_integration.py": "875b040798c9966f7ae068697d068652a5111972c044a47cb2cbf0a87e2263d0"
+    "verification/probe/verify_ownership_integration.py": "dd980715c1ab04e63d0a22b7a5f83e948bed75ade759e472a12a7b727e5836af"
   },
   "binaries_at_end": {
-    "build-ownership/d3d9.dll": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
-    "verification/probe/build/d3d9_smoke.exe": "9b39f218c49a4844cb5e61c937396c8393bef84f7dc4b48389232bc4f2b4ad9a",
-    "verification/probe/build/capture_state_fixture.exe": "5b9939a701cf73077cfd0e1327c6264330dad9cc551b1b10708b90048fb6c963",
-    "verification/probe/build/ownership_integration_lifetime.exe": "0655c70d5b5a00de03943f4735779e8381d827a82ee4c65bcbdb06a7f15be5b7",
-    "verification/probe/build/ownership_integration_baseline.exe": "f8b4556459896c49bbe9f79370c54f0d080f80470e142d88936d3497d0a1a6fa",
-    "verification/probe/build/ownership_integration_auto_depth.exe": "d845ac65049a456d1fb9028ad961fe40406ad91c1b49bcfe504ee890b8eba79e"
+    "build-ownership/d3d9.dll": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+    "verification/probe/build/d3d9_smoke.exe": "451d3d1fd1ed6272fc83ac01e0e90f2969c4fa92c036efbb4d1dbf279924c671",
+    "verification/probe/build/capture_state_fixture.exe": "fc70220bc24aa011f2bfa917ddedb80705e2ca583be875196b22a167f5009e63",
+    "verification/probe/build/ownership_integration_lifetime.exe": "a10432328fff7aca40bf443af78fc73a27169fec1e928c416c6f42c729ea28d7",
+    "verification/probe/build/ownership_integration_baseline.exe": "4fded2674261779f04b830ee9077265cd98f568cafbabf542ddb8bb9f58fcb8c",
+    "verification/probe/build/ownership_integration_auto_depth.exe": "88e1580078f14de5200b4a365632cb5a3162b6a652c2f38bf0f943537f7ae0e2"
   },
   "source_tree_unchanged_during_run": true,
   "binaries_unchanged_during_run": true

@@ -1,9 +1,13 @@
 # Excluding application mutations during private replay
 
 Portable integration contract, not an implemented live synchronization guarantee.
-The standalone [application admission core](../verification/application-admission.md)
+The [application admission core](../verification/application-admission.md)
 now implements root counting, nesting, promotion and permanent veto bookkeeping;
-it is not wired to the production entrypoints. Native
+it is now wired to ownership, loader and installed capture/loading entrypoints
+behind the off-by-default `X3M_ADMISSION=1` option. See
+[entry coverage and its limits](../verification/proxy-application-admission.md).
+Window callbacks, raw-native helper authority, mapping validation and the
+exclusive GPU segment still need integration before replay can use it. Native
 Windows/Direct3D is a required full-renderer target; Wine internals cannot be a
 prerequisite for shared replay or resource-evidence interfaces. See
 [platform portability](platform-portability.md). The current

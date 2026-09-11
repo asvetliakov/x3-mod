@@ -24,10 +24,10 @@ FILES = [
     'src/renderer/rigid_replay_program.h', 'src/renderer/rigid_replay_program.cpp',
     'src/renderer/rigid_position_profiles_inc.h', 'src/renderer/position_path_profiles_inc.h',
     'src/renderer/pixel_coverage_profiles_inc.h',
-    'src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp',
+    'src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp', 'src/ownership/application_admission.h', 'src/ownership/application_admission.cpp', 'src/ownership/application_admission_abi.h', 'src/ownership/application_admission_abi.cpp',
     'src/ownership/execution_state.h', 'src/ownership/execution_state.cpp', 'src/ownership/finite_buffer_evidence.cpp', 'src/ownership/finite_buffer_evidence.h', 'src/ownership/portable_managed_upload.cpp', 'src/ownership/portable_managed_upload.h',
     'src/ownership/d3d9_classes_inc.h', 'src/ownership/d3d9_forwarders_inc.h',
-    'verification/probe/draw_input_fixture.cpp', 'verification/probe/build_draw_input.sh',
+    'verification/probe/draw_input_fixture.cpp', 'verification/probe/build_draw_input.sh', 'verification/probe/build_admission_dependencies.sh',
     'verification/probe/run_draw_input.py',
 ]
 EXE = ROOT / 'verification/probe/build/draw_input_fixture.exe'
@@ -79,7 +79,7 @@ def main():
         wine = results / 'draw-input-wine.log'
         with report.open('wb') as out, wine.open('wb') as err:
             run = subprocess.run(command, stdout=out, stderr=err, timeout=90,
-                                 env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'))
+                                 env=dict(os.environ, X3M_ADMISSION='0', WINEDLLOVERRIDES='d3d9=b'))
         text = report.read_text()
         meta.update(exit_code=run.returncode, source_hashes_after=hashes(),
                     report_sha256=digest(report), binary_unchanged=digest(EXE) == meta['executable_sha256'])

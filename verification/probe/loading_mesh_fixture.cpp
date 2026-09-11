@@ -7,6 +7,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <vector>
+#include "loading_admission_witness.h"
 namespace x3m {void log(const char* fmt,...){va_list args;va_start(args,fmt);vprintf(fmt,args);va_end(args);putchar('\n');}}
 using namespace x3m::loading_trace;
 static unsigned checks=0;
@@ -69,6 +70,6 @@ int main(){std::setvbuf(stdout,nullptr,_IONBF,0);int exit=1;HWND window=nullptr;
         VirtualQuery(table,&repaired,sizeof repaired);require(repaired.Protect==page.Protect,"shutdown original page protection recovered");
         require(!fixture_initialize(GetModuleHandleW(nullptr)),"one shot initialization rejects foreign chain reinstall");require(table[20]==original[0]&&table[27]==original[2]&&table[22]==foreign_pointer,"shutdown restores owned slots preserves foreign hook");
         SetLastError(0x1357);ok(existing->GenerateAdjacency(1e-6f,adjacency),"foreign chain remains callable after shutdown");require(GetLastError()==baseline.error[0],"chained method LastError");replace(&table[22],original[1]);require(existing->Release()==0,"preexisting final release zero");
-        require(device->Release()==0,"telemetry retained no device references");printf("LOADING MESH RESULT checks=%u failures=0\n",checks);exit=0;
+        require(device->Release()==0,"telemetry retained no device references");if(!loading_admission_witness())throw std::runtime_error("admission witness");printf("LOADING MESH RESULT checks=%u failures=0\n",checks);exit=0;
     }catch(const std::exception& e){printf("LOADING MESH FAIL %s checks=%u\n",e.what(),checks);}if(window)DestroyWindow(window);return exit;
 }

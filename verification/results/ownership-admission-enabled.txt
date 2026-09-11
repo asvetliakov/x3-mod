@@ -1,0 +1,41 @@
+CHECK process monitor matches explicit configuration PASS
+CHECK native scalar result unchanged PASS
+CHECK native receives complete incoming CPU state PASS
+CHECK wrapper returns complete native outgoing CPU state PASS
+CHECK native dispatch observes configured admission PASS
+CHECK ordinary wrapper ticket retires PASS
+CHECK fixture sole root promotes PASS
+CHECK actual wrapper waits before native dispatch PASS
+CHECK waiting wrapper did not dispatch PASS
+CHECK replay finishes to admit waiting wrapper PASS
+CHECK fixture root finishes PASS
+CHECK waiting wrapper reaches original native after replay PASS
+CHECK native operation retains wrapper admission PASS
+CHECK waiting native dispatch executes exactly once PASS
+CHECK waiting wrapper retires after native completion PASS
+CHECK native output entered actual wrapper adoption PASS
+CHECK admission spans native output adoption PASS
+CHECK application output not published during adoption PASS
+CHECK wrapped output published after completed adoption PASS
+CHECK output publication finishes before ticket retirement PASS
+CHECK final child wrapper release returns zero PASS
+CHECK child native destruction retains child ticket PASS
+CHECK parent application release begins after child ticket finishes PASS
+CHECK parent release receives fresh ordinary root PASS
+CHECK release handoff remains balanced and unvetoed PASS
+CHECK timed native result inventory PASS
+CHECK timed native result inventory PASS
+SAMPLE trial=1 iterations=100000 ns_per_call=180.949
+CHECK timed native result inventory PASS
+SAMPLE trial=2 iterations=100000 ns_per_call=183.755
+CHECK timed native result inventory PASS
+SAMPLE trial=3 iterations=100000 ns_per_call=191.599
+CHECK timed native result inventory PASS
+SAMPLE trial=4 iterations=100000 ns_per_call=190.990
+CHECK timed native result inventory PASS
+SAMPLE trial=5 iterations=100000 ns_per_call=186.408
+CHECK timed native result inventory PASS
+SAMPLE trial=6 iterations=100000 ns_per_call=181.965
+CHECK timed native result inventory PASS
+SAMPLE trial=7 iterations=100000 ns_per_call=185.296
+RESULT PASS mode=enabled checks=33 failures=0

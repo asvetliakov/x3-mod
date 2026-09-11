@@ -84,6 +84,20 @@ class PortableIntegrationExpectationsTests(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 VERIFY.verify_geometry(trace(metrics()), True, True, portable_capture=True)
 
+    def test_empty_enabled_owner_requires_exact_fixed_metadata(self):
+        record=dict(metrics()[0], payload_bytes='0', peak_payload_bytes='0', sidecars='0',
+                    metadata_bytes='8192', global_payload_bytes='0', global_sidecars='0',
+                    uploads='0', publications='0', scans='0', classified_bytes='0')
+        with patch.object(VERIFY, 'summarize', return_value={'frames': {}}):
+            VERIFY.verify_geometry(trace([record], count=0), True, True)
+            for value in ('0', '8191', '8193', '16384'):
+                with self.subTest(metadata=value), self.assertRaises(AssertionError):
+                    VERIFY.verify_geometry(trace([dict(record, metadata_bytes=value)], count=0), True, True)
+            fallback=dict(record, result='80070057', requested='0', active='0', metadata_bytes='0')
+            VERIFY.verify_geometry(trace([fallback], count=0), True, True, native_fallback=True)
+            with self.assertRaises(AssertionError):
+                VERIFY.verify_geometry(trace([dict(fallback, metadata_bytes='8192')], count=0), True, True, native_fallback=True)
+
     def test_old_native_contract_refusal_cannot_replace_portable_acceptance(self):
         data = trace(metrics()) + '\nfinite_upload_reason reason=9 count=1'
         with self.assertRaises(AssertionError):

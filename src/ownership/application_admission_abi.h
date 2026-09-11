@@ -61,6 +61,13 @@ private:
 void admission_veto(AdmissionMonitor* monitor,AdmissionVeto reason);
 AdmissionSnapshot admission_snapshot(const AdmissionMonitor* monitor);
 
+// Shared by loader, capture, ownership and loading hooks. Reads X3M_ADMISSION=1
+// once before their first admitted operation; disabled returns null. Cold config
+// preserves ordinary-return CPU state; the hot path only reads published state.
+// Do not call from DllMain. Obtaining this pointer does not establish admission
+// or certify startup/callback/window coverage for live replay.
+AdmissionMonitor* process_admission_monitor() noexcept;
+
 static_assert(std::is_trivially_destructible_v<std::thread::id>);
 
 // On ordinary return, every enabled constructor, finish/destructor, veto and snapshot independently

@@ -11,6 +11,69 @@ from summarize_capture import fields, summarize
 from run_ownership_integration import MODES, selected_fixtures, sources, binaries
 from verify_capture_state import verify as verify_capture
 
+
+def verify_admission(trace, requested, final_count, device_count=0):
+    """Serial fixture witness: distinguish nested factory and completed roots."""
+    def records(prefix, names):
+        result=[]
+        for line in trace.splitlines():
+            if not line.startswith(prefix+' '):
+                continue
+            values={}
+            for token in line.split()[1:]:
+                assert token.count('=')==1, 'Malformed admission field'
+                key,value=token.split('=')
+                assert key not in values and key in names, 'Duplicate or unknown admission field'
+                if key=='phase':
+                    assert value in ('device','factory'), 'Unknown admission teardown phase'
+                    values[key]=value
+                else:
+                    assert re.fullmatch(r'[0-9]+',value), 'Invalid admission counter'
+                    values[key]=int(value)
+                    assert values[key]<=0xffffffffffffffff, 'Admission counter overflow'
+            assert set(values)==set(names), 'Missing admission field'
+            result.append(values)
+        return result
+    modes=records('application_admission_mode', ('requested','enabled','live_replay','coverage_complete'))
+    assert modes==[dict(requested=int(requested),enabled=int(requested),live_replay=0,coverage_complete=0)], 'Admission startup mode mismatch'
+    finals=records('application_admission_final', ('phase','active_roots','waiting_roots','admitted_roots','promotions','vetoes','first_veto','enabled'))
+    assert Counter(row['phase'] for row in finals)==Counter({phase:count for phase,count in (('factory',final_count),('device',device_count)) if count}), 'Admission final teardown inventory mismatch'
+    previous=0
+    nested_factories=0
+    previous_vetoes=0
+    first_veto=0
+    for index,row in enumerate(finals):
+        assert row['enabled']==int(requested), 'Admission final mode mismatch'
+        assert row['waiting_roots']==row['promotions']==0, 'Admission waiters or replay promotion leaked'
+        assert row['vetoes']<=0xffffffff and row['first_veto']<=0xffffffff, 'Admission veto overflow'
+        assert row['vetoes']|previous_vetoes==row['vetoes'], 'Permanent admission veto was cleared'
+        if first_veto:
+            assert row['first_veto']==first_veto, 'First admission veto changed'
+        if row['vetoes']:
+            reason=row['first_veto']
+            assert reason and reason&(reason-1)==0 and reason&row['vetoes']==reason, 'First veto must identify a retained single reason'
+            first_veto=reason
+        else:
+            assert row['first_veto']==0, 'First veto exists without a veto'
+        previous_vetoes=row['vetoes']
+        if row['active_roots']:
+            # Last child -> captured device -> factory can expose the still-live
+            # outer device entry. Only its immediately following finished device
+            # witness proves that serial teardown actually leaves the monitor.
+            assert requested and row['phase']=='factory' and row['active_roots']==1, 'Unexpected active teardown root'
+            assert index+1<len(finals) and finals[index+1]['phase']=='device' and finals[index+1]['active_roots']==0, 'Nested factory lacks finished outer device witness'
+            nested_factories+=1
+        if requested:
+            assert row['admitted_roots']>0 and row['admitted_roots']>=previous, 'Enabled admission root counter missing or regressed'
+            previous=row['admitted_roots']
+        else:
+            assert row['admitted_roots']==row['vetoes']==row['first_veto']==0, 'Disabled admission performed bookkeeping'
+    assert finals and finals[-1]['active_roots']==finals[-1]['waiting_roots']==0, 'Final serial teardown is not quiescent'
+    return dict(enabled=bool(requested), final_factories=final_count, final_devices=device_count,
+                nested_factory_witnesses=nested_factories, admitted_roots=previous,
+                promotions=0, final_vetoes=finals[-1]['vetoes'])
+
+
 def verify_portable_capture_metrics(metrics):
     """Authored capture fixture: each device writes VB60, IB6, then VB60 bytes.
 
@@ -66,10 +129,14 @@ def verify_geometry(trace, requested, enabled, native_fallback=False, portable_c
             portable = verify_portable_capture_metrics(metrics)
             assert not any(r['reason'] == '9' and int(r['count']) for r in reasons), 'Readable managed fixture allocations were refused'
         else:
-            # UP-only/no-buffer cases and native fallback cannot own an atlas.
+            # UP-only/no-buffer cases cannot own an atlas. Enabled owners still
+            # allocate their fixed 2048-pointer identity index (8192 bytes x86);
+            # native fallback has no owner and must report zero metadata too.
             assert all(int(m[k]) == 0 for m in metrics for k in
-                       ('payload_bytes', 'peak_payload_bytes', 'sidecars', 'metadata_bytes',
+                       ('payload_bytes', 'peak_payload_bytes', 'sidecars',
                         'global_payload_bytes', 'global_sidecars', 'publications', 'scans', 'classified_bytes', 'position_components'))
+            expected_metadata=8192 if enabled and not native_fallback else 0
+            assert all(int(m['metadata_bytes'])==expected_metadata for m in metrics), 'Unexpected empty-owner fixed metadata allocation'
     else:
         assert not mode and not metrics and not reasons, 'Inherited finite opt-in leaked into baseline'
     capture = summarize(trace, {})
@@ -117,7 +184,8 @@ def verify():
     assert build['binaries_at_start']==build['binaries_at_end'],'Binary provenance mismatch'
     assert build['sources']==sources() and build['binaries_at_end']==binaries(), 'Current source/binary mismatch'
     assert build['source_tree_unchanged_during_run'] and build['binaries_unchanged_during_run']
-    assert len(build['cases'])==20 and all(c['exit']==0 for c in build['cases'].values()),'Incomplete integration run'
+    expected_cases={f'ownership-integration-{mode}-{name}' for mode in MODES for name, _, _ in selected_fixtures(mode)}
+    assert len(expected_cases)==26 and set(build['cases'])==expected_cases and all(c['exit']==0 for c in build['cases'].values()),'Incomplete integration run'
     report={'result':'PASS','dll_sha256':build['dll_sha256'],'cases':{}}
     for mode in MODES:
         for name, executable, _ in selected_fixtures(mode):
@@ -137,14 +205,14 @@ def verify():
             assert {h['device'] for h in hooks}=={h['device'] for h in destroyed}
             assert len({h['device'] for h in hooks})==expected
             wrapped=[line for line in trace.splitlines() if line.startswith('ownership_factory mode=wrapped ')]
-            if mode in ('on','copy_depth','scene_depth','finite_on','motion_requested'):assert len(wrapped)==(16 if name=='lifetime' else 1),(mode,name,wrapped)
+            if mode in ('on','copy_depth','scene_depth','finite_on','motion_requested','admission_on'):assert len(wrapped)==(16 if name=='lifetime' else 1),(mode,name,wrapped)
             else:assert not wrapped,(mode,name)
             assert 'mode=native_fallback' not in trace,(mode,name)
             if mode=='depth_only':assert 'requested=0 depth_copy_requested=1 depth_copy_enabled=0' in trace
             depth=[fields(line) for line in trace.splitlines() if line.startswith('ownership_copy_depth ')]
-            if mode in ('on','copy_depth','scene_depth','finite_on','motion_requested'):
+            if mode in ('on','copy_depth','scene_depth','finite_on','motion_requested','admission_on'):
                 assert len([d for d in depth if d['phase']=='create_after'])==expected
-                if mode in ('on','finite_on'):assert all(d['requested']=='0' and d['available']=='0' for d in depth)
+                if mode in ('on','finite_on','admission_on'):assert all(d['requested']=='0' and d['available']=='0' for d in depth)
                 else:
                     assert all(d['requested']=='1' and d['available']=='1' and d['source_bound']=='1' for d in depth)
                     assert all(d['copy_valid']=='0' and d['copy_epoch']=='0' and d['source_format']=='77' for d in depth),'No automatic copy should occur'
@@ -173,10 +241,13 @@ def verify():
                     assert all(b['requested'] == b['known'] == '1' and b['revision'] == '1' and b['pending'] == '0' for b in buffers), 'Finite option must independently enable write revisions'
                 else:
                     assert all(b['requested']=='0' and b['known']=='0' for b in buffers), 'Disabled tracking must not claim stable content'
-                expected_result='00000000' if mode in ('on','finite_on') else '80070057'
+                expected_result='00000000' if mode in ('on','finite_on','admission_on') else '80070057'
                 assert all(b['result']==expected_result for b in buffers), 'Native and wrapper metadata query paths differ'
             if name=='lifetime':assert 'INTEGRATION LIFETIME RESULT failures=0' in text
             if name=='contracts':assert 'OWNERSHIP RESULT checks=' in text and 'failures=0' in text
+            admission = verify_admission(trace, mode in ('admission_on','admission_native'), 16 if name=='lifetime' else 1, expected)
+            if mode=='admission_native':
+                assert admission['final_vetoes'] & 2, 'Native factory escape must veto its unobserved route'
             geometry = verify_geometry(trace, mode in ('finite_on','finite_without_ownership','motion_requested'), mode in ('finite_on','motion_requested'),
                                        portable_capture=mode == 'finite_on' and name == 'capture')
             motion_mode = verify_motion_mode(trace, mode == 'motion_requested')
@@ -186,13 +257,19 @@ def verify():
                 assert geometry['portable_uploads'] and geometry['known_index_draws'] == 8, 'Portable allocation/index proof missing'
             reused=expected-len({h['ptr'] for h in hooks})
             if name=='lifetime':assert reused>0,'Address reuse not exercised; increase fixture rounds'
-            report['cases'][f'{mode}-{name}']={'devices':expected,'destroyed':len(destroyed),'reused_device_addresses':reused, **geometry, **motion_mode}
+            report['cases'][f'{mode}-{name}']={'devices':expected,'destroyed':len(destroyed),'reused_device_addresses':reused, **geometry, **motion_mode, 'admission': admission}
     for name in ('capture','lifetime','contracts','auto'):
         a=(results/f'ownership-integration-off-{name}.txt').read_text()
         b=(results/f'ownership-integration-on-{name}.txt').read_text()
         # Numeric native Release results are diagnostics, not wrapper semantics.
         normalize=lambda value:[line for line in value.splitlines() if not line.startswith('OBSERVE device_release_with_child=')]
         assert normalize(a)==normalize(b),(name,'API report differs')
+    def admission_api_report(path):
+        # Each smoke process reports its distinct isolated DLL directory.
+        return [line for line in path.read_text().splitlines() if not line.startswith('D3D9 loaded: ')]
+    for name in ('smoke','capture','lifetime','contracts','auto'):
+        assert admission_api_report(results/f'ownership-integration-admission_on-{name}.txt')==admission_api_report(results/f'ownership-integration-on-{name}.txt'), 'Admission observation changes original fixture API results'
+    assert admission_api_report(results/'ownership-integration-admission_native-smoke.txt')==admission_api_report(results/'ownership-integration-off-smoke.txt'), 'Native-route admission observation changes original smoke API results'
     assert (results/'ownership-integration-off-auto.txt').read_text()==(results/'ownership-integration-copy_depth-auto.txt').read_text(),'Auto-depth loader smoke changes app-visible outcomes'
     assert (results/'ownership-integration-off-auto.txt').read_text()==(results/'ownership-integration-scene_depth-auto.txt').read_text(),'Scene observer changes app-visible outcomes'
     for finite_mode, baseline_mode, name in (('finite_on','on','capture'), ('finite_without_ownership','off','capture'), ('motion_without_prereqs','off','capture'), ('motion_requested','off','auto')):

@@ -1,0 +1,2604 @@
+{
+  "passed": true,
+  "phase": "complete",
+  "game_launched": false,
+  "started_utc": "2026-09-11T02:07:00.848699+00:00",
+  "cases": {
+    "native": {
+      "frequency": 10000000,
+      "checks": 640115,
+      "samples": [
+        {
+          "route": "get_render_state",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 7502,
+          "total_us": 750.2,
+          "ns_per_call": 37.51
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 7519,
+          "total_us": 751.9,
+          "ns_per_call": 37.595
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 8138,
+          "total_us": 813.8,
+          "ns_per_call": 40.69
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 8317,
+          "total_us": 831.7,
+          "ns_per_call": 41.585
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 8592,
+          "total_us": 859.2,
+          "ns_per_call": 42.96
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 8345,
+          "total_us": 834.5,
+          "ns_per_call": 41.725
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 7595,
+          "total_us": 759.5,
+          "ns_per_call": 37.975
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 8312,
+          "total_us": 831.2,
+          "ns_per_call": 41.56
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 8327,
+          "total_us": 832.7,
+          "ns_per_call": 41.635
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 8325,
+          "total_us": 832.5,
+          "ns_per_call": 41.625
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 8496,
+          "total_us": 849.6,
+          "ns_per_call": 42.48
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 8693,
+          "total_us": 869.3,
+          "ns_per_call": 43.465
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 8688,
+          "total_us": 868.8,
+          "ns_per_call": 43.44
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 8349,
+          "total_us": 834.9,
+          "ns_per_call": 41.745
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 6457,
+          "total_us": 645.7,
+          "ns_per_call": 32.285
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 6454,
+          "total_us": 645.4,
+          "ns_per_call": 32.27
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 6418,
+          "total_us": 641.8,
+          "ns_per_call": 32.09
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 6547,
+          "total_us": 654.7,
+          "ns_per_call": 32.735
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 7182,
+          "total_us": 718.2,
+          "ns_per_call": 35.91
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 6807,
+          "total_us": 680.7,
+          "ns_per_call": 34.035
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 6808,
+          "total_us": 680.8,
+          "ns_per_call": 34.04
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 74833,
+          "total_us": 7483.3,
+          "ns_per_call": 374.165
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 66521,
+          "total_us": 6652.1,
+          "ns_per_call": 332.605
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 61610,
+          "total_us": 6161.0,
+          "ns_per_call": 308.05
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 63895,
+          "total_us": 6389.5,
+          "ns_per_call": 319.475
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 63677,
+          "total_us": 6367.7,
+          "ns_per_call": 318.385
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 61039,
+          "total_us": 6103.9,
+          "ns_per_call": 305.195
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 62129,
+          "total_us": 6212.9,
+          "ns_per_call": 310.645
+        }
+      ],
+      "ns_per_call": {
+        "get_render_state": {
+          "median": 40.69,
+          "minimum": 37.51,
+          "maximum": 42.96
+        },
+        "set_render_state": {
+          "median": 41.745,
+          "minimum": 41.56,
+          "maximum": 43.465
+        },
+        "invalid_set_rt": {
+          "median": 32.735,
+          "minimum": 32.09,
+          "maximum": 35.91
+        },
+        "invalid_clear": {
+          "median": 318.385,
+          "minimum": 305.195,
+          "maximum": 374.165
+        }
+      },
+      "loaded_module": "C:\\windows\\system32\\d3d9.dll",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--dll",
+        "d3d9=b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/hook-admission-frozen-20260911-060702-692375/native",
+        "/Users/asvetl/x3-mod/verification/probe/build/hook-admission-frozen-20260911-060702-692375/native/hook_admission_benchmark.exe",
+        "native"
+      ],
+      "ownership": 0,
+      "admission": 0,
+      "exit_code": 0,
+      "dll_sha256": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+      "report_sha256": "9f86c2be285f7701b8aca125142312a2a0225682c8365b4cc8439f361d41e621",
+      "wine_log_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "trace_sha256": null
+    },
+    "previous_proxy": {
+      "frequency": 10000000,
+      "checks": 640115,
+      "samples": [
+        {
+          "route": "get_render_state",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 10438,
+          "total_us": 1043.8,
+          "ns_per_call": 52.19
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 8055,
+          "total_us": 805.5,
+          "ns_per_call": 40.275
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 8082,
+          "total_us": 808.2,
+          "ns_per_call": 40.41
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 8100,
+          "total_us": 810.0,
+          "ns_per_call": 40.5
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 8166,
+          "total_us": 816.6,
+          "ns_per_call": 40.83
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 8104,
+          "total_us": 810.4,
+          "ns_per_call": 40.52
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 8115,
+          "total_us": 811.5,
+          "ns_per_call": 40.575
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 10578,
+          "total_us": 1057.8,
+          "ns_per_call": 52.89
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 10218,
+          "total_us": 1021.8,
+          "ns_per_call": 51.09
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 10757,
+          "total_us": 1075.7,
+          "ns_per_call": 53.785
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 10102,
+          "total_us": 1010.2,
+          "ns_per_call": 50.51
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 10038,
+          "total_us": 1003.8,
+          "ns_per_call": 50.19
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 9570,
+          "total_us": 957.0,
+          "ns_per_call": 47.85
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 11635,
+          "total_us": 1163.5,
+          "ns_per_call": 58.175
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 27518,
+          "total_us": 2751.8,
+          "ns_per_call": 137.59
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 30534,
+          "total_us": 3053.4,
+          "ns_per_call": 152.67
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 30062,
+          "total_us": 3006.2,
+          "ns_per_call": 150.31
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 29867,
+          "total_us": 2986.7,
+          "ns_per_call": 149.335
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 27745,
+          "total_us": 2774.5,
+          "ns_per_call": 138.725
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 26842,
+          "total_us": 2684.2,
+          "ns_per_call": 134.21
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 27602,
+          "total_us": 2760.2,
+          "ns_per_call": 138.01
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 100055,
+          "total_us": 10005.5,
+          "ns_per_call": 500.275
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 97387,
+          "total_us": 9738.7,
+          "ns_per_call": 486.935
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 105909,
+          "total_us": 10590.9,
+          "ns_per_call": 529.545
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 96278,
+          "total_us": 9627.8,
+          "ns_per_call": 481.39
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 95243,
+          "total_us": 9524.3,
+          "ns_per_call": 476.215
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 95349,
+          "total_us": 9534.9,
+          "ns_per_call": 476.745
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 94952,
+          "total_us": 9495.2,
+          "ns_per_call": 474.76
+        }
+      ],
+      "ns_per_call": {
+        "get_render_state": {
+          "median": 40.52,
+          "minimum": 40.275,
+          "maximum": 52.19
+        },
+        "set_render_state": {
+          "median": 51.09,
+          "minimum": 47.85,
+          "maximum": 58.175
+        },
+        "invalid_set_rt": {
+          "median": 138.725,
+          "minimum": 134.21,
+          "maximum": 152.67
+        },
+        "invalid_clear": {
+          "median": 481.39,
+          "minimum": 474.76,
+          "maximum": 529.545
+        }
+      },
+      "loaded_module": "Y:\\x3-mod\\verification\\probe\\build\\hook-admission-frozen-20260911-060702-692375\\previous_proxy\\d3d9.dll",
+      "wrapped_factory_count": 0,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--dll",
+        "d3d9=n,b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/hook-admission-frozen-20260911-060702-692375/previous_proxy",
+        "/Users/asvetl/x3-mod/verification/probe/build/hook-admission-frozen-20260911-060702-692375/previous_proxy/hook_admission_benchmark.exe",
+        "proxy"
+      ],
+      "ownership": 0,
+      "admission": 0,
+      "exit_code": 0,
+      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "report_sha256": "f94eebd3b29c512812580065dfa9a61c0416bb737df4855a41906a7de12d3c92",
+      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "trace_sha256": "789481ca9e0fbbdcef68bd2a4cf48c5c78e8e7be0f55b9ff42d365de3e5b4f4c"
+    },
+    "previous_ownership": {
+      "frequency": 10000000,
+      "checks": 640115,
+      "samples": [
+        {
+          "route": "get_render_state",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 15915,
+          "total_us": 1591.5,
+          "ns_per_call": 79.575
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 15257,
+          "total_us": 1525.7,
+          "ns_per_call": 76.285
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 15303,
+          "total_us": 1530.3,
+          "ns_per_call": 76.515
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 15392,
+          "total_us": 1539.2,
+          "ns_per_call": 76.96
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 16198,
+          "total_us": 1619.8,
+          "ns_per_call": 80.99
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 15152,
+          "total_us": 1515.2,
+          "ns_per_call": 75.76
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 15169,
+          "total_us": 1516.9,
+          "ns_per_call": 75.845
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 16491,
+          "total_us": 1649.1,
+          "ns_per_call": 82.455
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 17257,
+          "total_us": 1725.7,
+          "ns_per_call": 86.285
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 16627,
+          "total_us": 1662.7,
+          "ns_per_call": 83.135
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 16720,
+          "total_us": 1672.0,
+          "ns_per_call": 83.6
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 16836,
+          "total_us": 1683.6,
+          "ns_per_call": 84.18
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 18710,
+          "total_us": 1871.0,
+          "ns_per_call": 93.55
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 16827,
+          "total_us": 1682.7,
+          "ns_per_call": 84.135
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 37513,
+          "total_us": 3751.3,
+          "ns_per_call": 187.565
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 36915,
+          "total_us": 3691.5,
+          "ns_per_call": 184.575
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 37749,
+          "total_us": 3774.9,
+          "ns_per_call": 188.745
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 37051,
+          "total_us": 3705.1,
+          "ns_per_call": 185.255
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 37343,
+          "total_us": 3734.3,
+          "ns_per_call": 186.715
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 37050,
+          "total_us": 3705.0,
+          "ns_per_call": 185.25
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 37882,
+          "total_us": 3788.2,
+          "ns_per_call": 189.41
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 104972,
+          "total_us": 10497.2,
+          "ns_per_call": 524.86
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 102067,
+          "total_us": 10206.7,
+          "ns_per_call": 510.335
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 102586,
+          "total_us": 10258.6,
+          "ns_per_call": 512.93
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 100779,
+          "total_us": 10077.9,
+          "ns_per_call": 503.895
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 102473,
+          "total_us": 10247.3,
+          "ns_per_call": 512.365
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 103201,
+          "total_us": 10320.1,
+          "ns_per_call": 516.005
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 100269,
+          "total_us": 10026.9,
+          "ns_per_call": 501.345
+        }
+      ],
+      "ns_per_call": {
+        "get_render_state": {
+          "median": 76.515,
+          "minimum": 75.76,
+          "maximum": 80.99
+        },
+        "set_render_state": {
+          "median": 84.135,
+          "minimum": 82.455,
+          "maximum": 93.55
+        },
+        "invalid_set_rt": {
+          "median": 186.715,
+          "minimum": 184.575,
+          "maximum": 189.41
+        },
+        "invalid_clear": {
+          "median": 512.365,
+          "minimum": 501.345,
+          "maximum": 524.86
+        }
+      },
+      "loaded_module": "Y:\\x3-mod\\verification\\probe\\build\\hook-admission-frozen-20260911-060702-692375\\previous_ownership\\d3d9.dll",
+      "wrapped_factory_count": 1,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--dll",
+        "d3d9=n,b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/hook-admission-frozen-20260911-060702-692375/previous_ownership",
+        "/Users/asvetl/x3-mod/verification/probe/build/hook-admission-frozen-20260911-060702-692375/previous_ownership/hook_admission_benchmark.exe",
+        "proxy"
+      ],
+      "ownership": 1,
+      "admission": 0,
+      "exit_code": 0,
+      "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "report_sha256": "b6e12cce9695c0c1568e3b47dd698621350731c8658371e7643bd92aefa1cb4e",
+      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "trace_sha256": "162a44f37440f0c13f77a412622e2ff761a150849153561181a37add600b4a2b"
+    },
+    "proxy_off": {
+      "frequency": 10000000,
+      "checks": 640115,
+      "samples": [
+        {
+          "route": "get_render_state",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 7649,
+          "total_us": 764.9,
+          "ns_per_call": 38.245
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 7670,
+          "total_us": 767.0,
+          "ns_per_call": 38.35
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 7448,
+          "total_us": 744.8,
+          "ns_per_call": 37.24
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 7491,
+          "total_us": 749.1,
+          "ns_per_call": 37.455
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 7630,
+          "total_us": 763.0,
+          "ns_per_call": 38.15
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 7811,
+          "total_us": 781.1,
+          "ns_per_call": 39.055
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 8168,
+          "total_us": 816.8,
+          "ns_per_call": 40.84
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 8516,
+          "total_us": 851.6,
+          "ns_per_call": 42.58
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 8515,
+          "total_us": 851.5,
+          "ns_per_call": 42.575
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 8422,
+          "total_us": 842.2,
+          "ns_per_call": 42.11
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 8453,
+          "total_us": 845.3,
+          "ns_per_call": 42.265
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 8376,
+          "total_us": 837.6,
+          "ns_per_call": 41.88
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 8669,
+          "total_us": 866.9,
+          "ns_per_call": 43.345
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 8682,
+          "total_us": 868.2,
+          "ns_per_call": 43.41
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 33375,
+          "total_us": 3337.5,
+          "ns_per_call": 166.875
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 34145,
+          "total_us": 3414.5,
+          "ns_per_call": 170.725
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 33503,
+          "total_us": 3350.3,
+          "ns_per_call": 167.515
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 33710,
+          "total_us": 3371.0,
+          "ns_per_call": 168.55
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 33877,
+          "total_us": 3387.7,
+          "ns_per_call": 169.385
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 33999,
+          "total_us": 3399.9,
+          "ns_per_call": 169.995
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 34008,
+          "total_us": 3400.8,
+          "ns_per_call": 170.04
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 100122,
+          "total_us": 10012.2,
+          "ns_per_call": 500.61
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 95095,
+          "total_us": 9509.5,
+          "ns_per_call": 475.475
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 95142,
+          "total_us": 9514.2,
+          "ns_per_call": 475.71
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 95597,
+          "total_us": 9559.7,
+          "ns_per_call": 477.985
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 94859,
+          "total_us": 9485.9,
+          "ns_per_call": 474.295
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 96334,
+          "total_us": 9633.4,
+          "ns_per_call": 481.67
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 94725,
+          "total_us": 9472.5,
+          "ns_per_call": 473.625
+        }
+      ],
+      "ns_per_call": {
+        "get_render_state": {
+          "median": 38.245,
+          "minimum": 37.24,
+          "maximum": 40.84
+        },
+        "set_render_state": {
+          "median": 42.575,
+          "minimum": 41.88,
+          "maximum": 43.41
+        },
+        "invalid_set_rt": {
+          "median": 169.385,
+          "minimum": 166.875,
+          "maximum": 170.725
+        },
+        "invalid_clear": {
+          "median": 475.71,
+          "minimum": 473.625,
+          "maximum": 500.61
+        }
+      },
+      "loaded_module": "Y:\\x3-mod\\verification\\probe\\build\\hook-admission-frozen-20260911-060702-692375\\proxy_off\\d3d9.dll",
+      "wrapped_factory_count": 0,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--dll",
+        "d3d9=n,b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/hook-admission-frozen-20260911-060702-692375/proxy_off",
+        "/Users/asvetl/x3-mod/verification/probe/build/hook-admission-frozen-20260911-060702-692375/proxy_off/hook_admission_benchmark.exe",
+        "proxy"
+      ],
+      "ownership": 0,
+      "admission": 0,
+      "exit_code": 0,
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "f0fd65864bd49aa32c8672af2e1bba44c89914eb28534b54a6e8e0864e3f614a",
+      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "trace_sha256": "904cd6bba38b6ad4a8e1cb1ad11d41663a609f3ad736bfe2b3dc10c093d1e914"
+    },
+    "proxy_on": {
+      "frequency": 10000000,
+      "checks": 640115,
+      "samples": [
+        {
+          "route": "get_render_state",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 7823,
+          "total_us": 782.3,
+          "ns_per_call": 39.115
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 7809,
+          "total_us": 780.9,
+          "ns_per_call": 39.045
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 7751,
+          "total_us": 775.1,
+          "ns_per_call": 38.755
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 7793,
+          "total_us": 779.3,
+          "ns_per_call": 38.965
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 7724,
+          "total_us": 772.4,
+          "ns_per_call": 38.62
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 7690,
+          "total_us": 769.0,
+          "ns_per_call": 38.45
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 7494,
+          "total_us": 749.4,
+          "ns_per_call": 37.47
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 8645,
+          "total_us": 864.5,
+          "ns_per_call": 43.225
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 8464,
+          "total_us": 846.4,
+          "ns_per_call": 42.32
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 8581,
+          "total_us": 858.1,
+          "ns_per_call": 42.905
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 8563,
+          "total_us": 856.3,
+          "ns_per_call": 42.815
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 8545,
+          "total_us": 854.5,
+          "ns_per_call": 42.725
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 8400,
+          "total_us": 840.0,
+          "ns_per_call": 42.0
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 8445,
+          "total_us": 844.5,
+          "ns_per_call": 42.225
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 62192,
+          "total_us": 6219.2,
+          "ns_per_call": 310.96
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 62184,
+          "total_us": 6218.4,
+          "ns_per_call": 310.92
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 62410,
+          "total_us": 6241.0,
+          "ns_per_call": 312.05
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 62370,
+          "total_us": 6237.0,
+          "ns_per_call": 311.85
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 62399,
+          "total_us": 6239.9,
+          "ns_per_call": 311.995
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 62857,
+          "total_us": 6285.7,
+          "ns_per_call": 314.285
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 65490,
+          "total_us": 6549.0,
+          "ns_per_call": 327.45
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 130508,
+          "total_us": 13050.8,
+          "ns_per_call": 652.54
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 126623,
+          "total_us": 12662.3,
+          "ns_per_call": 633.115
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 125754,
+          "total_us": 12575.4,
+          "ns_per_call": 628.77
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 124225,
+          "total_us": 12422.5,
+          "ns_per_call": 621.125
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 126240,
+          "total_us": 12624.0,
+          "ns_per_call": 631.2
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 125385,
+          "total_us": 12538.5,
+          "ns_per_call": 626.925
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 125940,
+          "total_us": 12594.0,
+          "ns_per_call": 629.7
+        }
+      ],
+      "ns_per_call": {
+        "get_render_state": {
+          "median": 38.755,
+          "minimum": 37.47,
+          "maximum": 39.115
+        },
+        "set_render_state": {
+          "median": 42.725,
+          "minimum": 42.0,
+          "maximum": 43.225
+        },
+        "invalid_set_rt": {
+          "median": 311.995,
+          "minimum": 310.92,
+          "maximum": 327.45
+        },
+        "invalid_clear": {
+          "median": 629.7,
+          "minimum": 621.125,
+          "maximum": 652.54
+        }
+      },
+      "loaded_module": "Y:\\x3-mod\\verification\\probe\\build\\hook-admission-frozen-20260911-060702-692375\\proxy_on\\d3d9.dll",
+      "wrapped_factory_count": 0,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--dll",
+        "d3d9=n,b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/hook-admission-frozen-20260911-060702-692375/proxy_on",
+        "/Users/asvetl/x3-mod/verification/probe/build/hook-admission-frozen-20260911-060702-692375/proxy_on/hook_admission_benchmark.exe",
+        "proxy"
+      ],
+      "ownership": 0,
+      "admission": 1,
+      "exit_code": 0,
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "2c1a69057f8257a84ed8bab498a670935abfe5f26a92518a30aba76d135639b1",
+      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "trace_sha256": "7c4e08b801088298899eb78091464e256579fc20a4184d31c6a53e5e7bdaeee9"
+    },
+    "ownership_off": {
+      "frequency": 10000000,
+      "checks": 640115,
+      "samples": [
+        {
+          "route": "get_render_state",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 21455,
+          "total_us": 2145.5,
+          "ns_per_call": 107.275
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 18227,
+          "total_us": 1822.7,
+          "ns_per_call": 91.135
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 15262,
+          "total_us": 1526.2,
+          "ns_per_call": 76.31
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 15792,
+          "total_us": 1579.2,
+          "ns_per_call": 78.96
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 16380,
+          "total_us": 1638.0,
+          "ns_per_call": 81.9
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 18268,
+          "total_us": 1826.8,
+          "ns_per_call": 91.34
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 15819,
+          "total_us": 1581.9,
+          "ns_per_call": 79.095
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 16425,
+          "total_us": 1642.5,
+          "ns_per_call": 82.125
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 16359,
+          "total_us": 1635.9,
+          "ns_per_call": 81.795
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 16405,
+          "total_us": 1640.5,
+          "ns_per_call": 82.025
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 16437,
+          "total_us": 1643.7,
+          "ns_per_call": 82.185
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 18224,
+          "total_us": 1822.4,
+          "ns_per_call": 91.12
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 17968,
+          "total_us": 1796.8,
+          "ns_per_call": 89.84
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 16396,
+          "total_us": 1639.6,
+          "ns_per_call": 81.98
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 46889,
+          "total_us": 4688.9,
+          "ns_per_call": 234.445
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 46199,
+          "total_us": 4619.9,
+          "ns_per_call": 230.995
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 46050,
+          "total_us": 4605.0,
+          "ns_per_call": 230.25
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 46359,
+          "total_us": 4635.9,
+          "ns_per_call": 231.795
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 45816,
+          "total_us": 4581.6,
+          "ns_per_call": 229.08
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 46248,
+          "total_us": 4624.8,
+          "ns_per_call": 231.24
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 48732,
+          "total_us": 4873.2,
+          "ns_per_call": 243.66
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 106026,
+          "total_us": 10602.6,
+          "ns_per_call": 530.13
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 103349,
+          "total_us": 10334.9,
+          "ns_per_call": 516.745
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 103191,
+          "total_us": 10319.1,
+          "ns_per_call": 515.955
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 103119,
+          "total_us": 10311.9,
+          "ns_per_call": 515.595
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 102890,
+          "total_us": 10289.0,
+          "ns_per_call": 514.45
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 103018,
+          "total_us": 10301.8,
+          "ns_per_call": 515.09
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 103261,
+          "total_us": 10326.1,
+          "ns_per_call": 516.305
+        }
+      ],
+      "ns_per_call": {
+        "get_render_state": {
+          "median": 81.9,
+          "minimum": 76.31,
+          "maximum": 107.275
+        },
+        "set_render_state": {
+          "median": 82.125,
+          "minimum": 81.795,
+          "maximum": 91.12
+        },
+        "invalid_set_rt": {
+          "median": 231.24,
+          "minimum": 229.08,
+          "maximum": 243.66
+        },
+        "invalid_clear": {
+          "median": 515.955,
+          "minimum": 514.45,
+          "maximum": 530.13
+        }
+      },
+      "loaded_module": "Y:\\x3-mod\\verification\\probe\\build\\hook-admission-frozen-20260911-060702-692375\\ownership_off\\d3d9.dll",
+      "wrapped_factory_count": 1,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--dll",
+        "d3d9=n,b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/hook-admission-frozen-20260911-060702-692375/ownership_off",
+        "/Users/asvetl/x3-mod/verification/probe/build/hook-admission-frozen-20260911-060702-692375/ownership_off/hook_admission_benchmark.exe",
+        "proxy"
+      ],
+      "ownership": 1,
+      "admission": 0,
+      "exit_code": 0,
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "d50e87a15e20af5b35af38858dd8b0e89fd0231ad81838ef25019665ab66a80d",
+      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "trace_sha256": "86832c6a9017aed979a368c1f48e38e6b238a47b04d753d997a597f1797bf787"
+    },
+    "ownership_on": {
+      "frequency": 10000000,
+      "checks": 640115,
+      "samples": [
+        {
+          "route": "get_render_state",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 43477,
+          "total_us": 4347.7,
+          "ns_per_call": 217.385
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 43466,
+          "total_us": 4346.6,
+          "ns_per_call": 217.33
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 43902,
+          "total_us": 4390.2,
+          "ns_per_call": 219.51
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 43011,
+          "total_us": 4301.1,
+          "ns_per_call": 215.055
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 43087,
+          "total_us": 4308.7,
+          "ns_per_call": 215.435
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 43221,
+          "total_us": 4322.1,
+          "ns_per_call": 216.105
+        },
+        {
+          "route": "get_render_state",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 43131,
+          "total_us": 4313.1,
+          "ns_per_call": 215.655
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 44157,
+          "total_us": 4415.7,
+          "ns_per_call": 220.785
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 43828,
+          "total_us": 4382.8,
+          "ns_per_call": 219.14
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 43777,
+          "total_us": 4377.7,
+          "ns_per_call": 218.885
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 46697,
+          "total_us": 4669.7,
+          "ns_per_call": 233.485
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 43594,
+          "total_us": 4359.4,
+          "ns_per_call": 217.97
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 43648,
+          "total_us": 4364.8,
+          "ns_per_call": 218.24
+        },
+        {
+          "route": "set_render_state",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 44166,
+          "total_us": 4416.6,
+          "ns_per_call": 220.83
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 109370,
+          "total_us": 10937.0,
+          "ns_per_call": 546.85
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 104361,
+          "total_us": 10436.1,
+          "ns_per_call": 521.805
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 106107,
+          "total_us": 10610.7,
+          "ns_per_call": 530.535
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 104482,
+          "total_us": 10448.2,
+          "ns_per_call": 522.41
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 109604,
+          "total_us": 10960.4,
+          "ns_per_call": 548.02
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 118507,
+          "total_us": 11850.7,
+          "ns_per_call": 592.535
+        },
+        {
+          "route": "invalid_set_rt",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 120135,
+          "total_us": 12013.5,
+          "ns_per_call": 600.675
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 0,
+          "calls": 20000,
+          "elapsed_ticks": 164903,
+          "total_us": 16490.3,
+          "ns_per_call": 824.515
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 1,
+          "calls": 20000,
+          "elapsed_ticks": 160547,
+          "total_us": 16054.7,
+          "ns_per_call": 802.735
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 2,
+          "calls": 20000,
+          "elapsed_ticks": 160276,
+          "total_us": 16027.6,
+          "ns_per_call": 801.38
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 3,
+          "calls": 20000,
+          "elapsed_ticks": 160936,
+          "total_us": 16093.6,
+          "ns_per_call": 804.68
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 4,
+          "calls": 20000,
+          "elapsed_ticks": 159613,
+          "total_us": 15961.3,
+          "ns_per_call": 798.065
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 5,
+          "calls": 20000,
+          "elapsed_ticks": 159365,
+          "total_us": 15936.5,
+          "ns_per_call": 796.825
+        },
+        {
+          "route": "invalid_clear",
+          "iteration": 6,
+          "calls": 20000,
+          "elapsed_ticks": 160105,
+          "total_us": 16010.5,
+          "ns_per_call": 800.525
+        }
+      ],
+      "ns_per_call": {
+        "get_render_state": {
+          "median": 216.105,
+          "minimum": 215.055,
+          "maximum": 219.51
+        },
+        "set_render_state": {
+          "median": 219.14,
+          "minimum": 217.97,
+          "maximum": 233.485
+        },
+        "invalid_set_rt": {
+          "median": 546.85,
+          "minimum": 521.805,
+          "maximum": 600.675
+        },
+        "invalid_clear": {
+          "median": 801.38,
+          "minimum": 796.825,
+          "maximum": 824.515
+        }
+      },
+      "loaded_module": "Y:\\x3-mod\\verification\\probe\\build\\hook-admission-frozen-20260911-060702-692375\\ownership_on\\d3d9.dll",
+      "wrapped_factory_count": 1,
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--dll",
+        "d3d9=n,b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/hook-admission-frozen-20260911-060702-692375/ownership_on",
+        "/Users/asvetl/x3-mod/verification/probe/build/hook-admission-frozen-20260911-060702-692375/ownership_on/hook_admission_benchmark.exe",
+        "proxy"
+      ],
+      "ownership": 1,
+      "admission": 1,
+      "exit_code": 0,
+      "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+      "report_sha256": "dc80ca9c0c21e6e5233bd064ccc0d7819070f7b4d4464e06d99997a53a34cfcd",
+      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "trace_sha256": "44cdad6087cdf3cfb63c8c796ebbd1ed1819051889c61f0e0545ead4e0372406"
+    }
+  },
+  "current_dll_provenance": {
+    "manifest_sha256": "ee41d84239db7ac57a77169bb13c57fdbfed0ec66c0a276a30eadbc9ac38e26e",
+    "dll_sha256": "5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007",
+    "sources_before_build": {
+      "CMakeLists.txt": "9665902934a960c90a2b8dd45cd050024475774dd6b1584462632c85a06f5fee",
+      "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
+      "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+      "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+      "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+      "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+      "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+      "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+      "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
+      "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+      "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+      "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+      "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+      "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+      "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+      "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+      "src/proxy/capture.cpp": "1796bca204ec3c792c8cbaa3a218835dcf4356e6c1050dd337f71f497ca48d3d",
+      "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
+      "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
+      "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
+      "src/proxy/cpu_state.h": "ca744469554858b4f90d66c2ab14560a33a75be9ddd8d6962fbe7b17f62967c7",
+      "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
+      "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
+      "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
+      "src/proxy/loader.cpp": "aa2dede12db2e7f810bac277e8b6cb02858572056b149fce47b0b689620fcca0",
+      "src/proxy/loading_trace.cpp": "3ed55868676623a91506486ce05608ae500dce7c058a839a63739cf31bf94903",
+      "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
+      "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+      "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+      "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
+      "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
+      "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+      "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+      "src/proxy/object_trace.cpp": "22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba",
+      "src/proxy/object_trace.h": "d09401eaa04830281dab30b7031fbae0c53f204ca4bfd0c9b3ea998185cdbde6",
+      "src/proxy/scene_capture.cpp": "3e91362619d0709fd5c2427bd391031ecac75f24f355d5e807f563b05bca9090",
+      "src/proxy/scene_capture.h": "919a1fd7e9ec4c779c149f3cd2b439db7081c5aade14bec13680f9600158b0a1",
+      "src/proxy/telemetry.cpp": "0cae95895de6613c4d72db7e8ff5ea89250802c78b37469005e52c5ecc7074b5",
+      "src/proxy/telemetry.h": "88dd36aa1755c2b61175aa3060e9c1843294c69e9ddceaa7d2c0a8bbbb54da37",
+      "src/renderer/material_radiance.cpp": "eb94856002a93d66b0e26aba98e4a44b683a458c384941e991d0164603cdeada",
+      "src/renderer/material_radiance.h": "a0df98c526cdd2ed5146ff460abe0c0f2a8ff46e9e95dcaed38336e372f6a3dc",
+      "src/renderer/material_radiance_profiles_inc.h": "1c0bc9af732a4d6faddfde90dd5a6d63b32cb0aa3aec85c09c4e4714307ec3b3",
+      "src/renderer/motion_history.cpp": "7cf63608c7846156aace252fa66086656fec113e5025da23991e0839ecc823df",
+      "src/renderer/motion_history.h": "a8bb9ef874282e83db1551cf741bc3648ed2e8b04ead2f7dc4c2919aa6447eda",
+      "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
+      "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
+      "src/renderer/rigid_motion.cpp": "a2ab93ead655a6cde523422b899d15a70afd493af5bb6ef84c9f69e47502b347",
+      "src/renderer/rigid_motion.h": "935fe54387bf1e62f0b04dabc291152b8508f8b6c25138a4a15e93b0f6b136ba",
+      "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+      "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+      "src/renderer/rigid_position.cpp": "2cf2595243b733190bd4e5313a37f21a9f90503c5ead9d18a42ed80318139b49",
+      "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
+      "src/renderer/rigid_position_profiles_inc.h": "e9a684f940b8ec461e736989e4e0dd75d09086b620eb00ed454193e57cf43a67",
+      "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
+      "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
+      "src/renderer/scene_boundary.h": "4c28908bd51c4e0d25269088d91d02e23994089320288ffa161b8afee7c5ace9",
+      "src/renderer/temporal_pass.cpp": "27527b580c65c6848ca03d233007aa274ad482f165e3e5ea501122a281360d5e",
+      "src/renderer/temporal_pass.h": "a6361b54689de99d6f49d8bdc42691ffb0b2c69d46a52f4bdda0ce1d5c80342f",
+      "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
+      "src/temporal/resolve.h": "e62dee55cf60b423e58481d47c0d5c65112ae6ebc53d0f516c0646436229a582",
+      "src/temporal/resolve.hlsl": "6e2d4b2701e97d4db8088479d29833a828d38ae438baaeb8e1ce65c8efbe2df5",
+      "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
+      "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
+      "tools/analysis/summarize_capture.py": "8a9d58368c883225732fe2e0ffbb27ee601a070bc09349a008cf4f22765c0cae",
+      "tools/ownership/generate_d3d9_forwarders.py": "20010dff7f01703a27a4ecb3a8c129c60b84e413e9bdd62c0483dc72aceaae38",
+      "verification/analysis/test_admission_integration_expectations.py": "37386910d2955f95231469d8a27d605e9d7611b1ebe712a47a1bce57d4a83388",
+      "verification/analysis/test_portable_integration_expectations.py": "dfbac0118098c9e04db2f693e204160df9160717c349e6508392d00a880bac8a",
+      "verification/probe/abi_check.cpp": "763971c861bae4f1ec7757eb7e2960977be8a10b15ef18868d79523a25255338",
+      "verification/probe/build.sh": "1e9fb6f6f285ccda02f6cd6486b5499b3549a9e71768b8ffbe304b7e90708175",
+      "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+      "verification/probe/build_ownership.sh": "7fef2e5c6481c83e62e375a43e2501cc08a6889cf8c30312581a38df4da04348",
+      "verification/probe/build_ownership_integration.sh": "c34acf50e55024d67a17cd5f71c00806d031a2d3ea407814010a8be49b36b553",
+      "verification/probe/capability_probe.cpp": "8ea9fd8e026a8f6a8bb86ce65521935fb924ed7704855fb7abcb40557fa32348",
+      "verification/probe/capture_state_fixture.cpp": "bcb1e74c56bc8ddbabb65df6c2f9e8c21dbd975587532906ee5f77b14b1323b0",
+      "verification/probe/d3d9_smoke.cpp": "7c89399825fd820ee70d4167e04fb1aac26ca4920c057b1cbf5a3ab2ad2a24b0",
+      "verification/probe/ownership_fixture.cpp": "a14cba769cf99fd3f8a6fbb8cd4c61418033db2470dab1e2dfbd4929b1dac5ea",
+      "verification/probe/ownership_integration_auto_depth.cpp": "c9855011f6dd6033dff68245c7076782387590ca4acece66a7a3ef87a73cd5bc",
+      "verification/probe/ownership_integration_fallback_stub.cpp": "ff3e940c928c1694c1ea6e7d3f94bf9955fadc100a04ac6d4f5aebca8933cde1",
+      "verification/probe/ownership_integration_lifetime.cpp": "101c0b6260f97df2be544b98a7d1ddfdaf59a07233d47a3b7d6eeba9bdf40347",
+      "verification/probe/run_ownership_integration.py": "84f6a51e7ec924086a9f4a2ff9c45ee72482f923db0135467d74ab0bce4bbbf4",
+      "verification/probe/run_ownership_integration_fallback.py": "b2c54c9983654e3bcdea1124b01e7f0d22b48ceb89cd4b6eb203e44d3c68a752",
+      "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
+      "verification/probe/verify_ownership_integration.py": "dd980715c1ab04e63d0a22b7a5f83e948bed75ade759e472a12a7b727e5836af"
+    },
+    "sources_after_build": {
+      "CMakeLists.txt": "9665902934a960c90a2b8dd45cd050024475774dd6b1584462632c85a06f5fee",
+      "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
+      "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+      "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+      "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+      "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+      "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+      "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+      "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
+      "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+      "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+      "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+      "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+      "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+      "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+      "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+      "src/proxy/capture.cpp": "1796bca204ec3c792c8cbaa3a218835dcf4356e6c1050dd337f71f497ca48d3d",
+      "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
+      "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
+      "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
+      "src/proxy/cpu_state.h": "ca744469554858b4f90d66c2ab14560a33a75be9ddd8d6962fbe7b17f62967c7",
+      "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
+      "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
+      "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
+      "src/proxy/loader.cpp": "aa2dede12db2e7f810bac277e8b6cb02858572056b149fce47b0b689620fcca0",
+      "src/proxy/loading_trace.cpp": "3ed55868676623a91506486ce05608ae500dce7c058a839a63739cf31bf94903",
+      "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
+      "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+      "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+      "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
+      "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
+      "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+      "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+      "src/proxy/object_trace.cpp": "22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba",
+      "src/proxy/object_trace.h": "d09401eaa04830281dab30b7031fbae0c53f204ca4bfd0c9b3ea998185cdbde6",
+      "src/proxy/scene_capture.cpp": "3e91362619d0709fd5c2427bd391031ecac75f24f355d5e807f563b05bca9090",
+      "src/proxy/scene_capture.h": "919a1fd7e9ec4c779c149f3cd2b439db7081c5aade14bec13680f9600158b0a1",
+      "src/proxy/telemetry.cpp": "0cae95895de6613c4d72db7e8ff5ea89250802c78b37469005e52c5ecc7074b5",
+      "src/proxy/telemetry.h": "88dd36aa1755c2b61175aa3060e9c1843294c69e9ddceaa7d2c0a8bbbb54da37",
+      "src/renderer/material_radiance.cpp": "eb94856002a93d66b0e26aba98e4a44b683a458c384941e991d0164603cdeada",
+      "src/renderer/material_radiance.h": "a0df98c526cdd2ed5146ff460abe0c0f2a8ff46e9e95dcaed38336e372f6a3dc",
+      "src/renderer/material_radiance_profiles_inc.h": "1c0bc9af732a4d6faddfde90dd5a6d63b32cb0aa3aec85c09c4e4714307ec3b3",
+      "src/renderer/motion_history.cpp": "7cf63608c7846156aace252fa66086656fec113e5025da23991e0839ecc823df",
+      "src/renderer/motion_history.h": "a8bb9ef874282e83db1551cf741bc3648ed2e8b04ead2f7dc4c2919aa6447eda",
+      "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
+      "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
+      "src/renderer/rigid_motion.cpp": "a2ab93ead655a6cde523422b899d15a70afd493af5bb6ef84c9f69e47502b347",
+      "src/renderer/rigid_motion.h": "935fe54387bf1e62f0b04dabc291152b8508f8b6c25138a4a15e93b0f6b136ba",
+      "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+      "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+      "src/renderer/rigid_position.cpp": "2cf2595243b733190bd4e5313a37f21a9f90503c5ead9d18a42ed80318139b49",
+      "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
+      "src/renderer/rigid_position_profiles_inc.h": "e9a684f940b8ec461e736989e4e0dd75d09086b620eb00ed454193e57cf43a67",
+      "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
+      "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
+      "src/renderer/scene_boundary.h": "4c28908bd51c4e0d25269088d91d02e23994089320288ffa161b8afee7c5ace9",
+      "src/renderer/temporal_pass.cpp": "27527b580c65c6848ca03d233007aa274ad482f165e3e5ea501122a281360d5e",
+      "src/renderer/temporal_pass.h": "a6361b54689de99d6f49d8bdc42691ffb0b2c69d46a52f4bdda0ce1d5c80342f",
+      "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
+      "src/temporal/resolve.h": "e62dee55cf60b423e58481d47c0d5c65112ae6ebc53d0f516c0646436229a582",
+      "src/temporal/resolve.hlsl": "6e2d4b2701e97d4db8088479d29833a828d38ae438baaeb8e1ce65c8efbe2df5",
+      "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
+      "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
+      "tools/analysis/summarize_capture.py": "8a9d58368c883225732fe2e0ffbb27ee601a070bc09349a008cf4f22765c0cae",
+      "tools/ownership/generate_d3d9_forwarders.py": "20010dff7f01703a27a4ecb3a8c129c60b84e413e9bdd62c0483dc72aceaae38",
+      "verification/analysis/test_admission_integration_expectations.py": "37386910d2955f95231469d8a27d605e9d7611b1ebe712a47a1bce57d4a83388",
+      "verification/analysis/test_portable_integration_expectations.py": "dfbac0118098c9e04db2f693e204160df9160717c349e6508392d00a880bac8a",
+      "verification/probe/abi_check.cpp": "763971c861bae4f1ec7757eb7e2960977be8a10b15ef18868d79523a25255338",
+      "verification/probe/build.sh": "1e9fb6f6f285ccda02f6cd6486b5499b3549a9e71768b8ffbe304b7e90708175",
+      "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+      "verification/probe/build_ownership.sh": "7fef2e5c6481c83e62e375a43e2501cc08a6889cf8c30312581a38df4da04348",
+      "verification/probe/build_ownership_integration.sh": "c34acf50e55024d67a17cd5f71c00806d031a2d3ea407814010a8be49b36b553",
+      "verification/probe/capability_probe.cpp": "8ea9fd8e026a8f6a8bb86ce65521935fb924ed7704855fb7abcb40557fa32348",
+      "verification/probe/capture_state_fixture.cpp": "bcb1e74c56bc8ddbabb65df6c2f9e8c21dbd975587532906ee5f77b14b1323b0",
+      "verification/probe/d3d9_smoke.cpp": "7c89399825fd820ee70d4167e04fb1aac26ca4920c057b1cbf5a3ab2ad2a24b0",
+      "verification/probe/ownership_fixture.cpp": "a14cba769cf99fd3f8a6fbb8cd4c61418033db2470dab1e2dfbd4929b1dac5ea",
+      "verification/probe/ownership_integration_auto_depth.cpp": "c9855011f6dd6033dff68245c7076782387590ca4acece66a7a3ef87a73cd5bc",
+      "verification/probe/ownership_integration_fallback_stub.cpp": "ff3e940c928c1694c1ea6e7d3f94bf9955fadc100a04ac6d4f5aebca8933cde1",
+      "verification/probe/ownership_integration_lifetime.cpp": "101c0b6260f97df2be544b98a7d1ddfdaf59a07233d47a3b7d6eeba9bdf40347",
+      "verification/probe/run_ownership_integration.py": "84f6a51e7ec924086a9f4a2ff9c45ee72482f923db0135467d74ab0bce4bbbf4",
+      "verification/probe/run_ownership_integration_fallback.py": "b2c54c9983654e3bcdea1124b01e7f0d22b48ceb89cd4b6eb203e44d3c68a752",
+      "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
+      "verification/probe/verify_ownership_integration.py": "dd980715c1ab04e63d0a22b7a5f83e948bed75ade759e472a12a7b727e5836af"
+    },
+    "sources_after_run": {
+      "CMakeLists.txt": "9665902934a960c90a2b8dd45cd050024475774dd6b1584462632c85a06f5fee",
+      "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
+      "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+      "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+      "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+      "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+      "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+      "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+      "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
+      "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+      "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+      "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+      "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+      "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+      "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+      "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+      "src/proxy/capture.cpp": "1796bca204ec3c792c8cbaa3a218835dcf4356e6c1050dd337f71f497ca48d3d",
+      "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
+      "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
+      "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
+      "src/proxy/cpu_state.h": "ca744469554858b4f90d66c2ab14560a33a75be9ddd8d6962fbe7b17f62967c7",
+      "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
+      "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
+      "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
+      "src/proxy/loader.cpp": "aa2dede12db2e7f810bac277e8b6cb02858572056b149fce47b0b689620fcca0",
+      "src/proxy/loading_trace.cpp": "3ed55868676623a91506486ce05608ae500dce7c058a839a63739cf31bf94903",
+      "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
+      "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+      "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+      "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
+      "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
+      "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+      "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+      "src/proxy/object_trace.cpp": "22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba",
+      "src/proxy/object_trace.h": "d09401eaa04830281dab30b7031fbae0c53f204ca4bfd0c9b3ea998185cdbde6",
+      "src/proxy/scene_capture.cpp": "3e91362619d0709fd5c2427bd391031ecac75f24f355d5e807f563b05bca9090",
+      "src/proxy/scene_capture.h": "919a1fd7e9ec4c779c149f3cd2b439db7081c5aade14bec13680f9600158b0a1",
+      "src/proxy/telemetry.cpp": "0cae95895de6613c4d72db7e8ff5ea89250802c78b37469005e52c5ecc7074b5",
+      "src/proxy/telemetry.h": "88dd36aa1755c2b61175aa3060e9c1843294c69e9ddceaa7d2c0a8bbbb54da37",
+      "src/renderer/material_radiance.cpp": "eb94856002a93d66b0e26aba98e4a44b683a458c384941e991d0164603cdeada",
+      "src/renderer/material_radiance.h": "a0df98c526cdd2ed5146ff460abe0c0f2a8ff46e9e95dcaed38336e372f6a3dc",
+      "src/renderer/material_radiance_profiles_inc.h": "1c0bc9af732a4d6faddfde90dd5a6d63b32cb0aa3aec85c09c4e4714307ec3b3",
+      "src/renderer/motion_history.cpp": "7cf63608c7846156aace252fa66086656fec113e5025da23991e0839ecc823df",
+      "src/renderer/motion_history.h": "a8bb9ef874282e83db1551cf741bc3648ed2e8b04ead2f7dc4c2919aa6447eda",
+      "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
+      "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
+      "src/renderer/rigid_motion.cpp": "a2ab93ead655a6cde523422b899d15a70afd493af5bb6ef84c9f69e47502b347",
+      "src/renderer/rigid_motion.h": "935fe54387bf1e62f0b04dabc291152b8508f8b6c25138a4a15e93b0f6b136ba",
+      "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+      "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+      "src/renderer/rigid_position.cpp": "2cf2595243b733190bd4e5313a37f21a9f90503c5ead9d18a42ed80318139b49",
+      "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
+      "src/renderer/rigid_position_profiles_inc.h": "e9a684f940b8ec461e736989e4e0dd75d09086b620eb00ed454193e57cf43a67",
+      "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
+      "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
+      "src/renderer/scene_boundary.h": "4c28908bd51c4e0d25269088d91d02e23994089320288ffa161b8afee7c5ace9",
+      "src/renderer/temporal_pass.cpp": "27527b580c65c6848ca03d233007aa274ad482f165e3e5ea501122a281360d5e",
+      "src/renderer/temporal_pass.h": "a6361b54689de99d6f49d8bdc42691ffb0b2c69d46a52f4bdda0ce1d5c80342f",
+      "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
+      "src/temporal/resolve.h": "e62dee55cf60b423e58481d47c0d5c65112ae6ebc53d0f516c0646436229a582",
+      "src/temporal/resolve.hlsl": "6e2d4b2701e97d4db8088479d29833a828d38ae438baaeb8e1ce65c8efbe2df5",
+      "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
+      "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
+      "tools/analysis/summarize_capture.py": "8a9d58368c883225732fe2e0ffbb27ee601a070bc09349a008cf4f22765c0cae",
+      "tools/ownership/generate_d3d9_forwarders.py": "20010dff7f01703a27a4ecb3a8c129c60b84e413e9bdd62c0483dc72aceaae38",
+      "verification/analysis/test_admission_integration_expectations.py": "37386910d2955f95231469d8a27d605e9d7611b1ebe712a47a1bce57d4a83388",
+      "verification/analysis/test_portable_integration_expectations.py": "dfbac0118098c9e04db2f693e204160df9160717c349e6508392d00a880bac8a",
+      "verification/probe/abi_check.cpp": "763971c861bae4f1ec7757eb7e2960977be8a10b15ef18868d79523a25255338",
+      "verification/probe/build.sh": "1e9fb6f6f285ccda02f6cd6486b5499b3549a9e71768b8ffbe304b7e90708175",
+      "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+      "verification/probe/build_ownership.sh": "7fef2e5c6481c83e62e375a43e2501cc08a6889cf8c30312581a38df4da04348",
+      "verification/probe/build_ownership_integration.sh": "c34acf50e55024d67a17cd5f71c00806d031a2d3ea407814010a8be49b36b553",
+      "verification/probe/capability_probe.cpp": "8ea9fd8e026a8f6a8bb86ce65521935fb924ed7704855fb7abcb40557fa32348",
+      "verification/probe/capture_state_fixture.cpp": "bcb1e74c56bc8ddbabb65df6c2f9e8c21dbd975587532906ee5f77b14b1323b0",
+      "verification/probe/d3d9_smoke.cpp": "7c89399825fd820ee70d4167e04fb1aac26ca4920c057b1cbf5a3ab2ad2a24b0",
+      "verification/probe/ownership_fixture.cpp": "a14cba769cf99fd3f8a6fbb8cd4c61418033db2470dab1e2dfbd4929b1dac5ea",
+      "verification/probe/ownership_integration_auto_depth.cpp": "c9855011f6dd6033dff68245c7076782387590ca4acece66a7a3ef87a73cd5bc",
+      "verification/probe/ownership_integration_fallback_stub.cpp": "ff3e940c928c1694c1ea6e7d3f94bf9955fadc100a04ac6d4f5aebca8933cde1",
+      "verification/probe/ownership_integration_lifetime.cpp": "101c0b6260f97df2be544b98a7d1ddfdaf59a07233d47a3b7d6eeba9bdf40347",
+      "verification/probe/run_ownership_integration.py": "84f6a51e7ec924086a9f4a2ff9c45ee72482f923db0135467d74ab0bce4bbbf4",
+      "verification/probe/run_ownership_integration_fallback.py": "b2c54c9983654e3bcdea1124b01e7f0d22b48ceb89cd4b6eb203e44d3c68a752",
+      "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
+      "verification/probe/verify_ownership_integration.py": "dd980715c1ab04e63d0a22b7a5f83e948bed75ade759e472a12a7b727e5836af"
+    }
+  },
+  "previous_dll_provenance": {
+    "manifest_sha256": "b73e4d67f1a15b8ede495025bac11665c515cf0960ca3bb8026b53bfea3d6650",
+    "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+    "frozen_dll": "verification/probe/build/hook-admission-baseline/d3d9.dll",
+    "original_copy": "verification/probe/build/ownership-integration-on-smoke-20260911-044451-270647/d3d9.dll",
+    "original_manifest_sha256": "f64551e557bd96d3ce6cb0fdb05ec938ed6b8779729c6934ae41e4b278fa3af8",
+    "original_build_commands": [
+      [
+        "cmake",
+        "-S",
+        ".",
+        "-B",
+        "build-ownership",
+        "-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake",
+        "-DCMAKE_BUILD_TYPE=Release"
+      ],
+      [
+        "cmake",
+        "--build",
+        "build-ownership",
+        "--clean-first"
+      ],
+      [
+        "sh",
+        "verification/probe/build.sh"
+      ],
+      [
+        "sh",
+        "verification/probe/build_ownership_integration.sh"
+      ]
+    ],
+    "sources_before_build": {
+      "CMakeLists.txt": "765f397c8827765ba52b734de8b11cd6050b89c3e02eb4c99befaf08f67893a7",
+      "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
+      "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+      "src/ownership/d3d9_forwarders_inc.h": "4827fafbeaa1818341d39f410d0188cd95ce8697127ae3e13e584340c3b7539b",
+      "src/ownership/d3d9_ownership.cpp": "365da457bfd0df7a8d791764e673596f89187a10c4fcd1f2c536f6d69ec90d8f",
+      "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+      "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+      "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+      "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+      "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+      "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+      "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+      "src/proxy/capture.cpp": "ced765613857a06c7768b3a84873810802926f7ff35c190bf4816c8096edbbc5",
+      "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
+      "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
+      "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
+      "src/proxy/cpu_state.h": "ca744469554858b4f90d66c2ab14560a33a75be9ddd8d6962fbe7b17f62967c7",
+      "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
+      "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
+      "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
+      "src/proxy/loader.cpp": "b35a60257a7eb3271aa1baa2efd1e2dbe422a01c3c560a7f8114a5f666728fd7",
+      "src/proxy/loading_trace.cpp": "3d63865fbf60b61eb2f458353191c0936aa87aeb43c086e83e8fa4504faa3ce1",
+      "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
+      "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+      "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+      "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
+      "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
+      "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+      "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+      "src/proxy/object_trace.cpp": "22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba",
+      "src/proxy/object_trace.h": "d09401eaa04830281dab30b7031fbae0c53f204ca4bfd0c9b3ea998185cdbde6",
+      "src/proxy/scene_capture.cpp": "3e91362619d0709fd5c2427bd391031ecac75f24f355d5e807f563b05bca9090",
+      "src/proxy/scene_capture.h": "919a1fd7e9ec4c779c149f3cd2b439db7081c5aade14bec13680f9600158b0a1",
+      "src/proxy/telemetry.cpp": "0cae95895de6613c4d72db7e8ff5ea89250802c78b37469005e52c5ecc7074b5",
+      "src/proxy/telemetry.h": "88dd36aa1755c2b61175aa3060e9c1843294c69e9ddceaa7d2c0a8bbbb54da37",
+      "src/renderer/material_radiance.cpp": "eb94856002a93d66b0e26aba98e4a44b683a458c384941e991d0164603cdeada",
+      "src/renderer/material_radiance.h": "a0df98c526cdd2ed5146ff460abe0c0f2a8ff46e9e95dcaed38336e372f6a3dc",
+      "src/renderer/material_radiance_profiles_inc.h": "1c0bc9af732a4d6faddfde90dd5a6d63b32cb0aa3aec85c09c4e4714307ec3b3",
+      "src/renderer/motion_history.cpp": "7cf63608c7846156aace252fa66086656fec113e5025da23991e0839ecc823df",
+      "src/renderer/motion_history.h": "a8bb9ef874282e83db1551cf741bc3648ed2e8b04ead2f7dc4c2919aa6447eda",
+      "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
+      "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
+      "src/renderer/rigid_motion.cpp": "a2ab93ead655a6cde523422b899d15a70afd493af5bb6ef84c9f69e47502b347",
+      "src/renderer/rigid_motion.h": "935fe54387bf1e62f0b04dabc291152b8508f8b6c25138a4a15e93b0f6b136ba",
+      "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+      "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+      "src/renderer/rigid_position.cpp": "2cf2595243b733190bd4e5313a37f21a9f90503c5ead9d18a42ed80318139b49",
+      "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
+      "src/renderer/rigid_position_profiles_inc.h": "e9a684f940b8ec461e736989e4e0dd75d09086b620eb00ed454193e57cf43a67",
+      "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
+      "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
+      "src/renderer/scene_boundary.h": "4c28908bd51c4e0d25269088d91d02e23994089320288ffa161b8afee7c5ace9",
+      "src/renderer/temporal_pass.cpp": "27527b580c65c6848ca03d233007aa274ad482f165e3e5ea501122a281360d5e",
+      "src/renderer/temporal_pass.h": "a6361b54689de99d6f49d8bdc42691ffb0b2c69d46a52f4bdda0ce1d5c80342f",
+      "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
+      "src/temporal/resolve.h": "e62dee55cf60b423e58481d47c0d5c65112ae6ebc53d0f516c0646436229a582",
+      "src/temporal/resolve.hlsl": "6e2d4b2701e97d4db8088479d29833a828d38ae438baaeb8e1ce65c8efbe2df5",
+      "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
+      "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
+      "tools/analysis/summarize_capture.py": "8a9d58368c883225732fe2e0ffbb27ee601a070bc09349a008cf4f22765c0cae",
+      "tools/ownership/generate_d3d9_forwarders.py": "6b0bb42d90ac3a1e6b38aec1a37330c140d0d23a986f11bb4f1015eea1b40b01",
+      "verification/analysis/test_portable_integration_expectations.py": "0520d8030f356545438ace62231372065e7a7413856c4f91769fc957d865dc37",
+      "verification/probe/abi_check.cpp": "763971c861bae4f1ec7757eb7e2960977be8a10b15ef18868d79523a25255338",
+      "verification/probe/build.sh": "1e9fb6f6f285ccda02f6cd6486b5499b3549a9e71768b8ffbe304b7e90708175",
+      "verification/probe/build_ownership.sh": "00ce6ea7e747f9f1892bc14ff660c2929b5b28cac9581dc05059b322c82ca548",
+      "verification/probe/build_ownership_integration.sh": "c34acf50e55024d67a17cd5f71c00806d031a2d3ea407814010a8be49b36b553",
+      "verification/probe/capability_probe.cpp": "8ea9fd8e026a8f6a8bb86ce65521935fb924ed7704855fb7abcb40557fa32348",
+      "verification/probe/capture_state_fixture.cpp": "bcb1e74c56bc8ddbabb65df6c2f9e8c21dbd975587532906ee5f77b14b1323b0",
+      "verification/probe/d3d9_smoke.cpp": "7c89399825fd820ee70d4167e04fb1aac26ca4920c057b1cbf5a3ab2ad2a24b0",
+      "verification/probe/ownership_fixture.cpp": "a14cba769cf99fd3f8a6fbb8cd4c61418033db2470dab1e2dfbd4929b1dac5ea",
+      "verification/probe/ownership_integration_auto_depth.cpp": "c9855011f6dd6033dff68245c7076782387590ca4acece66a7a3ef87a73cd5bc",
+      "verification/probe/ownership_integration_fallback_stub.cpp": "ff3e940c928c1694c1ea6e7d3f94bf9955fadc100a04ac6d4f5aebca8933cde1",
+      "verification/probe/ownership_integration_lifetime.cpp": "101c0b6260f97df2be544b98a7d1ddfdaf59a07233d47a3b7d6eeba9bdf40347",
+      "verification/probe/run_ownership_integration.py": "51e00d879b757fbc590190b74e02a070858ee86e09a98c523ace5667e99c48f3",
+      "verification/probe/run_ownership_integration_fallback.py": "72142d359221012007a800dcdc0a6483430c136ad5f9fae2e64b5d44efb01654",
+      "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
+      "verification/probe/verify_ownership_integration.py": "875b040798c9966f7ae068697d068652a5111972c044a47cb2cbf0a87e2263d0"
+    },
+    "sources_after_build": {
+      "CMakeLists.txt": "765f397c8827765ba52b734de8b11cd6050b89c3e02eb4c99befaf08f67893a7",
+      "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
+      "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+      "src/ownership/d3d9_forwarders_inc.h": "4827fafbeaa1818341d39f410d0188cd95ce8697127ae3e13e584340c3b7539b",
+      "src/ownership/d3d9_ownership.cpp": "365da457bfd0df7a8d791764e673596f89187a10c4fcd1f2c536f6d69ec90d8f",
+      "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+      "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+      "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+      "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+      "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+      "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+      "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+      "src/proxy/capture.cpp": "ced765613857a06c7768b3a84873810802926f7ff35c190bf4816c8096edbbc5",
+      "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
+      "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
+      "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
+      "src/proxy/cpu_state.h": "ca744469554858b4f90d66c2ab14560a33a75be9ddd8d6962fbe7b17f62967c7",
+      "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
+      "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
+      "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
+      "src/proxy/loader.cpp": "b35a60257a7eb3271aa1baa2efd1e2dbe422a01c3c560a7f8114a5f666728fd7",
+      "src/proxy/loading_trace.cpp": "3d63865fbf60b61eb2f458353191c0936aa87aeb43c086e83e8fa4504faa3ce1",
+      "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
+      "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+      "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+      "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
+      "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
+      "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+      "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+      "src/proxy/object_trace.cpp": "22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba",
+      "src/proxy/object_trace.h": "d09401eaa04830281dab30b7031fbae0c53f204ca4bfd0c9b3ea998185cdbde6",
+      "src/proxy/scene_capture.cpp": "3e91362619d0709fd5c2427bd391031ecac75f24f355d5e807f563b05bca9090",
+      "src/proxy/scene_capture.h": "919a1fd7e9ec4c779c149f3cd2b439db7081c5aade14bec13680f9600158b0a1",
+      "src/proxy/telemetry.cpp": "0cae95895de6613c4d72db7e8ff5ea89250802c78b37469005e52c5ecc7074b5",
+      "src/proxy/telemetry.h": "88dd36aa1755c2b61175aa3060e9c1843294c69e9ddceaa7d2c0a8bbbb54da37",
+      "src/renderer/material_radiance.cpp": "eb94856002a93d66b0e26aba98e4a44b683a458c384941e991d0164603cdeada",
+      "src/renderer/material_radiance.h": "a0df98c526cdd2ed5146ff460abe0c0f2a8ff46e9e95dcaed38336e372f6a3dc",
+      "src/renderer/material_radiance_profiles_inc.h": "1c0bc9af732a4d6faddfde90dd5a6d63b32cb0aa3aec85c09c4e4714307ec3b3",
+      "src/renderer/motion_history.cpp": "7cf63608c7846156aace252fa66086656fec113e5025da23991e0839ecc823df",
+      "src/renderer/motion_history.h": "a8bb9ef874282e83db1551cf741bc3648ed2e8b04ead2f7dc4c2919aa6447eda",
+      "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
+      "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
+      "src/renderer/rigid_motion.cpp": "a2ab93ead655a6cde523422b899d15a70afd493af5bb6ef84c9f69e47502b347",
+      "src/renderer/rigid_motion.h": "935fe54387bf1e62f0b04dabc291152b8508f8b6c25138a4a15e93b0f6b136ba",
+      "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+      "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+      "src/renderer/rigid_position.cpp": "2cf2595243b733190bd4e5313a37f21a9f90503c5ead9d18a42ed80318139b49",
+      "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
+      "src/renderer/rigid_position_profiles_inc.h": "e9a684f940b8ec461e736989e4e0dd75d09086b620eb00ed454193e57cf43a67",
+      "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
+      "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
+      "src/renderer/scene_boundary.h": "4c28908bd51c4e0d25269088d91d02e23994089320288ffa161b8afee7c5ace9",
+      "src/renderer/temporal_pass.cpp": "27527b580c65c6848ca03d233007aa274ad482f165e3e5ea501122a281360d5e",
+      "src/renderer/temporal_pass.h": "a6361b54689de99d6f49d8bdc42691ffb0b2c69d46a52f4bdda0ce1d5c80342f",
+      "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
+      "src/temporal/resolve.h": "e62dee55cf60b423e58481d47c0d5c65112ae6ebc53d0f516c0646436229a582",
+      "src/temporal/resolve.hlsl": "6e2d4b2701e97d4db8088479d29833a828d38ae438baaeb8e1ce65c8efbe2df5",
+      "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
+      "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
+      "tools/analysis/summarize_capture.py": "8a9d58368c883225732fe2e0ffbb27ee601a070bc09349a008cf4f22765c0cae",
+      "tools/ownership/generate_d3d9_forwarders.py": "6b0bb42d90ac3a1e6b38aec1a37330c140d0d23a986f11bb4f1015eea1b40b01",
+      "verification/analysis/test_portable_integration_expectations.py": "0520d8030f356545438ace62231372065e7a7413856c4f91769fc957d865dc37",
+      "verification/probe/abi_check.cpp": "763971c861bae4f1ec7757eb7e2960977be8a10b15ef18868d79523a25255338",
+      "verification/probe/build.sh": "1e9fb6f6f285ccda02f6cd6486b5499b3549a9e71768b8ffbe304b7e90708175",
+      "verification/probe/build_ownership.sh": "00ce6ea7e747f9f1892bc14ff660c2929b5b28cac9581dc05059b322c82ca548",
+      "verification/probe/build_ownership_integration.sh": "c34acf50e55024d67a17cd5f71c00806d031a2d3ea407814010a8be49b36b553",
+      "verification/probe/capability_probe.cpp": "8ea9fd8e026a8f6a8bb86ce65521935fb924ed7704855fb7abcb40557fa32348",
+      "verification/probe/capture_state_fixture.cpp": "bcb1e74c56bc8ddbabb65df6c2f9e8c21dbd975587532906ee5f77b14b1323b0",
+      "verification/probe/d3d9_smoke.cpp": "7c89399825fd820ee70d4167e04fb1aac26ca4920c057b1cbf5a3ab2ad2a24b0",
+      "verification/probe/ownership_fixture.cpp": "a14cba769cf99fd3f8a6fbb8cd4c61418033db2470dab1e2dfbd4929b1dac5ea",
+      "verification/probe/ownership_integration_auto_depth.cpp": "c9855011f6dd6033dff68245c7076782387590ca4acece66a7a3ef87a73cd5bc",
+      "verification/probe/ownership_integration_fallback_stub.cpp": "ff3e940c928c1694c1ea6e7d3f94bf9955fadc100a04ac6d4f5aebca8933cde1",
+      "verification/probe/ownership_integration_lifetime.cpp": "101c0b6260f97df2be544b98a7d1ddfdaf59a07233d47a3b7d6eeba9bdf40347",
+      "verification/probe/run_ownership_integration.py": "51e00d879b757fbc590190b74e02a070858ee86e09a98c523ace5667e99c48f3",
+      "verification/probe/run_ownership_integration_fallback.py": "72142d359221012007a800dcdc0a6483430c136ad5f9fae2e64b5d44efb01654",
+      "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
+      "verification/probe/verify_ownership_integration.py": "875b040798c9966f7ae068697d068652a5111972c044a47cb2cbf0a87e2263d0"
+    },
+    "sources_after_run": {
+      "CMakeLists.txt": "765f397c8827765ba52b734de8b11cd6050b89c3e02eb4c99befaf08f67893a7",
+      "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
+      "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+      "src/ownership/d3d9_forwarders_inc.h": "4827fafbeaa1818341d39f410d0188cd95ce8697127ae3e13e584340c3b7539b",
+      "src/ownership/d3d9_ownership.cpp": "365da457bfd0df7a8d791764e673596f89187a10c4fcd1f2c536f6d69ec90d8f",
+      "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+      "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+      "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+      "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+      "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+      "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+      "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+      "src/proxy/capture.cpp": "ced765613857a06c7768b3a84873810802926f7ff35c190bf4816c8096edbbc5",
+      "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
+      "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
+      "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
+      "src/proxy/cpu_state.h": "ca744469554858b4f90d66c2ab14560a33a75be9ddd8d6962fbe7b17f62967c7",
+      "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
+      "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
+      "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
+      "src/proxy/loader.cpp": "b35a60257a7eb3271aa1baa2efd1e2dbe422a01c3c560a7f8114a5f666728fd7",
+      "src/proxy/loading_trace.cpp": "3d63865fbf60b61eb2f458353191c0936aa87aeb43c086e83e8fa4504faa3ce1",
+      "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
+      "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+      "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+      "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
+      "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
+      "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+      "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+      "src/proxy/object_trace.cpp": "22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba",
+      "src/proxy/object_trace.h": "d09401eaa04830281dab30b7031fbae0c53f204ca4bfd0c9b3ea998185cdbde6",
+      "src/proxy/scene_capture.cpp": "3e91362619d0709fd5c2427bd391031ecac75f24f355d5e807f563b05bca9090",
+      "src/proxy/scene_capture.h": "919a1fd7e9ec4c779c149f3cd2b439db7081c5aade14bec13680f9600158b0a1",
+      "src/proxy/telemetry.cpp": "0cae95895de6613c4d72db7e8ff5ea89250802c78b37469005e52c5ecc7074b5",
+      "src/proxy/telemetry.h": "88dd36aa1755c2b61175aa3060e9c1843294c69e9ddceaa7d2c0a8bbbb54da37",
+      "src/renderer/material_radiance.cpp": "eb94856002a93d66b0e26aba98e4a44b683a458c384941e991d0164603cdeada",
+      "src/renderer/material_radiance.h": "a0df98c526cdd2ed5146ff460abe0c0f2a8ff46e9e95dcaed38336e372f6a3dc",
+      "src/renderer/material_radiance_profiles_inc.h": "1c0bc9af732a4d6faddfde90dd5a6d63b32cb0aa3aec85c09c4e4714307ec3b3",
+      "src/renderer/motion_history.cpp": "7cf63608c7846156aace252fa66086656fec113e5025da23991e0839ecc823df",
+      "src/renderer/motion_history.h": "a8bb9ef874282e83db1551cf741bc3648ed2e8b04ead2f7dc4c2919aa6447eda",
+      "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
+      "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
+      "src/renderer/rigid_motion.cpp": "a2ab93ead655a6cde523422b899d15a70afd493af5bb6ef84c9f69e47502b347",
+      "src/renderer/rigid_motion.h": "935fe54387bf1e62f0b04dabc291152b8508f8b6c25138a4a15e93b0f6b136ba",
+      "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+      "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+      "src/renderer/rigid_position.cpp": "2cf2595243b733190bd4e5313a37f21a9f90503c5ead9d18a42ed80318139b49",
+      "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
+      "src/renderer/rigid_position_profiles_inc.h": "e9a684f940b8ec461e736989e4e0dd75d09086b620eb00ed454193e57cf43a67",
+      "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
+      "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
+      "src/renderer/scene_boundary.h": "4c28908bd51c4e0d25269088d91d02e23994089320288ffa161b8afee7c5ace9",
+      "src/renderer/temporal_pass.cpp": "27527b580c65c6848ca03d233007aa274ad482f165e3e5ea501122a281360d5e",
+      "src/renderer/temporal_pass.h": "a6361b54689de99d6f49d8bdc42691ffb0b2c69d46a52f4bdda0ce1d5c80342f",
+      "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
+      "src/temporal/resolve.h": "e62dee55cf60b423e58481d47c0d5c65112ae6ebc53d0f516c0646436229a582",
+      "src/temporal/resolve.hlsl": "6e2d4b2701e97d4db8088479d29833a828d38ae438baaeb8e1ce65c8efbe2df5",
+      "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
+      "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
+      "tools/analysis/summarize_capture.py": "8a9d58368c883225732fe2e0ffbb27ee601a070bc09349a008cf4f22765c0cae",
+      "tools/ownership/generate_d3d9_forwarders.py": "6b0bb42d90ac3a1e6b38aec1a37330c140d0d23a986f11bb4f1015eea1b40b01",
+      "verification/analysis/test_portable_integration_expectations.py": "0520d8030f356545438ace62231372065e7a7413856c4f91769fc957d865dc37",
+      "verification/probe/abi_check.cpp": "763971c861bae4f1ec7757eb7e2960977be8a10b15ef18868d79523a25255338",
+      "verification/probe/build.sh": "1e9fb6f6f285ccda02f6cd6486b5499b3549a9e71768b8ffbe304b7e90708175",
+      "verification/probe/build_ownership.sh": "00ce6ea7e747f9f1892bc14ff660c2929b5b28cac9581dc05059b322c82ca548",
+      "verification/probe/build_ownership_integration.sh": "c34acf50e55024d67a17cd5f71c00806d031a2d3ea407814010a8be49b36b553",
+      "verification/probe/capability_probe.cpp": "8ea9fd8e026a8f6a8bb86ce65521935fb924ed7704855fb7abcb40557fa32348",
+      "verification/probe/capture_state_fixture.cpp": "bcb1e74c56bc8ddbabb65df6c2f9e8c21dbd975587532906ee5f77b14b1323b0",
+      "verification/probe/d3d9_smoke.cpp": "7c89399825fd820ee70d4167e04fb1aac26ca4920c057b1cbf5a3ab2ad2a24b0",
+      "verification/probe/ownership_fixture.cpp": "a14cba769cf99fd3f8a6fbb8cd4c61418033db2470dab1e2dfbd4929b1dac5ea",
+      "verification/probe/ownership_integration_auto_depth.cpp": "c9855011f6dd6033dff68245c7076782387590ca4acece66a7a3ef87a73cd5bc",
+      "verification/probe/ownership_integration_fallback_stub.cpp": "ff3e940c928c1694c1ea6e7d3f94bf9955fadc100a04ac6d4f5aebca8933cde1",
+      "verification/probe/ownership_integration_lifetime.cpp": "101c0b6260f97df2be544b98a7d1ddfdaf59a07233d47a3b7d6eeba9bdf40347",
+      "verification/probe/run_ownership_integration.py": "51e00d879b757fbc590190b74e02a070858ee86e09a98c523ace5667e99c48f3",
+      "verification/probe/run_ownership_integration_fallback.py": "72142d359221012007a800dcdc0a6483430c136ad5f9fae2e64b5d44efb01654",
+      "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
+      "verification/probe/verify_ownership_integration.py": "875b040798c9966f7ae068697d068652a5111972c044a47cb2cbf0a87e2263d0"
+    },
+    "scope": "Retained pre-admission DLL from completed original build; no old repository checkout or rebuild."
+  },
+  "native_hashes_before": {
+    "d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+    "wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
+  },
+  "fixture_hashes_before": {
+    "verification/probe/hook_admission_benchmark.cpp": "b6fe96dac90b4005d4a23ef0cf70d5f127f408c35847b193dee94d06799567ac",
+    "verification/probe/build_hook_admission_benchmark.sh": "483b29e5598ece2b0f7ee080146c07a91debd88615cd3b29344772a0ef05ca61",
+    "verification/probe/run_hook_admission_benchmark.py": "8de65c1575909d93acefc9ee2dc40160eddc05406eefa1d5262429c05ec5b7f5"
+  },
+  "drive_mappings_before": {
+    "z:": "/",
+    "y:": "/Users/asvetl",
+    "d:": "/Volumes/BetterDisplay",
+    "c:": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c"
+  },
+  "fixture_sha256": "758453a58a3134e0c44d22520ed865c9b9d5837c0c0e46687f34511574e0fb0b",
+  "frozen_directory": "verification/probe/build/hook-admission-frozen-20260911-060702-692375",
+  "differences_of_separate_medians": {
+    "get_render_state": {
+      "current_proxy_minus_native_ns": -2.4450000000000003,
+      "current_ownership_minus_native_ns": 41.21000000000001,
+      "proxy_admission_increment_ns": 0.5100000000000051,
+      "ownership_admission_increment_ns": 134.20499999999998,
+      "proxy_off_change_from_retained_ns": -2.2750000000000057,
+      "ownership_off_change_from_retained_ns": 5.385000000000005
+    },
+    "set_render_state": {
+      "current_proxy_minus_native_ns": 0.8300000000000054,
+      "current_ownership_minus_native_ns": 40.38,
+      "proxy_admission_increment_ns": 0.14999999999999858,
+      "ownership_admission_increment_ns": 137.015,
+      "proxy_off_change_from_retained_ns": -8.515,
+      "ownership_off_change_from_retained_ns": -2.010000000000005
+    },
+    "invalid_set_rt": {
+      "current_proxy_minus_native_ns": 136.64999999999998,
+      "current_ownership_minus_native_ns": 198.505,
+      "proxy_admission_increment_ns": 142.61,
+      "ownership_admission_increment_ns": 315.61,
+      "proxy_off_change_from_retained_ns": 30.659999999999997,
+      "ownership_off_change_from_retained_ns": 44.525000000000006
+    },
+    "invalid_clear": {
+      "current_proxy_minus_native_ns": 157.325,
+      "current_ownership_minus_native_ns": 197.57000000000005,
+      "proxy_admission_increment_ns": 153.99000000000007,
+      "ownership_admission_increment_ns": 285.42499999999995,
+      "proxy_off_change_from_retained_ns": -5.680000000000007,
+      "ownership_off_change_from_retained_ns": 3.590000000000032
+    }
+  },
+  "fixture_hashes_after": {
+    "verification/probe/hook_admission_benchmark.cpp": "b6fe96dac90b4005d4a23ef0cf70d5f127f408c35847b193dee94d06799567ac",
+    "verification/probe/build_hook_admission_benchmark.sh": "483b29e5598ece2b0f7ee080146c07a91debd88615cd3b29344772a0ef05ca61",
+    "verification/probe/run_hook_admission_benchmark.py": "8de65c1575909d93acefc9ee2dc40160eddc05406eefa1d5262429c05ec5b7f5"
+  },
+  "current_sources_after": {
+    "CMakeLists.txt": "9665902934a960c90a2b8dd45cd050024475774dd6b1584462632c85a06f5fee",
+    "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+    "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
+    "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+    "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+    "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+    "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+    "src/proxy/capture.cpp": "1796bca204ec3c792c8cbaa3a218835dcf4356e6c1050dd337f71f497ca48d3d",
+    "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
+    "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
+    "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
+    "src/proxy/cpu_state.h": "ca744469554858b4f90d66c2ab14560a33a75be9ddd8d6962fbe7b17f62967c7",
+    "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
+    "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
+    "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
+    "src/proxy/loader.cpp": "aa2dede12db2e7f810bac277e8b6cb02858572056b149fce47b0b689620fcca0",
+    "src/proxy/loading_trace.cpp": "3ed55868676623a91506486ce05608ae500dce7c058a839a63739cf31bf94903",
+    "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
+    "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+    "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+    "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
+    "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
+    "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+    "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+    "src/proxy/object_trace.cpp": "22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba",
+    "src/proxy/object_trace.h": "d09401eaa04830281dab30b7031fbae0c53f204ca4bfd0c9b3ea998185cdbde6",
+    "src/proxy/scene_capture.cpp": "3e91362619d0709fd5c2427bd391031ecac75f24f355d5e807f563b05bca9090",
+    "src/proxy/scene_capture.h": "919a1fd7e9ec4c779c149f3cd2b439db7081c5aade14bec13680f9600158b0a1",
+    "src/proxy/telemetry.cpp": "0cae95895de6613c4d72db7e8ff5ea89250802c78b37469005e52c5ecc7074b5",
+    "src/proxy/telemetry.h": "88dd36aa1755c2b61175aa3060e9c1843294c69e9ddceaa7d2c0a8bbbb54da37",
+    "src/renderer/material_radiance.cpp": "eb94856002a93d66b0e26aba98e4a44b683a458c384941e991d0164603cdeada",
+    "src/renderer/material_radiance.h": "a0df98c526cdd2ed5146ff460abe0c0f2a8ff46e9e95dcaed38336e372f6a3dc",
+    "src/renderer/material_radiance_profiles_inc.h": "1c0bc9af732a4d6faddfde90dd5a6d63b32cb0aa3aec85c09c4e4714307ec3b3",
+    "src/renderer/motion_history.cpp": "7cf63608c7846156aace252fa66086656fec113e5025da23991e0839ecc823df",
+    "src/renderer/motion_history.h": "a8bb9ef874282e83db1551cf741bc3648ed2e8b04ead2f7dc4c2919aa6447eda",
+    "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
+    "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
+    "src/renderer/rigid_motion.cpp": "a2ab93ead655a6cde523422b899d15a70afd493af5bb6ef84c9f69e47502b347",
+    "src/renderer/rigid_motion.h": "935fe54387bf1e62f0b04dabc291152b8508f8b6c25138a4a15e93b0f6b136ba",
+    "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+    "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+    "src/renderer/rigid_position.cpp": "2cf2595243b733190bd4e5313a37f21a9f90503c5ead9d18a42ed80318139b49",
+    "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
+    "src/renderer/rigid_position_profiles_inc.h": "e9a684f940b8ec461e736989e4e0dd75d09086b620eb00ed454193e57cf43a67",
+    "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
+    "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
+    "src/renderer/scene_boundary.h": "4c28908bd51c4e0d25269088d91d02e23994089320288ffa161b8afee7c5ace9",
+    "src/renderer/temporal_pass.cpp": "27527b580c65c6848ca03d233007aa274ad482f165e3e5ea501122a281360d5e",
+    "src/renderer/temporal_pass.h": "a6361b54689de99d6f49d8bdc42691ffb0b2c69d46a52f4bdda0ce1d5c80342f",
+    "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
+    "src/temporal/resolve.h": "e62dee55cf60b423e58481d47c0d5c65112ae6ebc53d0f516c0646436229a582",
+    "src/temporal/resolve.hlsl": "6e2d4b2701e97d4db8088479d29833a828d38ae438baaeb8e1ce65c8efbe2df5",
+    "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
+    "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
+    "tools/analysis/summarize_capture.py": "8a9d58368c883225732fe2e0ffbb27ee601a070bc09349a008cf4f22765c0cae",
+    "tools/ownership/generate_d3d9_forwarders.py": "20010dff7f01703a27a4ecb3a8c129c60b84e413e9bdd62c0483dc72aceaae38",
+    "verification/analysis/test_admission_integration_expectations.py": "37386910d2955f95231469d8a27d605e9d7611b1ebe712a47a1bce57d4a83388",
+    "verification/analysis/test_portable_integration_expectations.py": "dfbac0118098c9e04db2f693e204160df9160717c349e6508392d00a880bac8a",
+    "verification/probe/abi_check.cpp": "763971c861bae4f1ec7757eb7e2960977be8a10b15ef18868d79523a25255338",
+    "verification/probe/build.sh": "1e9fb6f6f285ccda02f6cd6486b5499b3549a9e71768b8ffbe304b7e90708175",
+    "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+    "verification/probe/build_ownership.sh": "7fef2e5c6481c83e62e375a43e2501cc08a6889cf8c30312581a38df4da04348",
+    "verification/probe/build_ownership_integration.sh": "c34acf50e55024d67a17cd5f71c00806d031a2d3ea407814010a8be49b36b553",
+    "verification/probe/capability_probe.cpp": "8ea9fd8e026a8f6a8bb86ce65521935fb924ed7704855fb7abcb40557fa32348",
+    "verification/probe/capture_state_fixture.cpp": "bcb1e74c56bc8ddbabb65df6c2f9e8c21dbd975587532906ee5f77b14b1323b0",
+    "verification/probe/d3d9_smoke.cpp": "7c89399825fd820ee70d4167e04fb1aac26ca4920c057b1cbf5a3ab2ad2a24b0",
+    "verification/probe/ownership_fixture.cpp": "a14cba769cf99fd3f8a6fbb8cd4c61418033db2470dab1e2dfbd4929b1dac5ea",
+    "verification/probe/ownership_integration_auto_depth.cpp": "c9855011f6dd6033dff68245c7076782387590ca4acece66a7a3ef87a73cd5bc",
+    "verification/probe/ownership_integration_fallback_stub.cpp": "ff3e940c928c1694c1ea6e7d3f94bf9955fadc100a04ac6d4f5aebca8933cde1",
+    "verification/probe/ownership_integration_lifetime.cpp": "101c0b6260f97df2be544b98a7d1ddfdaf59a07233d47a3b7d6eeba9bdf40347",
+    "verification/probe/run_ownership_integration.py": "84f6a51e7ec924086a9f4a2ff9c45ee72482f923db0135467d74ab0bce4bbbf4",
+    "verification/probe/run_ownership_integration_fallback.py": "b2c54c9983654e3bcdea1124b01e7f0d22b48ceb89cd4b6eb203e44d3c68a752",
+    "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
+    "verification/probe/verify_ownership_integration.py": "dd980715c1ab04e63d0a22b7a5f83e948bed75ade759e472a12a7b727e5836af"
+  },
+  "native_hashes_after": {
+    "d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+    "wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
+  },
+  "drive_mappings_after": {
+    "z:": "/",
+    "y:": "/Users/asvetl",
+    "d:": "/Volumes/BetterDisplay",
+    "c:": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c"
+  },
+  "limits": [
+    "Whole call CPU wall time includes backend, loop/validation and any command submission; no draw/Present/copy/readback.",
+    "Separate warmed process medians include runtime/thermal variation; differences are not paired causal or game FPS estimates.",
+    "Old-off differences include all changes on that path; invalid Clear already had CpuCallBoundary before this checkpoint.",
+    "Synthetic Preview evidence does not establish native-Windows timing or complete replay coverage."
+  ]
+}

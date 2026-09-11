@@ -19,10 +19,10 @@ fixtures = [('smoke', 'd3d9_smoke.exe', '1'), ('capture', 'capture_state_fixture
             ('auto', 'ownership_integration_auto_depth.exe', '0')]
 MODES = ('off', 'on', 'depth_only', 'copy_depth', 'scene_depth', 'scene_only',
          'object_requested', 'finite_on', 'finite_without_ownership',
-         'motion_requested', 'motion_without_prereqs')
+         'motion_requested', 'motion_without_prereqs', 'admission_on', 'admission_native')
 
 def selected_fixtures(mode):
-    if mode in ('depth_only', 'scene_only', 'object_requested'):
+    if mode in ('depth_only', 'scene_only', 'object_requested', 'admission_native'):
         return fixtures[:1]
     if mode in ('copy_depth', 'scene_depth', 'motion_requested'):
         return fixtures[-1:]
@@ -50,13 +50,14 @@ def sources():
     paths += [root / 'CMakeLists.txt']
     fixture_inputs = ('capability_probe.cpp', 'd3d9_smoke.cpp', 'capture_state_fixture.cpp', 'abi_check.cpp',
                       'ownership_fixture.cpp', 'ownership_integration_lifetime.cpp', 'ownership_integration_auto_depth.cpp',
-                      'ownership_integration_fallback_stub.cpp', 'build.sh', 'build_ownership.sh', 'build_ownership_integration.sh',
+                      'ownership_integration_fallback_stub.cpp', 'build.sh', 'build_ownership.sh', 'build_admission_dependencies.sh', 'build_ownership_integration.sh',
                       'run_ownership_integration.py', 'run_ownership_integration_fallback.py', 'verify_ownership_integration.py',
                       'verify_capture_state.py')
     paths += [root / 'verification/probe' / name for name in fixture_inputs]
     paths += [root / 'tools/analysis/summarize_capture.py',
               root / 'tools/ownership/generate_d3d9_forwarders.py',
-              root / 'verification/analysis/test_portable_integration_expectations.py']
+              root / 'verification/analysis/test_portable_integration_expectations.py',
+              root / 'verification/analysis/test_admission_integration_expectations.py']
     return {str(p.relative_to(root)): sha(p) for p in sorted(paths)}
 
 
@@ -109,9 +110,10 @@ def main():
                            X3M_OBJECT_TRACE='1' if mode in ('object_requested', 'motion_requested') else '0',
                            X3M_OBJECT_LIFETIME='1' if mode in ('object_requested', 'motion_requested') else '0',
                            X3M_MESH_CACHE='0',
+                           X3M_ADMISSION='1' if mode in ('admission_on', 'admission_native') else '0',
                            X3M_FINITE_POSITIONS='1' if mode in ('finite_on', 'finite_without_ownership', 'motion_requested') else '0',
                            X3M_MOTION_CAPTURE='1' if mode in ('motion_requested', 'motion_without_prereqs') else '0')
-                if mode in ('on', 'copy_depth', 'scene_depth', 'finite_on', 'motion_requested'):
+                if mode in ('on', 'copy_depth', 'scene_depth', 'finite_on', 'motion_requested', 'admission_on'):
                     env['X3M_OWNERSHIP'] = '1'
                 else:
                     env.pop('X3M_OWNERSHIP', None)

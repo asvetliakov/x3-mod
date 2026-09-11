@@ -1,0 +1,1694 @@
+{
+  "passed": true,
+  "admission": 1,
+  "phase": "complete",
+  "fresh_build": true,
+  "game_launched": false,
+  "started_utc": "2026-09-11T02:13:06.365739+00:00",
+  "cases": {
+    "native-off-normal": {
+      "exit_code": 0,
+      "checks": 1714,
+      "report_sha256": "921c7ebd28de65423eaa5dbaa476c5347ee31bdd31381df85ee8fc04c44f336e",
+      "wine_log_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--dll",
+        "d3dx9_37=n,b;d3d9=b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/mesh_cache_hook",
+        "/Users/asvetl/x3-mod/verification/probe/build/mesh_cache_hook/mesh_cache_hook_fixture.exe",
+        "off",
+        "native",
+        "normal"
+      ],
+      "cache_result": {
+        "enabled": "0",
+        "wrapped": "0",
+        "fault": "0",
+        "calls": "0",
+        "hits": "0",
+        "misses": "0",
+        "native_calls": "0",
+        "rejections": "0",
+        "blocked": "0",
+        "retained": "0"
+      },
+      "cache_metrics": [],
+      "gate_counts": [],
+      "gate_details": [],
+      "core_bypass": [],
+      "dynamic_options": [
+        {
+          "options": "00000990",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        },
+        {
+          "options": "00000991",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        },
+        {
+          "options": "00018990",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        },
+        {
+          "options": "00018991",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        }
+      ],
+      "admission_witness": [
+        "1",
+        "1",
+        "0",
+        "0",
+        "110",
+        "0",
+        "0",
+        "1"
+      ]
+    },
+    "native-on-normal": {
+      "exit_code": 0,
+      "checks": 1927,
+      "report_sha256": "519f06da58adf156547cbdd02bccf53ff8b8f40a71673198ff976580f5c24d19",
+      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--dll",
+        "d3dx9_37=n,b;d3d9=b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/mesh_cache_hook",
+        "/Users/asvetl/x3-mod/verification/probe/build/mesh_cache_hook/mesh_cache_hook_fixture.exe",
+        "on",
+        "native",
+        "normal"
+      ],
+      "cache_result": {
+        "enabled": "1",
+        "wrapped": "0",
+        "fault": "0",
+        "calls": "38",
+        "hits": "20",
+        "misses": "16",
+        "native_calls": "18",
+        "rejections": "3",
+        "blocked": "0",
+        "retained": "24816"
+      },
+      "cache_metrics": [
+        {
+          "cumulative": "1",
+          "qpc": "8222412039571",
+          "dispatch_enabled": "1",
+          "buffer_contract": "public_systemmem_readonly",
+          "faulted": "0",
+          "calls": "38",
+          "hits": "20",
+          "misses": "16",
+          "bypasses": "2",
+          "contention": "1",
+          "admissions": "16",
+          "evictions": "0",
+          "allocation_failures": "0",
+          "acquisition_failures": "0",
+          "unrecoverable_unlocks": "0",
+          "native_calls": "18",
+          "native_failures": "0",
+          "retained_bytes": "24816",
+          "retained_entries": "16",
+          "acquired_bytes": "4840",
+          "copied_bytes": "912",
+          "evicted_bytes": "0",
+          "acquisition_ticks": "8416",
+          "lookup_ticks": "1869",
+          "copy_ticks": "66",
+          "native_ticks": "8154",
+          "total_ticks": "19572",
+          "gate_rejections": "3",
+          "gate_ticks": "3429",
+          "native_outcomes": "21",
+          "hit_outcomes": "20",
+          "cleanup_outcomes": "0",
+          "blocked": "0",
+          "cleanup_hr": "00000000",
+          "rejected_result": "0",
+          "rejected_last_error": "0",
+          "rejected_fp": "0"
+        }
+      ],
+      "gate_counts": [
+        {
+          "cumulative": "1",
+          "reason": "input",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_table",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_method",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_pool",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_options",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_call",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_pool",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_usage",
+          "count": "6"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_format",
+          "count": "4"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_size",
+          "count": "2"
+        }
+      ],
+      "gate_details": [
+        {
+          "reason": "input",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_table",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_method",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "5",
+          "actual_entry": "00401530",
+          "expected_entry": "7b4fc63d",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_pool",
+          "scope": "0",
+          "options": "00000220",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_options",
+          "scope": "0",
+          "options": "00000550",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_call",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "80004005",
+          "pool": "2",
+          "usage": "00000000",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_pool",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_usage",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "2",
+          "usage": "00000008",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_format",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "2",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_size",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "2",
+          "usage": "00000000",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        }
+      ],
+      "core_bypass": [
+        {
+          "cumulative": "1",
+          "reason": "floating_point",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "contention",
+          "count": "1"
+        }
+      ],
+      "dynamic_options": [
+        {
+          "options": "00000990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00000991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        }
+      ],
+      "admission_witness": [
+        "1",
+        "1",
+        "0",
+        "0",
+        "121",
+        "0",
+        "0",
+        "1"
+      ]
+    },
+    "native-on-fault": {
+      "exit_code": 0,
+      "checks": 1935,
+      "report_sha256": "8a25b124fdd110f071cdd23d48d143225726197c0f069fe087fde14c6d09ffa0",
+      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--dll",
+        "d3dx9_37=n,b;d3d9=b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/mesh_cache_hook",
+        "/Users/asvetl/x3-mod/verification/probe/build/mesh_cache_hook/mesh_cache_hook_fixture.exe",
+        "on",
+        "native",
+        "fault"
+      ],
+      "cache_result": {
+        "enabled": "1",
+        "wrapped": "0",
+        "fault": "1",
+        "calls": "38",
+        "hits": "20",
+        "misses": "16",
+        "native_calls": "18",
+        "rejections": "3",
+        "blocked": "4",
+        "retained": "24816"
+      },
+      "cache_metrics": [
+        {
+          "cumulative": "1",
+          "qpc": "8222429498917",
+          "dispatch_enabled": "1",
+          "buffer_contract": "public_systemmem_readonly",
+          "faulted": "0",
+          "calls": "38",
+          "hits": "20",
+          "misses": "16",
+          "bypasses": "2",
+          "contention": "1",
+          "admissions": "16",
+          "evictions": "0",
+          "allocation_failures": "0",
+          "acquisition_failures": "0",
+          "unrecoverable_unlocks": "0",
+          "native_calls": "18",
+          "native_failures": "0",
+          "retained_bytes": "24816",
+          "retained_entries": "16",
+          "acquired_bytes": "4840",
+          "copied_bytes": "912",
+          "evicted_bytes": "0",
+          "acquisition_ticks": "9242",
+          "lookup_ticks": "1800",
+          "copy_ticks": "72",
+          "native_ticks": "10899",
+          "total_ticks": "23296",
+          "gate_rejections": "3",
+          "gate_ticks": "4142",
+          "native_outcomes": "21",
+          "hit_outcomes": "20",
+          "cleanup_outcomes": "0",
+          "blocked": "0",
+          "cleanup_hr": "00000000",
+          "rejected_result": "0",
+          "rejected_last_error": "0",
+          "rejected_fp": "0"
+        },
+        {
+          "cumulative": "1",
+          "qpc": "8222429524413",
+          "dispatch_enabled": "0",
+          "buffer_contract": "public_systemmem_readonly",
+          "faulted": "1",
+          "calls": "38",
+          "hits": "20",
+          "misses": "16",
+          "bypasses": "2",
+          "contention": "1",
+          "admissions": "16",
+          "evictions": "0",
+          "allocation_failures": "0",
+          "acquisition_failures": "0",
+          "unrecoverable_unlocks": "0",
+          "native_calls": "18",
+          "native_failures": "0",
+          "retained_bytes": "24816",
+          "retained_entries": "16",
+          "acquired_bytes": "4840",
+          "copied_bytes": "912",
+          "evicted_bytes": "0",
+          "acquisition_ticks": "9242",
+          "lookup_ticks": "1800",
+          "copy_ticks": "72",
+          "native_ticks": "10899",
+          "total_ticks": "23296",
+          "gate_rejections": "3",
+          "gate_ticks": "4376",
+          "native_outcomes": "21",
+          "hit_outcomes": "20",
+          "cleanup_outcomes": "1",
+          "blocked": "4",
+          "cleanup_hr": "8007000e",
+          "rejected_result": "0",
+          "rejected_last_error": "0",
+          "rejected_fp": "0"
+        }
+      ],
+      "gate_counts": [
+        {
+          "cumulative": "1",
+          "reason": "input",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_table",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_method",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_pool",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_options",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_call",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_pool",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_usage",
+          "count": "6"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_format",
+          "count": "4"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_size",
+          "count": "2"
+        }
+      ],
+      "gate_details": [
+        {
+          "reason": "input",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_table",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_method",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "5",
+          "actual_entry": "00401530",
+          "expected_entry": "7b4fc63d",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_pool",
+          "scope": "0",
+          "options": "00000220",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_options",
+          "scope": "0",
+          "options": "00000550",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_call",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "80004005",
+          "pool": "2",
+          "usage": "00000000",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_pool",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_usage",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "2",
+          "usage": "00000008",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_format",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "2",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_size",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "2",
+          "usage": "00000000",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        }
+      ],
+      "core_bypass": [
+        {
+          "cumulative": "1",
+          "reason": "floating_point",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "contention",
+          "count": "1"
+        }
+      ],
+      "dynamic_options": [
+        {
+          "options": "00000990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00000991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        }
+      ],
+      "admission_witness": [
+        "1",
+        "1",
+        "0",
+        "0",
+        "126",
+        "0",
+        "0",
+        "1"
+      ]
+    },
+    "wrapped-off-normal": {
+      "exit_code": 0,
+      "checks": 2189,
+      "report_sha256": "6a4aa26619fe6daceeef4c99263be7ba70be056df5354b6033b7b9c360e24b0d",
+      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--dll",
+        "d3dx9_37=n,b;d3d9=b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/mesh_cache_hook",
+        "/Users/asvetl/x3-mod/verification/probe/build/mesh_cache_hook/mesh_cache_hook_fixture.exe",
+        "off",
+        "wrapped",
+        "normal"
+      ],
+      "cache_result": {
+        "enabled": "0",
+        "wrapped": "1",
+        "fault": "0",
+        "calls": "0",
+        "hits": "0",
+        "misses": "0",
+        "native_calls": "0",
+        "rejections": "0",
+        "blocked": "0",
+        "retained": "0"
+      },
+      "cache_metrics": [],
+      "gate_counts": [],
+      "gate_details": [],
+      "core_bypass": [],
+      "dynamic_options": [
+        {
+          "options": "00000990",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        },
+        {
+          "options": "00000991",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        },
+        {
+          "options": "00018990",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        },
+        {
+          "options": "00018991",
+          "parity": "1",
+          "write_after_hit_miss": "0"
+        }
+      ],
+      "admission_witness": [
+        "1",
+        "1",
+        "0",
+        "0",
+        "2838",
+        "0",
+        "0",
+        "1"
+      ]
+    },
+    "wrapped-on-normal": {
+      "exit_code": 0,
+      "checks": 2566,
+      "report_sha256": "68c63ba9b8d04e23bd1cd1ef8c583e8d9ef3fe242e591cecef723069b5e9d61f",
+      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--dll",
+        "d3dx9_37=n,b;d3d9=b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/mesh_cache_hook",
+        "/Users/asvetl/x3-mod/verification/probe/build/mesh_cache_hook/mesh_cache_hook_fixture.exe",
+        "on",
+        "wrapped",
+        "normal"
+      ],
+      "cache_result": {
+        "enabled": "1",
+        "wrapped": "1",
+        "fault": "0",
+        "calls": "38",
+        "hits": "20",
+        "misses": "16",
+        "native_calls": "18",
+        "rejections": "5",
+        "blocked": "0",
+        "retained": "24816"
+      },
+      "cache_metrics": [
+        {
+          "cumulative": "1",
+          "qpc": "8222475627465",
+          "dispatch_enabled": "1",
+          "buffer_contract": "public_systemmem_readonly",
+          "faulted": "0",
+          "calls": "38",
+          "hits": "20",
+          "misses": "16",
+          "bypasses": "2",
+          "contention": "1",
+          "admissions": "16",
+          "evictions": "0",
+          "allocation_failures": "0",
+          "acquisition_failures": "0",
+          "unrecoverable_unlocks": "0",
+          "native_calls": "18",
+          "native_failures": "0",
+          "retained_bytes": "24816",
+          "retained_entries": "16",
+          "acquired_bytes": "4840",
+          "copied_bytes": "912",
+          "evicted_bytes": "0",
+          "acquisition_ticks": "14037",
+          "lookup_ticks": "1751",
+          "copy_ticks": "68",
+          "native_ticks": "15814",
+          "total_ticks": "32966",
+          "gate_rejections": "5",
+          "gate_ticks": "3881",
+          "native_outcomes": "23",
+          "hit_outcomes": "20",
+          "cleanup_outcomes": "0",
+          "blocked": "0",
+          "cleanup_hr": "00000000",
+          "rejected_result": "0",
+          "rejected_last_error": "0",
+          "rejected_fp": "0"
+        }
+      ],
+      "gate_counts": [
+        {
+          "cumulative": "1",
+          "reason": "input",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_table",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_method",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_pool",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_options",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "tracker",
+          "count": "6"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_call",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_pool",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_usage",
+          "count": "6"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_format",
+          "count": "4"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_size",
+          "count": "2"
+        }
+      ],
+      "gate_details": [
+        {
+          "reason": "input",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_table",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_method",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "5",
+          "actual_entry": "00401530",
+          "expected_entry": "7b4fc63d",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_pool",
+          "scope": "0",
+          "options": "00000220",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_options",
+          "scope": "0",
+          "options": "00000550",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "tracker",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "80004005",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "120",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_call",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "80004005",
+          "pool": "2",
+          "usage": "00000000",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "1",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_pool",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "1",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_usage",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "2",
+          "usage": "00000008",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "1",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_format",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "2",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "1",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_size",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "2",
+          "usage": "00000000",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "0",
+          "known": "1",
+          "pending": "0"
+        }
+      ],
+      "core_bypass": [
+        {
+          "cumulative": "1",
+          "reason": "floating_point",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "contention",
+          "count": "1"
+        }
+      ],
+      "dynamic_options": [
+        {
+          "options": "00000990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00000991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        }
+      ],
+      "admission_witness": [
+        "1",
+        "1",
+        "0",
+        "0",
+        "3411",
+        "0",
+        "0",
+        "1"
+      ]
+    },
+    "wrapped-on-fault": {
+      "exit_code": 0,
+      "checks": 2574,
+      "report_sha256": "feb9edb97e69a98f7347009fa4ac0eda476b87541f867b88cf307e15fd6df6f0",
+      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--dll",
+        "d3dx9_37=n,b;d3d9=b",
+        "--workdir",
+        "/Users/asvetl/x3-mod/verification/probe/build/mesh_cache_hook",
+        "/Users/asvetl/x3-mod/verification/probe/build/mesh_cache_hook/mesh_cache_hook_fixture.exe",
+        "on",
+        "wrapped",
+        "fault"
+      ],
+      "cache_result": {
+        "enabled": "1",
+        "wrapped": "1",
+        "fault": "1",
+        "calls": "38",
+        "hits": "20",
+        "misses": "16",
+        "native_calls": "18",
+        "rejections": "5",
+        "blocked": "4",
+        "retained": "24816"
+      },
+      "cache_metrics": [
+        {
+          "cumulative": "1",
+          "qpc": "8222498720503",
+          "dispatch_enabled": "1",
+          "buffer_contract": "public_systemmem_readonly",
+          "faulted": "0",
+          "calls": "38",
+          "hits": "20",
+          "misses": "16",
+          "bypasses": "2",
+          "contention": "1",
+          "admissions": "16",
+          "evictions": "0",
+          "allocation_failures": "0",
+          "acquisition_failures": "0",
+          "unrecoverable_unlocks": "0",
+          "native_calls": "18",
+          "native_failures": "0",
+          "retained_bytes": "24816",
+          "retained_entries": "16",
+          "acquired_bytes": "4840",
+          "copied_bytes": "912",
+          "evicted_bytes": "0",
+          "acquisition_ticks": "14206",
+          "lookup_ticks": "1800",
+          "copy_ticks": "61",
+          "native_ticks": "14037",
+          "total_ticks": "31262",
+          "gate_rejections": "5",
+          "gate_ticks": "3688",
+          "native_outcomes": "23",
+          "hit_outcomes": "20",
+          "cleanup_outcomes": "0",
+          "blocked": "0",
+          "cleanup_hr": "00000000",
+          "rejected_result": "0",
+          "rejected_last_error": "0",
+          "rejected_fp": "0"
+        },
+        {
+          "cumulative": "1",
+          "qpc": "8222498741699",
+          "dispatch_enabled": "0",
+          "buffer_contract": "public_systemmem_readonly",
+          "faulted": "1",
+          "calls": "38",
+          "hits": "20",
+          "misses": "16",
+          "bypasses": "2",
+          "contention": "1",
+          "admissions": "16",
+          "evictions": "0",
+          "allocation_failures": "0",
+          "acquisition_failures": "0",
+          "unrecoverable_unlocks": "0",
+          "native_calls": "18",
+          "native_failures": "0",
+          "retained_bytes": "24816",
+          "retained_entries": "16",
+          "acquired_bytes": "4840",
+          "copied_bytes": "912",
+          "evicted_bytes": "0",
+          "acquisition_ticks": "14206",
+          "lookup_ticks": "1800",
+          "copy_ticks": "61",
+          "native_ticks": "14037",
+          "total_ticks": "31262",
+          "gate_rejections": "5",
+          "gate_ticks": "3812",
+          "native_outcomes": "23",
+          "hit_outcomes": "20",
+          "cleanup_outcomes": "1",
+          "blocked": "4",
+          "cleanup_hr": "8007000e",
+          "rejected_result": "0",
+          "rejected_last_error": "0",
+          "rejected_fp": "0"
+        }
+      ],
+      "gate_counts": [
+        {
+          "cumulative": "1",
+          "reason": "input",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_table",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_method",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_pool",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "mesh_options",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "tracker",
+          "count": "6"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_call",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_pool",
+          "count": "2"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_usage",
+          "count": "6"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_format",
+          "count": "4"
+        },
+        {
+          "cumulative": "1",
+          "reason": "descriptor_size",
+          "count": "2"
+        }
+      ],
+      "gate_details": [
+        {
+          "reason": "input",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_table",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_method",
+          "scope": "0",
+          "options": "00000000",
+          "slot": "5",
+          "actual_entry": "00401530",
+          "expected_entry": "7b4fc63d",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_pool",
+          "scope": "0",
+          "options": "00000220",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "mesh_options",
+          "scope": "0",
+          "options": "00000550",
+          "slot": "18",
+          "actual_entry": "7b4fc1ee",
+          "expected_entry": "7b4fc1ee",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "0",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "tracker",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "80004005",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "120",
+          "size_bytes": "0",
+          "known": "0",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_call",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "80004005",
+          "pool": "2",
+          "usage": "00000000",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "1",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_pool",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "0",
+          "usage": "00000000",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "1",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_usage",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "2",
+          "usage": "00000008",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "1",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_format",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "2",
+          "usage": "00000000",
+          "format": "0",
+          "required_bytes": "120",
+          "size_bytes": "120",
+          "known": "1",
+          "pending": "0"
+        },
+        {
+          "reason": "descriptor_size",
+          "scope": "1",
+          "options": "00000110",
+          "slot": "0",
+          "actual_entry": "00000000",
+          "expected_entry": "00000000",
+          "status": "00000000",
+          "pool": "2",
+          "usage": "00000000",
+          "format": "100",
+          "required_bytes": "120",
+          "size_bytes": "0",
+          "known": "1",
+          "pending": "0"
+        }
+      ],
+      "core_bypass": [
+        {
+          "cumulative": "1",
+          "reason": "floating_point",
+          "count": "1"
+        },
+        {
+          "cumulative": "1",
+          "reason": "contention",
+          "count": "1"
+        }
+      ],
+      "dynamic_options": [
+        {
+          "options": "00000990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00000991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018990",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        },
+        {
+          "options": "00018991",
+          "parity": "1",
+          "write_after_hit_miss": "1"
+        }
+      ],
+      "admission_witness": [
+        "1",
+        "1",
+        "0",
+        "0",
+        "3416",
+        "0",
+        "0",
+        "1"
+      ]
+    }
+  },
+  "sources_before_build": {
+    "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
+    "src/proxy/cpu_state.h": "ca744469554858b4f90d66c2ab14560a33a75be9ddd8d6962fbe7b17f62967c7",
+    "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
+    "src/proxy/loading_trace.cpp": "3ed55868676623a91506486ce05608ae500dce7c058a839a63739cf31bf94903",
+    "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+    "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+    "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+    "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+    "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+    "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+    "verification/probe/loading_admission_witness.h": "fa68ba0cefda5aaf2829fc24183d10f40bd21197875f8e37ace60a74abfee6aa",
+    "verification/probe/mesh_cache_hook_fixture.cpp": "447828839b94c9354d069ae47d8aaef6f621c040148995c8df8dd83ed0d0ffba",
+    "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
+    "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
+    "verification/probe/build_mesh_cache_hook.sh": "c02f7c0383b1982305ee84902282f308b2982e80a11acf7c6e9fd268be52a466",
+    "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+    "verification/probe/run_mesh_cache_hook.py": "1cec866ed57618c4ad4987c75f5fb4624e9fdbfee2578f367d07b35c93b239e8",
+    "native/d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+    "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+    "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
+  },
+  "sources_after_build": {
+    "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
+    "src/proxy/cpu_state.h": "ca744469554858b4f90d66c2ab14560a33a75be9ddd8d6962fbe7b17f62967c7",
+    "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
+    "src/proxy/loading_trace.cpp": "3ed55868676623a91506486ce05608ae500dce7c058a839a63739cf31bf94903",
+    "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+    "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+    "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+    "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+    "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+    "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+    "verification/probe/loading_admission_witness.h": "fa68ba0cefda5aaf2829fc24183d10f40bd21197875f8e37ace60a74abfee6aa",
+    "verification/probe/mesh_cache_hook_fixture.cpp": "447828839b94c9354d069ae47d8aaef6f621c040148995c8df8dd83ed0d0ffba",
+    "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
+    "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
+    "verification/probe/build_mesh_cache_hook.sh": "c02f7c0383b1982305ee84902282f308b2982e80a11acf7c6e9fd268be52a466",
+    "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+    "verification/probe/run_mesh_cache_hook.py": "1cec866ed57618c4ad4987c75f5fb4624e9fdbfee2578f367d07b35c93b239e8",
+    "native/d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+    "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+    "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
+  },
+  "binaries_before": {
+    "mesh_cache_hook_fixture.exe": "f42357ae0cb36429a9cdca6d0b104841ddf4c0b662bd518fee8b57c4e3c8f803",
+    "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+  },
+  "sources_after_run": {
+    "src/proxy/capture.h": "3f6407a173f7ddf0d1286bd9dab2598597ed0ed59c3c398ff73ead49303d8e16",
+    "src/proxy/cpu_state.h": "ca744469554858b4f90d66c2ab14560a33a75be9ddd8d6962fbe7b17f62967c7",
+    "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
+    "src/proxy/loading_trace.cpp": "3ed55868676623a91506486ce05608ae500dce7c058a839a63739cf31bf94903",
+    "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+    "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+    "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+    "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+    "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+    "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+    "verification/probe/loading_admission_witness.h": "fa68ba0cefda5aaf2829fc24183d10f40bd21197875f8e37ace60a74abfee6aa",
+    "verification/probe/mesh_cache_hook_fixture.cpp": "447828839b94c9354d069ae47d8aaef6f621c040148995c8df8dd83ed0d0ffba",
+    "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
+    "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
+    "verification/probe/build_mesh_cache_hook.sh": "c02f7c0383b1982305ee84902282f308b2982e80a11acf7c6e9fd268be52a466",
+    "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+    "verification/probe/run_mesh_cache_hook.py": "1cec866ed57618c4ad4987c75f5fb4624e9fdbfee2578f367d07b35c93b239e8",
+    "native/d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+    "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+    "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
+  },
+  "binaries_after": {
+    "mesh_cache_hook_fixture.exe": "f42357ae0cb36429a9cdca6d0b104841ddf4c0b662bd518fee8b57c4e3c8f803",
+    "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+  }
+}

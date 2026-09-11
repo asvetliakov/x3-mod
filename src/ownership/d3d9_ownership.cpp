@@ -1,4 +1,5 @@
 #include "d3d9_ownership.h"
+#include "application_admission_abi.h"
 #include <mutex>
 #include <memory>
 #include <atomic>
@@ -54,7 +55,7 @@ struct Node {
 
 HRESULT query(Node* node, REFIID iid, void** out);
 ULONG add_ref(Node* node);
-ULONG release(Node* node);
+ULONG release(Node* node, ApplicationAdmissionAbi& admission);
 HRESULT get_device(Node* node, IDirect3DDevice9** out);
 HRESULT get_factory(Device* node, IDirect3D9** out);
 HRESULT get_container(Node* node, REFIID iid, void** out);
@@ -571,7 +572,7 @@ void discard_renderer_resources(Device* device) {
     for (auto it = retired.rbegin(); it != retired.rend(); ++it) (*it)->Release();
 }
 
-ULONG release(Node* node) {
+ULONG release(Node* node, ApplicationAdmissionAbi& admission) {
     {
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         const ULONG remaining = --node->refs;
@@ -597,6 +598,10 @@ ULONG release(Node* node) {
     } else node->backend->Release();
     {std::lock_guard<std::recursive_mutex> lock(registry_mutex);drain_finite_retired();}
     delete node;
+    // Retire the child application ticket before dispatching the parent entry.
+    // Its adapter storage remains alive, but no longer names this dead child.
+    // Ordinary entry invariants guarantee same-thread/LIFO completion here.
+    admission.finish();
     // Dispatch through the application vtable: capture/observation hooks must
     // see a parent's last release even when its last owner was a child wrapper.
     if (parent) parent->application->Release();
@@ -623,16 +628,21 @@ HRESULT get_factory(Device* node, IDirect3D9** out) {
 
 template<class T> T* unwrap(Device* owner, T* value) {
     if (!value) return nullptr;
-    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-    auto found = application_nodes.find(static_cast<IUnknown*>(value));
-    // Foreign native objects are passed unchanged for the backend to validate;
-    // never invoke RTTI or read a guessed wrapper layout from an unknown pointer.
-    if (found == application_nodes.end()) return value;
-    Node* node = found->second;
-    // All supported child interfaces use their canonical primary COM address.
-    // Device mismatch remains visible to the backend using the real native input.
-    (void)owner;
-    return static_cast<T*>(node->backend);
+    {
+        std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+        auto found = application_nodes.find(static_cast<IUnknown*>(value));
+        if (found != application_nodes.end()) {
+            // All supported children use their canonical primary COM address.
+            // Device mismatch remains visible to native input validation.
+            (void)owner;
+            return static_cast<T*>(found->second->backend);
+        }
+    }
+    // Do not acquire the admission mutex while holding the registry mutex.
+    // Foreign inputs still reach native validation unchanged; their mutation or
+    // callbacks cannot be accounted for by our application-entry boundaries.
+    admission_veto(process_admission_monitor(), AdmissionVeto::UnobservedRoute);
+    return value;
 }
 
 Node* allocate_node(Kind kind, IUnknown* native, Node* parent) {

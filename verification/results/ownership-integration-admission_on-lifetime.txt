@@ -1,0 +1,129 @@
+ROUND 0
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 1
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 2
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 3
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 4
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 5
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 6
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 7
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 8
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 9
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 10
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 11
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 12
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 13
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 14
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+ROUND 15
+create device 00000000
+create final child 00000000
+recover device through child 00000000
+device identity PASS
+recover factory through device 00000000
+factory identity PASS
+last child reaches zero PASS
+INTEGRATION LIFETIME RESULT failures=0

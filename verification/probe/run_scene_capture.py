@@ -19,8 +19,8 @@ def main():
              'main-color-fill', 'depth-color-fill', 'unknown-color-fill', 'failed-color-fill',
              'wrong-phase-color-fill', 'standalone-color-fill', 'first-rejection-preserved')
     files = ('verification/probe/scene_capture_fixture.cpp',
-             'verification/probe/build_scene_capture.sh', 'verification/probe/run_scene_capture.py',
-             'src/ownership/d3d9_ownership.cpp', 'src/ownership/execution_state.cpp', 'src/ownership/execution_state.h', 'src/ownership/finite_buffer_evidence.cpp', 'src/ownership/finite_buffer_evidence.h', 'src/ownership/portable_managed_upload.cpp', 'src/ownership/portable_managed_upload.h', 'src/ownership/d3d9_ownership.h',
+             'verification/probe/build_scene_capture.sh', 'verification/probe/build_admission_dependencies.sh', 'verification/probe/run_scene_capture.py',
+             'src/ownership/d3d9_ownership.cpp', 'src/ownership/application_admission.h', 'src/ownership/application_admission.cpp', 'src/ownership/application_admission_abi.h', 'src/ownership/application_admission_abi.cpp', 'src/ownership/execution_state.cpp', 'src/ownership/execution_state.h', 'src/ownership/finite_buffer_evidence.cpp', 'src/ownership/finite_buffer_evidence.h', 'src/ownership/portable_managed_upload.cpp', 'src/ownership/portable_managed_upload.h', 'src/ownership/d3d9_ownership.h',
              'src/ownership/d3d9_classes_inc.h', 'src/ownership/d3d9_forwarders_inc.h',
              'src/proxy/scene_capture.cpp', 'src/proxy/scene_capture.h',
              'src/proxy/capture_state.cpp', 'src/proxy/capture_state.h', 'src/proxy/capture.h',
@@ -40,7 +40,7 @@ def main():
                    '--bottle', 'Steam', '--no-update', '--workdir', str(executable.parent),
                    str(executable), r'C:\X3\d3dx9_37.dll', 'Z:' + str(root / 'src/temporal/depth_decode.hlsl')]
         report.update(command=command, executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest())
-        env = os.environ.copy()
+        env = dict(os.environ, X3M_ADMISSION='0')
         env['WINEDLLOVERRIDES'] = 'd3d9=b'
         with (results / 'scene-capture.txt').open('w') as out, (results / 'scene-capture-wine.log').open('w') as err:
             try:

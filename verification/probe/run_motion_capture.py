@@ -18,7 +18,7 @@ FILES = [
     'src/proxy/draw_input.h', 'src/proxy/draw_input.cpp',
     'src/proxy/object_lifetime.h', 'src/proxy/object_trace.h',
     'src/proxy/cpu_state.h', 'src/proxy/capture_state.h', 'src/proxy/capture_state.cpp', 'src/proxy/capture.h',
-    'src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp',
+    'src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp', 'src/ownership/application_admission.h', 'src/ownership/application_admission.cpp', 'src/ownership/application_admission_abi.h', 'src/ownership/application_admission_abi.cpp',
     'src/ownership/d3d9_classes_inc.h', 'src/ownership/d3d9_forwarders_inc.h',
     'src/ownership/finite_buffer_evidence.h', 'src/ownership/finite_buffer_evidence.cpp',
     'src/ownership/portable_managed_upload.h', 'src/ownership/portable_managed_upload.cpp',
@@ -30,7 +30,7 @@ FILES = [
     'src/renderer/rigid_position.h', 'src/renderer/rigid_position.cpp',
     'src/renderer/rigid_position_profiles_inc.h', 'src/renderer/position_path_profiles_inc.h',
     'src/renderer/pixel_coverage_profiles_inc.h',
-    'verification/probe/motion_capture_fixture.cpp', 'verification/probe/build_motion_capture.sh',
+    'verification/probe/motion_capture_fixture.cpp', 'verification/probe/build_motion_capture.sh', 'verification/probe/build_admission_dependencies.sh',
     'verification/probe/run_motion_capture.py']
 
 
@@ -94,7 +94,7 @@ def main():
         output = RESULTS / 'motion-capture.txt'
         with output.open('w') as out, (RESULTS / 'motion-capture-wine.log').open('w') as err:
             run = subprocess.run(command, stdout=out, stderr=err, timeout=90,
-                                 env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'))
+                                 env=dict(os.environ, X3M_ADMISSION='0', WINEDLLOVERRIDES='d3d9=b'))
         text = output.read_text()
         report.update(exit_code=run.returncode, sources_after_run=hashes(),
                       executable_unchanged=sha(EXE) == report['executable_sha256'], report_sha256=sha(output))

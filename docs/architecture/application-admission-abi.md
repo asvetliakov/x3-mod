@@ -1,8 +1,9 @@
 # Application admission ABI adapter
 
-The standalone `application_admission_abi` adapter preserves the x86 caller's
-complete x87 state, MXCSR and Win32 LastError independently around admission
-bookkeeping. It is not yet integrated into the ownership wrappers or proxy hooks.
+The `application_admission_abi` adapter preserves the x86 caller's complete x87
+state, MXCSR and Win32 LastError independently around admission bookkeeping.
+It is now linked into ownership, loader and capture/loading entrypoints behind
+the off-by-default [process option](../verification/process-admission.md).
 The portable [admission core](../verification/application-admission.md) owns serialization and
 replay admission; this adapter owns ordinary-return state transport at its own
 function boundaries.
@@ -45,8 +46,10 @@ inventing an HRESULT, or using a TLS bypass through active replay.
 **Compile only `application_admission_abi.cpp` with `-fno-exceptions`.** The file
 rejects compilation when `__EXCEPTIONS` is enabled. The standalone build script
 compiles the portable core and fixture separately with their ordinary exception
-policy. There is no global exception-policy change and no production CMake
-integration in this checkpoint.
+policy. Production CMake uses the same per-source setting. Generated ownership
+entry definitions additionally use a scoped compiler option to remove their own
+EH bookends; handwritten helpers retain their exception policy. See
+[ownership entry verification](../verification/ownership-admission.md).
 
 The initial optional/RAII prototype passed the CPU witnesses but emitted MinGW
 SJLJ registration before its guard and unregistration after restoration, including
@@ -59,7 +62,7 @@ first call and restore after their last call.
 
 The promise covers **ordinary return only**. Exceptions crossing this shell have
 no supported recovery contract; the adapter does not promise state restoration
-or admission cleanup during exceptional unwinding. A future enclosing hook may
+or admission cleanup during exceptional unwinding. An enclosing hook may
 still emit its own exception prologue/epilogue and needs separate emitted-code
 and runtime verification. The fixture's exception-enabled caller can initialize
 unwinder machinery before the first adapter entry, so these tests do not claim a
@@ -70,8 +73,8 @@ cold-process unwinder result.
 `python3 verification/probe/run_application_admission_abi.py` builds the separate
 objects, rejects an incorrect exception-policy build, checks the adapter object,
 and runs a CPU-only x86 fixture through CrossOver Preview. It does not create a
-D3D device or launch the game. The final run passed **130 checks and 21 timing
-samples**. State witnesses include live x87 payloads, nondefault controls/sticky
+D3D device or launch the game. The standalone checkpoint at `127c3da` passed
+**130 checks and 21 timing samples**. State witnesses include live x87 payloads, nondefault controls/sticky
 state, MXCSR, LastError, four-byte stack entry, waiting admission, refusals,
 foreign-thread finish, explicit handoff, destructor finish, and preservation of
 simulated native outgoing state and result. The runner requires exact case,
@@ -82,9 +85,9 @@ samples. One measured entry includes adapter construction and destruction;
 nested mode keeps one outer scope alive outside the timed loop. QPC boundaries and
 route-count validation are outside the per-entry body; the timed loop includes
 small requested/admitted counter accumulations in both versions. Medians from the retained
-prototype and current reports are:
+prototype and standalone checkpoint reports are:
 
-| Mode | Initial prototype | Current adapter |
+| Mode | Initial prototype | Adapter at `127c3da` |
 | --- | ---: | ---: |
 | Disabled | 63.773 ns | 2.270 ns |
 | Enabled outer | 231.585 ns | 168.769 ns |
@@ -95,8 +98,15 @@ separate same-session runs. They do not measure contested waits, actual D3D hook
 cost, game performance, native Windows, or total frame cost across all entry
 points. No aggregate hook budget is inferred from them.
 
-Current evidence is `verification/results/application-admission-abi-summary.json`
-and its raw report/object dump. The runner records matching source maps before
+The standalone checkpoint evidence is
+`verification/results/application-admission-abi-summary.json` and its raw
+report/object dump. Its source map predates the process getter added during
+production integration; it is not a current-source certificate for that getter.
+Current integration evidence is documented separately in
+[process configuration](../verification/process-admission.md),
+[ownership entries](../verification/ownership-admission.md), and
+[proxy entries](../verification/proxy-application-admission.md).
+The standalone runner records matching source maps before
 build/after build/after run, executable/object/report hashes, compiler version,
 and observed Wine launcher stability; no runtime-version allowlist is used.
 `application-admission-abi-initial-summary.json` and its report are explicitly
@@ -105,6 +115,6 @@ copies and executable remain untracked for review; the current runner does not
 pretend to rebuild that prototype. It recomputes both sets of medians directly
 from the retained raw reports.
 
-Independent review accepted the source/lifetime contract, emitted boundaries,
-current and historical artifact provenance, and the stated limits. No production
-entry coverage or live replay is claimed by this checkpoint.
+Independent review accepted the standalone source/lifetime contract, emitted
+boundaries, artifact provenance and stated limits. That standalone evidence
+does not establish production entry coverage or live replay safety.
