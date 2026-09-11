@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-10T23:33:40.329679+00:00",
+  "started_utc": "2026-09-10T23:57:41.225273+00:00",
   "passed": true,
   "phase": "complete",
   "fresh_build": true,
@@ -22,7 +22,7 @@
     "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
     "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
     "src/ownership/d3d9_ownership.h": "6251f048bd49782d919f74705ab9c7f0aec61ee7f2a71799c4a03c117fe90d33",
-    "src/ownership/d3d9_ownership.cpp": "68a06235c0f23b83ebaca368ddec60adc74d3827b723b9e8fd2812cf7c724b4f",
+    "src/ownership/d3d9_ownership.cpp": "e94793d53e82329d2cc8136d2baaecb0957c10771f4bbd5b88bbbb104949159f",
     "src/ownership/execution_state.h": "88e6ad56d1440d353953bc558c177a2eb226e486d7f3bf371cb3087180d08836",
     "src/ownership/execution_state.cpp": "f8d690a65eef657a055f4a248aba9762137515daa25a61aafd13ab901196fcdc",
     "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
@@ -57,7 +57,7 @@
     "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
     "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
     "src/ownership/d3d9_ownership.h": "6251f048bd49782d919f74705ab9c7f0aec61ee7f2a71799c4a03c117fe90d33",
-    "src/ownership/d3d9_ownership.cpp": "68a06235c0f23b83ebaca368ddec60adc74d3827b723b9e8fd2812cf7c724b4f",
+    "src/ownership/d3d9_ownership.cpp": "e94793d53e82329d2cc8136d2baaecb0957c10771f4bbd5b88bbbb104949159f",
     "src/ownership/execution_state.h": "88e6ad56d1440d353953bc558c177a2eb226e486d7f3bf371cb3087180d08836",
     "src/ownership/execution_state.cpp": "f8d690a65eef657a055f4a248aba9762137515daa25a61aafd13ab901196fcdc",
     "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
@@ -74,7 +74,7 @@
     "native_d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
     "native_wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
   },
-  "executable_sha256": "36f2bdd5e3f1c962087129548b20c472de253c9175d8a22e90edef1619e578e7",
+  "executable_sha256": "87d51cda8ae94fb48da19964d8f6d928dfbef848715622eea50820cdf0131c7c",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -108,7 +108,7 @@
     "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
     "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
     "src/ownership/d3d9_ownership.h": "6251f048bd49782d919f74705ab9c7f0aec61ee7f2a71799c4a03c117fe90d33",
-    "src/ownership/d3d9_ownership.cpp": "68a06235c0f23b83ebaca368ddec60adc74d3827b723b9e8fd2812cf7c724b4f",
+    "src/ownership/d3d9_ownership.cpp": "e94793d53e82329d2cc8136d2baaecb0957c10771f4bbd5b88bbbb104949159f",
     "src/ownership/execution_state.h": "88e6ad56d1440d353953bc558c177a2eb226e486d7f3bf371cb3087180d08836",
     "src/ownership/execution_state.cpp": "f8d690a65eef657a055f4a248aba9762137515daa25a61aafd13ab901196fcdc",
     "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",

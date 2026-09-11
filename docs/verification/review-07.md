@@ -1,5 +1,9 @@
 # Motion producer integration review
 
+This review records commit `0ce0814`. The subsequent
+[performance review](review-08.md) refreshes shared result files for its changed
+ownership source; this commit preserves the integration evidence below.
+
 The source checkpoint connects recorded main-scene draws to private rigid-motion
 GPU production. It does not enable temporal color accumulation, camera jitter or
 any HDR visual feature. The installed iteration-5 DLL remains unchanged.

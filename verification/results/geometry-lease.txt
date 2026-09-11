@@ -198,6 +198,10 @@ CHECK valid borrowed view PASS
 CHECK release capacity slot PASS
 CHECK capacity slot reusable PASS
 CHECK reused slot has fresh handle PASS
+CHECK stale reused slot cannot expose new reservation PASS
+CHECK stale reused slot cannot release new reservation PASS
+CHECK inspect PASS
+CHECK valid borrowed view PASS
 CHECK capacity frame drained PASS
 CHECK VB PASS
 CHECK VB upload Lock PASS
@@ -315,6 +319,30 @@ CHECK third global frame cleanup PASS
 CHECK factory PASS
 CHECK wrap PASS
 CHECK device PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK IB PASS
+CHECK IB upload Lock PASS
+CHECK IB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK forged same-index lease serial rejected PASS
+CHECK forged lease cannot release live native refs PASS
+CHECK forged same-index frame serial rejected PASS
+CHECK forged frame cannot retire live reservations PASS
+CHECK lease value cannot impersonate frame type PASS
+CHECK frame value cannot impersonate lease type PASS
+CHECK inspect PASS
+CHECK valid borrowed view PASS
+CHECK real handle still owns reservation after malformed operations PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
 CHECK final global accounting PASS
 CHECK all lease native and CPU references returned PASS
-RESULT PASS checks=319
+RESULT PASS checks=347

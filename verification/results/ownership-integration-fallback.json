@@ -4,7 +4,7 @@
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
     "src/ownership/d3d9_classes_inc.h": "97c661a1098441025c24a273885d082669169143d3e72cb23d98e12ddde2d195",
     "src/ownership/d3d9_forwarders_inc.h": "30986054619e5bd1ba7f2bec9315cb1934c356138bba79fddc788c31d8b202af",
-    "src/ownership/d3d9_ownership.cpp": "68a06235c0f23b83ebaca368ddec60adc74d3827b723b9e8fd2812cf7c724b4f",
+    "src/ownership/d3d9_ownership.cpp": "e94793d53e82329d2cc8136d2baaecb0957c10771f4bbd5b88bbbb104949159f",
     "src/ownership/d3d9_ownership.h": "6251f048bd49782d919f74705ab9c7f0aec61ee7f2a71799c4a03c117fe90d33",
     "src/ownership/execution_state.cpp": "f8d690a65eef657a055f4a248aba9762137515daa25a61aafd13ab901196fcdc",
     "src/ownership/execution_state.h": "88e6ad56d1440d353953bc558c177a2eb226e486d7f3bf371cb3087180d08836",
@@ -77,12 +77,12 @@
     "verification/probe/verify_ownership_integration.py": "9497e076f04f9d7122312ef22f5602543c8cf92debd15ed465d53592a1ae5c31"
   },
   "binaries_before_and_after": {
-    "build-ownership/d3d9.dll": "feb1aa9142d7609fdb540ee6da6cda5983bccc7112f989fd8c9ff91ee12831ec",
-    "verification/probe/build/d3d9_smoke.exe": "c28d9dafa06df990b8ce2a79cc8477033ddb814f69d825f5835b87fe19e0eb04",
-    "verification/probe/build/capture_state_fixture.exe": "815d49684057b13b684993d0c6cba2fbc4cf9ce540f01b9ac67a427d06414653",
-    "verification/probe/build/ownership_integration_lifetime.exe": "c5060011cafbb4e2006d3019f233ba4e8088d33062f2aefa186ee0725c1c70b2",
-    "verification/probe/build/ownership_integration_baseline.exe": "28526af3335c0336e1b5823ff70e260db34358462c5bf5975af0d04c589e0902",
-    "verification/probe/build/ownership_integration_auto_depth.exe": "95973cc482bd040a30ed19dfc9be9cc037b37a1aafa450b18bde74eba8a6dc75"
+    "build-ownership/d3d9.dll": "e45aaac050aa3c0c816776a72a5877f951ee5d87efc6d58493740175aee8d282",
+    "verification/probe/build/d3d9_smoke.exe": "9c1b56b87434d14593b8e26cea94d4c9d50527f65668d0897bc81e11bd5604d0",
+    "verification/probe/build/capture_state_fixture.exe": "c0fc881f4fefa3c069a28b1127f8c2ccce463f13d26b47edc92f38698afdd75d",
+    "verification/probe/build/ownership_integration_lifetime.exe": "91555983d890827f5b8d73945bfec1dd026ea22242972f25c04721dd05e71080",
+    "verification/probe/build/ownership_integration_baseline.exe": "8a03f39096976f9d1bd5f9c907d1bb2cbb63704e7889f8b6dafff13c818193a6",
+    "verification/probe/build/ownership_integration_auto_depth.exe": "86d22e29215b4ac21802538243c41ff2bd9e751fbf823f08c9a4ec6f680431e9"
   },
   "production_object_hashes": {
     "build-ownership/CMakeFiles/d3d9.dir/src/ownership/execution_state.cpp.obj": "4bb13c6420640e913064687df95ade4888e357f552164a343afc520077f0b9da",
@@ -126,9 +126,9 @@
     "src/renderer/rigid_replay_program.cpp.obj",
     "src/renderer/temporal_pass.cpp.obj"
   ],
-  "verification_dll_sha256": "0c567b8c6dfa9bcd64a83029de9302f1d11ee7e2f37f7b537c8143b354238baf",
-  "production_dll_sha256": "feb1aa9142d7609fdb540ee6da6cda5983bccc7112f989fd8c9ff91ee12831ec",
-  "trace_sha256": "bd9be3c443d88b42ba487e52a8a1605c7eadb68cc60cd058c74ad309d94be07d",
+  "verification_dll_sha256": "b371d99a5ef70a8b7a55005bafa4120d8a0ddb85faba924fee86fc6acab009a3",
+  "production_dll_sha256": "e45aaac050aa3c0c816776a72a5877f951ee5d87efc6d58493740175aee8d282",
+  "trace_sha256": "9624efcad8af89885aaaee42d4970bbc66e7de8473bcfade6a0fbafe66c3e739",
   "stub_sha256": "141b1c871254abb26b34925a8026fc2d52fd1bd6502a4992f1a63f6401a9665f",
   "installed": false,
   "finite_requested": true,
@@ -144,7 +144,7 @@
     "motion_replay_records": 0
   },
   "local_binaries_before_and_after": {
-    "d3d9.dll": "0c567b8c6dfa9bcd64a83029de9302f1d11ee7e2f37f7b537c8143b354238baf",
-    "d3d9_smoke.exe": "c28d9dafa06df990b8ce2a79cc8477033ddb814f69d825f5835b87fe19e0eb04"
+    "d3d9.dll": "b371d99a5ef70a8b7a55005bafa4120d8a0ddb85faba924fee86fc6acab009a3",
+    "d3d9_smoke.exe": "9c1b56b87434d14593b8e26cea94d4c9d50527f65668d0897bc81e11bd5604d0"
   }
 }

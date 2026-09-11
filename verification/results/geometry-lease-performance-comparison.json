@@ -1,0 +1,68 @@
+{
+  "passed": true,
+  "stages": {
+    "baseline": {
+      "manifest_sha256": "ecebf14ecf8928602903d8ee0c02531f9b42160b92d8ce8cc915ba76734b3143",
+      "report_sha256": "c02225df7a07d56037478be2a03c34b2f6bdb2b5f4ef139059aae817734c8b24",
+      "executable_sha256": "cfa2d43ed048c323d278cf191e52f35bd7e72b11df9c62d17c24898f65e6168e",
+      "ownership_cpp_sha256": "68a06235c0f23b83ebaca368ddec60adc74d3827b723b9e8fd2812cf7c724b4f",
+      "checks": 831397,
+      "source_unchanged_during_run": true
+    },
+    "qualification": {
+      "manifest_sha256": "96bb94ccceb974f7a57730269012c7affcebbcc1b881fa9b1c9a44479599e00b",
+      "report_sha256": "eb517903ece3231fb1c0333508f81bddea514c9d147a3505df0223c553e44395",
+      "executable_sha256": "7376885516f360e100b85734491064a7c3be50a727ced7579119b5346aa17686",
+      "ownership_cpp_sha256": "78cae60de471ff003d1fd9100b2e075ddb0feee6b112b4e686bb6a56680f1063",
+      "checks": 831397,
+      "source_unchanged_during_run": true
+    },
+    "optimized": {
+      "manifest_sha256": "95caf42a03e00e0d058e2c22a0a9e75f30bfffc9a735ce06a94149004a95bf46",
+      "report_sha256": "52751f8928929c7d0510e718251c4e8e1e8a08f42e6eadbccb613b105cbb9ca2",
+      "executable_sha256": "30440580689b0624eac53d56517e85c97188f5913a55905545d98b28d6454b4b",
+      "ownership_cpp_sha256": "e94793d53e82329d2cc8136d2baaecb0957c10771f4bbd5b88bbbb104949159f",
+      "checks": 831397,
+      "source_unchanged_during_run": true
+    }
+  },
+  "residual_phase_timings": [
+    {
+      "stage": "baseline",
+      "leases": 700,
+      "acquire_less_qualifier_us_median": 1117.3999999999942,
+      "inspect_less_qualifier_us_median": 1202.2000000000044
+    },
+    {
+      "stage": "baseline",
+      "leases": 4096,
+      "acquire_less_qualifier_us_median": 12377.699999999983,
+      "inspect_less_qualifier_us_median": 13312.200000000012
+    },
+    {
+      "stage": "qualification",
+      "leases": 700,
+      "acquire_less_qualifier_us_median": 955.0,
+      "inspect_less_qualifier_us_median": 1059.9000000000015
+    },
+    {
+      "stage": "qualification",
+      "leases": 4096,
+      "acquire_less_qualifier_us_median": 9432.199999999997,
+      "inspect_less_qualifier_us_median": 10387.400000000009
+    },
+    {
+      "stage": "optimized",
+      "leases": 700,
+      "acquire_less_qualifier_us_median": 810.0,
+      "inspect_less_qualifier_us_median": 883.3999999999978
+    },
+    {
+      "stage": "optimized",
+      "leases": 4096,
+      "acquire_less_qualifier_us_median": 4752.300000000003,
+      "inspect_less_qualifier_us_median": 5170.100000000006
+    }
+  ],
+  "note": "Historical source maps represent each immutable executable build, not current source. Residuals are timing-accounting differences, not pure instruction cost."
+}

@@ -1,6 +1,6 @@
 {
   "result": "PASS",
-  "dll_sha256": "feb1aa9142d7609fdb540ee6da6cda5983bccc7112f989fd8c9ff91ee12831ec",
+  "dll_sha256": "e45aaac050aa3c0c816776a72a5877f951ee5d87efc6d58493740175aee8d282",
   "cases": {
     "off-smoke": {
       "devices": 2,
@@ -89,7 +89,7 @@
     "on-lifetime": {
       "devices": 16,
       "destroyed": 16,
-      "reused_device_addresses": 9,
+      "reused_device_addresses": 10,
       "scoped_geometry_records": 0,
       "finite_metric_records": 0,
       "native_contract_rejection_reported": false,

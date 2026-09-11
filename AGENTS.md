@@ -12,6 +12,9 @@ User preferences recorded 2026-09-10:
   verification evidence. Keep generated build products and raw captures untracked.
 - Review code changes before checkpoint commits. Use an independent reviewer
   when practical, fix concrete findings, and rerun affected verification.
+- Include a performance pass for new code: inspect per-draw work, allocations,
+  repeated validation and locking; measure suspected hotspots and fix avoidable
+  cost without weakening correctness. Separate diagnostic timings from game FPS.
 - Batch tracing needs into a consolidated diagnostic build before asking for
   another load/test cycle. Use targeted disassembly where needed. Investigate
   loading time alongside rendering; track the double cursor after alt-tab and

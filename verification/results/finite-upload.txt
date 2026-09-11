@@ -14,6 +14,24 @@ CHECK write unlock PASS
 CHECK content PASS
 CHECK position view PASS
 CHECK full Float3 finite PASS
+CHECK native open-map control endpoint PASS
+CHECK content PASS
+CHECK direct native write map control PASS
+CHECK content PASS
+CHECK direct native map leaves known wrapper revision and pending zero PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK closed query rejects native map despite wrapper pending zero PASS
+CHECK direct native control closes mapping PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK native closure alone cannot restore invalidated finite evidence PASS
+CHECK write lock PASS
+CHECK mapping PASS
+CHECK write unlock PASS
+CHECK content PASS
+CHECK position view PASS
+CHECK fresh observed full upload restores finite evidence after native map refusal PASS
 CHECK statistics PASS
 CHECK content PASS
 CHECK position view PASS
@@ -383,4 +401,4 @@ CHECK statistics PASS
 CHECK content PASS
 CHECK position view PASS
 CHECK Reset cannot clear permanent tracking failure PASS
-RESULT PASS checks=385
+RESULT PASS checks=403

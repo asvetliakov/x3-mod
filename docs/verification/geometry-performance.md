@@ -1,0 +1,66 @@
+# Geometry lease CPU performance
+
+The warmed native benchmark found a substantial CPU cost in the new geometry evidence path. Removing duplicate closed-buffer qualification cut the dominant cost roughly in half. Direct handle indexing and a fixed free-list removed linear lookup/admission searches; a forward retirement cursor removed repeated table scans. These changes preserve fresh evidence checks and reference/budget lifetime rules.
+
+These are synthetic CPU wall times on the pinned CrossOver Preview backend. They are not GPU timings or game FPS results. Actual live motion submission remains refused pending a verified replay-versus-write exclusion contract; the measurements do not override that restriction.
+
+## Method
+
+The production ownership module is compiled with the same i686 SSE2/stack settings as the existing fixtures. Each stage runs 84 recorded samples: three profiles, 1/100/700/4,096 indexed leases, seven trials after one warmup. Buffers are created and uploaded before timed loops. No draw or Present is issued. Timed phases are acquisition, inspection and end-frame retirement; public finite/index queries, invalid-handle lookup and native AddRef/Release are separate controls. Allocation of fixture vectors and output formatting occur outside timed phases. Qualifier ticks overlap acquisition/inspection and must not be added to them.
+
+Each stage freezes a distinct executable after equal pre/post-build source hashes. Source work may proceed afterward; the historical source map identifies that executable rather than claiming it matches current code. The runner checks native hashes, executable immutability, 831,397 successful assertions, the exact 84-sample inventory, a unique terminal PASS, positive QPC frequency and finite nonnegative timing values. The historical baseline/qualification timing fields were also checked offline against these tightened acceptance rules.
+
+## Shared small-buffer results
+
+Medians in milliseconds. One native 48-byte VB and 12-byte IB are reused; every lease still owns its own native and CPU references and charges the full pair size. At 4,096 leases the conservative reservation is 245,760 bytes.
+
+| Leases | Stage | Acquire | Inspect | Retire | Public evidence |
+| ---: | --- | ---: | ---: | ---: | ---: |
+| 1 | Original | 0.057 | 0.056 | 0.005 | 0.055 |
+| 1 | One qualification | 0.031 | 0.030 | 0.005 | 0.031 |
+| 1 | Indexed handles | 0.029 | 0.028 | 0.010 | 0.029 |
+| 100 | Original | 5.688 | 5.669 | 0.026 | 5.793 |
+| 100 | One qualification | 2.957 | 2.954 | 0.026 | 3.044 |
+| 100 | Indexed handles | 2.795 | 2.806 | 0.025 | 2.832 |
+| 700 | Original | 40.035 | 39.990 | 0.143 | 40.263 |
+| 700 | One qualification | 20.577 | 20.784 | 0.146 | 20.992 |
+| 700 | Indexed handles | 19.483 | 19.609 | 0.113 | 20.003 |
+| 4,096 | Original | 255.353 | 253.718 | 1.108 | 250.580 |
+| 4,096 | One qualification | 124.517 | 125.638 | 1.032 | 122.306 |
+| 4,096 | Indexed handles | 114.332 | 115.182 | 0.618 | 117.266 |
+
+For 700 shared-small leases, original qualification alone consumed 38.922 ms of 40.035 ms acquisition and 38.801 ms of 39.990 ms inspection. The merged check performs the same fresh closed-resource proof once instead of twice per resource. An indexed reader/acquire/replay sequence therefore needs six full inspections instead of twelve. DLL file hashes were already cached; this does not remove repeated hashing that never existed.
+
+The qualification-only to indexed-handle phases also show machine/run variation in unchanged qualifier cost. Do not attribute every difference in total wall time to table indexing. The direct lookup control is clearer: 700 invalid lease lookups fell from 3.444 ms to 0.059 ms; 4,096 fell from 21.608 ms to 0.347 ms. At 4,096 leases, median acquisition time excluding its nested qualifier span fell from 9.432 ms to 4.752 ms between those two stages (an accounting residual, not a separate pure-CPU measurement).
+
+End-frame retirement at 4,096 leases fell from 1.108 ms to 0.618 ms. The single-lease case increased from 4.8 µs to 9.7 µs in these runs: cleanup still scans the fixed table once, so the change is not a win at every scale.
+
+## Range and allocation diversity
+
+The varying-range profile reuses a 64 KiB VB and 12 KiB IB, changes the requested first vertex and checks 256 FLOAT3 positions. Its 4,096-lease reservation is 304 MiB. The many-small profile rotates through 1,024 distinct 48/12-byte pairs, exercising allocation-sidecar lookup while retaining the same bounded reservation accounting. Results below are medians for 700 leases, milliseconds.
+
+| Profile | Stage | Acquire | Inspect | Retire |
+| --- | --- | ---: | ---: | ---: |
+| shared_varying_range | Original | 48.943 | 45.458 | 0.171 |
+| shared_varying_range | One qualification | 21.779 | 21.846 | 0.140 |
+| shared_varying_range | Indexed handles | 21.092 | 21.021 | 0.133 |
+| many_small | Original | 45.206 | 45.460 | 0.187 |
+| many_small | One qualification | 25.553 | 25.694 | 0.170 |
+| many_small | Indexed handles | 24.246 | 24.148 | 0.156 |
+
+## Remaining costs and limits
+
+Fresh native qualification still dominates: the final shared-small 700-lease acquisition/inspection remain about 19.5/19.6 ms, and public evidence queries take about 20.0 ms. This is not cheap enough to claim broadly affordable per-frame live replay. Native validation still checks current mappings/endpoints, module imports and accessible memory; no proof was cached across unknown mutations. Allocation-sidecar lookup still walks the owner list, which is visible in the many-small profile. Further work needs its own preserved-contract review and measurement.
+
+Handle lookup now uses encoded fixed slots plus full serial/frame equality. Serial exhaustion refuses before overflow; a fixed free-list admits without allocation. Retirement carries a cursor through the table once. Slots become reusable after detachment, but native-byte and global lease-count quotas remain charged until actual native/CPU cleanup completes. Existing lifecycle, forged/stale/type-confused handle, native endpoint, delayed-release quota and state-preservation regressions are required after the change.
+
+All timing ranges and component/cache counters are retained; seven sequential warmed trials do not estimate broad hardware/game distributions. The reference controls perform different operations and are not an uninstrumented game baseline. Setup includes native device/buffer creation and qualification, is reported separately, and is not counted as steady-frame CPU time.
+
+## Retained evidence
+
+- Runner: `verification/probe/run_geometry_lease_benchmark.py`; native source: `geometry_lease_benchmark.cpp`; build: `build_geometry_lease_benchmark.sh`.
+- `verification/results/geometry-lease-performance-baseline.{json,txt}` records the original source/executable.
+- `verification/results/geometry-lease-performance-qualification.{json,txt}` isolates merged qualification.
+- `verification/results/geometry-lease-performance-optimized.{json,txt}` records the final combined optimization.
+- `verification/results/geometry-lease-performance-comparison.json` binds the three manifests and component residuals.
+- Each stage also retains its build output and Wine log.

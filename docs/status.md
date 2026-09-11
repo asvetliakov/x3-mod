@@ -11,6 +11,14 @@ and [roadmap](architecture/roadmap.md).
 
 ## Latest checkpoint
 
+The new geometry evidence path now avoids duplicate native qualification and
+repeated lease-table searches. In the synthetic Preview benchmark, acquiring and
+inspecting 700 shared-small indexed leases fell from about 80 ms to 39 ms combined;
+invalid-handle lookup fell from 3.444 to 0.059 ms per 700 calls. Fresh qualification
+still dominates and this is not yet an affordable every-frame replay path.
+See [performance measurements](verification/geometry-performance.md) and
+[review 8](verification/review-08.md). The installed DLL remains unchanged.
+
 A private motion producer now connects main-scene draw observations to
 bounded native geometry leases, CPU storage correspondence and an actual
 pre-Clear GPU replay. It releases the motion target and replay resources within
@@ -61,8 +69,8 @@ component comparisons and 134 bilateral raster/depth cases; independent review
 checks its evidence limits. These source changes have not replaced the installed
 iteration-5 DLL.
 
-The [live draw-input reader](verification/draw-input.md) passes 219 checks,
-63 caller-state comparisons and seven failed-getter controls. It reads exact
+The [live draw-input reader](verification/draw-input.md) passes 260 checks,
+74 caller-state comparisons and seven failed-getter controls. It reads exact
 submitted rows and actual layouts/revisions, distinguishes nonindexed draws from
 an unused bound IB, and keeps lifetime, source qualification and finite-payload
 gates independent. Proxy
@@ -96,9 +104,10 @@ unchanged game EXE and bottle configuration. The prior 0.4 DLL is preserved in
 The latest source DLL passes 20 actual-DLL integration cases, including native
 Clear CPU-state witnesses and explicit refusal of unsafe live motion dispatch.
 Its SHA256 is
-`feb1aa9142d7609fdb540ee6da6cda5983bccc7112f989fd8c9ff91ee12831ec`; it is
+`e45aaac050aa3c0c816776a72a5877f951ee5d87efc6d58493740175aee8d282`; it is
 **not installed**. The 18-object forced native fallback also passes.
-See [review 7](verification/review-07.md). Earlier source evidence remains in
+See [review 8](verification/review-08.md). Earlier source evidence remains in
+[review 7](verification/review-07.md) at `0ce0814`,
 [review 6](verification/review-06.md) at `c4f3d45` and
 [review 5](verification/review-05.md) at `437e95b`. Shared result paths now refer
 to the latest verified source; historical commits preserve their prior reports.

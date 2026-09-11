@@ -32,9 +32,18 @@ Metrics are cumulative per owner: uploads, publications, invalidations, reason c
 
 ## Verification
 
-`python3 verification/probe/run_finite_upload.py` builds the actual ownership module and both production helper modules afresh, snapshots source/native-module hashes before and after compilation, checks a unique final PASS line and exact CHECK count, and verifies executable/report hashes after execution. A failure overwrites the summary with `passed:false`, so an old successful report cannot masquerade as fresh evidence. The final suite passes 385 checks. Results are retained in `verification/results/finite-upload-summary.json` and `finite-upload.txt`.
+`python3 verification/probe/run_finite_upload.py` builds the actual ownership module and both production helper modules afresh, snapshots source/native-module hashes before and after compilation, checks a unique final PASS line and exact CHECK count, and verifies executable/report hashes after execution. A failure overwrites the summary with `passed:false`, so an old successful report cannot masquerade as fresh evidence. The final suite passes 403 checks. Results are retained in `verification/results/finite-upload-summary.json` and `finite-upload.txt`.
 
 The actual native/wrapped fixture covers Float3 and Half4 finite/nonfinite cases; ignored Half4 W; partial preserving uploads; pending, nested, cross-thread and unsupported mappings; IB16/32 subdraw bounds; disabled mode and both budgets; wrapper recreation; Reset success, failure, pending writes and observed loss; ProcessVertices invalidation; foreign POD and IUnknown reservations; external sidecars after complete device teardown; deterministic Wine-callback/registry contention and deferred reclamation; concurrent external AddRef during reservation acquisition; and a permanent tracker SetPrivateData failure.
+
+A targeted control opens the real borrowed native mapping while wrapper metadata
+still reports a known, unchanged revision and zero pending locks. The closed
+query rejects with `NativeContract`, proving that wrapper pending metadata alone
+does not admit this path. Native Unlock alone leaves the invalidated finite
+evidence unknown; a fresh full observed upload restores it through the existing
+publication rules. This test-only bypass verifies the
+[merged closed qualification](managed-upload-contract.md#eliminating-a-repeated-closed-buffer-inspection)
+without permitting arbitrary borrowed-native writes in production.
 
 Native-versus-wrapped success/failure comparisons exercise HRESULT/output, LastError and seeded nondefault/live-x87 state. Ordinary writable mappings compare full native payload bytes after observation, avoiding READONLY on WRITEONLY buffers. Fixture-only scheduling callbacks make the two concurrency regressions deterministic; they are absent from production builds. The portable evidence core has separate optimized/sanitizer/oracle evidence. Broader ownership and draw-reader regressions are retained by their existing runners.
 

@@ -35,6 +35,23 @@ void normal(Create create,HWND window){
     const std::uint32_t finite[12]={0x3f800000,0x40000000,0x40400000,0,0,0,0,0,0,0,0,0};
     check(positions(vb.p).state==FiniteStatus::Unknown,"unobserved initial bytes unknown");
     upload(vb.p,finite,sizeof finite);auto view=positions(vb.p);check(view.state==FiniteStatus::Finite&&view.status==S_OK&&view.generation!=0,"full Float3 finite");
+    // Test-only native bypass: wrapper pending/revision cannot reveal this map.
+    // The closed qualifier itself must refuse it, even for previously finite cells.
+    auto* native_open=borrowed_native_buffer_for_lock_contract(vb.p);
+    check(native_open!=nullptr,"native open-map control endpoint");
+    const auto before_native_map=content(vb.p);void* native_mapping=nullptr;
+    ok(native_open->Lock(0,48,&native_mapping,0),"direct native write map control");
+    const auto during_native_map=content(vb.p);
+    check(native_mapping&&during_native_map.known&&!during_native_map.pending_locks&&
+          during_native_map.revision==before_native_map.revision,
+          "direct native map leaves known wrapper revision and pending zero");
+    const auto native_open_view=positions(vb.p);
+    check(native_open_view.state==FiniteStatus::Unknown&&native_open_view.reason==FiniteEvidenceReason::NativeContract,
+          "closed query rejects native map despite wrapper pending zero");
+    ok(native_open->Unlock(),"direct native control closes mapping");
+    check(positions(vb.p).state==FiniteStatus::Unknown,"native closure alone cannot restore invalidated finite evidence");
+    upload(vb.p,finite,sizeof finite);
+    check(positions(vb.p).state==FiniteStatus::Finite,"fresh observed full upload restores finite evidence after native map refusal");
     auto baseline=stats(s);positions(vb.p);check(stats(s).query_cache_hits>baseline.query_cache_hits,"query cache hit");
     void* mapped=nullptr;ok(vb->Lock(0,12,&mapped,0),"partial lock");check(positions(vb.p).state==FiniteStatus::Unknown,"pending query unknown");std::memcpy(mapped,finite,12);ok(vb->Unlock(),"partial unlock");check(positions(vb.p).state==FiniteStatus::Finite,"preserving partial retains untouched cells");
     std::uint32_t nan=0x7fc00001;upload(vb.p,&nan,4,4);check(positions(vb.p).state==FiniteStatus::NonFinite,"NaN XYZ rejected");upload(vb.p,finite,sizeof finite);check(positions(vb.p).state==FiniteStatus::Finite,"full rewrite recovers observed bytes");

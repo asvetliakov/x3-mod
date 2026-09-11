@@ -7,7 +7,7 @@
   ],
   "objects": {
     "build-ownership/CMakeFiles/d3d9.dir/src/ownership/d3d9_ownership.cpp.obj": {
-      "sha256": "64e266d84422fc0f5b680bcddd0d5f0d3adc6cc0803455d1d8a736e585253b31",
+      "sha256": "5d8b1f9935c996c6113dcc464a71dcc3b84c7f5378bcf1b2b8914958261bd53f",
       "forbidden_test_symbols": [],
       "qualifier_symbols": []
     },
@@ -19,6 +19,30 @@
       ]
     }
   },
-  "dll_sha256": "feb1aa9142d7609fdb540ee6da6cda5983bccc7112f989fd8c9ff91ee12831ec",
-  "standalone_ownership_binaries_preserved": true
+  "dll_sha256": "e45aaac050aa3c0c816776a72a5877f951ee5d87efc6d58493740175aee8d282",
+  "standalone_ownership_binaries_preserved": true,
+  "pinned_native_file_hashes_before_and_after": {
+    "d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+    "wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
+  },
+  "capture_fixture_imports_command": [
+    "i686-w64-mingw32-objdump",
+    "-p",
+    "verification/probe/build/capture_state_fixture.exe"
+  ],
+  "capture_fixture_imports": [
+    "KERNEL32.dll",
+    "api-ms-win-crt-convert-l1-1-0.dll",
+    "api-ms-win-crt-environment-l1-1-0.dll",
+    "api-ms-win-crt-filesystem-l1-1-0.dll",
+    "api-ms-win-crt-heap-l1-1-0.dll",
+    "api-ms-win-crt-locale-l1-1-0.dll",
+    "api-ms-win-crt-math-l1-1-0.dll",
+    "api-ms-win-crt-private-l1-1-0.dll",
+    "api-ms-win-crt-runtime-l1-1-0.dll",
+    "api-ms-win-crt-stdio-l1-1-0.dll",
+    "api-ms-win-crt-string-l1-1-0.dll",
+    "USER32.dll"
+  ],
+  "capture_fixture_sha256": "c0fc881f4fefa3c069a28b1127f8c2ccce463f13d26b47edc92f38698afdd75d"
 }

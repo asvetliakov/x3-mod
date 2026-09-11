@@ -2,7 +2,7 @@
   "passed": true,
   "game_launched": false,
   "fresh_build": true,
-  "started_utc": "2026-09-10T22:41:02.605303+00:00",
+  "started_utc": "2026-09-10T23:54:31.412985+00:00",
   "sources_before": {
     "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949",
     "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
@@ -22,7 +22,7 @@
     "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
     "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
   },
-  "executable_sha256": "945082dc1241d94ee8c5701796483a6290700c1f837ff95864cb1fe083cb1f3a",
+  "executable_sha256": "fb6e5bf3741bcc324baf32ab3c764b4c32f5836ad48d658fd128ede5a2835341",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -43,7 +43,7 @@
     "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
     "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
   },
-  "executable_sha256_after": "945082dc1241d94ee8c5701796483a6290700c1f837ff95864cb1fe083cb1f3a",
+  "executable_sha256_after": "fb6e5bf3741bcc324baf32ab3c764b4c32f5836ad48d658fd128ede5a2835341",
   "report_sha256": "5a4d83e6ae7644c72c0e90fe51e86aca80125b7ada9c70fd34e3e00e8e75c5a8",
   "checks": 461,
   "cases": [

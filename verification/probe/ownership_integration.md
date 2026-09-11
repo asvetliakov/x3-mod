@@ -151,7 +151,7 @@ hashes remained stable. The separate standalone ownership executables retain
 their current verified hashes. The installed DLL is unchanged.
 
 Verified production DLL SHA256:
-`feb1aa9142d7609fdb540ee6da6cda5983bccc7112f989fd8c9ff91ee12831ec`.
+`e45aaac050aa3c0c816776a72a5877f951ee5d87efc6d58493740175aee8d282`.
 The production symbol audit again finds no fixture scheduling callbacks or
 synthetic replay-contract issuer, and confirms the real qualifier is present.
 The embedded pixel-program refresh passes 102 numeric samples, 118 checks and
@@ -193,3 +193,16 @@ fixture now links with `-static`; an import audit confirms that dependency is
 absent. A focused actual-DLL control then passed, followed by the complete fresh
 20-case run above. The runner records the child exit and binary hashes before
 requiring a capture log, so future pre-entry failures retain useful evidence.
+
+
+### Optimized ownership refresh
+
+The 20-case matrix, 18-object fallback and all 20 Clear CPU-state witnesses were
+rerun against the final ownership qualification deduplication and constant-time
+lease bookkeeping implementation. All pass with current source/binary provenance;
+the live write-exclusion gate remains unchanged. The symbol report additionally
+retains matching pinned native D3D9/WineD3D file hashes around the final cases and
+fallback, plus the capture fixture's import list confirming no external GCC,
+libstdc++ or libwinpthread runtime DLL. Standalone ownership executable hashes
+remain intact. These API checks establish compatibility; lease performance has
+its own bounded benchmark and does not establish a live game frame-time gain.

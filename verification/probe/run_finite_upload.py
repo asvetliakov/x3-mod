@@ -76,7 +76,7 @@ def main():
                     binary_unchanged=digest(EXE) == meta['executable_sha256'])
         if sum(line.startswith('RESULT ') for line in text.splitlines()) != 1 or len(terminal) != 1 or int(terminal[0]) != count or not text.rstrip().endswith('RESULT PASS checks=' + str(count)):
             raise RuntimeError('Incomplete or duplicate terminal result')
-        if count != 385 or 'FAIL' in text or run.returncode != 0:
+        if count != 403 or 'FAIL' in text or run.returncode != 0:
             raise RuntimeError('Fixture failed')
         if before != meta['source_hashes_after'] or not meta['binary_unchanged']:
             raise RuntimeError('Sources or executable changed during execution')

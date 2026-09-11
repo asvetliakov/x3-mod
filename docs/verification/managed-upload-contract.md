@@ -87,3 +87,34 @@ All four changes are included in this passing run. Final review accepted the
 qualifier with no remaining blocker and independently recomputed every source,
 native-module, executable and report hash with zero mismatches. The ownership
 observer's integration and publication rules remain a separate review boundary.
+
+## Eliminating a repeated closed-buffer inspection
+
+The ownership query path originally performed a full native inspection while
+authenticating its allocation sidecar, then immediately performed another full
+inspection inside `validate_closed`. The internal closed-acquisition mode now
+uses `validate_closed` as that single fresh qualification. It first checks that
+the sidecar's borrowed native identity equals the requested allocation. Existing
+`validate_closed` still checks the pinned backend, live slots/imports, actual
+descriptor, same native/backend/heap token and native map count zero. The qualifier
+API, export lookups and all of its guards are unchanged.
+
+Private-IUnknown authentication remains mandatory on every acquisition. Moving
+the map-count check immediately before that authentication uses the existing
+serialized mapping/mutation contract: the verified native GetPrivateData method's
+admitted callback is this sidecar's bounded atomic/TLS AddRef, which cannot map
+or mutate the buffer. A foreign private object or unexpected callback count still
+rejects and retires the observer. This is not a cached buffer-eligibility result.
+Upload tracking uses the original open-mapping-capable acquisition path.
+
+A closed-qualification failure explicitly reports `NativeContract`, preserving
+the refusal formerly supplied by the second check. A successful indexed draw's
+public evidence queries, lease acquisition and replay inspection now perform six
+complete inspections rather than twelve. This is a source-level work reduction;
+the [geometry performance measurement](geometry-performance.md) records timings
+for identical workloads before and after the change. Fresh regressions pass
+461 native qualifier checks, 403 finite-observer checks and 347 geometry-lease
+checks on the final ownership source. The finite control additionally opens an
+actual native mapping while wrapper pending metadata stays zero: the combined
+query rejects it as `NativeContract`, and closure alone cannot restore evidence.
+This work does not enable live capture or change installation.

@@ -305,16 +305,30 @@ void attach_finite(Device* device,IDirect3DResource9* resource) {
 // Only release references whose same-thread native GetPrivateData AddRef callback
 // proves they are ours. Unrelated external COM references may change concurrently.
 // Foreign POD bytes, including bytes equal to a live sidecar pointer, are never called.
-FiniteSidecar* acquire_finite(Device* device,IDirect3DResource9* resource) {
+enum class FiniteAcquireMode { AnyMapping, Closed };
+FiniteSidecar* acquire_finite(Device* device,IDirect3DResource9* resource,
+    FiniteAcquireMode mode=FiniteAcquireMode::AnyMapping,FiniteEvidenceReason* failure=nullptr) {
+    if(failure)*failure=FiniteEvidenceReason::None;
     drain_finite_retired();
     auto owner=device->finite_owner;if(!owner||!owner->healthy)return nullptr;
     FiniteSidecar* side=owner->head;while(side&&side->allocation!=resource)side=side->next;
     if(!side||!retain_live_sidecar(side))return nullptr;
-    managed_upload::BufferContract now{};
-    const bool verified=side->contract.type==D3DRTYPE_VERTEXBUFFER
-        ?finite_inspect(*owner,static_cast<IDirect3DVertexBuffer9*>(resource),&now)
-        :finite_inspect(*owner,static_cast<IDirect3DIndexBuffer9*>(resource),&now);
-    if(!verified||now.backend_resource!=side->contract.backend_resource||now.heap_data!=side->contract.heap_data||now.size!=side->contract.size||now.format!=side->contract.format){invalidate_finite(side,FiniteEvidenceReason::NativeContract);side->Release();return nullptr;}
+    bool verified=false;
+    if(mode==FiniteAcquireMode::Closed){
+        // validate_closed already performs the complete fresh inspection and
+        // same-token comparison, then requires native map_count==0. Do not run
+        // an identical inspection immediately before it. The caller serializes
+        // mappings/mutations; the authenticated GetPrivateData callback below
+        // can only enter our bounded atomic/TLS AddRef, never a mapping call.
+        verified=side->contract.borrowed_native==resource&&finite_closed(side);
+    }else{
+        managed_upload::BufferContract now{};
+        verified=side->contract.type==D3DRTYPE_VERTEXBUFFER
+            ?finite_inspect(*owner,static_cast<IDirect3DVertexBuffer9*>(resource),&now)
+            :finite_inspect(*owner,static_cast<IDirect3DIndexBuffer9*>(resource),&now);
+        verified=verified&&now.backend_resource==side->contract.backend_resource&&now.heap_data==side->contract.heap_data&&now.size==side->contract.size&&now.format==side->contract.format;
+    }
+    if(!verified){if(failure)*failure=FiniteEvidenceReason::NativeContract;invalidate_finite(side,FiniteEvidenceReason::NativeContract);side->Release();return nullptr;}
     auto* previous_expected=finite_private_expected;const unsigned previous_adds=finite_private_adds;
     finite_private_expected=side;finite_private_adds=0;
     IUnknown* returned=nullptr;DWORD size=sizeof(returned);
@@ -352,17 +366,34 @@ struct GeometryLeaseRecord {
 };
 std::array<GeometryFrameRecord,geometry_frame_limit> geometry_frames{};
 std::array<GeometryLeaseRecord,geometry_lease_limit> geometry_leases{};
+constexpr unsigned geometry_slot_bits=13;
+constexpr std::uint64_t geometry_slot_mask=(std::uint64_t(1)<<geometry_slot_bits)-1;
+constexpr std::uint64_t geometry_serial_limit=UINT64_MAX>>geometry_slot_bits;
+static_assert(geometry_lease_limit==(1u<<geometry_slot_bits));
+static_assert(geometry_frame_limit<=geometry_lease_limit&&geometry_lease_limit<UINT16_MAX);
+constexpr std::array<std::uint16_t,geometry_lease_limit> initial_geometry_free_slots(){
+    std::array<std::uint16_t,geometry_lease_limit> result{};
+    for(unsigned i=0;i<geometry_lease_limit;++i)result[i]=static_cast<std::uint16_t>(i+1);
+    return result;
+}
+std::array<std::uint16_t,geometry_lease_limit> geometry_free_next=initial_geometry_free_slots();
+std::uint16_t geometry_free_head=0; // geometry_lease_limit is the exhausted sentinel.
 std::uint64_t geometry_serial=0,geometry_bytes=0;
 std::uint32_t geometry_count=0;
+std::uint64_t next_geometry_id(unsigned slot){
+    // One shared serial for both handle types. Full ID equality, not just the
+    // encoded slot, is mandatory for every lookup. Exhaustion refuses admission.
+    return (++geometry_serial<<geometry_slot_bits)|slot;
+}
 GeometryFrameRecord* geometry_frame(std::uint64_t id){
-    if(!id)return nullptr;
-    for(auto& frame:geometry_frames)if(frame.id==id)return &frame;
-    return nullptr;
+    const auto slot=static_cast<unsigned>(id&geometry_slot_mask);
+    if(!id||slot>=geometry_frame_limit)return nullptr;
+    auto& frame=geometry_frames[slot];return frame.id==id?&frame:nullptr;
 }
 GeometryLeaseRecord* geometry_lease(std::uint64_t frame,std::uint64_t id){
     if(!frame||!id)return nullptr;
-    for(auto& lease:geometry_leases)if(lease.id==id&&lease.frame==frame)return &lease;
-    return nullptr;
+    auto& lease=geometry_leases[static_cast<unsigned>(id&geometry_slot_mask)];
+    return lease.id==id&&lease.frame==frame?&lease:nullptr;
 }
 void release_geometry_record(const GeometryLeaseRecord& lease){
     // These entrypoints were certified at acquisition against pinned native code.
@@ -379,17 +410,22 @@ void release_geometry_record(const GeometryLeaseRecord& lease){
 GeometryLeaseRecord detach_geometry_record(GeometryLeaseRecord& lease){
     GeometryLeaseRecord result=lease;
     if(auto* frame=geometry_frame(lease.frame))--frame->count;
-    lease={};return result;
+    const auto slot=static_cast<std::uint16_t>(lease.id&geometry_slot_mask);
+    lease={};geometry_free_next[slot]=geometry_free_head;geometry_free_head=slot;
+    return result;
 }
 void drain_geometry_frame(std::uint64_t frame){
-    // Bounded small stack chunks. The frame lookup was already invalidated, so
-    // no caller can regain a borrowed pointer while references are draining.
-    for(;;){
+    // The invalidated frame cannot gain new entries. Carry a forward cursor
+    // across bounded release chunks instead of rescanning already retired slots.
+    unsigned cursor=0;
+    while(cursor<geometry_lease_limit){
         std::array<GeometryLeaseRecord,16> retired{};unsigned count=0;
         {std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-         for(auto& lease:geometry_leases)if(lease.id&&lease.frame==frame){retired[count++]=detach_geometry_record(lease);if(count==retired.size())break;}}
+         while(cursor<geometry_lease_limit&&count<retired.size()){
+             auto& lease=geometry_leases[cursor++];
+             if(lease.id&&lease.frame==frame)retired[count++]=detach_geometry_record(lease);
+         }}
         for(unsigned n=0;n<count;++n)release_geometry_record(retired[n]);
-        if(count<retired.size())break;
     }
     {std::lock_guard<std::recursive_mutex> lock(registry_mutex);drain_finite_retired();}
 }
@@ -1246,9 +1282,10 @@ FiniteEvidenceReason finite_native_ready(Device* device,IDirect3DResource9* reso
     if(metadata.pending)return FiniteEvidenceReason::Pending;
     if(metadata.ambiguous)return FiniteEvidenceReason::Ambiguous;
     if(!expected||expected!=metadata.revision)return FiniteEvidenceReason::RevisionMismatch;
-    hold.value=acquire_finite(device,resource);
-    if(!hold.value)return owner->healthy?FiniteEvidenceReason::MissingAllocation:FiniteEvidenceReason::MetadataTampered;
-    if(!finite_closed(hold.value)){invalidate_finite(hold.value,FiniteEvidenceReason::NativeContract);return FiniteEvidenceReason::NativeContract;}
+    FiniteEvidenceReason acquisition_failure=FiniteEvidenceReason::None;
+    hold.value=acquire_finite(device,resource,FiniteAcquireMode::Closed,&acquisition_failure);
+    if(!hold.value)return !owner->healthy?FiniteEvidenceReason::MetadataTampered:
+        acquisition_failure!=FiniteEvidenceReason::None?acquisition_failure:FiniteEvidenceReason::MissingAllocation;
     if(hold.value->reason!=FiniteEvidenceReason::None)return hold.value->reason;
     return FiniteEvidenceReason::None;
 }
@@ -1391,8 +1428,9 @@ HRESULT begin_geometry_frame(IDirect3DDevice9* application,GeometryFrameHandle* 
     if(!geometry_owner_ready(device))return D3DERR_INVALIDCALL;
     GeometryFrameRecord* available=nullptr;
     for(auto& frame:geometry_frames){if(frame.id&&frame.device==device)return D3DERR_INVALIDCALL;if(!frame.id&&!available)available=&frame;}
-    if(!available||geometry_serial==UINT64_MAX)return E_OUTOFMEMORY;
-    *available={++geometry_serial,device->finite_owner->stats.generation,device,0};out->value=available->id;return S_OK;
+    if(!available||geometry_serial==geometry_serial_limit)return E_OUTOFMEMORY;
+    const auto slot=static_cast<unsigned>(available-geometry_frames.data());
+    *available={next_geometry_id(slot),device->finite_owner->stats.generation,device,0};out->value=available->id;return S_OK;
 }
 HRESULT acquire_geometry_lease(GeometryFrameHandle frame,IDirect3DVertexBuffer9* vertex_buffer,
     IDirect3DIndexBuffer9* index_buffer,const GeometryLeaseRequest& request,GeometryLeaseHandle* out) noexcept {
@@ -1405,9 +1443,9 @@ HRESULT acquire_geometry_lease(GeometryFrameHandle frame,IDirect3DVertexBuffer9*
     if(vertex==application_nodes.end()||vertex->second->kind!=Kind::VertexBuffer||vertex->second->parent!=owner->device||
        (index_buffer&&(index==application_nodes.end()||index->second->kind!=Kind::IndexBuffer||index->second->parent!=owner->device)))return E_INVALIDARG;
     if(!own_buffer_slots(vertex->second)||(index_buffer&&!own_buffer_slots(index->second)))return S_FALSE;
-    if(owner->count>=geometry_leases_per_frame||geometry_count>=geometry_lease_limit||geometry_serial==UINT64_MAX)return E_OUTOFMEMORY;
-    GeometryLeaseRecord* available=nullptr;for(auto& entry:geometry_leases)if(!entry.id){available=&entry;break;}
-    if(!available)return E_OUTOFMEMORY;
+    if(owner->count>=geometry_leases_per_frame||geometry_count>=geometry_lease_limit||geometry_serial==geometry_serial_limit)return E_OUTOFMEMORY;
+    if(geometry_free_head>=geometry_lease_limit)return E_OUTOFMEMORY;
+    const unsigned slot=geometry_free_head;auto* available=&geometry_leases[slot];
     GeometryLeaseRecord candidate;candidate.frame=frame.value;candidate.request=request;
     candidate.vertex=static_cast<IDirect3DVertexBuffer9*>(vertex->second->backend);
     candidate.vertex_identity=vertex->second->identity;candidate.index_identity=index_buffer?index->second->identity:nullptr;
@@ -1421,7 +1459,7 @@ HRESULT acquire_geometry_lease(GeometryFrameHandle frame,IDirect3DVertexBuffer9*
     }
     // Verified native AddRef cannot fail. No fallible allocation follows it.
     candidate.vertex->AddRef();if(candidate.index)candidate.index->AddRef();
-    candidate.id=++geometry_serial;*available=candidate;++owner->count;++geometry_count;geometry_bytes+=candidate.bytes;
+    candidate.id=next_geometry_id(slot);geometry_free_head=geometry_free_next[slot];*available=candidate;++owner->count;++geometry_count;geometry_bytes+=candidate.bytes;
     out->value=candidate.id;return S_OK;
 }
 HRESULT inspect_geometry_lease(GeometryFrameHandle frame,GeometryLeaseHandle lease,GeometryLeaseView* out) noexcept {
