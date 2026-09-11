@@ -1,6 +1,9 @@
 # Excluding application mutations during private replay
 
-Design proposal, not an implemented synchronization guarantee. The current
+Portable design proposal, not an implemented synchronization guarantee. Native
+Windows/Direct3D is a required full-renderer target; Wine internals cannot be a
+prerequisite for shared replay or resource-evidence interfaces. See
+[platform portability](platform-portability.md). The current
 production capture adapter keeps `motion_live_replay_available=false` and reports
 `write_exclusion_unavailable`. Its standalone GPU fixtures supply serialized
 calls explicitly. They do not prove that the game meets that condition.
@@ -16,13 +19,16 @@ the gap: `buffer_lock` drops it before native Lock and records pending/revision
 only after that call returns. The application's mapped writes occur between
 Lock and Unlock, outside any wrapper critical section.
 
-The execution observer additionally requires serialized access to its plain
-fields. `get_execution_view` takes the registry, but current query and scene
-transition writers do not consistently take it. A concurrent snapshot cannot
-be made safe merely by testing a revision afterward. The loader now also keeps
+The execution observer additionally requires synchronized access and an in-flight
+interval covering native dispatch through result publication. The initial
+implementation used plain fields with incompletely synchronized writers; the
+observer checkpoint `0e361c1` adds short synchronized bookends and refuses
+snapshots during unfinished transitions. See [its verification](../verification/execution-state.md).
+That snapshot still does not exclude a new transition after it is read. The loader keeps
 `Options::track_execution_state` false, so requesting motion does not activate
-this observer through an unproven concurrent live path. Native component fixtures
-enable it explicitly under their authored serialization contract.
+this observer before the complete replay admission contract exists. Native
+component fixtures enable it explicitly, including controlled concurrent
+transition tests.
 
 Native references solve allocation lifetime only. A static usage bit, initial
 revision, same thread on previous uploads, or no observed worker in one capture
@@ -134,3 +140,112 @@ Before enabling live replay, verification needs controlled thread barriers for:
 
 This is the next synchronization checkpoint. It does not resolve camera-cut
 continuity, unsupported final-color contributions or temporal history policy.
+
+## Backend-specific mutex research (not the shared design)
+
+The user requires native Windows/Direct3D support as well as CrossOver. The
+following Wine-specific route is research only and cannot become a prerequisite
+for replay. The shared implementation must use portable application admission;
+see [platform portability](platform-portability.md).
+
+The pinned WineD3D binary already exports a process-wide recursive graphics
+mutex. Its `wined3d_mutex_lock` and `wined3d_mutex_unlock` entries at RVAs
+`c4260` and `c4280` pass the critical section at RVA `29a438` through imports
+`29787c` and `2978f4`. The historical managed-buffer qualifier checks the D3D9
+imports which lead to these exports. These addresses are findings for the exact
+pinned binary, not a supported interface on arbitrary Wine releases.
+
+A Wine-only experiment can test qualified **nonblocking** acquisition of that
+native critical section. It cannot replace portable admission for the required
+Windows renderer, or qualify resource memory on native Windows. Blocking on the
+exported lock while holding the capture mutex would permit a callback deadlock.
+After successful try-acquisition, a recursion count greater than one would mean
+the thread inherited backend ownership; that boundary must refuse injection.
+An already returned application buffer mapping is outside this mutex, so native
+map-count and pending-write checks remain essential.
+
+The ownership registry could then be acquired with `try_lock` for snapshot
+validation and independent native-reference retention. A busy registry causes
+immediate native-lock release and refusal. The registry must be released before
+GPU commands and callback-capable cleanup: the backend command-stream thread can
+destroy resources independently, and a callback waiting for the registry must not
+block a command-stream operation awaited by the replay thread.
+
+This route still needs proof of native mutator coverage, writes before the lock,
+reentrant callbacks and resource lifetime through restoration. Execution calls
+also need observation from **before** native dispatch through result publication:
+otherwise a native query can finish before its wrapper updates the observer, and
+the native mutex alone could expose a stale idle snapshot. The threaded observer
+checkpoint addresses result publication. The native-mutex experiment was stopped
+before implementation when native Windows became an explicit requirement. This
+research does not justify removing the live replay gate.
+
+## Concrete portable entry coverage
+
+The checked-in generator currently emits 297 normal-D3D9 methods across 15
+interfaces. Admission belongs at entry, before unwrapping inputs, taking the
+registry, or evaluating a native call expression. Adding it only to
+`observe_result` or `output` is too late: C++ evaluates the native argument first.
+The generator is the authoritative mechanical inventory; handwritten helpers
+remain responsible for their longer transactions and special retirement order.
+
+| Entry family | Required interval or special case |
+| --- | --- |
+| All generated methods, including Factory, scalar and void methods | Before first native/registry operation through outgoing-result and output-adoption bookkeeping; not just HRESULT observation |
+| QueryInterface/AddRef/GetDevice/GetContainer and COM output methods | Include registry lookup, canonical adoption, and redundant-reference cleanup; apparent getters can execute native COM callbacks |
+| Release | Include native destruction and sidecar retirement, but explicitly end the child transaction before `parent->application->Release()` enters capture again |
+| Capture hooks and factory/device setup | Ordinary outer admission must precede `HookGuard`/capture mutex; nested ownership dispatch inherits that admission |
+| Clear replay boundary | Nonblocking promotion of its own outer admission, only when no other application root is active and the boundary is not nested inside a native callback |
+| Public ownership depth-copy, finite/index query and geometry lease APIs | Their native inspection, AddRef/Release and cleanup need admission independently of generated methods; registry-only handle APIs still need consistent lifecycle ordering |
+| D3DX loading and mesh hooks | Cover the outer native D3DX call and preflight/cleanup, including direct native buffers; counting only calls that happen to reach a wrapped mesh/buffer is incomplete |
+| Raw native pointer APIs | Returning a borrowed pointer does not authorize uncounted mutation. Internal callers need an explicit renderer token; arbitrary application native bypass remains unsupported |
+
+Surface/texture/cube LockRect, volume LockBox, GetDC/ReleaseDC, buffer Lock/Unlock
+and ProcessVertices require separate content/mapping review. Tickets end when an
+API call returns; successful mappings and DC access remain pending across calls.
+The initial rigid producer needs this proof for every retained VB/IB and every
+surface it reads. Extending the renderer to sample application textures extends
+the required resource set. A static usage flag is not a replacement for mapping
+state.
+
+A minimal monitor can count outer application roots process-wide and keep nesting
+depth in TLS. Nested calls inherit the root ticket, allowing ordinary native
+callbacks during an already admitted application operation. At Clear, promotion
+must require the calling root to be the only active root and the nesting depth to
+match an ordinary outer boundary. Reentrant Clear inside a native callback must
+refuse replay. New outer entrants wait only before capture, registry or native
+locks. The monitor itself is held only for short transitions, never across calls.
+
+This promotion requires capture entry coverage as well as wrapper coverage.
+Acquiring the first ticket inside a wrapper after taking the capture mutex leaves
+unreviewed lock-order edges. A normal generated RAII ticket spanning a child
+Release's final parent capture dispatch also defeats the explicit handoff rule;
+Release needs a dedicated helper-controlled end point.
+
+The replay thread must not receive a general permission to call application
+wrappers while exclusive. That would admit a same-thread native callback as if it
+were intentional renderer work. Renderer native access and original-Clear dispatch
+need narrow explicit permissions, and diagnostic callbacks belong outside the
+exclusive scope.
+
+## Remaining callback and cleanup proof
+
+Counting completed CPU calls does not count asynchronous backend work. A native
+operation may enqueue resource destruction, return, and later invoke a
+private-IUnknown callback from a worker. Such a callback can arrive after the
+application-root count reaches zero. Nested-ticket handling alone therefore does
+not prove the critical replay segment cannot receive a callback. This must be
+resolved for supported native Direct3D as well as Wine; one pinned backend's
+mutex or worker behavior is not a portable proof.
+
+The default `RigidMotionPass::run` path owns `SavedState` as a local object and
+releases its native references before returning. On restoration failure these
+may be the last references to application resources. The reviewed optional
+`RigidMotionRetirement` now transfers its seven explicit references into a
+caller-owned batch without allocation or AddRef, including failure paths. The
+caller must release that batch after leaving exclusivity; MotionCapture has not
+yet wired this API. See [retirement verification](../verification/rigid-retirement.md).
+Geometry references, output consumption and other pass cleanup still require
+explicit phase ordering. This component closes the local saved-state cleanup
+placement gap; it does not eliminate callbacks from native replay operations or
+establish portable replay exclusion.
