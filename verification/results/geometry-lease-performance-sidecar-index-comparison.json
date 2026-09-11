@@ -1,0 +1,446 @@
+{
+  "passed": true,
+  "workload": "Unchanged geometry_lease_benchmark.cpp; 84 samples, seven warmed trials, 1/100/700/4096 leases, three profiles; no draws.",
+  "stages": {
+    "portable": {
+      "manifest_sha256": "99ab970fb53d38e2248597ad1dde8c3a0a57915cbca9c59f0d2a72d036988be5",
+      "report_sha256": "285b3c523f06522f2dfd00ce307e21fc98e54f6a0856b00f0e2b418c8f5d55de",
+      "executable_sha256": "825c464c0a6de754b7334db88e148c5344af0646f2a1f12e648d0460ba731fae",
+      "source_hashes_before_build": {
+        "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+        "src/ownership/d3d9_ownership.cpp": "365da457bfd0df7a8d791764e673596f89187a10c4fcd1f2c536f6d69ec90d8f",
+        "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+        "src/ownership/d3d9_forwarders_inc.h": "4827fafbeaa1818341d39f410d0188cd95ce8697127ae3e13e584340c3b7539b",
+        "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+        "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+        "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+        "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+        "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+        "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+        "tools/ownership/generate_d3d9_forwarders.py": "6b0bb42d90ac3a1e6b38aec1a37330c140d0d23a986f11bb4f1015eea1b40b01",
+        "verification/probe/geometry_lease_benchmark.cpp": "ce010b62bf770ac7414369e78740b560bb092c5fb17460cfbae64a8964949da5",
+        "verification/probe/build_geometry_lease_benchmark.sh": "b3be83b50e23da243fc155d49c30874870a3901d5bf4f2d3b9f8833e6ce4fab2",
+        "verification/probe/run_geometry_lease_benchmark.py": "c8bcc9f9bbb92939f083465b8945d5b476c1dfb457b8b8971e65fb5ee414cfe6",
+        "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+        "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
+      },
+      "source_unchanged_during_run": true
+    },
+    "sidecar-index": {
+      "manifest_sha256": "57f1d18128103bb967fbc9a842159b5ccb7ab20061c51bdc9eaa27362c04d465",
+      "report_sha256": "6526bbba7fc9c55dbbb6b5e704a1acd3174c3ced5e6055519efd384ad98b628a",
+      "executable_sha256": "c4e108007fbaa4e6cefe95cf59737e7f07d086527a7e736deef0cd9ab530d8db",
+      "source_hashes_before_build": {
+        "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+        "src/ownership/d3d9_ownership.cpp": "413843c5858f80ecc11580a23e8135456e52f20bad3aef64ce9be5b9224cbd3c",
+        "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+        "src/ownership/d3d9_forwarders_inc.h": "4827fafbeaa1818341d39f410d0188cd95ce8697127ae3e13e584340c3b7539b",
+        "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+        "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+        "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+        "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+        "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+        "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+        "tools/ownership/generate_d3d9_forwarders.py": "6b0bb42d90ac3a1e6b38aec1a37330c140d0d23a986f11bb4f1015eea1b40b01",
+        "verification/probe/geometry_lease_benchmark.cpp": "ce010b62bf770ac7414369e78740b560bb092c5fb17460cfbae64a8964949da5",
+        "verification/probe/build_geometry_lease_benchmark.sh": "b3be83b50e23da243fc155d49c30874870a3901d5bf4f2d3b9f8833e6ce4fab2",
+        "verification/probe/run_geometry_lease_benchmark.py": "99a444c03b657775a6ecbc861e5ef9f92f911cbc228844ee2e940225a413e899",
+        "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+        "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
+      },
+      "source_unchanged_during_run": true
+    }
+  },
+  "comparisons": [
+    {
+      "profile": "many_small",
+      "leases": 1,
+      "reserved_bytes": 60,
+      "distinct_pairs": 1024,
+      "median_us": {
+        "acquire_us": {
+          "portable": 15.5,
+          "sidecar-index": 2.0
+        },
+        "inspect_us": {
+          "portable": 14.8,
+          "sidecar-index": 1.9
+        },
+        "retire_us": {
+          "portable": 6.1,
+          "sidecar-index": 5.0
+        },
+        "public_evidence_us": {
+          "portable": 17.0,
+          "sidecar-index": 2.5
+        },
+        "acquire_qualifier_us": {
+          "portable": 0.6,
+          "sidecar-index": 0.5
+        },
+        "inspect_qualifier_us": {
+          "portable": 0.6,
+          "sidecar-index": 0.5
+        }
+      }
+    },
+    {
+      "profile": "many_small",
+      "leases": 100,
+      "reserved_bytes": 6000,
+      "distinct_pairs": 1024,
+      "median_us": {
+        "acquire_us": {
+          "portable": 1254.6,
+          "sidecar-index": 175.5
+        },
+        "inspect_us": {
+          "portable": 1249.4,
+          "sidecar-index": 182.5
+        },
+        "retire_us": {
+          "portable": 32.6,
+          "sidecar-index": 21.2
+        },
+        "public_evidence_us": {
+          "portable": 1333.7,
+          "sidecar-index": 238.2
+        },
+        "acquire_qualifier_us": {
+          "portable": 55.5,
+          "sidecar-index": 49.6
+        },
+        "inspect_qualifier_us": {
+          "portable": 55.5,
+          "sidecar-index": 49.6
+        }
+      }
+    },
+    {
+      "profile": "many_small",
+      "leases": 700,
+      "reserved_bytes": 42000,
+      "distinct_pairs": 1024,
+      "median_us": {
+        "acquire_us": {
+          "portable": 5782.4,
+          "sidecar-index": 1243.9
+        },
+        "inspect_us": {
+          "portable": 5624.8,
+          "sidecar-index": 1293.5
+        },
+        "retire_us": {
+          "portable": 149.4,
+          "sidecar-index": 114.9
+        },
+        "public_evidence_us": {
+          "portable": 6057.9,
+          "sidecar-index": 1692.4
+        },
+        "acquire_qualifier_us": {
+          "portable": 433.6,
+          "sidecar-index": 360.9
+        },
+        "inspect_qualifier_us": {
+          "portable": 434.8,
+          "sidecar-index": 358.5
+        }
+      }
+    },
+    {
+      "profile": "many_small",
+      "leases": 4096,
+      "reserved_bytes": 245760,
+      "distinct_pairs": 1024,
+      "median_us": {
+        "acquire_us": {
+          "portable": 26138.0,
+          "sidecar-index": 7175.7
+        },
+        "inspect_us": {
+          "portable": 25843.3,
+          "sidecar-index": 7559.0
+        },
+        "retire_us": {
+          "portable": 755.2,
+          "sidecar-index": 629.9
+        },
+        "public_evidence_us": {
+          "portable": 28422.8,
+          "sidecar-index": 9819.2
+        },
+        "acquire_qualifier_us": {
+          "portable": 2392.0,
+          "sidecar-index": 2066.2
+        },
+        "inspect_qualifier_us": {
+          "portable": 2376.4,
+          "sidecar-index": 2093.2
+        }
+      }
+    },
+    {
+      "profile": "shared_small",
+      "leases": 1,
+      "reserved_bytes": 60,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "portable": 2.2,
+          "sidecar-index": 2.0
+        },
+        "inspect_us": {
+          "portable": 2.1,
+          "sidecar-index": 1.9
+        },
+        "retire_us": {
+          "portable": 5.7,
+          "sidecar-index": 5.2
+        },
+        "public_evidence_us": {
+          "portable": 2.7,
+          "sidecar-index": 2.6
+        },
+        "acquire_qualifier_us": {
+          "portable": 0.6,
+          "sidecar-index": 0.5
+        },
+        "inspect_qualifier_us": {
+          "portable": 0.6,
+          "sidecar-index": 0.5
+        }
+      }
+    },
+    {
+      "profile": "shared_small",
+      "leases": 100,
+      "reserved_bytes": 6000,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "portable": 169.5,
+          "sidecar-index": 168.3
+        },
+        "inspect_us": {
+          "portable": 178.8,
+          "sidecar-index": 182.3
+        },
+        "retire_us": {
+          "portable": 24.2,
+          "sidecar-index": 20.7
+        },
+        "public_evidence_us": {
+          "portable": 235.4,
+          "sidecar-index": 233.6
+        },
+        "acquire_qualifier_us": {
+          "portable": 52.1,
+          "sidecar-index": 49.6
+        },
+        "inspect_qualifier_us": {
+          "portable": 51.7,
+          "sidecar-index": 51.1
+        }
+      }
+    },
+    {
+      "profile": "shared_small",
+      "leases": 700,
+      "reserved_bytes": 42000,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "portable": 1209.6,
+          "sidecar-index": 1192.1
+        },
+        "inspect_us": {
+          "portable": 1266.6,
+          "sidecar-index": 1242.5
+        },
+        "retire_us": {
+          "portable": 122.3,
+          "sidecar-index": 116.6
+        },
+        "public_evidence_us": {
+          "portable": 1694.0,
+          "sidecar-index": 1640.4
+        },
+        "acquire_qualifier_us": {
+          "portable": 364.6,
+          "sidecar-index": 357.9
+        },
+        "inspect_qualifier_us": {
+          "portable": 363.3,
+          "sidecar-index": 352.9
+        }
+      }
+    },
+    {
+      "profile": "shared_small",
+      "leases": 4096,
+      "reserved_bytes": 245760,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "portable": 6932.4,
+          "sidecar-index": 6864.4
+        },
+        "inspect_us": {
+          "portable": 7402.5,
+          "sidecar-index": 7323.3
+        },
+        "retire_us": {
+          "portable": 662.3,
+          "sidecar-index": 619.1
+        },
+        "public_evidence_us": {
+          "portable": 9742.2,
+          "sidecar-index": 9594.1
+        },
+        "acquire_qualifier_us": {
+          "portable": 2106.9,
+          "sidecar-index": 2057.9
+        },
+        "inspect_qualifier_us": {
+          "portable": 2113.8,
+          "sidecar-index": 2058.5
+        }
+      }
+    },
+    {
+      "profile": "shared_varying_range",
+      "leases": 1,
+      "reserved_bytes": 77824,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "portable": 2.2,
+          "sidecar-index": 1.9
+        },
+        "inspect_us": {
+          "portable": 2.0,
+          "sidecar-index": 1.8
+        },
+        "retire_us": {
+          "portable": 5.5,
+          "sidecar-index": 5.5
+        },
+        "public_evidence_us": {
+          "portable": 2.8,
+          "sidecar-index": 2.5
+        },
+        "acquire_qualifier_us": {
+          "portable": 0.6,
+          "sidecar-index": 0.5
+        },
+        "inspect_qualifier_us": {
+          "portable": 0.6,
+          "sidecar-index": 0.5
+        }
+      }
+    },
+    {
+      "profile": "shared_varying_range",
+      "leases": 100,
+      "reserved_bytes": 7782400,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "portable": 336.1,
+          "sidecar-index": 331.6
+        },
+        "inspect_us": {
+          "portable": 345.5,
+          "sidecar-index": 343.3
+        },
+        "retire_us": {
+          "portable": 30.1,
+          "sidecar-index": 20.6
+        },
+        "public_evidence_us": {
+          "portable": 406.2,
+          "sidecar-index": 401.8
+        },
+        "acquire_qualifier_us": {
+          "portable": 53.5,
+          "sidecar-index": 51.3
+        },
+        "inspect_qualifier_us": {
+          "portable": 52.9,
+          "sidecar-index": 51.0
+        }
+      }
+    },
+    {
+      "profile": "shared_varying_range",
+      "leases": 700,
+      "reserved_bytes": 54476800,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "portable": 2363.4,
+          "sidecar-index": 2303.9
+        },
+        "inspect_us": {
+          "portable": 2461.2,
+          "sidecar-index": 2401.0
+        },
+        "retire_us": {
+          "portable": 135.7,
+          "sidecar-index": 118.6
+        },
+        "public_evidence_us": {
+          "portable": 2847.9,
+          "sidecar-index": 2773.8
+        },
+        "acquire_qualifier_us": {
+          "portable": 368.6,
+          "sidecar-index": 353.9
+        },
+        "inspect_qualifier_us": {
+          "portable": 371.1,
+          "sidecar-index": 356.4
+        }
+      }
+    },
+    {
+      "profile": "shared_varying_range",
+      "leases": 4096,
+      "reserved_bytes": 318767104,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "portable": 15492.3,
+          "sidecar-index": 13496.9
+        },
+        "inspect_us": {
+          "portable": 15068.4,
+          "sidecar-index": 14007.2
+        },
+        "retire_us": {
+          "portable": 665.0,
+          "sidecar-index": 624.1
+        },
+        "public_evidence_us": {
+          "portable": 17840.3,
+          "sidecar-index": 16334.4
+        },
+        "acquire_qualifier_us": {
+          "portable": 2394.3,
+          "sidecar-index": 2083.7
+        },
+        "inspect_qualifier_us": {
+          "portable": 2308.5,
+          "sidecar-index": 2109.5
+        }
+      }
+    }
+  ],
+  "limits": [
+    "Portable baseline is identified by its retained source/executable; it is not claimed to match current sources.",
+    "Sequential synthetic Preview CPU wall measurements are not game FPS or native-Windows runtime verification.",
+    "Qualifier spans overlap phase times.",
+    "Expected bucket lookup cost improves; adversarial collision chains remain bounded by the existing sidecar cap, not constant worst-case time."
+  ]
+}

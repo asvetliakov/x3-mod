@@ -165,15 +165,29 @@ void* finite_addref_fixture_context=nullptr;
 void drain_finite_retired();
 constexpr std::uint64_t finite_global_budget=32u*1024u*1024u;
 constexpr std::uint64_t finite_global_sidecars=4096, finite_global_owners=64;
+constexpr std::size_t finite_bucket_count=2048;
+static_assert((finite_bucket_count&(finite_bucket_count-1))==0);
+std::size_t finite_bucket(IUnknown* identity) noexcept {
+    // Canonical pointers are aligned and often clustered. Mix their bits before
+    // masking; identity equality, never the hash, decides allocation ownership.
+    auto value=reinterpret_cast<std::uintptr_t>(identity);
+    value^=value>>16;value*=0x7feb352du;value^=value>>15;
+    value*=0x846ca68bu;value^=value>>16;
+    return static_cast<std::size_t>(value)&(finite_bucket_count-1);
+}
 std::uint64_t finite_payload_used=0, finite_sidecars_used=0, finite_owners_used=0;
 const GUID finite_sidecar_guid={0x03ee519d,0x9308,0x4a86,{0x9b,0x94,0xd3,0x7e,0x35,0xac,0x49,0xaa}};
 struct FiniteOwner {
     FiniteUploadStatistics stats;
     std::uint64_t budget,limit;
     FiniteSidecar* head=nullptr;
+    // Weak intrusive index: one bounded owner allocation, no lookup/insert
+    // allocation and no native/sidecar reference cycle. All links use registry_mutex.
+    FiniteSidecar* buckets[finite_bucket_count]{};
     bool healthy=true,permanent=false;
     explicit FiniteOwner(const Options& o):budget(o.finite_payload_budget),limit(o.finite_sidecar_limit) {
         ++finite_owners_used; stats.requested=true;stats.active=true;stats.status=S_OK;stats.generation=1;
+        stats.metadata_bytes=sizeof(buckets);
     }
     ~FiniteOwner() { std::lock_guard<std::recursive_mutex> lock(registry_mutex); --finite_owners_used; }
 };
@@ -181,6 +195,9 @@ struct FiniteSidecar final : IUnknown {
     std::atomic<ULONG> refs{1};
     std::shared_ptr<FiniteOwner> owner;
     FiniteSidecar* next=nullptr;
+    FiniteSidecar** owner_link=nullptr;
+    FiniteSidecar* bucket_next=nullptr;
+    FiniteSidecar** bucket_link=nullptr;
     FiniteSidecar* retired_next=nullptr;
     IUnknown* allocation=nullptr; // Numeric weak allocation key, never called or released.
     portable_upload::BufferContract contract{};
@@ -231,12 +248,26 @@ struct FiniteSidecar final : IUnknown {
         evidence.reset();finite_payload_used-=reserved;owner->stats.payload_bytes-=reserved;reserved=0;
         mapping=nullptr;writing=false;
     }
+    void unlink_bucket() noexcept {
+        if(!bucket_link)return;
+        *bucket_link=bucket_next;
+        if(bucket_next)bucket_next->bucket_link=bucket_link;
+        bucket_link=nullptr;bucket_next=nullptr;
+    }
     ~FiniteSidecar() {
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-        drop_payload(); auto** p=&owner->head;while(*p&&*p!=this)p=&(*p)->next;if(*p)*p=next;
+        unlink_bucket();
+        if(owner_link){*owner_link=next;if(next)next->owner_link=owner_link;}
+        drop_payload();
         --finite_sidecars_used;--owner->stats.sidecars;owner->stats.metadata_bytes-=sizeof(FiniteSidecar);
     }
 };
+FiniteSidecar* find_finite_sidecar(FiniteOwner& owner,IUnknown* identity) noexcept {
+    if(!identity)return nullptr;
+    auto* side=owner.buckets[finite_bucket(identity)];
+    while(side&&side->allocation!=identity)side=side->bucket_next;
+    return side;
+}
 struct TickScope {
     std::uint64_t* total; LARGE_INTEGER begin{};
     explicit TickScope(std::uint64_t* value):total(value){if(total)QueryPerformanceCounter(&begin);}
@@ -277,6 +308,25 @@ void invalidate_finite(FiniteSidecar* side,FiniteEvidenceReason reason) {
     ++side->owner->stats.invalidations;finite_reason(*side->owner,reason);
     auto& detail=side->owner->stats.first_refusal;
     if(!detail.available){detail.available=true;detail.reason=reason;detail.type=side->contract.type;detail.format=side->contract.format;detail.pool=D3DPOOL_MANAGED;detail.size=side->contract.size;detail.usage=side->requested_usage;detail.lock_flags=side->flags;}
+}
+void link_finite_sidecar(FiniteSidecar* side,IUnknown* identity) {
+    auto& owner=*side->owner;
+    // A surviving external private-IUnknown must not confer identity on reused
+    // native storage. Detach the old entry first: its later destructor cannot
+    // erase the replacement, even while the old CPU sidecar remains alive.
+    if(auto* old=find_finite_sidecar(owner,identity)){
+        old->unlink_bucket();old->allocation=nullptr;
+        invalidate_finite(old,FiniteEvidenceReason::MissingAllocation);old->drop_payload();
+    }
+    side->allocation=identity;
+    side->next=owner.head;side->owner_link=&owner.head;
+    if(side->next)side->next->owner_link=&side->next;
+    owner.head=side;
+    auto** bucket=&owner.buckets[finite_bucket(identity)];
+    side->bucket_next=*bucket;side->bucket_link=bucket;
+    if(side->bucket_next)side->bucket_next->bucket_link=&side->bucket_next;
+    *bucket=side;
+    ++finite_sidecars_used;++owner.stats.sidecars;owner.stats.metadata_bytes+=sizeof(FiniteSidecar);
 }
 void retire_finite(Device* device,bool permanent=false,FiniteEvidenceReason reason=FiniteEvidenceReason::DeviceUnavailable) {
     PreserveExecution preserve;std::lock_guard<std::recursive_mutex> lock(registry_mutex);
@@ -327,12 +377,10 @@ bool attach_finite(Device* device,IDirect3DResource9* resource,DWORD requested_u
     auto* identity=allocation_identity(resource);if(!identity)return false;
     auto* side=new(std::nothrow) FiniteSidecar(owner);
     if(!side){++owner->stats.allocation_failures;finite_reason(*owner,FiniteEvidenceReason::AllocationFailure);return false;}
-    // A surviving external private-IUnknown reference cannot confer identity on a reused address.
-    for(auto* old=owner->head;old;old=old->next)if(old->allocation==identity){old->allocation=nullptr;invalidate_finite(old,FiniteEvidenceReason::MissingAllocation);old->drop_payload();}
-    side->allocation=identity;side->contract=contract;side->requested_usage=requested_usage;
+    side->contract=contract;side->requested_usage=requested_usage;
     side->kind=contract.type==D3DRTYPE_VERTEXBUFFER?EvidenceBufferKind::Vertex:
         contract.format==D3DFMT_INDEX16?EvidenceBufferKind::Index16:EvidenceBufferKind::Index32;
-    side->next=owner->head;owner->head=side;++finite_sidecars_used;++owner->stats.sidecars;owner->stats.metadata_bytes+=sizeof(FiniteSidecar);
+    link_finite_sidecar(side,identity);
     bool attached=false;
     if(reserve_finite(side)){
         const HRESULT hr=resource->SetPrivateData(finite_sidecar_guid,static_cast<IUnknown*>(side),sizeof(IUnknown*),D3DSPD_IUNKNOWN);
@@ -351,7 +399,7 @@ FiniteSidecar* acquire_finite(Device* device,IDirect3DResource9* resource,
     drain_finite_retired();
     auto owner=device->finite_owner;if(!owner||(!owner->healthy&&mode!=FiniteAcquireMode::ImmutableMetadata))return nullptr;
     auto* identity=allocation_identity(resource);if(!identity)return nullptr;
-    FiniteSidecar* side=owner->head;while(side&&side->allocation!=identity)side=side->next;
+    FiniteSidecar* side=find_finite_sidecar(*owner,identity);
     if(!side||!retain_live_sidecar(side))return nullptr;
     if(side->authentication_failed){side->Release();return nullptr;}
     // Closed means the caller already checked observed pending/revision metadata.
@@ -1646,6 +1694,69 @@ HRESULT retain_renderer_resource(IDirect3DDevice9* wrapped, IUnknown* owned_reso
 }
 
 #ifdef X3M_FINITE_FIXTURE
+// Original fixture-only controls exercise collisions/lifetime independently of
+// native address allocation patterns. The numeric identities are never called.
+void finite_fixture_index_controls(void(*verify)(bool,const char*),void(*release_elsewhere)(IUnknown*)){
+    PreserveExecution preserve;
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    drain_finite_retired();
+    const auto owners_before=finite_owners_used,sides_before=finite_sidecars_used;
+    {
+        Options options;auto owner=std::make_shared<FiniteOwner>(options);
+        const auto baseline=owner->stats.metadata_bytes;
+        verify(baseline==sizeof(owner->buckets),"index fixed owner storage charged without sidecars");
+        IUnknown* keys[4]{};unsigned found=0;
+        for(std::uintptr_t value=0x10000;value<0x1000000&&found<4;value+=16){
+            auto* key=reinterpret_cast<IUnknown*>(value);
+            if(finite_bucket(key)==0)keys[found++]=key;
+        }
+        verify(found==4&&keys[0]!=keys[1]&&keys[1]!=keys[2],"index controls use distinct colliding canonical identities");
+        auto valid_links=[&]{
+            std::uint64_t listed=0;auto** owner_link=&owner->head;
+            for(auto* side=owner->head;side;side=side->next){
+                if(side->owner_link!=owner_link)return false;
+                if(side->allocation&&find_finite_sidecar(*owner,side->allocation)!=side)return false;
+                owner_link=&side->next;++listed;
+            }
+            if(listed!=owner->stats.sidecars)return false;
+            for(std::size_t bucket=0;bucket<finite_bucket_count;++bucket){
+                auto** link=&owner->buckets[bucket];
+                for(auto* side=*link;side;side=side->bucket_next){
+                    if(side->bucket_link!=link||!side->allocation||finite_bucket(side->allocation)!=bucket)return false;
+                    link=&side->bucket_next;
+                }
+            }
+            return true;
+        };
+        auto make=[&](SideReference& ref,IUnknown* key){ref.value=new FiniteSidecar(owner);link_finite_sidecar(ref.value,key);};
+        auto drop=[](SideReference& ref){auto* side=ref.value;ref.value=nullptr;side->Release();};
+        SideReference a,b,c;make(a,keys[0]);make(b,keys[1]);make(c,keys[2]);
+        verify(find_finite_sidecar(*owner,keys[0])==a.value,"index finds collision tail");
+        verify(find_finite_sidecar(*owner,keys[1])==b.value,"index finds collision middle");
+        verify(find_finite_sidecar(*owner,keys[2])==c.value,"index finds collision head");
+        verify(!find_finite_sidecar(*owner,keys[3])&&!find_finite_sidecar(*owner,nullptr),"index refuses absent colliding and null keys");
+        verify(valid_links(),"index and owner links consistent after collision insertion");
+        drop(b);verify(!find_finite_sidecar(*owner,keys[1])&&find_finite_sidecar(*owner,keys[0])==a.value&&find_finite_sidecar(*owner,keys[2])==c.value&&valid_links(),"index middle deletion preserves both neighbors");
+        drop(c);verify(!find_finite_sidecar(*owner,keys[2])&&find_finite_sidecar(*owner,keys[0])==a.value&&valid_links(),"index head deletion promotes collision tail");
+        drop(a);verify(!owner->head&&!owner->buckets[0]&&valid_links()&&owner->stats.metadata_bytes==baseline,"index tail deletion restores fixed metadata baseline");
+        make(a,keys[0]);a.value->requested_usage=8;a.value->authentication_failed=true;
+        make(b,keys[0]);
+        verify(a.value->allocation==nullptr&&!a.value->bucket_link&&a.value->reason==FiniteEvidenceReason::MissingAllocation&&find_finite_sidecar(*owner,keys[0])==b.value&&valid_links(),"reused identity retires old external CPU sidecar before replacement");
+        verify(a.value->requested_usage==8&&a.value->authentication_failed&&!b.value->authentication_failed,"identity replacement preserves old immutable metadata and refusal latch");
+        drop(a);verify(find_finite_sidecar(*owner,keys[0])==b.value&&valid_links(),"old sidecar destructor cannot erase replacement identity");
+        b.value->requested_usage=8;b.value->authentication_failed=true;b.value->drop_payload();
+        verify(find_finite_sidecar(*owner,keys[0])==b.value&&b.value->requested_usage==8&&b.value->authentication_failed&&valid_links(),"payload retirement preserves indexed immutable allocation metadata");
+        drop(b);
+        make(a,keys[0]);make(b,keys[1]);make(c,keys[2]);auto* queued=b.value;
+        release_elsewhere(queued);b.value=nullptr;
+        verify(find_finite_sidecar(*owner,keys[1])==queued&&queued->refs.load()==0&&!retain_live_sidecar(queued)&&valid_links(),"deferred zero-reference index entry cannot resurrect");
+        drain_finite_retired();
+        verify(!find_finite_sidecar(*owner,keys[1])&&find_finite_sidecar(*owner,keys[0])==a.value&&find_finite_sidecar(*owner,keys[2])==c.value&&valid_links(),"deferred drain unlinks collision entry without changing survivors");
+        drop(a);drop(c);
+        verify(owner->stats.metadata_bytes==baseline&&owner->stats.sidecars==0&&finite_sidecars_used==sides_before&&valid_links(),"index cleanup returns all sidecar charges and preserves owner charge");
+    }
+    verify(finite_owners_used==owners_before&&finite_sidecars_used==sides_before,"index owner teardown has no owning reference cycle");
+}
 void finite_fixture_addref_callback(void(*callback)(void*),void* data){finite_addref_fixture_hook=callback;finite_addref_fixture_context=data;}
 void finite_fixture_with_registry(void(*callback)(void*),void* data){
     std::lock_guard<std::recursive_mutex> lock(registry_mutex);callback(data);drain_finite_retired();

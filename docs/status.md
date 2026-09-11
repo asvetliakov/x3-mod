@@ -24,10 +24,13 @@ and private method addresses with public COM contracts. The
 mechanisms and remaining platform gaps. Game EXE/DLL patches, private structures
 and disassembly remain explicitly allowed.
 
+The reviewed bounded sidecar index removes the linear allocation-list lookup.
 In the same synthetic Preview benchmark, acquiring and inspecting 700
-shared-small leases fell from 39.1 ms to 2.5 ms combined. The many-buffer case
-still exposes linear allocation-list lookup. This is CPU evidence, not game FPS
+many-buffer leases fell from 11.407 ms to 2.537 ms combined; the shared-buffer
+control remained near 2.44 ms. The index passes 552 observer checks, 421 geometry
+checks and 84 benchmark samples. This is CPU evidence, not game FPS
 or proof that complete live replay is affordable. See
+[sidecar index verification](verification/finite-sidecar-index.md),
 [performance measurements](verification/geometry-performance.md) and
 [review 10](verification/review-10.md). The installed DLL remains unchanged.
 
@@ -113,7 +116,8 @@ SHA256 `ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5`.
 The [installation record](../verification/results/iteration-05-install.json) verifies
 unchanged game EXE and bottle configuration. The prior 0.4 DLL is preserved in
 `artifacts/rollback/d3d9-iteration04.dll`; the older 0.3 rollback also remains intact.
-The latest source DLL passes 20 actual-DLL integration cases, including native
+The last combined source DLL, built before the sidecar-index checkpoint, passes
+20 actual-DLL integration cases, including native
 Clear CPU-state witnesses and explicit refusal of unsafe live motion dispatch.
 Its SHA256 is
 `aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9`; it is

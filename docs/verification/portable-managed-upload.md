@@ -89,7 +89,7 @@ mapping and classification. Previous pinned implementation numbers are historica
 
 ## Verification status
 
-The expanded finite-upload fixture passes **534 checks** on Preview, with
+The expanded finite-upload fixture passes **552 checks** on Preview, with
 independent source and artifact review accepted. Creation and sidecar-attachment
 failure controls verify exact retry and selected native FP/LastError; descriptor
 controls cover failed outputs, recreation, Reset, permanent evidence disable

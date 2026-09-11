@@ -10,7 +10,7 @@
 #include <thread>
 #include <atomic>
 using namespace x3m::ownership;
-namespace x3m::ownership {void finite_fixture_with_registry(void(*)(void*),void*);void finite_fixture_addref_callback(void(*)(void*),void*);}
+namespace x3m::ownership {void finite_fixture_index_controls(void(*)(bool,const char*),void(*)(IUnknown*));void finite_fixture_with_registry(void(*)(void*),void*);void finite_fixture_addref_callback(void(*)(void*),void*);}
 unsigned checks=0;
 void check(bool condition,const char* label){++checks;std::printf("CHECK %s %s\n",label,condition?"PASS":"FAIL");if(!condition)throw std::runtime_error(label);}
 void ok(HRESULT hr,const char* label){check(SUCCEEDED(hr),label);}
@@ -310,4 +310,5 @@ void portable_contract(Create create,HWND window){
         check(pu::inspect(backing,&contract)&&contract.format==format,"public IB native descriptor qualifies");
     }
 }
-int main(){try{HMODULE module=LoadLibraryA("C:\\windows\\system32\\d3d9.dll");check(module!=nullptr,"load native D3D9");Create create=nullptr;auto entry=GetProcAddress(module,"Direct3DCreate9");std::memcpy(&create,&entry,sizeof create);check(create!=nullptr,"create entry");HWND window=CreateWindowExA(0,"STATIC","finite upload fixture",WS_OVERLAPPEDWINDOW,0,0,64,64,nullptr,nullptr,GetModuleHandleA(nullptr),nullptr);check(window!=nullptr,"window");portable_fallback(create,window);portable_contract(create,window);normal(create,window);gates(create,window);lifetime(create,window);fault_cases(create,window);external_refs(create,window);native_parity(create,window);foreign_unknown(create,window);device_failures(create,window);tracking_failure(create,window);DestroyWindow(window);FreeLibrary(module);std::printf("RESULT PASS checks=%u\n",checks);return 0;}catch(const std::exception& e){std::printf("RESULT FAIL %s checks=%u\n",e.what(),checks);return 1;}}
+void release_index_elsewhere(IUnknown* side){std::thread worker([=]{side->Release();});worker.join();}
+int main(){try{finite_fixture_index_controls(check,release_index_elsewhere);HMODULE module=LoadLibraryA("C:\\windows\\system32\\d3d9.dll");check(module!=nullptr,"load native D3D9");Create create=nullptr;auto entry=GetProcAddress(module,"Direct3DCreate9");std::memcpy(&create,&entry,sizeof create);check(create!=nullptr,"create entry");HWND window=CreateWindowExA(0,"STATIC","finite upload fixture",WS_OVERLAPPEDWINDOW,0,0,64,64,nullptr,nullptr,GetModuleHandleA(nullptr),nullptr);check(window!=nullptr,"window");portable_fallback(create,window);portable_contract(create,window);normal(create,window);gates(create,window);lifetime(create,window);fault_cases(create,window);external_refs(create,window);native_parity(create,window);foreign_unknown(create,window);device_failures(create,window);tracking_failure(create,window);DestroyWindow(window);FreeLibrary(module);std::printf("RESULT PASS checks=%u\n",checks);return 0;}catch(const std::exception& e){std::printf("RESULT FAIL %s checks=%u\n",e.what(),checks);return 1;}}

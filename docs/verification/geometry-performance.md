@@ -1,6 +1,6 @@
 # Geometry lease CPU performance
 
-The portable managed-buffer path substantially reduces the measured CPU cost of geometry evidence. It uses documented resource descriptors, readable MANAGED backing and observed upload state instead of private backend endpoint/map-count qualification. The existing direct handle indexing, fixed free-list and forward retirement cursor remain in place. The measurement includes this change to the [reviewed portable resource contract](portable-managed-upload.md).
+The portable managed-buffer path and bounded sidecar index substantially reduce the measured CPU cost of geometry evidence. It uses documented resource descriptors, readable MANAGED backing and observed upload state instead of private backend endpoint/map-count qualification. The existing direct handle indexing, fixed free-list and forward retirement cursor remain in place. The measurement includes this change to the [reviewed portable resource contract](portable-managed-upload.md).
 
 These are synthetic CPU wall times on the recorded CrossOver Preview backend. DLL hashes identify the test runtime; they are not feature admission requirements. They are not GPU timings or game FPS results. Actual live motion submission remains refused pending a verified replay-versus-write exclusion contract; the measurements do not override that restriction.
 
@@ -10,7 +10,28 @@ The production ownership module is compiled with the same i686 SSE2/stack settin
 
 Each stage freezes a distinct executable after equal pre/post-build source hashes. Source work may proceed afterward; the historical source map identifies that executable rather than claiming it matches current code. The runner checks native hashes, executable immutability, 831,397 successful assertions, the exact 84-sample inventory, a unique terminal PASS, positive QPC frequency and finite nonnegative timing values. The historical baseline/qualification timing fields were also checked offline against these tightened acceptance rules.
 
-## Current portable path
+## Current bounded sidecar index
+
+The next measured bottleneck was repeated allocation-sidecar list lookup. A weak intrusive 2,048-bucket index now locates a canonical allocation without scanning every owner allocation. Existing COM identity/descriptor/private-sidecar authentication and observed revision checks remain in place. See [index lifetime, budget and collision controls](finite-sidecar-index.md). Owner storage increases by 8 KiB on x86, bounded by the existing 64-owner cap; the per-owner allocation performs this initialization, with no lookup allocation. Expected lookup cost improves; deliberately colliding keys can still form bounded chains.
+
+The unchanged 84-sample/831,397-check benchmark and geometry 421-check regression pass on the indexed source. Medians below are milliseconds; “before” is the retained portable contract stage immediately preceding this index.
+
+| Profile | Leases | Acquire before → index | Inspect before → index | Retire before → index | Public evidence before → index |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| shared_small | 700 | 1.210 → 1.192 | 1.267 → 1.242 | 0.122 → 0.117 | 1.694 → 1.640 |
+| shared_small | 4,096 | 6.932 → 6.864 | 7.402 → 7.323 | 0.662 → 0.619 | 9.742 → 9.594 |
+| many_small | 700 | 5.782 → 1.244 | 5.625 → 1.294 | 0.149 → 0.115 | 6.058 → 1.692 |
+| many_small | 4,096 | 26.138 → 7.176 | 25.843 → 7.559 | 0.755 → 0.630 | 28.423 → 9.819 |
+| shared_varying_range | 700 | 2.363 → 2.304 | 2.461 → 2.401 | 0.136 → 0.119 | 2.848 → 2.774 |
+| shared_varying_range | 4,096 | 15.492 → 13.497 | 15.068 → 14.007 | 0.665 → 0.624 | 17.840 → 16.334 |
+
+For 700 leases with 1,024 small allocation pairs present, acquisition plus inspection falls from 11.407 ms to 2.537 ms. The shared-small control changes from 2.476 ms to 2.435 ms. This isolates the practical allocation-diversity penalty much more clearly than comparing total time alone. Descriptor-qualification spans in the many-small case change only from 0.434/0.435 ms to 0.361/0.359 ms; most of the improvement lies outside that narrow timer. Normal run variation remains present.
+
+The varying-range control still spends 4.705 ms in 700 acquire/inspect pairs because it also exercises 256-position range work. At 4,096 many-small leases the total remains 14.735 ms. These costs are not a complete renderer frame budget: reader queries, recording, GPU submissions and other passes are separate. Setup, upload throughput and broad hardware distributions are not covered. This index does not broaden geometry eligibility or enable live replay.
+
+The fixture vectors, warmup, source workload, allocation sizes and conservative retained-byte charges are unchanged. New source/native/executable/report hashes and the historical portable baseline are bound by `geometry-lease-performance-sidecar-index-comparison.json`. Both stages retain all per-trial values; no historical source map is relabeled as current.
+
+## Portable contract stage, before sidecar indexing
 
 The unchanged benchmark source performs exactly the same 84 samples and 831,397 checks as the retained optimized-stage executable. The new portable run passed with equal source maps before/after compilation and execution. The old source/executable map is retained explicitly; the comparison does not claim that historical code matches current source. Native Windows execution remains untested.
 
@@ -25,7 +46,7 @@ Medians in milliseconds for the shared 48-byte VB/12-byte IB profile:
 
 At 700 shared-small leases, acquisition plus inspection falls from 39.092 ms to 2.476 ms. Their nested descriptor-qualification spans are now 0.365/0.363 ms, versus 18.663/18.735 ms previously. These spans overlap the phase totals. Most remaining cost is outside that narrow descriptor timer; it must not be attributed entirely to one operation without another measurement.
 
-The varying-range profile (256 FLOAT3 positions in a 64 KiB VB) takes 2.363/2.461 ms acquire/inspect for 700 leases. The 1,024-distinct-allocation profile takes 5.782/5.625 ms, versus 24.246/24.148 ms before. Allocation-sidecar list traversal remains linear and is exercised by this profile. Native calls, synchronization and cache/query work remain part of the measured totals. This checkpoint does not broaden admission to unknown revisions or bypass the required mutation/replay exclusion.
+The varying-range profile (256 FLOAT3 positions in a 64 KiB VB) takes 2.363/2.461 ms acquire/inspect for 700 leases. The 1,024-distinct-allocation profile takes 5.782/5.625 ms, versus 24.246/24.148 ms before. At that portable-contract stage, allocation-sidecar list traversal remained linear and was exercised by this profile; the index above addresses that lookup cost. Native calls, synchronization and cache/query work remain part of the measured totals. This checkpoint does not broaden admission to unknown revisions or bypass the required mutation/replay exclusion.
 
 The portable observer intentionally requests readable backing for eligible application WRITEONLY MANAGED buffers while preserving their logical descriptor. Removing the WRITEONLY hint may have a native-runtime allocation/performance tradeoff. This benchmark times warmed lease/query operations after upload; it does not measure full game loading, upload throughput, driver placement or frame rendering. It is not a general every-frame affordability or native-Windows speedup claim.
 
@@ -86,4 +107,6 @@ All timing ranges and component/cache counters are retained; seven sequential wa
 - `verification/results/geometry-lease-performance-comparison.json` binds the three manifests and component residuals.
 - `verification/results/geometry-lease-performance-portable.{json,txt}` records the current portable source/executable.
 - `verification/results/geometry-lease-performance-portable-comparison.json` binds the historical optimized and portable manifests and matching workloads.
+- `verification/results/geometry-lease-performance-sidecar-index.{json,txt}` records the indexed source/executable.
+- `verification/results/geometry-lease-performance-sidecar-index-comparison.json` binds the portable and indexed manifests with matching workloads.
 - Each stage also retains its build output and Wine log.

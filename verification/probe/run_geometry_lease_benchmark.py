@@ -38,7 +38,7 @@ def no_game():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--label', required=True, choices=['baseline', 'qualification', 'optimized', 'portable'])
+    parser.add_argument('--label', required=True, choices=['baseline', 'qualification', 'optimized', 'portable', 'sidecar-index'])
     args = parser.parse_args()
     prefix = ROOT / ('verification/results/geometry-lease-performance-' + args.label)
     meta = dict(passed=False, phase='building', label=args.label, game_launched=False, draws=0,

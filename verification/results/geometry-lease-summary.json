@@ -3,10 +3,10 @@
   "phase": "complete",
   "fresh_build": true,
   "game_launched": false,
-  "started_utc": "2026-09-11T00:38:08.860190+00:00",
+  "started_utc": "2026-09-11T01:02:44.053608+00:00",
   "source_hashes_before_build": {
     "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
-    "src/ownership/d3d9_ownership.cpp": "365da457bfd0df7a8d791764e673596f89187a10c4fcd1f2c536f6d69ec90d8f",
+    "src/ownership/d3d9_ownership.cpp": "413843c5858f80ecc11580a23e8135456e52f20bad3aef64ce9be5b9224cbd3c",
     "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
     "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
     "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
@@ -24,7 +24,7 @@
   },
   "source_hashes_after_build": {
     "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
-    "src/ownership/d3d9_ownership.cpp": "365da457bfd0df7a8d791764e673596f89187a10c4fcd1f2c536f6d69ec90d8f",
+    "src/ownership/d3d9_ownership.cpp": "413843c5858f80ecc11580a23e8135456e52f20bad3aef64ce9be5b9224cbd3c",
     "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
     "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
     "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
@@ -40,7 +40,7 @@
     "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
     "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
   },
-  "executable_sha256": "099a541785d4278efcc26d29af5f8427098760291bb9be40f8d2f43facd9eece",
+  "executable_sha256": "917076d28def949e094c234d6875babbe4ae4c76a9fb3045ea9a7719634a4e18",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -56,7 +56,7 @@
   "checks": 421,
   "source_hashes_after": {
     "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
-    "src/ownership/d3d9_ownership.cpp": "365da457bfd0df7a8d791764e673596f89187a10c4fcd1f2c536f6d69ec90d8f",
+    "src/ownership/d3d9_ownership.cpp": "413843c5858f80ecc11580a23e8135456e52f20bad3aef64ce9be5b9224cbd3c",
     "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
     "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
     "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",

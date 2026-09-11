@@ -1,3 +1,21 @@
+CHECK index fixed owner storage charged without sidecars PASS
+CHECK index controls use distinct colliding canonical identities PASS
+CHECK index finds collision tail PASS
+CHECK index finds collision middle PASS
+CHECK index finds collision head PASS
+CHECK index refuses absent colliding and null keys PASS
+CHECK index and owner links consistent after collision insertion PASS
+CHECK index middle deletion preserves both neighbors PASS
+CHECK index head deletion promotes collision tail PASS
+CHECK index tail deletion restores fixed metadata baseline PASS
+CHECK reused identity retires old external CPU sidecar before replacement PASS
+CHECK identity replacement preserves old immutable metadata and refusal latch PASS
+CHECK old sidecar destructor cannot erase replacement identity PASS
+CHECK payload retirement preserves indexed immutable allocation metadata PASS
+CHECK deferred zero-reference index entry cannot resurrect PASS
+CHECK deferred drain unlinks collision entry without changing survivors PASS
+CHECK index cleanup returns all sidecar charges and preserves owner charge PASS
+CHECK index owner teardown has no owning reference cycle PASS
 CHECK load native D3D9 PASS
 CHECK create entry PASS
 CHECK window PASS
@@ -532,4 +550,4 @@ CHECK application VB descriptor PASS
 CHECK native readable VB descriptor PASS
 CHECK immutable original Usage masks only readable conversion PASS
 CHECK all other VB descriptor fields preserved PASS
-RESULT PASS checks=534
+RESULT PASS checks=552
