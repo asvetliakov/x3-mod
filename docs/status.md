@@ -77,6 +77,17 @@ Evidence at this checkpoint:
 This is CPU/synthetic evidence. The route has not run in the game, its per-draw
 cost in gameplay is unmeasured, and no temporal consumer reads the output.
 
+**Installed for the user-managed run (2026-09-12):** `build/d3d9.dll` from
+commit `66d91a4`, SHA256
+`fb08b324ea8ad6303ab40e346957c8fcfeeeb996a47c679cb12b6b721191b077`, through
+`tools/manage.py install` with bottle configuration unchanged. The previous
+iteration-5 DLL (`ed19a7ab…`) is preserved as
+`artifacts/rollback/d3d9-iteration05.dll`. The route is off unless the launcher
+passes `--motion-output`; see the run command in
+[motion output](verification/motion-output.md). Archive-wide classification of
+all SM3 material pairings is in progress so coverage does not depend on which
+sectors the user can test.
+
 ## Concrete next work
 
 1. Implement step 1 of the temporal integration design: R32F current-depth
