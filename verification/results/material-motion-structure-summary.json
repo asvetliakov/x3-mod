@@ -1,0 +1,112 @@
+{
+  "result": "PASS",
+  "passed": true,
+  "game_launched": false,
+  "gpu_rendered": false,
+  "scope": "Host structure and refusal only; no shader execution.",
+  "runs": [
+    {
+      "mode": "release",
+      "command": [
+        "/usr/bin/clang++",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "/Users/asvetl/x3-mod/src/renderer/material_motion.cpp",
+        "/Users/asvetl/x3-mod/verification/probe/material_motion_structure.cpp",
+        "-o",
+        "/Users/asvetl/x3-mod/verification/probe/build/material-motion-structure/release"
+      ],
+      "fresh_build": true,
+      "executable": "/Users/asvetl/x3-mod/verification/probe/build/material-motion-structure/release",
+      "executable_sha256_before": "14b549da28cca4486319df4f20428b2fc20c9e17bd7329a1cbf4da6cbd06ffaf",
+      "executable_sha256_after": "14b549da28cca4486319df4f20428b2fc20c9e17bd7329a1cbf4da6cbd06ffaf",
+      "checks": 8,
+      "single_bit_mutations": 57152,
+      "alias_layouts": 6,
+      "report": "verification/results/material-motion-structure-release.txt",
+      "report_sha256": "a31031868b8df496dc7b1ba287d8e29d2f6c07be784c34b55fd3f91ded349a2f",
+      "passed": true
+    },
+    {
+      "mode": "asan-ubsan",
+      "command": [
+        "/usr/bin/clang++",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "/Users/asvetl/x3-mod/src/renderer/material_motion.cpp",
+        "/Users/asvetl/x3-mod/verification/probe/material_motion_structure.cpp",
+        "-o",
+        "/Users/asvetl/x3-mod/verification/probe/build/material-motion-structure/asan-ubsan"
+      ],
+      "fresh_build": true,
+      "executable": "/Users/asvetl/x3-mod/verification/probe/build/material-motion-structure/asan-ubsan",
+      "executable_sha256_before": "ae0be4ea5ef0b69b91d83b520ec5a45623a4f006f131a21e6c4ec3486507e7fe",
+      "executable_sha256_after": "ae0be4ea5ef0b69b91d83b520ec5a45623a4f006f131a21e6c4ec3486507e7fe",
+      "checks": 8,
+      "single_bit_mutations": 57152,
+      "alias_layouts": 6,
+      "report": "verification/results/material-motion-structure-asan-ubsan.txt",
+      "report_sha256": "a31031868b8df496dc7b1ba287d8e29d2f6c07be784c34b55fd3f91ded349a2f",
+      "passed": true
+    }
+  ],
+  "sources_before": {
+    "src/renderer/material_motion.cpp": "9ac0f3ef57ded23e8d357c8c4517c6e5c0be087db1c32c537f0ae4f7388ac2d6",
+    "src/renderer/material_motion.h": "b0db186f1aa9e11bb911b7ba9e0ac00c0a2cdc8350f529b698659b7c599c041a",
+    "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+    "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+    "verification/probe/material_motion_structure.cpp": "5b84e083615870b2a2697f396a8ee9bd22ad26a5a6efe3f226b25a4b169d1066",
+    "verification/probe/run_material_motion_structure.py": "cf8f250473724b48f159ab22ca5db61efd7ce62a58912ac7b27e54a13643c28b"
+  },
+  "inputs_before": {
+    "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": {
+      "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+      "bytes": 2104
+    },
+    "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": {
+      "sha256": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
+      "bytes": 5040
+    }
+  },
+  "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+  "compiler_path": "/usr/bin/clang++",
+  "host_only": true,
+  "expected_checks": [
+    "reviewed_pair_applied_545_1392",
+    "all_original_words_preserved",
+    "vertex_previous_clip_and_public_abi",
+    "authored_fragment_register_bits_literals_and_opcodes",
+    "invalid_wrong_pair_truncated_appended_atomic_refusal",
+    "every_input_dword_every_bit_57152_atomic_refusals",
+    "six_input_output_alias_layouts_applied",
+    "cross_alias_refusal_atomic"
+  ],
+  "sources_after": {
+    "src/renderer/material_motion.cpp": "9ac0f3ef57ded23e8d357c8c4517c6e5c0be087db1c32c537f0ae4f7388ac2d6",
+    "src/renderer/material_motion.h": "b0db186f1aa9e11bb911b7ba9e0ac00c0a2cdc8350f529b698659b7c599c041a",
+    "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+    "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+    "verification/probe/material_motion_structure.cpp": "5b84e083615870b2a2697f396a8ee9bd22ad26a5a6efe3f226b25a4b169d1066",
+    "verification/probe/run_material_motion_structure.py": "cf8f250473724b48f159ab22ca5db61efd7ce62a58912ac7b27e54a13643c28b"
+  },
+  "inputs_after": {
+    "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": {
+      "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+      "bytes": 2104
+    },
+    "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": {
+      "sha256": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
+      "bytes": 5040
+    }
+  },
+  "source_input_executable_unchanged": true
+}

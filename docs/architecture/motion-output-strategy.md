@@ -2,8 +2,10 @@
 
 The user approved prototyping motion output alongside scene color before adding
 more live replay infrastructure. The preferred direction for the finished
-material renderer is one geometry submission producing both outputs. This is an
-implementation hypothesis to verify, not an enabled feature or measured speedup.
+material renderer is one geometry submission producing both outputs. The
+[detached one-pair prototype](../verification/material-motion.md) now passes
+color, depth and correspondence checks with a favorable bounded cost comparison.
+This is not an enabled gameplay feature or measured game speedup.
 The reviewed replay implementation stays available as a numerical reference and
 possible fallback.
 

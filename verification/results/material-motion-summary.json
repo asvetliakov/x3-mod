@@ -1,0 +1,176 @@
+{
+  "passed": true,
+  "status": "PASS",
+  "game_launched": false,
+  "scope": "One exact local shader pair, original synthetic geometry/textures; detached zero-origin opaque prototype, no production draw routing",
+  "timing_scope": "QPC through EVENT completion, including clear/draw/switches; common setup fenced before QPC; one Begin/EndScene pair per workload; modes0color,1same-draw,2color+authoredGPUreplay; no timed readback or isolatedGPUduration",
+  "cpu_baseline": "SSE2; stack realignment; four-byte incoming Win32 stack",
+  "native_module_mapping": "32-bit process logical C:\\windows\\system32 maps host bottle windows/syswow64 PE32 files",
+  "sources_before_build": {
+    "src/renderer/material_motion.h": "b0db186f1aa9e11bb911b7ba9e0ac00c0a2cdc8350f529b698659b7c599c041a",
+    "src/renderer/material_motion.cpp": "9ac0f3ef57ded23e8d357c8c4517c6e5c0be087db1c32c537f0ae4f7388ac2d6",
+    "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
+    "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
+    "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
+    "src/renderer/rigid_position.cpp": "2cf2595243b733190bd4e5313a37f21a9f90503c5ead9d18a42ed80318139b49",
+    "src/renderer/rigid_position_profiles_inc.h": "e9a684f940b8ec461e736989e4e0dd75d09086b620eb00ed454193e57cf43a67",
+    "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
+    "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
+    "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+    "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+    "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
+    "verification/probe/material_motion_fixture.cpp": "fb6400e6ab6adb36a906e767a46cd4c451951ec19f87ba8257046695be36da48",
+    "verification/probe/build_material_motion.sh": "b79eed949cf2f57317976b24b0060257a2a435597a9cd2982a3f673934b3777a",
+    "verification/probe/run_material_motion.py": "2b8c06a1c6263cde359ed2ea85f955d3a26ded44a789a2147df5b80d30258765"
+  },
+  "native_before_build": {
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/syswow64/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/syswow64/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863",
+    "/opt/homebrew/Cellar/mingw-w64/14.0.0_3/toolchain-i686/bin/i686-w64-mingw32-g++": "c8181d422f8a912b04fc6c87d770a169b7aa6a6fd37edbc59629b876c33dd947"
+  },
+  "local_inputs": {
+    "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+    "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
+  },
+  "local_after_build": {
+    "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+    "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
+  },
+  "sources_after_build": {
+    "src/renderer/material_motion.h": "b0db186f1aa9e11bb911b7ba9e0ac00c0a2cdc8350f529b698659b7c599c041a",
+    "src/renderer/material_motion.cpp": "9ac0f3ef57ded23e8d357c8c4517c6e5c0be087db1c32c537f0ae4f7388ac2d6",
+    "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
+    "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
+    "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
+    "src/renderer/rigid_position.cpp": "2cf2595243b733190bd4e5313a37f21a9f90503c5ead9d18a42ed80318139b49",
+    "src/renderer/rigid_position_profiles_inc.h": "e9a684f940b8ec461e736989e4e0dd75d09086b620eb00ed454193e57cf43a67",
+    "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
+    "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
+    "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+    "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+    "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
+    "verification/probe/material_motion_fixture.cpp": "fb6400e6ab6adb36a906e767a46cd4c451951ec19f87ba8257046695be36da48",
+    "verification/probe/build_material_motion.sh": "b79eed949cf2f57317976b24b0060257a2a435597a9cd2982a3f673934b3777a",
+    "verification/probe/run_material_motion.py": "2b8c06a1c6263cde359ed2ea85f955d3a26ded44a789a2147df5b80d30258765"
+  },
+  "native_after_build": {
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/syswow64/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/syswow64/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863",
+    "/opt/homebrew/Cellar/mingw-w64/14.0.0_3/toolchain-i686/bin/i686-w64-mingw32-g++": "c8181d422f8a912b04fc6c87d770a169b7aa6a6fd37edbc59629b876c33dd947"
+  },
+  "executable_sha256": "8efbaa9966d3409c57097d240ab2b6c62151bad28b7287619f60513ae0ed6314",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--dll",
+    "d3d9=b",
+    "/Users/asvetl/x3-mod/verification/probe/build/material_motion_fixture.exe",
+    "Z:/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+    "Z:/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin"
+  ],
+  "exit_code": 0,
+  "checks": 1182,
+  "numerical": 2952,
+  "color_components": 101318656,
+  "depth_cases": 164,
+  "configurations": 82,
+  "mixed_bit_depth": true,
+  "max_analytic_uv_error_pixels": 0.00100856683,
+  "max_analytic_previous_depth_error": 8.65642841e-07,
+  "max_replay_reference_error": 0.0,
+  "timings": [
+    {
+      "width": 1280,
+      "height": 768,
+      "mode": 0,
+      "samples": 6,
+      "mean_ms": 0.62005,
+      "median_ms": 0.4851,
+      "minimum_ms": 0.4326,
+      "maximum_ms": 0.9395
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "mode": 1,
+      "samples": 6,
+      "mean_ms": 0.66485,
+      "median_ms": 0.6484,
+      "minimum_ms": 0.4483,
+      "maximum_ms": 0.9481
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "mode": 2,
+      "samples": 6,
+      "mean_ms": 0.7143166666666667,
+      "median_ms": 0.6994,
+      "minimum_ms": 0.5844,
+      "maximum_ms": 0.8643
+    },
+    {
+      "width": 5120,
+      "height": 1440,
+      "mode": 0,
+      "samples": 6,
+      "mean_ms": 1.4868833333333333,
+      "median_ms": 1.48675,
+      "minimum_ms": 1.0709,
+      "maximum_ms": 1.9099
+    },
+    {
+      "width": 5120,
+      "height": 1440,
+      "mode": 1,
+      "samples": 6,
+      "mean_ms": 1.6025999999999998,
+      "median_ms": 1.54405,
+      "minimum_ms": 1.1582,
+      "maximum_ms": 2.1765
+    },
+    {
+      "width": 5120,
+      "height": 1440,
+      "mode": 2,
+      "samples": 6,
+      "mean_ms": 2.235516666666667,
+      "median_ms": 2.0781,
+      "minimum_ms": 1.8799,
+      "maximum_ms": 2.6582
+    }
+  ],
+  "local_after_run": {
+    "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+    "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
+  },
+  "sources_after_run": {
+    "src/renderer/material_motion.h": "b0db186f1aa9e11bb911b7ba9e0ac00c0a2cdc8350f529b698659b7c599c041a",
+    "src/renderer/material_motion.cpp": "9ac0f3ef57ded23e8d357c8c4517c6e5c0be087db1c32c537f0ae4f7388ac2d6",
+    "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
+    "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
+    "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
+    "src/renderer/rigid_position.cpp": "2cf2595243b733190bd4e5313a37f21a9f90503c5ead9d18a42ed80318139b49",
+    "src/renderer/rigid_position_profiles_inc.h": "e9a684f940b8ec461e736989e4e0dd75d09086b620eb00ed454193e57cf43a67",
+    "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
+    "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
+    "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+    "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+    "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
+    "verification/probe/material_motion_fixture.cpp": "fb6400e6ab6adb36a906e767a46cd4c451951ec19f87ba8257046695be36da48",
+    "verification/probe/build_material_motion.sh": "b79eed949cf2f57317976b24b0060257a2a435597a9cd2982a3f673934b3777a",
+    "verification/probe/run_material_motion.py": "2b8c06a1c6263cde359ed2ea85f955d3a26ded44a789a2147df5b80d30258765"
+  },
+  "native_after_run": {
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/syswow64/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/syswow64/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863",
+    "/opt/homebrew/Cellar/mingw-w64/14.0.0_3/toolchain-i686/bin/i686-w64-mingw32-g++": "c8181d422f8a912b04fc6c87d770a169b7aa6a6fd37edbc59629b876c33dd947"
+  },
+  "wine_stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+  "report_sha256": "b61b19d89352d0eeb5165425d204449dea8bc8ff14550d65b8027666c0fd29ad"
+}

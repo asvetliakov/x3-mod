@@ -1,0 +1,9 @@
+CHECK reviewed_pair_applied_545_1392
+CHECK all_original_words_preserved
+CHECK vertex_previous_clip_and_public_abi
+CHECK authored_fragment_register_bits_literals_and_opcodes
+CHECK invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK every_input_dword_every_bit_57152_atomic_refusals
+CHECK six_input_output_alias_layouts_applied
+CHECK cross_alias_refusal_atomic
+RESULT PASS checks=8 mutations=57152 aliases=6 vertex_words=545 pixel_words=1392

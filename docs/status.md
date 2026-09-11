@@ -15,6 +15,19 @@ See [portability requirements and gaps](architecture/platform-portability.md).
 
 ## Latest checkpoint
 
+The detached [same-draw material prototype](verification/material-motion.md)
+now writes color and motion correspondence together for one common opaque SM3
+pair. Its 82 configurations pass 1,182 checks, 2,952 numerical motion samples
+and 164 bilateral depth cases. All compared color components are unchanged, and
+motion matches the independent replay reference exactly. At 5120×1440, the
+small synthetic workload averages 1.60 ms for one draw versus 2.24 ms for two
+passes, including submission and completion; this is not a game FPS result.
+Both the game's A8R8G8B8 color format plus RGBA32F motion and an equal-format
+control pass. Host optimized/ASan/UBSan checks also preserve the original
+programs and reject 57,152 input mutations. The transformer is **not linked into
+the proxy or installed**. Live history, binding and broader material coverage
+remain next work; see the [module contract](architecture/material-motion-prototype.md).
+
 The portable geometry path removes DLL-version allowlists, private Wine buffer
 layouts and native method RVAs. Eligible managed WRITEONLY buffers receive
 readable native backing, preserving application-visible Usage and observing only
@@ -264,17 +277,17 @@ presentation and the requested visual features remain unfinished.
 
 ## Concrete next work
 
-1. Prototype [motion output alongside color](architecture/motion-output-strategy.md)
-   in one common opaque SM3 material before extending live replay infrastructure.
-   The user approved this direction. Verify actual shader register headroom,
-   unchanged color/depth and numerical motion, then compare GPU cost. Replay
-   remains a reference/fallback candidate; no approach is enabled in gameplay.
-2. Prepare the next user-managed diagnostic run of the verified finite POSITION
-   producer under the reviewed
-   [managed-buffer upload contract](reverse-engineering/managed-buffer-write-mapping.md).
-   The new [capture audit](verification/finite-upload-capture.md) reports source,
-   finite/index coverage and cumulative cost without treating inputs as TAA eligibility.
-   The game's dynamic
+1. Prepare limited live routing for the verified
+   [motion output alongside color](architecture/motion-output-strategy.md).
+   Connect existing object/transform history, define shader/constants/MRT binding
+   ownership and failure handling, and invalidate motion for unsupported
+   contributors. Broaden profiles only with their own register/coverage review.
+   Replay remains a reference/fallback candidate; no motion route is enabled in
+   gameplay yet.
+2. Consolidate the next user-managed diagnostic run around the chosen motion
+   route, history/coverage and loading observations. Include the existing finite
+   POSITION capture only where required by retained replay or geometry work;
+   same-draw shader output does not reread saved geometry. The game's dynamic
    SYSTEMMEM mesh configuration now passes native tests; its actual cache hit rate
    still needs a future run.
 3. If replay remains part of the live renderer, establish explicit buffer-write/replay exclusion before enabling the private
