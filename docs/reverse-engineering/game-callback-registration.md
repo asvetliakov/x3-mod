@@ -104,6 +104,104 @@ The X3 effect/environment setup paths also invoke the game function pointer at
 allocation/recovery helpers inside exclusion; direct native calls and their original
 HRESULTs have different callback coverage from such game helper wrappers.
 
+## Validator lifetime and a bounded admission scope
+
+Follow-up on the dynamic validator export, using the same D3DX image above.
+The initial factory finding does **not** establish that every normal X3 effect
+load invokes it. The analyzed helper `0x621c0e` has one direct code reference:
+`0x6241d4`, inside `0x623eea`. Its three direct callers belong to the fragment
+linker vtable at `0x408ac4`:
+
+| Public method | Slot / entry | Call to common linker helper |
+| --- | --- | --- |
+| ID3DXFragmentLinker::LinkShader | 11 / `0x624282` | `0x624366` |
+| ID3DXFragmentLinker::LinkVertexShader | 12 / `0x6243e4` | `0x624547` |
+| ID3DXFragmentLinker::LinkPixelShader | 13 / `0x62471e` | `0x624880` |
+
+Slot identities match the SDK interface order and the corresponding raw-shader,
+vertex-shader and pixel-shader output paths. The common helper skips validation
+when its flags contain bit `2`. X3's static D3DX imports include CreateEffect but
+no fragment-linker factory. D3DXCreateEffectEx (`0x62c27e`) has a compiled-effect
+input branch and a separate effect-compiler branch; the reviewed direct caller
+chain does not connect either to this fragment-linker helper. This is not proof
+that no indirect/internal path can do so, and the table above is not a complete
+shader-compiler call graph.
+
+### Smallest scope covering the validator
+
+The existing relative CALL at D3DX `0x6241d4` targets `0x621c0e`. Its five bytes
+are `e8 35 da ff ff`; immediately before it, the caller pushes the token pointer
+and loads the diagnostic/linker context into ECX. Assembly establishes the helper
+ABI as x86 thiscall: one ECX context, one stack DWORD token pointer, HRESULT in EAX,
+callee `ret 4` at `0x621d73`. ESI/EDI/EBX/EBP are preserved. This is a concrete
+candidate for a **counted call-site wrapper**, avoiding prologue relocation.
+These observed bytes and addresses alone are not a completed hook qualifier.
+
+A ticket beginning immediately before that call and ending only after the helper
+returns covers this entire ordinary lifetime:
+
+| Stage | Callsite / result handling |
+| --- | --- |
+| Locate native export and create | GetProcAddress at `0x621c49`, factory call `0x621c59`; returned interface stays in EDI. |
+| Register D3DX diagnostic callback | Slot 3 at `0x621c6f`, callback `0x621b74`, caller's context, final argument zero. Negative result joins cleanup. |
+| Submit version/instruction/end tokens | Slot 4 at `0x621c85`, `0x621cf5`, `0x621d32`; each negative result joins cleanup. |
+| Finish validation | Slot 5 at `0x621d3e`; negative result joins cleanup. |
+| Check callback diagnostic status | Reads the original context's error flag at `+0x90`, and can change a successful result to E_FAIL. |
+| Release the obtained reference | Non-null EDI always reaches slot 2 call `0x621d6a` before the ordinary return. |
+
+The helper initializes EDI to null. Missing module/export or a null factory result
+returns failure without Release. A non-null result followed by failed callback
+registration, any token failure, finalization failure, diagnostic error, or success
+all releases exactly the one locally obtained reference. There is no validator
+AddRef, object/global/output-field publication, worker dispatch or retained validator
+pointer in this D3DX helper. The LinkVertexShader/LinkPixelShader caches retain
+created **shader** objects, not this validator.
+
+The registered callback `0x621b74` writes diagnostics through context `+0x58` and
+sets `+0x90` for errors. The common linker helper temporarily makes `+0x58` refer
+to its local diagnostic list, then consumes that list and clears the field before
+returning. This is evidence that D3DX expects callback completion inside the
+validation call sequence. It is not a general contract for an arbitrary unknown
+implementation of the undocumented factory. No asynchronous D3DX publication was
+found in this bounded chain. Native Windows validator internals have not been
+inspected or executed.
+
+For comparison only, the previously inspected Preview D3D9 image
+(SHA-256 `58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf`)
+returns a static validator from RVA `0x3010`. Its slot-3 method at RVA `0x3910`
+does not retain the supplied callback/context, and Release at RVA `0x38c0` returns
+one rather than destroying that static object. Thus calling this D3DX Release
+must be described as relinquishing its obtained reference, not universally proving
+final object destruction. This backend observation is not an activation gate or
+an assumption to impose on Windows.
+
+### Authority and failure limits
+
+The candidate ticket is ordinary application admission, never permission to do
+compilation during exclusive replay. An implementation would need positively
+validated D3DX call-site/ABI ownership, safe process-local patch/rollback and
+module lifetime, then a narrow factory exemption associated with that exact
+active helper invocation and factory callsite (`0x621c59`, return `0x621c5b`).
+A factory call merely being nested under another application ticket, originating
+somewhere in D3DX, or occurring during CreateEffect is **insufficient authority**.
+Unknown direct export callers can still permanently mark interface coverage unknown.
+No whole-DLL digest should become a normal runtime prerequisite.
+
+The observed helper has no local SEH cleanup that releases its EDI reference if
+an exception unwinds before `0x621d6a`. Ordinary HRESULT failures are covered;
+exceptional abandonment is not proven safe by the normal cleanup branch. A
+counted wrapper must unwind its own monitor state without swallowing/changing the
+application exception, and must retain a permanent coverage refusal if normal
+helper completion/reference cleanup is not established. An exception-safe ticket
+alone does not certify native callback retirement.
+
+This scope is sufficient to avoid treating the **reviewed synchronous D3DX use**
+as an arbitrary published interface merely because the export returns a pointer.
+Before exempting it in production, the caller/registration/normal-return contract
+and failure controls still need implementation and independent verification.
+It does not authorize all dynamic validator callers or remove the other admission
+coverage requirements.
+
 ## Main window procedure and threading
 
 `0x4dac90` constructs the WNDCLASSA record, assigns `lpfnWndProc = 0x4d3620`
@@ -175,7 +273,8 @@ analyzeHeadless /tmp/x3-ghidra-research X3Render \
 analyzeHeadless /tmp/x3-ghidra-research X3Render \
   -process d3dx9_37.dll -readOnly -noanalysis -scriptPath tools/analysis \
   -postScript X3CallbackResearch.java /tmp/x3-d3dx-callback-review.c \
-  005fea53 005a5be8 005a257b 005a2832 005919b3 005926c5 00621c0e
+  005fea53 005a5be8 005a257b 005a2832 005919b3 005926c5 00621c0e \
+  00623eea 00624282 006243e4 0062471e 00621b74 0062c27e
 ```
 
 If the temporary project has been removed, import/analyze the matching local

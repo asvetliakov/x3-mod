@@ -225,6 +225,24 @@ unreviewed lock-order edges. A normal generated RAII ticket spanning a child
 Release's final parent capture dispatch also defeats the explicit handoff rule;
 Release needs a dedicated helper-controlled end point.
 
+The current handwritten entry inventory adds 30 `WINAPI` capture hooks in
+`src/proxy/capture.cpp` and 11 proxy exports in `src/proxy/loader.cpp` (including
+the marker macro). Capture entry must precede `HookGuard`; loader entry must
+precede backend initialization. Do not acquire blocking admission in `DllMain`.
+The six direct graphics D3DX hooks in `loading_trace.cpp` and three mesh-method
+templates (24 installed thunks) must enter before `Span`, cache preflight and
+native dispatch. Remaining installed file/cursor/codec hooks need an explicit
+coverage classification before enabling replay.
+
+Public ownership helpers need two distinct call contracts: ordinary callers
+obtain application admission, while reviewed renderer operations carry the
+specific active replay authority. In particular, blindly adding application
+entry inside `inspect_geometry_lease`, depth inspection/copy or native-pointer
+access would classify intentional replay validation as an unexpected callback.
+The finite sidecar's native `IUnknown` callbacks retain their existing bounded
+retirement behavior; they must not enter an application wait from inside a native
+callback. This inventory is a patch boundary, not implemented coverage.
+
 The replay thread must not receive a general permission to call application
 wrappers while exclusive. That would admit a same-thread native callback as if it
 were intentional renderer work. Renderer native access and original-Clear dispatch
