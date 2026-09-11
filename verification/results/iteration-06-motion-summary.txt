@@ -1,0 +1,45 @@
+iteration-06 motion route summary
+log /tmp/x3-iteration06-snapshot.log (383673249 bytes, sha256 4ea7d9119182e65198d96e6688bf34aa575f1fe254d9eecdf2cfbc9efb7affbd)
+motion_output_frame lines: 361; routed frames 153, matched frames 153
+  draws 79298, routed 17390, matched 17346
+  gates {'gate1': 0, 'gate2': 55129, 'gate3': 1367, 'gate4': 5412, 'gate5': 0, 'gate6': 44, 'matched': 17346, 'routed': 17390, 'draws': 79298}
+  apply_failures 0 restore_failures 0
+  selector_state [['Rejected', 361]]  committed [[1, 352], [0, 9]]  latched [[1, 353], [0, 8]]
+motion_route lines: 10517; routed 7925, matched 7883 (0.9947003154574132)
+  gate outcomes [['matched', 7883], ['gate3_pair', 398], ['gate4_draw_state', 2194], ['gate6_history', 42]]
+  unclassified gate-3 pairs: 5
+    4944d81dfe531b37 / 3006f8030a467739  draws=208 (opaque 208) frames=16 [2244..2796]
+    d5e1c75351ed3f04 / 8360f422de08b5bd  draws=110 (opaque 0) frames=33 [2020..14394]
+    36f98d151fd6b0c6 / 222bee0defcb1852  draws=36 (opaque 0) frames=36 [2020..14394]
+    5e484a06672e28fb / 0a523f33ac47ae05  draws=36 (opaque 0) frames=36 [2020..14394]
+    c78b4c68a87fce74 / 0000000000000000  draws=8 (opaque 0) frames=8 [10921..13402]
+  gate4 first failing predicate [['alpha_test', 1546], ['z_write', 648]]
+  gate4 all false predicates [['color_write_mask', 2194], ['alpha_test', 1546], ['alpha_blend', 648], ['z_write', 648]]
+  gate4 i0.x [[0, 2170], [1, 16], [3, 8]]
+  gate5 0 []
+  gate6 42 [['key_absent_in_previous_frame', 42]]
+captured frames 68: routed 36, nothing routed 32
+    cause [['Background', 'f80f7af59b667bb7', 'd6f6ba4fee1cd53e'], 20]
+    cause [['Scene', 'c78b4c68a87fce74', '0000000000000000'], 8]
+    cause [['Background', '72f8dbb8567bbf88', '00fcc903c7f085d5'], 4]
+shader models: [['ps_3_0', 28], ['vs_3_0', 10], ['vs_1_1', 8], ['ps_1_1', 6], ['vs_2_0', 5], ['ps_2_0', 4]]
+  draws by phase {'background': 393, 'scene': 20076, 'bloom': 272, 'overlay_gui': 948}
+    background: vs_1_1/ps_1_1 draws=340 7b6393fe2d3e1d85/6109cf64c03529dd
+    background: vs_2_0/ps_2_0 draws=37 f80f7af59b667bb7/d6f6ba4fee1cd53e
+    background: vs_2_0/ps_2_0 draws=12 72f8dbb8567bbf88/00fcc903c7f085d5
+    background: vs_1_1/ps_1_1 draws=4 be199829a9bb78db/cd6d6eb4b3d99443
+    overlay_gui: vs_1_1/ps_1_1 draws=620 7b6393fe2d3e1d85/6109cf64c03529dd
+    overlay_gui: vs_2_0/ps_2_0 draws=200 d5e1c75351ed3f04/8360f422de08b5bd
+    overlay_gui: vs_1_1/ps_1_1 draws=128 f36fc43f30b19d71/0a523f33ac47ae05
+    scene: vs_1_1/ps_null draws=915 c78b4c68a87fce74/0000000000000000
+    scene: vs_2_0/ps_2_0 draws=294 d5e1c75351ed3f04/8360f422de08b5bd
+    scene: vs_1_1/ps_1_1 draws=68 36f98d151fd6b0c6/222bee0defcb1852
+    scene: vs_1_1/ps_1_1 draws=68 5e484a06672e28fb/0a523f33ac47ae05
+    scene: vs_1_1/ps_1_1 draws=60 803ebfd17f79e413/652a7c5d1e9909a0
+    scene: vs_1_1/ps_1_1 draws=54 5e484a06672e28fb/ec1f5c4a2f4e1445
+    scene: vs_2_0/ps_2_0 draws=12 ac2319bc3953efc6/03a16e5c63daa6e8
+frame interval capture: n=85 mean=300412.7us min=9690.8 max=1396800.5
+frame interval normal: n=17476 mean=31014.1us min=1458.0 max=93728479.6
+present capture: n=68 mean=34.9us max=68.6
+present normal: n=17494 mean=14.7us max=527.7
+diagnostics: nonzero results [], resets 0, missing shutdown records ['device_destroy', 'motion_output_release']

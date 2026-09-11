@@ -1,0 +1,5856 @@
+{
+  "tool": "tools/analysis/analyze_iteration06_motion.py",
+  "log": "/tmp/x3-iteration06-snapshot.log",
+  "log_sha256": "4ea7d9119182e65198d96e6688bf34aa575f1fe254d9eecdf2cfbc9efb7affbd",
+  "log_bytes": 383673249,
+  "session": {
+    "header": [
+      "backend path=C:\\windows\\system32\\d3d9.dll",
+      "capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300",
+      "create_device adapter=0 flags=00000052 width=1280 height=768 format=21 windowed=1 msaa=0 interval=1",
+      "create_device_result hr=00000000",
+      "device_hooked ptr=00d8fe88 device=1 ex=0",
+      "loading_trace coverage_begin=8984361503971 frequency=10000000 hooks=16 module=main inclusive=1 paths=0 qualification=named_pe32_imports",
+      "mesh_cache requested=0 enabled=0 activation=await_public_mesh_and_buffer_contract adjacency_metric_scope=hook_service restart_on_cleanup_failure=1",
+      "mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=8 objects_retained=0",
+      "motion_capture_mode requested=0 enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0",
+      "motion_output_mode requested=1 scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=0",
+      "object_lifetime active=1 status=active_without_baseline recovery_required=0 baseline_complete=0 baseline_entries=0",
+      "object_trace active=1 status=active recovery_required=0",
+      "ownership_mode requested=1 depth_copy_requested=0 depth_copy_enabled=0 scope=normal9 fallback=native",
+      "x3-modern-renderer version=0.4 schema=2 capture_start=999999 capture_frames=4 pointer_bits=32"
+    ],
+    "device_gate": {
+      "device": "1",
+      "enabled": "1",
+      "reason": "ok",
+      "detail": "stage=compare",
+      "result": "00000000",
+      "draw": "00000000",
+      "restore": "00000000",
+      "scene": "00000000",
+      "color_errors": "0",
+      "motion_errors": "0",
+      "mrt": "4",
+      "vs_constants": "256",
+      "misc": "002ecff2",
+      "vs": "fffe0300",
+      "ps": "ffff0300",
+      "rgba32f": "00000000",
+      "history_available": "1",
+      "history_capacity": "4096"
+    },
+    "target": {
+      "device": "1",
+      "width": "1280",
+      "height": "768",
+      "create": "00000000",
+      "level": "00000000"
+    },
+    "observers": {
+      "object_trace": {
+        "active": "1",
+        "status": "active",
+        "recovery_required": "0"
+      },
+      "object_lifetime": {
+        "active": "1",
+        "status": "active_without_baseline",
+        "recovery_required": "0",
+        "baseline_complete": "0",
+        "baseline_entries": "0"
+      }
+    },
+    "ownership_factory": [
+      {
+        "mode": "wrapped",
+        "native": "00cae3b8",
+        "public": "00cb0638",
+        "result": "00000000"
+      },
+      {
+        "mode": "wrapped",
+        "native": "00ce1460",
+        "public": "00cdb460",
+        "result": "00000000"
+      },
+      {
+        "mode": "wrapped",
+        "native": "00d81380",
+        "public": "00d81488",
+        "result": "00000000"
+      }
+    ],
+    "adapter": {
+      "description": "NVIDIA",
+      "driver": "nvd3dum.dll",
+      "vendor": "000010de",
+      "device": "00000191"
+    },
+    "presentation": [
+      "telemetry_first_present device=1 frame=0 qpc=8984396533520 since_start_us=3504198.600 capture=0 reset_count=0",
+      "telemetry_presentation phase=create_after device=0 thread=404 focus_window=00580156 device_window=00580156 width=1280 height=768 format=21 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000003 refresh=0 interval=1",
+      "telemetry_presentation phase=create_before device=0 thread=404 focus_window=00580156 device_window=00580156 width=1280 height=768 format=21 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000003 refresh=0 interval=1",
+      "telemetry_start schema=1 qpc_frequency=10000000 qpc=8984361491534 anchor=proxy_initialize cpu_only=1"
+    ],
+    "admission": [
+      {
+        "requested": "0",
+        "enabled": "0",
+        "live_replay": "0",
+        "coverage_complete": "0"
+      },
+      {
+        "phase": "factory",
+        "active_roots": "0",
+        "waiting_roots": "0",
+        "admitted_roots": "0",
+        "promotions": "0",
+        "vetoes": "0",
+        "first_veto": "0",
+        "enabled": "0"
+      },
+      {
+        "phase": "factory",
+        "active_roots": "0",
+        "waiting_roots": "0",
+        "admitted_roots": "0",
+        "promotions": "0",
+        "vetoes": "0",
+        "first_veto": "0",
+        "enabled": "0"
+      }
+    ],
+    "copy_depth_phases": [
+      [
+        [
+          "present",
+          "00000001",
+          "0"
+        ],
+        68
+      ],
+      [
+        [
+          "create_after",
+          "00000001",
+          "0"
+        ],
+        1
+      ]
+    ],
+    "variants": {
+      "lines": 47,
+      "by_stage": [
+        [
+          "vs",
+          28
+        ],
+        [
+          "ps",
+          19
+        ]
+      ],
+      "distinct_programs": 23,
+      "failed_or_untransformed": []
+    },
+    "shaders_created": {
+      "count": 61,
+      "by_stage": [
+        [
+          "ps",
+          38
+        ],
+        [
+          "vs",
+          23
+        ]
+      ]
+    }
+  },
+  "frame_counters": {
+    "count": 361,
+    "telemetry_sampled": 293,
+    "totals": {
+      "gate1": 0,
+      "gate2": 55129,
+      "gate3": 1367,
+      "gate4": 5412,
+      "gate5": 0,
+      "gate6": 44,
+      "matched": 17346,
+      "routed": 17390,
+      "draws": 79298
+    },
+    "draws": {
+      "count": 361,
+      "min": 0,
+      "median": 129,
+      "mean": 219.66204986149583,
+      "p95": 611,
+      "max": 867,
+      "total": 79298
+    },
+    "routed": {
+      "count": 361,
+      "min": 0,
+      "median": 0,
+      "mean": 48.17174515235457,
+      "p95": 324,
+      "max": 416,
+      "total": 17390
+    },
+    "matched": {
+      "count": 361,
+      "min": 0,
+      "median": 0,
+      "mean": 48.04986149584487,
+      "p95": 319,
+      "max": 416,
+      "total": 17346
+    },
+    "frames_with_routed": 153,
+    "frames_with_matched": 153,
+    "apply_failures": 0,
+    "restore_failures": 0,
+    "fill_results": [
+      [
+        "0",
+        352
+      ],
+      [
+        "1",
+        9
+      ]
+    ],
+    "fill_restores": [
+      [
+        "0",
+        361
+      ]
+    ],
+    "latched": [
+      [
+        1,
+        353
+      ],
+      [
+        0,
+        8
+      ]
+    ],
+    "filled": [
+      [
+        1,
+        352
+      ],
+      [
+        0,
+        9
+      ]
+    ],
+    "committed": [
+      [
+        1,
+        352
+      ],
+      [
+        0,
+        9
+      ]
+    ],
+    "selector_state": [
+      [
+        "Rejected",
+        361
+      ]
+    ],
+    "history_previous": {
+      "count": 361,
+      "min": 0,
+      "median": 0,
+      "mean": 48.17174515235457,
+      "p95": 324,
+      "max": 416,
+      "total": 17390
+    }
+  },
+  "scene_selection": {
+    "captured_frames": 68,
+    "frames_with_routed_draws": 36,
+    "frames_without_routed_draws": 32,
+    "rejected_frames": [
+      {
+        "frame": 6202,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 6203,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 6204,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 6205,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 7189,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 7190,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 7191,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 7192,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 7511,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 7512,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 7513,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 7514,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 10921,
+        "routed": 0,
+        "rejected": true,
+        "state": "Scene",
+        "draw_index": 6,
+        "vs": "c78b4c68a87fce74",
+        "ps": "0000000000000000",
+        "reason": "scene draw with a null pixel shader (z-only pass); SceneBoundarySelector::scene_draw requires both stages"
+      },
+      {
+        "frame": 10922,
+        "routed": 0,
+        "rejected": true,
+        "state": "Scene",
+        "draw_index": 6,
+        "vs": "c78b4c68a87fce74",
+        "ps": "0000000000000000",
+        "reason": "scene draw with a null pixel shader (z-only pass); SceneBoundarySelector::scene_draw requires both stages"
+      },
+      {
+        "frame": 10923,
+        "routed": 0,
+        "rejected": true,
+        "state": "Scene",
+        "draw_index": 6,
+        "vs": "c78b4c68a87fce74",
+        "ps": "0000000000000000",
+        "reason": "scene draw with a null pixel shader (z-only pass); SceneBoundarySelector::scene_draw requires both stages"
+      },
+      {
+        "frame": 10924,
+        "routed": 0,
+        "rejected": true,
+        "state": "Scene",
+        "draw_index": 6,
+        "vs": "c78b4c68a87fce74",
+        "ps": "0000000000000000",
+        "reason": "scene draw with a null pixel shader (z-only pass); SceneBoundarySelector::scene_draw requires both stages"
+      },
+      {
+        "frame": 13399,
+        "routed": 0,
+        "rejected": true,
+        "state": "Scene",
+        "draw_index": 6,
+        "vs": "c78b4c68a87fce74",
+        "ps": "0000000000000000",
+        "reason": "scene draw with a null pixel shader (z-only pass); SceneBoundarySelector::scene_draw requires both stages"
+      },
+      {
+        "frame": 13400,
+        "routed": 0,
+        "rejected": true,
+        "state": "Scene",
+        "draw_index": 6,
+        "vs": "c78b4c68a87fce74",
+        "ps": "0000000000000000",
+        "reason": "scene draw with a null pixel shader (z-only pass); SceneBoundarySelector::scene_draw requires both stages"
+      },
+      {
+        "frame": 13401,
+        "routed": 0,
+        "rejected": true,
+        "state": "Scene",
+        "draw_index": 6,
+        "vs": "c78b4c68a87fce74",
+        "ps": "0000000000000000",
+        "reason": "scene draw with a null pixel shader (z-only pass); SceneBoundarySelector::scene_draw requires both stages"
+      },
+      {
+        "frame": 13402,
+        "routed": 0,
+        "rejected": true,
+        "state": "Scene",
+        "draw_index": 6,
+        "vs": "c78b4c68a87fce74",
+        "ps": "0000000000000000",
+        "reason": "scene draw with a null pixel shader (z-only pass); SceneBoundarySelector::scene_draw requires both stages"
+      },
+      {
+        "frame": 15049,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 15050,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 15051,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 15052,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 15127,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 15128,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 15129,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 15130,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 17379,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "72f8dbb8567bbf88",
+        "ps": "00fcc903c7f085d5",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 17380,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "72f8dbb8567bbf88",
+        "ps": "00fcc903c7f085d5",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 17381,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "72f8dbb8567bbf88",
+        "ps": "00fcc903c7f085d5",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      {
+        "frame": 17382,
+        "routed": 0,
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "72f8dbb8567bbf88",
+        "ps": "00fcc903c7f085d5",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      }
+    ],
+    "causes": [
+      [
+        [
+          "Background",
+          "f80f7af59b667bb7",
+          "d6f6ba4fee1cd53e"
+        ],
+        20
+      ],
+      [
+        [
+          "Scene",
+          "c78b4c68a87fce74",
+          "0000000000000000"
+        ],
+        8
+      ],
+      [
+        [
+          "Background",
+          "72f8dbb8567bbf88",
+          "00fcc903c7f085d5"
+        ],
+        4
+      ]
+    ],
+    "note": "the route's SceneBoundarySelector fails closed: one unrecognized draw in the Background or Scene phase rejects the rest of the frame, so every later draw is counted at gate 2."
+  },
+  "bursts": [
+    {
+      "burst": 0,
+      "frames": [
+        2020,
+        2021,
+        2022,
+        2023
+      ],
+      "routed": 1008,
+      "matched": 1008,
+      "matched_rate": 1.0,
+      "load_registry_epochs": [
+        [
+          "1",
+          "2"
+        ]
+      ],
+      "camera_serials": [
+        "29523"
+      ],
+      "camera_serial_count": 1,
+      "selector": {
+        "rejected": false,
+        "state": "Scene"
+      },
+      "per_frame": [
+        {
+          "frame": 2020,
+          "draws": 328,
+          "routed": 252,
+          "matched": 252,
+          "gates": {
+            "gate1": 0,
+            "gate2": 22,
+            "gate3": 5,
+            "gate4": 49,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 328,
+          "phase_draws": {
+            "background": 5,
+            "scene": 306,
+            "bloom": 4,
+            "overlay_gui": 13
+          }
+        },
+        {
+          "frame": 2021,
+          "draws": 328,
+          "routed": 252,
+          "matched": 252,
+          "gates": {
+            "gate1": 0,
+            "gate2": 22,
+            "gate3": 5,
+            "gate4": 49,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 328,
+          "phase_draws": {
+            "background": 5,
+            "scene": 306,
+            "bloom": 4,
+            "overlay_gui": 13
+          }
+        },
+        {
+          "frame": 2022,
+          "draws": 328,
+          "routed": 252,
+          "matched": 252,
+          "gates": {
+            "gate1": 0,
+            "gate2": 22,
+            "gate3": 5,
+            "gate4": 49,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 328,
+          "phase_draws": {
+            "background": 5,
+            "scene": 306,
+            "bloom": 4,
+            "overlay_gui": 13
+          }
+        },
+        {
+          "frame": 2023,
+          "draws": 328,
+          "routed": 252,
+          "matched": 252,
+          "gates": {
+            "gate1": 0,
+            "gate2": 22,
+            "gate3": 5,
+            "gate4": 49,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 328,
+          "phase_draws": {
+            "background": 5,
+            "scene": 306,
+            "bloom": 4,
+            "overlay_gui": 13
+          }
+        }
+      ]
+    },
+    {
+      "burst": 1,
+      "frames": [
+        2244,
+        2245,
+        2246,
+        2247
+      ],
+      "routed": 1276,
+      "matched": 1253,
+      "matched_rate": 0.981974921630094,
+      "load_registry_epochs": [
+        [
+          "1",
+          "2"
+        ]
+      ],
+      "camera_serials": [
+        "29523"
+      ],
+      "camera_serial_count": 1,
+      "selector": {
+        "rejected": false,
+        "state": "Scene"
+      },
+      "per_frame": [
+        {
+          "frame": 2244,
+          "draws": 425,
+          "routed": 319,
+          "matched": 319,
+          "gates": {
+            "gate1": 0,
+            "gate2": 23,
+            "gate3": 17,
+            "gate4": 66,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 425,
+          "phase_draws": {
+            "background": 5,
+            "scene": 402,
+            "bloom": 4,
+            "overlay_gui": 14
+          }
+        },
+        {
+          "frame": 2245,
+          "draws": 410,
+          "routed": 308,
+          "matched": 303,
+          "gates": {
+            "gate1": 0,
+            "gate2": 23,
+            "gate3": 15,
+            "gate4": 64,
+            "gate5": 0,
+            "gate6": 5
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 410,
+          "phase_draws": {
+            "background": 5,
+            "scene": 387,
+            "bloom": 4,
+            "overlay_gui": 14
+          }
+        },
+        {
+          "frame": 2246,
+          "draws": 427,
+          "routed": 325,
+          "matched": 308,
+          "gates": {
+            "gate1": 0,
+            "gate2": 23,
+            "gate3": 15,
+            "gate4": 64,
+            "gate5": 0,
+            "gate6": 17
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 427,
+          "phase_draws": {
+            "background": 5,
+            "scene": 404,
+            "bloom": 4,
+            "overlay_gui": 14
+          }
+        },
+        {
+          "frame": 2247,
+          "draws": 426,
+          "routed": 324,
+          "matched": 323,
+          "gates": {
+            "gate1": 0,
+            "gate2": 23,
+            "gate3": 15,
+            "gate4": 64,
+            "gate5": 0,
+            "gate6": 1
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 426,
+          "phase_draws": {
+            "background": 5,
+            "scene": 403,
+            "bloom": 4,
+            "overlay_gui": 14
+          }
+        }
+      ]
+    },
+    {
+      "burst": 2,
+      "frames": [
+        2503,
+        2504,
+        2505,
+        2506
+      ],
+      "routed": 1283,
+      "matched": 1265,
+      "matched_rate": 0.9859703819173812,
+      "load_registry_epochs": [
+        [
+          "1",
+          "2"
+        ]
+      ],
+      "camera_serials": [
+        "29523"
+      ],
+      "camera_serial_count": 1,
+      "selector": {
+        "rejected": false,
+        "state": "Scene"
+      },
+      "per_frame": [
+        {
+          "frame": 2503,
+          "draws": 442,
+          "routed": 312,
+          "matched": 312,
+          "gates": {
+            "gate1": 0,
+            "gate2": 21,
+            "gate3": 18,
+            "gate4": 91,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 442,
+          "phase_draws": {
+            "background": 5,
+            "scene": 421,
+            "bloom": 4,
+            "overlay_gui": 12
+          }
+        },
+        {
+          "frame": 2504,
+          "draws": 449,
+          "routed": 317,
+          "matched": 312,
+          "gates": {
+            "gate1": 0,
+            "gate2": 21,
+            "gate3": 18,
+            "gate4": 93,
+            "gate5": 0,
+            "gate6": 5
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 449,
+          "phase_draws": {
+            "background": 5,
+            "scene": 428,
+            "bloom": 4,
+            "overlay_gui": 12
+          }
+        },
+        {
+          "frame": 2505,
+          "draws": 458,
+          "routed": 324,
+          "matched": 317,
+          "gates": {
+            "gate1": 0,
+            "gate2": 21,
+            "gate3": 18,
+            "gate4": 95,
+            "gate5": 0,
+            "gate6": 7
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 458,
+          "phase_draws": {
+            "background": 5,
+            "scene": 437,
+            "bloom": 4,
+            "overlay_gui": 12
+          }
+        },
+        {
+          "frame": 2506,
+          "draws": 466,
+          "routed": 330,
+          "matched": 324,
+          "gates": {
+            "gate1": 0,
+            "gate2": 21,
+            "gate3": 18,
+            "gate4": 97,
+            "gate5": 0,
+            "gate6": 6
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 466,
+          "phase_draws": {
+            "background": 5,
+            "scene": 445,
+            "bloom": 4,
+            "overlay_gui": 12
+          }
+        }
+      ]
+    },
+    {
+      "burst": 3,
+      "frames": [
+        2630,
+        2631,
+        2632,
+        2633
+      ],
+      "routed": 1364,
+      "matched": 1364,
+      "matched_rate": 1.0,
+      "load_registry_epochs": [
+        [
+          "1",
+          "2"
+        ]
+      ],
+      "camera_serials": [
+        "29523"
+      ],
+      "camera_serial_count": 1,
+      "selector": {
+        "rejected": false,
+        "state": "Scene"
+      },
+      "per_frame": [
+        {
+          "frame": 2630,
+          "draws": 477,
+          "routed": 341,
+          "matched": 341,
+          "gates": {
+            "gate1": 0,
+            "gate2": 17,
+            "gate3": 18,
+            "gate4": 101,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 477,
+          "phase_draws": {
+            "background": 5,
+            "scene": 460,
+            "bloom": 4,
+            "overlay_gui": 8
+          }
+        },
+        {
+          "frame": 2631,
+          "draws": 477,
+          "routed": 341,
+          "matched": 341,
+          "gates": {
+            "gate1": 0,
+            "gate2": 17,
+            "gate3": 18,
+            "gate4": 101,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 477,
+          "phase_draws": {
+            "background": 5,
+            "scene": 460,
+            "bloom": 4,
+            "overlay_gui": 8
+          }
+        },
+        {
+          "frame": 2632,
+          "draws": 477,
+          "routed": 341,
+          "matched": 341,
+          "gates": {
+            "gate1": 0,
+            "gate2": 17,
+            "gate3": 18,
+            "gate4": 101,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 477,
+          "phase_draws": {
+            "background": 5,
+            "scene": 460,
+            "bloom": 4,
+            "overlay_gui": 8
+          }
+        },
+        {
+          "frame": 2633,
+          "draws": 477,
+          "routed": 341,
+          "matched": 341,
+          "gates": {
+            "gate1": 0,
+            "gate2": 17,
+            "gate3": 18,
+            "gate4": 101,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 477,
+          "phase_draws": {
+            "background": 5,
+            "scene": 460,
+            "bloom": 4,
+            "overlay_gui": 8
+          }
+        }
+      ]
+    },
+    {
+      "burst": 4,
+      "frames": [
+        2793,
+        2794,
+        2795,
+        2796
+      ],
+      "routed": 1327,
+      "matched": 1327,
+      "matched_rate": 1.0,
+      "load_registry_epochs": [
+        [
+          "1",
+          "2"
+        ]
+      ],
+      "camera_serials": [
+        "29523"
+      ],
+      "camera_serial_count": 1,
+      "selector": {
+        "rejected": false,
+        "state": "Scene"
+      },
+      "per_frame": [
+        {
+          "frame": 2793,
+          "draws": 477,
+          "routed": 341,
+          "matched": 341,
+          "gates": {
+            "gate1": 0,
+            "gate2": 17,
+            "gate3": 18,
+            "gate4": 101,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 477,
+          "phase_draws": {
+            "background": 5,
+            "scene": 460,
+            "bloom": 4,
+            "overlay_gui": 8
+          }
+        },
+        {
+          "frame": 2794,
+          "draws": 476,
+          "routed": 341,
+          "matched": 341,
+          "gates": {
+            "gate1": 0,
+            "gate2": 17,
+            "gate3": 18,
+            "gate4": 100,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 476,
+          "phase_draws": {
+            "background": 5,
+            "scene": 459,
+            "bloom": 4,
+            "overlay_gui": 8
+          }
+        },
+        {
+          "frame": 2795,
+          "draws": 462,
+          "routed": 327,
+          "matched": 327,
+          "gates": {
+            "gate1": 0,
+            "gate2": 17,
+            "gate3": 18,
+            "gate4": 100,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 462,
+          "phase_draws": {
+            "background": 5,
+            "scene": 445,
+            "bloom": 4,
+            "overlay_gui": 8
+          }
+        },
+        {
+          "frame": 2796,
+          "draws": 452,
+          "routed": 318,
+          "matched": 318,
+          "gates": {
+            "gate1": 0,
+            "gate2": 17,
+            "gate3": 18,
+            "gate4": 99,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 452,
+          "phase_draws": {
+            "background": 5,
+            "scene": 435,
+            "bloom": 4,
+            "overlay_gui": 8
+          }
+        }
+      ]
+    },
+    {
+      "burst": 5,
+      "frames": [
+        2996,
+        2997,
+        2998,
+        2999
+      ],
+      "routed": 1117,
+      "matched": 1117,
+      "matched_rate": 1.0,
+      "load_registry_epochs": [
+        [
+          "1",
+          "2"
+        ]
+      ],
+      "camera_serials": [
+        "29523"
+      ],
+      "camera_serial_count": 1,
+      "selector": {
+        "rejected": false,
+        "state": "Scene"
+      },
+      "per_frame": [
+        {
+          "frame": 2996,
+          "draws": 373,
+          "routed": 282,
+          "matched": 282,
+          "gates": {
+            "gate1": 0,
+            "gate2": 25,
+            "gate3": 4,
+            "gate4": 62,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 373,
+          "phase_draws": {
+            "background": 5,
+            "scene": 348,
+            "bloom": 4,
+            "overlay_gui": 16
+          }
+        },
+        {
+          "frame": 2997,
+          "draws": 373,
+          "routed": 282,
+          "matched": 282,
+          "gates": {
+            "gate1": 0,
+            "gate2": 25,
+            "gate3": 4,
+            "gate4": 62,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 373,
+          "phase_draws": {
+            "background": 5,
+            "scene": 348,
+            "bloom": 4,
+            "overlay_gui": 16
+          }
+        },
+        {
+          "frame": 2998,
+          "draws": 370,
+          "routed": 279,
+          "matched": 279,
+          "gates": {
+            "gate1": 0,
+            "gate2": 25,
+            "gate3": 4,
+            "gate4": 62,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 370,
+          "phase_draws": {
+            "background": 5,
+            "scene": 345,
+            "bloom": 4,
+            "overlay_gui": 16
+          }
+        },
+        {
+          "frame": 2999,
+          "draws": 365,
+          "routed": 274,
+          "matched": 274,
+          "gates": {
+            "gate1": 0,
+            "gate2": 25,
+            "gate3": 4,
+            "gate4": 62,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 365,
+          "phase_draws": {
+            "background": 5,
+            "scene": 340,
+            "bloom": 4,
+            "overlay_gui": 16
+          }
+        }
+      ]
+    },
+    {
+      "burst": 6,
+      "frames": [
+        5322,
+        5323,
+        5324,
+        5325
+      ],
+      "routed": 72,
+      "matched": 72,
+      "matched_rate": 1.0,
+      "load_registry_epochs": [
+        [
+          "1",
+          "2"
+        ]
+      ],
+      "camera_serials": [
+        "29523"
+      ],
+      "camera_serial_count": 1,
+      "selector": {
+        "rejected": false,
+        "state": "Scene"
+      },
+      "per_frame": [
+        {
+          "frame": 5322,
+          "draws": 45,
+          "routed": 18,
+          "matched": 18,
+          "gates": {
+            "gate1": 0,
+            "gate2": 20,
+            "gate3": 5,
+            "gate4": 2,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 45,
+          "phase_draws": {
+            "background": 5,
+            "scene": 25,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 5323,
+          "draws": 45,
+          "routed": 18,
+          "matched": 18,
+          "gates": {
+            "gate1": 0,
+            "gate2": 20,
+            "gate3": 5,
+            "gate4": 2,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 45,
+          "phase_draws": {
+            "background": 5,
+            "scene": 25,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 5324,
+          "draws": 45,
+          "routed": 18,
+          "matched": 18,
+          "gates": {
+            "gate1": 0,
+            "gate2": 20,
+            "gate3": 5,
+            "gate4": 2,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 45,
+          "phase_draws": {
+            "background": 5,
+            "scene": 25,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 5325,
+          "draws": 45,
+          "routed": 18,
+          "matched": 18,
+          "gates": {
+            "gate1": 0,
+            "gate2": 20,
+            "gate3": 5,
+            "gate4": 2,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 45,
+          "phase_draws": {
+            "background": 5,
+            "scene": 25,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        }
+      ]
+    },
+    {
+      "burst": 7,
+      "frames": [
+        6202,
+        6203,
+        6204,
+        6205
+      ],
+      "routed": 0,
+      "matched": 0,
+      "matched_rate": null,
+      "load_registry_epochs": [],
+      "camera_serials": [],
+      "camera_serial_count": 0,
+      "selector": {
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      "per_frame": [
+        {
+          "frame": 6202,
+          "draws": 292,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 292,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 292,
+          "phase_draws": {
+            "background": 6,
+            "scene": 271,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 6203,
+          "draws": 292,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 292,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 292,
+          "phase_draws": {
+            "background": 6,
+            "scene": 271,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 6204,
+          "draws": 276,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 276,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 276,
+          "phase_draws": {
+            "background": 6,
+            "scene": 255,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 6205,
+          "draws": 276,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 276,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 276,
+          "phase_draws": {
+            "background": 6,
+            "scene": 255,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        }
+      ]
+    },
+    {
+      "burst": 8,
+      "frames": [
+        7189,
+        7190,
+        7191,
+        7192
+      ],
+      "routed": 0,
+      "matched": 0,
+      "matched_rate": null,
+      "load_registry_epochs": [],
+      "camera_serials": [],
+      "camera_serial_count": 0,
+      "selector": {
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      "per_frame": [
+        {
+          "frame": 7189,
+          "draws": 56,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 56,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 56,
+          "phase_draws": {
+            "background": 7,
+            "scene": 24,
+            "bloom": 4,
+            "overlay_gui": 21
+          }
+        },
+        {
+          "frame": 7190,
+          "draws": 56,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 56,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 56,
+          "phase_draws": {
+            "background": 7,
+            "scene": 24,
+            "bloom": 4,
+            "overlay_gui": 21
+          }
+        },
+        {
+          "frame": 7191,
+          "draws": 56,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 56,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 56,
+          "phase_draws": {
+            "background": 7,
+            "scene": 24,
+            "bloom": 4,
+            "overlay_gui": 21
+          }
+        },
+        {
+          "frame": 7192,
+          "draws": 56,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 56,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 56,
+          "phase_draws": {
+            "background": 7,
+            "scene": 24,
+            "bloom": 4,
+            "overlay_gui": 21
+          }
+        }
+      ]
+    },
+    {
+      "burst": 9,
+      "frames": [
+        7511,
+        7512,
+        7513,
+        7514
+      ],
+      "routed": 0,
+      "matched": 0,
+      "matched_rate": null,
+      "load_registry_epochs": [],
+      "camera_serials": [],
+      "camera_serial_count": 0,
+      "selector": {
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      "per_frame": [
+        {
+          "frame": 7511,
+          "draws": 56,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 56,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 56,
+          "phase_draws": {
+            "background": 7,
+            "scene": 24,
+            "bloom": 4,
+            "overlay_gui": 21
+          }
+        },
+        {
+          "frame": 7512,
+          "draws": 56,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 56,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 56,
+          "phase_draws": {
+            "background": 7,
+            "scene": 24,
+            "bloom": 4,
+            "overlay_gui": 21
+          }
+        },
+        {
+          "frame": 7513,
+          "draws": 56,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 56,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 56,
+          "phase_draws": {
+            "background": 7,
+            "scene": 24,
+            "bloom": 4,
+            "overlay_gui": 21
+          }
+        },
+        {
+          "frame": 7514,
+          "draws": 56,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 56,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 56,
+          "phase_draws": {
+            "background": 7,
+            "scene": 24,
+            "bloom": 4,
+            "overlay_gui": 21
+          }
+        }
+      ]
+    },
+    {
+      "burst": 10,
+      "frames": [
+        10921,
+        10922,
+        10923,
+        10924
+      ],
+      "routed": 0,
+      "matched": 0,
+      "matched_rate": null,
+      "load_registry_epochs": [],
+      "camera_serials": [],
+      "camera_serial_count": 0,
+      "selector": {
+        "rejected": true,
+        "state": "Scene",
+        "draw_index": 6,
+        "vs": "c78b4c68a87fce74",
+        "ps": "0000000000000000",
+        "reason": "scene draw with a null pixel shader (z-only pass); SceneBoundarySelector::scene_draw requires both stages"
+      },
+      "per_frame": [
+        {
+          "frame": 10921,
+          "draws": 274,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 273,
+            "gate3": 1,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 274,
+          "phase_draws": {
+            "background": 5,
+            "scene": 253,
+            "bloom": 4,
+            "overlay_gui": 12
+          }
+        },
+        {
+          "frame": 10922,
+          "draws": 274,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 273,
+            "gate3": 1,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 274,
+          "phase_draws": {
+            "background": 5,
+            "scene": 253,
+            "bloom": 4,
+            "overlay_gui": 12
+          }
+        },
+        {
+          "frame": 10923,
+          "draws": 273,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 272,
+            "gate3": 1,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 273,
+          "phase_draws": {
+            "background": 5,
+            "scene": 252,
+            "bloom": 4,
+            "overlay_gui": 12
+          }
+        },
+        {
+          "frame": 10924,
+          "draws": 273,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 272,
+            "gate3": 1,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 273,
+          "phase_draws": {
+            "background": 5,
+            "scene": 252,
+            "bloom": 4,
+            "overlay_gui": 12
+          }
+        }
+      ]
+    },
+    {
+      "burst": 11,
+      "frames": [
+        13399,
+        13400,
+        13401,
+        13402
+      ],
+      "routed": 0,
+      "matched": 0,
+      "matched_rate": null,
+      "load_registry_epochs": [],
+      "camera_serials": [],
+      "camera_serial_count": 0,
+      "selector": {
+        "rejected": true,
+        "state": "Scene",
+        "draw_index": 6,
+        "vs": "c78b4c68a87fce74",
+        "ps": "0000000000000000",
+        "reason": "scene draw with a null pixel shader (z-only pass); SceneBoundarySelector::scene_draw requires both stages"
+      },
+      "per_frame": [
+        {
+          "frame": 13399,
+          "draws": 128,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 127,
+            "gate3": 1,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 128,
+          "phase_draws": {
+            "background": 5,
+            "scene": 108,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 13400,
+          "draws": 128,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 127,
+            "gate3": 1,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 128,
+          "phase_draws": {
+            "background": 5,
+            "scene": 108,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 13401,
+          "draws": 128,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 127,
+            "gate3": 1,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 128,
+          "phase_draws": {
+            "background": 5,
+            "scene": 108,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 13402,
+          "draws": 128,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 127,
+            "gate3": 1,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 128,
+          "phase_draws": {
+            "background": 5,
+            "scene": 108,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        }
+      ]
+    },
+    {
+      "burst": 12,
+      "frames": [
+        14262,
+        14263,
+        14264,
+        14265
+      ],
+      "routed": 242,
+      "matched": 241,
+      "matched_rate": 0.9958677685950413,
+      "load_registry_epochs": [
+        [
+          "1",
+          "2"
+        ]
+      ],
+      "camera_serials": [
+        "32904"
+      ],
+      "camera_serial_count": 1,
+      "selector": {
+        "rejected": false,
+        "state": "Scene"
+      },
+      "per_frame": [
+        {
+          "frame": 14262,
+          "draws": 125,
+          "routed": 60,
+          "matched": 60,
+          "gates": {
+            "gate1": 0,
+            "gate2": 20,
+            "gate3": 7,
+            "gate4": 38,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 125,
+          "phase_draws": {
+            "background": 5,
+            "scene": 105,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 14263,
+          "draws": 125,
+          "routed": 60,
+          "matched": 60,
+          "gates": {
+            "gate1": 0,
+            "gate2": 20,
+            "gate3": 7,
+            "gate4": 38,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 125,
+          "phase_draws": {
+            "background": 5,
+            "scene": 105,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 14264,
+          "draws": 126,
+          "routed": 61,
+          "matched": 60,
+          "gates": {
+            "gate1": 0,
+            "gate2": 20,
+            "gate3": 7,
+            "gate4": 38,
+            "gate5": 0,
+            "gate6": 1
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 126,
+          "phase_draws": {
+            "background": 5,
+            "scene": 106,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 14265,
+          "draws": 126,
+          "routed": 61,
+          "matched": 61,
+          "gates": {
+            "gate1": 0,
+            "gate2": 20,
+            "gate3": 7,
+            "gate4": 38,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 126,
+          "phase_draws": {
+            "background": 5,
+            "scene": 106,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        }
+      ]
+    },
+    {
+      "burst": 13,
+      "frames": [
+        14391,
+        14392,
+        14393,
+        14394
+      ],
+      "routed": 236,
+      "matched": 236,
+      "matched_rate": 1.0,
+      "load_registry_epochs": [
+        [
+          "1",
+          "2"
+        ]
+      ],
+      "camera_serials": [
+        "32904"
+      ],
+      "camera_serial_count": 1,
+      "selector": {
+        "rejected": false,
+        "state": "Scene"
+      },
+      "per_frame": [
+        {
+          "frame": 14391,
+          "draws": 126,
+          "routed": 59,
+          "matched": 59,
+          "gates": {
+            "gate1": 0,
+            "gate2": 22,
+            "gate3": 7,
+            "gate4": 38,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 126,
+          "phase_draws": {
+            "background": 5,
+            "scene": 104,
+            "bloom": 4,
+            "overlay_gui": 13
+          }
+        },
+        {
+          "frame": 14392,
+          "draws": 126,
+          "routed": 59,
+          "matched": 59,
+          "gates": {
+            "gate1": 0,
+            "gate2": 22,
+            "gate3": 7,
+            "gate4": 38,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 126,
+          "phase_draws": {
+            "background": 5,
+            "scene": 104,
+            "bloom": 4,
+            "overlay_gui": 13
+          }
+        },
+        {
+          "frame": 14393,
+          "draws": 126,
+          "routed": 59,
+          "matched": 59,
+          "gates": {
+            "gate1": 0,
+            "gate2": 22,
+            "gate3": 7,
+            "gate4": 38,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 126,
+          "phase_draws": {
+            "background": 5,
+            "scene": 104,
+            "bloom": 4,
+            "overlay_gui": 13
+          }
+        },
+        {
+          "frame": 14394,
+          "draws": 126,
+          "routed": 59,
+          "matched": 59,
+          "gates": {
+            "gate1": 0,
+            "gate2": 22,
+            "gate3": 7,
+            "gate4": 38,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 126,
+          "phase_draws": {
+            "background": 5,
+            "scene": 104,
+            "bloom": 4,
+            "overlay_gui": 13
+          }
+        }
+      ]
+    },
+    {
+      "burst": 14,
+      "frames": [
+        15049,
+        15050,
+        15051,
+        15052
+      ],
+      "routed": 0,
+      "matched": 0,
+      "matched_rate": null,
+      "load_registry_epochs": [],
+      "camera_serials": [],
+      "camera_serial_count": 0,
+      "selector": {
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      "per_frame": [
+        {
+          "frame": 15049,
+          "draws": 611,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 611,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 611,
+          "phase_draws": {
+            "background": 7,
+            "scene": 578,
+            "bloom": 4,
+            "overlay_gui": 22
+          }
+        },
+        {
+          "frame": 15050,
+          "draws": 551,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 551,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 551,
+          "phase_draws": {
+            "background": 6,
+            "scene": 519,
+            "bloom": 4,
+            "overlay_gui": 22
+          }
+        },
+        {
+          "frame": 15051,
+          "draws": 518,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 518,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 518,
+          "phase_draws": {
+            "background": 6,
+            "scene": 486,
+            "bloom": 4,
+            "overlay_gui": 22
+          }
+        },
+        {
+          "frame": 15052,
+          "draws": 519,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 519,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 519,
+          "phase_draws": {
+            "background": 6,
+            "scene": 487,
+            "bloom": 4,
+            "overlay_gui": 22
+          }
+        }
+      ]
+    },
+    {
+      "burst": 15,
+      "frames": [
+        15127,
+        15128,
+        15129,
+        15130
+      ],
+      "routed": 0,
+      "matched": 0,
+      "matched_rate": null,
+      "load_registry_epochs": [],
+      "camera_serials": [],
+      "camera_serial_count": 0,
+      "selector": {
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      "per_frame": [
+        {
+          "frame": 15127,
+          "draws": 497,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 497,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 497,
+          "phase_draws": {
+            "background": 7,
+            "scene": 464,
+            "bloom": 4,
+            "overlay_gui": 22
+          }
+        },
+        {
+          "frame": 15128,
+          "draws": 455,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 455,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 455,
+          "phase_draws": {
+            "background": 7,
+            "scene": 422,
+            "bloom": 4,
+            "overlay_gui": 22
+          }
+        },
+        {
+          "frame": 15129,
+          "draws": 456,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 456,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 456,
+          "phase_draws": {
+            "background": 7,
+            "scene": 423,
+            "bloom": 4,
+            "overlay_gui": 22
+          }
+        },
+        {
+          "frame": 15130,
+          "draws": 455,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 455,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 455,
+          "phase_draws": {
+            "background": 7,
+            "scene": 422,
+            "bloom": 4,
+            "overlay_gui": 22
+          }
+        }
+      ]
+    },
+    {
+      "burst": 16,
+      "frames": [
+        17379,
+        17380,
+        17381,
+        17382
+      ],
+      "routed": 0,
+      "matched": 0,
+      "matched_rate": null,
+      "load_registry_epochs": [],
+      "camera_serials": [],
+      "camera_serial_count": 0,
+      "selector": {
+        "rejected": true,
+        "state": "Background",
+        "draw_index": 2,
+        "vs": "72f8dbb8567bbf88",
+        "ps": "00fcc903c7f085d5",
+        "reason": "background draw whose VS/PS pair is not one of the three reviewed background signatures"
+      },
+      "per_frame": [
+        {
+          "frame": 17379,
+          "draws": 796,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 796,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 796,
+          "phase_draws": {
+            "background": 10,
+            "scene": 771,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 17380,
+          "draws": 796,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 796,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 796,
+          "phase_draws": {
+            "background": 10,
+            "scene": 771,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 17381,
+          "draws": 794,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 794,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 794,
+          "phase_draws": {
+            "background": 10,
+            "scene": 769,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        },
+        {
+          "frame": 17382,
+          "draws": 794,
+          "routed": 0,
+          "matched": 0,
+          "gates": {
+            "gate1": 0,
+            "gate2": 794,
+            "gate3": 0,
+            "gate4": 0,
+            "gate5": 0,
+            "gate6": 0
+          },
+          "apply_failures": 0,
+          "restore_failures": 0,
+          "filled": 1,
+          "latched": 1,
+          "committed": 1,
+          "selector_state": "Rejected",
+          "captured_draws": 794,
+          "phase_draws": {
+            "background": 10,
+            "scene": 769,
+            "bloom": 4,
+            "overlay_gui": 11
+          }
+        }
+      ]
+    }
+  ],
+  "routes": {
+    "motion_route_lines": 10517,
+    "gate_outcomes": [
+      [
+        "matched",
+        7883
+      ],
+      [
+        "gate3_pair",
+        398
+      ],
+      [
+        "gate4_draw_state",
+        2194
+      ],
+      [
+        "gate6_history",
+        42
+      ]
+    ],
+    "routed": 7925,
+    "matched": 7883,
+    "matched_rate_of_routed": 0.9947003154574132,
+    "matched_rate_of_scene_draws": 0.7495483502900067,
+    "distinct_keys": 762,
+    "duplicate_keys_within_a_frame": 0,
+    "keys_seen_in_more_than_one_frame": 761,
+    "distinct_key_values": {
+      "camera": 2,
+      "declaration": 1,
+      "ib": 403,
+      "model": 43,
+      "node": 251,
+      "vb": 403
+    },
+    "gate3_unclassified_pairs": [
+      {
+        "vs": "4944d81dfe531b37",
+        "ps": "3006f8030a467739",
+        "draws": 208,
+        "draws_passing_gate4_states": 208,
+        "frames": 16,
+        "first_frame": 2244,
+        "last_frame": 2796
+      },
+      {
+        "vs": "d5e1c75351ed3f04",
+        "ps": "8360f422de08b5bd",
+        "draws": 110,
+        "draws_passing_gate4_states": 0,
+        "frames": 33,
+        "first_frame": 2020,
+        "last_frame": 14394
+      },
+      {
+        "vs": "36f98d151fd6b0c6",
+        "ps": "222bee0defcb1852",
+        "draws": 36,
+        "draws_passing_gate4_states": 0,
+        "frames": 36,
+        "first_frame": 2020,
+        "last_frame": 14394
+      },
+      {
+        "vs": "5e484a06672e28fb",
+        "ps": "0a523f33ac47ae05",
+        "draws": 36,
+        "draws_passing_gate4_states": 0,
+        "frames": 36,
+        "first_frame": 2020,
+        "last_frame": 14394
+      },
+      {
+        "vs": "c78b4c68a87fce74",
+        "ps": "0000000000000000",
+        "draws": 8,
+        "draws_passing_gate4_states": 0,
+        "frames": 8,
+        "first_frame": 10921,
+        "last_frame": 13402
+      }
+    ],
+    "gate4": {
+      "draws": 2194,
+      "first_failing_predicate": [
+        [
+          "alpha_test",
+          1546
+        ],
+        [
+          "z_write",
+          648
+        ]
+      ],
+      "predicate_counts": [
+        [
+          "color_write_mask",
+          2194
+        ],
+        [
+          "alpha_test",
+          1546
+        ],
+        [
+          "alpha_blend",
+          648
+        ],
+        [
+          "z_write",
+          648
+        ]
+      ],
+      "i0_x_values": [
+        [
+          0,
+          2170
+        ],
+        [
+          1,
+          16
+        ],
+        [
+          3,
+          8
+        ]
+      ],
+      "i0_x_values_of_matched_draws": [
+        [
+          0,
+          7499
+        ],
+        [
+          1,
+          180
+        ],
+        [
+          2,
+          128
+        ],
+        [
+          3,
+          76
+        ]
+      ],
+      "note": "the DLL short-circuits at the first false predicate; the counts name every predicate the capture shows false for that draw"
+    },
+    "gate5": {
+      "draws": 0,
+      "lifetime_states": [],
+      "note": "tuple is (before_known, after_known, before_reason, after_reason) of the matching motion_lifetime record"
+    },
+    "gate6": {
+      "draws": 42,
+      "reasons": [
+        [
+          "key_absent_in_previous_frame",
+          42
+        ]
+      ],
+      "examples": [
+        {
+          "frame": 2245,
+          "index": 173,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2245,
+          "index": 256,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2245,
+          "index": 257,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2245,
+          "index": 258,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2245,
+          "index": 259,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2246,
+          "index": 173,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2246,
+          "index": 174,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2246,
+          "index": 175,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2246,
+          "index": 176,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2246,
+          "index": 177,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2246,
+          "index": 178,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2246,
+          "index": 179,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2246,
+          "index": 180,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2247,
+          "index": 178,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2504,
+          "index": 394,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2504,
+          "index": 395,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2504,
+          "index": 396,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2504,
+          "index": 397,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2504,
+          "index": 398,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2505,
+          "index": 256,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2505,
+          "index": 257,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2505,
+          "index": 403,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2505,
+          "index": 404,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2505,
+          "index": 405,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2505,
+          "index": 406,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2505,
+          "index": 407,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2506,
+          "index": 258,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2506,
+          "index": 411,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2506,
+          "index": 412,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2506,
+          "index": 413,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2506,
+          "index": 414,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        },
+        {
+          "frame": 2506,
+          "index": 415,
+          "reason": "key_absent_in_previous_frame",
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2"
+        }
+      ]
+    }
+  },
+  "identity_timeline": {
+    "per_burst": [
+      {
+        "burst": 0,
+        "first_frame": 2020,
+        "last_frame": 2023,
+        "load_epochs": [
+          "1"
+        ],
+        "registry_epochs": [
+          "2"
+        ],
+        "camera_serial_min": "29523",
+        "camera_serial_max": "29523",
+        "distinct_camera_serials": 1,
+        "distinct_node_serials": 77,
+        "routed": 1008,
+        "matched": 1008,
+        "matched_rate": 1.0
+      },
+      {
+        "burst": 1,
+        "first_frame": 2244,
+        "last_frame": 2247,
+        "load_epochs": [
+          "1"
+        ],
+        "registry_epochs": [
+          "2"
+        ],
+        "camera_serial_min": "29523",
+        "camera_serial_max": "29523",
+        "distinct_camera_serials": 1,
+        "distinct_node_serials": 124,
+        "routed": 1276,
+        "matched": 1253,
+        "matched_rate": 0.981974921630094
+      },
+      {
+        "burst": 2,
+        "first_frame": 2503,
+        "last_frame": 2506,
+        "load_epochs": [
+          "1"
+        ],
+        "registry_epochs": [
+          "2"
+        ],
+        "camera_serial_min": "29523",
+        "camera_serial_max": "29523",
+        "distinct_camera_serials": 1,
+        "distinct_node_serials": 125,
+        "routed": 1283,
+        "matched": 1265,
+        "matched_rate": 0.9859703819173812
+      },
+      {
+        "burst": 3,
+        "first_frame": 2630,
+        "last_frame": 2633,
+        "load_epochs": [
+          "1"
+        ],
+        "registry_epochs": [
+          "2"
+        ],
+        "camera_serial_min": "29523",
+        "camera_serial_max": "29523",
+        "distinct_camera_serials": 1,
+        "distinct_node_serials": 136,
+        "routed": 1364,
+        "matched": 1364,
+        "matched_rate": 1.0
+      },
+      {
+        "burst": 4,
+        "first_frame": 2793,
+        "last_frame": 2796,
+        "load_epochs": [
+          "1"
+        ],
+        "registry_epochs": [
+          "2"
+        ],
+        "camera_serial_min": "29523",
+        "camera_serial_max": "29523",
+        "distinct_camera_serials": 1,
+        "distinct_node_serials": 136,
+        "routed": 1327,
+        "matched": 1327,
+        "matched_rate": 1.0
+      },
+      {
+        "burst": 5,
+        "first_frame": 2996,
+        "last_frame": 2999,
+        "load_epochs": [
+          "1"
+        ],
+        "registry_epochs": [
+          "2"
+        ],
+        "camera_serial_min": "29523",
+        "camera_serial_max": "29523",
+        "distinct_camera_serials": 1,
+        "distinct_node_serials": 84,
+        "routed": 1117,
+        "matched": 1117,
+        "matched_rate": 1.0
+      },
+      {
+        "burst": 6,
+        "first_frame": 5322,
+        "last_frame": 5325,
+        "load_epochs": [
+          "1"
+        ],
+        "registry_epochs": [
+          "2"
+        ],
+        "camera_serial_min": "29523",
+        "camera_serial_max": "29523",
+        "distinct_camera_serials": 1,
+        "distinct_node_serials": 4,
+        "routed": 72,
+        "matched": 72,
+        "matched_rate": 1.0
+      },
+      {
+        "burst": 7,
+        "first_frame": 6202,
+        "last_frame": 6205,
+        "load_epochs": [],
+        "registry_epochs": [],
+        "camera_serial_min": null,
+        "camera_serial_max": null,
+        "distinct_camera_serials": 0,
+        "distinct_node_serials": 0,
+        "routed": 0,
+        "matched": 0,
+        "matched_rate": null
+      },
+      {
+        "burst": 8,
+        "first_frame": 7189,
+        "last_frame": 7192,
+        "load_epochs": [],
+        "registry_epochs": [],
+        "camera_serial_min": null,
+        "camera_serial_max": null,
+        "distinct_camera_serials": 0,
+        "distinct_node_serials": 0,
+        "routed": 0,
+        "matched": 0,
+        "matched_rate": null
+      },
+      {
+        "burst": 9,
+        "first_frame": 7511,
+        "last_frame": 7514,
+        "load_epochs": [],
+        "registry_epochs": [],
+        "camera_serial_min": null,
+        "camera_serial_max": null,
+        "distinct_camera_serials": 0,
+        "distinct_node_serials": 0,
+        "routed": 0,
+        "matched": 0,
+        "matched_rate": null
+      },
+      {
+        "burst": 10,
+        "first_frame": 10921,
+        "last_frame": 10924,
+        "load_epochs": [],
+        "registry_epochs": [],
+        "camera_serial_min": null,
+        "camera_serial_max": null,
+        "distinct_camera_serials": 0,
+        "distinct_node_serials": 0,
+        "routed": 0,
+        "matched": 0,
+        "matched_rate": null
+      },
+      {
+        "burst": 11,
+        "first_frame": 13399,
+        "last_frame": 13402,
+        "load_epochs": [],
+        "registry_epochs": [],
+        "camera_serial_min": null,
+        "camera_serial_max": null,
+        "distinct_camera_serials": 0,
+        "distinct_node_serials": 0,
+        "routed": 0,
+        "matched": 0,
+        "matched_rate": null
+      },
+      {
+        "burst": 12,
+        "first_frame": 14262,
+        "last_frame": 14265,
+        "load_epochs": [
+          "1"
+        ],
+        "registry_epochs": [
+          "2"
+        ],
+        "camera_serial_min": "32904",
+        "camera_serial_max": "32904",
+        "distinct_camera_serials": 1,
+        "distinct_node_serials": 11,
+        "routed": 242,
+        "matched": 241,
+        "matched_rate": 0.9958677685950413
+      },
+      {
+        "burst": 13,
+        "first_frame": 14391,
+        "last_frame": 14394,
+        "load_epochs": [
+          "1"
+        ],
+        "registry_epochs": [
+          "2"
+        ],
+        "camera_serial_min": "32904",
+        "camera_serial_max": "32904",
+        "distinct_camera_serials": 1,
+        "distinct_node_serials": 9,
+        "routed": 236,
+        "matched": 236,
+        "matched_rate": 1.0
+      },
+      {
+        "burst": 14,
+        "first_frame": 15049,
+        "last_frame": 15052,
+        "load_epochs": [],
+        "registry_epochs": [],
+        "camera_serial_min": null,
+        "camera_serial_max": null,
+        "distinct_camera_serials": 0,
+        "distinct_node_serials": 0,
+        "routed": 0,
+        "matched": 0,
+        "matched_rate": null
+      },
+      {
+        "burst": 15,
+        "first_frame": 15127,
+        "last_frame": 15130,
+        "load_epochs": [],
+        "registry_epochs": [],
+        "camera_serial_min": null,
+        "camera_serial_max": null,
+        "distinct_camera_serials": 0,
+        "distinct_node_serials": 0,
+        "routed": 0,
+        "matched": 0,
+        "matched_rate": null
+      },
+      {
+        "burst": 16,
+        "first_frame": 17379,
+        "last_frame": 17382,
+        "load_epochs": [],
+        "registry_epochs": [],
+        "camera_serial_min": null,
+        "camera_serial_max": null,
+        "distinct_camera_serials": 0,
+        "distinct_node_serials": 0,
+        "routed": 0,
+        "matched": 0,
+        "matched_rate": null
+      }
+    ],
+    "changes_between_bursts": [
+      {
+        "camera_serial": [
+          "29523",
+          "32904"
+        ],
+        "from_burst": 6,
+        "to_burst": 12,
+        "bursts_without_identity_between": 5,
+        "last_frame_before": 5325,
+        "first_frame_after": 14262,
+        "matched_rate_before": 1.0,
+        "matched_rate_after": 0.9958677685950413
+      }
+    ],
+    "note": "per-draw identity is logged only in captured frames, so a change is localized to the gap between two bursts, never to a single frame."
+  },
+  "shader_models": {
+    "programs_created": 61,
+    "model_counts": [
+      [
+        "ps_3_0",
+        28
+      ],
+      [
+        "vs_3_0",
+        10
+      ],
+      [
+        "vs_1_1",
+        8
+      ],
+      [
+        "ps_1_1",
+        6
+      ],
+      [
+        "vs_2_0",
+        5
+      ],
+      [
+        "ps_2_0",
+        4
+      ]
+    ],
+    "draws_by_phase": {
+      "background": 393,
+      "scene": 20076,
+      "bloom": 272,
+      "overlay_gui": 948
+    },
+    "pairs_by_phase": {
+      "background": [
+        [
+          [
+            "vs_1_1",
+            "ps_1_1"
+          ],
+          344
+        ],
+        [
+          [
+            "vs_2_0",
+            "ps_2_0"
+          ],
+          49
+        ]
+      ],
+      "scene": [
+        [
+          [
+            "vs_3_0",
+            "ps_3_0"
+          ],
+          18605
+        ],
+        [
+          [
+            "vs_1_1",
+            "ps_null"
+          ],
+          915
+        ],
+        [
+          [
+            "vs_2_0",
+            "ps_2_0"
+          ],
+          306
+        ],
+        [
+          [
+            "vs_1_1",
+            "ps_1_1"
+          ],
+          250
+        ]
+      ],
+      "bloom": [
+        [
+          [
+            "vs_3_0",
+            "ps_3_0"
+          ],
+          272
+        ]
+      ],
+      "overlay_gui": [
+        [
+          [
+            "vs_1_1",
+            "ps_1_1"
+          ],
+          748
+        ],
+        [
+          [
+            "vs_2_0",
+            "ps_2_0"
+          ],
+          200
+        ]
+      ]
+    },
+    "draw_counts_by_phase_and_program": {
+      "background": [
+        [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ],
+          340
+        ],
+        [
+          [
+            "f80f7af59b667bb7",
+            "d6f6ba4fee1cd53e"
+          ],
+          37
+        ],
+        [
+          [
+            "72f8dbb8567bbf88",
+            "00fcc903c7f085d5"
+          ],
+          12
+        ],
+        [
+          [
+            "be199829a9bb78db",
+            "cd6d6eb4b3d99443"
+          ],
+          4
+        ]
+      ],
+      "scene": [
+        [
+          [
+            "53a0a641107ed76c",
+            "8759c7838bbc86c2"
+          ],
+          6685
+        ],
+        [
+          [
+            "37c34a7478544c14",
+            "5f82ecacd39529cd"
+          ],
+          2248
+        ],
+        [
+          [
+            "4944d81dfe531b37",
+            "ca6bfa4a6cca7e2a"
+          ],
+          2021
+        ],
+        [
+          [
+            "494fe349b8bc12ec",
+            "fffdabd910793aba"
+          ],
+          1843
+        ],
+        [
+          [
+            "53a0a641107ed76c",
+            "63f96eba9eea7880"
+          ],
+          1260
+        ],
+        [
+          [
+            "494fe349b8bc12ec",
+            "7c83ed50c9894e44"
+          ],
+          1213
+        ],
+        [
+          [
+            "c78b4c68a87fce74",
+            "0000000000000000"
+          ],
+          915
+        ],
+        [
+          [
+            "37c34a7478544c14",
+            "f1b0e820c7b488c3"
+          ],
+          748
+        ],
+        [
+          [
+            "b0602757fce6e870",
+            "517540ae6d5e5410"
+          ],
+          672
+        ],
+        [
+          [
+            "4944d81dfe531b37",
+            "5e0a10fe752b6140"
+          ],
+          642
+        ],
+        [
+          [
+            "167eb2d5629ab9d3",
+            "d44db87778a43b61"
+          ],
+          306
+        ],
+        [
+          [
+            "d5e1c75351ed3f04",
+            "8360f422de08b5bd"
+          ],
+          294
+        ],
+        [
+          [
+            "494fe349b8bc12ec",
+            "e6794b6ec37ff71a"
+          ],
+          285
+        ],
+        [
+          [
+            "4944d81dfe531b37",
+            "3006f8030a467739"
+          ],
+          208
+        ],
+        [
+          [
+            "4944d81dfe531b37",
+            "0c1f3f0f440e4a0c"
+          ],
+          161
+        ],
+        [
+          [
+            "53a0a641107ed76c",
+            "3b94320087e81945"
+          ],
+          100
+        ],
+        [
+          [
+            "4944d81dfe531b37",
+            "99153c144030c396"
+          ],
+          71
+        ],
+        [
+          [
+            "36f98d151fd6b0c6",
+            "222bee0defcb1852"
+          ],
+          68
+        ],
+        [
+          [
+            "5e484a06672e28fb",
+            "0a523f33ac47ae05"
+          ],
+          68
+        ],
+        [
+          [
+            "c30104cb0efb6675",
+            "a66fb1981ba755b2"
+          ],
+          68
+        ],
+        [
+          [
+            "803ebfd17f79e413",
+            "652a7c5d1e9909a0"
+          ],
+          60
+        ],
+        [
+          [
+            "5e484a06672e28fb",
+            "ec1f5c4a2f4e1445"
+          ],
+          54
+        ],
+        [
+          [
+            "4944d81dfe531b37",
+            "64bac8bb307eb896"
+          ],
+          50
+        ],
+        [
+          [
+            "494fe349b8bc12ec",
+            "e70adc744a38ca59"
+          ],
+          16
+        ],
+        [
+          [
+            "ac2319bc3953efc6",
+            "03a16e5c63daa6e8"
+          ],
+          12
+        ],
+        [
+          [
+            "53a0a641107ed76c",
+            "462342e3e5781384"
+          ],
+          8
+        ]
+      ],
+      "bloom": [
+        [
+          [
+            "1279d081455f5815",
+            "ff6eed5a5ddf3a3a"
+          ],
+          68
+        ],
+        [
+          [
+            "6059306306203243",
+            "241c3fa33270f58e"
+          ],
+          68
+        ],
+        [
+          [
+            "6059306306203243",
+            "f3172baa8dd19a40"
+          ],
+          68
+        ],
+        [
+          [
+            "cbbf26102694c961",
+            "1c90e79667bdaddf"
+          ],
+          68
+        ]
+      ],
+      "overlay_gui": [
+        [
+          [
+            "7b6393fe2d3e1d85",
+            "6109cf64c03529dd"
+          ],
+          620
+        ],
+        [
+          [
+            "d5e1c75351ed3f04",
+            "8360f422de08b5bd"
+          ],
+          200
+        ],
+        [
+          [
+            "f36fc43f30b19d71",
+            "0a523f33ac47ae05"
+          ],
+          128
+        ]
+      ]
+    },
+    "below_sm3_pairs": [
+      {
+        "phase": "background",
+        "vs": "7b6393fe2d3e1d85",
+        "ps": "6109cf64c03529dd",
+        "vs_model": "vs_1_1",
+        "ps_model": "ps_1_1",
+        "draws": 340,
+        "vs_effects": [
+          "shader/1_1/adeffects.fb",
+          "shader/1_1/adeffects2s.fb",
+          "shader/1_1/gui2d.fb",
+          "shader/1_1/hue_lights_off/adeffects.fb",
+          "shader/1_1/hue_lights_off/adeffects2s.fb",
+          "shader/1_1/hue_lights_off/gui2d.fb"
+        ],
+        "ps_effects": [
+          "shader/1_1/gui2d.fb",
+          "shader/1_1/hue_lights_off/gui2d.fb",
+          "shader/1_1/hue_lights_off/nebula.fb",
+          "shader/1_1/hue_lights_off/nebula2s.fb",
+          "shader/1_1/hueshift_off/gui2d.fb",
+          "shader/1_1/hueshift_off/nebula.fb"
+        ]
+      },
+      {
+        "phase": "background",
+        "vs": "f80f7af59b667bb7",
+        "ps": "d6f6ba4fee1cd53e",
+        "vs_model": "vs_2_0",
+        "ps_model": "ps_2_0",
+        "draws": 37,
+        "vs_effects": [
+          "shader/2_0/hue_lights_off/moon.fb",
+          "shader/2_0/hueshift_off/moon.fb",
+          "shader/2_0/moon.fb",
+          "shader/2_0/v_lights_off/moon.fb",
+          "shader/2_a/hue_lights_off/moon.fb",
+          "shader/2_a/hueshift_off/moon.fb"
+        ],
+        "ps_effects": [
+          "shader/2_0/hue_lights_off/moon.fb",
+          "shader/2_0/hueshift_off/moon.fb",
+          "shader/2_0/moon.fb",
+          "shader/2_0/v_lights_off/moon.fb",
+          "shader/2_a/hue_lights_off/moon.fb",
+          "shader/2_a/hueshift_off/moon.fb"
+        ]
+      },
+      {
+        "phase": "background",
+        "vs": "72f8dbb8567bbf88",
+        "ps": "00fcc903c7f085d5",
+        "vs_model": "vs_2_0",
+        "ps_model": "ps_2_0",
+        "draws": 12,
+        "vs_effects": [
+          "shader/2_0/hue_lights_off/planet_v.fb",
+          "shader/2_0/hue_lights_off/planet_v2s.fb",
+          "shader/2_0/hueshift_off/planet_v.fb",
+          "shader/2_0/hueshift_off/planet_v2s.fb",
+          "shader/2_0/planet_v.fb",
+          "shader/2_0/planet_v2s.fb"
+        ],
+        "ps_effects": [
+          "shader/2_0/hue_lights_off/planet_v.fb",
+          "shader/2_0/hue_lights_off/planet_v2s.fb",
+          "shader/2_0/hueshift_off/planet_v.fb",
+          "shader/2_0/hueshift_off/planet_v2s.fb",
+          "shader/2_0/planet_v.fb",
+          "shader/2_0/planet_v2s.fb"
+        ]
+      },
+      {
+        "phase": "background",
+        "vs": "be199829a9bb78db",
+        "ps": "cd6d6eb4b3d99443",
+        "vs_model": "vs_1_1",
+        "ps_model": "ps_1_1",
+        "draws": 4,
+        "vs_effects": [
+          "shader/1_1/hue_lights_off/planet_haze.fb",
+          "shader/1_1/hueshift_off/planet_haze.fb",
+          "shader/1_1/planet_haze.fb",
+          "shader/1_1/v_lights_off/planet_haze.fb",
+          "shader/1_4/hue_lights_off/planet_haze.fb",
+          "shader/1_4/hueshift_off/planet_haze.fb"
+        ],
+        "ps_effects": [
+          "shader/1_1/hue_lights_off/planet_haze.fb",
+          "shader/1_1/hueshift_off/planet_haze.fb",
+          "shader/1_1/planet_haze.fb",
+          "shader/1_1/v_lights_off/planet_haze.fb",
+          "shader/1_4/hue_lights_off/planet_haze.fb",
+          "shader/1_4/hueshift_off/planet_haze.fb"
+        ]
+      },
+      {
+        "phase": "overlay_gui",
+        "vs": "7b6393fe2d3e1d85",
+        "ps": "6109cf64c03529dd",
+        "vs_model": "vs_1_1",
+        "ps_model": "ps_1_1",
+        "draws": 620,
+        "vs_effects": [
+          "shader/1_1/adeffects.fb",
+          "shader/1_1/adeffects2s.fb",
+          "shader/1_1/gui2d.fb",
+          "shader/1_1/hue_lights_off/adeffects.fb",
+          "shader/1_1/hue_lights_off/adeffects2s.fb",
+          "shader/1_1/hue_lights_off/gui2d.fb"
+        ],
+        "ps_effects": [
+          "shader/1_1/gui2d.fb",
+          "shader/1_1/hue_lights_off/gui2d.fb",
+          "shader/1_1/hue_lights_off/nebula.fb",
+          "shader/1_1/hue_lights_off/nebula2s.fb",
+          "shader/1_1/hueshift_off/gui2d.fb",
+          "shader/1_1/hueshift_off/nebula.fb"
+        ]
+      },
+      {
+        "phase": "overlay_gui",
+        "vs": "d5e1c75351ed3f04",
+        "ps": "8360f422de08b5bd",
+        "vs_model": "vs_2_0",
+        "ps_model": "ps_2_0",
+        "draws": 200,
+        "vs_effects": [
+          "shader/2_0/effects.fb",
+          "shader/2_0/effects2s.fb",
+          "shader/2_0/engine.fb",
+          "shader/2_0/engine2s.fb",
+          "shader/2_0/hue_lights_off/effects.fb",
+          "shader/2_0/hue_lights_off/effects2s.fb"
+        ],
+        "ps_effects": [
+          "shader/2_0/effects.fb",
+          "shader/2_0/effects2s.fb",
+          "shader/2_0/engine.fb",
+          "shader/2_0/engine2s.fb",
+          "shader/2_0/hue_lights_off/effects.fb",
+          "shader/2_0/hue_lights_off/effects2s.fb"
+        ]
+      },
+      {
+        "phase": "overlay_gui",
+        "vs": "f36fc43f30b19d71",
+        "ps": "0a523f33ac47ae05",
+        "vs_model": "vs_1_1",
+        "ps_model": "ps_1_1",
+        "draws": 128,
+        "vs_effects": [
+          "shader/1_1/gui2d.fb",
+          "shader/1_1/hue_lights_off/gui2d.fb",
+          "shader/1_1/hueshift_off/gui2d.fb",
+          "shader/1_1/v_lights_off/gui2d.fb",
+          "shader/1_4/gui2d.fb",
+          "shader/1_4/hue_lights_off/gui2d.fb"
+        ],
+        "ps_effects": [
+          "shader/1_1/gui2d.fb",
+          "shader/1_1/hue_lights_off/gui2d.fb",
+          "shader/1_1/hue_lights_off/stardust.fb",
+          "shader/1_1/hueshift_off/gui2d.fb",
+          "shader/1_1/hueshift_off/stardust.fb",
+          "shader/1_1/stardust.fb"
+        ]
+      },
+      {
+        "phase": "scene",
+        "vs": "c78b4c68a87fce74",
+        "ps": "0000000000000000",
+        "vs_model": "vs_1_1",
+        "ps_model": "ps_null",
+        "draws": 915,
+        "vs_effects": [
+          "shader/1_1/hue_lights_off/z_only.fb",
+          "shader/1_1/hueshift_off/z_only.fb",
+          "shader/1_1/v_lights_off/z_only.fb",
+          "shader/1_1/z_only.fb",
+          "shader/1_4/hue_lights_off/z_only.fb",
+          "shader/1_4/hueshift_off/z_only.fb"
+        ],
+        "ps_effects": []
+      },
+      {
+        "phase": "scene",
+        "vs": "d5e1c75351ed3f04",
+        "ps": "8360f422de08b5bd",
+        "vs_model": "vs_2_0",
+        "ps_model": "ps_2_0",
+        "draws": 294,
+        "vs_effects": [
+          "shader/2_0/effects.fb",
+          "shader/2_0/effects2s.fb",
+          "shader/2_0/engine.fb",
+          "shader/2_0/engine2s.fb",
+          "shader/2_0/hue_lights_off/effects.fb",
+          "shader/2_0/hue_lights_off/effects2s.fb"
+        ],
+        "ps_effects": [
+          "shader/2_0/effects.fb",
+          "shader/2_0/effects2s.fb",
+          "shader/2_0/engine.fb",
+          "shader/2_0/engine2s.fb",
+          "shader/2_0/hue_lights_off/effects.fb",
+          "shader/2_0/hue_lights_off/effects2s.fb"
+        ]
+      },
+      {
+        "phase": "scene",
+        "vs": "36f98d151fd6b0c6",
+        "ps": "222bee0defcb1852",
+        "vs_model": "vs_1_1",
+        "ps_model": "ps_1_1",
+        "draws": 68,
+        "vs_effects": [
+          "shader/1_1/hue_lights_off/particles.fb",
+          "shader/1_1/hue_lights_off/particles2s.fb",
+          "shader/1_1/hueshift_off/particles.fb",
+          "shader/1_1/hueshift_off/particles2s.fb",
+          "shader/1_1/particles.fb",
+          "shader/1_1/particles2s.fb"
+        ],
+        "ps_effects": [
+          "shader/1_1/hue_lights_off/particles.fb",
+          "shader/1_1/hue_lights_off/particles2s.fb",
+          "shader/1_1/hueshift_off/particles.fb",
+          "shader/1_1/hueshift_off/particles2s.fb",
+          "shader/1_1/particles.fb",
+          "shader/1_1/particles2s.fb"
+        ]
+      },
+      {
+        "phase": "scene",
+        "vs": "5e484a06672e28fb",
+        "ps": "0a523f33ac47ae05",
+        "vs_model": "vs_1_1",
+        "ps_model": "ps_1_1",
+        "draws": 68,
+        "vs_effects": [
+          "shader/1_1/effects.fb",
+          "shader/1_1/effects2s.fb",
+          "shader/1_1/engine.fb",
+          "shader/1_1/engine2s.fb",
+          "shader/1_1/hue_lights_off/effects.fb",
+          "shader/1_1/hue_lights_off/effects2s.fb"
+        ],
+        "ps_effects": [
+          "shader/1_1/gui2d.fb",
+          "shader/1_1/hue_lights_off/gui2d.fb",
+          "shader/1_1/hue_lights_off/stardust.fb",
+          "shader/1_1/hueshift_off/gui2d.fb",
+          "shader/1_1/hueshift_off/stardust.fb",
+          "shader/1_1/stardust.fb"
+        ]
+      },
+      {
+        "phase": "scene",
+        "vs": "803ebfd17f79e413",
+        "ps": "652a7c5d1e9909a0",
+        "vs_model": "vs_1_1",
+        "ps_model": "ps_1_1",
+        "draws": 60,
+        "vs_effects": [
+          "shader/1_1/hue_lights_off/z_only.fb",
+          "shader/1_1/hueshift_off/z_only.fb",
+          "shader/1_1/v_lights_off/z_only.fb",
+          "shader/1_1/z_only.fb",
+          "shader/1_4/hue_lights_off/z_only.fb",
+          "shader/1_4/hueshift_off/z_only.fb"
+        ],
+        "ps_effects": [
+          "shader/1_1/hue_lights_off/z_only.fb",
+          "shader/1_1/hueshift_off/z_only.fb",
+          "shader/1_1/v_lights_off/z_only.fb",
+          "shader/1_1/z_only.fb",
+          "shader/1_4/hue_lights_off/z_only.fb",
+          "shader/1_4/hueshift_off/z_only.fb"
+        ]
+      },
+      {
+        "phase": "scene",
+        "vs": "5e484a06672e28fb",
+        "ps": "ec1f5c4a2f4e1445",
+        "vs_model": "vs_1_1",
+        "ps_model": "ps_1_1",
+        "draws": 54,
+        "vs_effects": [
+          "shader/1_1/effects.fb",
+          "shader/1_1/effects2s.fb",
+          "shader/1_1/engine.fb",
+          "shader/1_1/engine2s.fb",
+          "shader/1_1/hue_lights_off/effects.fb",
+          "shader/1_1/hue_lights_off/effects2s.fb"
+        ],
+        "ps_effects": [
+          "shader/1_1/effects.fb",
+          "shader/1_1/effects2s.fb",
+          "shader/1_1/engine.fb",
+          "shader/1_1/engine2s.fb",
+          "shader/1_1/hue_lights_off/effects.fb",
+          "shader/1_1/hue_lights_off/effects2s.fb"
+        ]
+      },
+      {
+        "phase": "scene",
+        "vs": "ac2319bc3953efc6",
+        "ps": "03a16e5c63daa6e8",
+        "vs_model": "vs_2_0",
+        "ps_model": "ps_2_0",
+        "draws": 12,
+        "vs_effects": [
+          "shader/2_0/adeffects.fb",
+          "shader/2_0/adeffects2s.fb",
+          "shader/2_0/hue_lights_off/adeffects.fb",
+          "shader/2_0/hue_lights_off/adeffects2s.fb",
+          "shader/2_0/hueshift_off/adeffects.fb",
+          "shader/2_0/hueshift_off/adeffects2s.fb"
+        ],
+        "ps_effects": [
+          "shader/2_0/adeffects.fb",
+          "shader/2_0/adeffects2s.fb",
+          "shader/2_0/hue_lights_off/adeffects.fb",
+          "shader/2_0/hue_lights_off/adeffects2s.fb",
+          "shader/2_0/hueshift_off/adeffects.fb",
+          "shader/2_0/hueshift_off/adeffects2s.fb"
+        ]
+      }
+    ],
+    "programs": [
+      {
+        "hash": "00fcc903c7f085d5",
+        "stage": "ps",
+        "model": "ps_2_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/2_0/hue_lights_off/planet_v.fb",
+          "shader/2_0/hue_lights_off/planet_v2s.fb",
+          "shader/2_0/hueshift_off/planet_v.fb",
+          "shader/2_0/hueshift_off/planet_v2s.fb",
+          "shader/2_0/planet_v.fb",
+          "shader/2_0/planet_v2s.fb"
+        ]
+      },
+      {
+        "hash": "03a16e5c63daa6e8",
+        "stage": "ps",
+        "model": "ps_2_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/2_0/adeffects.fb",
+          "shader/2_0/adeffects2s.fb",
+          "shader/2_0/hue_lights_off/adeffects.fb",
+          "shader/2_0/hue_lights_off/adeffects2s.fb",
+          "shader/2_0/hueshift_off/adeffects.fb",
+          "shader/2_0/hueshift_off/adeffects2s.fb"
+        ]
+      },
+      {
+        "hash": "0a523f33ac47ae05",
+        "stage": "ps",
+        "model": "ps_1_1",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/1_1/gui2d.fb",
+          "shader/1_1/hue_lights_off/gui2d.fb",
+          "shader/1_1/hue_lights_off/stardust.fb",
+          "shader/1_1/hueshift_off/gui2d.fb",
+          "shader/1_1/hueshift_off/stardust.fb",
+          "shader/1_1/stardust.fb"
+        ]
+      },
+      {
+        "hash": "0c1f3f0f440e4a0c",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/standard_lighting.fb",
+          "shader/3_0/hueshift_off/standard_lighting.fb",
+          "shader/3_0/standard_lighting.fb",
+          "shader/3_0/v_lights_off/standard_lighting.fb"
+        ]
+      },
+      {
+        "hash": "1279d081455f5815",
+        "stage": "vs",
+        "model": "vs_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/bloom.fb",
+          "shader/3_0/hue_lights_off/bloom.fb",
+          "shader/3_0/hueshift_off/bloom.fb",
+          "shader/3_0/v_lights_off/bloom.fb"
+        ]
+      },
+      {
+        "hash": "167eb2d5629ab9d3",
+        "stage": "vs",
+        "model": "vs_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/asteroid.fb",
+          "shader/3_0/hue_lights_off/asteroid.fb",
+          "shader/3_0/hueshift_off/asteroid.fb",
+          "shader/3_0/v_lights_off/asteroid.fb"
+        ]
+      },
+      {
+        "hash": "1c90e79667bdaddf",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/bloom.fb",
+          "shader/3_0/hue_lights_off/bloom.fb",
+          "shader/3_0/hueshift_off/bloom.fb",
+          "shader/3_0/v_lights_off/bloom.fb"
+        ]
+      },
+      {
+        "hash": "1f26d41bcb7dac1e",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/khaak.fb",
+          "shader/3_0/hue_lights_off/teladi.fb",
+          "shader/3_0/hue_lights_off/teladi_nodiff.fb",
+          "shader/3_0/hue_lights_off/xenon.fb",
+          "shader/3_0/hueshift_off/khaak.fb",
+          "shader/3_0/hueshift_off/teladi.fb"
+        ]
+      },
+      {
+        "hash": "222bee0defcb1852",
+        "stage": "ps",
+        "model": "ps_1_1",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/1_1/hue_lights_off/particles.fb",
+          "shader/1_1/hue_lights_off/particles2s.fb",
+          "shader/1_1/hueshift_off/particles.fb",
+          "shader/1_1/hueshift_off/particles2s.fb",
+          "shader/1_1/particles.fb",
+          "shader/1_1/particles2s.fb"
+        ]
+      },
+      {
+        "hash": "241c3fa33270f58e",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/bloom.fb",
+          "shader/3_0/hue_lights_off/bloom.fb",
+          "shader/3_0/hueshift_off/bloom.fb",
+          "shader/3_0/v_lights_off/bloom.fb"
+        ]
+      },
+      {
+        "hash": "3006f8030a467739",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/split.fb",
+          "shader/3_0/hueshift_off/split.fb",
+          "shader/3_0/split.fb",
+          "shader/3_0/v_lights_off/split.fb"
+        ]
+      },
+      {
+        "hash": "36f98d151fd6b0c6",
+        "stage": "vs",
+        "model": "vs_1_1",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/1_1/hue_lights_off/particles.fb",
+          "shader/1_1/hue_lights_off/particles2s.fb",
+          "shader/1_1/hueshift_off/particles.fb",
+          "shader/1_1/hueshift_off/particles2s.fb",
+          "shader/1_1/particles.fb",
+          "shader/1_1/particles2s.fb"
+        ]
+      },
+      {
+        "hash": "37c34a7478544c14",
+        "stage": "vs",
+        "model": "vs_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/xt_standard_lighting.fb",
+          "shader/3_0/hue_lights_off/xt_standard_lighting2s.fb",
+          "shader/3_0/hue_lights_off/xt_standard_lighting_damage.fb",
+          "shader/3_0/hue_lights_off/xt_standard_lighting_damage2s.fb",
+          "shader/3_0/hue_lights_off/xt_terraformer.fb",
+          "shader/3_0/hue_lights_off/xt_terraformer2s.fb"
+        ]
+      },
+      {
+        "hash": "3b94320087e81945",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/khaak.fb",
+          "shader/3_0/hue_lights_off/teladi.fb",
+          "shader/3_0/hue_lights_off/teladi_nodiff.fb",
+          "shader/3_0/hue_lights_off/xenon.fb",
+          "shader/3_0/hueshift_off/khaak.fb",
+          "shader/3_0/hueshift_off/teladi.fb"
+        ]
+      },
+      {
+        "hash": "41c960621d22671f",
+        "stage": "vs",
+        "model": "vs_1_1",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/1_1/hue_lights_off/stardust.fb",
+          "shader/1_1/hueshift_off/stardust.fb",
+          "shader/1_1/stardust.fb",
+          "shader/1_1/v_lights_off/stardust.fb",
+          "shader/1_4/hue_lights_off/stardust.fb",
+          "shader/1_4/hueshift_off/stardust.fb"
+        ]
+      },
+      {
+        "hash": "462342e3e5781384",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/split.fb",
+          "shader/3_0/hueshift_off/split.fb",
+          "shader/3_0/split.fb",
+          "shader/3_0/v_lights_off/split.fb"
+        ]
+      },
+      {
+        "hash": "4944d81dfe531b37",
+        "stage": "vs",
+        "model": "vs_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/argon.fb",
+          "shader/3_0/argon2s.fb",
+          "shader/3_0/hue_lights_off/argon.fb",
+          "shader/3_0/hue_lights_off/argon2s.fb",
+          "shader/3_0/hue_lights_off/khaak.fb",
+          "shader/3_0/hue_lights_off/khaak2s.fb"
+        ]
+      },
+      {
+        "hash": "494fe349b8bc12ec",
+        "stage": "vs",
+        "model": "vs_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/standard_lighting.fb",
+          "shader/3_0/hue_lights_off/standard_lighting2s.fb",
+          "shader/3_0/hue_lights_off/xt_standard_lighting.fb",
+          "shader/3_0/hue_lights_off/xt_standard_lighting2s.fb",
+          "shader/3_0/hue_lights_off/xt_standard_lighting_damage.fb",
+          "shader/3_0/hue_lights_off/xt_standard_lighting_damage2s.fb"
+        ]
+      },
+      {
+        "hash": "496049cec2066ed3",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/xt_standard_lighting2s.fb",
+          "shader/3_0/hue_lights_off/xt_standard_lighting_damage2s.fb",
+          "shader/3_0/hueshift_off/xt_standard_lighting2s.fb",
+          "shader/3_0/hueshift_off/xt_standard_lighting_damage2s.fb",
+          "shader/3_0/v_lights_off/xt_standard_lighting2s.fb",
+          "shader/3_0/v_lights_off/xt_standard_lighting_damage2s.fb"
+        ]
+      },
+      {
+        "hash": "517540ae6d5e5410",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/asteroid.fb",
+          "shader/3_0/hue_lights_off/asteroid.fb",
+          "shader/3_0/hueshift_off/asteroid.fb",
+          "shader/3_0/v_lights_off/asteroid.fb"
+        ]
+      },
+      {
+        "hash": "53a0a641107ed76c",
+        "stage": "vs",
+        "model": "vs_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/argon.fb",
+          "shader/3_0/argon2s.fb",
+          "shader/3_0/hue_lights_off/argon.fb",
+          "shader/3_0/hue_lights_off/argon2s.fb",
+          "shader/3_0/hue_lights_off/khaak.fb",
+          "shader/3_0/hue_lights_off/khaak2s.fb"
+        ]
+      },
+      {
+        "hash": "5e0a10fe752b6140",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/argon2s.fb",
+          "shader/3_0/hue_lights_off/argon2s.fb",
+          "shader/3_0/hueshift_off/argon2s.fb",
+          "shader/3_0/v_lights_off/argon2s.fb"
+        ]
+      },
+      {
+        "hash": "5e484a06672e28fb",
+        "stage": "vs",
+        "model": "vs_1_1",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/1_1/effects.fb",
+          "shader/1_1/effects2s.fb",
+          "shader/1_1/engine.fb",
+          "shader/1_1/engine2s.fb",
+          "shader/1_1/hue_lights_off/effects.fb",
+          "shader/1_1/hue_lights_off/effects2s.fb"
+        ]
+      },
+      {
+        "hash": "5f82ecacd39529cd",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/xt_standard_lighting.fb",
+          "shader/3_0/hueshift_off/xt_standard_lighting.fb",
+          "shader/3_0/v_lights_off/xt_standard_lighting.fb",
+          "shader/3_0/xt_standard_lighting.fb"
+        ]
+      },
+      {
+        "hash": "6059306306203243",
+        "stage": "vs",
+        "model": "vs_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/bloom.fb",
+          "shader/3_0/hue_lights_off/bloom.fb",
+          "shader/3_0/hueshift_off/bloom.fb",
+          "shader/3_0/v_lights_off/bloom.fb"
+        ]
+      },
+      {
+        "hash": "6109cf64c03529dd",
+        "stage": "ps",
+        "model": "ps_1_1",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/1_1/gui2d.fb",
+          "shader/1_1/hue_lights_off/gui2d.fb",
+          "shader/1_1/hue_lights_off/nebula.fb",
+          "shader/1_1/hue_lights_off/nebula2s.fb",
+          "shader/1_1/hueshift_off/gui2d.fb",
+          "shader/1_1/hueshift_off/nebula.fb"
+        ]
+      },
+      {
+        "hash": "63f96eba9eea7880",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/argon2s.fb",
+          "shader/3_0/hue_lights_off/argon2s.fb",
+          "shader/3_0/hueshift_off/argon2s.fb",
+          "shader/3_0/v_lights_off/argon2s.fb"
+        ]
+      },
+      {
+        "hash": "64bac8bb307eb896",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/standard_lighting2s.fb",
+          "shader/3_0/hueshift_off/standard_lighting2s.fb",
+          "shader/3_0/standard_lighting2s.fb",
+          "shader/3_0/v_lights_off/standard_lighting2s.fb"
+        ]
+      },
+      {
+        "hash": "652a7c5d1e9909a0",
+        "stage": "ps",
+        "model": "ps_1_1",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/1_1/hue_lights_off/z_only.fb",
+          "shader/1_1/hueshift_off/z_only.fb",
+          "shader/1_1/v_lights_off/z_only.fb",
+          "shader/1_1/z_only.fb",
+          "shader/1_4/hue_lights_off/z_only.fb",
+          "shader/1_4/hueshift_off/z_only.fb"
+        ]
+      },
+      {
+        "hash": "6733b119142c8d42",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/xt_standard_lighting.fb",
+          "shader/3_0/hue_lights_off/xt_standard_lighting_damage.fb",
+          "shader/3_0/hueshift_off/xt_standard_lighting.fb",
+          "shader/3_0/hueshift_off/xt_standard_lighting_damage.fb",
+          "shader/3_0/v_lights_off/xt_standard_lighting.fb",
+          "shader/3_0/v_lights_off/xt_standard_lighting_damage.fb"
+        ]
+      },
+      {
+        "hash": "72f8dbb8567bbf88",
+        "stage": "vs",
+        "model": "vs_2_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/2_0/hue_lights_off/planet_v.fb",
+          "shader/2_0/hue_lights_off/planet_v2s.fb",
+          "shader/2_0/hueshift_off/planet_v.fb",
+          "shader/2_0/hueshift_off/planet_v2s.fb",
+          "shader/2_0/planet_v.fb",
+          "shader/2_0/planet_v2s.fb"
+        ]
+      },
+      {
+        "hash": "7b6393fe2d3e1d85",
+        "stage": "vs",
+        "model": "vs_1_1",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/1_1/adeffects.fb",
+          "shader/1_1/adeffects2s.fb",
+          "shader/1_1/gui2d.fb",
+          "shader/1_1/hue_lights_off/adeffects.fb",
+          "shader/1_1/hue_lights_off/adeffects2s.fb",
+          "shader/1_1/hue_lights_off/gui2d.fb"
+        ]
+      },
+      {
+        "hash": "7c83ed50c9894e44",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/standard_lighting.fb",
+          "shader/3_0/hueshift_off/standard_lighting.fb",
+          "shader/3_0/standard_lighting.fb",
+          "shader/3_0/v_lights_off/standard_lighting.fb"
+        ]
+      },
+      {
+        "hash": "803ebfd17f79e413",
+        "stage": "vs",
+        "model": "vs_1_1",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/1_1/hue_lights_off/z_only.fb",
+          "shader/1_1/hueshift_off/z_only.fb",
+          "shader/1_1/v_lights_off/z_only.fb",
+          "shader/1_1/z_only.fb",
+          "shader/1_4/hue_lights_off/z_only.fb",
+          "shader/1_4/hueshift_off/z_only.fb"
+        ]
+      },
+      {
+        "hash": "8360f422de08b5bd",
+        "stage": "ps",
+        "model": "ps_2_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/2_0/effects.fb",
+          "shader/2_0/effects2s.fb",
+          "shader/2_0/engine.fb",
+          "shader/2_0/engine2s.fb",
+          "shader/2_0/hue_lights_off/effects.fb",
+          "shader/2_0/hue_lights_off/effects2s.fb"
+        ]
+      },
+      {
+        "hash": "8759c7838bbc86c2",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/argon.fb",
+          "shader/3_0/hue_lights_off/argon.fb",
+          "shader/3_0/hueshift_off/argon.fb",
+          "shader/3_0/v_lights_off/argon.fb"
+        ]
+      },
+      {
+        "hash": "89193868c61c3846",
+        "stage": "vs",
+        "model": "vs_2_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/2_0/effects.fb",
+          "shader/2_0/effects2s.fb",
+          "shader/2_0/engine.fb",
+          "shader/2_0/engine2s.fb",
+          "shader/2_0/hue_lights_off/effects.fb",
+          "shader/2_0/hue_lights_off/effects2s.fb"
+        ]
+      },
+      {
+        "hash": "99153c144030c396",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/standard_lighting.fb",
+          "shader/3_0/hueshift_off/standard_lighting.fb",
+          "shader/3_0/standard_lighting.fb",
+          "shader/3_0/v_lights_off/standard_lighting.fb"
+        ]
+      },
+      {
+        "hash": "a66fb1981ba755b2",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/glass.fb",
+          "shader/3_0/hue_lights_off/glass.fb",
+          "shader/3_0/hueshift_off/glass.fb",
+          "shader/3_0/v_lights_off/glass.fb"
+        ]
+      },
+      {
+        "hash": "ac2319bc3953efc6",
+        "stage": "vs",
+        "model": "vs_2_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/2_0/adeffects.fb",
+          "shader/2_0/adeffects2s.fb",
+          "shader/2_0/hue_lights_off/adeffects.fb",
+          "shader/2_0/hue_lights_off/adeffects2s.fb",
+          "shader/2_0/hueshift_off/adeffects.fb",
+          "shader/2_0/hueshift_off/adeffects2s.fb"
+        ]
+      },
+      {
+        "hash": "b0602757fce6e870",
+        "stage": "vs",
+        "model": "vs_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/asteroid.fb",
+          "shader/3_0/hue_lights_off/asteroid.fb",
+          "shader/3_0/hueshift_off/asteroid.fb",
+          "shader/3_0/v_lights_off/asteroid.fb"
+        ]
+      },
+      {
+        "hash": "b40d09effa812ec8",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/bloom.fb",
+          "shader/3_0/hue_lights_off/bloom.fb",
+          "shader/3_0/hueshift_off/bloom.fb",
+          "shader/3_0/v_lights_off/bloom.fb"
+        ]
+      },
+      {
+        "hash": "be199829a9bb78db",
+        "stage": "vs",
+        "model": "vs_1_1",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/1_1/hue_lights_off/planet_haze.fb",
+          "shader/1_1/hueshift_off/planet_haze.fb",
+          "shader/1_1/planet_haze.fb",
+          "shader/1_1/v_lights_off/planet_haze.fb",
+          "shader/1_4/hue_lights_off/planet_haze.fb",
+          "shader/1_4/hueshift_off/planet_haze.fb"
+        ]
+      },
+      {
+        "hash": "c1452981fd0bff64",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/standard_lighting2s.fb",
+          "shader/3_0/hueshift_off/standard_lighting2s.fb",
+          "shader/3_0/standard_lighting2s.fb",
+          "shader/3_0/v_lights_off/standard_lighting2s.fb"
+        ]
+      },
+      {
+        "hash": "c30104cb0efb6675",
+        "stage": "vs",
+        "model": "vs_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/glass.fb",
+          "shader/3_0/glass2s.fb",
+          "shader/3_0/hue_lights_off/glass.fb",
+          "shader/3_0/hue_lights_off/glass2s.fb",
+          "shader/3_0/hueshift_off/glass.fb",
+          "shader/3_0/hueshift_off/glass2s.fb"
+        ]
+      },
+      {
+        "hash": "c78b4c68a87fce74",
+        "stage": "vs",
+        "model": "vs_1_1",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/1_1/hue_lights_off/z_only.fb",
+          "shader/1_1/hueshift_off/z_only.fb",
+          "shader/1_1/v_lights_off/z_only.fb",
+          "shader/1_1/z_only.fb",
+          "shader/1_4/hue_lights_off/z_only.fb",
+          "shader/1_4/hueshift_off/z_only.fb"
+        ]
+      },
+      {
+        "hash": "ca6bfa4a6cca7e2a",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/argon.fb",
+          "shader/3_0/hue_lights_off/argon.fb",
+          "shader/3_0/hueshift_off/argon.fb",
+          "shader/3_0/v_lights_off/argon.fb"
+        ]
+      },
+      {
+        "hash": "cbbf26102694c961",
+        "stage": "vs",
+        "model": "vs_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/bloom.fb",
+          "shader/3_0/hue_lights_off/bloom.fb",
+          "shader/3_0/hueshift_off/bloom.fb",
+          "shader/3_0/v_lights_off/bloom.fb"
+        ]
+      },
+      {
+        "hash": "cd6d6eb4b3d99443",
+        "stage": "ps",
+        "model": "ps_1_1",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/1_1/hue_lights_off/planet_haze.fb",
+          "shader/1_1/hueshift_off/planet_haze.fb",
+          "shader/1_1/planet_haze.fb",
+          "shader/1_1/v_lights_off/planet_haze.fb",
+          "shader/1_4/hue_lights_off/planet_haze.fb",
+          "shader/1_4/hueshift_off/planet_haze.fb"
+        ]
+      },
+      {
+        "hash": "d44db87778a43b61",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/asteroid.fb",
+          "shader/3_0/hue_lights_off/asteroid.fb",
+          "shader/3_0/hueshift_off/asteroid.fb",
+          "shader/3_0/v_lights_off/asteroid.fb"
+        ]
+      },
+      {
+        "hash": "d5e1c75351ed3f04",
+        "stage": "vs",
+        "model": "vs_2_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/2_0/effects.fb",
+          "shader/2_0/effects2s.fb",
+          "shader/2_0/engine.fb",
+          "shader/2_0/engine2s.fb",
+          "shader/2_0/hue_lights_off/effects.fb",
+          "shader/2_0/hue_lights_off/effects2s.fb"
+        ]
+      },
+      {
+        "hash": "d6f6ba4fee1cd53e",
+        "stage": "ps",
+        "model": "ps_2_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/2_0/hue_lights_off/moon.fb",
+          "shader/2_0/hueshift_off/moon.fb",
+          "shader/2_0/moon.fb",
+          "shader/2_0/v_lights_off/moon.fb",
+          "shader/2_a/hue_lights_off/moon.fb",
+          "shader/2_a/hueshift_off/moon.fb"
+        ]
+      },
+      {
+        "hash": "e6794b6ec37ff71a",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/xt_standard_lighting2s.fb",
+          "shader/3_0/hue_lights_off/xt_standard_lighting_damage2s.fb",
+          "shader/3_0/hueshift_off/xt_standard_lighting2s.fb",
+          "shader/3_0/hueshift_off/xt_standard_lighting_damage2s.fb",
+          "shader/3_0/v_lights_off/xt_standard_lighting2s.fb",
+          "shader/3_0/v_lights_off/xt_standard_lighting_damage2s.fb"
+        ]
+      },
+      {
+        "hash": "e70adc744a38ca59",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/standard_lighting2s.fb",
+          "shader/3_0/hueshift_off/standard_lighting2s.fb",
+          "shader/3_0/standard_lighting2s.fb",
+          "shader/3_0/v_lights_off/standard_lighting2s.fb"
+        ]
+      },
+      {
+        "hash": "ec1f5c4a2f4e1445",
+        "stage": "ps",
+        "model": "ps_1_1",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/1_1/effects.fb",
+          "shader/1_1/effects2s.fb",
+          "shader/1_1/engine.fb",
+          "shader/1_1/engine2s.fb",
+          "shader/1_1/hue_lights_off/effects.fb",
+          "shader/1_1/hue_lights_off/effects2s.fb"
+        ]
+      },
+      {
+        "hash": "f1b0e820c7b488c3",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/xt_standard_lighting2s.fb",
+          "shader/3_0/hueshift_off/xt_standard_lighting2s.fb",
+          "shader/3_0/v_lights_off/xt_standard_lighting2s.fb",
+          "shader/3_0/xt_standard_lighting2s.fb"
+        ]
+      },
+      {
+        "hash": "f3172baa8dd19a40",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/bloom.fb",
+          "shader/3_0/hue_lights_off/bloom.fb",
+          "shader/3_0/hueshift_off/bloom.fb",
+          "shader/3_0/v_lights_off/bloom.fb"
+        ]
+      },
+      {
+        "hash": "f36fc43f30b19d71",
+        "stage": "vs",
+        "model": "vs_1_1",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/1_1/gui2d.fb",
+          "shader/1_1/hue_lights_off/gui2d.fb",
+          "shader/1_1/hueshift_off/gui2d.fb",
+          "shader/1_1/v_lights_off/gui2d.fb",
+          "shader/1_4/gui2d.fb",
+          "shader/1_4/hue_lights_off/gui2d.fb"
+        ]
+      },
+      {
+        "hash": "f80f7af59b667bb7",
+        "stage": "vs",
+        "model": "vs_2_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/2_0/hue_lights_off/moon.fb",
+          "shader/2_0/hueshift_off/moon.fb",
+          "shader/2_0/moon.fb",
+          "shader/2_0/v_lights_off/moon.fb",
+          "shader/2_a/hue_lights_off/moon.fb",
+          "shader/2_a/hueshift_off/moon.fb"
+        ]
+      },
+      {
+        "hash": "ff6eed5a5ddf3a3a",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/bloom.fb",
+          "shader/3_0/hue_lights_off/bloom.fb",
+          "shader/3_0/hueshift_off/bloom.fb",
+          "shader/3_0/v_lights_off/bloom.fb"
+        ]
+      },
+      {
+        "hash": "fffdabd910793aba",
+        "stage": "ps",
+        "model": "ps_3_0",
+        "dumped": true,
+        "in_archive_inventory": true,
+        "effects": [
+          "shader/3_0/hue_lights_off/xt_standard_lighting.fb",
+          "shader/3_0/hue_lights_off/xt_standard_lighting_damage.fb",
+          "shader/3_0/hueshift_off/xt_standard_lighting.fb",
+          "shader/3_0/hueshift_off/xt_standard_lighting_damage.fb",
+          "shader/3_0/v_lights_off/xt_standard_lighting.fb",
+          "shader/3_0/v_lights_off/xt_standard_lighting_damage.fb"
+        ]
+      }
+    ],
+    "note": "model comes from the first DWORD of the program's own {vs,ps}_<hash>.bin dump; the archive inventory only supplies effect paths and a cross-check. Phases are derived from the capture event stream: background ends at the scene's depth-only Clear, the scene ends where depth is unbound for the bloom chain, and the bloom chain ends where depth is rebound for the overlays."
+  },
+  "telemetry": {
+    "metrics": {
+      "0:create_device": {
+        "device": "0",
+        "name": "create_device",
+        "count": 1,
+        "failures": 0,
+        "total_us": 11118.2,
+        "min_us": 11118.2,
+        "max_us": 11118.2,
+        "windows": 1,
+        "buckets": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          0
+        ],
+        "mean_us": 11118.2
+      },
+      "0:lock_wait": {
+        "device": "0",
+        "name": "lock_wait",
+        "count": 10057622,
+        "failures": 0,
+        "total_us": 1915495.5999999996,
+        "min_us": 0.0,
+        "max_us": 150.5,
+        "windows": 455,
+        "buckets": [
+          10057300,
+          321,
+          1,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 0.19045213669791922
+      },
+      "0:log_flush": {
+        "device": "0",
+        "name": "log_flush",
+        "count": 454,
+        "failures": 0,
+        "total_us": 305.0999999999992,
+        "min_us": 0.2,
+        "max_us": 22.9,
+        "windows": 454,
+        "buckets": [
+          453,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 0.67202643171806
+      },
+      "0:shader_dump": {
+        "device": "0",
+        "name": "shader_dump",
+        "count": 61,
+        "failures": 0,
+        "total_us": 334296.5,
+        "min_us": 441.1,
+        "max_us": 25923.4,
+        "windows": 9,
+        "buckets": [
+          0,
+          0,
+          2,
+          55,
+          4,
+          0
+        ],
+        "mean_us": 5480.270491803279
+      },
+      "0:shader_getfunction": {
+        "device": "0",
+        "name": "shader_getfunction",
+        "count": 42584,
+        "failures": 0,
+        "total_us": 22511.2,
+        "min_us": 0.2,
+        "max_us": 48.5,
+        "windows": 51,
+        "buckets": [
+          42579,
+          5,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 0.5286304715386061
+      },
+      "0:shader_hash": {
+        "device": "0",
+        "name": "shader_hash",
+        "count": 42584,
+        "failures": 0,
+        "total_us": 271133.10000000003,
+        "min_us": 0.4,
+        "max_us": 34.7,
+        "windows": 51,
+        "buckets": [
+          37069,
+          5515,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 6.367018128874696
+      },
+      "0:shader_inspect": {
+        "device": "0",
+        "name": "shader_inspect",
+        "count": 42584,
+        "failures": 0,
+        "total_us": 669463.9,
+        "min_us": 1.5,
+        "max_us": 25961.7,
+        "windows": 51,
+        "buckets": [
+          25194,
+          17329,
+          2,
+          55,
+          4,
+          0
+        ],
+        "mean_us": 15.721019631786588
+      },
+      "1:capture_cpu": {
+        "device": "1",
+        "name": "capture_cpu",
+        "count": 22437,
+        "failures": 0,
+        "total_us": 21214100.4,
+        "min_us": 9.3,
+        "max_us": 14476.0,
+        "windows": 41,
+        "buckets": [
+          12,
+          735,
+          12880,
+          8808,
+          2,
+          0
+        ],
+        "mean_us": 945.4962962962962
+      },
+      "1:cube_texture": {
+        "device": "1",
+        "name": "cube_texture",
+        "count": 36,
+        "failures": 0,
+        "total_us": 811.4,
+        "min_us": 8.2,
+        "max_us": 135.7,
+        "windows": 23,
+        "buckets": [
+          8,
+          27,
+          1,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 22.538888888888888
+      },
+      "1:depth_stencil": {
+        "device": "1",
+        "name": "depth_stencil",
+        "count": 1,
+        "failures": 0,
+        "total_us": 48.6,
+        "min_us": 48.6,
+        "max_us": 48.6,
+        "windows": 1,
+        "buckets": [
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 48.6
+      },
+      "1:draw_backend": {
+        "device": "1",
+        "name": "draw_backend",
+        "count": 3498808,
+        "failures": 0,
+        "total_us": 9446401.600000001,
+        "min_us": 0.5,
+        "max_us": 17931.8,
+        "windows": 379,
+        "buckets": [
+          3490094,
+          8674,
+          36,
+          3,
+          1,
+          0
+        ],
+        "mean_us": 2.699891391582505
+      },
+      "1:frame_capture": {
+        "device": "1",
+        "name": "frame_capture",
+        "count": 85,
+        "failures": 0,
+        "total_us": 25535076.6,
+        "min_us": 9690.8,
+        "max_us": 1396800.5,
+        "windows": 34,
+        "buckets": [
+          0,
+          0,
+          0,
+          1,
+          28,
+          56
+        ],
+        "mean_us": 300412.665882353
+      },
+      "1:frame_normal": {
+        "device": "1",
+        "name": "frame_normal",
+        "count": 17476,
+        "failures": 0,
+        "total_us": 542002650.2000002,
+        "min_us": 1458.0,
+        "max_us": 93728479.6,
+        "windows": 366,
+        "buckets": [
+          0,
+          0,
+          0,
+          1990,
+          15445,
+          41
+        ],
+        "mean_us": 31014.113653009852
+      },
+      "1:index_buffer": {
+        "device": "1",
+        "name": "index_buffer",
+        "count": 23950,
+        "failures": 0,
+        "total_us": 55900.099999999955,
+        "min_us": 0.9,
+        "max_us": 520.8,
+        "windows": 186,
+        "buckets": [
+          23568,
+          379,
+          3,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 2.334033402922754
+      },
+      "1:log_flush": {
+        "device": "1",
+        "name": "log_flush",
+        "count": 18014,
+        "failures": 0,
+        "total_us": 12057.400000000005,
+        "min_us": 0.1,
+        "max_us": 17.5,
+        "windows": 453,
+        "buckets": [
+          18011,
+          3,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 0.6693349616964586
+      },
+      "1:present_capture": {
+        "device": "1",
+        "name": "present_capture",
+        "count": 68,
+        "failures": 0,
+        "total_us": 2370.3,
+        "min_us": 17.8,
+        "max_us": 68.6,
+        "windows": 35,
+        "buckets": [
+          0,
+          68,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 34.85735294117647
+      },
+      "1:present_normal": {
+        "device": "1",
+        "name": "present_normal",
+        "count": 17494,
+        "failures": 0,
+        "total_us": 257548.2999999999,
+        "min_us": 1.6,
+        "max_us": 527.7,
+        "windows": 367,
+        "buckets": [
+          5664,
+          11826,
+          4,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 14.722093289127695
+      },
+      "1:shader_ps_backend": {
+        "device": "1",
+        "name": "shader_ps_backend",
+        "count": 60,
+        "failures": 0,
+        "total_us": 1104.1000000000001,
+        "min_us": 2.4,
+        "max_us": 107.1,
+        "windows": 11,
+        "buckets": [
+          18,
+          41,
+          1,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 18.401666666666667
+      },
+      "1:shader_vs_backend": {
+        "device": "1",
+        "name": "shader_vs_backend",
+        "count": 61,
+        "failures": 0,
+        "total_us": 1021.8999999999999,
+        "min_us": 3.5,
+        "max_us": 188.8,
+        "windows": 11,
+        "buckets": [
+          23,
+          37,
+          1,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 16.75245901639344
+      },
+      "1:snapshot": {
+        "device": "1",
+        "name": "snapshot",
+        "count": 21689,
+        "failures": 0,
+        "total_us": 18967753.199999996,
+        "min_us": 653.1,
+        "max_us": 14381.0,
+        "windows": 41,
+        "buckets": [
+          0,
+          0,
+          21366,
+          321,
+          2,
+          0
+        ],
+        "mean_us": 874.5333210383142
+      },
+      "1:texture": {
+        "device": "1",
+        "name": "texture",
+        "count": 1886,
+        "failures": 0,
+        "total_us": 38346.3,
+        "min_us": 1.0,
+        "max_us": 190.1,
+        "windows": 82,
+        "buckets": [
+          449,
+          1423,
+          14,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 20.332078472958646
+      },
+      "1:vertex_buffer": {
+        "device": "1",
+        "name": "vertex_buffer",
+        "count": 23969,
+        "failures": 0,
+        "total_us": 160248.59999999998,
+        "min_us": 0.9,
+        "max_us": 771.4,
+        "windows": 186,
+        "buckets": [
+          20887,
+          2932,
+          150,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 6.685660644999791
+      }
+    },
+    "frame_interval": {
+      "normal": {
+        "device": "1",
+        "name": "frame_normal",
+        "count": 17476,
+        "failures": 0,
+        "total_us": 542002650.2000002,
+        "min_us": 1458.0,
+        "max_us": 93728479.6,
+        "windows": 366,
+        "buckets": [
+          0,
+          0,
+          0,
+          1990,
+          15445,
+          41
+        ],
+        "mean_us": 31014.113653009852
+      },
+      "capture": {
+        "device": "1",
+        "name": "frame_capture",
+        "count": 85,
+        "failures": 0,
+        "total_us": 25535076.6,
+        "min_us": 9690.8,
+        "max_us": 1396800.5,
+        "windows": 34,
+        "buckets": [
+          0,
+          0,
+          0,
+          1,
+          28,
+          56
+        ],
+        "mean_us": 300412.665882353
+      }
+    },
+    "present_duration": {
+      "normal": {
+        "device": "1",
+        "name": "present_normal",
+        "count": 17494,
+        "failures": 0,
+        "total_us": 257548.2999999999,
+        "min_us": 1.6,
+        "max_us": 527.7,
+        "windows": 367,
+        "buckets": [
+          5664,
+          11826,
+          4,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 14.722093289127695
+      },
+      "capture": {
+        "device": "1",
+        "name": "present_capture",
+        "count": 68,
+        "failures": 0,
+        "total_us": 2370.3,
+        "min_us": 17.8,
+        "max_us": 68.6,
+        "windows": 35,
+        "buckets": [
+          0,
+          68,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 34.85735294117647
+      }
+    },
+    "by_route_activity": {
+      "routed": {
+        "capture_cpu": {
+          "count": 11653,
+          "total_us": 10914699.799999999,
+          "mean_us": 936.6429074058182
+        },
+        "draw_backend": {
+          "count": 980469,
+          "total_us": 2390074.3000000007,
+          "mean_us": 2.437684720271626
+        },
+        "frame_capture": {
+          "count": 45,
+          "total_us": 13704628.6,
+          "mean_us": 304547.3022222222
+        },
+        "frame_normal": {
+          "count": 7017,
+          "total_us": 161336315.20000002,
+          "mean_us": 22992.206812027936
+        },
+        "index_buffer": {
+          "count": 10807,
+          "total_us": 23530.80000000001,
+          "mean_us": 2.1773665216988998
+        },
+        "log_flush": {
+          "count": 7227,
+          "total_us": 4986.999999999998,
+          "mean_us": 0.6900511969005118
+        },
+        "present_capture": {
+          "count": 36,
+          "total_us": 1715.4,
+          "mean_us": 47.650000000000006
+        },
+        "present_normal": {
+          "count": 7026,
+          "total_us": 141823.79999999996,
+          "mean_us": 20.18556789069171
+        },
+        "shader_ps_backend": {
+          "count": 19,
+          "total_us": 259.8,
+          "mean_us": 13.673684210526316
+        },
+        "shader_vs_backend": {
+          "count": 20,
+          "total_us": 226.0,
+          "mean_us": 11.3
+        },
+        "snapshot": {
+          "count": 11257,
+          "total_us": 9608614.2,
+          "mean_us": 853.567931065115
+        },
+        "texture": {
+          "count": 122,
+          "total_us": 3464.2999999999997,
+          "mean_us": 28.39590163934426
+        },
+        "vertex_buffer": {
+          "count": 10815,
+          "total_us": 69431.8,
+          "mean_us": 6.419953767914933
+        }
+      },
+      "unrouted": {
+        "capture_cpu": {
+          "count": 10784,
+          "total_us": 10299400.6,
+          "mean_us": 955.0631120178041
+        },
+        "cube_texture": {
+          "count": 36,
+          "total_us": 811.4,
+          "mean_us": 22.538888888888888
+        },
+        "depth_stencil": {
+          "count": 1,
+          "total_us": 48.6,
+          "mean_us": 48.6
+        },
+        "draw_backend": {
+          "count": 2518339,
+          "total_us": 7056327.300000003,
+          "mean_us": 2.8019767394302364
+        },
+        "frame_capture": {
+          "count": 40,
+          "total_us": 11830448.0,
+          "mean_us": 295761.2
+        },
+        "frame_normal": {
+          "count": 10459,
+          "total_us": 380666334.9999999,
+          "mean_us": 36396.05459412945
+        },
+        "index_buffer": {
+          "count": 13143,
+          "total_us": 32369.300000000014,
+          "mean_us": 2.462854751578788
+        },
+        "log_flush": {
+          "count": 10787,
+          "total_us": 7070.399999999999,
+          "mean_us": 0.6554556410494112
+        },
+        "present_capture": {
+          "count": 32,
+          "total_us": 654.9000000000001,
+          "mean_us": 20.465625000000003
+        },
+        "present_normal": {
+          "count": 10468,
+          "total_us": 115724.50000000001,
+          "mean_us": 11.05507260221628
+        },
+        "shader_ps_backend": {
+          "count": 41,
+          "total_us": 844.3,
+          "mean_us": 20.592682926829266
+        },
+        "shader_vs_backend": {
+          "count": 41,
+          "total_us": 795.9,
+          "mean_us": 19.412195121951218
+        },
+        "snapshot": {
+          "count": 10432,
+          "total_us": 9359139.0,
+          "mean_us": 897.1567292944785
+        },
+        "texture": {
+          "count": 1764,
+          "total_us": 34882.0,
+          "mean_us": 19.77437641723356
+        },
+        "vertex_buffer": {
+          "count": 13154,
+          "total_us": 90816.79999999997,
+          "mean_us": 6.9041204196442125
+        }
+      }
+    },
+    "limits": [
+      "CPU-side wall-clock spans, not GPU execution time (docs/verification/telemetry.md).",
+      "Frame intervals include application work, pacing, resource loading and diagnostics.",
+      "Intervals adjacent to a captured frame are classified as capture intervals and cannot enter the normal distribution, so frame_capture is the F8 hitch, not a cost model.",
+      "Metric categories can overlap or nest; never add totals of different names together.",
+      "Summary windows flush on observed calls, so a gap does not prove idle time.",
+      "No run with the route disabled exists for this scene, so no metric here isolates the route cost; the routed/unrouted split below compares parts of one session that also differ in scene content."
+    ]
+  },
+  "diagnostics": {
+    "nonzero_results": [],
+    "motion_output_failure_lines": [],
+    "motion_output_resets": 0,
+    "motion_output_releases": 0,
+    "device_destroy_records": 0,
+    "missing_shutdown_records": [
+      "device_destroy",
+      "motion_output_release"
+    ],
+    "object_trace": {
+      "active": "1",
+      "status": "active",
+      "recovery_required": "0"
+    },
+    "object_lifetime": {
+      "active": "1",
+      "status": "active_without_baseline",
+      "recovery_required": "0",
+      "baseline_complete": "0",
+      "baseline_entries": "0"
+    },
+    "object_lifetime_baseline_complete": "0",
+    "captured_frames": 68
+  }
+}
