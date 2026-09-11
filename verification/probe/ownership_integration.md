@@ -206,3 +206,66 @@ fallback, plus the capture fixture's import list confirming no external GCC,
 libstdc++ or libwinpthread runtime DLL. Standalone ownership executable hashes
 remain intact. These API checks establish compatibility; lease performance has
 its own bounded benchmark and does not establish a live game frame-time gain.
+
+## Portable managed-buffer and cache refresh
+
+The fresh combined DLL now passes all **20 cases**, the updated current-source
+verifier and the **18-object forced adoption-failure fallback**. The linked
+production archive contains **21 objects**, including
+`portable_managed_upload.cpp.obj`; the historical
+`managed_upload_contract.cpp.obj` is absent from the actual link response and
+archive. The new managed-buffer producer uses public D3D9 contracts, and the
+loading/cache adapter uses its separately verified public buffer acquisition
+path. This combined matrix keeps mesh-cache dispatch disabled; the actual cache
+hook and behavior have their own verification.
+
+Verified DLL SHA-256:
+`aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9`.
+Hashes identify the tested source, build products and reports. There is no native
+DLL hash allowlist in this integration runner or in the portable buffer feature.
+The symbol audit records the available runtime DLL files after the run solely
+as provenance. It does not claim their hashes were checked before this run or
+that a particular hash is needed for feature support.
+
+The portable acceptance changes the finite-enabled capture expectations:
+managed buffers created with usage zero are readable and now receive evidence.
+For each of the normal and pure devices, the original fixture creates a 76-byte
+VB and writes only its final 60 bytes, writes a complete 6-byte IB containing
+`{0,1,2}`, then replaces the VB with another allocation and another 60-byte write.
+The retained cumulative samples verify **two uploads/publications/scans and
+66 classified bytes** through frame 3, then **three and 126 bytes** from frame 4
+through Reset. These samples are not added together. Sixteen metric rows cover
+frames 0–5 and Reset-before/after on both devices. The owner generation advances
+from 1 to 2 and Reset retires atlas payload. Positive sidecar, metadata and
+position-atlas reservations are observed without assuming a fixed metadata
+structure size.
+
+Eight successful indexed draws have exact known IB extrema 0–2, matching revision
+and generation, and a verified range. The fixture's missing-index failed draw
+and UP draw remain without that proof. This is specific to the missing-index
+control: a failed draw in general can retain truthful storage metadata. The
+POSITIONT declaration still prevents XYZ evidence queries; all draws retain
+unknown finite-position evidence, unqualified replay source and missing lifetime
+proof. No renderer candidate or live replay is manufactured from successful
+buffer uploads. Six original host metadata tests exercise these expectations;
+independent review checked them against the authored fixture and producer before
+the combined run.
+
+All **20 actual Clear CPU-state controls** still pass, and diagnostic-on/off
+fixture API reports agree. The forced fallback's new native-buffer invalidation
+entrypoint explicitly returns `E_INVALIDARG`, as do its unavailable execution and
+geometry APIs. Both separate standalone ownership executables retain their prior
+hashes. DLL, fixture, source and fallback object hashes remain unchanged across
+the runs. The final import audit finds no external libgcc, libstdc++ or
+libwinpthread DLL dependency. Public Factory/Device Release still adjusts to the
+separate Node subobject, with internal destruction and parent COM Release using
+the verified separate dispatch paths; the refreshed disassembly records this
+DLL's hash.
+
+Evidence is retained in the existing build, verification, fallback, symbol and
+ABI reports under `verification/results/ownership-integration-*`. Reproduction
+uses the three commands above; the symbol audit records its `nm`/`objdump`
+commands and actual CMake object inventory. These are combined API, metadata,
+lifetime and compilation checks on Preview. They are not native-Windows
+execution, gameplay, cache performance or enabled HDR/TAA evidence. The installed
+game DLL is unchanged, and the live replay/write-exclusion gate remains closed.

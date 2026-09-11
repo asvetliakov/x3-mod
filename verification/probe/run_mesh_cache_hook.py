@@ -13,30 +13,35 @@ RESULTS=ROOT/'verification/results'
 BUILD=ROOT/'verification/probe/build/mesh_cache_hook'
 BOTTLE=Path.home()/'Library/Application Support/CrossOver/Bottles/Steam/drive_c'
 NATIVE={
- 'd3dx9_37.dll':(BOTTLE/'X3/d3dx9_37.dll','c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8'),
- 'd3d9.dll':(BOTTLE/'windows/syswow64/d3d9.dll','58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf'),
- 'wined3d.dll':(BOTTLE/'windows/syswow64/wined3d.dll','f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863')}
-SOURCES=['src/proxy/capture.h','src/proxy/loading_trace.h','src/proxy/loading_trace.cpp','src/proxy/mesh_adjacency_cache.h','src/proxy/mesh_adjacency_cache.cpp','src/ownership/d3d9_ownership.h','src/ownership/d3d9_ownership.cpp', 'src/ownership/execution_state.cpp', 'src/ownership/execution_state.h', 'src/ownership/finite_buffer_evidence.cpp', 'src/ownership/finite_buffer_evidence.h', 'src/ownership/managed_upload_contract.cpp', 'src/ownership/managed_upload_contract.h','src/ownership/d3d9_classes_inc.h','src/ownership/d3d9_forwarders_inc.h','verification/probe/mesh_cache_hook_fixture.cpp','verification/probe/mesh_preparation.cpp','verification/probe/loading_trace_stub.def','verification/probe/build_mesh_cache_hook.sh','verification/probe/run_mesh_cache_hook.py']
+ 'd3dx9_37.dll':BOTTLE/'X3/d3dx9_37.dll',
+ 'd3d9.dll':BOTTLE/'windows/syswow64/d3d9.dll',
+ 'wined3d.dll':BOTTLE/'windows/syswow64/wined3d.dll'}
+SOURCES=['src/proxy/capture.h','src/proxy/loading_trace.h','src/proxy/loading_trace.cpp','src/proxy/mesh_adjacency_cache.h','src/proxy/mesh_adjacency_cache.cpp','src/ownership/d3d9_ownership.h','src/ownership/d3d9_ownership.cpp', 'src/ownership/execution_state.cpp', 'src/ownership/execution_state.h', 'src/ownership/finite_buffer_evidence.cpp', 'src/ownership/finite_buffer_evidence.h', 'src/ownership/portable_managed_upload.cpp', 'src/ownership/portable_managed_upload.h','src/ownership/d3d9_classes_inc.h','src/ownership/d3d9_forwarders_inc.h','verification/probe/mesh_cache_hook_fixture.cpp','verification/probe/mesh_preparation.cpp','verification/probe/loading_trace_stub.def','verification/probe/build_mesh_cache_hook.sh','verification/probe/run_mesh_cache_hook.py']
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
-def inputs():return {p:sha(ROOT/p) for p in SOURCES}|{'native/'+n:sha(p) for n,(p,_) in NATIVE.items()}
+def inputs():return {p:sha(ROOT/p) for p in SOURCES}|{'native/'+n:sha(p) for n,p in NATIVE.items()}
 def binaries():return {p.name:sha(p) for p in [BUILD/'mesh_cache_hook_fixture.exe',BUILD/'d3dx9_37.dll']}
+def refuse_game():
+    processes=subprocess.run(['ps','-axo','pid=,comm='],capture_output=True,text=True,check=True).stdout
+    if any(re.search(r'(^|[\\/])X3AP\.exe(?:\s|$)',line,re.I) for line in processes.splitlines()):
+        raise RuntimeError('Refusing synthetic runtime while X3AP.exe is running')
 def main():
     summary=RESULTS/'mesh-cache-hook-summary.json'
     meta={'passed':False,'phase':'building','fresh_build':False,'game_launched':False,'started_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'cases':{}}
     def save():summary.write_text(json.dumps(meta,indent=2)+'\n')
     save()
     try:
+        refuse_game()
         meta['sources_before_build']=inputs();save()
-        for name,(_,expected) in NATIVE.items():assert meta['sources_before_build']['native/'+name]==expected,'Unexpected runtime '+name
         with (RESULTS/'mesh-cache-hook-build.txt').open('wb') as log:
             subprocess.run(['sh','verification/probe/build_mesh_cache_hook.sh'],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=90)
         meta['sources_after_build']=inputs();assert meta['sources_after_build']==meta['sources_before_build'],'Build inputs changed'
-        shutil.copyfile(NATIVE['d3dx9_37.dll'][0],BUILD/'d3dx9_37.dll')
+        shutil.copyfile(NATIVE['d3dx9_37.dll'],BUILD/'d3dx9_37.dll')
         meta.update(fresh_build=True,phase='running',binaries_before=binaries());save()
         for ownership in ('native','wrapped'):
             for mode,fault in (('off','normal'),('on','normal'),('on','fault')):
                 name=f'{ownership}-{mode}-{fault}';out=RESULTS/f'mesh-cache-hook-{name}.txt';err=RESULTS/f'mesh-cache-hook-{name}-wine.log'
                 command=['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine','--bottle','Steam','--no-update','--dll','d3dx9_37=n,b;d3d9=b','--workdir',str(BUILD),str(BUILD/'mesh_cache_hook_fixture.exe'),mode,ownership,fault]
+                refuse_game()
                 assert inputs()==meta['sources_before_build'] and binaries()==meta['binaries_before'],'Inputs changed before case'
                 with out.open('wb') as stdout,err.open('wb') as stderr:
                     run=subprocess.run(command,stdout=stdout,stderr=stderr,env=dict(os.environ,WINEDLLOVERRIDES='d3dx9_37=n,b;d3d9=b'),timeout=90)
@@ -55,7 +60,11 @@ def main():
                 reasons=[d['reason'] for d in case['gate_details']]
                 assert len(reasons)==len(set(reasons)),'First gate detail repeated'
                 if mode=='on':
-                    assert {'mesh_options','mesh_pool','mesh_method','backend_imports'}.issubset(reasons),'Missing distinct rejection diagnostics'
+                    assert {'mesh_options','mesh_pool','mesh_method','mesh_table','descriptor_call','descriptor_pool','descriptor_usage','descriptor_format','descriptor_size'}.issubset(reasons),'Missing distinct rejection diagnostics'
+                    if ownership=='wrapped':assert 'OFF_TRACKER_ROUTE vertex=2 index=2 requested_preserved=1' in text,'Missing off-tracking route controls'
+                    assert re.findall(r'^PUBLIC_DESCRIPTOR type=(vertex|index) forwarding=1 negatives=8 restored=1\r?$',text,re.M)==['vertex','index'],'Missing public VB/IB controls'
+                    assert 'file_fingerprint_required=0' in text and 'buffer_contract=public_systemmem_readonly' in text,'Missing portable buffer contract'
+                    assert not any(r.startswith('backend_') for r in reasons),'Backend-specific gate returned'
                     assert any(d['reason']=='floating_point' and int(d['count'])>0 for d in case['core_bypass']),'Missing core bypass reason'
                     assert len(re.findall(r'^mesh_cache_fp_first ',text,re.M))==1,'Missing or repeated first FP details'
                 else:

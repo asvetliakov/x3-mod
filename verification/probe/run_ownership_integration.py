@@ -54,7 +54,9 @@ def sources():
                       'run_ownership_integration.py', 'run_ownership_integration_fallback.py', 'verify_ownership_integration.py',
                       'verify_capture_state.py')
     paths += [root / 'verification/probe' / name for name in fixture_inputs]
-    paths += [root / 'tools/analysis/summarize_capture.py']
+    paths += [root / 'tools/analysis/summarize_capture.py',
+              root / 'tools/ownership/generate_d3d9_forwarders.py',
+              root / 'verification/analysis/test_portable_integration_expectations.py']
     return {str(p.relative_to(root)): sha(p) for p in sorted(paths)}
 
 

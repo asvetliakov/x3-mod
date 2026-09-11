@@ -4,7 +4,117 @@ CHECK window PASS
 CHECK factory PASS
 CHECK wrap factory PASS
 CHECK device PASS
+CHECK failed readable Create retries exact original Usage PASS
+CHECK fallback receives original incoming full FP and LastError PASS
+CHECK fallback preserves selected native outgoing full FP and LastError PASS
+CHECK fallback application descriptor PASS
+CHECK fallback native descriptor PASS
+CHECK statistics PASS
+CHECK creation fallback leaves original unconverted resource PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK failed readable Create retries exact original Usage PASS
+CHECK fallback receives original incoming full FP and LastError PASS
+CHECK fallback preserves selected native outgoing full FP and LastError PASS
+CHECK fallback application descriptor PASS
+CHECK fallback native descriptor PASS
+CHECK statistics PASS
+CHECK creation fallback leaves original unconverted resource PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK failed readable Create retries exact original Usage PASS
+CHECK fallback receives original incoming full FP and LastError PASS
+CHECK fallback preserves selected native outgoing full FP and LastError PASS
+CHECK fallback application descriptor PASS
+CHECK fallback native descriptor PASS
+CHECK statistics PASS
+CHECK creation fallback leaves original unconverted resource PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK failed readable Create retries exact original Usage PASS
+CHECK fallback receives original incoming full FP and LastError PASS
+CHECK fallback preserves selected native outgoing full FP and LastError PASS
+CHECK fallback application descriptor PASS
+CHECK fallback native descriptor PASS
+CHECK statistics PASS
+CHECK creation fallback leaves original unconverted resource PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
 CHECK create VB PASS
+CHECK metadata-budget fallback native descriptor PASS
+CHECK statistics PASS
+CHECK failed atlas admission rolls conversion back PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK failed GetDesc preserves exact native output PASS
+CHECK failed GetDesc preserves native FP and LastError PASS
+CHECK failed GetDesc preserves exact native output PASS
+CHECK failed GetDesc preserves native FP and LastError PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK content PASS
+CHECK off-tracking wrapper slot loss remains explicit failure PASS
+CHECK content PASS
+CHECK off-tracking intact wrapper keeps ordinary off status PASS
+CHECK creation policy strips only WRITEONLY PASS
+CHECK creation policy strips only WRITEONLY PASS
+CHECK creation policy strips only WRITEONLY PASS
+CHECK disabled creation unchanged PASS
+CHECK zero creation unchanged PASS
+CHECK oversize creation unchanged PASS
+CHECK default creation unchanged PASS
+CHECK invalid managed dynamic not repaired PASS
+CHECK shared creation unchanged PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK public native readable descriptor qualifies PASS
+CHECK changed immutable descriptor refused PASS
+CHECK null native descriptor refused PASS
+CHECK null descriptor output refused PASS
+CHECK unknown native invalidation rejected PASS
+CHECK wrong-kind native invalidation rejected PASS
+CHECK unrecognized native invalidation rejected PASS
+CHECK portable whole application mapping PASS
+CHECK whole zero-size window normalized PASS
+CHECK bounded exact-end partial normalized PASS
+CHECK nonzero-offset zero-size refused PASS
+CHECK out-of-range window refused PASS
+CHECK read-only is not write producer PASS
+CHECK discard producer refused PASS
+CHECK nooverwrite producer refused PASS
+CHECK null mapping refused PASS
+CHECK mapping address overflow refused PASS
+CHECK portable mapping closes PASS
+CHECK portable IB create PASS
+CHECK application IB descriptor PASS
+CHECK native IB descriptor PASS
+CHECK IB original Usage retained PASS
+CHECK all other IB descriptor fields preserved PASS
+CHECK public IB native descriptor qualifies PASS
+CHECK portable IB create PASS
+CHECK application IB descriptor PASS
+CHECK native IB descriptor PASS
+CHECK IB original Usage retained PASS
+CHECK all other IB descriptor fields preserved PASS
+CHECK public IB native descriptor qualifies PASS
+CHECK factory PASS
+CHECK wrap factory PASS
+CHECK device PASS
+CHECK create VB PASS
+CHECK application VB descriptor PASS
+CHECK native readable VB descriptor PASS
+CHECK immutable original Usage masks only readable conversion PASS
+CHECK all other VB descriptor fields preserved PASS
 CHECK content PASS
 CHECK position view PASS
 CHECK unobserved initial bytes unknown PASS
@@ -16,12 +126,13 @@ CHECK position view PASS
 CHECK full Float3 finite PASS
 CHECK native open-map control endpoint PASS
 CHECK content PASS
+CHECK notify trusted native mutation before mapping PASS
 CHECK direct native write map control PASS
 CHECK content PASS
-CHECK direct native map leaves known wrapper revision and pending zero PASS
+CHECK notification advances wrapper revision with no invented pending map PASS
 CHECK content PASS
 CHECK position view PASS
-CHECK closed query rejects native map despite wrapper pending zero PASS
+CHECK explicit invalidation rejects native map despite wrapper pending zero PASS
 CHECK direct native control closes mapping PASS
 CHECK content PASS
 CHECK position view PASS
@@ -76,6 +187,10 @@ CHECK wrapper recreated PASS
 CHECK content PASS
 CHECK position view PASS
 CHECK allocation evidence survives wrapper recreation PASS
+CHECK application VB descriptor PASS
+CHECK native readable VB descriptor PASS
+CHECK immutable original Usage masks only readable conversion PASS
+CHECK all other VB descriptor fields preserved PASS
 CHECK unbind PASS
 CHECK content PASS
 CHECK position view PASS
@@ -85,6 +200,10 @@ CHECK position view PASS
 CHECK content PASS
 CHECK position view PASS
 CHECK Reset retires atlas and advances generation PASS
+CHECK application VB descriptor PASS
+CHECK native readable VB descriptor PASS
+CHECK immutable original Usage masks only readable conversion PASS
+CHECK all other VB descriptor fields preserved PASS
 CHECK write lock PASS
 CHECK mapping PASS
 CHECK write unlock PASS
@@ -163,7 +282,7 @@ CHECK write unlock PASS
 CHECK content PASS
 CHECK position view PASS
 CHECK statistics PASS
-CHECK unsupported descriptor diagnosed PASS
+CHECK unsupported default descriptor diagnosed PASS
 CHECK factory PASS
 CHECK wrap factory PASS
 CHECK device PASS
@@ -327,6 +446,10 @@ CHECK write lock PASS
 CHECK mapping PASS
 CHECK write unlock PASS
 CHECK one untrusted observation retained without guessed Release PASS
+CHECK repeated GetDesc after foreign reservation PASS
+CHECK repeated GetDesc after foreign reservation PASS
+CHECK repeated GetDesc after foreign reservation PASS
+CHECK repeated GetDesc after foreign reservation PASS
 CHECK write lock PASS
 CHECK mapping PASS
 CHECK write unlock PASS
@@ -401,4 +524,12 @@ CHECK statistics PASS
 CHECK content PASS
 CHECK position view PASS
 CHECK Reset cannot clear permanent tracking failure PASS
-RESULT PASS checks=403
+CHECK application VB descriptor PASS
+CHECK native readable VB descriptor PASS
+CHECK immutable original Usage masks only readable conversion PASS
+CHECK all other VB descriptor fields preserved PASS
+CHECK application VB descriptor PASS
+CHECK native readable VB descriptor PASS
+CHECK immutable original Usage masks only readable conversion PASS
+CHECK all other VB descriptor fields preserved PASS
+RESULT PASS checks=534

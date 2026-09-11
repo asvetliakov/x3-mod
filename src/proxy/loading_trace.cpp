@@ -2,7 +2,6 @@
 #include "capture.h"
 #include "mesh_adjacency_cache.h"
 #include "../ownership/d3d9_ownership.h"
-#include <wincrypt.h>
 #include <new>
 #include <d3dx9.h>
 #include <algorithm>
@@ -12,8 +11,6 @@
 
 namespace x3m::loading_trace {
 namespace {
-constexpr uint64_t expected_x3_hash=0x96f0b2777c624f6dull;
-constexpr DWORD expected_x3_size=2153984;
 constexpr unsigned count=static_cast<unsigned>(Operation::Count);
 struct Counter {
     std::atomic<uint64_t> calls{0}, failures{0}, pending{0}, ambiguous{0}, bytes{0};
@@ -28,36 +25,33 @@ uint64_t clock_frequency=0, coverage_start=0;
 unsigned hook_count=0;
 constexpr unsigned mesh_table_limit=8;
 constexpr unsigned mesh_slot_indices[3]={20,22,27};
-struct MeshTable { PVOID* table=nullptr; Hook slots[3]{}; int last_result=-1,last_owned=-1; };
+constexpr unsigned mesh_contract_slots[]={4,5,7,8,9,13,14,15,16,17,18};
+struct MeshTable { PVOID* table=nullptr; Hook slots[3]{}; PVOID contract[11]{}; int last_result=-1,last_owned=-1; };
 MeshTable mesh_tables[mesh_table_limit];
 SRWLOCK mesh_lock=SRWLOCK_INIT;
 std::atomic<bool> mesh_observation_enabled{false};
-HMODULE mesh_module=nullptr; // Exact verified module is process-lifetime pinned.
+HMODULE mesh_module=nullptr; // Factory implementation lifetime is pinned, not version qualified.
 bool mesh_module_checked=false;
 namespace adjacency_cache=mesh_adjacency_cache;
-// Off is the existing direct dispatch path: no construction/hash/acquisition.
+// Off is the existing direct dispatch path: no construction or acquisition.
 bool cache_requested=false;
 std::atomic<bool> cache_enabled{false},cache_faulted{false};
 alignas(adjacency_cache::Cache) unsigned char cache_storage[sizeof(adjacency_cache::Cache)];
 // Immutable process-lifetime publication; reports need not acquire mesh_lock.
 std::atomic<adjacency_cache::Cache*> cache_instance{nullptr};
 adjacency_cache::RuntimeIdentity cache_runtime;
-HMODULE cache_backend=nullptr,cache_wined3d=nullptr;
-std::atomic<bool> cache_backend_verified{false};
-bool cache_backend_checked=false;
 std::atomic<uint64_t> cache_native_outcomes{0},cache_hit_outcomes{0},cache_cleanup_outcomes{0},cache_blocked{0};
 std::atomic<uint64_t> cache_gate_rejections{0},cache_gate_ticks{0};
 std::atomic<HRESULT> cache_cleanup_hr{S_OK};
 uint64_t cache_last_report_calls=0,cache_last_report_blocked=0,cache_last_report_rejected=0;
 enum class GateReason : unsigned {
     Unavailable, Input, MeshObject, MeshTable, MeshMethod, MeshPool, MeshOptions,
-    VertexAcquire, IndexAcquire, BufferMissing, Tracker, BufferObject, BufferTable,
-    BufferEndpoint, BackendIdentity, DescriptorEndpoint, BackendImports,
+    VertexAcquire, IndexAcquire, BufferMissing, Tracker,
     DescriptorCall, DescriptorPool, DescriptorUsage, DescriptorFormat, DescriptorSize, Count
 };
 constexpr unsigned gate_reason_count=static_cast<unsigned>(GateReason::Count);
 const char* gate_reason_name(unsigned i){
-    static constexpr const char* names[]={"unavailable","input","mesh_object","mesh_table","mesh_method","mesh_pool","mesh_options","vertex_acquire","index_acquire","buffer_missing","tracker","buffer_object","buffer_table","buffer_endpoint","backend_identity","descriptor_endpoint","backend_imports","descriptor_call","descriptor_pool","descriptor_usage","descriptor_format","descriptor_size"};
+    static constexpr const char* names[]={"unavailable","input","mesh_object","mesh_table","mesh_method","mesh_pool","mesh_options","vertex_acquire","index_acquire","buffer_missing","tracker","descriptor_call","descriptor_pool","descriptor_usage","descriptor_format","descriptor_size"};
     return i<gate_reason_count?names[i]:"unknown";
 }
 struct GateDetail {
@@ -359,33 +353,29 @@ void* __cdecl xml_read(const char* data,int size,const char* url,const char* enc
 }
 
 bool requested() { wchar_t setting[8]{};return GetEnvironmentVariableW(L"X3M_TELEMETRY",setting,8)==1&&setting[0]==L'1'; }
-uint64_t fingerprint(HMODULE module,DWORD* size_out) {
-    wchar_t path[32768]{};
-    const DWORD n=GetModuleFileNameW(module,path,32768);
-    if(!n||n>=32768)return 0;
-    HANDLE file=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
-    if(file==INVALID_HANDLE_VALUE)return 0;
-    LARGE_INTEGER size{};
-    if(!GetFileSizeEx(file,&size)||size.QuadPart<=0||size.QuadPart>64*1024*1024){CloseHandle(file);return 0;}
-    uint64_t hash=14695981039346656037ull;DWORD total=0,got=0;unsigned char bytes[16384];bool okay=true;
-    while(total<static_cast<uint64_t>(size.QuadPart)) {
-        if(!ReadFile(file,bytes,sizeof bytes,&got,nullptr)||!got){okay=false;break;}
-        for(DWORD i=0;i<got;++i){hash^=bytes[i];hash*=1099511628211ull;}
-        total+=got;
-    }
-    CloseHandle(file);if(size_out)*size_out=total;return okay?hash:0;
-}
+bool readable(const void* address,size_t bytes,HMODULE owner=nullptr,bool executable=false);
 
 // Only validated module memory is traversed. Reject unterminated names, missing
 // OriginalFirstThunk and RVAs that escape SizeOfImage; never infer names from IAT.
 struct Image {
     unsigned char* base;DWORD size;
     bool range(DWORD rva,size_t length)const{return rva<size&&length<=size-rva;}
-    template<typename T>T* at(DWORD rva,size_t n=1)const{return range(rva,sizeof(T)*n)?reinterpret_cast<T*>(base+rva):nullptr;}
+    template<typename T>T* at(DWORD rva,size_t n=1)const{
+        if(n>size/sizeof(T)||!range(rva,sizeof(T)*n)||!readable(base+rva,sizeof(T)*n,reinterpret_cast<HMODULE>(base)))return nullptr;
+        return reinterpret_cast<T*>(base+rva);
+    }
     const char* string(DWORD rva)const {
         if(!range(rva,1))return nullptr;
-        const char* s=reinterpret_cast<char*>(base+rva);
-        return std::memchr(s,0,size-rva)?s:nullptr;
+        const char* start=reinterpret_cast<char*>(base+rva);
+        DWORD offset=rva;
+        while(offset<size){
+            MEMORY_BASIC_INFORMATION info{};const auto cursor=base+offset;
+            if(!readable(cursor,1,reinterpret_cast<HMODULE>(base))||VirtualQuery(cursor,&info,sizeof info)!=sizeof info)return nullptr;
+            const size_t count=std::min<size_t>(size-offset,info.RegionSize-(cursor-static_cast<unsigned char*>(info.BaseAddress)));
+            if(std::memchr(cursor,0,count))return start;
+            offset+=static_cast<DWORD>(count);
+        }
+        return nullptr;
     }
 };
 // Serializes page-permission changes, not API calls. A failed restore retains
@@ -434,7 +424,7 @@ bool patch(Hook& hook,bool restore) {
     update_debt_count();ReleaseSRWLockExclusive(&protection_lock);
     return swapped&&protected_again&&!rolled_back;
 }
-bool readable(const void* address,size_t bytes,HMODULE owner=nullptr,bool executable=false) {
+bool readable(const void* address,size_t bytes,HMODULE owner,bool executable) {
     MEMORY_BASIC_INFORMATION info{};
     if(!address||VirtualQuery(address,&info,sizeof info)!=sizeof info||info.State!=MEM_COMMIT||
        (info.Protect&(PAGE_GUARD|PAGE_NOACCESS))||(owner&&info.AllocationBase!=owner))return false;
@@ -445,113 +435,32 @@ bool readable(const void* address,size_t bytes,HMODULE owner=nullptr,bool execut
     return protection==PAGE_READONLY||protection==PAGE_READWRITE||protection==PAGE_WRITECOPY||
            protection==PAGE_EXECUTE_READ||protection==PAGE_EXECUTE_READWRITE||protection==PAGE_EXECUTE_WRITECOPY;
 }
-constexpr unsigned char native_mesh_sha[32]={0xc2,0xcc,0xb8,0x4c,0x67,0x2a,0x9d,0x89,0x66,0xe8,0x2a,0x28,0x00,0x5a,0x42,0x69,0x88,0x6e,0xe3,0x04,0x97,0x2a,0xc3,0x59,0x0c,0x0b,0x8a,0x9c,0x16,0x22,0xa3,0xd8};
-constexpr unsigned char buffer_backend_sha[32]={0x58,0xcc,0x36,0xcf,0x74,0x12,0x8a,0xe4,0xb6,0x21,0x11,0x00,0x43,0x0d,0x14,0x6c,0x36,0x92,0x80,0x81,0x46,0xd8,0xd2,0x07,0x5e,0x6c,0x5d,0x84,0x61,0x62,0xf8,0xcf};
-
-bool sha256_module(HMODULE module,const unsigned char expected[32]) {
-    wchar_t path[32768]{};const DWORD length=GetModuleFileNameW(module,path,32768);
-    if(!length||length>=32768)return false;
-    // This executes inside x86 Wine: System32 is redirected to the actual x86
-    // module. Host tooling must fingerprint SysWOW64, not the x64 host path.
-    HANDLE file=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
-    if(file==INVALID_HANDLE_VALUE)return false;
-    LARGE_INTEGER size{};HCRYPTPROV provider=0;HCRYPTHASH hash=0;
-    bool okay=GetFileSizeEx(file,&size)&&size.QuadPart>0&&size.QuadPart<=64*1024*1024&&
-        CryptAcquireContextW(&provider,nullptr,nullptr,PROV_RSA_AES,CRYPT_VERIFYCONTEXT)&&CryptCreateHash(provider,CALG_SHA_256,0,0,&hash);
-    unsigned char buffer[16384];DWORD got=0;uint64_t total=0;
-    while(okay&&total<uint64_t(size.QuadPart)){
-        if(!ReadFile(file,buffer,sizeof buffer,&got,nullptr)||!got){okay=false;break;}
-        total+=got;okay=CryptHashData(hash,buffer,got,0)!=FALSE;
-    }
-    unsigned char digest[32]{};DWORD bytes=sizeof digest;
-    okay=okay&&total==uint64_t(size.QuadPart)&&CryptGetHashParam(hash,HP_HASHVAL,digest,&bytes,0)&&bytes==32&&!std::memcmp(digest,expected,32);
-    if(hash)CryptDestroyHash(hash);
-    if(provider)CryptReleaseContext(provider,0);
-    CloseHandle(file);return okay;
-}
-constexpr unsigned char wined3d_backend_sha[32]={0xf4,0x99,0x7b,0xc0,0x46,0x5d,0xe7,0xe8,0x7b,0xac,0x99,0x21,0xbf,0x02,0x74,0xdb,0x00,0xac,0x3b,0x3b,0xa0,0x75,0x4f,0xa0,0x3f,0x1f,0x33,0xe3,0x09,0xa8,0xe8,0x63};
-
-bool backend_imports_match(HMODULE backend,HMODULE wined3d) {
-    constexpr unsigned slots[]={0x23460,0x235b8,0x235c4};
-    constexpr unsigned targets[]={0x1ac00,0x7b690,0x7b700};
-    const char* names[]={"wined3d_buffer_get_resource","wined3d_resource_map","wined3d_resource_unmap"};
-    for(unsigned i=0;i<3;++i){
-        auto slot=reinterpret_cast<PVOID*>(reinterpret_cast<uintptr_t>(backend)+slots[i]);
-        auto target=reinterpret_cast<PVOID>(reinterpret_cast<uintptr_t>(wined3d)+targets[i]);
-        if(!readable(slot,sizeof *slot,backend)||*slot!=target||reinterpret_cast<PVOID>(GetProcAddress(wined3d,names[i]))!=target)return false;
-    }
-    return true;
-}
-bool verify_wined3d(HMODULE backend) {
-    auto slot=reinterpret_cast<PVOID*>(reinterpret_cast<uintptr_t>(backend)+0x235c4);
-    if(!readable(slot,sizeof *slot,backend))return false;
-    HMODULE candidate=nullptr,pinned=nullptr;
-    if(!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,reinterpret_cast<LPCSTR>(*slot),&candidate))return false;
-    bool okay=sha256_module(candidate,wined3d_backend_sha)&&backend_imports_match(backend,candidate)&&
-        GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,reinterpret_cast<LPCSTR>(*slot),&pinned);
-    FreeLibrary(candidate);if(okay)cache_wined3d=pinned;return okay;
-}
-
-bool backend_module_for(PVOID endpoint) {
-    // Setup is serialized independently of cache workspace/native method calls.
-    AcquireSRWLockExclusive(&mesh_lock);
-    if(!cache_backend_checked){
-        cache_backend_checked=true;HMODULE candidate=nullptr,pinned=nullptr;
-        bool okay=GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,reinterpret_cast<LPCSTR>(endpoint),&candidate)!=0;
-        if(okay){
-            auto dos=reinterpret_cast<IMAGE_DOS_HEADER*>(candidate);
-            okay=readable(dos,sizeof *dos,candidate)&&dos->e_magic==IMAGE_DOS_SIGNATURE&&dos->e_lfanew>0&&dos->e_lfanew<0x100000;
-            if(okay){auto nt=reinterpret_cast<IMAGE_NT_HEADERS32*>(reinterpret_cast<unsigned char*>(candidate)+dos->e_lfanew);
-                okay=readable(nt,sizeof *nt,candidate)&&nt->Signature==IMAGE_NT_SIGNATURE&&nt->FileHeader.Machine==IMAGE_FILE_MACHINE_I386&&nt->OptionalHeader.Magic==IMAGE_NT_OPTIONAL_HDR32_MAGIC;}
-            okay=okay&&sha256_module(candidate,buffer_backend_sha)&&verify_wined3d(candidate)&&GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,reinterpret_cast<LPCSTR>(endpoint),&pinned);
-        }
-        if(candidate)FreeLibrary(candidate);
-        if(okay)cache_backend=pinned;
-        cache_backend_verified.store(okay,std::memory_order_release);
-        log("mesh_cache_backend verified=%u pinned=%u pe32=1 sha256=58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf wined3d_sha256=f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863 contract=serialized_nonreentrant_application_calls",okay,okay);
-    }
-    const bool okay=cache_backend!=nullptr;ReleaseSRWLockExclusive(&mesh_lock);return okay;
-}
 bool verified_dynamic_options(DWORD options){
-    // The four actual X3 creation variants reviewed against exact Preview map/unmap.
+    // Bounded actual mesh variants; physical public descriptors must also agree.
     return options==0x990u||options==0x991u||options==0x18990u||options==0x18991u;
 }
-template<class Buffer> bool buffer_contract(Buffer* application,unsigned lock_rva,unsigned unlock_rva,unsigned desc_rva,uint64_t required_bytes,D3DFORMAT format,DWORD options) {
+template<class Buffer> bool buffer_contract(Buffer* application,uint64_t required_bytes,D3DFORMAT format,DWORD options) {
     GateDetail detail{};detail.scope=std::is_same_v<Buffer,IDirect3DVertexBuffer9>?1:2;detail.options=options;detail.required_bytes=required_bytes;
     if(!application)return reject_gate(GateReason::BufferMissing,detail);
-    Buffer* native=ownership::borrowed_native_buffer_for_lock_contract(application);
-    if(native){
-        ownership::BufferContentView view{};detail.status=ownership::get_buffer_content_view(application,&view);detail.known=view.known;detail.pending=view.pending_locks;
-        if(FAILED(detail.status))return reject_gate(GateReason::Tracker,detail);
+    // The typed reference returned by the verified mesh owns this interface.
+    // Public descriptor and READONLY Lock/Unlock contracts require no backend
+    // vtable, native object offset, implementation import or DLL fingerprint.
+    ownership::BufferContentView view{};
+    detail.status=ownership::get_buffer_content_view(application,&view);detail.known=view.known;detail.pending=view.pending_locks;
+    if(SUCCEEDED(detail.status)){
         detail.status=view.status;
-        if(view.requested&&(!view.known||view.pending_locks||FAILED(view.status)))return reject_gate(GateReason::Tracker,detail);
-    }else native=application;
-    if(!readable(native,sizeof(PVOID)))return reject_gate(GateReason::BufferObject,detail);
-    auto table=*reinterpret_cast<PVOID**>(native);
-    if(!readable(table,14*sizeof(PVOID)))return reject_gate(GateReason::BufferTable,detail);
-    HMODULE owner=nullptr;detail.slot=12;detail.actual_entry=DWORD(reinterpret_cast<uintptr_t>(table[12]));
-    if(!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCSTR>(table[12]),&owner))return reject_gate(GateReason::BufferEndpoint,detail);
-    for(unsigned slot:{11u,12u}){
-        detail.slot=slot;detail.actual_entry=DWORD(reinterpret_cast<uintptr_t>(table[slot]));detail.expected_entry=DWORD(reinterpret_cast<uintptr_t>(owner)+(slot==11?lock_rva:unlock_rva));
-        if(detail.actual_entry!=detail.expected_entry)return reject_gate(GateReason::BufferEndpoint,detail);
-    }
-    if(!backend_module_for(table[12]))return reject_gate(GateReason::BackendIdentity,detail);
-    const auto base=reinterpret_cast<uintptr_t>(cache_backend);
-    for(unsigned slot:{11u,12u,13u}){
-        detail.slot=slot;detail.actual_entry=DWORD(reinterpret_cast<uintptr_t>(table[slot]));detail.expected_entry=DWORD(base+(slot==11?lock_rva:slot==12?unlock_rva:desc_rva));
-        if(detail.actual_entry!=detail.expected_entry||!readable(table[slot],1,cache_backend,true))return reject_gate(slot==13?GateReason::DescriptorEndpoint:GateReason::BufferEndpoint,detail);
-    }
-    if(!backend_imports_match(cache_backend,cache_wined3d))return reject_gate(GateReason::BackendImports,detail);
+        if(FAILED(view.status)||(view.requested&&(!view.known||view.ambiguous||view.pending_locks)))return reject_gate(GateReason::Tracker,detail);
+    }else if(detail.status!=E_INVALIDARG)return reject_gate(GateReason::Tracker,detail);
     std::conditional_t<std::is_same_v<Buffer,IDirect3DVertexBuffer9>,D3DVERTEXBUFFER_DESC,D3DINDEXBUFFER_DESC> desc{};
-    detail.status=native->GetDesc(&desc);detail.pool=desc.Pool;detail.usage=desc.Usage;detail.format=desc.Format;detail.size_bytes=desc.Size;
+    detail.status=application->GetDesc(&desc);detail.pool=desc.Pool;detail.usage=desc.Usage;detail.format=desc.Format;detail.size_bytes=desc.Size;
     if(FAILED(detail.status))return reject_gate(GateReason::DescriptorCall,detail);
     if(desc.Pool!=D3DPOOL_SYSTEMMEM)return reject_gate(GateReason::DescriptorPool,detail);
-    if(desc.Format!=format)return reject_gate(GateReason::DescriptorFormat,detail);
-    if(desc.Usage&D3DUSAGE_WRITEONLY)return reject_gate(GateReason::DescriptorUsage,detail);
-    if(options&D3DXMESH_DYNAMIC){
-        const DWORD expected_usage=D3DUSAGE_DYNAMIC|((options&D3DXMESH_SOFTWAREPROCESSING)?D3DUSAGE_SOFTWAREPROCESSING:0);
-        if(!verified_dynamic_options(options)||desc.Usage!=expected_usage)return reject_gate(GateReason::DescriptorUsage,detail);
-    }else if(desc.Usage&D3DUSAGE_DYNAMIC)return reject_gate(GateReason::DescriptorUsage,detail);
+    const auto expected_type=std::is_same_v<Buffer,IDirect3DVertexBuffer9>?D3DRTYPE_VERTEXBUFFER:D3DRTYPE_INDEXBUFFER;
+    if(desc.Type!=expected_type||desc.Format!=format)return reject_gate(GateReason::DescriptorFormat,detail);
+    const DWORD software_option=std::is_same_v<Buffer,IDirect3DVertexBuffer9>?D3DXMESH_VB_SOFTWAREPROCESSING:D3DXMESH_IB_SOFTWAREPROCESSING;
+    const DWORD expected_usage=((options&D3DXMESH_DYNAMIC)?D3DUSAGE_DYNAMIC:0)|
+        ((options&software_option)?D3DUSAGE_SOFTWAREPROCESSING:0);
+    if(desc.Usage!=expected_usage)return reject_gate(GateReason::DescriptorUsage,detail);
     if(!required_bytes||required_bytes>desc.Size)return reject_gate(GateReason::DescriptorSize,detail);
     return true;
 }
@@ -559,15 +468,18 @@ bool cache_buffer_contract(ID3DXMesh* mesh) {
     GateDetail detail{};
     if(!readable(mesh,sizeof(PVOID)))return reject_gate(GateReason::MeshObject,detail);
     auto table=*reinterpret_cast<PVOID**>(mesh);if(!readable(table,19*sizeof(PVOID)))return reject_gate(GateReason::MeshTable,detail);
-    constexpr unsigned slots[]={4,5,7,8,9,13,14,15,16,17,18};
-    constexpr unsigned rvas[]={0x18c626,0x18c63d,0x191987,0x18c280,0x18c297,0x18c2ae,0x18c2e0,0x18c57d,0x18c1a3,0x18c1c0,0x18c1ee};
+    const MeshTable* recorded=nullptr;
+    for(const auto& row:mesh_tables)if(row.table==table){recorded=&row;break;}
+    if(!recorded)return reject_gate(GateReason::MeshTable,detail);
     for(unsigned i=0;i<11;++i){
-        detail.slot=slots[i];detail.actual_entry=DWORD(reinterpret_cast<uintptr_t>(table[slots[i]]));detail.expected_entry=DWORD(reinterpret_cast<uintptr_t>(mesh_module)+rvas[i]);
-        if(detail.actual_entry!=detail.expected_entry)return reject_gate(GateReason::MeshMethod,detail);
+        detail.slot=mesh_contract_slots[i];detail.actual_entry=DWORD(reinterpret_cast<uintptr_t>(table[detail.slot]));
+        detail.expected_entry=DWORD(reinterpret_cast<uintptr_t>(recorded->contract[i]));
+        if(table[detail.slot]!=recorded->contract[i])return reject_gate(GateReason::MeshMethod,detail);
     }
     const DWORD options=mesh->GetOptions();detail.options=options;
     if((options&D3DXMESH_SYSTEMMEM)!=D3DXMESH_SYSTEMMEM)return reject_gate(GateReason::MeshPool,detail);
-    if(options&(D3DXMESH_WRITEONLY|D3DXMESH_VB_SHARE))return reject_gate(GateReason::MeshOptions,detail);
+    constexpr DWORD supported_options=D3DXMESH_SYSTEMMEM|D3DXMESH_32BIT|D3DXMESH_DYNAMIC|D3DXMESH_SOFTWAREPROCESSING;
+    if(options&~supported_options)return reject_gate(GateReason::MeshOptions,detail);
     if((options&D3DXMESH_DYNAMIC)&&!verified_dynamic_options(options))return reject_gate(GateReason::MeshOptions,detail);
     IDirect3DVertexBuffer9* vb=nullptr;IDirect3DIndexBuffer9* ib=nullptr;
     detail.status=mesh->GetVertexBuffer(&vb);bool okay=SUCCEEDED(detail.status)&&vb;
@@ -575,8 +487,8 @@ bool cache_buffer_contract(ID3DXMesh* mesh) {
     if(okay){detail.status=mesh->GetIndexBuffer(&ib);okay=SUCCEEDED(detail.status)&&ib;if(!okay)reject_gate(GateReason::IndexAcquire,detail);}
     if(okay){const uint64_t vertices=uint64_t(mesh->GetNumVertices())*mesh->GetNumBytesPerVertex();
         const uint64_t indices=uint64_t(mesh->GetNumFaces())*3*((options&D3DXMESH_32BIT)?4:2);
-        okay=buffer_contract(vb,0x1f90,0x2060,0x20c0,vertices,D3DFMT_VERTEXDATA,options)&&
-             buffer_contract(ib,0x2a70,0x2b40,0x2ba0,indices,(options&D3DXMESH_32BIT)?D3DFMT_INDEX32:D3DFMT_INDEX16,options);
+        okay=buffer_contract(vb,vertices,D3DFMT_VERTEXDATA,options)&&
+             buffer_contract(ib,indices,(options&D3DXMESH_32BIT)?D3DFMT_INDEX32:D3DFMT_INDEX16,options);
     }
     if(ib)ib->Release();
     if(vb)vb->Release();
@@ -611,55 +523,58 @@ void cache_report() {
     const auto blocked=cache_blocked.load(),rejected=cache_gate_rejections.load();
     if(stats.calls==cache_last_report_calls&&blocked==cache_last_report_blocked&&rejected==cache_last_report_rejected)return;
     cache_last_report_calls=stats.calls;cache_last_report_blocked=blocked;cache_last_report_rejected=rejected;
-    log("mesh_cache_metric cumulative=1 qpc=%llu dispatch_enabled=%u backend_verified=%u faulted=%u calls=%llu hits=%llu misses=%llu bypasses=%llu contention=%llu admissions=%llu evictions=%llu allocation_failures=%llu acquisition_failures=%llu unrecoverable_unlocks=%llu native_calls=%llu native_failures=%llu retained_bytes=%llu retained_entries=%llu acquired_bytes=%llu copied_bytes=%llu evicted_bytes=%llu acquisition_ticks=%llu lookup_ticks=%llu copy_ticks=%llu native_ticks=%llu total_ticks=%llu gate_rejections=%llu gate_ticks=%llu native_outcomes=%llu hit_outcomes=%llu cleanup_outcomes=%llu blocked=%llu cleanup_hr=%08lx rejected_result=%llu rejected_last_error=%llu rejected_fp=%llu",
-        tick(),unsigned(cache_enabled.load()),unsigned(cache_backend_verified.load()),unsigned(cache_faulted.load()),stats.calls,stats.hits,stats.misses,stats.bypasses,stats.contention,stats.admissions,stats.evictions,stats.allocation_failures,stats.acquisition_failures,stats.unrecoverable_unlocks,stats.native_calls,stats.native_failures,stats.retained_bytes,stats.retained_entries,stats.acquired_bytes,stats.copied_bytes,stats.evicted_bytes,stats.acquisition_ticks,stats.lookup_ticks,stats.copy_ticks,stats.native_ticks,stats.total_ticks,rejected,cache_gate_ticks.load(),cache_native_outcomes.load(),cache_hit_outcomes.load(),cache_cleanup_outcomes.load(),blocked,cache_cleanup_hr.load(),stats.rejected_result,stats.rejected_last_error,stats.rejected_fp);
+    log("mesh_cache_metric cumulative=1 qpc=%llu dispatch_enabled=%u buffer_contract=public_systemmem_readonly faulted=%u calls=%llu hits=%llu misses=%llu bypasses=%llu contention=%llu admissions=%llu evictions=%llu allocation_failures=%llu acquisition_failures=%llu unrecoverable_unlocks=%llu native_calls=%llu native_failures=%llu retained_bytes=%llu retained_entries=%llu acquired_bytes=%llu copied_bytes=%llu evicted_bytes=%llu acquisition_ticks=%llu lookup_ticks=%llu copy_ticks=%llu native_ticks=%llu total_ticks=%llu gate_rejections=%llu gate_ticks=%llu native_outcomes=%llu hit_outcomes=%llu cleanup_outcomes=%llu blocked=%llu cleanup_hr=%08lx rejected_result=%llu rejected_last_error=%llu rejected_fp=%llu",
+        tick(),unsigned(cache_enabled.load()),unsigned(cache_faulted.load()),stats.calls,stats.hits,stats.misses,stats.bypasses,stats.contention,stats.admissions,stats.evictions,stats.allocation_failures,stats.acquisition_failures,stats.unrecoverable_unlocks,stats.native_calls,stats.native_failures,stats.retained_bytes,stats.retained_entries,stats.acquired_bytes,stats.copied_bytes,stats.evicted_bytes,stats.acquisition_ticks,stats.lookup_ticks,stats.copy_ticks,stats.native_ticks,stats.total_ticks,rejected,cache_gate_ticks.load(),cache_native_outcomes.load(),cache_hit_outcomes.load(),cache_cleanup_outcomes.load(),blocked,cache_cleanup_hr.load(),stats.rejected_result,stats.rejected_last_error,stats.rejected_fp);
 }
 
-bool verify_mesh_module() {
+bool pin_address(const void* address,bool executable) {
+    if(!readable(address,1,nullptr,executable))return false;
+    HMODULE pinned=nullptr;
+    return GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,
+        reinterpret_cast<LPCSTR>(address),&pinned)!=FALSE;
+}
+bool pin_mesh_module() {
     if(mesh_module_checked)return mesh_module!=nullptr;
     mesh_module_checked=true;
-    HMODULE candidate=nullptr;
     const auto create=hooks[static_cast<unsigned>(Operation::MeshCreate)].original;
-    if(!create||!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,reinterpret_cast<LPCSTR>(create),&candidate))return false;
-    DWORD size=0;const uint64_t hash=fingerprint(candidate,&size);
-    bool valid=hash==0x49cc52632ef762d4ull&&size==3786760;
-    // Pin only the exact verified native implementation. No mesh/device refs
-    // are acquired; callbacks/originals remain callable after owned-slot restore.
-    HMODULE pinned=nullptr;
-    if(valid)valid=GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,reinterpret_cast<LPCSTR>(create),&pinned)!=0;
-    FreeLibrary(candidate);
-    if(valid)mesh_module=pinned;
-    if(valid&&cache_requested&&sha256_module(mesh_module,native_mesh_sha)){
-        std::copy_n(native_mesh_sha,32,cache_runtime.sha256.begin());cache_runtime.generation=1;
-        cache_runtime.verified=true;cache_runtime.success_preserves_last_error=true;
-        // generate() is reached only after exact backend/endpoint/descriptor gates.
+    if(!create||!readable(create,1,nullptr,true)||
+       !GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,
+           reinterpret_cast<LPCSTR>(create),&mesh_module))return false;
+    // This token separates this process-local adapter generation; it is not a
+    // code fingerprint. Each key additionally includes the actual saved method.
+    if(cache_requested){
+        cache_runtime.algorithm_token=reinterpret_cast<uintptr_t>(mesh_module);cache_runtime.generation=1;
+        cache_runtime.public_contract=true;
         cache_runtime.systemmem_dynamic_readonly_verified=true;
         auto* const instance=new(cache_storage) adjacency_cache::Cache();
-        cache_instance.store(instance,std::memory_order_release);
-        cache_enabled.store(true,std::memory_order_release);
-        log("mesh_cache ready=1 buffer_contract_required=1 sha256=c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8 generation=1 retained_budget=16777216 scratch_budget=4194304 entries=512 dynamic_systemmem_contract=1 dynamic_options=990,991,18990,18991");
-    }else if(cache_requested)log("mesh_cache ready=0 reason=native_runtime_not_verified");
-    log("mesh_trace module_verified=%u pinned=%u hash=%016llx bytes=%lu scope=shared_native_vtables table_limit=%u objects_retained=0",valid,valid,hash,size,mesh_table_limit);
-    return valid;
+        cache_instance.store(instance,std::memory_order_release);cache_enabled.store(true,std::memory_order_release);
+        log("mesh_cache ready=1 buffer_contract_required=1 identity=process_local generation=1 retained_budget=16777216 scratch_budget=4194304 entries=512 buffer_contract=public_systemmem_readonly file_fingerprint_required=0 serialized_application_calls=1 dynamic_systemmem_contract=1 dynamic_options=990,991,18990,18991");
+    }
+    log("mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=%u objects_retained=0",mesh_table_limit);
+    return true;
 }
 void observe_mesh(ID3DXMesh* mesh) {
     if(!mesh_observation_enabled.load(std::memory_order_acquire))return;
     AcquireSRWLockExclusive(&mesh_lock);
-    if(!mesh_observation_enabled.load(std::memory_order_relaxed)||!verify_mesh_module()||!readable(mesh,sizeof(PVOID))){ReleaseSRWLockExclusive(&mesh_lock);return;}
+    if(!mesh_observation_enabled.load(std::memory_order_relaxed)||!pin_mesh_module()||!readable(mesh,sizeof(PVOID))){ReleaseSRWLockExclusive(&mesh_lock);return;}
     auto table=*reinterpret_cast<PVOID**>(mesh);
-    if(reinterpret_cast<uintptr_t>(table)%alignof(PVOID)||!readable(table,29*sizeof(PVOID),mesh_module)){ReleaseSRWLockExclusive(&mesh_lock);return;}
-    // IUnknown and all three target methods must execute in this exact module.
-    for(unsigned slot:{0u,1u,2u,20u,22u,27u}) {
-        bool ours=false;
-        for(const auto& row:mesh_tables)for(const auto& h:row.slots)ours|=h.replacement&&table[slot]==h.replacement;
-        if(!ours&&!readable(table[slot],1,mesh_module,true)){ReleaseSRWLockExclusive(&mesh_lock);return;}
-    }
+    if(reinterpret_cast<uintptr_t>(table)%alignof(PVOID)||!readable(table,29*sizeof(PVOID))){ReleaseSRWLockExclusive(&mesh_lock);return;}
     unsigned index=0;
     while(index<mesh_table_limit&&mesh_tables[index].table&&mesh_tables[index].table!=table)++index;
     if(index==mesh_table_limit){ReleaseSRWLockExclusive(&mesh_lock);return;}
     auto& row=mesh_tables[index];
     if(!row.table){
+        // Once per distinct shared table: saved table/call targets must outlive
+        // trampoline chains. Pin actual owning modules, without placement/RVAs.
+        if(!pin_address(table,false)){ReleaseSRWLockExclusive(&mesh_lock);return;}
+        for(unsigned slot:{0u,1u,2u,20u,22u,27u}){
+            bool ours=false;
+            for(const auto& prior:mesh_tables)for(const auto& h:prior.slots)ours|=h.replacement&&table[slot]==h.replacement;
+            if(ours||!pin_address(table[slot],true)){ReleaseSRWLockExclusive(&mesh_lock);return;}
+        }
+        for(unsigned slot:mesh_contract_slots)if(!pin_address(table[slot],true)){ReleaseSRWLockExclusive(&mesh_lock);return;}
         row.table=table;
+        for(unsigned i=0;i<11;++i)row.contract[i]=table[mesh_contract_slots[i]];
         for(unsigned i=0;i<3;++i)row.slots[i]={"d3dx9_37.dll",method_names[i],mesh_replacements[index][i],table[mesh_slot_indices[i]],&table[mesh_slot_indices[i]]};
     }
     bool already=true;for(const auto& h:row.slots)already&=*h.slot==h.replacement;
@@ -698,27 +613,27 @@ void restore_mesh_hooks() {
     // to our trampoline after teardown. The native module remains pinned.
     ReleaseSRWLockExclusive(&mesh_lock);
 }
-bool install(HMODULE target,uint64_t expected,bool production) {
+bool install(HMODULE target) {
     if(installed.load())return true;
     if(installation_started){log("loading_trace disabled=reinitialization_not_supported");return false;}
     if(!requested())return false;
-    DWORD bytes=0;const uint64_t hash=fingerprint(target,&bytes);
-    if(!hash||hash!=expected||(production&&bytes!=expected_x3_size)) {
-        log("loading_trace disabled=fingerprint_mismatch hash=%016llx bytes=%lu",hash,bytes);return false;
-    }
     auto base=reinterpret_cast<unsigned char*>(target);
     auto dos=reinterpret_cast<IMAGE_DOS_HEADER*>(base);
-    if(dos->e_magic!=IMAGE_DOS_SIGNATURE||dos->e_lfanew<static_cast<LONG>(sizeof(IMAGE_DOS_HEADER))||dos->e_lfanew>0x100000)return false;
+    if(!readable(dos,sizeof *dos,target)||dos->e_magic!=IMAGE_DOS_SIGNATURE||
+       dos->e_lfanew<static_cast<LONG>(sizeof(IMAGE_DOS_HEADER))||dos->e_lfanew>0x100000)return false;
     auto nt=reinterpret_cast<IMAGE_NT_HEADERS32*>(base+dos->e_lfanew);
-    if(nt->Signature!=IMAGE_NT_SIGNATURE||nt->FileHeader.Machine!=IMAGE_FILE_MACHINE_I386||nt->OptionalHeader.Magic!=IMAGE_NT_OPTIONAL_HDR32_MAGIC)return false;
-    if(production&&(nt->OptionalHeader.SizeOfImage!=0x2f5000||nt->OptionalHeader.ImageBase!=0x400000))return false;
+    if(!readable(nt,sizeof *nt,target)||nt->Signature!=IMAGE_NT_SIGNATURE||nt->FileHeader.Machine!=IMAGE_FILE_MACHINE_I386||
+       nt->OptionalHeader.Magic!=IMAGE_NT_OPTIONAL_HDR32_MAGIC||nt->OptionalHeader.NumberOfRvaAndSizes<=IMAGE_DIRECTORY_ENTRY_IMPORT||
+       nt->OptionalHeader.SizeOfImage<sizeof(IMAGE_DOS_HEADER)||nt->OptionalHeader.SizeOfImage>0x40000000)return false;
     Image image{base,nt->OptionalHeader.SizeOfImage};
     const auto directory=nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
     if(!directory.VirtualAddress||!image.range(directory.VirtualAddress,directory.Size))return false;
+    PVOID originals[count]{};PVOID* slots[count]{};
     hook_count=0;
     for(DWORD pos=0;pos+sizeof(IMAGE_IMPORT_DESCRIPTOR)<=directory.Size;pos+=sizeof(IMAGE_IMPORT_DESCRIPTOR)) {
         auto descriptor=image.at<IMAGE_IMPORT_DESCRIPTOR>(directory.VirtualAddress+pos);
-        if(!descriptor||!descriptor->Name)break;
+        if(!descriptor)return false;
+        if(!descriptor->Name)break;
         const auto dll=image.string(descriptor->Name);if(!dll||!descriptor->OriginalFirstThunk)continue;
         for(DWORD i=0;i<image.size/sizeof(IMAGE_THUNK_DATA32);++i) {
             const uint64_t name_rva=uint64_t(descriptor->OriginalFirstThunk)+uint64_t(i)*sizeof(IMAGE_THUNK_DATA32);
@@ -731,17 +646,22 @@ bool install(HMODULE target,uint64_t expected,bool production) {
             const auto symbol=image.string(name->u1.AddressOfData+2);if(!symbol)continue;
             for(auto& hook:hooks) {
                 if(_stricmp(dll,hook.dll)||std::strcmp(symbol,hook.name))continue;
-                if(hook.slot)continue;
-                if(!slot->u1.Function||reinterpret_cast<uintptr_t>(&slot->u1.Function)%alignof(PVOID))continue;
-                hook.slot=reinterpret_cast<PVOID*>(&slot->u1.Function);
-                hook.original=reinterpret_cast<PVOID>(slot->u1.Function);
+                const unsigned index=static_cast<unsigned>(&hook-hooks);
+                if(slots[index])continue;
+                if(!slot->u1.Function||reinterpret_cast<uintptr_t>(&slot->u1.Function)%alignof(PVOID)||
+                   !readable(reinterpret_cast<PVOID>(slot->u1.Function),1,nullptr,true))continue;
+                auto* proposed=reinterpret_cast<PVOID*>(&slot->u1.Function);
+                for(auto* existing:slots)if(existing==proposed)return false;
+                slots[index]=proposed;originals[index]=reinterpret_cast<PVOID>(slot->u1.Function);
             }
         }
     }
+    bool found=false;for(auto* slot:slots)found|=slot!=nullptr;if(!found)return false;
     LARGE_INTEGER frequency{};if(!QueryPerformanceFrequency(&frequency)||frequency.QuadPart<=0)return false;
+    for(auto& hook:hooks){const auto i=&hook-hooks;hook.slot=slots[i];hook.original=originals[i];}
     installation_started=true;
     wchar_t cache_setting[8]{};cache_requested=GetEnvironmentVariableW(L"X3M_MESH_CACHE",cache_setting,8)==1&&cache_setting[0]==L'1';
-    log("mesh_cache requested=%u enabled=0 activation=await_verified_mesh_and_buffer_contract adjacency_metric_scope=hook_service restart_on_cleanup_failure=1",cache_requested);
+    log("mesh_cache requested=%u enabled=0 activation=await_public_mesh_and_buffer_contract adjacency_metric_scope=hook_service restart_on_cleanup_failure=1",cache_requested);
     clock_frequency=frequency.QuadPart;
     mesh_observation_enabled.store(true,std::memory_order_release);
     for(auto& hook:hooks) {
@@ -749,12 +669,12 @@ bool install(HMODULE target,uint64_t expected,bool production) {
         else {log("loading_hook name=%s installed=0",hook.name);if(hook.slot&&!has_protection_debt(hook.slot))hook.slot=nullptr;}
     }
     coverage_start=tick();installed.store(hook_count!=0);
-    log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=1 paths=0 hash=%016llx",coverage_start,clock_frequency,hook_count,hash);
+    log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=1 paths=0 qualification=named_pe32_imports",coverage_start,clock_frequency,hook_count);
     return installed.load();
 }
 }
 
-bool initialize(){const DWORD error=GetLastError();bool result=install(GetModuleHandleW(nullptr),expected_x3_hash,true);SetLastError(error);return result;}
+bool initialize(){const DWORD error=GetLastError();bool result=install(GetModuleHandleW(nullptr));SetLastError(error);return result;}
 bool active(){return installed.load()||mesh_owned_slots.load()||protection_debts.load();}
 Snapshot take_snapshot() {
     Snapshot result{};
@@ -791,8 +711,7 @@ void shutdown() {
     installed.store(hook_count!=0);recover_protections();SetLastError(error);
 }
 #ifdef X3M_LOADING_TRACE_FIXTURE
-uint64_t fixture_fingerprint(HMODULE target){return fingerprint(target,nullptr);}
-bool fixture_initialize(HMODULE target,uint64_t expected){return install(target,expected,false);}
+bool fixture_initialize(HMODULE target){return install(target);}
 void fixture_fail_mesh_patch(unsigned step){fail_mesh_patch=step;}
 void fixture_fail_protection_restores(unsigned calls){fail_protection_restore=calls;}
 unsigned fixture_protection_debts(){return protection_debts.load();}

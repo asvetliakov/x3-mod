@@ -190,7 +190,7 @@ visual acceptance remain separate gates. Generated build products and raw runtim
 and index buffers through a dedicated private-data GUID and flags zero. It stores
 no COM pointer, resource payload, hash or ownership edge. Default-off calls perform
 normal backend forwarding without private-data reads or writes. The loader selects
-this option only for active object tracing under ownership.
+this option for active object tracing or finite-position capture under ownership.
 
 `get_buffer_content_view(application_resource, out)` accepts canonical application
 VB/IB wrappers. It returns `S_OK` for a recognized buffer even when tracking is off
@@ -227,7 +227,10 @@ does not make a native write plus revision update transactional for concurrent
 callers. A view taken concurrently with another buffer operation can be stale, so
 `known` is meaningful only under this serialization contract.
 
-This observes only operations crossing the wrapper. Borrowed-native writes and
+This observes operations crossing the wrapper and explicit notifications through
+`invalidate_native_buffer_evidence`. A trusted internal native mutation must notify
+before writing and serialize its entire interval against queries/replay; notification
+advances revision and invalidates finite summaries. Unannounced native writes and
 other external modifications are outside the contract. Revisions identify observed
 write events, not content equality, asset identity, semantic object identity or
 proof that geometry is immutable. The fixture and failure-output comparisons are
@@ -256,3 +259,20 @@ Unlock makes tracking ambiguous under the existing rules. Skipping a native
 operation that would acquire writable locks can skip revision events even when
 the final bytes match; any loading cache must verify that operation's actual
 lock flags and account for this distinction before claiming tracking parity.
+
+## Portable finite upload evidence
+
+`Options::capture_finite_positions` adds bounded finite/index summaries to observed
+managed-buffer uploads. `portable_managed_upload` uses public descriptors and the
+pointer returned by the application's successful Lock. Eligible WRITEONLY managed
+creations use readable native backing with immutable original Usage returned by
+the wrapper's GetDesc. Failed conversion/metadata admission retries the original
+creation request. Normal disabled operation keeps native forwarding.
+
+No production buffer qualification reads Wine layouts, heap associations or map
+counts, or checks DLL hashes/method RVAs. Geometry leases use standard COM retention.
+Observed mapping closure requires serialized wrapper transactions; public D3D9
+cannot discover unannounced native mappings. See the full
+[portable upload contract](../../docs/verification/portable-managed-upload.md),
+[lease verification](../../docs/verification/geometry-leases.md) and
+[performance evidence](../../docs/verification/geometry-performance.md).

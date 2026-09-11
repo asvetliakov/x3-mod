@@ -11,11 +11,48 @@ from summarize_capture import fields, summarize
 from run_ownership_integration import MODES, selected_fixtures, sources, binaries
 from verify_capture_state import verify as verify_capture
 
-def verify_geometry(trace, requested, enabled, native_fallback=False):
-    """These original fixtures are deliberately unsupported finite inputs."""
+def verify_portable_capture_metrics(metrics):
+    """Authored capture fixture: each device writes VB60, IB6, then VB60 bytes.
+
+    Counters are cumulative samples, never summed across repeated frame batches.
+    POSITIONT is still unsupported by the motion reader, so no XYZ query runs.
+    """
+    expected = {(str(device), str(frame), 'present') for device in (1, 2) for frame in range(6)}
+    expected |= {(str(device), '6', phase) for device in (1, 2) for phase in ('reset_before', 'reset_after')}
+    samples = {}
+    for metric in metrics:
+        key = tuple(metric[k] for k in ('device', 'frame', 'phase'))
+        assert key not in samples, 'Duplicate portable metric sample'
+        samples[key] = metric
+    assert set(samples) == expected, 'Portable upload metric inventory differs from authored fixture'
+    for (device, frame, phase), metric in samples.items():
+        replacement = int(frame) >= 4
+        writes, classified = (3, 126) if replacement else (2, 66)
+        assert metric['result'] == metric['status'] == '00000000'
+        assert metric['requested'] == metric['active'] == '1'
+        assert int(metric['generation']) == (2 if phase == 'reset_after' else 1)
+        assert all(int(metric[k]) == writes for k in ('uploads', 'publications', 'scans'))
+        assert int(metric['classified_bytes']) == classified
+        assert int(metric['allocation_failures']) == int(metric['position_components']) == 0
+        assert int(metric['peak_payload_bytes']) >= 10, 'VB76 requires nineteen four-bit cells'
+        if phase == 'present':
+            assert int(metric['sidecars']) >= 2 and int(metric['metadata_bytes']) > 0
+            assert int(metric['payload_bytes']) >= 10, 'Readable managed VB atlas missing'
+        if phase == 'reset_after':
+            assert int(metric['payload_bytes']) == 0, 'Reset must retire position atlases'
+    return dict(devices=2, uploads_per_device=3, publications_per_device=3,
+                scans_per_device=3, classified_bytes_per_device=126,
+                partial_vertex_upload_bytes=60, whole_index_upload_bytes=6,
+                source_position_layout='POSITIONT remains unsupported', cumulative_samples_not_summed=True)
+
+
+def verify_geometry(trace, requested, enabled, native_fallback=False, portable_capture=False):
+    """Separate portable upload acceptance from unsupported renderer inputs."""
+    assert not portable_capture or (requested and enabled and not native_fallback)
     mode = [fields(line) for line in trace.splitlines() if line.startswith('finite_upload_mode ')]
     metrics = [fields(line) for line in trace.splitlines() if line.startswith('finite_upload_metric ')]
     reasons = [fields(line) for line in trace.splitlines() if line.startswith('finite_upload_reason ')]
+    portable = None
     if requested:
         assert len(mode) == 1 and mode[0]['requested'] == '1'
         assert mode[0]['enabled'] == str(int(enabled)) and mode[0]['payload_retained'] == '0'
@@ -25,25 +62,42 @@ def verify_geometry(trace, requested, enabled, native_fallback=False):
             assert any(m['phase'] == 'present' and m['active'] == '1' and int(m['generation']) > 0 for m in metrics)
         else:
             assert all(m['result'] == '80070057' and m['requested'] == m['active'] == '0' for m in metrics)
-        # Usage-zero fixture buffers and UP data must never get a certificate.
-        assert all(int(m[k]) == 0 for m in metrics for k in
-                   ('payload_bytes', 'peak_payload_bytes', 'sidecars', 'metadata_bytes',
-                    'global_payload_bytes', 'global_sidecars', 'publications', 'scans', 'classified_bytes', 'position_components'))
+        if portable_capture:
+            portable = verify_portable_capture_metrics(metrics)
+            assert not any(r['reason'] == '9' and int(r['count']) for r in reasons), 'Readable managed fixture allocations were refused'
+        else:
+            # UP-only/no-buffer cases and native fallback cannot own an atlas.
+            assert all(int(m[k]) == 0 for m in metrics for k in
+                       ('payload_bytes', 'peak_payload_bytes', 'sidecars', 'metadata_bytes',
+                        'global_payload_bytes', 'global_sidecars', 'publications', 'scans', 'classified_bytes', 'position_components'))
     else:
         assert not mode and not metrics and not reasons, 'Inherited finite opt-in leaked into baseline'
     capture = summarize(trace, {})
     draws = [draw for frame in capture['frames'].values() for draw in frame['draws']]
     assert len(draws) == sum(line.startswith('motion_geometry ') for line in trace.splitlines()), 'Orphan or duplicate geometry record'
+    known_indices = 0
     for draw in draws:
         assert draw['motion_input_matches_draw'] and draw['motion_geometry_matches_draw']
         motion, geometry = draw['motion_input'], draw['motion_geometry']
         assert motion['vertex_finite_verified'] == motion['lifetime_verified'] == '0'
         assert geometry['source_qualified'] == '0' and geometry['source_hash'] == '0000000000000000'
-        assert geometry['source_words'] == '0'
-        assert geometry['finite_state'] == '0' and geometry['index_known'] == '0'
-        assert geometry['index_range_verified'] == '0'
+        assert geometry['source_words'] == '0' and geometry['finite_state'] == '0'
         assert geometry['index_required'] == str(int(draw['kind'] == 'indexed'))
+        # This fixture's sole failed indexed call explicitly unbinds its IB.
+        # A failed draw in general may still carry truthful storage extrema.
+        expected_index = portable_capture and draw['kind'] == 'indexed' and draw['draw_result']['result'] == '00000000'
+        if expected_index:
+            assert geometry['index_requested'] == geometry['index_known'] == geometry['index_range_verified'] == geometry['index_exact'] == '1'
+            assert geometry['index_status'] == '00000000' and geometry['index_reason'] == '0'
+            assert geometry['index_generation'] == geometry['index_revision'] == motion['ib_revision'] == '1'
+            assert geometry['index_min'] == '0' and geometry['index_max'] == '2'
+            known_indices += 1
+        else:
+            assert geometry['index_known'] == geometry['index_range_verified'] == '0'
+    if portable_capture:
+        assert known_indices == 8, 'Four successful indexed draws per normal/pure device must use actual IB evidence'
     return dict(scoped_geometry_records=len(draws), finite_metric_records=len(metrics),
+                known_index_draws=known_indices, portable_uploads=portable,
                 native_contract_rejection_reported=any(int(r['count']) > 0 for r in reasons if r['reason'] == '9'))
 
 
@@ -123,12 +177,13 @@ def verify():
                 assert all(b['result']==expected_result for b in buffers), 'Native and wrapper metadata query paths differ'
             if name=='lifetime':assert 'INTEGRATION LIFETIME RESULT failures=0' in text
             if name=='contracts':assert 'OWNERSHIP RESULT checks=' in text and 'failures=0' in text
-            geometry = verify_geometry(trace, mode in ('finite_on','finite_without_ownership','motion_requested'), mode in ('finite_on','motion_requested'))
+            geometry = verify_geometry(trace, mode in ('finite_on','finite_without_ownership','motion_requested'), mode in ('finite_on','motion_requested'),
+                                       portable_capture=mode == 'finite_on' and name == 'capture')
             motion_mode = verify_motion_mode(trace, mode == 'motion_requested')
             if name in ('smoke', 'capture'):
                 assert geometry['scoped_geometry_records'] > 0, 'Captured draw geometry missing'
             if mode == 'finite_on' and name == 'capture':
-                assert geometry['native_contract_rejection_reported'], 'Unsupported managed usage was not refused'
+                assert geometry['portable_uploads'] and geometry['known_index_draws'] == 8, 'Portable allocation/index proof missing'
             reused=expected-len({h['ptr'] for h in hooks})
             if name=='lifetime':assert reused>0,'Address reuse not exercised; increase fixture rounds'
             report['cases'][f'{mode}-{name}']={'devices':expected,'destroyed':len(destroyed),'reused_device_addresses':reused, **geometry, **motion_mode}
@@ -142,7 +197,7 @@ def verify():
     assert (results/'ownership-integration-off-auto.txt').read_text()==(results/'ownership-integration-scene_depth-auto.txt').read_text(),'Scene observer changes app-visible outcomes'
     for finite_mode, baseline_mode, name in (('finite_on','on','capture'), ('finite_without_ownership','off','capture'), ('motion_without_prereqs','off','capture'), ('motion_requested','off','auto')):
         assert (results/f'ownership-integration-{finite_mode}-{name}.txt').read_bytes() == (results/f'ownership-integration-{baseline_mode}-{name}.txt').read_bytes(), 'Diagnostic option wiring changes original fixture API results'
-    report['limits']=['Motion option cases establish configuration gates and synthetic-executable refusal, not successful replay or temporal consumption.','Synthetic DLL integration, not gameplay validation.','Direct3D9Ex remains native and uninstrumented.','Finite enabled cases verify wiring and unsupported-input refusal; positive finite uploads have separate original-data fixtures.','Original-preserving depth-copy allocation smoke only; numerical/content behavior has a separate fixture.']
+    report['limits']=['Motion option cases establish configuration gates and synthetic-executable refusal, not successful replay or temporal consumption.','Synthetic DLL integration, not gameplay validation.','Direct3D9Ex remains native and uninstrumented.','Finite capture verifies readable managed upload/index evidence while POSITIONT/UP inputs remain ineligible; no XYZ or live motion candidate is established.','Original-preserving depth-copy allocation smoke only; numerical/content behavior has a separate fixture.']
     assert build['sources']==sources() and build['binaries_at_end']==binaries(), 'Source/binary changed during verification'
     report['current_sources_and_binaries_match']=True
     (results/'ownership-integration-verification.json').write_text(json.dumps(report,indent=2)+'\n')

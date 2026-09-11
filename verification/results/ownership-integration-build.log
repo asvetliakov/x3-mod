@@ -12,7 +12,7 @@
 [ 40%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loading_trace.cpp.obj
 [ 45%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/d3d9_ownership.cpp.obj
 [ 50%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/finite_buffer_evidence.cpp.obj
-[ 54%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/managed_upload_contract.cpp.obj
+[ 54%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/portable_managed_upload.cpp.obj
 [ 59%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/draw_input.cpp.obj
 [ 63%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/object_lifetime.cpp.obj
 [ 68%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/mesh_adjacency_cache.cpp.obj

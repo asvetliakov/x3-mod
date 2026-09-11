@@ -118,8 +118,8 @@ has not been performed, so these results are not native-Windows validation.
 
 The retained optimized host run took 1,574,125 ns for one million successful
 HRESULT observations, which bypass locking, and 273,708 ns for 10,000 completed
-empty tickets. A Preview run of 1,000 empty scene pairs measured 780 native ticks
-versus 6,081 observed ticks at 10,000,000 ticks/second: approximately 0.53 microseconds
+empty tickets. A Preview run of 1,000 empty scene pairs measured 828 native ticks
+versus 6,032 observed ticks at 10,000,000 ticks/second: approximately 0.52 microseconds
 added per BeginScene/EndScene pair. These tiny CPU dispatch measurements are not
 a game frame-time prediction or a Windows performance result. The off option
 avoids this new observation cost; rendering still remains disabled.
@@ -127,7 +127,9 @@ avoids this new observation cost; rendering still remains disabled.
 Both runners replace retained success with a false record before any input read,
 bound compilation/execution time, require exactly one terminal PASS, and verify
 source/artifact hashes before and after execution. The native runner also checks
-game absence before compilation and immediately before execution, and pins both
-local d3d9/wined3d file hashes to the reviewed Preview runtime. Build products stay untracked;
+game absence before compilation and immediately before execution. Actual local
+d3d9/wined3d hashes are recorded before and after; verification requires the
+observed files to remain stable during the test, with no expected DLL version or
+digest allowlist. Missing provenance files are recorded as unavailable. Build products stay untracked;
 only derived reports and hashes are retained. No game launch or installation is
 part of this verification. The installed game still has no TAA enabled.

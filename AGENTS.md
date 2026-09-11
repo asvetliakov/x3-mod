@@ -15,8 +15,18 @@ User preferences recorded 2026-09-10:
   any optional backend-specific adapter behind an explicit capability boundary
   and provide a portable/native-Windows implementation for required features.
   The user cannot test Windows currently: distinguish Windows-compatible source
-  and cross-compilation from verified behavior on native Windows. Existing
-  Wine-pinned finite-buffer qualification remains a documented portability gap.
+  and cross-compilation from verified behavior on native Windows. Track remaining
+  portability gaps in `docs/architecture/platform-portability.md`.
+  Normal feature support must not depend on exact DLL hashes, including
+  Wine/CrossOver, system D3D and bundled game DLLs. Replace private-layout
+  dependencies with documented API
+  contracts/capability checks; do not merely remove hashes from code that still
+  reads fixed private offsets. Hashes remain useful as test provenance.
+- Game EXE/DLL internals remain in scope (clarified 2026-09-11). Trampolines,
+  instruction patches, vtable hooks and private game structures are allowed.
+  Disassemble/decompile the relevant game code when needed and document the
+  findings. The ban on backend-private prerequisites does not restrict game
+  modification; retain appropriate hook-site, ABI and layout validation.
 - Work in testable iterations. TAA is required; spatial AA alone does not satisfy it.
 - Commit after each logical checkpoint, including relevant documentation and
   verification evidence. Keep generated build products and raw captures untracked.

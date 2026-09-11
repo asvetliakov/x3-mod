@@ -4,8 +4,8 @@
 `loading_trace` shared native `ID3DXMesh::GenerateAdjacency` slot. It requires
 `X3M_TELEMETRY=1` and remains **off by default**. This checkpoint has only run
 standalone original-mesh fixtures in **CrossOver Preview / Steam**. Those fixtures
-do not install the DLL or launch X3; see [iteration 5](iteration-05.md) for the
-separate installation and pending game test. The game’s eligible mesh count, exact repetition
+do not install the DLL or launch X3. See [iteration 5](iteration-05.md) for the
+earlier installed baseline; this portable replacement has not been installed. The game’s eligible mesh count, exact repetition
 rate and loading benefit still need a user-run trace.
 
 The [detached core](mesh-adjacency-cache.md) remains independently reusable. Its
@@ -17,51 +17,72 @@ process the current original mesh. No mesh data is written to telemetry or disk.
 ## Activation and native contract
 
 The default path retains its original native dispatch. It performs no new cache
-construction, SHA-256 verification, cache-related COM acquisition, buffer lock or
+construction, cache-related COM acquisition, buffer lock or
 mesh-byte read. The existing timing hook/table lookup and configuration branch
-remain. Requested activation first verifies and pins the exact native D3DX module;
-each candidate then passes all of these additional checks:
+remain. Requested activation pins implementation lifetime; each candidate then
+passes these public-interface checks:
 
-- Exact PE32 D3DX SHA-256 `c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8`.
-  Generation 1 identifies the process’s single immutable installation. Geometry
-  metadata, GetVB/GetIB and all four mesh buffer Lock/Unlock methods must have the
-  verified native entry addresses.
-- Both buffers are SYSTEMMEM, without write-only or shared-VB options. In addition
-  to the original nondynamic cases, dynamic meshes admit only the four actual game
-  variants `0x990`, `0x991`, `0x18990`, `0x18991` (both buffers dynamic, optional
-  32-bit indices/software processing). Their native descriptor Usage must equal
-  DYNAMIC plus the corresponding SOFTWAREPROCESSING bit. Native descriptors bound all
-  copies; zero or oversized spans fail the gate. The core further validates the
-  declaration, exact key size, output range and configured budgets.
-- Actual held-buffer Lock/Unlock/GetDesc endpoints match the exact builtin x86
-  D3D9 implementation, SHA-256 `58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf`.
-  Ownership wrappers need the reviewed unchanged Lock/Unlock forwarding certificate;
-  descriptor queries use the independently verified borrowed native buffer.
-- WineD3D SHA-256 is `f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863`.
-  The D3D9 resource-map, resource-unmap and buffer-get-resource import slots must
-  still point to the verified WineD3D exports. Both modules are pinned. Unknown
-  endpoints, foreign mesh metadata or changed critical imports bypass the cache.
-- Tracked wrapper buffers must already be known, unlocked and have a successful
-  tracking status. Existing uncertainty or a pending lock bypasses. The cache
-  neither invents writes nor clears pre-existing uncertainty.
+- The documented mesh COM slots 20/22/27 are intercepted with saved originals and
+  ownership-aware rollback. The actual shared vtable and callable methods must be
+  module-backed so saved trampoline chains remain valid after object destruction;
+  their owning modules are pinned. Heap/JIT tables with unproven lifetime are not
+  hooked. Methods need not share a module with the factory. No code bytes, fixed
+  RVAs, PE image base/size profile or file digests identify the implementation.
+- Metadata and four mesh Lock/Unlock pointers are recorded on first observation.
+  Cache acquisition requires them unchanged. A later foreign method replacement
+  therefore falls back through the original algorithm without cache reads.
+- Both buffers are SYSTEMMEM, without write-only, managed, shared-VB or unknown
+  mesh options. Nondynamic options admit optional 32-bit indices and per-buffer
+  software processing; dynamic meshes retain the four actual game variants
+  `0x990`, `0x991`, `0x18990`, `0x18991`. Public `GetDesc` must succeed and report
+  the correct VB/IB resource type, vertex/index format and exact expected Usage.
+  Zero or oversized spans fail. The core further validates declaration, exact key
+  size, output range and configured budgets.
+- The typed VB/IB interfaces returned by the observed D3DX mesh are held with
+  ordinary COM references during preflight. Descriptors are queried through those
+  interfaces. Acquisition uses public mesh `Lock*Buffer(READONLY)` and paired
+  `Unlock*Buffer`, not a borrowed-native pointer.
+- Recognized ownership buffers are checked using `get_buffer_content_view`.
+  Requested tracking must already be known, unambiguous, unlocked and successful.
+  Replaced wrapper Lock/Unlock routes must make that evidence unknown. Native
+  pointers are distinguished by the API's explicit `E_INVALIDARG` result; other
+  failures reject. No uncertainty is cleared by cache admission.
 
-The [exact unlock review](../reverse-engineering/mesh-unlock-contract.md) and
-[dynamic readonly extension](../reverse-engineering/mesh-dynamic-contract.md) establish
-paired-lock completion for this runtime under ordinary serialized, non-reentrant
-application calls and valid object lifetimes. The proof does not cover invocation
-from the Wine command-stream thread, concurrent mutation, corruption, or foreign
-in-module code patches. The gate checks files/endpoints/imports; it is not a full
-in-memory code-integrity system. Different runtimes remain native-only.
+**No DLL or EXE version is an activation gate.** The buffer path reads no private
+object offsets or backend method/import RVAs. D3DX module pinning controls saved
+code/table lifetime only, and applies to the module actually loaded. The cache
+uses a process-local adapter token, generation and saved GenerateAdjacency pointer,
+not a file digest. A DLL update does not itself reject this public path. Ordinary
+loading IAT hooks now qualify the main module through bounded PE32 named-import
+parsing, without a whole-EXE fingerprint, fixed image base or fixed image size.
 
-The core’s `RuntimeIdentity.systemmem_dynamic_readonly_verified` defaults to
-false. Only the live adapter’s reviewed exact backend gates justify its positive
-assertion; generic callers still bypass dynamic acquisition. The exact native
-readonly flags become MAP_READ | NOSYSLOCK; SYSTEMMEM avoids the GPU buffer path,
-and these DYNAMIC/SOFTWAREPROCESSING variants add no write, discard or renaming
-behavior. This does not permit general dynamic GPU buffers.
+The public API permits readable buffer locks and defines `(0,0)` as locking the
+whole VB. WRITEONLY buffers are excluded from READONLY acquisition. DYNAMIC is a
+usage choice, not permission for this adapter to use DISCARD or NOOVERWRITE.
+See Microsoft's [VB Lock](https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3dvertexbuffer9-lock),
+[index-buffer access](https://learn.microsoft.com/en-us/windows/win32/direct3d9/index-buffers)
+and [D3DX mesh options](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dxmesh).
+
+The caller must serialize application mesh/buffer mutation, vtable changes and
+final release throughout qualification, acquisition and algorithm/cache dispatch.
+The core's nonblocking workspace lease serializes cache storage; it does not
+exclude external application writes. This remains a scoped optional loading cache,
+not the replay admission mechanism. No native Windows runtime has been tested;
+public API portability is implemented, while Windows runtime validation remains
+outstanding. The earlier [Preview unlock review](../reverse-engineering/mesh-unlock-contract.md)
+and [dynamic review](../reverse-engineering/mesh-dynamic-contract.md) are historical
+backend evidence, no longer production dependencies.
+
+The core's `RuntimeIdentity.systemmem_dynamic_readonly_verified` still defaults to
+false. The live adapter asserts it only for its bounded public readable SYSTEMMEM
+contract. Generic callers must establish their own acquisition contract. This
+change does not admit dynamic GPU buffers or managed WRITEONLY mappings.
 
 The core keys full vertex/index/declaration bytes, counts/options/stride, exact
-epsilon, runtime/function identity and supported incoming computational FP state.
+epsilon, process-local algorithm/function identity, incoming LastError and
+supported incoming computational FP state. Incoming LastError partitions the
+key so a preserving miss cannot hide a conditional native error change under
+a different incoming value.
 Hash collisions require full byte equality. Only admitted `S_OK` results are
 reused. Unsupported FP controls, null output, allocation pressure, nonblocking
 workspace contention and ordinary acquisition failures retain native behavior.
@@ -90,9 +111,8 @@ rejection. Geometry-history consumers continue to trust only actual known revisi
 
 ## Failure and lifetime policy
 
-Successful paired locks under the verified contract have an established cleanup
-path. The reusable core nevertheless distinguishes an unrecoverable acquisition
-cleanup failure. If it occurs, the triggering hook returns that **observed cleanup
+The public acquisition path checks every Lock and Unlock result. The reusable
+core distinguishes an unrecoverable acquisition cleanup failure. If it occurs, the triggering hook returns that **observed cleanup
 HRESULT**, records one restart-required fault and permanently disables dispatch.
 It does not claim that HRESULT came from native GenerateAdjacency and does not
 call native on the possibly locked mesh. Subsequent intercepted adjacency,
@@ -108,7 +128,7 @@ explicit Outcome seam without leaving a real buffer locked; real persistent unlo
 faults were independently tested in the detached core fixture.
 
 One installation per process preserves immutable originals for saved foreign
-chains. Shared-slot records hold no mesh/device references. Exact modules and the
+chains. Shared-slot records hold no mesh/device references. Pinned implementation modules and the
 cache’s fixed storage remain valid for the process lifetime. First construction
 publishes the immutable cache pointer with a release store; dispatch, reports and
 fixture readers acquire-load it independently of the mesh registry lock. Reporting
@@ -137,25 +157,21 @@ The existing `MeshAdjacency` loading span now means whole intercepted service
 time when the cache is enabled, including lookup/hit or native work; core
 `native_ticks` isolates calls that actually reached the saved original.
 
-Gate timing includes descriptor/endpoint/import checks and the first backend
-fingerprinting cost. First native D3DX fingerprint/setup is charged to the
-CreateMesh wrapper tail. These one-time file reads must be separated from steady
-cache cost when judging a user run. In the final normal cases, cumulative gate
-time was 23.567 ms on the native device and 24.384 ms on the wrapped device;
-CreateMesh wrapper-tail totals were 121.235 ms and 28.369 ms, respectively. These
-totals include first-use setup rather than estimating steady per-call overhead.
-The small correctness fixture is not a game loading benchmark; raw QPC fields
-and the recorded 10 MHz frequency retain the distinction.
+Gate timing includes public descriptor/tracking checks; it contains no backend
+fingerprinting. Module pinning/setup remains charged to the CreateMesh wrapper tail. First-use setup and steady cache work must be separated when judging
+a user run. The small correctness fixture is not a game loading benchmark.
 
 ## Verification and provenance
 
 Run `python3 verification/probe/run_mesh_cache_hook.py`. It writes `passed:false`
-before building, snapshots every project compile input and all three native DLLs,
+before building, refuses a running X3AP process, snapshots every project compile input and all three native DLLs,
 fresh-builds the fixture with the project’s SSE2/stack-alignment ABI flags, and
 refuses changed hashes before or after each case. It requires exactly one terminal
 PASS line, retains raw report/Wine-log hashes, and preserves a failed summary on
 build errors, timeouts or validation exceptions. Host provenance uses the bottle’s
 **syswow64** files for the x86 backends; a 32-bit Wine process names them System32.
+These backend hashes record the tested environment and are checked for changes
+during a run, and none are hardcoded runtime allowlists.
 
 The six-case matrix uses actual imported D3DX CreateMesh/CleanMesh, shared native
 vtable interception, the production cache and original synthetic meshes. Native
@@ -163,15 +179,18 @@ and ownership-wrapped devices each run cache-off, cache-on, and explicit fault
 cases. Assertions cover exact 16/32-bit miss/hit results, all five downstream
 clean/optimize results and remaps, complete vertex/index byte invariance, native
 failure/null-output semantics, FP/LastError, tracked revisions/pending state,
-unknown/pending gate rejection, changed bytes, recursive contention, native
-metadata/Unlock endpoint rejection, changed critical-IAT preflight rejection,
+unknown/pending gate rejection, changed Lock/Unlock routes with tracking off,
+changed bytes, recursive contention, native
+metadata/Unlock endpoint rejection, public VB/IB forwarding GetDesc acceptance and
+failed-but-populated/pool/usage/type/format/size descriptor rejection,
 owned-slot restore, surviving saved thunk behavior and final zero device/factory
-references. The critical-IAT negative calls preflight only, restores the slot and
-page protection, and never dispatches the deliberately invalid target.
+references. Descriptor spies replace only the held object’s public GetDesc entry, restore
+the object table through RAII, and call preflight rather than native algorithms
+while descriptors are deliberately false.
 
 Current retained evidence is `verification/results/mesh-cache-hook-summary.json`
-and its six raw reports. Native off/on/fault cases pass 1,714/1,907/1,915 checks;
-wrapped off/on/fault cases pass 2,189/2,524/2,532 checks (12,781 total). Each
+and its six raw reports. Native off/on/fault cases pass 1,714/1,927/1,935 checks;
+wrapped off/on/fault cases pass 2,189/2,566/2,574 checks (12,905 total). Each
 enabled case records 38 core calls, 20 hits, 16 misses, one recursive contention
 fallback and one unsupported-FP bypass. Cache-off cases record zero
 core calls and no constructed cache. Fault cases emit exactly one restart-required
@@ -179,3 +198,15 @@ record and reject four subsequent hooked operations. These numbers establish
 actual wiring and parity, not expected X3 repetition. The completed iteration 5
 trace and exact option diagnosis are [recorded separately](../reverse-engineering/iteration05-cache-gate.md);
 that installed run used the earlier dynamic-rejecting implementation.
+
+The portable replacement passes the complete six-case suite on the frozen
+ownership source. The separate named-import suites pass 75 ABI checks and 123 real
+mesh checks; the detached core passes 741, including conditional LastError-key
+separation. Production and fixture compile with `-Werror`. No Windows runtime
+execution has been performed.
+
+In this run, cumulative actual-hook gate time was 0.3833 ms for native-on-normal
+and 0.3088 ms for wrapped-on-normal (10 MHz QPC). Each had 38 core calls and 20
+hits. These are small synthetic-suite totals, not game loading or per-frame
+performance estimates. Lifetime pinning runs once per observed shared table;
+subsequent observations reuse pinned originals and check current slot ownership.

@@ -8,19 +8,28 @@ The overall renderer modernization objective is not complete.**
 No HDR/TAA/AgX/material/clustered-lighting
 visual enhancement is enabled yet. See the [full user objective](user-objective.md)
 and [roadmap](architecture/roadmap.md).
-Native Windows/Direct3D is also a required feature target. Current tests run on
-CrossOver; the Wine-pinned finite-buffer evidence producer still needs a
-portable/native-Windows counterpart. See [portability requirements and gaps](architecture/platform-portability.md).
+Native Windows/Direct3D is also a required feature target. The buffer evidence
+producer now uses public D3D9/COM instead of Wine layouts. Tests still run on
+CrossOver; native-Windows behavior and the depth-provider gap remain unverified.
+See [portability requirements and gaps](architecture/platform-portability.md).
 
 ## Latest checkpoint
 
-The new geometry evidence path now avoids duplicate native qualification and
-repeated lease-table searches. In the synthetic Preview benchmark, acquiring and
-inspecting 700 shared-small indexed leases fell from about 80 ms to 39 ms combined;
-invalid-handle lookup fell from 3.444 to 0.059 ms per 700 calls. Fresh qualification
-still dominates and this is not yet an affordable every-frame replay path.
-See [performance measurements](verification/geometry-performance.md) and
-[review 8](verification/review-08.md). The installed DLL remains unchanged.
+The portable geometry path removes DLL-version allowlists, private Wine buffer
+layouts and native method RVAs. Eligible managed WRITEONLY buffers receive
+readable native backing, preserving application-visible Usage and observing only
+existing Lock/Unlock uploads. The loading cache likewise replaces DLL fingerprints
+and private method addresses with public COM contracts. The
+[dependency audit](architecture/runtime-dependencies.md) documents the proxy
+mechanisms and remaining platform gaps. Game EXE/DLL patches, private structures
+and disassembly remain explicitly allowed.
+
+In the same synthetic Preview benchmark, acquiring and inspecting 700
+shared-small leases fell from 39.1 ms to 2.5 ms combined. The many-buffer case
+still exposes linear allocation-list lookup. This is CPU evidence, not game FPS
+or proof that complete live replay is affordable. See
+[performance measurements](verification/geometry-performance.md) and
+[review 10](verification/review-10.md). The installed DLL remains unchanged.
 
 A private motion producer now connects main-scene draw observations to
 bounded native geometry leases, CPU storage correspondence and an actual
@@ -37,7 +46,7 @@ consumer is enabled. See [motion capture](verification/motion-capture.md),
 the installed iteration-5 DLL remains unchanged.
 
 The finite-position source path includes the reviewed compact classification
-core, exact Preview managed VB/IB qualification and allocation-owned upload
+core, public managed VB/IB descriptors and allocation-owned upload
 observer. It obtains finite XYZ and actual index bounds from existing writes,
 with no extra buffer Lock or game-pixel readback. The new reader can acquire a
 native geometry lease while the actual getter references remain alive, then
@@ -107,23 +116,26 @@ unchanged game EXE and bottle configuration. The prior 0.4 DLL is preserved in
 The latest source DLL passes 20 actual-DLL integration cases, including native
 Clear CPU-state witnesses and explicit refusal of unsafe live motion dispatch.
 Its SHA256 is
-`e45aaac050aa3c0c816776a72a5877f951ee5d87efc6d58493740175aee8d282`; it is
+`aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9`; it is
 **not installed**. The 18-object forced native fallback also passes.
-See [review 8](verification/review-08.md). Earlier source evidence remains in
+See [review 10](verification/review-10.md). Earlier source evidence remains in
+[review 8](verification/review-08.md) at `5196f31`,
 [review 7](verification/review-07.md) at `0ce0814`,
 [review 6](verification/review-06.md) at `c4f3d45` and
 [review 5](verification/review-05.md) at `437e95b`. Shared result paths now refer
 to the latest verified source; historical commits preserve their prior reports.
 
 The [detached adjacency cache](verification/mesh-adjacency-cache.md) passes
-721 checks using real native mesh acquisition, exact byte keys, bounded storage,
+741 checks using real native mesh acquisition, exact byte keys, bounded storage,
 native downstream cleaning/optimization and computational FP-state parity.
 Repeated original synthetic meshes show a large hit-time reduction including
 acquisition/lookup cost. The iteration-5 run recorded 7,199 gate rejections and
 no cache calls or hits.
 Static analysis identifies dynamic SYSTEMMEM mesh options excluded by the installed
-gate; the narrow four-option extension now passes 12,781 actual native/wrapped checks
-and 733 core checks, with 68 + 123 loading regressions and independent review.
+gate; the portable four-option implementation now passes 12,905 actual
+native/wrapped checks, with 75 + 123 loading regressions and independent review.
+DLL fingerprints/private method RVAs are removed, and incoming LastError is part
+of the exact cache key.
 It is a source change, not an installed game speedup.
 The cache remains behind an off-by-default switch. Independently reviewed
 [native/wrapped hook integration](verification/mesh-cache-hook.md) exercises

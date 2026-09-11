@@ -1,9 +1,16 @@
+> Portability update: `RuntimeIdentity` now carries a caller-owned process-local
+> `algorithm_token`, not a DLL digest. The adapter qualifies public readable
+> SYSTEMMEM buffers and pins implementation lifetime; no DLL/EXE hash allowlist
+> remains. Earlier exact-backend observations below are historical evidence.
+> The fresh public-contract regression passes 741 checks; Windows runtime
+> validation remains outstanding.
+
 # Production adjacency cache core
 
 `src/proxy/mesh_adjacency_cache.{h,cpp}` implements bounded, process-local reuse of
-successful native `ID3DXMesh::GenerateAdjacency` results. The 733-check evidence below tests this core separately from the game. The
+successful native `ID3DXMesh::GenerateAdjacency` results. The 741-check evidence below tests this core separately from the game. The
 [off-by-default live hook](mesh-cache-hook.md) connects it to the proxy with additional
-verified runtime gates and separate evidence. No game loading improvement is claimed. This advances the [original synthetic prototype](mesh-preparation.md)
+public-interface gates and separate evidence. No game loading improvement is claimed. This advances the [original synthetic prototype](mesh-preparation.md)
 by acquiring the current mesh through its real native readonly buffer locks and
 calling the actual reusable production module in the fixture.
 
@@ -17,11 +24,11 @@ cache hit rate. This core deliberately leaves those gates open.
 An explicit `Cache` owns only heap memory. It has no mesh, device, factory or DLL
 references, no global registry, disk storage or hooks. The caller supplies a
 borrowed native mesh, original native function pointer, exact epsilon and original
-output pointer. The runtime identity contains the verified module's full SHA-256,
-a nonzero immutable module generation, and positive verification/LastError
-contract flags. The cache includes the function pointer in its key too. The
-caller must verify and keep that runtime loaded; `verified=true` is an assertion,
-not an internal fingerprint check.
+output pointer. Runtime identity contains a nonzero caller-owned process-local
+algorithm token, a nonzero generation, and a positive public-contract flag. The cache includes the saved function pointer in its key too. The
+caller must keep the implementation loaded; `public_contract=true` asserts the caller's
+contract, not a DLL fingerprint. The token must change if the caller changes its
+algorithm contract without changing the function pointer.
 
 The caller keeps the mesh/output alive and serializes their mutations during the
 call, just as required for a direct native mesh operation. It must not clear or
@@ -35,7 +42,7 @@ Consumers must inspect that origin, especially before considering live integrati
 
 ## Exact identity and admission
 
-The key contains schema version, runtime SHA-256/generation/function, exact float
+The key contains schema version, process-local algorithm token/generation/function, incoming LastError, exact float
 bits for epsilon, full mesh options, vertex/face counts, stride, every declaration
 element through its terminator, all vertex/index bytes, and supported incoming
 floating-point control/status. A 64-bit hash only selects candidates: every hit
@@ -83,9 +90,14 @@ This is a **computational-state contract**, not full machine-state emulation.
 x87 diagnostic instruction/data pointers are not reproduced on hits; current
 caller pointer fields are retained. Native allocator behavior and other incidental
 side effects of executing the skipped algorithm are not replayed. The positive
-runtime assertion requires successful GenerateAdjacency to preserve incoming
-LastError; each observed miss is checked, but a coincidental match cannot establish
-that contract for an arbitrary unverified implementation.
+cache admits a native miss only when its actual successful result preserved the
+incoming LastError. It does not infer that property from module pinning or claim
+an untested Windows implementation has identical incidental behavior. Other misses
+retain the native result and are not cached. Incoming LastError is part of the
+exact key, so a preserving candidate under one value cannot hide a conditional
+native LastError change under another value. The original fixture explicitly
+tests zero-preserving admission, a 123-to-zero native result, then the original
+zero-key hit.
 
 ## Bounds and concurrency
 
@@ -147,7 +159,7 @@ python3 verification/probe/run_mesh_adjacency_cache.py
 ```
 
 The runner builds fresh with x86 SSE2, `-mfpmath=sse`, stack realignment and the
-four-byte incoming-stack contract, checks the exact native DLL SHA-256, launches
+four-byte incoming-stack contract, records the current native DLL SHA-256 without an allowlist, launches
 only the original standalone fixture through **CrossOver Preview / Steam**, and
 checks source/DLL hashes before and after compilation, then source/executable/DLL
 hashes before and after execution. It invalidates prior PASS evidence before building
@@ -156,7 +168,7 @@ and records failure if compilation, launch or timeout handling fails. Its proces
 is used without Present or game assets. Fixture seams are compile-time only;
 production source also compiles independently with `-Wall -Wextra -Werror`.
 
-The final fixture passes **733 checks**. Coverage includes:
+The final fixture passes **741 checks**. Coverage includes:
 
 - Five original mesh cases through native generation, cleaning and optimization,
   with exact adjacency, vertex/index/declaration/attribute data, face/vertex remaps
@@ -178,15 +190,15 @@ measurements produced these medians:
 
 | Operation | Median |
 | --- | ---: |
-| Repeated uncached native generation | 96.105 ms |
-| Production adapter miss | 97.117 ms |
-| Production adapter hit | 1.143 ms |
+| Repeated uncached native generation | 97.348 ms |
+| Production adapter miss | 98.578 ms |
+| Production adapter hit | 1.163 ms |
 
 The hit includes **real readonly buffer acquisition**, key allocation/copy, full
 hash/equality checks and adjacency copy. Both measured paths include common fixture
 output-vector creation. The miss includes all acquisition/lookup work plus native
 generation and admission. The retained grid entry plus fixture-build cache metadata
-accounts for 540,928 bytes. These are warmed-runtime synthetic measurements from
+accounts for 540,908 bytes. These are warmed-runtime synthetic measurements from
 one run, not a confidence interval or game performance forecast. The prototype's
 host-memory key timing is not substituted for real acquisition cost.
 

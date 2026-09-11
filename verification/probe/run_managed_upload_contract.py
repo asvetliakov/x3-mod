@@ -9,7 +9,7 @@ import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
-FILES = ['src/ownership/managed_upload_contract.h', 'src/ownership/managed_upload_contract.cpp',
+FILES = ['verification/probe/managed_upload_contract.h', 'verification/probe/managed_upload_contract.cpp',
          'verification/probe/managed_upload_contract_fixture.cpp',
          'verification/probe/build_managed_upload_contract.sh',
          'verification/probe/run_managed_upload_contract.py']

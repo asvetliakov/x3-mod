@@ -6,5 +6,5 @@ i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -Werror -static \
  -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 \
  execution_ownership_fixture.cpp ../../src/ownership/d3d9_ownership.cpp \
  ../../src/ownership/execution_state.cpp ../../src/ownership/finite_buffer_evidence.cpp \
- ../../src/ownership/managed_upload_contract.cpp -o build/execution_ownership.exe \
+ ../../src/ownership/portable_managed_upload.cpp -o build/execution_ownership.exe \
  -ldxguid -luser32 -ladvapi32

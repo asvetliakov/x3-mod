@@ -16,14 +16,14 @@ FILES = ['src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp',
          'src/ownership/d3d9_classes_inc.h', 'src/ownership/d3d9_forwarders_inc.h',
          'src/ownership/execution_state.h', 'src/ownership/execution_state.cpp',
          'src/ownership/finite_buffer_evidence.h', 'src/ownership/finite_buffer_evidence.cpp',
-         'src/ownership/managed_upload_contract.h', 'src/ownership/managed_upload_contract.cpp',
+         'src/ownership/portable_managed_upload.h', 'src/ownership/portable_managed_upload.cpp',
          'tools/ownership/generate_d3d9_forwarders.py',
          'verification/probe/geometry_lease_benchmark.cpp',
          'verification/probe/build_geometry_lease_benchmark.sh',
          'verification/probe/run_geometry_lease_benchmark.py']
 NATIVE_ROOT = Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/wine/i386-windows')
-NATIVE = {'d3d9.dll': '58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf',
-          'wined3d.dll': 'f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863'}
+# Runtime identity is recorded for reproducibility, never an admission allowlist.
+NATIVE = ('d3d9.dll', 'wined3d.dll')
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -38,7 +38,7 @@ def no_game():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--label', required=True, choices=['baseline', 'qualification', 'optimized'])
+    parser.add_argument('--label', required=True, choices=['baseline', 'qualification', 'optimized', 'portable'])
     args = parser.parse_args()
     prefix = ROOT / ('verification/results/geometry-lease-performance-' + args.label)
     meta = dict(passed=False, phase='building', label=args.label, game_launched=False, draws=0,
@@ -52,9 +52,6 @@ def main():
         meta['source_hashes_before_build'] = before
         meta['git_head'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
         save()
-        for name, expected in NATIVE.items():
-            if before['native/' + name] != expected:
-                raise RuntimeError('Native module changed: ' + name)
         with Path(str(prefix) + '-build.txt').open('wb') as out:
             subprocess.run(['sh', 'verification/probe/build_geometry_lease_benchmark.sh'], cwd=ROOT,
                            stdout=out, stderr=subprocess.STDOUT, check=True, timeout=90)
@@ -118,7 +115,7 @@ def main():
                             'A frozen executable represents its before/after-build source map even if separate source work proceeds during execution.',
                             'Qualifier ticks overlap acquire/inspect times and must not be added to those phase totals.',
                             'Native reference and public-evidence controls are different operations, not an uninstrumented game baseline.'])
-        if not meta['executable_unchanged'] or any(after['native/' + name] != value for name, value in NATIVE.items()):
+        if not meta['executable_unchanged'] or any(after['native/' + name] != before['native/' + name] for name in NATIVE):
             raise RuntimeError('Frozen executable or native runtime changed')
     except (Exception, KeyboardInterrupt) as error:
         meta.update(passed=False, phase='failed', error=repr(error))

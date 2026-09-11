@@ -13,14 +13,14 @@ FILES = [
     'src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp', 'src/ownership/execution_state.cpp', 'src/ownership/execution_state.h',
     'src/ownership/d3d9_classes_inc.h', 'src/ownership/d3d9_forwarders_inc.h',
     'src/ownership/finite_buffer_evidence.h', 'src/ownership/finite_buffer_evidence.cpp',
-    'src/ownership/managed_upload_contract.h', 'src/ownership/managed_upload_contract.cpp',
+    'src/ownership/portable_managed_upload.h', 'src/ownership/portable_managed_upload.cpp',
     'tools/ownership/generate_d3d9_forwarders.py',
     'verification/probe/finite_upload_fixture.cpp', 'verification/probe/build_finite_upload.sh',
     'verification/probe/run_finite_upload.py',
 ]
 NATIVE_ROOT = Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/wine/i386-windows')
-NATIVE = {'d3d9.dll': '58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf',
-          'wined3d.dll': 'f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863'}
+# Runtime identity is recorded for reproducibility, never an admission allowlist.
+NATIVE = ('d3d9.dll', 'wined3d.dll')
 EXE = ROOT / 'verification/probe/build/finite_upload_fixture.exe'
 RESULTS = ROOT / 'verification/results'
 
@@ -48,9 +48,6 @@ def main():
         before = hashes()
         meta['source_hashes_before_build'] = before
         save()
-        for name, expected in NATIVE.items():
-            if before['native/' + name] != expected:
-                raise RuntimeError('Native module changed: ' + name)
         with (RESULTS / 'finite-upload-build.txt').open('wb') as output:
             subprocess.run(['sh', 'verification/probe/build_finite_upload.sh'], cwd=ROOT,
                            stdout=output, stderr=subprocess.STDOUT, check=True, timeout=90)
@@ -76,14 +73,14 @@ def main():
                     binary_unchanged=digest(EXE) == meta['executable_sha256'])
         if sum(line.startswith('RESULT ') for line in text.splitlines()) != 1 or len(terminal) != 1 or int(terminal[0]) != count or not text.rstrip().endswith('RESULT PASS checks=' + str(count)):
             raise RuntimeError('Incomplete or duplicate terminal result')
-        if count != 403 or 'FAIL' in text or run.returncode != 0:
+        if count != 534 or 'FAIL' in text or run.returncode != 0:
             raise RuntimeError('Fixture failed')
         if before != meta['source_hashes_after'] or not meta['binary_unchanged']:
             raise RuntimeError('Sources or executable changed during execution')
         meta.update(passed=True, phase='complete', limits=[
-            'Synthetic original D3D9 on the pinned Preview runtime; no live-game cost or renderer eligibility claim.',
+            'Synthetic public Direct3D9/COM on the recorded Preview runtime; no native Windows run, live-game cost or renderer eligibility claim.',
             'Fixture-only registry/addref scheduling seam changes no production observer branch.',
-            'Arbitrary borrowed-native mutation is outside observer coverage; native GUID foreign-IUnknown tamper may retain one untrusted reference before permanent refusal.',
+            'Trusted native mutations require explicit invalidation and complete caller serialization; arbitrary bypass is undetectable by public D3D9. Private GUID foreign-IUnknown tamper retains at most one untrusted reference per allocation before its authentication latch refuses further calls.',
         ])
     except (Exception, KeyboardInterrupt) as error:
         meta.update(passed=False, phase='failed', error=repr(error))

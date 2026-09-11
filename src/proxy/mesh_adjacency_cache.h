@@ -7,16 +7,15 @@
 #include <cstdint>
 
 // Detached exact-input cache. No hooks, globals, COM ownership or disk storage.
-// The caller verifies/pins the native runtime, holds mesh/output lifetime, and
+// The caller pins the implementation lifetime, holds mesh/output lifetime, and
 // serializes mutations exactly as required for a direct GenerateAdjacency call.
 namespace x3m::mesh_adjacency_cache {
 using Generate = HRESULT (STDMETHODCALLTYPE*)(ID3DXMesh*, FLOAT, DWORD*);
 struct RuntimeIdentity {
-    std::array<unsigned char,32> sha256{};
+    uint64_t algorithm_token=0; // Caller-owned process-local identity, never a file digest.
     uint64_t generation=0; // Immutable generation of the verified/pinned module.
-    bool verified=false;
-    bool success_preserves_last_error=false;
-    // Exact backend readonly map/unmap contract, not a general DYNAMIC opt-out.
+    bool public_contract=false; // Caller supplies the public mesh/lifetime contract.
+    // Public readable SYSTEMMEM Lock/Unlock contract, not a general DYNAMIC opt-out.
     bool systemmem_dynamic_readonly_verified=false;
 };
 struct Config {

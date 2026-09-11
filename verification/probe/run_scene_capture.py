@@ -20,7 +20,7 @@ def main():
              'wrong-phase-color-fill', 'standalone-color-fill', 'first-rejection-preserved')
     files = ('verification/probe/scene_capture_fixture.cpp',
              'verification/probe/build_scene_capture.sh', 'verification/probe/run_scene_capture.py',
-             'src/ownership/d3d9_ownership.cpp', 'src/ownership/execution_state.cpp', 'src/ownership/execution_state.h', 'src/ownership/finite_buffer_evidence.cpp', 'src/ownership/finite_buffer_evidence.h', 'src/ownership/managed_upload_contract.cpp', 'src/ownership/managed_upload_contract.h', 'src/ownership/d3d9_ownership.h',
+             'src/ownership/d3d9_ownership.cpp', 'src/ownership/execution_state.cpp', 'src/ownership/execution_state.h', 'src/ownership/finite_buffer_evidence.cpp', 'src/ownership/finite_buffer_evidence.h', 'src/ownership/portable_managed_upload.cpp', 'src/ownership/portable_managed_upload.h', 'src/ownership/d3d9_ownership.h',
              'src/ownership/d3d9_classes_inc.h', 'src/ownership/d3d9_forwarders_inc.h',
              'src/proxy/scene_capture.cpp', 'src/proxy/scene_capture.h',
              'src/proxy/capture_state.cpp', 'src/proxy/capture_state.h', 'src/proxy/capture.h',

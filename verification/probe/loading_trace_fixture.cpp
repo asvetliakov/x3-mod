@@ -37,13 +37,32 @@ static BOOL WINAPI other_interceptor(HANDLE f,void* b,DWORD n,DWORD* r,OVERLAPPE
 __attribute__((noinline)) static BOOL read_fresh_import(HANDLE file,void* data,DWORD* read){return ReadFile(file,data,4,read,nullptr);}
 int main(){
     HMODULE self=GetModuleHandleW(nullptr);
-    const uint64_t hash=fixture_fingerprint(self);
-    check(hash!=0,"fixture_fingerprint");
     SetEnvironmentVariableW(L"X3M_TELEMETRY",nullptr);
-    check(!fixture_initialize(self,hash)&&!active(),"disabled");
+    check(!fixture_initialize(self)&&!active(),"disabled");
     SetEnvironmentVariableW(L"X3M_TELEMETRY",L"1");
-    check(!fixture_initialize(self,hash^1)&&!active(),"wrong_fingerprint");
-    check(!initialize()&&!active(),"production_gate_rejects_fixture");
+    check(!fixture_initialize(nullptr)&&!active(),"null_image_rejected");
+    auto invalid=static_cast<unsigned char*>(VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));
+    check(invalid!=nullptr,"malformed_image_storage");
+    check(!fixture_initialize(reinterpret_cast<HMODULE>(invalid))&&!active(),"invalid_dos_rejected");
+    auto dos=reinterpret_cast<IMAGE_DOS_HEADER*>(invalid);dos->e_magic=IMAGE_DOS_SIGNATURE;dos->e_lfanew=128;
+    check(!fixture_initialize(reinterpret_cast<HMODULE>(invalid))&&!active(),"invalid_nt_rejected");
+    auto nt=reinterpret_cast<IMAGE_NT_HEADERS32*>(invalid+128);nt->Signature=IMAGE_NT_SIGNATURE;
+    nt->FileHeader.Machine=IMAGE_FILE_MACHINE_AMD64;nt->OptionalHeader.Magic=IMAGE_NT_OPTIONAL_HDR32_MAGIC;
+    nt->OptionalHeader.SizeOfImage=4096;nt->OptionalHeader.NumberOfRvaAndSizes=16;
+    check(!fixture_initialize(reinterpret_cast<HMODULE>(invalid))&&!active(),"non_x86_image_rejected");
+    nt->FileHeader.Machine=IMAGE_FILE_MACHINE_I386;
+    auto& directory=nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];directory.VirtualAddress=4090;directory.Size=40;
+    check(!fixture_initialize(reinterpret_cast<HMODULE>(invalid))&&!active(),"escaping_import_directory_rejected");
+    directory.VirtualAddress=0x200;directory.Size=40;
+    auto descriptor=reinterpret_cast<IMAGE_IMPORT_DESCRIPTOR*>(invalid+0x200);descriptor->Name=0x300;descriptor->FirstThunk=0x500;
+    std::strcpy(reinterpret_cast<char*>(invalid+0x300),"kernel32.dll");
+    auto iat=reinterpret_cast<DWORD*>(invalid+0x500);*iat=reinterpret_cast<DWORD>(GetProcAddress(GetModuleHandleW(L"kernel32.dll"),"ReadFile"));
+    check(!fixture_initialize(reinterpret_cast<HMODULE>(invalid))&&!active(),"missing_named_thunk_not_inferred_from_iat");
+    descriptor->OriginalFirstThunk=0x400;*reinterpret_cast<DWORD*>(invalid+0x400)=IMAGE_ORDINAL_FLAG32|1;
+    check(!fixture_initialize(reinterpret_cast<HMODULE>(invalid))&&!active(),"ordinal_import_not_inferred_from_iat");
+    *reinterpret_cast<DWORD*>(invalid+0x400)=0x600;std::strcpy(reinterpret_cast<char*>(invalid+0x602),"UnrelatedFunction");
+    check(!fixture_initialize(reinterpret_cast<HMODULE>(invalid))&&!active(),"unknown_symbol_not_inferred_from_iat");
+    check(VirtualFree(invalid,0,MEM_RELEASE)!=FALSE,"malformed_image_release");
     auto kernel=GetModuleHandleW(L"kernel32.dll");
     auto rawRead=reinterpret_cast<decltype(&ReadFile)>(GetProcAddress(kernel,"ReadFile"));
     fixture_raw_read=rawRead;
@@ -62,11 +81,10 @@ int main(){
     check(baseline_result&&read==4,"baseline_read");rawSeek(file,0,nullptr,FILE_BEGIN);
     PVOID* read_slot=import_slot("ReadFile");MEMORY_BASIC_INFORMATION before{},after{};
     check(read_slot&&VirtualQuery(read_slot,&before,sizeof before),"iat_page_before");
-    check(fixture_initialize(self,hash)&&active(),"install_named_imports");
+    check(fixture_initialize(self)&&active(),"install_named_imports");
     check(VirtualQuery(read_slot,&after,sizeof after)&&before.Protect==after.Protect,"iat_protection_restored_after_install");
-    // This fixture links telemetry into its main EXE, so the one-time DLL
-    // fingerprint read sees its own ReadFile IAT hook. Production is a separate
-    // DLL. Complete bounded setup before the exact steady-state counter window.
+    // Complete module-lifetime setup before the exact steady counter window;
+    // there is no file fingerprint or implementation version gate.
     ID3DXMesh* setup_mesh=nullptr;SetLastError(0x1357);
     HRESULT setup_hr=D3DXCreateMesh(11,13,0x41,PTR(D3DVERTEXELEMENT9,0x1000),PTR(IDirect3DDevice9,0x2000),&setup_mesh);
     check(setup_hr==S_FALSE&&GetLastError()==0x4321,"mesh setup before steady counter interval");
@@ -184,7 +202,7 @@ int main(){
     SetLastError(sentinel);shutdown();check(!active()&&GetLastError()==sentinel,"restore_and_error");
     check(*read_slot==reinterpret_cast<PVOID>(other_interceptor),"shutdown_preserves_other_hook");
     check(VirtualQuery(read_slot,&after,sizeof after)&&before.Protect==after.Protect,"iat_protection_restored_after_shutdown");
-    check(!fixture_initialize(self,hash),"reinitialization_refused_preserves_original_chain");
+    check(!fixture_initialize(self),"reinitialization_refused_preserves_original_chain");
     rawSeek(file,0,nullptr,FILE_BEGIN);read=0;check(read_fresh_import(file,actual,&read)&&read==4,"foreign_chain_to_saved_thunk_remains_callable");
     check(sample(take_snapshot(),Operation::FileRead).count==1,"foreign_chain_uses_immutable_original_once");
     VirtualProtect(read_slot,sizeof(PVOID),PAGE_READWRITE,&old_protection);

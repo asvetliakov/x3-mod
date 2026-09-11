@@ -10,9 +10,9 @@
 // Only the main EXE's verified named
 // imports and validated shared native mesh-vtable slots are intercepted. Timing-only
 // callbacks never inspect payloads; X3M_MESH_CACHE=1 explicitly permits bounded
-// exact mesh-byte acquisition/reuse after additional native endpoint verification.
-// Bounded first-mesh setup verifies/pins the native DLL and emits setup records;
-// that one-time file read and table work are measured in the wrapper tail.
+// exact mesh-byte acquisition/reuse after public readable-buffer qualification.
+// Bounded first-table setup pins table/callable module lifetimes and records
+// method pointers; it never reads or fingerprints DLL/EXE files.
 // Runtime thread-local storage may initialize on a thread's first callback.
 // Initialize outside DllMain, after telemetry initialization. Call report from
 // the existing periodic telemetry summary. No engine code/prologues are patched.
@@ -42,8 +42,7 @@ void report();
 void shutdown();
 #ifdef X3M_LOADING_TRACE_FIXTURE
 // Compile-only fixture seam: these symbols do not exist in the production DLL.
-uint64_t fixture_fingerprint(HMODULE target);
-bool fixture_initialize(HMODULE target,uint64_t expected_hash);
+bool fixture_initialize(HMODULE target);
 // One-shot failed mesh slot installation, 1..3; quiescent synthetic tests only.
 void fixture_fail_mesh_patch(unsigned step);
 void fixture_fail_protection_restores(unsigned calls);

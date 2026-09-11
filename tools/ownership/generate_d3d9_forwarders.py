@@ -94,6 +94,11 @@ def generate(parsed, directory):
                 body = f"return reset_device(this, {args[0]});"
             elif kind == "Device" and name == "Clear":
                 body = f"return clear_device(this, {', '.join(args)});"
+            elif kind == "Device" and name in {"CreateVertexBuffer", "CreateIndexBuffer"}:
+                helper = "create_vertex_buffer" if name == "CreateVertexBuffer" else "create_index_buffer"
+                body = f"return {helper}(this, {', '.join(args)});"
+            elif kind in {"VertexBuffer", "IndexBuffer"} and name == "GetDesc":
+                body = f"return buffer_desc(this, {args[0]});"
             elif kind in {"VertexBuffer", "IndexBuffer"} and name == "Lock":
                 body = f"return buffer_lock(this, {', '.join(args)});"
             elif kind in {"VertexBuffer", "IndexBuffer"} and name == "Unlock":
@@ -125,8 +130,6 @@ def generate(parsed, directory):
                     body = (f"{interface_out}* owned = untouched_output<{interface_out}>();\n"
                             f"    const HRESULT hr = native_->{name}({', '.join(actual)});\n"
                             f"    return output(device_of(this), hr, owned, {arg});")
-                    if kind == "Device" and name in {"CreateVertexBuffer", "CreateIndexBuffer"}:
-                        body = body.replace("    return output", f"    if (SUCCEEDED(hr) && owned && owned != untouched_output<{interface_out}>())\n        initialize_buffer(this, owned);\n    return output")
                 elif ret == "HRESULT" and kind != "Factory":
                     body = f"return observe_result(device_of(this), native_->{name}({', '.join(actual)}));"
                 else:

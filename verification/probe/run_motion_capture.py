@@ -21,7 +21,7 @@ FILES = [
     'src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp',
     'src/ownership/d3d9_classes_inc.h', 'src/ownership/d3d9_forwarders_inc.h',
     'src/ownership/finite_buffer_evidence.h', 'src/ownership/finite_buffer_evidence.cpp',
-    'src/ownership/managed_upload_contract.h', 'src/ownership/managed_upload_contract.cpp',
+    'src/ownership/portable_managed_upload.h', 'src/ownership/portable_managed_upload.cpp',
     'src/ownership/execution_state.h', 'src/ownership/execution_state.cpp',
     'src/renderer/motion_history.h', 'src/renderer/motion_history.cpp',
     'src/renderer/scene_boundary.h', 'src/renderer/rigid_motion.h', 'src/renderer/rigid_motion.cpp',

@@ -13,14 +13,14 @@ FILES = [
     'src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp', 'src/ownership/execution_state.cpp', 'src/ownership/execution_state.h',
     'src/ownership/d3d9_classes_inc.h', 'src/ownership/d3d9_forwarders_inc.h',
     'src/ownership/finite_buffer_evidence.h', 'src/ownership/finite_buffer_evidence.cpp',
-    'src/ownership/managed_upload_contract.h', 'src/ownership/managed_upload_contract.cpp',
+    'src/ownership/portable_managed_upload.h', 'src/ownership/portable_managed_upload.cpp',
     'tools/ownership/generate_d3d9_forwarders.py',
     'verification/probe/geometry_lease_fixture.cpp', 'verification/probe/build_geometry_lease.sh',
     'verification/probe/run_geometry_lease.py',
 ]
 NATIVE_ROOT = Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/wine/i386-windows')
-NATIVE = {'d3d9.dll': '58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf',
-          'wined3d.dll': 'f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863'}
+# Runtime identity is recorded for reproducibility, never an admission allowlist.
+NATIVE = ('d3d9.dll', 'wined3d.dll')
 EXE = ROOT / 'verification/probe/build/geometry_lease_fixture.exe'
 RESULTS = ROOT / 'verification/results'
 
@@ -48,9 +48,6 @@ def main():
         before = hashes()
         meta['source_hashes_before_build'] = before
         save()
-        for name, expected in NATIVE.items():
-            if before['native/' + name] != expected:
-                raise RuntimeError('Native module changed: ' + name)
         with (RESULTS / 'geometry-lease-build.txt').open('wb') as output:
             subprocess.run(['sh', 'verification/probe/build_geometry_lease.sh'], cwd=ROOT,
                            stdout=output, stderr=subprocess.STDOUT, check=True, timeout=90)
@@ -79,12 +76,12 @@ def main():
                     binary_unchanged=digest(EXE) == meta['executable_sha256'])
         if sum(line.startswith('RESULT ') for line in text.splitlines()) != 1 or len(terminal) != 1 or int(terminal[0]) != count or not text.rstrip().endswith('RESULT PASS checks=' + str(count)):
             raise RuntimeError('Incomplete or duplicate terminal result')
-        if count != 347 or 'FAIL' in text or run.returncode != 0:
+        if count != 421 or 'FAIL' in text or run.returncode != 0:
             raise RuntimeError('Fixture failed')
         if before != meta['source_hashes_after'] or not meta['binary_unchanged']:
             raise RuntimeError('Sources or executable changed during execution')
         meta.update(passed=True, phase='complete', limits=[
-            'Synthetic original D3D9 on the pinned Preview runtime; no live-game cost or renderer eligibility claim.',
+            'Synthetic original D3D9 on the recorded Preview runtime; portable API source is not native-Windows runtime verification.',
             'Public leases hold native references only; no production replay/capture hook is enabled by this fixture.',
             'Leases preserve allocation lifetime, not contents; replay must revalidate immutable evidence requests and obey serialized native access.',
         ])

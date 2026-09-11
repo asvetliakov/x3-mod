@@ -10,11 +10,10 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
 DLL = Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll'
-EXPECTED = 'c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8'
 SYSTEM = DLL.parent.parent / 'windows/syswow64'
 BACKENDS = {
-    'native_d3d9.dll': (SYSTEM / 'd3d9.dll', '58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf'),
-    'native_wined3d.dll': (SYSTEM / 'wined3d.dll', 'f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863'),
+    'native_d3d9.dll': SYSTEM / 'd3d9.dll',
+    'native_wined3d.dll': SYSTEM / 'wined3d.dll',
 }
 FILES = [
     'src/proxy/draw_input.h', 'src/proxy/draw_input.cpp',
@@ -26,7 +25,7 @@ FILES = [
     'src/renderer/rigid_position_profiles_inc.h', 'src/renderer/position_path_profiles_inc.h',
     'src/renderer/pixel_coverage_profiles_inc.h',
     'src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp',
-    'src/ownership/execution_state.h', 'src/ownership/execution_state.cpp', 'src/ownership/finite_buffer_evidence.cpp', 'src/ownership/finite_buffer_evidence.h', 'src/ownership/managed_upload_contract.cpp', 'src/ownership/managed_upload_contract.h',
+    'src/ownership/execution_state.h', 'src/ownership/execution_state.cpp', 'src/ownership/finite_buffer_evidence.cpp', 'src/ownership/finite_buffer_evidence.h', 'src/ownership/portable_managed_upload.cpp', 'src/ownership/portable_managed_upload.h',
     'src/ownership/d3d9_classes_inc.h', 'src/ownership/d3d9_forwarders_inc.h',
     'verification/probe/draw_input_fixture.cpp', 'verification/probe/build_draw_input.sh',
     'verification/probe/run_draw_input.py',
@@ -42,7 +41,7 @@ def digest(path):
 
 def hashes():
     return ({name: digest(ROOT / name) for name in FILES} | {'native_d3dx9_37.dll': digest(DLL), 'local_archive_vs_b0602757fce6e870.bin': digest(ARCHIVE)} |
-            {name: digest(path) for name, (path, _) in BACKENDS.items()})
+            {name: digest(path) for name, path in BACKENDS.items()})
 
 
 def main():
@@ -61,11 +60,6 @@ def main():
         save()
         if before['local_archive_vs_b0602757fce6e870.bin'] != ARCHIVE_SHA256:
             raise RuntimeError('Local reviewed archive VS differs from expected input')
-        if before['native_d3dx9_37.dll'] != EXPECTED:
-            raise RuntimeError('Native D3DX DLL differs from verified runtime')
-        for name, (_, expected) in BACKENDS.items():
-            if before[name] != expected:
-                raise RuntimeError('Managed-upload backend differs from verified runtime: ' + name)
         subprocess.run(['sh', 'verification/probe/build_draw_input.sh'], cwd=ROOT,
                        check=True, timeout=60)
         meta['source_hashes_after_build'] = hashes()

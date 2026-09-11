@@ -1,25 +1,25 @@
 {
-  "started_utc": "2026-09-10T22:17:44.288229+00:00",
+  "started_utc": "2026-09-11T00:42:32.241739+00:00",
   "passed": true,
   "phase": "complete",
   "fresh_build": true,
   "timeout_seconds": 90,
   "source_hashes_before_build": {
-    "src/proxy/mesh_adjacency_cache.h": "03c3fcb7a818a586e30eef43c93aa0b3d22e42e8a9186827df5f84dcbb7cfdef",
-    "src/proxy/mesh_adjacency_cache.cpp": "fb612017858407688b096c4da4049401725728523753b6bce9f7f9f3f440ba9e",
-    "verification/probe/mesh_adjacency_cache_fixture.cpp": "037f4c7321a72448b686007f9b3a3ab933dea2d6162898da2ba01449f5eeb6cf",
+    "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+    "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "9a21a4c9dc13247b6796a22c71441ba019275fb0097a59c4be60e9a90e8724fc",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
-    "verification/probe/run_mesh_adjacency_cache.py": "aa5204595e2eebc4a4d5969e1466edf37775f5087ca7825c3c7156ad92b10744",
+    "verification/probe/run_mesh_adjacency_cache.py": "ad60177cfdf9477a412b2a7dfc6acc9287b61e18ac6de2236b992ec6ce6d6a67",
     "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   },
   "source_hashes_after_build": {
-    "src/proxy/mesh_adjacency_cache.h": "03c3fcb7a818a586e30eef43c93aa0b3d22e42e8a9186827df5f84dcbb7cfdef",
-    "src/proxy/mesh_adjacency_cache.cpp": "fb612017858407688b096c4da4049401725728523753b6bce9f7f9f3f440ba9e",
-    "verification/probe/mesh_adjacency_cache_fixture.cpp": "037f4c7321a72448b686007f9b3a3ab933dea2d6162898da2ba01449f5eeb6cf",
+    "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+    "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "9a21a4c9dc13247b6796a22c71441ba019275fb0097a59c4be60e9a90e8724fc",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
-    "verification/probe/run_mesh_adjacency_cache.py": "aa5204595e2eebc4a4d5969e1466edf37775f5087ca7825c3c7156ad92b10744",
+    "verification/probe/run_mesh_adjacency_cache.py": "ad60177cfdf9477a412b2a7dfc6acc9287b61e18ac6de2236b992ec6ce6d6a67",
     "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   },
   "command": [
@@ -30,31 +30,30 @@
     "--workdir",
     "/Users/asvetl/x3-mod/verification/probe/build",
     "/Users/asvetl/x3-mod/verification/probe/build/mesh_adjacency_cache_fixture.exe",
-    "C:\\X3\\d3dx9_37.dll",
-    "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+    "C:\\X3\\d3dx9_37.dll"
   ],
   "hashes_before": {
-    "src/proxy/mesh_adjacency_cache.h": "03c3fcb7a818a586e30eef43c93aa0b3d22e42e8a9186827df5f84dcbb7cfdef",
-    "src/proxy/mesh_adjacency_cache.cpp": "fb612017858407688b096c4da4049401725728523753b6bce9f7f9f3f440ba9e",
-    "verification/probe/mesh_adjacency_cache_fixture.cpp": "037f4c7321a72448b686007f9b3a3ab933dea2d6162898da2ba01449f5eeb6cf",
+    "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+    "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "9a21a4c9dc13247b6796a22c71441ba019275fb0097a59c4be60e9a90e8724fc",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
-    "verification/probe/run_mesh_adjacency_cache.py": "aa5204595e2eebc4a4d5969e1466edf37775f5087ca7825c3c7156ad92b10744",
-    "verification/probe/build/mesh_adjacency_cache_fixture.exe": "5e91bb9cde3d3853239165648cb6352b550732cddf783fb396db1bf766ce217f",
+    "verification/probe/run_mesh_adjacency_cache.py": "ad60177cfdf9477a412b2a7dfc6acc9287b61e18ac6de2236b992ec6ce6d6a67",
+    "verification/probe/build/mesh_adjacency_cache_fixture.exe": "80db12e8290b67d916c2873db68f3ff473a117bee130455770d660b051f56059",
     "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   },
   "exit_code": 0,
   "hashes_after": {
-    "src/proxy/mesh_adjacency_cache.h": "03c3fcb7a818a586e30eef43c93aa0b3d22e42e8a9186827df5f84dcbb7cfdef",
-    "src/proxy/mesh_adjacency_cache.cpp": "fb612017858407688b096c4da4049401725728523753b6bce9f7f9f3f440ba9e",
-    "verification/probe/mesh_adjacency_cache_fixture.cpp": "037f4c7321a72448b686007f9b3a3ab933dea2d6162898da2ba01449f5eeb6cf",
+    "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+    "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "9a21a4c9dc13247b6796a22c71441ba019275fb0097a59c4be60e9a90e8724fc",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
-    "verification/probe/run_mesh_adjacency_cache.py": "aa5204595e2eebc4a4d5969e1466edf37775f5087ca7825c3c7156ad92b10744",
-    "verification/probe/build/mesh_adjacency_cache_fixture.exe": "5e91bb9cde3d3853239165648cb6352b550732cddf783fb396db1bf766ce217f",
+    "verification/probe/run_mesh_adjacency_cache.py": "ad60177cfdf9477a412b2a7dfc6acc9287b61e18ac6de2236b992ec6ce6d6a67",
+    "verification/probe/build/mesh_adjacency_cache_fixture.exe": "80db12e8290b67d916c2873db68f3ff473a117bee130455770d660b051f56059",
     "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   },
-  "report_sha256": "a3c194ab22c9f896004bc96eb1254ff983c3f78757d944dea17397987ee8362c",
+  "report_sha256": "3a741f583ea506a8c8481a6bee5593e1bcc6d3209e4e58f654c1e8f026e2ca78",
   "results": {
     "CASE": [
       {
@@ -107,36 +106,44 @@
         "diagnostic_instruction_pointers_excluded": "1"
       }
     ],
+    "LAST_ERROR_KEY": [
+      {
+        "conditional_change": "1",
+        "misses": "2",
+        "hits": "1",
+        "rejected": "1"
+      }
+    ],
     "TIMING": [
       {
         "faces": "18432",
         "vertices": "9409",
         "repetitions": "15",
-        "native_median_us": "96104.500",
-        "adapter_miss_median_us": "97116.600",
-        "adapter_hit_median_us": "1143.100",
+        "native_median_us": "97348.200",
+        "adapter_miss_median_us": "98578.200",
+        "adapter_hit_median_us": "1162.700",
         "includes_native_buffer_acquisition": "1",
-        "retained_bytes": "540928",
+        "retained_bytes": "540908",
         "scratch_cap_bytes": "4194304",
-        "acquisition_ticks": "31941",
-        "lookup_ticks": "305003",
-        "copy_ticks": "7848",
-        "native_ticks": "15391130",
-        "total_ticks": "15738008",
+        "acquisition_ticks": "33960",
+        "lookup_ticks": "297646",
+        "copy_ticks": "7700",
+        "native_ticks": "15668134",
+        "total_ticks": "16009580",
         "hits": "15",
         "misses": "16"
       }
     ],
     "RESULT": [
       {
-        "checks": "733"
+        "checks": "741"
       }
     ]
   },
   "limits": [
     "Detached core; no hooks, installation or game loading improvement.",
-    "Caller must verify/pin runtime and serialize mesh/output mutation.",
-    "SYSTEMMEM non-writeonly/non-shared meshes only; dynamic additionally needs positive exact readonly runtime contract.",
+    "Caller must pin implementation lifetime and serialize mesh/output mutation.",
+    "SYSTEMMEM non-writeonly/non-shared meshes only; dynamic additionally needs positive public readonly buffer contract.",
     "Default masked FP computational controls only; unsupported controls forward unchanged.",
     "FP instruction/data pointers and allocator side effects are not emulated.",
     "Persistent acquisition unlock failure has distinct origin, permanently disables cache and does not call native.",

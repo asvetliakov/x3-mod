@@ -64,6 +64,12 @@ HRESULT get_buffer_content_view(IDirect3DResource9* application, BufferContentVi
 // Hold a live wrapper reference and serialize buffer operations, final Release
 // and vtable changes throughout inspection and subsequent normal wrapper calls.
 // Never call Lock/Unlock through the result: that would bypass write tracking.
+// Trusted read-only inspection only; this pointer is technically mutable.
+// Every trusted native mutation outside wrapper Lock/Unlock must first call
+// invalidate_native_buffer_evidence and serialize its entire interval against
+// evidence queries/replay. Notification advances the observed storage revision.
+// Arbitrary unobserved native writes are unsupported.
+HRESULT invalidate_native_buffer_evidence(IUnknown* wrapped) noexcept;
 IDirect3DVertexBuffer9* borrowed_native_buffer_for_lock_contract(IDirect3DVertexBuffer9* wrapped) noexcept;
 IDirect3DIndexBuffer9* borrowed_native_buffer_for_lock_contract(IDirect3DIndexBuffer9* wrapped) noexcept;
 

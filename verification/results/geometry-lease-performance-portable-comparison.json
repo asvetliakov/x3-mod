@@ -1,0 +1,446 @@
+{
+  "passed": true,
+  "workload": "Unchanged geometry_lease_benchmark.cpp; 84 samples, seven warmed trials, 1/100/700/4096 leases, three profiles; no draws.",
+  "stages": {
+    "optimized": {
+      "manifest_sha256": "95caf42a03e00e0d058e2c22a0a9e75f30bfffc9a735ce06a94149004a95bf46",
+      "report_sha256": "52751f8928929c7d0510e718251c4e8e1e8a08f42e6eadbccb613b105cbb9ca2",
+      "executable_sha256": "30440580689b0624eac53d56517e85c97188f5913a55905545d98b28d6454b4b",
+      "source_hashes_before_build": {
+        "src/ownership/d3d9_ownership.h": "6251f048bd49782d919f74705ab9c7f0aec61ee7f2a71799c4a03c117fe90d33",
+        "src/ownership/d3d9_ownership.cpp": "e94793d53e82329d2cc8136d2baaecb0957c10771f4bbd5b88bbbb104949159f",
+        "src/ownership/d3d9_classes_inc.h": "97c661a1098441025c24a273885d082669169143d3e72cb23d98e12ddde2d195",
+        "src/ownership/d3d9_forwarders_inc.h": "30986054619e5bd1ba7f2bec9315cb1934c356138bba79fddc788c31d8b202af",
+        "src/ownership/execution_state.h": "88e6ad56d1440d353953bc558c177a2eb226e486d7f3bf371cb3087180d08836",
+        "src/ownership/execution_state.cpp": "f8d690a65eef657a055f4a248aba9762137515daa25a61aafd13ab901196fcdc",
+        "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+        "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+        "src/ownership/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949",
+        "src/ownership/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
+        "tools/ownership/generate_d3d9_forwarders.py": "0f7ea6c583d8434a3c59e2327a313f30651012b159918a085115b878910672a9",
+        "verification/probe/geometry_lease_benchmark.cpp": "ce010b62bf770ac7414369e78740b560bb092c5fb17460cfbae64a8964949da5",
+        "verification/probe/build_geometry_lease_benchmark.sh": "ec4f8fed7f98bdd844ec2ddd3fed3cd5a44ff4e6748ac6b730185e8c39ea6d13",
+        "verification/probe/run_geometry_lease_benchmark.py": "2a6d5f4e408fbbd17549c3ac6c8b02a1d2f989bc152a8c8239e9549bf809ead6",
+        "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+        "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
+      },
+      "source_unchanged_during_run": true
+    },
+    "portable": {
+      "manifest_sha256": "99ab970fb53d38e2248597ad1dde8c3a0a57915cbca9c59f0d2a72d036988be5",
+      "report_sha256": "285b3c523f06522f2dfd00ce307e21fc98e54f6a0856b00f0e2b418c8f5d55de",
+      "executable_sha256": "825c464c0a6de754b7334db88e148c5344af0646f2a1f12e648d0460ba731fae",
+      "source_hashes_before_build": {
+        "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+        "src/ownership/d3d9_ownership.cpp": "365da457bfd0df7a8d791764e673596f89187a10c4fcd1f2c536f6d69ec90d8f",
+        "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+        "src/ownership/d3d9_forwarders_inc.h": "4827fafbeaa1818341d39f410d0188cd95ce8697127ae3e13e584340c3b7539b",
+        "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+        "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+        "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+        "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+        "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+        "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+        "tools/ownership/generate_d3d9_forwarders.py": "6b0bb42d90ac3a1e6b38aec1a37330c140d0d23a986f11bb4f1015eea1b40b01",
+        "verification/probe/geometry_lease_benchmark.cpp": "ce010b62bf770ac7414369e78740b560bb092c5fb17460cfbae64a8964949da5",
+        "verification/probe/build_geometry_lease_benchmark.sh": "b3be83b50e23da243fc155d49c30874870a3901d5bf4f2d3b9f8833e6ce4fab2",
+        "verification/probe/run_geometry_lease_benchmark.py": "c8bcc9f9bbb92939f083465b8945d5b476c1dfb457b8b8971e65fb5ee414cfe6",
+        "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+        "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
+      },
+      "source_unchanged_during_run": true
+    }
+  },
+  "comparisons": [
+    {
+      "profile": "many_small",
+      "leases": 1,
+      "reserved_bytes": 60,
+      "distinct_pairs": 1024,
+      "median_us": {
+        "acquire_us": {
+          "optimized": 45.4,
+          "portable": 15.5
+        },
+        "inspect_us": {
+          "optimized": 43.1,
+          "portable": 14.8
+        },
+        "retire_us": {
+          "optimized": 8.7,
+          "portable": 6.1
+        },
+        "public_evidence_us": {
+          "optimized": 46.4,
+          "portable": 17.0
+        },
+        "acquire_qualifier_us": {
+          "optimized": 28.8,
+          "portable": 0.6
+        },
+        "inspect_qualifier_us": {
+          "optimized": 28.3,
+          "portable": 0.6
+        }
+      }
+    },
+    {
+      "profile": "many_small",
+      "leases": 100,
+      "reserved_bytes": 6000,
+      "distinct_pairs": 1024,
+      "median_us": {
+        "acquire_us": {
+          "optimized": 4264.4,
+          "portable": 1254.6
+        },
+        "inspect_us": {
+          "optimized": 4180.1,
+          "portable": 1249.4
+        },
+        "retire_us": {
+          "optimized": 42.4,
+          "portable": 32.6
+        },
+        "public_evidence_us": {
+          "optimized": 4272.7,
+          "portable": 1333.7
+        },
+        "acquire_qualifier_us": {
+          "optimized": 2878.2,
+          "portable": 55.5
+        },
+        "inspect_qualifier_us": {
+          "optimized": 2823.6,
+          "portable": 55.5
+        }
+      }
+    },
+    {
+      "profile": "many_small",
+      "leases": 700,
+      "reserved_bytes": 42000,
+      "distinct_pairs": 1024,
+      "median_us": {
+        "acquire_us": {
+          "optimized": 24246.1,
+          "portable": 5782.4
+        },
+        "inspect_us": {
+          "optimized": 24148.4,
+          "portable": 5624.8
+        },
+        "retire_us": {
+          "optimized": 155.7,
+          "portable": 149.4
+        },
+        "public_evidence_us": {
+          "optimized": 24669.8,
+          "portable": 6057.9
+        },
+        "acquire_qualifier_us": {
+          "optimized": 18792.9,
+          "portable": 433.6
+        },
+        "inspect_qualifier_us": {
+          "optimized": 18776.6,
+          "portable": 434.8
+        }
+      }
+    },
+    {
+      "profile": "many_small",
+      "leases": 4096,
+      "reserved_bytes": 245760,
+      "distinct_pairs": 1024,
+      "median_us": {
+        "acquire_us": {
+          "optimized": 138824.8,
+          "portable": 26138.0
+        },
+        "inspect_us": {
+          "optimized": 144188.7,
+          "portable": 25843.3
+        },
+        "retire_us": {
+          "optimized": 758.6,
+          "portable": 755.2
+        },
+        "public_evidence_us": {
+          "optimized": 139437.7,
+          "portable": 28422.8
+        },
+        "acquire_qualifier_us": {
+          "optimized": 112797.8,
+          "portable": 2392.0
+        },
+        "inspect_qualifier_us": {
+          "optimized": 113160.9,
+          "portable": 2376.4
+        }
+      }
+    },
+    {
+      "profile": "shared_small",
+      "leases": 1,
+      "reserved_bytes": 60,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "optimized": 29.0,
+          "portable": 2.2
+        },
+        "inspect_us": {
+          "optimized": 28.3,
+          "portable": 2.1
+        },
+        "retire_us": {
+          "optimized": 9.7,
+          "portable": 5.7
+        },
+        "public_evidence_us": {
+          "optimized": 29.3,
+          "portable": 2.7
+        },
+        "acquire_qualifier_us": {
+          "optimized": 27.3,
+          "portable": 0.6
+        },
+        "inspect_qualifier_us": {
+          "optimized": 26.8,
+          "portable": 0.6
+        }
+      }
+    },
+    {
+      "profile": "shared_small",
+      "leases": 100,
+      "reserved_bytes": 6000,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "optimized": 2795.4,
+          "portable": 169.5
+        },
+        "inspect_us": {
+          "optimized": 2806.2,
+          "portable": 178.8
+        },
+        "retire_us": {
+          "optimized": 25.1,
+          "portable": 24.2
+        },
+        "public_evidence_us": {
+          "optimized": 2832.4,
+          "portable": 235.4
+        },
+        "acquire_qualifier_us": {
+          "optimized": 2678.1,
+          "portable": 52.1
+        },
+        "inspect_qualifier_us": {
+          "optimized": 2681.3,
+          "portable": 51.7
+        }
+      }
+    },
+    {
+      "profile": "shared_small",
+      "leases": 700,
+      "reserved_bytes": 42000,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "optimized": 19483.2,
+          "portable": 1209.6
+        },
+        "inspect_us": {
+          "optimized": 19608.9,
+          "portable": 1266.6
+        },
+        "retire_us": {
+          "optimized": 113.0,
+          "portable": 122.3
+        },
+        "public_evidence_us": {
+          "optimized": 20002.9,
+          "portable": 1694.0
+        },
+        "acquire_qualifier_us": {
+          "optimized": 18663.1,
+          "portable": 364.6
+        },
+        "inspect_qualifier_us": {
+          "optimized": 18735.3,
+          "portable": 363.3
+        }
+      }
+    },
+    {
+      "profile": "shared_small",
+      "leases": 4096,
+      "reserved_bytes": 245760,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "optimized": 114331.7,
+          "portable": 6932.4
+        },
+        "inspect_us": {
+          "optimized": 115182.1,
+          "portable": 7402.5
+        },
+        "retire_us": {
+          "optimized": 618.4,
+          "portable": 662.3
+        },
+        "public_evidence_us": {
+          "optimized": 117266.1,
+          "portable": 9742.2
+        },
+        "acquire_qualifier_us": {
+          "optimized": 109549.6,
+          "portable": 2106.9
+        },
+        "inspect_qualifier_us": {
+          "optimized": 110006.7,
+          "portable": 2113.8
+        }
+      }
+    },
+    {
+      "profile": "shared_varying_range",
+      "leases": 1,
+      "reserved_bytes": 77824,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "optimized": 28.4,
+          "portable": 2.2
+        },
+        "inspect_us": {
+          "optimized": 28.0,
+          "portable": 2.0
+        },
+        "retire_us": {
+          "optimized": 8.4,
+          "portable": 5.5
+        },
+        "public_evidence_us": {
+          "optimized": 28.8,
+          "portable": 2.8
+        },
+        "acquire_qualifier_us": {
+          "optimized": 27.0,
+          "portable": 0.6
+        },
+        "inspect_qualifier_us": {
+          "optimized": 26.5,
+          "portable": 0.6
+        }
+      }
+    },
+    {
+      "profile": "shared_varying_range",
+      "leases": 100,
+      "reserved_bytes": 7782400,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "optimized": 2996.1,
+          "portable": 336.1
+        },
+        "inspect_us": {
+          "optimized": 2988.7,
+          "portable": 345.5
+        },
+        "retire_us": {
+          "optimized": 31.5,
+          "portable": 30.1
+        },
+        "public_evidence_us": {
+          "optimized": 3035.0,
+          "portable": 406.2
+        },
+        "acquire_qualifier_us": {
+          "optimized": 2720.9,
+          "portable": 53.5
+        },
+        "inspect_qualifier_us": {
+          "optimized": 2705.9,
+          "portable": 52.9
+        }
+      }
+    },
+    {
+      "profile": "shared_varying_range",
+      "leases": 700,
+      "reserved_bytes": 54476800,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "optimized": 21091.6,
+          "portable": 2363.4
+        },
+        "inspect_us": {
+          "optimized": 21021.1,
+          "portable": 2461.2
+        },
+        "retire_us": {
+          "optimized": 132.7,
+          "portable": 135.7
+        },
+        "public_evidence_us": {
+          "optimized": 21508.8,
+          "portable": 2847.9
+        },
+        "acquire_qualifier_us": {
+          "optimized": 19158.3,
+          "portable": 368.6
+        },
+        "inspect_qualifier_us": {
+          "optimized": 19037.8,
+          "portable": 371.1
+        }
+      }
+    },
+    {
+      "profile": "shared_varying_range",
+      "leases": 4096,
+      "reserved_bytes": 318767104,
+      "distinct_pairs": 1,
+      "median_us": {
+        "acquire_us": {
+          "optimized": 120798.4,
+          "portable": 15492.3
+        },
+        "inspect_us": {
+          "optimized": 121593.2,
+          "portable": 15068.4
+        },
+        "retire_us": {
+          "optimized": 610.6,
+          "portable": 665.0
+        },
+        "public_evidence_us": {
+          "optimized": 123545.2,
+          "portable": 17840.3
+        },
+        "acquire_qualifier_us": {
+          "optimized": 109652.9,
+          "portable": 2394.3
+        },
+        "inspect_qualifier_us": {
+          "optimized": 109971.0,
+          "portable": 2308.5
+        }
+      }
+    }
+  ],
+  "limits": [
+    "Historical optimized stage is identified by its retained source/executable; it is not claimed to match current sources.",
+    "Portable stage changes backing/validation contract to documented D3D9 readable MANAGED resources; compare wall cost, not identical backend attestation.",
+    "Sequential synthetic Preview runs are not game FPS or native-Windows runtime verification.",
+    "Qualifier spans overlap phase times."
+  ]
+}

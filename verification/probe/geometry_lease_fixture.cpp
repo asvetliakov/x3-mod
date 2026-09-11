@@ -63,24 +63,58 @@ void capacity(Create create,HWND window){
  Geometry larger(s,false,256*1024);frame=begin(s);unsigned admitted=0;while(admitted<geometry_leases_per_frame&&acquire_geometry_lease(frame,larger.vb.p,nullptr,larger.request,&extra)==S_OK)++admitted;check(admitted==geometry_native_byte_limit/(256*1024),"conservative native byte budget exact bound");check(!extra.value,"byte budget refusal clears output");ok(end_geometry_frame(frame),"byte reservations returned");frame=begin(s);acquire(frame,larger);ok(end_geometry_frame(frame),"returned byte budget admits later frame");
 }
 struct SlotChange {
- static inline unsigned foreign_calls=0;
- static ULONG WINAPI foreign_ref(IUnknown*){++foreign_calls;return 99;}
  static HRESULT WINAPI foreign_lock(IUnknown*,UINT,UINT,void**,DWORD){return E_FAIL;}
  IUnknown* object;void** previous;void* table[14];
  SlotChange(IUnknown* value,unsigned slot):object(value),previous(*reinterpret_cast<void***>(value)){
-  std::memcpy(table,previous,sizeof table);if(slot<=2){auto fn=&foreign_ref;std::memcpy(&table[slot],&fn,sizeof fn);}else{auto fn=&foreign_lock;std::memcpy(&table[slot],&fn,sizeof fn);}*reinterpret_cast<void***>(object)=table;
+  std::memcpy(table,previous,sizeof table);auto fn=&foreign_lock;std::memcpy(&table[slot],&fn,sizeof fn);*reinterpret_cast<void***>(object)=table;
  }
  ~SlotChange(){*reinterpret_cast<void***>(object)=previous;}
+};
+// A legitimate COM interceptor forwards every reference operation. Its vtable
+// remains installed and callable until all retained references are balanced.
+struct RefForward {
+ using Ref=ULONG(WINAPI*)(IUnknown*);
+ static inline RefForward* current=nullptr;
+ IUnknown* object;void** previous;void* table[14];Ref original_add,original_release;
+ unsigned adds=0,releases=0;
+ static ULONG WINAPI add(IUnknown* p){++current->adds;return current->original_add(p);}
+ static ULONG WINAPI release(IUnknown* p){++current->releases;return current->original_release(p);}
+ explicit RefForward(IUnknown* p):object(p),previous(*reinterpret_cast<void***>(p)){
+  std::memcpy(table,previous,sizeof table);std::memcpy(&original_add,&table[1],sizeof original_add);std::memcpy(&original_release,&table[2],sizeof original_release);
+  auto a=&add,r=&release;std::memcpy(&table[1],&a,sizeof a);std::memcpy(&table[2],&r,sizeof r);current=this;*reinterpret_cast<void***>(object)=table;
+ }
+ ~RefForward(){*reinterpret_cast<void***>(object)=previous;current=nullptr;}
 };
 void endpoint_changes(Create create,HWND window){
  Session s(create,window);Geometry g(s);auto frame=begin(s);auto lease=acquire(frame,g);GeometryLeaseView out;
  {SlotChange changed(g.vb.p,11);check(inspect_geometry_lease(frame,lease,&out)==S_FALSE&&!out.vertex_buffer,"current canonical wrapper foreign Lock refuses retained replay");}
  inspect(frame,lease);{SlotChange changed(g.ib.p,12);check(inspect_geometry_lease(frame,lease,&out)==S_FALSE&&!out.vertex_buffer,"current canonical wrapper foreign Unlock refuses retained replay");}
  auto* native=borrowed_native_buffer_for_lock_contract(g.vb.p);const ULONG baseline=refs(native)-1;
- {SlotChange changed(native,2);check(inspect_geometry_lease(frame,lease,&out)==S_FALSE&&!out.vertex_buffer,"native foreign Release refuses replay");ok(release_geometry_lease(frame,lease),"stored certified Release balances retained reference");check(SlotChange::foreign_calls==0,"cleanup never dispatches foreign Release");}
- check(refs(native)==baseline,"certified cleanup released actual original native ref");
- {SlotChange changed(native,1);GeometryLeaseHandle rejected;check(acquire_geometry_lease(frame,g.vb.p,g.ib.p,g.request,&rejected)==S_FALSE&&!rejected.value,"foreign AddRef cannot fake acquisition");check(SlotChange::foreign_calls==0,"foreign AddRef not called");}
+ {RefForward forwarded(native);inspect(frame,lease);auto before_release=forwarded.releases;ok(release_geometry_lease(frame,lease),"standard COM Release balances retained reference through interceptor");check(forwarded.releases==before_release+1,"cleanup calls current legitimate native Release exactly once");
+  const auto before_balance=int(forwarded.adds)-int(forwarded.releases);lease=acquire(frame,g);check(int(forwarded.adds)-int(forwarded.releases)==before_balance+1,"retention owns one net legitimate native COM reference");inspect(frame,lease);before_release=forwarded.releases;ok(release_geometry_lease(frame,lease),"release intercepted acquired pair");check(forwarded.releases==before_release+1&&int(forwarded.adds)-int(forwarded.releases)==before_balance,"intercepted native references balanced");}
+ check(refs(native)==baseline,"standard COM retention preserves actual native reference count");
  ok(end_geometry_frame(frame),"endpoint frame cleanup");
+}
+void native_mutation(Create create,HWND window){
+ for(bool index:{false,true}){
+  Session s(create,window);Geometry g(s);auto frame=begin(s);auto lease=acquire(frame,g);GeometryLeaseView view;
+  IUnknown* application=index?static_cast<IUnknown*>(g.ib.p):static_cast<IUnknown*>(g.vb.p);
+  auto* vb=borrowed_native_buffer_for_lock_contract(g.vb.p);auto* ib=borrowed_native_buffer_for_lock_contract(g.ib.p);
+  check(invalidate_native_buffer_evidence(nullptr)==E_INVALIDARG,"null native-write escape rejected");
+  check(invalidate_native_buffer_evidence(s.device.p)==E_INVALIDARG,"device cannot impersonate buffer escape");
+  check(invalidate_native_buffer_evidence(index?static_cast<IUnknown*>(ib):static_cast<IUnknown*>(vb))==E_INVALIDARG,"unrecognized native buffer cannot impersonate observed wrapper");
+  ok(invalidate_native_buffer_evidence(application),"declare trusted native mutation before access");
+  check(inspect_geometry_lease(frame,lease,&view)==S_FALSE&&!view.vertex_buffer,"declared native mutation immediately invalidates retained evidence");
+  // The caller serializes this entire native interval; there are no queries
+  // between Lock and Unlock and no claim to detect an undeclared bypass.
+  void* data=nullptr;ok(index?ib->Lock(0,0,&data,0):vb->Lock(0,0,&data,0),"declared native write Lock");std::memset(data,0,index?12:48);ok(index?ib->Unlock():vb->Unlock(),"declared native write Unlock");
+  check(inspect_geometry_lease(frame,lease,&view)==S_FALSE&&!view.vertex_buffer,"native closure cannot reconstruct observed finite evidence");
+  GeometryLeaseHandle rejected{99};check(acquire_geometry_lease(frame,g.vb.p,g.ib.p,g.request,&rejected)==S_FALSE&&!rejected.value,"old request cannot reacquire after native mutation");
+  ok(index?g.ib->Lock(0,0,&data,0):g.vb->Lock(0,0,&data,0),"observed full rewrite Lock");std::memset(data,0,index?12:48);ok(index?g.ib->Unlock():g.vb->Unlock(),"observed full rewrite Unlock");
+  BufferContentView content;ok(get_buffer_content_view(index?static_cast<IDirect3DResource9*>(g.ib.p):static_cast<IDirect3DResource9*>(g.vb.p),&content),"rewritten storage revision");check(content.known&&!content.ambiguous&&!content.pending_locks&&content.revision>1,"observed rewrite restores known new revision");
+  if(index)g.request.indices.expected_revision=content.revision;else g.request.positions.expected_revision=content.revision;
+  auto refreshed=acquire(frame,g);inspect(frame,refreshed);check(inspect_geometry_lease(frame,lease,&view)==S_FALSE&&!view.vertex_buffer,"new finite certificate never revives old immutable lease");ok(end_geometry_frame(frame),"native mutation frame cleanup");
+ }
 }
 struct ReleaseProbe final:IUnknown {
  ULONG count=1;IDirect3DDevice9* device;HANDLE start=CreateEventA(nullptr,TRUE,FALSE,nullptr),done=CreateEventA(nullptr,TRUE,FALSE,nullptr);bool completed=false;
@@ -125,4 +159,4 @@ void malformed_handles(Create create,HWND window){
  inspect(frame,lease);ok(end_geometry_frame(frame),"real handle still owns reservation after malformed operations");
 }
 
-int main(){try{auto module=LoadLibraryA("C:\\windows\\system32\\d3d9.dll");check(module!=nullptr,"native module");Create create=nullptr;auto entry=GetProcAddress(module,"Direct3DCreate9");std::memcpy(&create,&entry,sizeof create);check(create!=nullptr,"native entry");auto window=CreateWindowExA(0,"STATIC","geometry lease fixture",WS_OVERLAPPEDWINDOW,0,0,64,64,nullptr,nullptr,GetModuleHandleA(nullptr),nullptr);check(window!=nullptr,"window");lifetime(create,window);mutation(create,window);retirement(create,window);capacity(create,window);endpoint_changes(create,window);release_lock_order(create,window);execution_preservation(create,window);process_capacity(create,window);malformed_handles(create,window);all_clean(create,window);DestroyWindow(window);FreeLibrary(module);std::printf("RESULT PASS checks=%u\n",checks);return 0;}catch(const std::exception& e){std::printf("RESULT FAIL %s checks=%u\n",e.what(),checks);return 1;}}
+int main(){try{auto module=LoadLibraryA("C:\\windows\\system32\\d3d9.dll");check(module!=nullptr,"native module");Create create=nullptr;auto entry=GetProcAddress(module,"Direct3DCreate9");std::memcpy(&create,&entry,sizeof create);check(create!=nullptr,"native entry");auto window=CreateWindowExA(0,"STATIC","geometry lease fixture",WS_OVERLAPPEDWINDOW,0,0,64,64,nullptr,nullptr,GetModuleHandleA(nullptr),nullptr);check(window!=nullptr,"window");lifetime(create,window);mutation(create,window);retirement(create,window);capacity(create,window);endpoint_changes(create,window);native_mutation(create,window);release_lock_order(create,window);execution_preservation(create,window);process_capacity(create,window);malformed_handles(create,window);all_clean(create,window);DestroyWindow(window);FreeLibrary(module);std::printf("RESULT PASS checks=%u\n",checks);return 0;}catch(const std::exception& e){std::printf("RESULT FAIL %s checks=%u\n",e.what(),checks);return 1;}}

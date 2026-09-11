@@ -1,5 +1,9 @@
 # Pinned Preview managed-buffer write mapping
 
+Historical private-layout research only. Production now uses the documented
+[portable readable-managed upload path](../verification/portable-managed-upload.md)
+and does not depend on these DLL fingerprints or structure offsets.
+
 Initial static investigation and qualification follow-up, 2026-09-11. The installed x86 Preview backend supports a
 bounded way to inspect the game's **existing successful writable VB/IB mapping
 before its normal Unlock**, without requesting another lock. For ordinary

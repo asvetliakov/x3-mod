@@ -142,18 +142,10 @@ HRESULT WINAPI Device::CreateCubeTexture(UINT EdgeLength, UINT Levels, DWORD Usa
     return output(device_of(this), hr, owned, ppCubeTexture);
 }
 HRESULT WINAPI Device::CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, IDirect3DVertexBuffer9** ppVertexBuffer, HANDLE* pSharedHandle) {
-    IDirect3DVertexBuffer9* owned = untouched_output<IDirect3DVertexBuffer9>();
-    const HRESULT hr = native_->CreateVertexBuffer(Length, Usage, FVF, Pool, ppVertexBuffer ? &owned : nullptr, pSharedHandle);
-    if (SUCCEEDED(hr) && owned && owned != untouched_output<IDirect3DVertexBuffer9>())
-        initialize_buffer(this, owned);
-    return output(device_of(this), hr, owned, ppVertexBuffer);
+    return create_vertex_buffer(this, Length, Usage, FVF, Pool, ppVertexBuffer, pSharedHandle);
 }
 HRESULT WINAPI Device::CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DIndexBuffer9** ppIndexBuffer, HANDLE* pSharedHandle) {
-    IDirect3DIndexBuffer9* owned = untouched_output<IDirect3DIndexBuffer9>();
-    const HRESULT hr = native_->CreateIndexBuffer(Length, Usage, Format, Pool, ppIndexBuffer ? &owned : nullptr, pSharedHandle);
-    if (SUCCEEDED(hr) && owned && owned != untouched_output<IDirect3DIndexBuffer9>())
-        initialize_buffer(this, owned);
-    return output(device_of(this), hr, owned, ppIndexBuffer);
+    return create_index_buffer(this, Length, Usage, Format, Pool, ppIndexBuffer, pSharedHandle);
 }
 HRESULT WINAPI Device::CreateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, WINBOOL Lockable, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) {
     IDirect3DSurface9* owned = untouched_output<IDirect3DSurface9>();
@@ -786,7 +778,7 @@ HRESULT WINAPI VertexBuffer::Unlock() {
     return buffer_unlock(this);
 }
 HRESULT WINAPI VertexBuffer::GetDesc(D3DVERTEXBUFFER_DESC* pDesc) {
-    return observe_result(device_of(this), native_->GetDesc(pDesc));
+    return buffer_desc(this, pDesc);
 }
 HRESULT WINAPI IndexBuffer::QueryInterface(REFIID riid, void** ppvObject) {
     return query(this, riid, ppvObject);
@@ -828,7 +820,7 @@ HRESULT WINAPI IndexBuffer::Unlock() {
     return buffer_unlock(this);
 }
 HRESULT WINAPI IndexBuffer::GetDesc(D3DINDEXBUFFER_DESC* pDesc) {
-    return observe_result(device_of(this), native_->GetDesc(pDesc));
+    return buffer_desc(this, pDesc);
 }
 HRESULT WINAPI VertexDeclaration::QueryInterface(REFIID riid, void** ppvObject) {
     return query(this, riid, ppvObject);

@@ -1,5 +1,11 @@
 # Live draw-input acquisition verification
 
+The production build uses the portable managed-upload observer. The retained
+260-check result below was freshly regenerated against that portable build.
+Runtime DLL hashes remain recorded before/after
+for reproducibility and stability, with no fixed runtime-hash allowlist. The
+archive shader hash still identifies the exact reviewed test input.
+
 The production `DrawInputReader` acquires the current application draw's exact
 shader rows, input declaration, buffer allocation/revision identities, submitted
 range, target/viewport and raster state through the ownership boundary. It does
@@ -25,7 +31,7 @@ python3 verification/probe/run_draw_input.py
 ```
 
 The [summary](../../verification/results/draw-input-summary.json) records the
-fresh source/header/include/runner hashes, native D3DX and pinned D3D9/WineD3D
+fresh source/header/include/runner hashes, native D3DX and observed D3D9/WineD3D
 DLL hashes, executable hash,
 command and report hash. A previous PASS is invalidated before reading sources
 or invoking the compiler. Build and run must preserve all recorded inputs.

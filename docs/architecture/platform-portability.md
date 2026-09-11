@@ -11,14 +11,22 @@ mutexes cannot be prerequisites for required rendering features. A backend-speci
 optimization or diagnostic may remain isolated behind explicit capability checks;
 required features also need a portable/native-Windows implementation. Unknown
 capabilities must be reported honestly rather than silently counted as supported.
+The user also requires avoiding exact DLL hash gates, including system graphics
+libraries and bundled game DLLs. Replace the private-layout dependency itself. Removing
+its hash checks while retaining private-offset reads would not satisfy this.
+Recording runtime hashes in test reports remains useful provenance.
 
 ## Current gaps
 
-- The finite-position observer's managed-buffer qualifier validates exact
-  CrossOver Preview D3D9/WineD3D binaries, mappings and private layouts. It is a
-  backend-specific evidence producer, not a native-Windows implementation.
-  Native Windows needs equivalent geometry evidence through a separately
-  qualified producer before this gate can support required motion/TAA there.
+- The finite-position observer now uses public descriptors, readable managed
+  backing and observed wrapper Lock/Unlock transactions. The former exact-Wine
+  qualifier is historical verification code only. The portable source still
+  needs native-Windows runtime verification; see
+  [its contract and evidence](../verification/portable-managed-upload.md).
+- Depth copying currently uses the RESZ extension and a D24X8 comparison-sampling
+  adapter tested on Preview. Required rendering effects need a suitable depth
+  provider on native Windows too; ordinary D3D9 calls alone do not guarantee
+  those extension semantics on every driver.
 - The proposed use of WineD3D's internal graphics mutex is backend research only.
   It is not the shared replay-exclusion design. Continue a portable ownership/call
   admission protocol that does not depend on backend-private synchronization.
@@ -29,6 +37,13 @@ capabilities must be reported honestly rather than silently counted as supported
   multithreading, presentation or performance. Native-Windows verification remains
   outstanding; no successful Windows run is claimed.
 
+Game EXE/DLL private structures and code hooks remain allowed. Use disassembly
+where needed and validate the targeted game ABI/layout; this permission is
+separate from avoiding dependencies on private graphics-runtime implementations.
+
 For each new component, review dependencies and capability gates alongside code
 correctness and performance. Preserve separate evidence for CPU-only behavior,
 Windows builds, CrossOver runtime tests and eventual native-Windows runtime tests.
+
+See the [runtime dependency and interception audit](runtime-dependencies.md) for
+concrete remaining gates, removal status and the separate depth-adapter gap.

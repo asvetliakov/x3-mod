@@ -101,7 +101,13 @@ Do not change archive order, pre-extract the whole game, change shader quality/b
 
 `src/proxy/loading_trace.{h,cpp}` now supplies opt-in main-module IAT diagnostics for 16 main-module boundaries: the three Win32 file APIs, six D3DX helpers (including CreateMesh and CleanMesh), `SetCursor`, `SetCursorPos`, and `gzopen`/`gzread`/`gzseek`/`inflate`/`xmlReadMemory`. `ShowCursor` is not a static import of this executable; absence of those calls in this trace is not evidence it never runs in other modules. Graphics telemetry separately observes D3D cursor methods.
 
-Initialization occurs outside loader lock and before import patching reads the executable file using unmodified file APIs. The production compatibility gate requires FNV-1a 64 `96f0b2777c624f6d`, file size 2,153,984, PE32/i386, image base `0x00400000` and mapped image size `0x002f5000`. The fixture override only exists under `X3M_LOADING_TRACE_FIXTURE` and is absent from the production object. Import names/DLLs are parsed; none of the address-table numbers above is used for writes. Atomic pointer comparisons, restored page protections and owned-only teardown preserve other interceptors.
+Initialization occurs outside loader lock. The current production gate uses
+bounded readable PE32/i386 named-import parsing; it no longer reads or fingerprints
+the EXE, requires a fixed image base/size, or rejects a different whole-file hash.
+Ordinal/missing-name imports are not inferred from their IAT targets. Candidate
+slots are staged before mutation; atomic pointer comparisons, restored page
+protections and owned-only teardown preserve other interceptors. Fixture-only
+entry points are absent from the production object.
 
 Callback signatures for Win32/D3DX are compile-time checked against the MinGW SDK. The zlib/libxml signatures are corroborated by local SDK declarations and target assembly: `gzread`/`gzseek` use three 32-bit arguments and caller cleanup; `inflate` uses two; `xmlReadMemory` uses five. `gzseek` is the legacy 32-bit signed-long API, not `gzseek64`. The production code treats codec/XML objects as opaque pointers and never reads `z_stream`, resource contents, paths or XML source text. Inflate records time/status only; its byte count is unavailable. `gzread` reports returned output bytes, not compressed disk bytes.
 
@@ -113,7 +119,7 @@ Loading spans subtract nested **loading** spans only. D3DX effect time still inc
 
 ### Synthetic verification
 
-`verification/probe/build_loading_trace.sh` builds a standalone executable and original stub D3DX/zlib/XML DLLs in its private build directory. Do not copy these stub DLLs into X3. The expanded ABI fixture completed **68 checks with zero failures** under CrossOver Preview without launching the game. It verifies disabled/wrong/production fingerprint rejection, named imports, all forwarded D3DX/codec/XML argument values, success/failure LastError, exact returned pointers/integers, output buffers, async pending reads, counters, IAT page protections, snapshot reset, and preservation of another interceptor installed before teardown.
+`verification/probe/build_loading_trace.sh` builds a standalone executable and original stub D3DX/zlib/XML DLLs in its private build directory. Do not copy these stub DLLs into X3. The expanded ABI fixture completed **75 checks with zero failures** under CrossOver Preview without launching the game. It verifies disabled mode, malformed/escaping PE rejection, named-only import matching, all forwarded D3DX/codec/XML argument values, success/failure LastError, exact returned pointers/integers, output buffers, async pending reads, counters, IAT page protections, snapshot reset, and preservation of another interceptor installed before teardown.
 
 A same-process 20,000-call fake-inflate loop reports direct and instrumented stub costs separately in the raw fixture output. This is an illustrative callback-cost check with a trivial backend, not a game benchmark or a forecast of loading impact. Recorded evidence is `verification/results/loading-trace-fixture.txt`; the fresh-build source/executable/native-DLL fingerprints and native mesh results are in `verification/results/loading-trace-mesh-summary.json`. Production compilation completed with `-Wall -Wextra` and no warnings; symbol inspection confirms the fixture-only entry points are absent.
 
@@ -140,9 +146,16 @@ Shared slots have **broader coverage than main-module imports**: every object us
 
 ### Compatibility, bounds and lifetime
 
-Method hooks are gated on the exact locally verified native D3DX file: SHA-256 `c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8`, runtime FNV-1a64 `49cc52632ef762d4`, size 3,786,760 bytes. The returned mesh must have readable storage and a module-owned readable public table; IUnknown and all three target methods must be executable addresses within that module. Invalid/unrecognized tables keep the IAT coverage only. Once verified, the native module is pinned for process lifetime so originals remain callable. No engine instructions or function prologues are patched.
+Method hooks use public COM slots and process-local lifetime qualification, not
+D3DX file digests or fixed code offsets. The returned mesh must have readable
+storage and a module-backed readable shared table; the table and callable original
+methods' actual owning modules are pinned. Their module placement need not equal
+the factory's. Heap/JIT tables with unproven saved-chain lifetime retain only IAT
+coverage. No engine instructions or function prologues are patched. Public buffer
+qualification and unchanged observed metadata-method pointers separately govern
+optional adjacency caching; see [the cache adapter](../verification/mesh-cache-hook.md).
 
-At most eight table records are retained, each with three exact original pointers and distinct template trampolines. Originals are immutable. A foreign interceptor that later clones a vptr or chains to a saved trampoline therefore reaches the correct original without consulting the object's current vptr or retaining the object. The registry lock is held only for setup/teardown; native mesh work runs outside it. Steady-state method callbacks contain timing/accounting only. Bounded setup events explicitly identify `scope=shared_native_vtables`, module verification/pinning, table index and owned slot count.
+At most eight table records are retained, each with three exact original pointers and distinct template trampolines. Originals are immutable. A foreign interceptor that later clones a vptr or chains to a saved trampoline therefore reaches the correct original without consulting the object's current vptr or retaining the object. The registry lock is held only for setup/teardown; native mesh work runs outside it. Steady-state method callbacks contain timing/accounting only. Bounded setup events explicitly identify `scope=shared_public_com_vtables`, module lifetime pinning, table index and owned slot count.
 
 Slot writes use atomic ownership comparisons and restore page protections. Partial installation rolls back owned slots. A fixed 64-entry page-protection recovery table retains the true original page protection if restoration and rollback restoration both fail. A later slot on that same page cannot treat temporary PAGE_READWRITE as its original baseline. Quiescent shutdown retries pending protection recovery, preserves foreign-owned slots, and reports active while any owned import/method hook or unresolved protection remains. Original records and the pinned module remain available after teardown for foreign chains. The tracing DLL itself must remain loaded while any retained trampoline may still be called.
 
@@ -150,12 +163,25 @@ Initialization has one installation generation per process. After teardown it re
 
 ### Native and synthetic verification
 
-`python3 verification/probe/run_loading_trace.py` freshly builds both suites, verifies the exact native DLL before copying it into an ignored standalone test directory, and checks all consumed source/binary hashes before and after execution. Only CrossOver Preview's Steam bottle is used. There is no game launch, installation or bottle-settings mutation.
+`python3 verification/probe/run_loading_trace.py` freshly builds both suites, records the loaded DLL identity without an allowlist before copying it into an ignored standalone test directory, and checks all consumed source/binary hashes before and after execution. Only CrossOver Preview's Steam bottle is used. There is no game launch, installation or bottle-settings mutation.
 
-The ABI suite passed **68 checks**, including all CreateMesh/CleanMesh arguments, null outputs, success/failure HRESULTs, incoming/outgoing LastError and counters. Its fake D3DX module is correctly rejected for method instrumentation. It also exercises a foreign IAT interceptor that chains to the saved tracer, shutdown, refused reinitialization and continued safe dispatch. Its main-EXE linkage makes the setup fingerprint read pass through its own ReadFile hook, unlike the production DLL; that bounded setup is completed before the exact steady-state file-counter interval.
+The ABI suite passed **75 checks**, including all CreateMesh/CleanMesh arguments, null outputs, success/failure HRESULTs, incoming/outgoing LastError and counters. Its stub outputs remain outside valid mesh-object/table lifetime qualification.
+It also exercises malformed PE headers, escaping import directories, missing named
+thunks, ordinal/unknown imports, a foreign IAT interceptor chaining to the saved
+tracer, shutdown, refused reinitialization and continued safe dispatch. There are
+no setup fingerprint reads. The independent real-mesh suite checks public COM
+slot instrumentation, partial patch rollback and preserved native outputs.
 
 The real native suite passed **123 checks** on an original tetrahedral mesh. It compares generated/point-representative/cleaned/optimized adjacency, vertex/index/attribute payloads, face/vertex remaps, all recorded HRESULTs and LastError exactly with an uninstrumented baseline. CleanMesh returns the same input with an additional reference for this case; that native alias behavior is preserved and each owned reference is released once. QueryInterface identity, native refcounts, final mesh Release and final device Release are checked. A preexisting mesh demonstrates shared-table scope.
 
 The native suite also injects failure before a second slot install, failure of both page-protection restore and rollback restore, recovery by the next patch on the same page, persistent shutdown restoration failure followed by a successful retry, and another interceptor owning a slot at teardown. The foreign chain remains callable after shutdown. During the measured synthetic sequence, the five categories observed 1 create, 1 clean, 1 point-representative conversion, 2 adjacency calls and 2 OptimizeInplace calls; one intentionally invalid OptimizeInplace request failed as in the baseline. These are fixture counts, not game-load costs.
 
-Production compilation passes `-Wall -Wextra -Werror`, and the production object contains no fixture-only fault entry points. Independent review accepted the protection-recovery and immutable-original fixes. The frozen implementation SHA-256 is `00d10a3c7a85b1331a3e8337b398873483d629552dc6714fa4a55d12e5537bff`; exact fixture provenance is retained in the summary JSON. No mesh cache, skipped work or loading speedup is implemented or claimed.
+Production compilation passes `-Wall -Wextra -Werror`, and the production object
+contains no fixture-only fault entry points. Independent review accepted public
+interface qualification, saved-original/protection recovery, and the fresh 75/123
+suite artifacts. Current loading implementation SHA-256 is
+`3d63865fbf60b61eb2f458353191c0936aa87aeb43c086e83e8fa4504faa3ce1`;
+exact source/native/executable/report provenance is retained in the summary JSON.
+The separately requested [adjacency cache](../verification/mesh-cache-hook.md)
+now has public-interface tests. No game loading speedup is established, and
+Windows runtime validation remains outstanding.

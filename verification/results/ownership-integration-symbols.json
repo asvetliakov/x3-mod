@@ -1,48 +1,281 @@
 {
   "result": "PASS",
+  "scope": "Fresh full DLL and linked-object audit; runtime DLL file hashes are provenance only, never an allowlist",
   "command": [
     "i686-w64-mingw32-nm",
     "-C",
     "--defined-only"
   ],
   "objects": {
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj": {
+      "sha256": "d6d0541c480fe18f42ca3e336bdac6179c2be9eae2a9173d30c1b7460287ca87",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj": {
+      "sha256": "bbc050e1b8313c85557534c4579ff6f8c3edfb90b3ccc4da2702385edde8d19d",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj": {
+      "sha256": "b32cbdd96eb56c07d735454610d268e1236a2b4dfaa01140ac7c05e098855b07",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/motion_capture.cpp.obj": {
+      "sha256": "e13f5da0f441a7bcdacf2a996159e7fcd3256c7142853a8652b72253528ce230",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/ownership/execution_state.cpp.obj": {
+      "sha256": "c8b27b7d5d74099074c8a5e7db577b64f797a2aa4b04195ffcd91552e17ea889",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/scene_capture.cpp.obj": {
+      "sha256": "5ec1ee925f32f181a57470f8075f27a9e57a5f4d26a40a88240d2d8129dc9249",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/object_trace.cpp.obj": {
+      "sha256": "906ef2ea606d6b756e0e8e00edcf6f95894123aa5ff740dda20d7ae1e1386b77",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/telemetry.cpp.obj": {
+      "sha256": "93c32ca5862ae48b8c59a1a74a38f7d96474daf4b90a573015ac49b1742eaeda",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/loading_trace.cpp.obj": {
+      "sha256": "08ceba4f3f219dd9ddff7ea86f14c9dc5e2afc7f1f754c4e16743c6a686b076e",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
     "build-ownership/CMakeFiles/d3d9.dir/src/ownership/d3d9_ownership.cpp.obj": {
-      "sha256": "5d8b1f9935c996c6113dcc464a71dcc3b84c7f5378bcf1b2b8914958261bd53f",
-      "forbidden_test_symbols": [],
+      "sha256": "a7e2bab08e473e288ed1de5fba6358de2d00c6398ac911901d67810cc15944bc",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/ownership/finite_buffer_evidence.cpp.obj": {
+      "sha256": "9a3e5750afe74c19f5026a31f3c87a84cae0a39f5b2de7b4afd7225f3d104d9d",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/ownership/portable_managed_upload.cpp.obj": {
+      "sha256": "8fa22b5496fd92ba0541759d448b06217d01fdfde1fa48e85be3ab5be069e21a",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": [
+        "00000000 T x3m::ownership::portable_upload::plan_creation(bool, unsigned int, unsigned long, _D3DPOOL, void* const*)",
+        "000001e0 T x3m::ownership::portable_upload::inspect(IDirect3DIndexBuffer9*, x3m::ownership::portable_upload::BufferContract*)",
+        "00000060 T x3m::ownership::portable_upload::inspect(IDirect3DVertexBuffer9*, x3m::ownership::portable_upload::BufferContract*)"
+      ]
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/draw_input.cpp.obj": {
+      "sha256": "1243fb5646497f4725ef48db195f14e894849a870a3c24af38066103a55442c7",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/object_lifetime.cpp.obj": {
+      "sha256": "9bca967b196b375f82aaaa8adc2f23d01a8c81902805aa0afea97b111cbe95bc",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/proxy/mesh_adjacency_cache.cpp.obj": {
+      "sha256": "0db2cebde38801f013c1caef28435d42fa182ab3c593a33492704efac94200ee",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/renderer/temporal_pass.cpp.obj": {
+      "sha256": "c007e37c473bf9e060227ceb7995a3cb49ae75beac8810b9ff5ddd76f5b05b23",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/renderer/material_radiance.cpp.obj": {
+      "sha256": "ec32364cf3aaa4b5cf371d83ace98251c9093ff1096487d051d5006672b77ad6",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/renderer/motion_history.cpp.obj": {
+      "sha256": "4a46482b0ba7e5caadc432e742e8c5aa9b0f29c11f4ff284b5396b04e343ceb5",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/renderer/rigid_position.cpp.obj": {
+      "sha256": "5ee779e7621000065bcbc9e5182553b0463622756ba1586908f56d642aaf7766",
+      "forbidden_test_or_historical_adapter_symbols": [],
       "qualifier_symbols": []
     },
     "build-ownership/CMakeFiles/d3d9.dir/src/renderer/rigid_motion.cpp.obj": {
-      "sha256": "fccf1ef11e93c0366a0d18afc2adb1587cbdf7ee01abf55505210bbe0341732c",
-      "forbidden_test_symbols": [],
+      "sha256": "10854e40412ac0ecb7b090465995be3cf8bb6bec4832f7af16ef4914daf87756",
+      "forbidden_test_or_historical_adapter_symbols": [],
       "qualifier_symbols": [
         "00000000 T x3m::renderer::qualify_rigid_replay_source(unsigned int const*, unsigned int)"
       ]
+    },
+    "build-ownership/CMakeFiles/d3d9.dir/src/renderer/rigid_replay_program.cpp.obj": {
+      "sha256": "916ecf3237f5964dc4fb0b1d8cd99c637c456451b1fbaeb93d3643e71c704dc2",
+      "forbidden_test_or_historical_adapter_symbols": [],
+      "qualifier_symbols": []
     }
   },
-  "dll_sha256": "e45aaac050aa3c0c816776a72a5877f951ee5d87efc6d58493740175aee8d282",
+  "linked_object_count": 21,
+  "object_inventory_source": "build-ownership/CMakeFiles/d3d9.dir/objects1.rsp",
+  "archive_members": [
+    "loader.cpp.obj",
+    "capture.cpp.obj",
+    "capture_state.cpp.obj",
+    "motion_capture.cpp.obj",
+    "execution_state.cpp.obj",
+    "scene_capture.cpp.obj",
+    "object_trace.cpp.obj",
+    "telemetry.cpp.obj",
+    "loading_trace.cpp.obj",
+    "d3d9_ownership.cpp.obj",
+    "finite_buffer_evidence.cpp.obj",
+    "portable_managed_upload.cpp.obj",
+    "draw_input.cpp.obj",
+    "object_lifetime.cpp.obj",
+    "mesh_adjacency_cache.cpp.obj",
+    "temporal_pass.cpp.obj",
+    "material_radiance.cpp.obj",
+    "motion_history.cpp.obj",
+    "rigid_position.cpp.obj",
+    "rigid_motion.cpp.obj",
+    "rigid_replay_program.cpp.obj"
+  ],
+  "linked_portable_managed_upload": true,
+  "linked_historical_managed_upload_contract": false,
+  "object_response_sha256": "e7ce81da68d180b546af81f2b43be7ee5b79bc652fd6296dd93ee9762000535a",
+  "link_command_sha256": "a4de3bd5859e425c6df92d9dc33f0376d57d830f409fb312930d92fbb6bdfece",
+  "object_archive_sha256": "69a304b9d58796f996d9cb1de878b190307244a171f3c12130e79dbbbd07f115",
+  "compile_flags": "# CMAKE generated file: DO NOT EDIT!\n# Generated by \"Unix Makefiles\" Generator, CMake Version 4.4\n\n# compile CXX with /opt/homebrew/bin/i686-w64-mingw32-g++\nCXX_DEFINES = -DNOMINMAX -DWIN32_LEAN_AND_MEAN -Dd3d9_EXPORTS\n\nCXX_INCLUDES = \n\nCXX_FLAGS = -O3 -DNDEBUG -Wall -Wextra -Wno-cast-function-type -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2\n\n",
+  "dll_sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
   "standalone_ownership_binaries_preserved": true,
-  "pinned_native_file_hashes_before_and_after": {
+  "standalone_ownership_binary_hashes": {
+    "verification/probe/build/ownership_wrapped.exe": "8dcff553ae610d96b991eadef0529ba90d217cd6a21ef7287b00e7599eb0da47",
+    "verification/probe/build/ownership_baseline.exe": "70ffdc221772438c27461aa282216cea0e60f36bdb1830cd91560e25e2ec1597"
+  },
+  "native_runtime_file_provenance_after_run": {
     "d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
     "wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
   },
-  "capture_fixture_imports_command": [
+  "native_runtime_hash_allowlist_required": false,
+  "imports_command": [
     "i686-w64-mingw32-objdump",
-    "-p",
-    "verification/probe/build/capture_state_fixture.exe"
+    "-p"
   ],
-  "capture_fixture_imports": [
-    "KERNEL32.dll",
-    "api-ms-win-crt-convert-l1-1-0.dll",
-    "api-ms-win-crt-environment-l1-1-0.dll",
-    "api-ms-win-crt-filesystem-l1-1-0.dll",
-    "api-ms-win-crt-heap-l1-1-0.dll",
-    "api-ms-win-crt-locale-l1-1-0.dll",
-    "api-ms-win-crt-math-l1-1-0.dll",
-    "api-ms-win-crt-private-l1-1-0.dll",
-    "api-ms-win-crt-runtime-l1-1-0.dll",
-    "api-ms-win-crt-stdio-l1-1-0.dll",
-    "api-ms-win-crt-string-l1-1-0.dll",
-    "USER32.dll"
-  ],
-  "capture_fixture_sha256": "c0fc881f4fefa3c069a28b1127f8c2ccce463f13d26b47edc92f38698afdd75d"
+  "binary_imports": {
+    "build-ownership/d3d9.dll": {
+      "sha256": "aa61e7ff2fcc4541f42d961359bdb7f2f815f6dc3c97b0cb50832ad51aa39ed9",
+      "dlls": [
+        "ADVAPI32.dll",
+        "KERNEL32.dll",
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-private-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "api-ms-win-crt-utility-l1-1-0.dll",
+        "USER32.dll"
+      ]
+    },
+    "verification/probe/build/d3d9_smoke.exe": {
+      "sha256": "9b39f218c49a4844cb5e61c937396c8393bef84f7dc4b48389232bc4f2b4ad9a",
+      "dlls": [
+        "KERNEL32.dll",
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-private-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "USER32.dll"
+      ]
+    },
+    "verification/probe/build/capture_state_fixture.exe": {
+      "sha256": "5b9939a701cf73077cfd0e1327c6264330dad9cc551b1b10708b90048fb6c963",
+      "dlls": [
+        "KERNEL32.dll",
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-private-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "USER32.dll"
+      ]
+    },
+    "verification/probe/build/ownership_integration_lifetime.exe": {
+      "sha256": "0655c70d5b5a00de03943f4735779e8381d827a82ee4c65bcbdb06a7f15be5b7",
+      "dlls": [
+        "KERNEL32.dll",
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-private-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "USER32.dll"
+      ]
+    },
+    "verification/probe/build/ownership_integration_baseline.exe": {
+      "sha256": "f8b4556459896c49bbe9f79370c54f0d080f80470e142d88936d3497d0a1a6fa",
+      "dlls": [
+        "KERNEL32.dll",
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-private-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "USER32.dll"
+      ]
+    },
+    "verification/probe/build/ownership_integration_auto_depth.exe": {
+      "sha256": "d845ac65049a456d1fb9028ad961fe40406ad91c1b49bcfe504ee890b8eba79e",
+      "dlls": [
+        "KERNEL32.dll",
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-private-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "USER32.dll"
+      ]
+    }
+  },
+  "abi_report_sha256": "136c8ade68426df2657f2dd15c3f634fa4292b24f940a8a639b711f779394924",
+  "build_report_sha256": "f64551e557bd96d3ce6cb0fdb05ec938ed6b8779729c6934ae41e4b278fa3af8",
+  "verification_report_sha256": "3e60138c6ad290e186537baaec1999116c0b7a409ba4eaca0ac90939d4012c24",
+  "fallback_report_sha256": "9b24d2fc259fdd0d3e21b14918c6b7fc173776078798ee0a32d6543297c9586e",
+  "fallback_linked_objects": 18,
+  "installed": false,
+  "game_launched": false,
+  "native_windows_execution": false
 }

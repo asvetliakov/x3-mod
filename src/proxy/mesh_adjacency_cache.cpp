@@ -6,7 +6,7 @@
 namespace x3m::mesh_adjacency_cache {
 namespace {
 constexpr size_t max_retained=16u*1024*1024,max_scratch=4u*1024*1024;
-constexpr size_t header_bytes=72; // schema, SHA256, generation, function, epsilon, five DWORDs.
+constexpr size_t header_bytes=52; // schema, local token, generation, function, epsilon, five DWORDs, LastError.
 struct X87Environment { DWORD control,status,tag,ip,cs,dp,ds; };
 static_assert(sizeof(X87Environment)==28 && sizeof(void*)==4,"x86 native mesh ABI");
 struct FpState { X87Environment x87{}; DWORD mxcsr=0; };
@@ -106,9 +106,8 @@ Outcome Cache::generate(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output,Generate ori
     };
     auto bypass=[&](BypassReason reason) noexcept {end_acquisition();counters_.bypasses.fetch_add(1,std::memory_order_relaxed);counters_.bypass_reasons[static_cast<unsigned>(reason)].fetch_add(1,std::memory_order_relaxed);return finish(native());};
     DWORD epsilon_bits=0;std::memcpy(&epsilon_bits,&epsilon,sizeof epsilon);
-    bool has_identity=false;for(auto b:runtime.sha256)has_identity=has_identity||b!=0;
     if(!mesh||!output||!original)return bypass(BypassReason::Input);
-    if(!runtime.verified||!runtime.success_preserves_last_error||!runtime.generation||!has_identity)return bypass(BypassReason::Runtime);
+    if(!runtime.public_contract||!runtime.generation||!runtime.algorithm_token)return bypass(BypassReason::Runtime);
     if(!supported_fp(incoming_fp)){
         unsigned empty=0;if(counters_.unsupported_fp_publication.compare_exchange_strong(empty,1,std::memory_order_acquire)){
             counters_.unsupported_fp={incoming_fp.x87.control,incoming_fp.x87.status,incoming_fp.x87.tag,incoming_fp.mxcsr};
@@ -157,10 +156,10 @@ Outcome Cache::generate(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output,Generate ori
     if(!candidate){counters_.allocation_failures.fetch_add(1,std::memory_order_relaxed);return bypass(BypassReason::Allocation);}
     const SIZE_T actual_bytes=HeapSize(GetProcessHeap(),0,candidate);
     if(actual_bytes==SIZE_T(-1)||actual_bytes>config_.scratch_bytes||actual_bytes>config_.retained_bytes-sizeof(Cache))return bypass(BypassReason::Size);
-    auto cursor=candidate;const DWORD schema=1,fn=DWORD(reinterpret_cast<uintptr_t>(original));
-    append(cursor,schema);append(cursor,runtime.sha256.data(),runtime.sha256.size());append(cursor,runtime.generation);
+    auto cursor=candidate;const DWORD schema=2,fn=DWORD(reinterpret_cast<uintptr_t>(original));
+    append(cursor,schema);append(cursor,runtime.algorithm_token);append(cursor,runtime.generation);
     append(cursor,fn);append(cursor,epsilon_bits);append(cursor,options);append(cursor,vertices);append(cursor,faces);
-    append(cursor,stride);append(cursor,DWORD(decl_count));
+    append(cursor,stride);append(cursor,DWORD(decl_count));append(cursor,incoming_error);
     append(cursor,incoming_fp.x87.control);append(cursor,incoming_fp.x87.status);append(cursor,incoming_fp.mxcsr);
     append(cursor,declaration,size_t(decl_count)*sizeof(D3DVERTEXELEMENT9));
     bool poisoned=false;

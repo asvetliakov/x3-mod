@@ -14,13 +14,14 @@ def digest(path):
 
 
 def main():
+    processes=subprocess.run(['ps','-axo','pid=,comm='],capture_output=True,text=True,check=True).stdout
+    if any(re.search(r'(^|[\\/])X3AP\.exe(?:\s|$)',line,re.I) for line in processes.splitlines()):
+        raise SystemExit('Refusing mesh fixture while X3AP is running')
     root=Path(__file__).resolve().parents[2]
     exe=root/'verification/probe/build/mesh_preparation.exe'
     source=root/'verification/probe/mesh_preparation.cpp'
     dll=Path.home()/'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll'
-    expected='c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8'
-    if digest(dll)!=expected:
-        raise SystemExit('D3DX identity differs from researched binary; not running')
+    expected=digest(dll) # Recorded fixture identity, never a version allowlist.
     results=root/'verification/results'
     command=['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
              '--bottle','Steam','--no-update','--workdir',str(exe.parent),str(exe),r'C:\X3\d3dx9_37.dll',expected]

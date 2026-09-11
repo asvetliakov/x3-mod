@@ -1,5 +1,10 @@
 # Managed upload qualification
 
+Historical verification only: this private-layout, pinned-runtime qualifier now
+lives under `verification/probe`; production uses `portable_managed_upload`.
+The retained reports describe the original source locations and are not
+regenerated merely because the historical code moved.
+
 The focused Preview fixture passes **461 checks**, freshly built and run on
 2026-09-11 local time (2026-09-10 22:41 UTC). It creates a hidden standalone
 native D3D9 device and exercises a managed WRITEONLY vertex buffer and both
@@ -14,7 +19,7 @@ no X3 game or other coordinated GPU fixture is running.
 
 ## Qualified boundary
 
-[`managed_upload_contract.h`](../../src/ownership/managed_upload_contract.h)
+[`managed_upload_contract.h`](../../verification/probe/managed_upload_contract.h)
 exposes typed VB/IB `inspect`, `validate_window`, and `validate_closed` operations.
 They acquire no resource reference, issue no new Lock/Unlock, and read no mapped
 payload. Inspection calls only the verified native GetDesc method. The caller

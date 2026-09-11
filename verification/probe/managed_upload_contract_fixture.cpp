@@ -2,7 +2,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <d3d9.h>
-#include "../../src/ownership/managed_upload_contract.h"
+#include "managed_upload_contract.h"
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>

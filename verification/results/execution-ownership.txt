@@ -20,6 +20,6 @@ CASE thread operation=0 PASS
 CASE thread operation=1 PASS
 CASE thread operation=2 PASS
 CASE cpu-state disabled=0 PASS
-TIMING pairs=1000 native_ticks=780 observer_ticks=6081 frequency=10000000
+TIMING pairs=1000 native_ticks=828 observer_ticks=6032 frequency=10000000
 CASE dispatch-timing PASS
 RESULT PASS checks=184 failures=0

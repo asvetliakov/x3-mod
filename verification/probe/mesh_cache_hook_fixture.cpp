@@ -21,7 +21,7 @@ static Views views(ID3DXMesh*m){Views v;if(!wrapped)return v;Com<IDirect3DVertex
 static bool equal(const own::BufferContentView&a,const own::BufferContentView&b){return a.revision==b.revision&&a.pending_locks==b.pending_locks&&a.last_lock_flags==b.last_lock_flags&&a.status==b.status&&a.requested==b.requested&&a.known==b.known&&a.ambiguous==b.ambiguous;}
 static Bytes physical_bytes(ID3DXMesh*m){
     Com<IDirect3DVertexBuffer9>v;Com<IDirect3DIndexBuffer9>i;ok(m->GetVertexBuffer(&v.p),"physical VB");ok(m->GetIndexBuffer(&i.p),"physical IB");
-    auto vb=own::borrowed_native_buffer_for_lock_contract(v.p);if(!vb)vb=v.p;auto ib=own::borrowed_native_buffer_for_lock_contract(i.p);if(!ib)ib=i.p;
+    auto vb=v.p;auto ib=i.p;
     D3DVERTEXBUFFER_DESC vd{};D3DINDEXBUFFER_DESC id{};ok(vb->GetDesc(&vd),"physical VB desc");ok(ib->GetDesc(&id),"physical IB desc");Bytes bytes;void*data=nullptr;
     ok(vb->Lock(0,0,&data,D3DLOCK_READONLY),"physical vertex snapshot");append(bytes,data,vd.Size);ok(vb->Unlock(),"physical vertex snapshot release");
     ok(ib->Lock(0,0,&data,D3DLOCK_READONLY),"physical index snapshot");append(bytes,data,id.Size);ok(ib->Unlock(),"physical index snapshot release");return bytes;
@@ -60,15 +60,80 @@ static void create32(Create create,IDirect3DDevice9*d,const Input&in,ID3DXMesh**
 }
 static void create_fixture_mesh(Create create,IDirect3DDevice9*d,const Input&in,ID3DXMesh**out){if(in.options&D3DXMESH_32BIT)create32(create,d,in,out);else createMesh(create,d,in,out);}
 static void write_changed_vertex(ID3DXMesh*m){void*p=nullptr;ok(m->LockVertexBuffer(0,&p),"dynamic writable acquisition");static_cast<Vertex*>(p)[3].x+=.25f;ok(m->UnlockVertexBuffer(),"dynamic writable release");}
-static void negative_iat(ID3DXMesh*m){
-    Com<IDirect3DVertexBuffer9>v;ok(m->GetVertexBuffer(&v.p),"IAT control buffer");auto native=own::borrowed_native_buffer_for_lock_contract(v.p);if(!native)native=v.p;
-    auto endpoint=(*reinterpret_cast<void***>(native))[12];HMODULE module=nullptr;require(GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCWSTR>(endpoint),&module),"IAT control native module");
-    auto slot=reinterpret_cast<PVOID*>(reinterpret_cast<BYTE*>(module)+0x235c4);auto original=*slot;DWORD protection=0,unused=0;
-    require(VirtualProtect(slot,sizeof(PVOID),PAGE_READWRITE,&protection),"IAT control writable");InterlockedExchangePointer(slot,reinterpret_cast<BYTE*>(original)+1);
-    // Preflight only: never call the deliberately invalid backend target.
-    const bool accepted=lt::fixture_cache_contract(m);InterlockedExchangePointer(slot,original);require(VirtualProtect(slot,sizeof(PVOID),protection,&unused),"IAT control restored protection");
-    require(!accepted&&*slot==original,"changed critical IAT target rejected before acquisition");
+// Replace only the public GetDesc dispatch on a held object. No backend offset,
+// module identity or implementation import is consulted by these controls.
+template<class Buffer,class Desc> struct DescriptorSpy {
+    using GetDesc=HRESULT(WINAPI*)(Buffer*,Desc*);
+    static inline GetDesc original=nullptr;
+    static inline unsigned mode=0;
+    Buffer* object;void** prior;void* table[14]{};
+    explicit DescriptorSpy(Buffer* p):object(p),prior(*reinterpret_cast<void***>(p)){
+        std::copy_n(prior,14,table);original=reinterpret_cast<GetDesc>(table[13]);
+        table[13]=reinterpret_cast<void*>(&get);*reinterpret_cast<void***>(object)=table;
+    }
+    ~DescriptorSpy(){*reinterpret_cast<void***>(object)=prior;mode=0;}
+    static HRESULT WINAPI get(Buffer* p,Desc* out){
+        const HRESULT result=original(p,out);if(FAILED(result))return result;
+        switch(mode){
+        case 1:return E_FAIL; // Populated output must never override failed status.
+        case 2:out->Pool=D3DPOOL_DEFAULT;break;
+        case 3:out->Usage|=D3DUSAGE_WRITEONLY;break;
+        case 4:out->Format=D3DFMT_UNKNOWN;break;
+        case 5:out->Size=0;break;
+        case 6:out->Usage|=D3DUSAGE_DYNAMIC;break;
+        case 7:out->Type=D3DRTYPE_TEXTURE;break;
+        case 8:out->Usage|=D3DUSAGE_DONOTCLIP;break;
+        }
+        return result;
+    }
+};
+static void public_descriptor_controls(ID3DXMesh* m){
+    Com<IDirect3DVertexBuffer9>v;Com<IDirect3DIndexBuffer9>i;
+    ok(m->GetVertexBuffer(&v.p),"public descriptor VB");ok(m->GetIndexBuffer(&i.p),"public descriptor IB");
+    const char* reasons[]={"","descriptor_call","descriptor_pool","descriptor_usage","descriptor_format","descriptor_size","descriptor_usage","descriptor_format","descriptor_usage"};
+    auto check=[&](auto& spy,const char* type){
+        require(lt::fixture_cache_contract(m),"forwarding public GetDesc endpoint accepted");
+        for(unsigned mode=1;mode<=8;++mode){
+            spy.mode=mode;auto before=lt::fixture_cache_gate_reason(reasons[mode]);
+            require(!lt::fixture_cache_contract(m)&&lt::fixture_cache_gate_reason(reasons[mode])==before+1,"public descriptor failure rejects with exact reason");
+        }
+        spy.mode=0;require(lt::fixture_cache_contract(m),"public descriptor restoration accepts");
+        std::printf("PUBLIC_DESCRIPTOR type=%s forwarding=1 negatives=8 restored=1\n",type);
+    };
+    {DescriptorSpy<IDirect3DVertexBuffer9,D3DVERTEXBUFFER_DESC> spy(v.p);check(spy,"vertex");}
+    {DescriptorSpy<IDirect3DIndexBuffer9,D3DINDEXBUFFER_DESC> spy(i.p);check(spy,"index");}
 }
+
+static void replaced_metadata_control(ID3DXMesh* mesh){
+    auto table=*reinterpret_cast<void***>(mesh);saved_vertices=reinterpret_cast<decltype(saved_vertices)>(table[5]);
+    DWORD old=0,ignored=0;require(VirtualProtect(&table[5],sizeof(void*),PAGE_READWRITE,&old),"metadata slot writable");
+    auto original=table[5];InterlockedExchangePointer(&table[5],reinterpret_cast<void*>(foreign_vertices));
+    const auto before=lt::fixture_cache_gate_reason("mesh_method");const bool accepted=lt::fixture_cache_contract(mesh);
+    InterlockedExchangePointer(&table[5],original);require(VirtualProtect(&table[5],sizeof(void*),old,&ignored),"metadata protection restored");
+    require(!accepted&&lt::fixture_cache_gate_reason("mesh_method")==before+1,"changed recorded metadata method rejected");
+}
+static void off_tracker_routes(decltype(&Direct3DCreate9) factory,HWND window,const Input& input){
+    IDirect3D9* native=factory(D3D_SDK_VERSION);require(native,"off tracker native factory");Com<IDirect3D9> api;
+    ok(own::wrap_factory(native,&api.p,{}),"off tracker wrapped factory");
+    D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=64;pp.BackBufferHeight=64;
+    Com<IDirect3DDevice9> device;ok(api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_SOFTWARE_VERTEXPROCESSING,&pp,&device.p),"off tracker device");
+    Com<ID3DXMesh> mesh;createMesh(&D3DXCreateMesh,device.p,input,&mesh.p);Com<IDirect3DVertexBuffer9> vb;Com<IDirect3DIndexBuffer9> ib;
+    ok(mesh->GetVertexBuffer(&vb.p),"off tracker VB");ok(mesh->GetIndexBuffer(&ib.p),"off tracker IB");
+    auto control=[&](auto* buffer){
+        own::BufferContentView view{};ok(own::get_buffer_content_view(buffer,&view),"off view recognized");require(!view.requested,"off request remains false");
+        require(lt::fixture_cache_contract(mesh.p),"unchanged off-tracking route accepted");
+        auto prior=*reinterpret_cast<void***>(buffer);void* table[14]{};std::copy_n(prior,14,table);
+        // Never call the substituted slot: this probes wrapper recognition only.
+        for(unsigned slot:{11u,12u}){
+            auto saved=table[slot];table[slot]=reinterpret_cast<void*>(foreign_unlock);*reinterpret_cast<void***>(buffer)=table;
+            const auto before=lt::fixture_cache_gate_reason("tracker");const bool accepted=lt::fixture_cache_contract(mesh.p);
+            *reinterpret_cast<void***>(buffer)=prior;table[slot]=saved;
+            require(!accepted&&lt::fixture_cache_gate_reason("tracker")==before+1,"changed off-tracking Lock/Unlock route rejected");
+        }
+    };
+    control(vb.p);control(ib.p);std::printf("OFF_TRACKER_ROUTE vertex=2 index=2 requested_preserved=1\n");
+}
+
 int main(int argc,char**argv){std::setvbuf(stdout,nullptr,_IONBF,0);
  try{
     require(argc==4,"cache mode, ownership mode, fault mode arguments");const bool enabled=std::strcmp(argv[1],"on")==0;wrapped=std::strcmp(argv[2],"wrapped")==0;const bool fault=std::strcmp(argv[3],"fault")==0;
@@ -83,7 +148,7 @@ int main(int argc,char**argv){std::setvbuf(stdout,nullptr,_IONBF,0);
       Com<ID3DXMesh>baseline32;create32(create,device,input,&baseline32.p);auto raw32=reinterpret_cast<Generate>((*reinterpret_cast<void***>(baseline32.p))[22]);
       auto expected=generate(baseline.p,input.epsilon,true);require(expected.hr==S_OK,"native baseline adjacency");
       if(wrapped)printf("TRACKER baseline_vertex_revision=%llu baseline_index_revision=%llu vertex_flags=%08lx index_flags=%08lx known=%u\n",expected.after.vertex.revision,expected.after.index.revision,expected.after.vertex.last_lock_flags,expected.after.index.last_lock_flags,expected.after.vertex.known&&expected.after.index.known);
-      require(lt::fixture_initialize(GetModuleHandleW(nullptr),lt::fixture_fingerprint(GetModuleHandleW(nullptr))),"actual IAT hook installation");
+      require(lt::fixture_initialize(GetModuleHandleW(nullptr)),"actual IAT hook installation");
       createMesh(&D3DXCreateMesh,device,input,&first.p);createMesh(&D3DXCreateMesh,device,input,&second.p);require(table[22]!=reinterpret_cast<void*>(raw_generate),"actual native shared adjacency hook installed");
       auto before=lt::fixture_cache_statistics();auto filled=generate(first.p,input.epsilon,false);auto after_fill=lt::fixture_cache_statistics();auto reused=generate(second.p,input.epsilon,false);auto after_hit=lt::fixture_cache_statistics();parity(expected,filled,"actual hook first-call parity");parity(expected,reused,"actual hook repeated-call parity");
       if(enabled)require(after_fill.misses>before.misses&&after_hit.hits>after_fill.hits,"actual hook cache miss then hit");else require(!lt::fixture_cache_constructed()&&after_hit.calls==0,"off constructs/acquires nothing");
@@ -99,7 +164,7 @@ int main(int argc,char**argv){std::setvbuf(stdout,nullptr,_IONBF,0);
         require(lt::fixture_cache_gate_rejections()>rejects&&lt::fixture_cache_statistics().calls==calls,"foreign endpoint bypasses cache");*reinterpret_cast<void***>(foreign_mesh.p)=old;
         Com<ID3DXMesh>metadata_mesh;createMesh(&D3DXCreateMesh,device,input,&metadata_mesh.p);auto metadata_old=*reinterpret_cast<void***>(metadata_mesh.p);std::copy_n(metadata_old,clone.size(),clone.data());saved_vertices=reinterpret_cast<decltype(saved_vertices)>(clone[5]);clone[5]=reinterpret_cast<void*>(foreign_vertices);*reinterpret_cast<void***>(metadata_mesh.p)=clone.data();
         const auto metadata_calls=lt::fixture_cache_statistics().calls;parity(expected,generate(metadata_mesh.p,input.epsilon,false),"foreign metadata forwarding native parity");require(lt::fixture_cache_statistics().calls==metadata_calls,"foreign metadata endpoint bypasses cache");*reinterpret_cast<void***>(metadata_mesh.p)=metadata_old;
-        Com<ID3DXMesh>iat_mesh;createMesh(&D3DXCreateMesh,device,input,&iat_mesh.p);require(lt::fixture_cache_contract(iat_mesh.p),"fresh native preflight accepted");negative_iat(iat_mesh.p);
+        Com<ID3DXMesh>iat_mesh;createMesh(&D3DXCreateMesh,device,input,&iat_mesh.p);require(lt::fixture_cache_contract(iat_mesh.p),"fresh native preflight accepted");public_descriptor_controls(iat_mesh.p);replaced_metadata_control(iat_mesh.p);if(wrapped)off_tracker_routes(factory,window,input);
         auto recursive_input=input;recursive_input.vertices[0].y+=.375f;Com<ID3DXMesh>recursive_mesh,recursive_reference;createMesh(create,device,recursive_input,&recursive_reference.p);createMesh(&D3DXCreateMesh,device,recursive_input,&recursive_mesh.p);auto recursive_expected=generate(recursive_reference.p,input.epsilon,true);const auto recursive=lt::fixture_cache_statistics().contention;lt::fixture_cache_reenter_once();parity(recursive_expected,generate(recursive_mesh.p,input.epsilon,false),"actual hook recursive miss parity");require(lt::fixture_cache_statistics().contention>recursive,"actual hook recursive cache lease bypass");
         if(wrapped){auto prior=views(first.p);require(!prior.vertex.known&&prior.vertex.ambiguous,"native nesting leaves conservative unknown evidence");auto previous_calls=lt::fixture_cache_statistics().calls;auto unknown=generate(first.p,input.epsilon,false);require(lt::fixture_cache_statistics().calls==previous_calls&&!unknown.after.vertex.known&&unknown.after.vertex.ambiguous,"preexisting ambiguity bypasses and is never cleared");Com<ID3DXMesh>pending_mesh;createMesh(&D3DXCreateMesh,device,input,&pending_mesh.p);Com<IDirect3DVertexBuffer9>vb;ok(pending_mesh->GetVertexBuffer(&vb.p),"pending gate buffer");void*p=nullptr;ok(vb->Lock(0,0,&p,D3DLOCK_READONLY),"preexisting external read lock");auto rejections=lt::fixture_cache_gate_rejections();auto existing=lt::fixture_cache_statistics().calls;
           // Actual native call proceeds; the cache itself must acquire nothing.
@@ -128,7 +193,7 @@ int main(int argc,char**argv){std::setvbuf(stdout,nullptr,_IONBF,0);
       if(enabled){
         auto excluded=input;excluded.options=D3DXMESH_SYSTEMMEM|D3DXMESH_WRITEONLY;Com<ID3DXMesh>writeonly;createMesh(&D3DXCreateMesh,device,excluded,&writeonly.p);auto old_reason=lt::fixture_cache_gate_reason("mesh_options");require(!lt::fixture_cache_contract(writeonly.p)&&lt::fixture_cache_gate_reason("mesh_options")==old_reason+1,"writeonly remains rejected with exact reason");
         excluded.options=D3DXMESH_MANAGED;Com<ID3DXMesh>managed;createMesh(&D3DXCreateMesh,device,excluded,&managed.p);old_reason=lt::fixture_cache_gate_reason("mesh_pool");require(!lt::fixture_cache_contract(managed.p)&&lt::fixture_cache_gate_reason("mesh_pool")==old_reason+1,"managed pool remains rejected with exact reason");
-        require(lt::fixture_cache_gate_reason("mesh_method")>=2&&lt::fixture_cache_gate_reason("backend_imports")>=1,"endpoint and import rejections have distinct reasons");
+        require(lt::fixture_cache_gate_reason("mesh_method")>=1&&lt::fixture_cache_gate_reason("mesh_table")>=2&&lt::fixture_cache_gate_reason("descriptor_call")>=2,"mesh endpoint and public descriptor rejections have distinct reasons");
         auto saved_seed=seed;seed.mxcsr|=0x8000;Com<ID3DXMesh>unsupported_reference,unsupported_hook;createMesh(create,device,input,&unsupported_reference.p);createMesh(&D3DXCreateMesh,device,input,&unsupported_hook.p);auto unsupported_expected=generate(unsupported_reference.p,input.epsilon,true);auto fp_before=lt::fixture_cache_statistics();auto unsupported_actual=generate(unsupported_hook.p,input.epsilon,false);parity(unsupported_expected,unsupported_actual,"unsupported FP mode preserves native behavior");auto fp_after=lt::fixture_cache_statistics();require(fp_after.bypass_reasons[static_cast<unsigned>(x3m::mesh_adjacency_cache::BypassReason::FloatingPoint)]==fp_before.bypass_reasons[static_cast<unsigned>(x3m::mesh_adjacency_cache::BypassReason::FloatingPoint)]+1,"core FP rejection has exact reason");require(fp_after.unsupported_fp_available&&fp_after.unsupported_fp.mxcsr==seed.mxcsr&&fp_after.unsupported_fp.control==seed.x87.control,"unsupported FP first detail is published coherently");seed=saved_seed;
       }
       fp(seed);SetLastError(0x3344);const auto report_fp=fp();lt::report();require(GetLastError()==0x3344&&equal(report_fp,fp()),"report preserves LastError and computational state");

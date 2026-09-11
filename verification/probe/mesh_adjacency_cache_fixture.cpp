@@ -26,11 +26,12 @@ static HRESULT STDMETHODCALLTYPE native(ID3DXMesh*m,FLOAT epsilon,DWORD*out){
     if(behavior==4){behavior=0;std::vector<DWORD> nested(m->GetNumFaces()*3);auto r=nested_cache->generate(m,epsilon,nested.data(),native,identity);require(r.origin==mac::Origin::Native,"recursive lease bypass");}
     if(behavior==5&&!entered.exchange(true)){while(!resume_native.load())Sleep(1);}
     if(behavior==6)return E_POINTER;
+    if(behavior==7){const auto incoming=observed_error;auto hr=backend(m,epsilon,out);SetLastError(incoming==123?0:incoming);return hr;}
     const bool disturbed=disturb_acquisition;disturb_acquisition=false;auto hr=backend(m,epsilon,out);disturb_acquisition=disturbed;return hr;
 }
 struct Call {mac::Outcome result;Adjacency output;DWORD error;FP fp;};
-static Call invoke(mac::Cache* cache,ID3DXMesh*m,float e,const FP& fp=seed,const mac::RuntimeIdentity* id=nullptr){
-    Call c;c.output.assign(size_t(m->GetNumFaces())*3,0xabababab);write_fp(fp);SetLastError(0x12345);
+static Call invoke(mac::Cache* cache,ID3DXMesh*m,float e,const FP& fp=seed,const mac::RuntimeIdentity* id=nullptr,DWORD incoming_error=0x12345){
+    Call c;c.output.assign(size_t(m->GetNumFaces())*3,0xabababab);write_fp(fp);SetLastError(incoming_error);
     if(cache)c.result=cache->generate(m,e,c.output.data(),native,id?*id:identity);
     else c.result={native(m,e,c.output.data()),mac::Origin::Native};
     c.error=GetLastError();c.fp=read_fp();return c;
@@ -79,9 +80,9 @@ struct Table {
 int main(int argc,char**argv){
     setvbuf(stdout,nullptr,_IONBF,0);
     try{
-        require(argc==3,"native DLL path and SHA256");require(std::strlen(argv[2])==64,"SHA256 length");
-        for(unsigned i=0;i<32;++i){char b[]={argv[2][i*2],argv[2][i*2+1],0};identity.sha256[i]=static_cast<unsigned char>(std::strtoul(b,nullptr,16));}
-        identity.verified=true;identity.success_preserves_last_error=true;identity.generation=1;
+        require(argc==2,"native DLL path");
+        identity.algorithm_token=1; // Original fixture's process-local namespace.
+        identity.public_contract=true;identity.generation=1;
         HMODULE d3dx=LoadLibraryA(argv[1]),runtime=LoadLibraryA("d3d9.dll");require(d3dx&&runtime,"modules");
         auto create=symbol<Create>(d3dx,"D3DXCreateMesh");auto clean=symbol<Clean>(d3dx,"D3DXCleanMesh");auto factory=symbol<decltype(&Direct3DCreate9)>(runtime,"Direct3DCreate9");
         WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3ProductionMeshCache";RegisterClassA(&cls);
@@ -101,7 +102,7 @@ int main(int argc,char**argv){
         require((baseline.fp.x87.status&0xffff)!=(seed.x87.status&0xffff),"native FP status changes observed");
         std::printf("FP native_cw=%04lx native_sw=%04lx native_mxcsr=%08lx hit_computational_parity=1 diagnostic_instruction_pointers_excluded=1\n",baseline.fp.x87.control&0xffff,baseline.fp.x87.status&0xffff,baseline.fp.mxcsr);
         for(unsigned variation=0;variation<8;++variation){auto in=base;auto id=identity;
-            switch(variation){case 0:in.vertices[3].x+=.25f;break;case 1:std::swap(in.indices[4],in.indices[5]);break;case 2:in.decl[1].UsageIndex=1;break;case 3:in.epsilon=1e-8f;break;case 4:in.vertices[0].u=.25f;break;case 5:id.sha256[0]^=1;break;case 6:id.generation++;break;case 7:in.options|=D3DXMESH_SOFTWAREPROCESSING;break;}
+            switch(variation){case 0:in.vertices[3].x+=.25f;break;case 1:std::swap(in.indices[4],in.indices[5]);break;case 2:in.decl[1].UsageIndex=1;break;case 3:in.epsilon=1e-8f;break;case 4:in.vertices[0].u=.25f;break;case 5:id.algorithm_token++;break;case 6:id.generation++;break;case 7:in.options|=D3DXMESH_SOFTWAREPROCESSING;break;}
             Com<ID3DXMesh>m;createMesh(create,device.p,in,&m.p);auto a=invoke(nullptr,m.p,in.epsilon);auto b=invoke(&cache,m.p,in.epsilon,seed,&id);require(b.result.origin==mac::Origin::Native,"mutated exact key miss");parity(a,b,"mutated exact key parity");
         }
         auto attrs=base;attrs.attributes[1]=7;bool attrs_hit=false;auto ar=sequence2(create,clean,device.p,attrs,nullptr,nullptr);auto ac=sequence2(create,clean,device.p,attrs,&cache,&attrs_hit);require(attrs_hit&&equal(ar,ac),"attribute-only change retains downstream parity");
@@ -115,12 +116,25 @@ int main(int argc,char**argv){
         }
         write_fp(seed);
         for(unsigned mode=1;mode<=3;++mode){mac::Cache c;behavior=mode;auto a=invoke(nullptr,mesh.p,base.epsilon);parity(a,invoke(&c,mesh.p,base.epsilon),"native failure/alternate success/error fill");parity(a,invoke(&c,mesh.p,base.epsilon),"native failure/alternate success/error repeat");require(c.statistics().admissions==0,"only stable S_OK admitted");}behavior=0;
+        {mac::Cache c;behavior=7;
+            auto first=invoke(&c,mesh.p,base.epsilon,seed,nullptr,0);require(first.result.origin==mac::Origin::Native&&first.error==0&&c.statistics().admissions==1,"LastError zero candidate admitted");
+            auto expected=invoke(nullptr,mesh.p,base.epsilon,seed,nullptr,123);auto changed=invoke(&c,mesh.p,base.epsilon,seed,nullptr,123);
+            parity(expected,changed,"conditional native LastError change never bypassed");
+            require(changed.result.origin==mac::Origin::Native&&changed.error==0&&c.statistics().rejected_last_error==1,"different incoming LastError misses and rejects nonpreserving candidate");
+            auto repeated=invoke(&c,mesh.p,base.epsilon,seed,nullptr,0);parity(first,repeated,"original LastError key remains exact hit");
+            require(repeated.result.origin==mac::Origin::CacheHit&&c.statistics().hits==1&&c.statistics().misses==2,"LastError key partitions reuse");
+            std::printf("LAST_ERROR_KEY conditional_change=1 misses=2 hits=1 rejected=1\n");behavior=0;
+        }
         {mac::Cache c;c.fixture_fail_next_allocation();auto a=invoke(&c,mesh.p,base.epsilon);parity(baseline,a,"allocation failure fallback");require(observed_error==0x12345&&same_fp(observed_fp,seed),"acquisition preserves native incoming state");require(c.statistics().allocation_failures==1,"allocation failure counter");}
         {mac::Cache c;nested_cache=&c;behavior=4;require(invoke(&c,mesh.p,base.epsilon).result.hr==S_OK,"reentrant native succeeds");require(c.statistics().contention==1,"reentrant contention counted");nested_cache=nullptr;}
         {mac::Cache c;Table table(mesh.p);table.slots[4]=reinterpret_cast<void*>(extreme);table.slots[5]=reinterpret_cast<void*>(extreme);table.slots[8]=reinterpret_cast<void*>(extreme);behavior=1;DWORD out=999;write_fp(seed);SetLastError(0x12345);auto r=c.generate(mesh.p,base.epsilon,&out,native,identity);require(r.hr==E_FAIL&&r.origin==mac::Origin::Native&&out==123&&c.statistics().bypasses==1,"hostile counts/stride bypass without arithmetic wrap");behavior=0;}
         {mac::Cache c;Table table(mesh.p);disturb_acquisition=true;auto a=invoke(&c,mesh.p,base.epsilon);require(observed_error==0x12345&&same_fp(observed_fp,seed),"successful acquisition restores incoming native FP/error");parity(baseline,a,"disturbed acquisition miss parity");auto b=invoke(&c,mesh.p,base.epsilon);require(b.result.origin==mac::Origin::CacheHit,"disturbed acquisition hit");parity(baseline,b,"disturbed acquisition hit restores state");disturb_acquisition=false;}
         {mac::Cache c;invoke(&c,mesh.p,base.epsilon);FP changed=seed;changed.x87.status|=0x20;auto b=invoke(&c,mesh.p,base.epsilon,changed);require(b.result.origin==mac::Origin::Native&&c.statistics().misses==2,"input FP status participates in exact key");}
         {mac::Cache c;auto id=identity;id.generation=0;require(invoke(&c,mesh.p,base.epsilon,seed,&id).result.origin==mac::Origin::Native&&c.statistics().bypasses==1,"unknown generation bypass");}
+        for(unsigned mode=0;mode<2;++mode){mac::Cache c;auto id=identity;if(mode)id.public_contract=false;else id.algorithm_token=0;
+            auto result=invoke(&c,mesh.p,base.epsilon,seed,&id);parity(baseline,result,"missing public algorithm identity preserves native result");
+            require(result.result.origin==mac::Origin::Native&&c.statistics().acquired_bytes==0&&c.statistics().bypasses==1,"missing token or public contract performs no acquisition");}
+
         {mac::Cache c;behavior=5;entered.store(false);resume_native.store(false);Call worker;std::thread thread([&]{worker=invoke(&c,mesh.p,base.epsilon);});while(!entered.load())Sleep(1);auto concurrent=invoke(&c,mesh.p,base.epsilon);resume_native.store(true);thread.join();behavior=0;parity(baseline,worker,"lease owner parity");parity(baseline,concurrent,"thread contention native parity");require(c.statistics().contention==1,"thread contention bounded fallback");}
         {Com<ID3DXMesh>m;createMesh(create,device.p,base,&m.p);void*data=nullptr;ok(m->LockVertexBuffer(0,&data),"alias pointer acquire");ok(m->UnlockVertexBuffer(),"alias pointer release");mac::Cache c;behavior=1;write_fp(seed);auto r=c.generate(m.p,base.epsilon,static_cast<DWORD*>(data),native,identity);require(r.hr==E_FAIL&&r.origin==mac::Origin::Native&&c.statistics().bypasses==1,"output vertex alias bypasses before backend mutation");behavior=0;}
         {mac::Cache c;behavior=6;write_fp(seed);auto r=c.generate(mesh.p,base.epsilon,reinterpret_cast<DWORD*>(0xfffffff8u),native,identity);require(r.hr==E_POINTER&&r.origin==mac::Origin::Native&&c.statistics().bypasses==1,"overflowing output span bypass without dereference");behavior=0;}

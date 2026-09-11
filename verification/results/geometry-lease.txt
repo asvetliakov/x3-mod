@@ -237,13 +237,87 @@ CHECK current canonical wrapper foreign Lock refuses retained replay PASS
 CHECK inspect PASS
 CHECK valid borrowed view PASS
 CHECK current canonical wrapper foreign Unlock refuses retained replay PASS
-CHECK native foreign Release refuses replay PASS
-CHECK stored certified Release balances retained reference PASS
-CHECK cleanup never dispatches foreign Release PASS
-CHECK certified cleanup released actual original native ref PASS
-CHECK foreign AddRef cannot fake acquisition PASS
-CHECK foreign AddRef not called PASS
+CHECK inspect PASS
+CHECK valid borrowed view PASS
+CHECK standard COM Release balances retained reference through interceptor PASS
+CHECK cleanup calls current legitimate native Release exactly once PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK retention owns one net legitimate native COM reference PASS
+CHECK inspect PASS
+CHECK valid borrowed view PASS
+CHECK release intercepted acquired pair PASS
+CHECK intercepted native references balanced PASS
+CHECK standard COM retention preserves actual native reference count PASS
 CHECK endpoint frame cleanup PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK IB PASS
+CHECK IB upload Lock PASS
+CHECK IB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK null native-write escape rejected PASS
+CHECK device cannot impersonate buffer escape PASS
+CHECK unrecognized native buffer cannot impersonate observed wrapper PASS
+CHECK declare trusted native mutation before access PASS
+CHECK declared native mutation immediately invalidates retained evidence PASS
+CHECK declared native write Lock PASS
+CHECK declared native write Unlock PASS
+CHECK native closure cannot reconstruct observed finite evidence PASS
+CHECK old request cannot reacquire after native mutation PASS
+CHECK observed full rewrite Lock PASS
+CHECK observed full rewrite Unlock PASS
+CHECK rewritten storage revision PASS
+CHECK observed rewrite restores known new revision PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK inspect PASS
+CHECK valid borrowed view PASS
+CHECK new finite certificate never revives old immutable lease PASS
+CHECK native mutation frame cleanup PASS
+CHECK factory PASS
+CHECK wrap PASS
+CHECK device PASS
+CHECK VB PASS
+CHECK VB upload Lock PASS
+CHECK VB upload Unlock PASS
+CHECK IB PASS
+CHECK IB upload Lock PASS
+CHECK IB upload Unlock PASS
+CHECK initial finite view PASS
+CHECK initial finite PASS
+CHECK begin frame PASS
+CHECK nonzero frame PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK null native-write escape rejected PASS
+CHECK device cannot impersonate buffer escape PASS
+CHECK unrecognized native buffer cannot impersonate observed wrapper PASS
+CHECK declare trusted native mutation before access PASS
+CHECK declared native mutation immediately invalidates retained evidence PASS
+CHECK declared native write Lock PASS
+CHECK declared native write Unlock PASS
+CHECK native closure cannot reconstruct observed finite evidence PASS
+CHECK old request cannot reacquire after native mutation PASS
+CHECK observed full rewrite Lock PASS
+CHECK observed full rewrite Unlock PASS
+CHECK rewritten storage revision PASS
+CHECK observed rewrite restores known new revision PASS
+CHECK acquire pair PASS
+CHECK nonzero lease PASS
+CHECK inspect PASS
+CHECK valid borrowed view PASS
+CHECK new finite certificate never revives old immutable lease PASS
+CHECK native mutation frame cleanup PASS
 CHECK factory PASS
 CHECK wrap PASS
 CHECK device PASS
@@ -345,4 +419,4 @@ CHECK wrap PASS
 CHECK device PASS
 CHECK final global accounting PASS
 CHECK all lease native and CPU references returned PASS
-RESULT PASS checks=347
+RESULT PASS checks=421
