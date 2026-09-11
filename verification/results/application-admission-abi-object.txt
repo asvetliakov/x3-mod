@@ -1,0 +1,436 @@
+
+/Users/asvetl/x3-mod/verification/probe/build/application_admission_abi.o:     file format pe-i386
+
+
+Disassembly of section .text:
+
+00000000 <x3m::ownership::ApplicationAdmissionAbi::ApplicationAdmissionAbi(x3m::ownership::AdmissionMonitor*)>:
+   0:	83 c4 80             	add    $0xffffff80,%esp
+   3:	c6 41 01 00          	movb   $0x0,0x1(%ecx)
+   7:	8b 84 24 84 00 00 00 	mov    0x84(%esp),%eax
+   e:	c7 41 04 00 00 00 00 	movl   $0x0,0x4(%ecx)
+  15:	c7 41 08 01 00 00 00 	movl   $0x1,0x8(%ecx)
+  1c:	85 c0                	test   %eax,%eax
+  1e:	0f 95 01             	setne  (%ecx)
+  21:	74 61                	je     84 <x3m::ownership::ApplicationAdmissionAbi::ApplicationAdmissionAbi(x3m::ownership::AdmissionMonitor*)+0x84>
+  23:	89 5c 24 78          	mov    %ebx,0x78(%esp)
+  27:	89 cb                	mov    %ecx,%ebx
+  29:	dd 74 24 04          	fnsave 0x4(%esp)
+  2d:	dd 64 24 04          	frstor 0x4(%esp)
+  31:	0f ae 5c 24 70       	stmxcsr 0x70(%esp)
+  36:	ff 15 00 00 00 00    	call   *0x0
+			38: dir32	_imp__GetLastError@0
+  3c:	89 44 24 74          	mov    %eax,0x74(%esp)
+  40:	e8 00 00 00 00       	call   45 <x3m::ownership::ApplicationAdmissionAbi::ApplicationAdmissionAbi(x3m::ownership::AdmissionMonitor*)+0x45>
+			41: DISP32	pthread_self
+  45:	8d 4b 0c             	lea    0xc(%ebx),%ecx
+  48:	89 43 04             	mov    %eax,0x4(%ebx)
+  4b:	8b 84 24 84 00 00 00 	mov    0x84(%esp),%eax
+  52:	89 04 24             	mov    %eax,(%esp)
+  55:	e8 00 00 00 00       	call   5a <x3m::ownership::ApplicationAdmissionAbi::ApplicationAdmissionAbi(x3m::ownership::AdmissionMonitor*)+0x5a>
+			56: DISP32	x3m::ownership::ApplicationAdmission::ApplicationAdmission(x3m::ownership::AdmissionMonitor&)
+  5a:	8b 43 18             	mov    0x18(%ebx),%eax
+  5d:	83 ec 04             	sub    $0x4,%esp
+  60:	c6 43 01 01          	movb   $0x1,0x1(%ebx)
+  64:	89 43 08             	mov    %eax,0x8(%ebx)
+  67:	8b 44 24 74          	mov    0x74(%esp),%eax
+  6b:	89 04 24             	mov    %eax,(%esp)
+  6e:	ff 15 00 00 00 00    	call   *0x0
+			70: dir32	_imp__SetLastError@4
+  74:	83 ec 04             	sub    $0x4,%esp
+  77:	dd 64 24 04          	frstor 0x4(%esp)
+  7b:	0f ae 54 24 70       	ldmxcsr 0x70(%esp)
+  80:	8b 5c 24 78          	mov    0x78(%esp),%ebx
+  84:	83 ec 80             	sub    $0xffffff80,%esp
+  87:	c2 04 00             	ret    $0x4
+  8a:	8d b6 00 00 00 00    	lea    0x0(%esi),%esi
+
+00000090 <x3m::ownership::ApplicationAdmissionAbi::~ApplicationAdmissionAbi()>:
+  90:	80 79 01 00          	cmpb   $0x0,0x1(%ecx)
+  94:	75 0a                	jne    a0 <x3m::ownership::ApplicationAdmissionAbi::~ApplicationAdmissionAbi()+0x10>
+  96:	c3                   	ret
+  97:	90                   	nop
+  98:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
+  9f:	00 
+  a0:	53                   	push   %ebx
+  a1:	89 cb                	mov    %ecx,%ebx
+  a3:	83 ec 78             	sub    $0x78,%esp
+  a6:	dd 74 24 04          	fnsave 0x4(%esp)
+  aa:	dd 64 24 04          	frstor 0x4(%esp)
+  ae:	0f ae 5c 24 70       	stmxcsr 0x70(%esp)
+  b3:	ff 15 00 00 00 00    	call   *0x0
+			b5: dir32	_imp__GetLastError@0
+  b9:	8d 4b 0c             	lea    0xc(%ebx),%ecx
+  bc:	89 44 24 74          	mov    %eax,0x74(%esp)
+  c0:	e8 00 00 00 00       	call   c5 <x3m::ownership::ApplicationAdmissionAbi::~ApplicationAdmissionAbi()+0x35>
+			c1: DISP32	x3m::ownership::ApplicationAdmission::~ApplicationAdmission()
+  c5:	8b 44 24 74          	mov    0x74(%esp),%eax
+  c9:	c6 43 01 00          	movb   $0x0,0x1(%ebx)
+  cd:	89 04 24             	mov    %eax,(%esp)
+  d0:	ff 15 00 00 00 00    	call   *0x0
+			d2: dir32	_imp__SetLastError@4
+  d6:	83 ec 04             	sub    $0x4,%esp
+  d9:	dd 64 24 04          	frstor 0x4(%esp)
+  dd:	0f ae 54 24 70       	ldmxcsr 0x70(%esp)
+  e2:	83 c4 78             	add    $0x78,%esp
+  e5:	5b                   	pop    %ebx
+  e6:	c3                   	ret
+  e7:	90                   	nop
+  e8:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
+  ef:	00 
+
+000000f0 <x3m::ownership::ApplicationAdmissionAbi::finish()>:
+  f0:	81 ec 84 00 00 00    	sub    $0x84,%esp
+  f6:	89 5c 24 7c          	mov    %ebx,0x7c(%esp)
+  fa:	0f b6 19             	movzbl (%ecx),%ebx
+  fd:	84 db                	test   %bl,%bl
+  ff:	75 17                	jne    118 <x3m::ownership::ApplicationAdmissionAbi::finish()+0x28>
+ 101:	bb 01 00 00 00       	mov    $0x1,%ebx
+ 106:	89 d8                	mov    %ebx,%eax
+ 108:	8b 5c 24 7c          	mov    0x7c(%esp),%ebx
+ 10c:	81 c4 84 00 00 00    	add    $0x84,%esp
+ 112:	c3                   	ret
+ 113:	2e 8d 74 26 00       	lea    %cs:0x0(%esi,%eiz,1),%esi
+ 118:	89 b4 24 80 00 00 00 	mov    %esi,0x80(%esp)
+ 11f:	89 ce                	mov    %ecx,%esi
+ 121:	dd 74 24 08          	fnsave 0x8(%esp)
+ 125:	dd 64 24 08          	frstor 0x8(%esp)
+ 129:	0f ae 5c 24 74       	stmxcsr 0x74(%esp)
+ 12e:	ff 15 00 00 00 00    	call   *0x0
+			130: dir32	_imp__GetLastError@0
+ 134:	89 44 24 78          	mov    %eax,0x78(%esp)
+ 138:	e8 00 00 00 00       	call   13d <x3m::ownership::ApplicationAdmissionAbi::finish()+0x4d>
+			139: DISP32	pthread_self
+ 13d:	39 46 04             	cmp    %eax,0x4(%esi)
+ 140:	74 36                	je     178 <x3m::ownership::ApplicationAdmissionAbi::finish()+0x88>
+ 142:	31 db                	xor    %ebx,%ebx
+ 144:	8b 44 24 78          	mov    0x78(%esp),%eax
+ 148:	89 04 24             	mov    %eax,(%esp)
+ 14b:	ff 15 00 00 00 00    	call   *0x0
+			14d: dir32	_imp__SetLastError@4
+ 151:	83 ec 04             	sub    $0x4,%esp
+ 154:	dd 64 24 08          	frstor 0x8(%esp)
+ 158:	0f ae 54 24 74       	ldmxcsr 0x74(%esp)
+ 15d:	89 d8                	mov    %ebx,%eax
+ 15f:	8b b4 24 80 00 00 00 	mov    0x80(%esp),%esi
+ 166:	8b 5c 24 7c          	mov    0x7c(%esp),%ebx
+ 16a:	81 c4 84 00 00 00    	add    $0x84,%esp
+ 170:	c3                   	ret
+ 171:	8d b4 26 00 00 00 00 	lea    0x0(%esi,%eiz,1),%esi
+ 178:	80 7e 01 00          	cmpb   $0x0,0x1(%esi)
+ 17c:	74 c6                	je     144 <x3m::ownership::ApplicationAdmissionAbi::finish()+0x54>
+ 17e:	8d 4e 0c             	lea    0xc(%esi),%ecx
+ 181:	89 4c 24 04          	mov    %ecx,0x4(%esp)
+ 185:	e8 00 00 00 00       	call   18a <x3m::ownership::ApplicationAdmissionAbi::finish()+0x9a>
+			186: DISP32	x3m::ownership::ApplicationAdmission::finish()
+ 18a:	8b 4c 24 04          	mov    0x4(%esp),%ecx
+ 18e:	84 c0                	test   %al,%al
+ 190:	74 16                	je     1a8 <x3m::ownership::ApplicationAdmissionAbi::finish()+0xb8>
+ 192:	0f b6 5e 01          	movzbl 0x1(%esi),%ebx
+ 196:	84 db                	test   %bl,%bl
+ 198:	74 0e                	je     1a8 <x3m::ownership::ApplicationAdmissionAbi::finish()+0xb8>
+ 19a:	e8 00 00 00 00       	call   19f <x3m::ownership::ApplicationAdmissionAbi::finish()+0xaf>
+			19b: DISP32	x3m::ownership::ApplicationAdmission::~ApplicationAdmission()
+ 19f:	c6 46 01 00          	movb   $0x0,0x1(%esi)
+ 1a3:	eb 9f                	jmp    144 <x3m::ownership::ApplicationAdmissionAbi::finish()+0x54>
+ 1a5:	8d 76 00             	lea    0x0(%esi),%esi
+ 1a8:	89 c3                	mov    %eax,%ebx
+ 1aa:	eb 98                	jmp    144 <x3m::ownership::ApplicationAdmissionAbi::finish()+0x54>
+ 1ac:	8d 74 26 00          	lea    0x0(%esi,%eiz,1),%esi
+
+000001b0 <x3m::ownership::ApplicationAdmissionAbi::boundary()>:
+ 1b0:	80 39 00             	cmpb   $0x0,(%ecx)
+ 1b3:	74 73                	je     228 <x3m::ownership::ApplicationAdmissionAbi::boundary()+0x78>
+ 1b5:	83 ec 7c             	sub    $0x7c,%esp
+ 1b8:	89 4c 24 04          	mov    %ecx,0x4(%esp)
+ 1bc:	dd 74 24 08          	fnsave 0x8(%esp)
+ 1c0:	dd 64 24 08          	frstor 0x8(%esp)
+ 1c4:	0f ae 5c 24 74       	stmxcsr 0x74(%esp)
+ 1c9:	ff 15 00 00 00 00    	call   *0x0
+			1cb: dir32	_imp__GetLastError@0
+ 1cf:	89 44 24 78          	mov    %eax,0x78(%esp)
+ 1d3:	e8 00 00 00 00       	call   1d8 <x3m::ownership::ApplicationAdmissionAbi::boundary()+0x28>
+			1d4: DISP32	pthread_self
+ 1d8:	8b 4c 24 04          	mov    0x4(%esp),%ecx
+ 1dc:	39 41 04             	cmp    %eax,0x4(%ecx)
+ 1df:	74 2f                	je     210 <x3m::ownership::ApplicationAdmissionAbi::boundary()+0x60>
+ 1e1:	31 c0                	xor    %eax,%eax
+ 1e3:	8b 54 24 78          	mov    0x78(%esp),%edx
+ 1e7:	89 44 24 04          	mov    %eax,0x4(%esp)
+ 1eb:	89 14 24             	mov    %edx,(%esp)
+ 1ee:	ff 15 00 00 00 00    	call   *0x0
+			1f0: dir32	_imp__SetLastError@4
+ 1f4:	83 ec 04             	sub    $0x4,%esp
+ 1f7:	dd 64 24 08          	frstor 0x8(%esp)
+ 1fb:	0f ae 54 24 74       	ldmxcsr 0x74(%esp)
+ 200:	8b 44 24 04          	mov    0x4(%esp),%eax
+ 204:	83 c4 7c             	add    $0x7c,%esp
+ 207:	c3                   	ret
+ 208:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
+ 20f:	00 
+ 210:	80 79 01 00          	cmpb   $0x0,0x1(%ecx)
+ 214:	74 cb                	je     1e1 <x3m::ownership::ApplicationAdmissionAbi::boundary()+0x31>
+ 216:	8d 41 0c             	lea    0xc(%ecx),%eax
+ 219:	80 79 1c 00          	cmpb   $0x0,0x1c(%ecx)
+ 21d:	74 c2                	je     1e1 <x3m::ownership::ApplicationAdmissionAbi::boundary()+0x31>
+ 21f:	eb c2                	jmp    1e3 <x3m::ownership::ApplicationAdmissionAbi::boundary()+0x33>
+ 221:	8d b4 26 00 00 00 00 	lea    0x0(%esi,%eiz,1),%esi
+ 228:	31 c0                	xor    %eax,%eax
+ 22a:	c3                   	ret
+ 22b:	90                   	nop
+ 22c:	8d 74 26 00          	lea    0x0(%esi,%eiz,1),%esi
+
+00000230 <x3m::ownership::ReplayAdmissionAbi::ReplayAdmissionAbi(x3m::ownership::ApplicationAdmission*)>:
+ 230:	83 c4 80             	add    $0xffffff80,%esp
+ 233:	c6 41 01 00          	movb   $0x0,0x1(%ecx)
+ 237:	8b 84 24 84 00 00 00 	mov    0x84(%esp),%eax
+ 23e:	c7 41 04 00 00 00 00 	movl   $0x0,0x4(%ecx)
+ 245:	c7 41 08 01 00 00 00 	movl   $0x1,0x8(%ecx)
+ 24c:	85 c0                	test   %eax,%eax
+ 24e:	0f 95 01             	setne  (%ecx)
+ 251:	74 61                	je     2b4 <x3m::ownership::ReplayAdmissionAbi::ReplayAdmissionAbi(x3m::ownership::ApplicationAdmission*)+0x84>
+ 253:	89 5c 24 78          	mov    %ebx,0x78(%esp)
+ 257:	89 cb                	mov    %ecx,%ebx
+ 259:	dd 74 24 04          	fnsave 0x4(%esp)
+ 25d:	dd 64 24 04          	frstor 0x4(%esp)
+ 261:	0f ae 5c 24 70       	stmxcsr 0x70(%esp)
+ 266:	ff 15 00 00 00 00    	call   *0x0
+			268: dir32	_imp__GetLastError@0
+ 26c:	89 44 24 74          	mov    %eax,0x74(%esp)
+ 270:	e8 00 00 00 00       	call   275 <x3m::ownership::ReplayAdmissionAbi::ReplayAdmissionAbi(x3m::ownership::ApplicationAdmission*)+0x45>
+			271: DISP32	pthread_self
+ 275:	8d 4b 0c             	lea    0xc(%ebx),%ecx
+ 278:	89 43 04             	mov    %eax,0x4(%ebx)
+ 27b:	8b 84 24 84 00 00 00 	mov    0x84(%esp),%eax
+ 282:	89 04 24             	mov    %eax,(%esp)
+ 285:	e8 00 00 00 00       	call   28a <x3m::ownership::ReplayAdmissionAbi::ReplayAdmissionAbi(x3m::ownership::ApplicationAdmission*)+0x5a>
+			286: DISP32	x3m::ownership::ReplayAdmission::ReplayAdmission(x3m::ownership::ApplicationAdmission&)
+ 28a:	8b 43 14             	mov    0x14(%ebx),%eax
+ 28d:	83 ec 04             	sub    $0x4,%esp
+ 290:	c6 43 01 01          	movb   $0x1,0x1(%ebx)
+ 294:	89 43 08             	mov    %eax,0x8(%ebx)
+ 297:	8b 44 24 74          	mov    0x74(%esp),%eax
+ 29b:	89 04 24             	mov    %eax,(%esp)
+ 29e:	ff 15 00 00 00 00    	call   *0x0
+			2a0: dir32	_imp__SetLastError@4
+ 2a4:	83 ec 04             	sub    $0x4,%esp
+ 2a7:	dd 64 24 04          	frstor 0x4(%esp)
+ 2ab:	0f ae 54 24 70       	ldmxcsr 0x70(%esp)
+ 2b0:	8b 5c 24 78          	mov    0x78(%esp),%ebx
+ 2b4:	83 ec 80             	sub    $0xffffff80,%esp
+ 2b7:	c2 04 00             	ret    $0x4
+ 2ba:	8d b6 00 00 00 00    	lea    0x0(%esi),%esi
+
+000002c0 <x3m::ownership::ReplayAdmissionAbi::ReplayAdmissionAbi(x3m::ownership::ApplicationAdmissionAbi&)>:
+ 2c0:	53                   	push   %ebx
+ 2c1:	89 cb                	mov    %ecx,%ebx
+ 2c3:	8b 4c 24 08          	mov    0x8(%esp),%ecx
+ 2c7:	e8 e4 fe ff ff       	call   1b0 <x3m::ownership::ApplicationAdmissionAbi::boundary()>
+ 2cc:	89 d9                	mov    %ebx,%ecx
+ 2ce:	89 44 24 08          	mov    %eax,0x8(%esp)
+ 2d2:	5b                   	pop    %ebx
+ 2d3:	e9 58 ff ff ff       	jmp    230 <x3m::ownership::ReplayAdmissionAbi::ReplayAdmissionAbi(x3m::ownership::ApplicationAdmission*)>
+ 2d8:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
+ 2df:	00 
+
+000002e0 <x3m::ownership::ReplayAdmissionAbi::~ReplayAdmissionAbi()>:
+ 2e0:	80 79 01 00          	cmpb   $0x0,0x1(%ecx)
+ 2e4:	75 0a                	jne    2f0 <x3m::ownership::ReplayAdmissionAbi::~ReplayAdmissionAbi()+0x10>
+ 2e6:	c3                   	ret
+ 2e7:	90                   	nop
+ 2e8:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
+ 2ef:	00 
+ 2f0:	53                   	push   %ebx
+ 2f1:	89 cb                	mov    %ecx,%ebx
+ 2f3:	83 ec 78             	sub    $0x78,%esp
+ 2f6:	dd 74 24 04          	fnsave 0x4(%esp)
+ 2fa:	dd 64 24 04          	frstor 0x4(%esp)
+ 2fe:	0f ae 5c 24 70       	stmxcsr 0x70(%esp)
+ 303:	ff 15 00 00 00 00    	call   *0x0
+			305: dir32	_imp__GetLastError@0
+ 309:	8d 4b 0c             	lea    0xc(%ebx),%ecx
+ 30c:	89 44 24 74          	mov    %eax,0x74(%esp)
+ 310:	e8 00 00 00 00       	call   315 <x3m::ownership::ReplayAdmissionAbi::~ReplayAdmissionAbi()+0x35>
+			311: DISP32	x3m::ownership::ReplayAdmission::~ReplayAdmission()
+ 315:	8b 44 24 74          	mov    0x74(%esp),%eax
+ 319:	c6 43 01 00          	movb   $0x0,0x1(%ebx)
+ 31d:	89 04 24             	mov    %eax,(%esp)
+ 320:	ff 15 00 00 00 00    	call   *0x0
+			322: dir32	_imp__SetLastError@4
+ 326:	83 ec 04             	sub    $0x4,%esp
+ 329:	dd 64 24 04          	frstor 0x4(%esp)
+ 32d:	0f ae 54 24 70       	ldmxcsr 0x70(%esp)
+ 332:	83 c4 78             	add    $0x78,%esp
+ 335:	5b                   	pop    %ebx
+ 336:	c3                   	ret
+ 337:	90                   	nop
+ 338:	2e 8d b4 26 00 00 00 	lea    %cs:0x0(%esi,%eiz,1),%esi
+ 33f:	00 
+
+00000340 <x3m::ownership::ReplayAdmissionAbi::finish()>:
+ 340:	81 ec 84 00 00 00    	sub    $0x84,%esp
+ 346:	89 5c 24 7c          	mov    %ebx,0x7c(%esp)
+ 34a:	0f b6 19             	movzbl (%ecx),%ebx
+ 34d:	84 db                	test   %bl,%bl
+ 34f:	75 17                	jne    368 <x3m::ownership::ReplayAdmissionAbi::finish()+0x28>
+ 351:	bb 01 00 00 00       	mov    $0x1,%ebx
+ 356:	89 d8                	mov    %ebx,%eax
+ 358:	8b 5c 24 7c          	mov    0x7c(%esp),%ebx
+ 35c:	81 c4 84 00 00 00    	add    $0x84,%esp
+ 362:	c3                   	ret
+ 363:	2e 8d 74 26 00       	lea    %cs:0x0(%esi,%eiz,1),%esi
+ 368:	89 b4 24 80 00 00 00 	mov    %esi,0x80(%esp)
+ 36f:	89 ce                	mov    %ecx,%esi
+ 371:	dd 74 24 08          	fnsave 0x8(%esp)
+ 375:	dd 64 24 08          	frstor 0x8(%esp)
+ 379:	0f ae 5c 24 74       	stmxcsr 0x74(%esp)
+ 37e:	ff 15 00 00 00 00    	call   *0x0
+			380: dir32	_imp__GetLastError@0
+ 384:	89 44 24 78          	mov    %eax,0x78(%esp)
+ 388:	e8 00 00 00 00       	call   38d <x3m::ownership::ReplayAdmissionAbi::finish()+0x4d>
+			389: DISP32	pthread_self
+ 38d:	39 46 04             	cmp    %eax,0x4(%esi)
+ 390:	74 36                	je     3c8 <x3m::ownership::ReplayAdmissionAbi::finish()+0x88>
+ 392:	31 db                	xor    %ebx,%ebx
+ 394:	8b 44 24 78          	mov    0x78(%esp),%eax
+ 398:	89 04 24             	mov    %eax,(%esp)
+ 39b:	ff 15 00 00 00 00    	call   *0x0
+			39d: dir32	_imp__SetLastError@4
+ 3a1:	83 ec 04             	sub    $0x4,%esp
+ 3a4:	dd 64 24 08          	frstor 0x8(%esp)
+ 3a8:	0f ae 54 24 74       	ldmxcsr 0x74(%esp)
+ 3ad:	89 d8                	mov    %ebx,%eax
+ 3af:	8b b4 24 80 00 00 00 	mov    0x80(%esp),%esi
+ 3b6:	8b 5c 24 7c          	mov    0x7c(%esp),%ebx
+ 3ba:	81 c4 84 00 00 00    	add    $0x84,%esp
+ 3c0:	c3                   	ret
+ 3c1:	8d b4 26 00 00 00 00 	lea    0x0(%esi,%eiz,1),%esi
+ 3c8:	80 7e 01 00          	cmpb   $0x0,0x1(%esi)
+ 3cc:	74 c6                	je     394 <x3m::ownership::ReplayAdmissionAbi::finish()+0x54>
+ 3ce:	8d 4e 0c             	lea    0xc(%esi),%ecx
+ 3d1:	89 4c 24 04          	mov    %ecx,0x4(%esp)
+ 3d5:	e8 00 00 00 00       	call   3da <x3m::ownership::ReplayAdmissionAbi::finish()+0x9a>
+			3d6: DISP32	x3m::ownership::ReplayAdmission::finish()
+ 3da:	8b 4c 24 04          	mov    0x4(%esp),%ecx
+ 3de:	84 c0                	test   %al,%al
+ 3e0:	74 16                	je     3f8 <x3m::ownership::ReplayAdmissionAbi::finish()+0xb8>
+ 3e2:	0f b6 5e 01          	movzbl 0x1(%esi),%ebx
+ 3e6:	84 db                	test   %bl,%bl
+ 3e8:	74 0e                	je     3f8 <x3m::ownership::ReplayAdmissionAbi::finish()+0xb8>
+ 3ea:	e8 00 00 00 00       	call   3ef <x3m::ownership::ReplayAdmissionAbi::finish()+0xaf>
+			3eb: DISP32	x3m::ownership::ReplayAdmission::~ReplayAdmission()
+ 3ef:	c6 46 01 00          	movb   $0x0,0x1(%esi)
+ 3f3:	eb 9f                	jmp    394 <x3m::ownership::ReplayAdmissionAbi::finish()+0x54>
+ 3f5:	8d 76 00             	lea    0x0(%esi),%esi
+ 3f8:	89 c3                	mov    %eax,%ebx
+ 3fa:	eb 98                	jmp    394 <x3m::ownership::ReplayAdmissionAbi::finish()+0x54>
+ 3fc:	8d 74 26 00          	lea    0x0(%esi,%eiz,1),%esi
+
+00000400 <x3m::ownership::admission_veto(x3m::ownership::AdmissionMonitor*, x3m::ownership::AdmissionVeto)>:
+ 400:	83 ec 78             	sub    $0x78,%esp
+ 403:	8b 54 24 7c          	mov    0x7c(%esp),%edx
+ 407:	85 d2                	test   %edx,%edx
+ 409:	74 51                	je     45c <x3m::ownership::admission_veto(x3m::ownership::AdmissionMonitor*, x3m::ownership::AdmissionVeto)+0x5c>
+ 40b:	8b 84 24 80 00 00 00 	mov    0x80(%esp),%eax
+ 412:	85 c0                	test   %eax,%eax
+ 414:	74 46                	je     45c <x3m::ownership::admission_veto(x3m::ownership::AdmissionMonitor*, x3m::ownership::AdmissionVeto)+0x5c>
+ 416:	dd 74 24 04          	fnsave 0x4(%esp)
+ 41a:	dd 64 24 04          	frstor 0x4(%esp)
+ 41e:	0f ae 5c 24 70       	stmxcsr 0x70(%esp)
+ 423:	ff 15 00 00 00 00    	call   *0x0
+			425: dir32	_imp__GetLastError@0
+ 429:	8b 4c 24 7c          	mov    0x7c(%esp),%ecx
+ 42d:	89 44 24 74          	mov    %eax,0x74(%esp)
+ 431:	8b 84 24 80 00 00 00 	mov    0x80(%esp),%eax
+ 438:	89 04 24             	mov    %eax,(%esp)
+ 43b:	e8 00 00 00 00       	call   440 <x3m::ownership::admission_veto(x3m::ownership::AdmissionMonitor*, x3m::ownership::AdmissionVeto)+0x40>
+			43c: DISP32	x3m::ownership::AdmissionMonitor::veto(x3m::ownership::AdmissionVeto)
+ 440:	83 ec 04             	sub    $0x4,%esp
+ 443:	8b 44 24 74          	mov    0x74(%esp),%eax
+ 447:	89 04 24             	mov    %eax,(%esp)
+ 44a:	ff 15 00 00 00 00    	call   *0x0
+			44c: dir32	_imp__SetLastError@4
+ 450:	83 ec 04             	sub    $0x4,%esp
+ 453:	dd 64 24 04          	frstor 0x4(%esp)
+ 457:	0f ae 54 24 70       	ldmxcsr 0x70(%esp)
+ 45c:	83 c4 78             	add    $0x78,%esp
+ 45f:	c3                   	ret
+
+00000460 <x3m::ownership::admission_snapshot(x3m::ownership::AdmissionMonitor const*)>:
+ 460:	8d 4c 24 04          	lea    0x4(%esp),%ecx
+ 464:	83 e4 f8             	and    $0xfffffff8,%esp
+ 467:	ff 71 fc             	push   -0x4(%ecx)
+ 46a:	55                   	push   %ebp
+ 46b:	89 e5                	mov    %esp,%ebp
+ 46d:	53                   	push   %ebx
+ 46e:	51                   	push   %ecx
+ 46f:	81 ec b4 00 00 00    	sub    $0xb4,%esp
+ 475:	8b 59 04             	mov    0x4(%ecx),%ebx
+ 478:	8b 11                	mov    (%ecx),%edx
+ 47a:	85 db                	test   %ebx,%ebx
+ 47c:	74 7a                	je     4f8 <x3m::ownership::admission_snapshot(x3m::ownership::AdmissionMonitor const*)+0x98>
+ 47e:	89 95 4c ff ff ff    	mov    %edx,-0xb4(%ebp)
+ 484:	dd 75 84             	fnsave -0x7c(%ebp)
+ 487:	dd 65 84             	frstor -0x7c(%ebp)
+ 48a:	0f ae 5d f0          	stmxcsr -0x10(%ebp)
+ 48e:	ff 15 00 00 00 00    	call   *0x0
+			490: dir32	_imp__GetLastError@0
+ 494:	8d 8d 50 ff ff ff    	lea    -0xb0(%ebp),%ecx
+ 49a:	89 45 f4             	mov    %eax,-0xc(%ebp)
+ 49d:	89 1c 24             	mov    %ebx,(%esp)
+ 4a0:	e8 00 00 00 00       	call   4a5 <x3m::ownership::admission_snapshot(x3m::ownership::AdmissionMonitor const*)+0x45>
+			4a1: DISP32	x3m::ownership::AdmissionMonitor::snapshot() const
+ 4a5:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ 4a8:	83 ec 04             	sub    $0x4,%esp
+ 4ab:	89 04 24             	mov    %eax,(%esp)
+ 4ae:	ff 15 00 00 00 00    	call   *0x0
+			4b0: dir32	_imp__SetLastError@4
+ 4b4:	83 ec 04             	sub    $0x4,%esp
+ 4b7:	dd 65 84             	frstor -0x7c(%ebp)
+ 4ba:	0f ae 55 f0          	ldmxcsr -0x10(%ebp)
+ 4be:	8b 95 4c ff ff ff    	mov    -0xb4(%ebp),%edx
+ 4c4:	f3 0f 6f 85 50 ff ff 	movdqu -0xb0(%ebp),%xmm0
+ 4cb:	ff 
+ 4cc:	0f 11 02             	movups %xmm0,(%edx)
+ 4cf:	f3 0f 6f 85 60 ff ff 	movdqu -0xa0(%ebp),%xmm0
+ 4d6:	ff 
+ 4d7:	89 d0                	mov    %edx,%eax
+ 4d9:	0f 11 42 10          	movups %xmm0,0x10(%edx)
+ 4dd:	f3 0f 6f 85 70 ff ff 	movdqu -0x90(%ebp),%xmm0
+ 4e4:	ff 
+ 4e5:	0f 11 42 20          	movups %xmm0,0x20(%edx)
+ 4e9:	8d 65 f8             	lea    -0x8(%ebp),%esp
+ 4ec:	59                   	pop    %ecx
+ 4ed:	5b                   	pop    %ebx
+ 4ee:	5d                   	pop    %ebp
+ 4ef:	8d 61 fc             	lea    -0x4(%ecx),%esp
+ 4f2:	c3                   	ret
+ 4f3:	2e 8d 74 26 00       	lea    %cs:0x0(%esi,%eiz,1),%esi
+ 4f8:	66 0f ef c0          	pxor   %xmm0,%xmm0
+ 4fc:	c7 42 20 00 00 00 00 	movl   $0x0,0x20(%edx)
+ 503:	89 d0                	mov    %edx,%eax
+ 505:	c7 42 24 00 00 00 00 	movl   $0x0,0x24(%edx)
+ 50c:	c6 42 28 00          	movb   $0x0,0x28(%edx)
+ 510:	0f 11 02             	movups %xmm0,(%edx)
+ 513:	0f 11 42 10          	movups %xmm0,0x10(%edx)
+ 517:	8d 65 f8             	lea    -0x8(%ebp),%esp
+ 51a:	59                   	pop    %ecx
+ 51b:	5b                   	pop    %ebx
+ 51c:	5d                   	pop    %ebp
+ 51d:	8d 61 fc             	lea    -0x4(%ecx),%esp
+ 520:	c3                   	ret
+ 521:	90                   	nop
+ 522:	90                   	nop
+ 523:	90                   	nop
+ 524:	90                   	nop
+ 525:	90                   	nop
+ 526:	90                   	nop
+ 527:	90                   	nop
+ 528:	90                   	nop
+ 529:	90                   	nop
+ 52a:	90                   	nop
+ 52b:	90                   	nop
+ 52c:	90                   	nop
+ 52d:	90                   	nop
+ 52e:	90                   	nop
+ 52f:	90                   	nop

@@ -70,9 +70,11 @@ replay segment.
 The x86 executable uses `-msse2 -mfpmath=sse -mstackrealign
 -mincoming-stack-boundary=2` and static support libraries. This is cross-compilation
 and Preview evidence, not execution on native Windows. The core deliberately
-does not preserve floating-point state or LastError: an outer ABI adapter must
-preserve state independently around entry and retirement without undoing the
-application's intervening native result/state.
+does not preserve floating-point state or LastError. The separate
+[x86 ABI adapter](../architecture/application-admission-abi.md) now passes 130
+checks for independent entry/retirement state preservation without undoing the
+application's intervening native result/state. Both modules remain disconnected
+from production entrypoints.
 
 ## Review and cost
 
@@ -87,8 +89,9 @@ Independent source and final-artifact review accepted this standalone checkpoint
 The review identified repeat promotion overtaking awakened roots; the
 implemented waiting-root refusal and fixture control address it. A separate
 review harness exercised 120,000 ordinary roots with concurrent promotions under
-ThreadSanitizer. Production overhead still needs measurement including the ABI
-adapter; fixture process elapsed times are not per-draw timings or game FPS.
+ThreadSanitizer. The ABI adapter's separate benchmark measures disabled, outer
+and nested scope cost; complete production overhead still needs measurement.
+Fixture process elapsed times are not per-draw timings or game FPS.
 
 Complete wrapper/capture/D3DX/window entry coverage, native callback vetoes,
 mapping validation, full restoration and deferred retirement remain required

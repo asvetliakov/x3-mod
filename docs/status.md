@@ -38,8 +38,12 @@ The standalone [application admission core](verification/application-admission.m
 now passes 4,865 checks in each of four builds, including ASan/UBSan,
 ThreadSanitizer and a CPU-only x86 Preview run. Independent review accepted its
 root counting, nesting, permanent vetoes and nonblocking replay promotion.
-It is not linked into production: complete entry coverage, CPU-state adaptation,
-callback restrictions and mapping validation still gate live replay. The new
+The standalone x86 [ABI adapter](architecture/application-admission-abi.md)
+also passes 130 CPU-state/behavior checks and 21 timing samples. Its emitted
+code removes compiler exception bookends from the adapter; only that source file
+disables exceptions. Its disabled path makes no runtime calls.
+Neither module is linked into production: complete entry coverage, callback
+restrictions and mapping validation still gate live replay. The new
 [game callback disassembly](reverse-engineering/game-callback-registration.md)
 identifies D3DX device routes, effect-state callbacks and window-message hazards.
 

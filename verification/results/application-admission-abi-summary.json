@@ -1,0 +1,151 @@
+{
+  "passed": true,
+  "scope": "standalone adapter ordinary-return CPU preservation and diagnostic timing; no D3D, gameplay, native-Windows or enclosing-hook ABI claim",
+  "source_hashes_before_build": {
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission_abi.h": "f513a90b6484d21e8ccaddeb483a34156b39f8028532e6d1cffb4901aa1014f4",
+    "src/ownership/application_admission_abi.cpp": "04afca5edb7546318ef502613f83c9f5f590e1031e6ba30cc82a6e4305bd1b1a",
+    "verification/probe/application_admission_abi_fixture.cpp": "0ff3db062dee98199a0ffaf1f3d76dcf6243bac1e6f099ca426c975bded1cb14",
+    "verification/probe/build_application_admission_abi.sh": "0bd12ccc44389a4670773d9ddf878b35bd33be62e707280141d880bfa53558c7",
+    "verification/probe/run_application_admission_abi.py": "a6233e033ca0690713ce5dc0dfd293cc2d9e990239d3fa6f236f9e256b16f3ca"
+  },
+  "runtime_path": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+  "runtime_sha256_before": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96",
+  "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0\nCopyright (C) 2026 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+  "source_hashes_after_build": {
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission_abi.h": "f513a90b6484d21e8ccaddeb483a34156b39f8028532e6d1cffb4901aa1014f4",
+    "src/ownership/application_admission_abi.cpp": "04afca5edb7546318ef502613f83c9f5f590e1031e6ba30cc82a6e4305bd1b1a",
+    "verification/probe/application_admission_abi_fixture.cpp": "0ff3db062dee98199a0ffaf1f3d76dcf6243bac1e6f099ca426c975bded1cb14",
+    "verification/probe/build_application_admission_abi.sh": "0bd12ccc44389a4670773d9ddf878b35bd33be62e707280141d880bfa53558c7",
+    "verification/probe/run_application_admission_abi.py": "a6233e033ca0690713ce5dc0dfd293cc2d9e990239d3fa6f236f9e256b16f3ca"
+  },
+  "adapter_object_sha256": "4f1e65b20c0425c27202e4b9bbadad0996f5c55b3804d968c9453b2224cd6f19",
+  "adapter_disassembly_sha256": "69656875dd26332fa43ee5c4d810820d5c93c9a21ae877daebf65541215bb781",
+  "adapter_no_eh_references": true,
+  "wrong_exception_policy_rejected": true,
+  "executable_sha256_before_run": "e3ab0d6218df5a81febf2826d81b057d237274e880e47e7570b14bcbfd3c246f",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/application_admission_abi_fixture.exe"
+  ],
+  "exit_code": 0,
+  "report_sha256": "6e35f15ec177f6443898977de2608bdf88fd627e80b0b650a80d6783a0b408aa",
+  "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+  "timing": {
+    "disabled": {
+      "median_ns_per_entry": 2.27,
+      "samples_ns_per_entry": [
+        2.29,
+        2.27,
+        2.27,
+        2.272,
+        2.256,
+        2.266,
+        2.283
+      ]
+    },
+    "outer": {
+      "median_ns_per_entry": 168.769,
+      "samples_ns_per_entry": [
+        173.427,
+        163.706,
+        166.249,
+        170.349,
+        163.953,
+        168.769,
+        197.298
+      ]
+    },
+    "nested": {
+      "median_ns_per_entry": 161.577,
+      "samples_ns_per_entry": [
+        166.13,
+        161.577,
+        157.753,
+        157.587,
+        165.333,
+        158.242,
+        163.358
+      ]
+    }
+  },
+  "source_hashes_after_run": {
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission_abi.h": "f513a90b6484d21e8ccaddeb483a34156b39f8028532e6d1cffb4901aa1014f4",
+    "src/ownership/application_admission_abi.cpp": "04afca5edb7546318ef502613f83c9f5f590e1031e6ba30cc82a6e4305bd1b1a",
+    "verification/probe/application_admission_abi_fixture.cpp": "0ff3db062dee98199a0ffaf1f3d76dcf6243bac1e6f099ca426c975bded1cb14",
+    "verification/probe/build_application_admission_abi.sh": "0bd12ccc44389a4670773d9ddf878b35bd33be62e707280141d880bfa53558c7",
+    "verification/probe/run_application_admission_abi.py": "a6233e033ca0690713ce5dc0dfd293cc2d9e990239d3fa6f236f9e256b16f3ca"
+  },
+  "runtime_sha256_after": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96",
+  "executable_sha256_after_run": "e3ab0d6218df5a81febf2826d81b057d237274e880e47e7570b14bcbfd3c246f",
+  "historical_initial": {
+    "summary_sha256": "719e8eb5402bf44ca0b4c03ce3f05548816d339db08773537341b93dc19a37f5",
+    "report_sha256": "40b03ae5b76d2dc0533a72111d5d0847ee869cb174e717bd70980ea0a5708217",
+    "executable_sha256": "a99e45ecc75efbb473480780dcf3c3d964ede92253670607a488517ccfc4b7ec",
+    "scope": "retained prototype report and its original source maps, not reproducible by current source",
+    "timing": {
+      "disabled": {
+        "median_ns_per_entry": 63.773,
+        "samples_ns_per_entry": [
+          63.668,
+          63.548,
+          63.773,
+          65.554,
+          65.962,
+          63.762,
+          65.468
+        ]
+      },
+      "outer": {
+        "median_ns_per_entry": 231.585,
+        "samples_ns_per_entry": [
+          236.557,
+          228.881,
+          230.814,
+          233.932,
+          231.585,
+          234.053,
+          231.58
+        ]
+      },
+      "nested": {
+        "median_ns_per_entry": 217.066,
+        "samples_ns_per_entry": [
+          218.114,
+          216.913,
+          217.771,
+          218.293,
+          217.066,
+          215.819,
+          214.817
+        ]
+      }
+    }
+  },
+  "comparison": {
+    "disabled": {
+      "initial_ns": 63.773,
+      "current_ns": 2.27
+    },
+    "outer": {
+      "initial_ns": 231.585,
+      "current_ns": 168.769
+    },
+    "nested": {
+      "initial_ns": 217.066,
+      "current_ns": 161.577
+    }
+  },
+  "checks": 130,
+  "samples": 21
+}

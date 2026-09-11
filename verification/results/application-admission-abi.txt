@@ -1,0 +1,163 @@
+CHECK disabled entry preserves complete CPU state PASS
+CHECK disabled is not admitted monitor coverage PASS
+CHECK disabled boundary accessor preserves state PASS
+CHECK disabled exposes no boundary PASS
+CHECK disabled replay preserves state PASS
+CHECK disabled cannot promote PASS
+CHECK disabled finish preserves state PASS
+CHECK disabled finish idempotent PASS
+CHECK disabled replay destruction preserves state PASS
+CHECK disabled destruction preserves state PASS
+CHECK disabled veto preserves state PASS
+CHECK disabled snapshot preserves state PASS
+CHECK disabled snapshot empty PASS
+CASE disabled PASS
+CHECK outer entry preserves live x87 sticky controls MXCSR LastError PASS
+CHECK outer admission succeeds PASS
+CHECK active boundary accessor preserves state PASS
+CHECK active boundary available PASS
+CHECK snapshot preserves state PASS
+CHECK one active root PASS
+CHECK native simulation changes incoming CPU state PASS
+CHECK finish preserves original native outgoing state HRESULT and output PASS
+CHECK finished boundary inactive while constructor result retained PASS
+CHECK double finish preserves current state PASS
+CHECK double finish succeeds PASS
+CHECK finished adapter destruction preserves state PASS
+CHECK second entry preserves state PASS
+CHECK destructor independently preserves native outgoing state PASS
+CHECK monitor balanced PASS
+CASE ordinary PASS
+CHECK explicit child finish preserves state PASS
+CHECK child handoff retires underlying boundary PASS
+CHECK parent after child handoff preserves state PASS
+CHECK parent replay promotion preserves state PASS
+CHECK parent promotes after child scope explicitly ends PASS
+CHECK replay explicit finish preserves state PASS
+CHECK replay explicit finish succeeds PASS
+CHECK replay double finish preserves state PASS
+CHECK replay double finish succeeds PASS
+CHECK finished replay destruction preserves state PASS
+CHECK parent finish preserves state PASS
+CHECK parent finish succeeds PASS
+CHECK monitor balanced PASS
+CASE handoff PASS
+CHECK nested entry preserves state PASS
+CHECK nested shares one ordinary root PASS
+CHECK nested promotion refusal preserves state PASS
+CHECK nested promotion refused PASS
+CHECK refused replay destruction preserves state PASS
+CHECK outer promotion across inner refusal preserves state PASS
+CHECK outer cannot bypass nested scope PASS
+CHECK out of order finish refusal preserves state PASS
+CHECK failed finish retains active storage and boundary pointer PASS
+CHECK inner finish preserves state PASS
+CHECK inner finishes before outer PASS
+CHECK ordered retry finish preserves state PASS
+CHECK corrected order finishes outer PASS
+CHECK monitor balanced PASS
+CASE nested_order PASS
+CHECK permanent veto bookkeeping preserves state PASS
+CHECK empty veto fast path preserves state PASS
+CHECK veto leaves ordinary work active PASS
+CHECK vetoed promotion preserves state PASS
+CHECK vetoed promotion refused PASS
+CHECK veto does not replace ordinary native result PASS
+CHECK monitor balanced PASS
+CASE vetoes PASS
+CHECK exclusive replay promotion preserves state PASS
+CHECK sole root exclusive PASS
+CHECK duplicate replay refusal preserves state PASS
+CHECK duplicate replay refused PASS
+CHECK same thread replay reentry refusal preserves state PASS
+CHECK reentry result retained without native dispatch or invented HRESULT PASS
+CHECK refusal leaves active replay and records permanent veto PASS
+CHECK refused application destruction preserves state PASS
+CHECK application finish during replay refusal preserves state PASS
+CHECK active replay keeps application boundary alive PASS
+CHECK active replay destructor preserves state PASS
+CHECK application finish after replay preserves state PASS
+CHECK application ends after replay PASS
+CHECK monitor balanced PASS
+CASE replay_refusals PASS
+CHECK different monitor refusal preserves state PASS
+CHECK different monitor refused PASS
+CHECK both monitors retain route veto PASS
+CHECK different monitor refused destruction preserves state PASS
+CHECK monitor balanced PASS
+CHECK monitor balanced PASS
+CASE different_monitor PASS
+CHECK foreign application finish refusal preserves state PASS
+CHECK foreign replay finish refusal preserves state PASS
+CHECK foreign boundary refusal preserves state PASS
+CHECK foreign thread cannot mutate or borrow active storage PASS
+CHECK foreign refusals retain owner scopes PASS
+CHECK monitor balanced PASS
+CASE foreign_finish PASS
+CHECK worker waits before simulated native dispatch PASS
+CHECK replay finish wakes waiter without CPU drift PASS
+CHECK replay waiter wake succeeds PASS
+CHECK waiting application entry restores its pre-wait full CPU state PASS
+CHECK waited application forwards native result with independent finish state PASS
+CHECK worker dispatches after replay interval ends PASS
+CHECK monitor balanced PASS
+CASE waiting PASS
+CHECK independent ordinary root enters PASS
+CHECK other applications promotion refusal preserves state PASS
+CHECK active other root blocks promotion PASS
+CHECK monitor balanced PASS
+CASE existing_roots PASS
+CHECK four-byte incoming stack preserves CPU state PASS
+CHECK thunk invokes callback at four-byte-only stack alignment PASS
+CHECK monitor balanced PASS
+CASE four_byte PASS
+CHECK benchmark QPC available PASS
+CHECK benchmark route inventory PASS
+CHECK benchmark route inventory PASS
+SAMPLE mode=disabled trial=1 iterations=100000 ns_per_entry=2.290
+CHECK benchmark route inventory PASS
+SAMPLE mode=disabled trial=2 iterations=100000 ns_per_entry=2.270
+CHECK benchmark route inventory PASS
+SAMPLE mode=disabled trial=3 iterations=100000 ns_per_entry=2.270
+CHECK benchmark route inventory PASS
+SAMPLE mode=disabled trial=4 iterations=100000 ns_per_entry=2.272
+CHECK benchmark route inventory PASS
+SAMPLE mode=disabled trial=5 iterations=100000 ns_per_entry=2.256
+CHECK benchmark route inventory PASS
+SAMPLE mode=disabled trial=6 iterations=100000 ns_per_entry=2.266
+CHECK benchmark route inventory PASS
+SAMPLE mode=disabled trial=7 iterations=100000 ns_per_entry=2.283
+CHECK monitor balanced PASS
+CHECK benchmark route inventory PASS
+CHECK benchmark route inventory PASS
+SAMPLE mode=outer trial=1 iterations=100000 ns_per_entry=173.427
+CHECK benchmark route inventory PASS
+SAMPLE mode=outer trial=2 iterations=100000 ns_per_entry=163.706
+CHECK benchmark route inventory PASS
+SAMPLE mode=outer trial=3 iterations=100000 ns_per_entry=166.249
+CHECK benchmark route inventory PASS
+SAMPLE mode=outer trial=4 iterations=100000 ns_per_entry=170.349
+CHECK benchmark route inventory PASS
+SAMPLE mode=outer trial=5 iterations=100000 ns_per_entry=163.953
+CHECK benchmark route inventory PASS
+SAMPLE mode=outer trial=6 iterations=100000 ns_per_entry=168.769
+CHECK benchmark route inventory PASS
+SAMPLE mode=outer trial=7 iterations=100000 ns_per_entry=197.298
+CHECK monitor balanced PASS
+CHECK benchmark route inventory PASS
+CHECK benchmark route inventory PASS
+SAMPLE mode=nested trial=1 iterations=100000 ns_per_entry=166.130
+CHECK benchmark route inventory PASS
+SAMPLE mode=nested trial=2 iterations=100000 ns_per_entry=161.577
+CHECK benchmark route inventory PASS
+SAMPLE mode=nested trial=3 iterations=100000 ns_per_entry=157.753
+CHECK benchmark route inventory PASS
+SAMPLE mode=nested trial=4 iterations=100000 ns_per_entry=157.587
+CHECK benchmark route inventory PASS
+SAMPLE mode=nested trial=5 iterations=100000 ns_per_entry=165.333
+CHECK benchmark route inventory PASS
+SAMPLE mode=nested trial=6 iterations=100000 ns_per_entry=158.242
+CHECK benchmark route inventory PASS
+SAMPLE mode=nested trial=7 iterations=100000 ns_per_entry=163.358
+CHECK monitor balanced PASS
+RESULT PASS checks=130 failures=0 samples=21

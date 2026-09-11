@@ -1,0 +1,42 @@
+{
+  "passed": true,
+  "stage": "initial-optional-guard",
+  "scope": "historical initial ABI adapter; no game or D3D device",
+  "source_hashes_before_build": {
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission_abi.h": "fb3c929d45b1a3773e5430b7d2eefbbd01193114a1c32f47d2f140bf10e1d337",
+    "src/ownership/application_admission_abi.cpp": "f869f173d164b5caee00a328f674fe3468db23f499b902dc71998999c4ab4fca",
+    "verification/probe/application_admission_abi_fixture.cpp": "0ff3db062dee98199a0ffaf1f3d76dcf6243bac1e6f099ca426c975bded1cb14",
+    "verification/probe/build_application_admission_abi.sh": "eee2fbb1d0753d47375a9c670f2fdf89b84751012ad27b92068c6ac8a5195313"
+  },
+  "source_hashes_after_build": {
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission_abi.h": "fb3c929d45b1a3773e5430b7d2eefbbd01193114a1c32f47d2f140bf10e1d337",
+    "src/ownership/application_admission_abi.cpp": "f869f173d164b5caee00a328f674fe3468db23f499b902dc71998999c4ab4fca",
+    "verification/probe/application_admission_abi_fixture.cpp": "0ff3db062dee98199a0ffaf1f3d76dcf6243bac1e6f099ca426c975bded1cb14",
+    "verification/probe/build_application_admission_abi.sh": "eee2fbb1d0753d47375a9c670f2fdf89b84751012ad27b92068c6ac8a5195313"
+  },
+  "executable_sha256": "a99e45ecc75efbb473480780dcf3c3d964ede92253670607a488517ccfc4b7ec",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/application_admission_abi_initial.exe"
+  ],
+  "exit_code": 0,
+  "source_hashes_after_run": {
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission_abi.h": "fb3c929d45b1a3773e5430b7d2eefbbd01193114a1c32f47d2f140bf10e1d337",
+    "src/ownership/application_admission_abi.cpp": "f869f173d164b5caee00a328f674fe3468db23f499b902dc71998999c4ab4fca",
+    "verification/probe/application_admission_abi_fixture.cpp": "0ff3db062dee98199a0ffaf1f3d76dcf6243bac1e6f099ca426c975bded1cb14",
+    "verification/probe/build_application_admission_abi.sh": "eee2fbb1d0753d47375a9c670f2fdf89b84751012ad27b92068c6ac8a5195313"
+  },
+  "report_sha256": "40b03ae5b76d2dc0533a72111d5d0847ee869cb174e717bd70980ea0a5708217",
+  "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf"
+}
