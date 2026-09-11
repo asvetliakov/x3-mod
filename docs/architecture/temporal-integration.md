@@ -86,9 +86,20 @@ the motion target: release before the wrapper's Reset, recreate lazily.
 
 History is invalidated on camera-serial change, load or registry epoch change,
 dimension change, failed Present and selector rejection. Those signals already
-exist in the route. A view-delta heuristic needs the view-inverse rows
-`c34–36` shadowed as well; that is a small addition and is left for the run
-evidence to justify.
+exist in the route, but the [iteration-6 run](../verification/iteration-06.md)
+showed they are insufficient: the load and registry epochs did not advance
+across several sector changes and a ship destruction, and the camera serial
+changed only once in the session. A cut detector based on the route's own
+data is therefore required: at the end of the scene phase, compute the median
+screen displacement of the matched draws' projected origins (current versus
+previous rows, the same quantity the cross-check tool computes) and the
+fraction of routed draws whose key was absent in the previous frame. A median
+above a configurable bound (a few tens of pixels at 1280×768, scaled with the
+viewport) or a missing-key fraction above a bound marks the frame as a cut,
+and the resolve runs current-only for it. The bounds are tuned from the
+iteration-6 distributions (median displacement 0.001–8.4 px in ordinary flight,
+worst missing-key fraction 42 of 10,517 routes). A view-inverse shadow of
+`c34–36` remains a possible refinement but is not required for this.
 
 ## Cost and memory
 
