@@ -1,0 +1,125 @@
+{
+  "passed": true,
+  "scope": "portable monitor bookkeeping only; no native callback/entry coverage claim",
+  "runs": [
+    {
+      "name": "optimized",
+      "command": [
+        "clang++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pthread",
+        "/Users/asvetl/x3-mod/src/ownership/application_admission.cpp",
+        "/Users/asvetl/x3-mod/verification/probe/application_admission_fixture.cpp",
+        "-o",
+        "/Users/asvetl/x3-mod/build/verification/application-admission/optimized"
+      ],
+      "launch": [
+        "/Users/asvetl/x3-mod/build/verification/application-admission/optimized"
+      ],
+      "checks": 4865,
+      "executable_sha256": "cea2aa40240c6ccc002add7fe85fecb898039d549228b6601f5be2feabff83dd",
+      "log_sha256": "099ba7f4dcbd7d526cbbda3e7853e57b57a6803e3c95c6206e8b5843ddf05849",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "elapsed_seconds": 0.878188958
+    },
+    {
+      "name": "sanitized",
+      "command": [
+        "clang++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pthread",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "/Users/asvetl/x3-mod/src/ownership/application_admission.cpp",
+        "/Users/asvetl/x3-mod/verification/probe/application_admission_fixture.cpp",
+        "-o",
+        "/Users/asvetl/x3-mod/build/verification/application-admission/sanitized"
+      ],
+      "launch": [
+        "/Users/asvetl/x3-mod/build/verification/application-admission/sanitized"
+      ],
+      "checks": 4865,
+      "executable_sha256": "1fc08e4e7c834e1156a95aadeb8f81d348fc06c764389d2b1580788f94f0736c",
+      "log_sha256": "099ba7f4dcbd7d526cbbda3e7853e57b57a6803e3c95c6206e8b5843ddf05849",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "elapsed_seconds": 0.6491840419999999
+    },
+    {
+      "name": "thread-sanitized",
+      "command": [
+        "clang++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pthread",
+        "-fsanitize=thread",
+        "-fno-omit-frame-pointer",
+        "/Users/asvetl/x3-mod/src/ownership/application_admission.cpp",
+        "/Users/asvetl/x3-mod/verification/probe/application_admission_fixture.cpp",
+        "-o",
+        "/Users/asvetl/x3-mod/build/verification/application-admission/thread-sanitized"
+      ],
+      "launch": [
+        "/Users/asvetl/x3-mod/build/verification/application-admission/thread-sanitized"
+      ],
+      "checks": 4865,
+      "executable_sha256": "6b137418dfe7f5bb942a2ee1de8412369da9874bc71d0232a05e2704cdc4cb37",
+      "log_sha256": "c40df9a394189e9cc06533045329434dec62b8a7851d63e69ada463c1c1b2dee",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "elapsed_seconds": 0.8348838330000001
+    },
+    {
+      "name": "preview-x86",
+      "command": [
+        "i686-w64-mingw32-g++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pthread",
+        "-msse2",
+        "-mfpmath=sse",
+        "-mstackrealign",
+        "-mincoming-stack-boundary=2",
+        "-static",
+        "/Users/asvetl/x3-mod/src/ownership/application_admission.cpp",
+        "/Users/asvetl/x3-mod/verification/probe/application_admission_fixture.cpp",
+        "-o",
+        "/Users/asvetl/x3-mod/build/verification/application-admission/preview-x86.exe"
+      ],
+      "launch": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "Steam",
+        "--no-update",
+        "--workdir",
+        "/Users/asvetl/x3-mod/build/verification/application-admission",
+        "/Users/asvetl/x3-mod/build/verification/application-admission/preview-x86.exe"
+      ],
+      "checks": 4865,
+      "executable_sha256": "ca4dee1e1356a9187138a64947140d8512a1dd7e6aef7ca11f770a48f758ea30",
+      "log_sha256": "099ba7f4dcbd7d526cbbda3e7853e57b57a6803e3c95c6206e8b5843ddf05849",
+      "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+      "elapsed_seconds": 6.7136084590000005
+    }
+  ],
+  "sources": {
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "verification/probe/application_admission_fixture.cpp": "7ab816bf15e0936259b6fd2a68f42125ee636828679e240b687612d5062a4bec",
+    "verification/probe/run_application_admission.py": "20c49ed65e4526f3f979e6bbd25949e727361524c9b3194f855920483f0f5111"
+  },
+  "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "native_compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0\nCopyright (C) 2026 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+}

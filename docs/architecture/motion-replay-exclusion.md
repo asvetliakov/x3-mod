@@ -1,6 +1,9 @@
 # Excluding application mutations during private replay
 
-Portable design proposal, not an implemented synchronization guarantee. Native
+Portable integration contract, not an implemented live synchronization guarantee.
+The standalone [application admission core](../verification/application-admission.md)
+now implements root counting, nesting, promotion and permanent veto bookkeeping;
+it is not wired to the production entrypoints. Native
 Windows/Direct3D is a required full-renderer target; Wine internals cannot be a
 prerequisite for shared replay or resource-evidence interfaces. See
 [platform portability](platform-portability.md). The current
@@ -228,24 +231,180 @@ were intentional renderer work. Renderer native access and original-Clear dispat
 need narrow explicit permissions, and diagnostic callbacks belong outside the
 exclusive scope.
 
-## Remaining callback and cleanup proof
+## Portable callback contract for the first live producer
 
-Counting completed CPU calls does not count asynchronous backend work. A native
-operation may enqueue resource destruction, return, and later invoke a
-private-IUnknown callback from a worker. Such a callback can arrive after the
-application-root count reaches zero. Nested-ticket handling alone therefore does
-not prove the critical replay segment cannot receive a callback. This must be
-resolved for supported native Direct3D as well as Wine; one pinned backend's
-mutex or worker behavior is not a portable proof.
+A permanent registration veto can close the asynchronous private-IUnknown gap
+without depending on a backend's destruction timing. This is the proposed
+activation contract, not evidence that the current live gate can be removed.
+The supported process uses the normal D3D9 proxy/wrapper route from graphics
+startup, documented native COM implementations, and the reviewed game/D3DX
+call paths. Unannounced native access and third-party COM interception are outside
+that contract. The public buffer implementation may accept a legitimate COM
+forwarder for storage correctness; that does not certify arbitrary code in that
+forwarder as safe inside an exclusive replay.
 
-The default `RigidMotionPass::run` path owns `SavedState` as a local object and
-releases its native references before returning. On restoration failure these
-may be the last references to application resources. The reviewed optional
-`RigidMotionRetirement` now transfers its seven explicit references into a
-caller-owned batch without allocation or AddRef, including failure paths. The
-caller must release that batch after leaving exclusivity; MotionCapture has not
-yet wired this API. See [retirement verification](../verification/rigid-retirement.md).
-Geometry references, output consumption and other pass cleanup still require
-explicit phase ordering. This component closes the local saved-state cleanup
-placement gap; it does not eliminate callbacks from native replay operations or
-establish portable replay exclusion.
+### Documented callback mechanisms
+
+D3D9 resource private data flagged `D3DSPD_IUNKNOWN` retains an application
+interface and calls it when the entry is replaced or destroyed. Retrieving the
+interface through GetPrivateData also calls AddRef. The API does not provide a
+portable completion fence for an arbitrary callback's lifetime, nor enumeration
+of all private-data GUIDs. Therefore a scan of a resource or an empty current
+registration count cannot establish a callback-free baseline. See Microsoft's
+[SetPrivateData contract](https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3dresource9-setprivatedata)
+and [GetPrivateData contract](https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3dresource9-getprivatedata).
+The installed native destruction counterexample is retained in
+[replay native callbacks](../reverse-engineering/replay-native-callbacks.md),
+as evidence of the risk, not a required backend layout.
+
+Window messages are a separate route. Microsoft identifies CreateDevice, Reset
+and final device Release as operations that can cause mode-change messages while
+runtime critical sections are held. Reset explicitly permits messages before it
+returns. They must remain outside the replay segment. See
+[Direct3D threading](https://learn.microsoft.com/en-us/windows/win32/direct3d9/multithreading-issues)
+and [Reset](https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3ddevice9-reset).
+SendMessage can invoke a same-thread window procedure directly; cross-thread
+sending waits and can process incoming messages. It is not a safe diagnostic
+operation inside exclusion. See
+[SendMessage](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendmessage).
+
+Ordinary D3D9 state-setting and drawing methods do not expose a user callback
+parameter. Treating the bounded sequence below as free of arbitrary application
+callbacks is an inference from that API contract plus absence of registrations
+and reviewed entry routes; it is not a Microsoft guarantee covering custom COM
+interceptors, overlays, arbitrary drivers or every native implementation. Native
+Windows execution remains a required validation target, not a completed test.
+
+### Permanent veto and baseline
+
+The monitor needs a process-lifetime `coverage_unknown`/`foreign_callback_seen`
+latch and an immutable first reason, in addition to active application roots.
+These are refusal conditions, not faults in the application's original call:
+forward that call with its original arguments/results after ordinary admission.
+
+1. Start observation before returning the first application factory/device, with
+   no previously exposed graphics objects. App-local proxy loading at process
+   startup is the intended route. Attaching to an existing device or adopting an
+   arbitrary native object cannot establish this baseline. The fixture may arm
+   a clean process explicitly; a live loader must establish startup coverage.
+2. Before dispatching any application SetPrivateData whose flags contain
+   `D3DSPD_IUNKNOWN`, set the permanent process veto. Cover Texture, CubeTexture,
+   VolumeTexture, Surface, Volume, VertexBuffer and IndexBuffer. Do this even
+   when the call later fails or replaces a known entry, and before a possible
+   native AddRef callback. No pointer dereference is needed to latch the veto.
+3. An internal sidecar registration is exempt only through a separate private
+   entrypoint with a positively owned object and reviewed nonblocking callback
+   implementation. A matching GUID, interface address supplied by the caller,
+   or general TLS internal-call flag is not authority. Current finite-sidecar
+   callbacks must continue to avoid waiting on registry/backend/application
+   locks; deferred retirement stays outside exclusive replay.
+4. Never clear the veto on FreePrivateData, reset, object destruction, a failed
+   registration, or a quiet interval. An earlier worker callback may still be
+   queued. This removes the need to infer asynchronous callback completion.
+5. Before returning an Ex interface, native fallback device, unknown successful
+   QueryInterface escape, externally shared resource or late-adopted untracked
+   object, permanently mark coverage unknown. Continue ordinary forwarding.
+   A second device is allowed only through the same complete admission route.
+   Any public raw-native escape needs a reviewed counted transaction; arbitrary
+   application mutation invalidates this baseline, not just one buffer revision.
+6. Snapshot the latch while atomically promoting the outer Clear root. New
+   registration attempts cannot dispatch until exclusion ends; a registration
+   admitted earlier prevents promotion through the active-root count. No separate
+   unlocked check-then-promote sequence is sufficient.
+
+The current executable has one static D3D import, Direct3DCreate9, but also
+LoadLibrary/GetProcAddress imports. This is encouraging route evidence, not proof
+that dynamic or bundled-library escapes never occur. The next bounded game audit
+must identify resource registration and device-creation helpers in the EXE and
+bundled D3DX, then cover their actual routes. Absence in a short trace alone is
+not a clean-start certificate. See [executable inventory](../reverse-engineering/executable.md).
+A startup route that cannot be established stays in forwarding/diagnostic mode;
+there is no need for a backend DLL hash to express that refusal.
+
+### Smallest exclusive execution segment
+
+| Phase | Allowed work and required ownership |
+| --- | --- |
+| Before promotion | Prepare shaders, declarations, targets and immutable draw data; perform allocations and retire old objects. Hold a live device owner. Resolve game lifetime observations. These ordinary operations carry application admission. |
+| Promote and validate | Require the only outer root, callback/coverage latches clear, no pending maps/DCs for inputs, current execution/lease/finite/lifetime identities and scene boundary. Read-only descriptor/GetDevice work may use retained native owners; temporary releases cannot destroy their parent. GetPrivateData is restricted to authenticated mod sidecars. Do not hold the registry during native dispatch. |
+| Save | Capture a fresh stateblock and explicit RT/depth references before changing state. Do not recapture a populated stateblock whose old retained resources could be released. Preserve partial-save references for deferred retirement. |
+| Inject and restore | Use the reviewed native bind/unbind, viewport/render/sampler/constant/shader/declaration setters, scene-compatible Clear/draw operations and StateBlock::Apply plus explicit RT/depth restoration. All original and injected resources remain retained. The current UP initialization may allocate internally but has no application callback parameter; moving it to a prepared triangle VB is a useful simplification, not a required claim of zero native allocation. |
+| Original Clear | Issue only the intercepted original call under a narrow explicit token, preserving its complete CPU/LastError boundary and normal observation. Do not grant other wrapper dispatch a blanket same-thread exemption. |
+| After exclusion | Publish diagnostics, call consumers and release the state/geometry/output retirement batches; perform loss/reset teardown only here. Failure paths use the same order. |
+
+Present, CreateDevice, Reset, TestCooperativeLevel, final device Release, additional
+swapchain creation, cursor/window changes, message pumping, SendMessage,
+alertable waits, shader compiler includes and arbitrary diagnostic consumers are
+not part of this segment. Query Issue/GetData and waiting for GPU completion are
+also excluded from the first producer. The existing RESZ depth-copy adapter needs
+its own exact call inventory and deferred cleanup before being included; the
+registration veto does not prove depth-copy restoration or portability.
+
+The game-specific audit identifies WndProc `0x4d3620`, installed by window
+initialization `0x4dac90`, and message pump `0x4d34b0`. The reviewed WndProc has no
+direct D3D/Reset dispatch, but its deactivation and audio-message branches invoke
+application callback tables. Therefore its whole body is not callback-free.
+D3DX shader validation also registers an internal callback via a dynamically
+resolved validator; compilation remains outside the exclusive segment. These
+are bounded derived callsite findings; the
+[game callback audit](../reverse-engineering/game-callback-registration.md)
+records the evidence and remaining indirect targets.
+
+A concrete window admission option is an outer window-procedure wrapper installed
+on the focus/device windows before returning the device to the application. Its
+application ticket surrounds CallWindowProc into the previous runtime/game chain,
+with chain-change/lifetime validation. Installing admission only inside X3's
+WndProc can be too late: Direct3D's own window hook precedes it. This outer route
+makes ordinary external focus/message processing visible before entering that
+chain, while messages caused by an already admitted CreateDevice/Reset retain the
+existing root. It must be tested on native Windows, including correct window
+thread installation and replacement; it does not imply that arbitrary internal
+worker-thread message sends are universally safe. No window-hook implementation
+or game thread-identity proof is claimed in this design note.
+
+Window procedures on other threads may attempt ordinary wrapped D3D calls and
+wait at entry without holding a graphics transaction; replay must not wait for
+those threads or send them messages. A mode-changing call already in progress
+has an active root, so promotion refuses. Same-thread window reentry requires a
+callback-dispatching operation; the selected segment deliberately excludes the
+documented sources above. Audit the game's WndProc and render-thread placement,
+and test actual focus/mode transitions. Do not silently bypass admission on a
+same-thread unexpected callback: that would make the state snapshot invalid.
+
+`RigidMotionRetirement` already transfers seven explicit saved references without
+allocation/AddRef, including partial failure, for release after exclusion.
+MotionCapture must wire it, keep its device/pass/output owners alive, and order
+geometry retirement similarly. See
+[retirement verification](../verification/rigid-retirement.md).
+This addresses explicit cleanup placement as well as the global registration
+veto; neither mechanism substitutes for the other.
+
+### Finite acceptance work for this contract
+
+The next implementation can be accepted after these concrete controls, without
+an open-ended audit of hypothetical driver callbacks:
+
+- All seven registration wrappers latch before a synchronous test AddRef can
+  reenter; failed registration also latches. Removal/reset never re-enable replay.
+  Mod-sidecar registration remains eligible; caller GUID spoofing does not.
+- A private-IUnknown destructor intentionally deferred until after its original
+  CPU call returns cannot coexist with successful replay promotion because the
+  earlier registration already vetoed the process. Include a second-device case.
+- Late adoption, Ex/native fallback, unknown interface escape and incomplete
+  startup each prevent promotion; clean wrapped startup and ordinary second
+  wrapped device do not. Test the game/D3DX routes found by the bounded audit.
+- Every candidate method, early return and partial-save failure retains resources
+  until restoration/token release. Real private-IUnknown markers in a dedicated
+  deliberately vetoed fixture verify retirement ordering without qualifying that
+  fixture for live replay.
+- A WndProc/barrier fixture issues wrapped calls from another thread while replay
+  holds exclusion; no native dispatch occurs early, and replay never pumps or
+  waits for the window thread. Nested Clear during ordinary Reset/message work
+  refuses promotion. Native Windows and Preview require separate run evidence.
+
+Together with entry inventory, execution-state synchronization and pending-map
+checks, this is a bounded portable route to enabling the private motion producer.
+It does not certify temporal continuity, scene coverage, HDR transfer, or TAA
+consumption. The live gate remains closed until its implementation and controls
+pass; the callback question no longer requires proving a universal backend
+callback-free property.

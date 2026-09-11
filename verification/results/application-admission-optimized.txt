@@ -1,0 +1,10 @@
+CASE basic PASS
+CASE waiting PASS
+CASE existing_roots PASS
+CASE vetoes PASS
+CASE invariants PASS
+RACES rounds=128 promoted=128
+CASE racing PASS
+CASE nested_stress PASS
+CASE veto_race PASS
+RESULT PASS checks=4865 failures=0

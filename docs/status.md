@@ -34,6 +34,15 @@ or proof that complete live replay is affordable. See
 [performance measurements](verification/geometry-performance.md) and
 [review 10](verification/review-10.md). The installed DLL remains unchanged.
 
+The standalone [application admission core](verification/application-admission.md)
+now passes 4,865 checks in each of four builds, including ASan/UBSan,
+ThreadSanitizer and a CPU-only x86 Preview run. Independent review accepted its
+root counting, nesting, permanent vetoes and nonblocking replay promotion.
+It is not linked into production: complete entry coverage, CPU-state adaptation,
+callback restrictions and mapping validation still gate live replay. The new
+[game callback disassembly](reverse-engineering/game-callback-registration.md)
+identifies D3DX device routes, effect-state callbacks and window-message hazards.
+
 A private motion producer now connects main-scene draw observations to
 bounded native geometry leases, CPU storage correspondence and an actual
 pre-Clear GPU replay. It releases the motion target and replay resources within
