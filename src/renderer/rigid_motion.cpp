@@ -7,6 +7,7 @@
 
 namespace x3m::renderer {
 namespace {
+template<class F> struct OnExit { F finish; ~OnExit(){finish();} };
 template<class T> void drop(T*& p) noexcept { if(p){p->Release();p=nullptr;} }
 bool lost(HRESULT h) noexcept {return h==D3DERR_DEVICELOST||h==D3DERR_DEVICENOTRESET;}
 template<class T> HRESULT same_device(T* p,IDirect3DDevice9* d) noexcept {
@@ -126,6 +127,19 @@ RigidReplayContract original_synthetic_sm3_contract() noexcept {
     return result; // Deliberately no archive hash: never masquerades as a game profile.
 }
 #endif
+RigidMotionRetirement::~RigidMotionRetirement(){release();}
+void RigidMotionRetirement::release() noexcept {
+    if (releasing_ || collecting_) return;
+    releasing_ = true;
+    // Detach every slot before the first callback. Reentrant release is harmless
+    // and run refuses this batch until all detached references finish retiring.
+    IUnknown* detached[7]{};
+    const auto count = count_;
+    for (std::size_t i=0;i<count;++i) { detached[i]=references_[i];references_[i]=nullptr; }
+    count_ = 0;
+    for (std::size_t i=0;i<count;++i) detached[i]->Release();
+    releasing_ = false;
+}
 RigidMotionPass::~RigidMotionPass(){shutdown();}
 void RigidMotionPass::shutdown() noexcept {
     for(auto& p:declarations_)drop(p);
@@ -149,14 +163,20 @@ HRESULT RigidMotionPass::initialize(IDirect3DDevice9* d,const DWORD* ps) noexcep
     if(FAILED(h))shutdown();
     return h;
 }
-HRESULT RigidMotionPass::run(const RigidMotionInputs& in,RigidMotionOutput* out) noexcept {
+HRESULT RigidMotionPass::run(const RigidMotionInputs& in,RigidMotionOutput* out,
+                             RigidMotionRetirement* retirement) noexcept {
     if(out)*out={};
+    if(retirement&&!retirement->empty())return E_INVALIDARG;
     diagnostics_={};++generation_;
     auto fail=[&](HRESULT h){diagnostics_.operation=h;return h;};
     if(!out||!device_||!in.width||!in.height||!in.scene_depth_current||
        in.caller_stateblock_recording||!in.caller_queries_idle||in.draw_count>65536||
        (in.draw_count&&!in.draws)||!std::isfinite(in.previous_jitter[0])||
        !std::isfinite(in.previous_jitter[1]))return fail(E_INVALIDARG);
+    // Reserve before even a getter: native calls can invoke application code.
+    if(retirement)retirement->collecting_=true;
+    auto unreserve=[&]() noexcept {if(retirement)retirement->collecting_=false;};
+    OnExit<decltype(unreserve)> reservation_guard{unreserve};
     HRESULT h=same_device(in.motion,device_);if(SUCCEEDED(h))h=same_device(in.scene_depth,device_);
     if(FAILED(h))return fail(h);
     D3DSURFACE_DESC color{},depth{};
@@ -167,9 +187,23 @@ HRESULT RigidMotionPass::run(const RigidMotionInputs& in,RigidMotionOutput* out)
        depth.Width!=in.width||depth.Height!=in.height||depth.Format!=D3DFMT_D24X8||
        !(depth.Usage&D3DUSAGE_DEPTHSTENCIL)||depth.MultiSampleType!=D3DMULTISAMPLE_NONE)return fail(E_INVALIDARG);
     for(std::size_t i=0;i<in.draw_count;++i){h=validate_draw(device_,in.draws[i]);if(FAILED(h))return fail(h);}
-    IDirect3DSurface9* target=nullptr;h=in.motion->GetSurfaceLevel(0,&target);if(FAILED(h))return fail(h);
-    SavedState saved(device_,targets_);h=saved.capture();if(FAILED(h)){drop(target);return fail(h);}
-    h=normalize(device_,targets_,streams_,in.width,in.height,target);drop(target);
+    IDirect3DSurface9* target=nullptr;
+    SavedState saved(device_,targets_);
+    auto retire=[&]() noexcept {
+        if(!retirement){drop(target);return;}
+        auto transfer=[&](auto*& p) noexcept {
+            if(p){retirement->references_[retirement->count_++]=p;p=nullptr;}
+        };
+        // One stateblock, at most four RTs, one depth and one motion surface.
+        // The empty-batch entry gate plus this fixed inventory bounds all writes.
+        transfer(saved.block);for(auto& p:saved.targets)transfer(p);
+        transfer(saved.depth);transfer(target);
+    };
+    OnExit<decltype(retire)> retirement_guard{retire};
+    h=in.motion->GetSurfaceLevel(0,&target);if(FAILED(h))return fail(h);
+    h=saved.capture();if(FAILED(h))return fail(h);
+    h=normalize(device_,targets_,streams_,in.width,in.height,target);
+    if(!retirement)drop(target);
     bool own_scene=false;auto step=[&](HRESULT value){h=value;return SUCCEEDED(h);};
     const float constants[8]={1.f/in.width,1.f/in.height,in.previous_jitter[0]/in.width,
         in.previous_jitter[1]/in.height,0,0,0,0};

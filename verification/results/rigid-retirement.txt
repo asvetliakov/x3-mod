@@ -1,0 +1,173 @@
+DEVICE pure=0
+CHECK batch initially reusable PASS
+CHECK native injection reached PASS
+CHECK same batch reentry refused during native capture PASS
+CHECK operation result and output contract PASS
+CHECK all acquired witnesses retained at run return PASS
+CHECK nonempty batch rejected without clearing PASS
+CHECK only uncaptured depth may retire before batch release PASS
+CHECK explicit release retires seven witnesses and refuses callback reentry PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK release on empty batch is idempotent PASS
+CHECK batch initially reusable PASS
+CHECK native injection reached PASS
+CHECK same batch reentry refused during native capture PASS
+CHECK operation result and output contract PASS
+CHECK all acquired witnesses retained at run return PASS
+CHECK nonempty batch rejected without clearing PASS
+CHECK only uncaptured depth may retire before batch release PASS
+CHECK partial capture did not acquire failed depth output PASS
+CHECK explicit release retires seven witnesses and refuses callback reentry PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK release on empty batch is idempotent PASS
+CHECK batch initially reusable PASS
+CHECK native injection reached PASS
+CHECK same batch reentry refused during native capture PASS
+CHECK operation result and output contract PASS
+CHECK all acquired witnesses retained at run return PASS
+CHECK nonempty batch rejected without clearing PASS
+CHECK only uncaptured depth may retire before batch release PASS
+CHECK explicit release retires seven witnesses and refuses callback reentry PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK release on empty batch is idempotent PASS
+CHECK batch initially reusable PASS
+CHECK native injection reached PASS
+CHECK same batch reentry refused during native capture PASS
+CHECK operation result and output contract PASS
+CHECK all acquired witnesses retained at run return PASS
+CHECK nonempty batch rejected without clearing PASS
+CHECK only uncaptured depth may retire before batch release PASS
+CHECK explicit release retires seven witnesses and refuses callback reentry PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK release on empty batch is idempotent PASS
+CHECK batch initially reusable PASS
+CHECK native injection reached PASS
+CHECK same batch reentry refused during native capture PASS
+CHECK operation result and output contract PASS
+CHECK all acquired witnesses retained at run return PASS
+CHECK nonempty batch rejected without clearing PASS
+CHECK only uncaptured depth may retire before batch release PASS
+CHECK explicit release retires seven witnesses and refuses callback reentry PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK release on empty batch is idempotent PASS
+CHECK destructor batch retains resources PASS
+CHECK destructor retires outside caller scope PASS
+RESET PASS
+CHECK native device final release PASS
+DEVICE pure=1
+CHECK batch initially reusable PASS
+CHECK native injection reached PASS
+CHECK same batch reentry refused during native capture PASS
+CHECK operation result and output contract PASS
+CHECK all acquired witnesses retained at run return PASS
+CHECK nonempty batch rejected without clearing PASS
+CHECK only uncaptured depth may retire before batch release PASS
+CHECK explicit release retires seven witnesses and refuses callback reentry PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK release on empty batch is idempotent PASS
+CHECK batch initially reusable PASS
+CHECK native injection reached PASS
+CHECK same batch reentry refused during native capture PASS
+CHECK operation result and output contract PASS
+CHECK all acquired witnesses retained at run return PASS
+CHECK nonempty batch rejected without clearing PASS
+CHECK only uncaptured depth may retire before batch release PASS
+CHECK partial capture did not acquire failed depth output PASS
+CHECK explicit release retires seven witnesses and refuses callback reentry PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK release on empty batch is idempotent PASS
+CHECK batch initially reusable PASS
+CHECK native injection reached PASS
+CHECK same batch reentry refused during native capture PASS
+CHECK operation result and output contract PASS
+CHECK all acquired witnesses retained at run return PASS
+CHECK nonempty batch rejected without clearing PASS
+CHECK only uncaptured depth may retire before batch release PASS
+CHECK explicit release retires seven witnesses and refuses callback reentry PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK release on empty batch is idempotent PASS
+CHECK batch initially reusable PASS
+CHECK native injection reached PASS
+CHECK same batch reentry refused during native capture PASS
+CHECK operation result and output contract PASS
+CHECK all acquired witnesses retained at run return PASS
+CHECK nonempty batch rejected without clearing PASS
+CHECK only uncaptured depth may retire before batch release PASS
+CHECK explicit release retires seven witnesses and refuses callback reentry PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK release on empty batch is idempotent PASS
+CHECK batch initially reusable PASS
+CHECK native injection reached PASS
+CHECK same batch reentry refused during native capture PASS
+CHECK operation result and output contract PASS
+CHECK all acquired witnesses retained at run return PASS
+CHECK nonempty batch rejected without clearing PASS
+CHECK only uncaptured depth may retire before batch release PASS
+CHECK explicit release retires seven witnesses and refuses callback reentry PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK each private IUnknown witness destroyed exactly once PASS
+CHECK release on empty batch is idempotent PASS
+CHECK destructor batch retains resources PASS
+CHECK destructor retires outside caller scope PASS
+RESET PASS
+CHECK native device final release PASS
+RESULT PASS checks=168 cases=10 callbacks=84 devices=2

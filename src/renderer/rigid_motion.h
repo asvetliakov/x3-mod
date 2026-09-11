@@ -87,6 +87,27 @@ struct RigidMotionDiagnostics {
     HRESULT operation = S_OK, restoration = S_OK;
     std::size_t completed_draws = 0;
 };
+// Optional bounded retirement of run-owned state/target references. Declare
+// outside any exclusion scope; release only AFTER leaving that scope and before
+// Reset/device teardown. Releasing may execute application IUnknown callbacks.
+// This defers only the seven explicit references owned by run; it does not prove
+// that native draws, state restoration or other callbacks are callback-free.
+class RigidMotionRetirement {
+public:
+    RigidMotionRetirement() = default;
+    ~RigidMotionRetirement();
+    RigidMotionRetirement(const RigidMotionRetirement&) = delete;
+    RigidMotionRetirement& operator=(const RigidMotionRetirement&) = delete;
+    // True means reusable, including no release callback currently in progress.
+    bool empty() const noexcept { return count_ == 0 && !releasing_ && !collecting_; }
+    void release() noexcept;
+private:
+    friend class RigidMotionPass;
+    IUnknown* references_[7]{};
+    std::size_t count_ = 0;
+    bool releasing_ = false;
+    bool collecting_ = false;
+};
 class RigidMotionPass {
 public:
     RigidMotionPass() = default;
@@ -101,7 +122,12 @@ public:
     HRESULT initialize(IDirect3DDevice9* native_device) noexcept;
     HRESULT initialize(IDirect3DDevice9* native_device,
                        const DWORD* pixel_shader) noexcept;
-    HRESULT run(const RigidMotionInputs&, RigidMotionOutput*) noexcept;
+    // Caller serializes use; neither pass nor retirement is thread-safe.
+    // Supplied retirement must be empty. Every acquired target/state reference
+    // transfers without AddRef on success or failure; run never clears a batch.
+    // Default null retains immediate retirement and historical release timing.
+    HRESULT run(const RigidMotionInputs&, RigidMotionOutput*,
+                RigidMotionRetirement* retirement = nullptr) noexcept;
     void before_reset() noexcept;
     void shutdown() noexcept;
     RigidMotionDiagnostics diagnostics() const noexcept { return diagnostics_; }

@@ -5,8 +5,8 @@
   "verification_build_define": "X3M_RIGID_MOTION_VERIFICATION=1; synthetic issuer absent from production builds",
   "scope": "Original native pure-device GPU fixture using production rigid producer and resolve; no live routing",
   "sources_before_build": {
-    "src/renderer/rigid_motion.h": "d74d41d8079290d68ad1b41b74d4bdac62964473f62b6e4b81129c4bdd31e503",
-    "src/renderer/rigid_motion.cpp": "6e2720b27908658e02226dcb730d0c78d0b6bfed7ef7c24d6d4ff6f7ca1eeb4f",
+    "src/renderer/rigid_motion.h": "935fe54387bf1e62f0b04dabc291152b8508f8b6c25138a4a15e93b0f6b136ba",
+    "src/renderer/rigid_motion.cpp": "a2ab93ead655a6cde523422b899d15a70afd493af5bb6ef84c9f69e47502b347",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
@@ -26,8 +26,8 @@
     "verification/probe/build_rigid_motion.sh": "f1f0a36ead94940bd7b64b8f85e507ec6a41a02ffd54de892d870bf0bb4a750c",
     "verification/probe/run_rigid_motion.py": "6749968cc41ef514d7ff9f2554dce316d48b050b11e34ec5ae85a490df60a0fc"
   },
-  "executable_sha256": "4aa0fa3539578845701187c3400f5feac0b5a8cbe39354cfa8923bfdfa38fe8e",
-  "production_object_sha256": "b4436bafcce7bf75973b35fa103fdf51d6f4a10c414adb8eb10aa6f4c3ceee7e",
+  "executable_sha256": "7f203744c497736c08272734fe19ca4a418c1ef5eb7bde790840f6e2d17b00a4",
+  "production_object_sha256": "892b04bcf7c69b0d4e0b7b3624420d1e15ea1e4f3692cd6edb5451c74a181e30",
   "production_has_synthetic_issuer": false,
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "embedded_pixel_program_sha256": "a604ce8c772ac472dca8612c8cafcb353cb648f89aaffd7a089b7c9f0ae1e107",
