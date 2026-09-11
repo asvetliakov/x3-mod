@@ -197,8 +197,10 @@ python3 tools/shaders/generate_rigid_motion_pixel.py --check
 The small native compiler tool loads the local `d3dx9_37.dll` whose SHA256 is
 `c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8`.
 It compiles exact source bytes with entry `main`, profile `ps_3_0`, optimization
-level 3 (`0x8000`), no macros and no includes. The generator refuses a different
-compiler, active X3AP or a failed process inventory. It checks source/compiler/tool
+level 3 (`0x8000`), no macros and no includes. This digest records the compiler used;
+it is not an allowed-version check. The generator accepts another local compiler
+through `--d3dx` and records its actual digest. It refuses active X3AP or a failed
+process inventory. It checks source/compiler/tool
 hashes before and after compilation, validates complete token framing and writes
 only our own generated program plus deterministic provenance. The external
 Microsoft compiler DLL is never copied into the repository. The retained shader

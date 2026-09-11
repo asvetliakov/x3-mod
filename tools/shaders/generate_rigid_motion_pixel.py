@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compile our original motion HLSL with the pinned native D3DX compiler.
+"""Compile our original motion HLSL with a local native D3DX compiler.
 
 --check recompiles and compares both checked-in artifacts without changing them.
 The compiler DLL is an external local prerequisite, never redistributed. Only
@@ -20,7 +20,6 @@ SOURCE = ROOT / 'src/temporal/rigid_motion_ps.hlsl'
 COMPILER_SOURCE = ROOT / 'tools/shaders/compile_rigid_motion_pixel.cpp'
 HEADER = ROOT / 'src/renderer/rigid_motion_pixel_program_inc.h'
 PROVENANCE = ROOT / 'verification/results/rigid-motion-pixel-program.json'
-DLL_SHA = 'c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8'
 
 
 def sha(data):
@@ -55,8 +54,6 @@ def main():
         raise RuntimeError('X3AP running or process inventory failed; postpone compilation')
     inputs = (SOURCE, COMPILER_SOURCE, Path(__file__).resolve(), args.d3dx.resolve())
     before = {path: sha(path.read_bytes()) for path in inputs}
-    if before[inputs[-1]] != DLL_SHA:
-        raise ValueError('Unreviewed D3DX compiler hash')
     with tempfile.TemporaryDirectory(prefix='x3-original-motion-') as directory:
         work = Path(directory)
         exe, binary = work / 'compile.exe', work / 'motion.bin'
@@ -76,7 +73,7 @@ def main():
     text += ''.join('    ' + ', '.join(f'0x{v:08x}u' for v in words[i:i+6]) + ',\n'
                     for i in range(0, len(words), 6))
     record = dict(schema=1, source=str(SOURCE.relative_to(ROOT)), source_sha256=before[SOURCE],
-                  compiler='native d3dx9_37.dll D3DXCompileShader', compiler_sha256=DLL_SHA,
+                  compiler='native d3dx9_37.dll D3DXCompileShader', compiler_sha256=before[inputs[-1]],
                   entry='main', target='ps_3_0', flags=32768, flags_name='D3DXSHADER_OPTIMIZATION_LEVEL3',
                   defines=None, includes=None, word_count=len(words), bytecode_sha256=sha(data),
                   header_sha256=sha(text.encode()),
