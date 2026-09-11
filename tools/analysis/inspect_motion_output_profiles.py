@@ -86,12 +86,20 @@ MOTION_TEXCOORD_INDEX = 4
 # The candidate review bounds the relative light reads to c0-23 by requiring the
 # integer count in [0, 8]. That is a runtime check, not a static property.
 LIGHT_LOOP_MAX_COUNT = 8
-# Emitted class order; C stays out of the generated table for now but keeps its
-# name so the schema does not change when it is added.
+# Emitted classes, in enumerator order. Class C shares the row schema with A
+# and B: the transformer validates its branch structure from the words.
 HEADER_CLASSES = {'A_reference_registers': 'ReferenceRegisters',
-                  'B_relocated_registers': 'RelocatedRegisters'}
-DEFERRED_CLASSES = {'C_relocated_registers_with_static_branches':
+                  'B_relocated_registers': 'RelocatedRegisters',
+                  'C_relocated_registers_with_static_branches':
                     'RelocatedRegistersWithBranches'}
+# Classes named in the banner but not emitted (none today).
+DEFERRED_CLASSES = {}
+# Class C admits only `if b#` / `else` / `endif` on boolean constant registers,
+# nested at most this deep, balanced, and back at depth 0 before END; the
+# transformer asserts the same bound (material_motion.cpp).
+STATIC_BRANCH_OPCODES = {'if', 'else', 'endif'}
+STATIC_BRANCH_MAX_DEPTH = 1
+BOOLEAN_REGISTER_TYPE = 14
 
 
 def register_of(token):
@@ -284,6 +292,31 @@ def nesting(items):
     return balanced and not stack, deepest, len(stack)
 
 
+def static_branches(items, decoded):
+    """Describe every control-flow instruction: offset, opcode and, for `if`,
+    its condition register. `only_boolean_if` is the class C shape: nothing but
+    `if`/`else`/`endif`, every condition a direct boolean constant register."""
+    sites, only_boolean_if = [], True
+    for item, (_, sources) in zip(items, decoded):
+        name = OPCODES.get(item['opcode'])
+        if name not in FLOW_OPCODES:
+            continue
+        site = {'dword': item['dword'], 'opcode': name}
+        if name == 'if':
+            condition = sources[0] if len(sources) == 1 else None
+            site['condition'] = condition['name'] if condition else None
+            site['condition_register_type'] = condition['register_type'] if condition else None
+            if (condition is None or condition['register_type'] != BOOLEAN_REGISTER_TYPE
+                    or condition['relative'] or item['predicated']):
+                only_boolean_if = False
+        elif name not in STATIC_BRANCH_OPCODES or item['predicated'] or item['words']:
+            only_boolean_if = False
+        sites.append(site)
+    return {'sites': sites, 'only_boolean_if': only_boolean_if,
+            'boolean_conditions': sorted({site['condition'] for site in sites
+                                          if site['opcode'] == 'if' and site.get('condition')})}
+
+
 def position_site(items, model_major, decoded):
     """Describe the clip-position write; never claim a shape it cannot prove."""
     target = (6, 0) if model_major >= 3 else (4, 0)
@@ -396,6 +429,7 @@ def profile(code, identifier, stage, model):
     digest['control_flow_balanced'] = balanced
     digest['control_flow_max_depth'] = deepest
     digest['control_flow_depth_at_end'] = residual
+    digest['static_branches'] = static_branches(items, decoded)
 
     read, written, relative_sites = Counter(), Counter(), []
     defined_registers = {(item['register_type'], item['register']) for item in definitions}
@@ -564,6 +598,13 @@ def classify(vertex, pixel):
         blocking.append('ps_color_outputs_%s' % pixel.get('color_outputs'))
     if not pixel.get('control_flow_balanced') or pixel.get('control_flow_depth_at_end'):
         blocking.append('ps_control_flow_not_balanced')
+    elif pixel.get('control_flow_counts'):
+        # Class C: static boolean branches only, nested at most one deep.
+        if not (pixel.get('static_branches') or {}).get('only_boolean_if'):
+            blocking.append('ps_control_flow_not_static_boolean_if')
+        if pixel.get('control_flow_max_depth', 0) > STATIC_BRANCH_MAX_DEPTH:
+            blocking.append('ps_control_flow_depth_%d_exceeds_%d' % (
+                pixel['control_flow_max_depth'], STATIC_BRANCH_MAX_DEPTH))
     if not vertex.get('reserved_constants_free'):
         blocking.append('vs_constants_c252_255_used')
     if not pixel.get('reserved_constants_free'):
@@ -682,8 +723,14 @@ def render_header(result):
         '// Classes emitted:',
     ]
     lines += ['//   %s = MotionOutputClass::%s' % item for item in sorted(HEADER_CLASSES.items())]
-    lines.append('// Deferred, name reserved so the schema does not change:')
-    lines += ['//   %s = MotionOutputClass::%s' % item for item in sorted(DEFERRED_CLASSES.items())]
+    if DEFERRED_CLASSES:
+        lines.append('// Deferred, name reserved so the schema does not change:')
+        lines += ['//   %s = MotionOutputClass::%s' % item for item in sorted(DEFERRED_CLASSES.items())]
+    lines += [
+        '// RelocatedRegistersWithBranches rows: the pixel program holds only',
+        '// if b#/else/endif blocks (boolean constant conditions, nesting depth <= %d,' % STATIC_BRANCH_MAX_DEPTH,
+        '// balanced, depth 0 at the append point); the transformer revalidates this.',
+    ]
     lines.append('// Field order:')
     for index in range(0, len(HEADER_FIELDS), 3):
         lines.append('//   ' + ', '.join(HEADER_FIELDS[index:index + 3]))

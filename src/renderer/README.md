@@ -46,9 +46,10 @@ Fixture executable SHA256 with the explicit SSE2/legacy-stack compiler policy:
 (`material_motion_vertex_variant`, `material_motion_pixel_variant`; the pair
 function wraps both for the detached fixtures), driven by the generated
 profile table in `motion_output_profiles.h` / `motion_output_profiles_inc.h`
-(classes A and B; `material_motion_reviewed_pairs` is that table). Every row's
-offsets and register choices are revalidated against the actual program words
-before splicing. `motion_row_history.{h,cpp}` is the live
+(classes A, B and C; `material_motion_reviewed_pairs` is that table). Every
+row's offsets and register choices are revalidated against the actual program
+words before splicing; class C rows additionally have their static
+`if b#`/`else`/`endif` structure revalidated. `motion_row_history.{h,cpp}` is the live
 route's pure previous-row table: it answers lookups against the sealed previous
 frame while the current frame collects, poisons duplicate keys at commit,
 consumes a matched entry once, reserves its tables at construction and

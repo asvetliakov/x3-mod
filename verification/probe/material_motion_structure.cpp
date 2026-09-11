@@ -207,8 +207,13 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
         ++perturbations;
     };
     const auto mismatch = MaterialMotionResult::ProfileMismatch, applied = MaterialMotionResult::Applied;
-    { auto r = row; r.transformation_class = MotionOutputClass::RelocatedRegistersWithBranches;
-      refuse_row(r, MaterialMotionResult::UnsupportedShader, MaterialMotionResult::UnsupportedShader); }
+    const bool branching = row.transformation_class == MotionOutputClass::RelocatedRegistersWithBranches;
+    // The class family is revalidated from the pixel words: a straight-line
+    // program under a branching row, or a branching program under a
+    // straight-line row, refuses; the vertex side does not depend on it.
+    { auto r = row; r.transformation_class = branching ? MotionOutputClass::RelocatedRegisters
+                                                       : MotionOutputClass::RelocatedRegistersWithBranches;
+      refuse_row(r, applied, mismatch); }
     { auto r = row; r.vertex_output_register = 0; refuse_row(r, mismatch, applied); }        // o0 is declared and written.
     { auto r = row; r.texcoord_index = 0; refuse_row(r, mismatch, mismatch); }              // TEXCOORD0 declared in both stages.
     { auto r = row; r.position_temporary ^= 1; refuse_row(r, mismatch, applied); }
@@ -285,6 +290,16 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
         w = vs; w[row.position_dp4_dwords[0]] |= 0x10000000u; refuse_program(w, ps, "predicated position dot");
         w = vs; w.back() = 0x0001ffffu; refuse_program(w, ps, "vertex END token malformed");
         w = vs; w[vs_at.back()] |= 0x0f000000u; refuse_program(w, ps, "vertex instruction length overruns END");
+        // Block depth: the last executable instruction before the position dots
+        // becomes `if b0` (opcode 0x28, one boolean constant source, padded with
+        // nops) with no `endif`, so the dots, the arithmetic insert and END sit
+        // inside a block.
+        std::size_t before_dots = 0;
+        for (auto i : vs_at) if (i >= D && i < row.position_dp4_dwords[0] && executable(vs[i]) && length(vs[i]) >= 1) before_dots = i;
+        require(before_dots != 0, "no executable instruction before the position dots");
+        w = vs; w[before_dots] = 0x01000028u; w[before_dots + 1] = 0xe0e40800u;
+        for (std::size_t k = 2; k <= length(vs[before_dots]); ++k) w[before_dots + k] = 0u;
+        refuse_program(w, ps, "unterminated if before the position dots");
     }
     // Pixel side: definitions, declarations, executable references, refused opcodes, framing.
     {
@@ -304,14 +319,61 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
         w = ps; w[writes_color + 1] = with_index(w[writes_color + 1], row.pixel_output_register); refuse_program(vs, w, "motion color output written");
         w = ps; w[writes_color + 1] = (w[writes_color + 1] & ~0x70001fffu) | (1u << 28) | 0x800u; refuse_program(vs, w, "oDepth written");
         const auto first = find(ps_at, [&](std::size_t i) { return i >= Pc && executable(ps[i]); });
-        for (auto op : {0x41u, 0x28u, 0x60u, 0x51u}) { // texkill, if, breakp, def
+        for (auto op : {0x41u, 0x28u, 0x60u, 0x51u}) { // texkill, if (wrong length), breakp, def
             w = ps; w[first] = (w[first] & ~0xffffu) | op; refuse_program(vs, w, "refused pixel opcode");
         }
         w = ps; w[first] |= 0x10000000u; refuse_program(vs, w, "predicated pixel instruction");
         w = ps; w.back() = 0x0001ffffu; refuse_program(vs, w, "pixel END token malformed");
+        // Static branch tokens built from the documented encoding: `if b0` is
+        // opcode 0x28 with one source, a boolean constant register (type 14).
+        const std::uint32_t if_token = 0x01000028u, b0 = 0xe0e40800u, else_token = 0x2au, endif_token = 0x2bu, nop = 0u;
+        // Overwrite the executable instruction at i (length >= 2) with a
+        // well-formed `if <condition>` / `endif` pair padded with nops.
+        auto block_at = [&](Words& target, std::size_t i, std::uint32_t condition) {
+            require(executable(target[i]) && length(target[i]) >= 2);
+            const auto n = length(target[i]);
+            target[i] = if_token; target[i + 1] = condition; target[i + 2] = endif_token;
+            for (std::size_t k = 3; k <= n; ++k) target[i + k] = nop;
+        };
+        if (!branching) {
+            // A well-formed static branch is still outside classes A and B.
+            const auto wide = find(ps_at, [&](std::size_t i) { return i >= Pc && executable(ps[i]) && length(ps[i]) >= 2; });
+            w = ps; block_at(w, wide, b0); refuse_program(vs, w, "static branch in a straight-line class");
+        } else {
+            // Class C: the two captured `if b#`/`else`/`endif` blocks, in order.
+            std::vector<std::size_t> flow;
+            for (auto i : ps_at) if (i >= Pc && (opcode(ps[i]) == 0x28 || opcode(ps[i]) == 0x2a || opcode(ps[i]) == 0x2b)) flow.push_back(i);
+            require(flow.size() == 6, "class C program does not hold two blocks");
+            const std::size_t i1 = flow[0], e1 = flow[1], d1 = flow[2], i2 = flow[3], e2 = flow[4], d2 = flow[5];
+            for (auto i : {i1, i2}) require(ps[i] == if_token && direct(ps[i + 1], 14), "if b# shape");
+            for (auto i : {e1, e2}) require(ps[i] == else_token, "else shape");
+            for (auto i : {d1, d2}) require(ps[i] == endif_token, "endif shape");
+            w = ps; w[d2] = nop; refuse_program(vs, w, "endif missing: depth 1 at END");
+            w = ps; w[i2] = endif_token; w[i2 + 1] = nop; refuse_program(vs, w, "endif without if");
+            w = ps; w[i1] = else_token; w[i1 + 1] = nop; refuse_program(vs, w, "else without if");
+            w = ps; w[d1] = else_token; w[i2] = endif_token; w[i2 + 1] = nop; refuse_program(vs, w, "second else in one block");
+            const auto inner = find(ps_at, [&](std::size_t i) { return i > i1 && i < e1 && executable(ps[i]) && length(ps[i]) >= 2; });
+            w = ps; block_at(w, inner, ps[i1 + 1]); refuse_program(vs, w, "nested block: depth 2");
+            w = ps; w[i1] = (w[i1] & ~0xffffu) | 0x29u; refuse_program(vs, w, "if_comp opcode");
+            w = ps; w[i1] = (w[i1] & ~0xffffu) | 0x26u; refuse_program(vs, w, "rep opcode");
+            w = ps; w[e1] = 0x2cu; refuse_program(vs, w, "break replacing else");
+            w = ps; w[e1] = 0x60u; refuse_program(vs, w, "breakp replacing else");
+            w = ps; w[i1 + 1] = (w[i1 + 1] & ~0x70001800u) | 0x20000000u; refuse_program(vs, w, "if on a float constant, not b#");
+            w = ps; w[i1 + 1] |= 0x2000u; refuse_program(vs, w, "relatively addressed condition");
+            w = ps; w[i1] = 0x02000028u; refuse_program(vs, w, "if with two operands");
+            w = ps; w[i1] |= 0x10000000u; refuse_program(vs, w, "predicated if");
+            // Register checks reach the branch bodies: reserved registers used
+            // inside a block refuse exactly as outside.
+            const auto branch_temporary = find(ps_at, [&](std::size_t i) { return i > i1 && i < e1 && executable(ps[i]) && length(ps[i]) >= 1 && direct(ps[i + 1], 0); });
+            w = ps; w[branch_temporary + 1] = with_index(w[branch_temporary + 1], row.pixel_temporary_base); refuse_program(vs, w, "chosen temporary written inside a branch");
+            std::size_t branch_operand = 0;
+            const auto branch_constant = find(ps_at, [&](std::size_t i) { return i > i1 && i < d1 && (branch_operand = operand_of(ps, i, [](std::uint32_t t) { return direct(t, 2); })) != 0; });
+            w = ps; w[branch_constant + branch_operand] = with_index(w[branch_constant + branch_operand], row.pixel_constant_base); refuse_program(vs, w, "ABI constant read inside a branch");
+        }
     }
-    require(program_perturbations == 24);
-    passed(index, "twenty_four_program_perturbations_refused_by_revalidation");
+    require(program_perturbations == (branching ? 40u : 26u));
+    passed(index, branching ? "forty_program_perturbations_refused_by_revalidation"
+                            : "twenty_six_program_perturbations_refused_by_revalidation");
     std::size_t mutations = 0;
     for (unsigned stage = 0; stage != 2; ++stage) {
         Words changed = stage ? ps : vs;
@@ -341,7 +403,9 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
     passed(index, "cross_alias_refusal_atomic");
     std::printf("ROW index=%u vs=%016llx ps=%016llx class=%c status=PASS vertex_words=%zu pixel_words=%zu mutations=%zu program_perturbations=%u\n",
                 index, static_cast<unsigned long long>(row.vertex_fingerprint), static_cast<unsigned long long>(row.pixel_fingerprint),
-                row.transformation_class == MotionOutputClass::ReferenceRegisters ? 'A' : 'B', output.vertex.size(), output.pixel.size(), mutations, program_perturbations);
+                row.transformation_class == MotionOutputClass::ReferenceRegisters ? 'A' :
+                row.transformation_class == MotionOutputClass::RelocatedRegisters ? 'B' : 'C',
+                output.vertex.size(), output.pixel.size(), mutations, program_perturbations);
 }
 
 int main(int argc, char** argv) {

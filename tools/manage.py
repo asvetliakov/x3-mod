@@ -42,7 +42,10 @@ def main():
     parser.add_argument('--finite-positions', action='store_true', help='Validate positions from verified existing buffer uploads (requires --ownership --telemetry)')
     parser.add_argument('--motion-capture', action='store_true', help='Produce private rigid-motion diagnostics during capture (requires scene depth, finite positions and object lifetime)')
     parser.add_argument('--motion-output', action='store_true', help='Route the reviewed material pair through motion-output variants into a private RT1 (history needs --object-trace --object-lifetime; otherwise sentinel-only)')
+    parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
+    if args.dry_run and args.action != 'launch':
+        parser.error('--dry-run applies to launch only.')
     if args.depth_copy and not args.ownership:
         parser.error('--depth-copy requires --ownership.')
     if args.scene_depth_capture and not (args.ownership and args.depth_copy):
@@ -115,6 +118,10 @@ def main():
                    '--workdir', str(game), str(game / 'X3AP.exe')]
         if args.direct:
             command += ['-noabout', '-skipintro', '-runinbg']
+        if args.dry_run:
+            print(json.dumps({'command': command, 'cwd': str(game),
+                              'env': {k: env[k] for k in sorted(env) if k.startswith('X3M_')}}, indent=2))
+            return
         print('Launching X3AP through CrossOver Preview.', flush=True)
         raise SystemExit(subprocess.call(command, env=env, cwd=game))
 

@@ -145,7 +145,7 @@ MotionOutput::~MotionOutput() { release_resources(); }
 
 unsigned MotionOutput::device_references() const noexcept {
     if (releasing_) return 0;
-    unsigned count = target_ ? 1 : 0;
+    unsigned count = target_surface_ ? 1 : 0;
     if (sentinel_ps_) ++count;
     for (const auto& entry : vertex_) if (entry.second.variant) ++count;
     for (const auto& entry : pixel_) if (entry.second.variant) ++count;
@@ -172,19 +172,28 @@ void MotionOutput::release_resources() noexcept {
 
 void MotionOutput::release_target() noexcept {
     release(target_surface_);
-    release(target_);
     target_width_ = target_height_ = 0;
 }
 
 // Lazily (re)creates the RGBA32F motion target at the latched main dimensions.
+// Only the level-0 surface is retained. A texture level keeps its container
+// alive on D3D9 (the level shares the texture's reference count, which holds
+// the device reference), so one owned object is one device reference. Holding
+// the texture as well would be harmless natively but not through the ownership
+// wrapper (X3M_OWNERSHIP=1), where the texture wrapper and the surface wrapper
+// are two children of the device and each owns a logical device reference:
+// device_references() would then under-count by one and the release hook's
+// final-Release probe would never match, leaking the device.
 bool MotionOutput::ensure_target(UINT width, UINT height) noexcept {
-    if (target_ && target_surface_ && target_width_ == width && target_height_ == height) return true;
+    if (target_surface_ && target_width_ == width && target_height_ == height) return true;
     release_target();
     if (target_failed_ || !width || !height) return false;
+    IDirect3DTexture9* texture = nullptr;
     const HRESULT hr = native<CreateTextureFn>(CreateTexture)(device_, width, height, 1, D3DUSAGE_RENDERTARGET,
-        D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &target_, nullptr);
+        D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &texture, nullptr);
     HRESULT level = E_FAIL;
-    if (SUCCEEDED(hr) && target_) level = target_->GetSurfaceLevel(0, &target_surface_);
+    if (SUCCEEDED(hr) && texture) level = texture->GetSurfaceLevel(0, &target_surface_);
+    release(texture);
     if (FAILED(hr) || FAILED(level) || !target_surface_) {
         log("motion_output_target device=%llu width=%u height=%u create=%08lx level=%08lx", id_, width, height, hr, level);
         release_target();

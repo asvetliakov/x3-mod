@@ -77,8 +77,11 @@ public:
     void attach(IDirect3DDevice9* device, void** native, std::uint64_t device_id,
                 const D3DCAPS9& caps, bool requested) noexcept;
     bool enabled() const noexcept { return enabled_; }
-    // Device references held by owned objects (variants, motion target). The
-    // release hook releases them before the application's final Release.
+    // Device references held by owned objects (variants, sentinel shader,
+    // motion target surface), one per object in every reference model the
+    // route runs under (native D3D9 and the ownership wrapper; see
+    // ensure_target). The release hook releases them before the
+    // application's final Release.
     unsigned device_references() const noexcept;
     void release_resources() noexcept;
     void before_reset() noexcept;
@@ -191,8 +194,7 @@ private:
     bool history_available_ = false, releasing_ = false;
     std::map<void*, ShaderEntry> vertex_, pixel_;
     Shadow shadow_{};
-    IDirect3DTexture9* target_ = nullptr;
-    IDirect3DSurface9* target_surface_ = nullptr;
+    IDirect3DSurface9* target_surface_ = nullptr; // Level 0 of the owned RGBA32F texture.
     UINT target_width_ = 0, target_height_ = 0;
     bool target_failed_ = false;
     IDirect3DPixelShader9* sentinel_ps_ = nullptr;

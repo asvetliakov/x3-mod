@@ -17,8 +17,10 @@ enum class MotionOutputClass : std::uint8_t {
     // B: same shape, but one or more reference registers are occupied and the
     // row names free substitutes.
     RelocatedRegisters = 1,
-    // C: as B with balanced static branches in the pixel program. Reserved;
-    // the transformer refuses it until control-flow depth is validated.
+    // C: as B, and the pixel program holds static `if b#`/`else`/`endif`
+    // blocks (boolean constant conditions, balanced, nesting depth at most
+    // one, depth zero at the append point). The transformer revalidates that
+    // shape from the words and refuses every other control flow.
     RelocatedRegistersWithBranches = 2,
 };
 

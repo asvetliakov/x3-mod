@@ -7,10 +7,10 @@
   "cpu_baseline": "SSE2; stack realignment; four-byte incoming Win32 stack",
   "native_module_mapping": "32-bit process logical C:\\windows\\system32 maps host bottle windows/syswow64 PE32 files",
   "sources_before_build": {
-    "src/renderer/material_motion.h": "44c86c4c152915d598333682a4799784caa6d19704f4bbb66f1b54a6f346b32f",
-    "src/renderer/material_motion.cpp": "b37b5c8da211a1bd10c192fefc4e5670813f81e1d642bb3fe180b4fd80381881",
-    "src/renderer/motion_output_profiles.h": "57750cb5ef66e1697e2295b6f2a3a6a3c4d33e588064b24d6f0bd1c926039058",
-    "src/renderer/motion_output_profiles_inc.h": "421ab470284eb1c1abc0f500781a110858464b4f504d2c92938e0bc42919802e",
+    "src/renderer/material_motion.h": "29a5a004affa596d1a08be0867c5103624250bbcc1bdd021891af280f98ba62b",
+    "src/renderer/material_motion.cpp": "d4f127c41bd3e1df5cbb8745b5ba991fbf58607865a8008fba0d1ee1a2c60f82",
+    "src/renderer/motion_output_profiles.h": "6b7032c142fadd7246f988b4abd7ebcae66ded9c6cab578ddce19a2870a7e2c6",
+    "src/renderer/motion_output_profiles_inc.h": "bdd2209c577562e3a17c107df171f817d9026d7af24e619a6e2f3af6f222e7c6",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
@@ -21,9 +21,9 @@
     "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
     "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
     "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
-    "verification/probe/material_motion_fixture.cpp": "9d68efabf7450e4688bbb6947749e7c77ed0702605b4653644dacc02e8556872",
+    "verification/probe/material_motion_fixture.cpp": "db203f3c8daee5d7fc397421089a71aaa85124ace94d71b147aa258563a8a066",
     "verification/probe/build_material_motion.sh": "b79eed949cf2f57317976b24b0060257a2a435597a9cd2982a3f673934b3777a",
-    "verification/probe/run_material_motion.py": "8e0f3917b708d4dc71bc3ceb9f21b3e7883540eb16a2959371ba203d1101de15"
+    "verification/probe/run_material_motion.py": "371c6eb967f084093fe751a9338e41e6796fd9644e063fe867106ef77e5199a0"
   },
   "native_before_build": {
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96",
@@ -36,8 +36,20 @@
     "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
   },
   "programs_directory": "/tmp/x3-shader-sweep/programs",
-  "profiles_json_sha256": "90d2404471a8f74edcee5da6c94389dd585f249513c29557e0c3216dfd5c45af",
+  "profiles_json_sha256": "341c00c8b3e8736216abd9b0c51e308ee1f53ac5e22dfcc3f65cf30cf2fd182e",
   "row_inputs": [
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_fffdabd910793aba.bin",
+        "sha256": "8fc110cf9cf4631ac0f7052b8f61ec6c5908bcaa7be830853570404ddfa95b72",
+        "bytes": 6592
+      }
+    },
     {
       "vs": {
         "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
@@ -48,6 +60,18 @@
         "path": "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin",
         "sha256": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
         "bytes": 5040
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_5f82ecacd39529cd.bin",
+        "sha256": "e62d0f041430e54fdea5800ef6576d812a2486f12a980f921553e7292349d8c2",
+        "bytes": 7060
       }
     },
     {
@@ -88,6 +112,18 @@
     },
     {
       "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f1b0e820c7b488c3.bin",
+        "sha256": "8f6517d6730a53d52712a335253d272663e34d05e3cdcdccc93c05249014515e",
+        "bytes": 7164
+      }
+    },
+    {
+      "vs": {
         "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
         "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
         "bytes": 2104
@@ -108,6 +144,18 @@
         "path": "/tmp/x3-shader-sweep/programs/ps_d44db87778a43b61.bin",
         "sha256": "481ff206a4d729023fb44f930d6a30f9972318e9d1c24cab72b11869eb856dc8",
         "bytes": 1792
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_e6794b6ec37ff71a.bin",
+        "sha256": "e60e8b14d88e4bd7cd4a76be49ba3000e73a907f477f09d2229231ec3d04dd71",
+        "bytes": 6696
       }
     },
     {
@@ -188,10 +236,10 @@
     "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
   },
   "sources_after_build": {
-    "src/renderer/material_motion.h": "44c86c4c152915d598333682a4799784caa6d19704f4bbb66f1b54a6f346b32f",
-    "src/renderer/material_motion.cpp": "b37b5c8da211a1bd10c192fefc4e5670813f81e1d642bb3fe180b4fd80381881",
-    "src/renderer/motion_output_profiles.h": "57750cb5ef66e1697e2295b6f2a3a6a3c4d33e588064b24d6f0bd1c926039058",
-    "src/renderer/motion_output_profiles_inc.h": "421ab470284eb1c1abc0f500781a110858464b4f504d2c92938e0bc42919802e",
+    "src/renderer/material_motion.h": "29a5a004affa596d1a08be0867c5103624250bbcc1bdd021891af280f98ba62b",
+    "src/renderer/material_motion.cpp": "d4f127c41bd3e1df5cbb8745b5ba991fbf58607865a8008fba0d1ee1a2c60f82",
+    "src/renderer/motion_output_profiles.h": "6b7032c142fadd7246f988b4abd7ebcae66ded9c6cab578ddce19a2870a7e2c6",
+    "src/renderer/motion_output_profiles_inc.h": "bdd2209c577562e3a17c107df171f817d9026d7af24e619a6e2f3af6f222e7c6",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
@@ -202,9 +250,9 @@
     "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
     "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
     "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
-    "verification/probe/material_motion_fixture.cpp": "9d68efabf7450e4688bbb6947749e7c77ed0702605b4653644dacc02e8556872",
+    "verification/probe/material_motion_fixture.cpp": "db203f3c8daee5d7fc397421089a71aaa85124ace94d71b147aa258563a8a066",
     "verification/probe/build_material_motion.sh": "b79eed949cf2f57317976b24b0060257a2a435597a9cd2982a3f673934b3777a",
-    "verification/probe/run_material_motion.py": "8e0f3917b708d4dc71bc3ceb9f21b3e7883540eb16a2959371ba203d1101de15"
+    "verification/probe/run_material_motion.py": "371c6eb967f084093fe751a9338e41e6796fd9644e063fe867106ef77e5199a0"
   },
   "native_after_build": {
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96",
@@ -212,7 +260,7 @@
     "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/syswow64/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863",
     "/opt/homebrew/Cellar/mingw-w64/14.0.0_3/toolchain-i686/bin/i686-w64-mingw32-g++": "c8181d422f8a912b04fc6c87d770a169b7aa6a6fd37edbc59629b876c33dd947"
   },
-  "executable_sha256": "388ecfd6717f57b9447c7a7aaec72c2e603461f671453f632dc1e9f77cc0eced",
+  "executable_sha256": "01054ad98390f740cb5b8183dcc9ab116b85970c64eeddf7d711eb603e1544dd",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -241,81 +289,88 @@
       "height": 768,
       "mode": 0,
       "samples": 6,
-      "mean_ms": 0.48378333333333334,
-      "median_ms": 0.4879,
-      "minimum_ms": 0.2844,
-      "maximum_ms": 0.7626
+      "mean_ms": 0.5149166666666667,
+      "median_ms": 0.46105,
+      "minimum_ms": 0.4481,
+      "maximum_ms": 0.7769
     },
     {
       "width": 1280,
       "height": 768,
       "mode": 1,
       "samples": 6,
-      "mean_ms": 0.75195,
-      "median_ms": 0.5142,
-      "minimum_ms": 0.3364,
-      "maximum_ms": 2.0602
+      "mean_ms": 0.5445333333333333,
+      "median_ms": 0.4714,
+      "minimum_ms": 0.4479,
+      "maximum_ms": 0.9387
     },
     {
       "width": 1280,
       "height": 768,
       "mode": 2,
       "samples": 6,
-      "mean_ms": 1.1429,
-      "median_ms": 0.8166,
-      "minimum_ms": 0.6296,
-      "maximum_ms": 2.4788
+      "mean_ms": 0.6488166666666667,
+      "median_ms": 0.6575,
+      "minimum_ms": 0.6148,
+      "maximum_ms": 0.6857
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 0,
       "samples": 6,
-      "mean_ms": 1.2198166666666668,
-      "median_ms": 1.3476,
-      "minimum_ms": 0.5278,
-      "maximum_ms": 1.6628
+      "mean_ms": 1.5149666666666666,
+      "median_ms": 1.47715,
+      "minimum_ms": 1.2878,
+      "maximum_ms": 1.8476
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 1,
       "samples": 6,
-      "mean_ms": 1.8594666666666666,
-      "median_ms": 1.2264,
-      "minimum_ms": 0.8974,
-      "maximum_ms": 4.977
+      "mean_ms": 1.6332666666666666,
+      "median_ms": 1.6273,
+      "minimum_ms": 1.569,
+      "maximum_ms": 1.719
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 2,
       "samples": 6,
-      "mean_ms": 2.291783333333333,
-      "median_ms": 1.9085999999999999,
-      "minimum_ms": 1.3073,
-      "maximum_ms": 4.3922
+      "mean_ms": 2.2049666666666665,
+      "median_ms": 2.15115,
+      "minimum_ms": 2.0649,
+      "maximum_ms": 2.4038
     }
   ],
-  "rows": 12,
-  "row_transformed": 12,
+  "rows": 16,
+  "row_transformed": 16,
   "row_skipped": 0,
-  "row_configurations": 72,
-  "row_checks": 1020,
-  "row_samples": 2592,
-  "row_color_components": 884736,
-  "row_depth_cases": 144,
+  "row_configurations": 168,
+  "row_checks": 2376,
+  "row_samples": 6048,
+  "row_color_components": 2064384,
+  "row_depth_cases": 336,
   "row_results": [
     {
       "index": 0,
-      "vs": "53a0a641107ed76c",
-      "ps": "8759c7838bbc86c2",
-      "transformation_class": "A",
+      "vs": "494fe349b8bc12ec",
+      "ps": "fffdabd910793aba",
+      "transformation_class": "C",
       "status": "PASS",
-      "configurations": 6,
-      "checks": 85,
-      "samples": 216,
-      "color_components": 73728,
+      "configurations": 24,
+      "boolean_combinations": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "boolean_controls": 2,
+      "checks": 339,
+      "samples": 864,
+      "color_components": 294912,
       "min_covered": 912,
       "max_analytic_uv_error_pixels": 0.000860214233,
       "max_analytic_previous_depth_error": 8.65642841e-07,
@@ -323,11 +378,15 @@
     },
     {
       "index": 1,
-      "vs": "4944d81dfe531b37",
-      "ps": "ca6bfa4a6cca7e2a",
-      "transformation_class": "B",
+      "vs": "53a0a641107ed76c",
+      "ps": "8759c7838bbc86c2",
+      "transformation_class": "A",
       "status": "PASS",
       "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
       "checks": 85,
       "samples": 216,
       "color_components": 73728,
@@ -338,14 +397,21 @@
     },
     {
       "index": 2,
-      "vs": "b0602757fce6e870",
-      "ps": "517540ae6d5e5410",
-      "transformation_class": "A",
+      "vs": "37c34a7478544c14",
+      "ps": "5f82ecacd39529cd",
+      "transformation_class": "C",
       "status": "PASS",
-      "configurations": 6,
-      "checks": 85,
-      "samples": 216,
-      "color_components": 73728,
+      "configurations": 24,
+      "boolean_combinations": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "boolean_controls": 2,
+      "checks": 339,
+      "samples": 864,
+      "color_components": 294912,
       "min_covered": 912,
       "max_analytic_uv_error_pixels": 0.000860214233,
       "max_analytic_previous_depth_error": 8.65642841e-07,
@@ -354,10 +420,14 @@
     {
       "index": 3,
       "vs": "4944d81dfe531b37",
-      "ps": "5e0a10fe752b6140",
+      "ps": "ca6bfa4a6cca7e2a",
       "transformation_class": "B",
       "status": "PASS",
       "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
       "checks": 85,
       "samples": 216,
       "color_components": 73728,
@@ -368,11 +438,15 @@
     },
     {
       "index": 4,
-      "vs": "53a0a641107ed76c",
-      "ps": "63f96eba9eea7880",
+      "vs": "b0602757fce6e870",
+      "ps": "517540ae6d5e5410",
       "transformation_class": "A",
       "status": "PASS",
       "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
       "checks": 85,
       "samples": 216,
       "color_components": 73728,
@@ -383,11 +457,15 @@
     },
     {
       "index": 5,
-      "vs": "167eb2d5629ab9d3",
-      "ps": "d44db87778a43b61",
+      "vs": "4944d81dfe531b37",
+      "ps": "5e0a10fe752b6140",
       "transformation_class": "B",
       "status": "PASS",
       "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
       "checks": 85,
       "samples": 216,
       "color_components": 73728,
@@ -398,14 +476,21 @@
     },
     {
       "index": 6,
-      "vs": "53a0a641107ed76c",
-      "ps": "3b94320087e81945",
-      "transformation_class": "A",
+      "vs": "37c34a7478544c14",
+      "ps": "f1b0e820c7b488c3",
+      "transformation_class": "C",
       "status": "PASS",
-      "configurations": 6,
-      "checks": 85,
-      "samples": 216,
-      "color_components": 73728,
+      "configurations": 24,
+      "boolean_combinations": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "boolean_controls": 2,
+      "checks": 339,
+      "samples": 864,
+      "color_components": 294912,
       "min_covered": 912,
       "max_analytic_uv_error_pixels": 0.000860214233,
       "max_analytic_previous_depth_error": 8.65642841e-07,
@@ -414,10 +499,14 @@
     {
       "index": 7,
       "vs": "53a0a641107ed76c",
-      "ps": "462342e3e5781384",
+      "ps": "63f96eba9eea7880",
       "transformation_class": "A",
       "status": "PASS",
       "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
       "checks": 85,
       "samples": 216,
       "color_components": 73728,
@@ -428,11 +517,15 @@
     },
     {
       "index": 8,
-      "vs": "4944d81dfe531b37",
-      "ps": "64bac8bb307eb896",
+      "vs": "167eb2d5629ab9d3",
+      "ps": "d44db87778a43b61",
       "transformation_class": "B",
       "status": "PASS",
       "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
       "checks": 85,
       "samples": 216,
       "color_components": 73728,
@@ -444,13 +537,20 @@
     {
       "index": 9,
       "vs": "494fe349b8bc12ec",
-      "ps": "7c83ed50c9894e44",
-      "transformation_class": "A",
+      "ps": "e6794b6ec37ff71a",
+      "transformation_class": "C",
       "status": "PASS",
-      "configurations": 6,
-      "checks": 85,
-      "samples": 216,
-      "color_components": 73728,
+      "configurations": 24,
+      "boolean_combinations": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "boolean_controls": 2,
+      "checks": 339,
+      "samples": 864,
+      "color_components": 294912,
       "min_covered": 912,
       "max_analytic_uv_error_pixels": 0.000860214233,
       "max_analytic_previous_depth_error": 8.65642841e-07,
@@ -458,11 +558,15 @@
     },
     {
       "index": 10,
-      "vs": "4944d81dfe531b37",
-      "ps": "0c1f3f0f440e4a0c",
-      "transformation_class": "B",
+      "vs": "53a0a641107ed76c",
+      "ps": "3b94320087e81945",
+      "transformation_class": "A",
       "status": "PASS",
       "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
       "checks": 85,
       "samples": 216,
       "color_components": 73728,
@@ -473,11 +577,91 @@
     },
     {
       "index": 11,
+      "vs": "53a0a641107ed76c",
+      "ps": "462342e3e5781384",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 12,
+      "vs": "4944d81dfe531b37",
+      "ps": "64bac8bb307eb896",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 13,
+      "vs": "494fe349b8bc12ec",
+      "ps": "7c83ed50c9894e44",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 14,
+      "vs": "4944d81dfe531b37",
+      "ps": "0c1f3f0f440e4a0c",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 15,
       "vs": "c30104cb0efb6675",
       "ps": "a66fb1981ba755b2",
       "transformation_class": "B",
       "status": "PASS",
       "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
       "checks": 85,
       "samples": 216,
       "color_components": 73728,
@@ -492,10 +676,10 @@
     "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
   },
   "sources_after_run": {
-    "src/renderer/material_motion.h": "44c86c4c152915d598333682a4799784caa6d19704f4bbb66f1b54a6f346b32f",
-    "src/renderer/material_motion.cpp": "b37b5c8da211a1bd10c192fefc4e5670813f81e1d642bb3fe180b4fd80381881",
-    "src/renderer/motion_output_profiles.h": "57750cb5ef66e1697e2295b6f2a3a6a3c4d33e588064b24d6f0bd1c926039058",
-    "src/renderer/motion_output_profiles_inc.h": "421ab470284eb1c1abc0f500781a110858464b4f504d2c92938e0bc42919802e",
+    "src/renderer/material_motion.h": "29a5a004affa596d1a08be0867c5103624250bbcc1bdd021891af280f98ba62b",
+    "src/renderer/material_motion.cpp": "d4f127c41bd3e1df5cbb8745b5ba991fbf58607865a8008fba0d1ee1a2c60f82",
+    "src/renderer/motion_output_profiles.h": "6b7032c142fadd7246f988b4abd7ebcae66ded9c6cab578ddce19a2870a7e2c6",
+    "src/renderer/motion_output_profiles_inc.h": "bdd2209c577562e3a17c107df171f817d9026d7af24e619a6e2f3af6f222e7c6",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
@@ -506,9 +690,9 @@
     "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
     "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
     "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
-    "verification/probe/material_motion_fixture.cpp": "9d68efabf7450e4688bbb6947749e7c77ed0702605b4653644dacc02e8556872",
+    "verification/probe/material_motion_fixture.cpp": "db203f3c8daee5d7fc397421089a71aaa85124ace94d71b147aa258563a8a066",
     "verification/probe/build_material_motion.sh": "b79eed949cf2f57317976b24b0060257a2a435597a9cd2982a3f673934b3777a",
-    "verification/probe/run_material_motion.py": "8e0f3917b708d4dc71bc3ceb9f21b3e7883540eb16a2959371ba203d1101de15"
+    "verification/probe/run_material_motion.py": "371c6eb967f084093fe751a9338e41e6796fd9644e063fe867106ef77e5199a0"
   },
   "native_after_run": {
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96",
@@ -517,5 +701,5 @@
     "/opt/homebrew/Cellar/mingw-w64/14.0.0_3/toolchain-i686/bin/i686-w64-mingw32-g++": "c8181d422f8a912b04fc6c87d770a169b7aa6a6fd37edbc59629b876c33dd947"
   },
   "wine_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "report_sha256": "b59ca6b22043c6d87fc2cab33e4270990f836cd37b921f8800708a690557a167"
+  "report_sha256": "e6e088b42477ed3c13566302dcaef6c026d96ae97991dfe78087523a51449858"
 }

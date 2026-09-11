@@ -1,0 +1,2640 @@
+{
+  "tool": "tools/analysis/analyze_motion_readback.py",
+  "log": "verification/probe/build/motion-output-seam-on-20260912-031430-123134/x3-modern-captures/session-20260912-031430-1644.log",
+  "log_sha256": "5424c7da037e8683106c1e81c21b0461a7c56873284f7f14cae2c2ca48de9632",
+  "readback_dir": "verification/probe/build/motion-output-seam-on-20260912-031430-123134/x3-modern-captures",
+  "devices": {
+    "1": {
+      "device": "1",
+      "enabled": "1",
+      "reason": "ok",
+      "detail": "stage=compare",
+      "result": "00000000",
+      "draw": "00000000",
+      "restore": "00000000",
+      "scene": "00000000",
+      "color_errors": "0",
+      "motion_errors": "0",
+      "mrt": "4",
+      "vs_constants": "256",
+      "misc": "002ecff2",
+      "vs": "fffe0300",
+      "ps": "ffff0300",
+      "rgba32f": "00000000",
+      "history_available": "0",
+      "history_capacity": "4096"
+    }
+  },
+  "parameters": {
+    "static_tolerance_px": 0.01,
+    "displacement_bound_px": 64.0,
+    "max_suspicious_fraction": 0.01,
+    "consistency_tolerance_px": 0.5,
+    "max_unexplained_fraction": 0.01,
+    "max_consistency_pixels": 50000,
+    "temporal_coverage_min": 0.9,
+    "temporal_criterion_min_matched_ratio": 0.99,
+    "depth_tolerance": 0.0001,
+    "depth_within_min": 0.99,
+    "jitter_uv": [
+      0.0,
+      0.0
+    ],
+    "draw_details": true
+  },
+  "captured_frames": 8,
+  "frames_with_readback": 8,
+  "status": "PASS",
+  "failed_checks": [],
+  "hard_errors": [],
+  "checks": {
+    "readback_integrity": {
+      "status": "pass",
+      "frames": 8,
+      "clean_frames": 8,
+      "errors": []
+    },
+    "counter_consistency": {
+      "status": "pass",
+      "frames": 8,
+      "failing_frames": []
+    },
+    "history_pairing": {
+      "status": "pass",
+      "predictable_draws": 12,
+      "disagreements": 0,
+      "note": "compares the log-reconstructed previous-frame table with the DLL matched flag; needs consecutive captured frames"
+    },
+    "static_consistency": {
+      "status": "unavailable",
+      "frames_evaluated": [],
+      "frame_states": {
+        "unknown": 1,
+        "no_matched": 2,
+        "moving": 5
+      },
+      "tolerance_px": 0.01,
+      "max_error_px": null,
+      "violations": 0
+    },
+    "displacement": {
+      "status": "pass",
+      "bound_px": 64.0,
+      "valid_pixels": 6082,
+      "suspicious_pixels": 0,
+      "suspicious_fraction": 0.0,
+      "max_displacement_px": 4.033135414123535
+    },
+    "row_consistency": {
+      "status": "pass",
+      "tolerance_px": 0.5,
+      "frames_evaluated": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "sampled_pixels": 3402,
+      "unexplained_pixels": 0,
+      "unexplained_fraction": 0.0,
+      "max_error_px": 0.0017749608224377766
+    },
+    "temporal_coverage": {
+      "status": "pass",
+      "minimum_fraction": 0.9,
+      "criterion_min_matched_ratio": 0.99,
+      "pairs_evaluated": [
+        [
+          3,
+          4
+        ],
+        [
+          4,
+          5
+        ],
+        [
+          5,
+          6
+        ],
+        [
+          6,
+          7
+        ],
+        [
+          7,
+          8
+        ]
+      ],
+      "pairs_with_criterion": [
+        [
+          4,
+          5
+        ],
+        [
+          7,
+          8
+        ]
+      ],
+      "worst_covered_fraction": 0.9,
+      "covered_fractions": {
+        "3->4": 0.0,
+        "4->5": 1.0,
+        "5->6": 0.9,
+        "6->7": 1.0,
+        "7->8": 0.9
+      }
+    },
+    "depth": {
+      "status": "unavailable",
+      "reason": "the capture provides no readable depth image; see docs/verification/motion-readback.md"
+    }
+  },
+  "frames": [
+    {
+      "device": 1,
+      "frame": 1,
+      "captured": true,
+      "notes": [
+        "previous frame not captured: previous rows unknown"
+      ],
+      "counters": {
+        "status": "pass",
+        "observed": {
+          "routed": 2,
+          "matched": 2,
+          "gate1": 0,
+          "gate2": 0,
+          "gate3": 0,
+          "gate4": 0,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "mismatches": [],
+        "non_scene_draws_in_counters": 1,
+        "gate_histogram": {
+          "matched": 2
+        }
+      },
+      "static_state": "unknown",
+      "history_pairing": {
+        "predictable_draws": 0,
+        "disagreements": []
+      },
+      "routed_viewports": [
+        [
+          0,
+          0,
+          64,
+          64
+        ]
+      ],
+      "draws": [
+        {
+          "index": 2,
+          "gate": 0,
+          "routed": 1,
+          "matched": 1,
+          "predicted_match": null,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00001000",
+            "camera": "00002000",
+            "node_handle": "7",
+            "camera_handle": "9",
+            "node_serial": "11",
+            "camera_serial": "21",
+            "load_epoch": "3",
+            "registry_epoch": "5",
+            "model": "00000011",
+            "lod": "00000002",
+            "vb": "3",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "6e1905db0b783f53",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,3f4ccccd",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "3e000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": null,
+          "previous_index": null,
+          "note": null,
+          "draw_result": "00000000"
+        },
+        {
+          "index": 3,
+          "gate": 0,
+          "routed": 1,
+          "matched": 1,
+          "predicted_match": null,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00001100",
+            "camera": "00002000",
+            "node_handle": "8",
+            "camera_handle": "9",
+            "node_serial": "12",
+            "camera_serial": "21",
+            "load_epoch": "3",
+            "registry_epoch": "5",
+            "model": "00000012",
+            "lod": "00000002",
+            "vb": "4",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "8804f37c47da2009",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,bd4ccccd",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,3dcccccd",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": null,
+          "previous_index": null,
+          "note": null,
+          "draw_result": "00000000"
+        }
+      ],
+      "readback": {
+        "file": "motion_1_1.rgba32f",
+        "width": 64,
+        "height": 64,
+        "result": "00000000",
+        "bytes_logged": 65536,
+        "status": "ok",
+        "sha256": "351da51d4fec85945a8b4e7e7dbed8c41e985f11e758d7cffb9a15242dba099b",
+        "validity_counts": {
+          "valid": 2680,
+          "zero": 0,
+          "sentinel": 1416,
+          "other": 0
+        },
+        "validity_fractions": {
+          "valid": 0.654296875,
+          "zero": 0.0,
+          "sentinel": 0.345703125,
+          "other": 0.0
+        },
+        "nonfinite_values": 0,
+        "abi_clean": true
+      },
+      "pixels": {
+        "valid_pixels": 2680,
+        "uv_range": {
+          "u": [
+            0.0640869140625,
+            0.9788027405738831
+          ],
+          "v": [
+            0.009093701839447021,
+            1.0038243532180786
+          ]
+        },
+        "depth_range": [
+          0.5,
+          0.5
+        ],
+        "previous_uv_outside_unit": 2,
+        "displacement_px": {
+          "count": 2680,
+          "min": 0.7338334918022156,
+          "max": 4.033135414123535,
+          "mean": 2.0997716492458958,
+          "median": 2.145053505897522,
+          "p95": 3.1558249235153197,
+          "p99": 3.6033919525146483
+        },
+        "displacement_x_px": {
+          "count": 2680,
+          "min": -2.2751998901367188,
+          "max": 1.6015625,
+          "mean": -1.5170119598730287,
+          "median": -1.8575172424316406,
+          "p95": 1.6015625,
+          "p99": 1.6015625
+        },
+        "displacement_y_px": {
+          "count": 2680,
+          "min": -3.8429489135742188,
+          "max": 3.9658126831054688,
+          "mean": 0.02571972590773853,
+          "median": 0.0,
+          "p95": 2.297451591491699,
+          "p99": 3.2291946792602553
+        },
+        "displacement_histogram": {
+          "[0,0.5)": 0,
+          "[0.5,1)": 61,
+          "[1,2)": 1048,
+          "[2,4)": 1570,
+          "[4,8)": 1,
+          "[8,16)": 0,
+          "[16,32)": 0,
+          "[32,64)": 0,
+          "[64,128)": 0,
+          "[128,inf)": 0
+        },
+        "suspicious_over_bound": 0,
+        "suspicious_fraction": 0.0,
+        "static_max_error_px": 3.9658126831054688,
+        "static_violations": 2680
+      },
+      "static_test": {
+        "status": "unknown",
+        "tolerance_px": 0.01,
+        "max_error_px": null,
+        "violations": null
+      },
+      "row_consistency": {
+        "status": "unavailable",
+        "matched_draws": 2,
+        "draws_with_row_pairs": 0,
+        "skipped_draws": [
+          {
+            "index": 2,
+            "reason": "rows or previous rows unknown"
+          },
+          {
+            "index": 3,
+            "reason": "rows or previous rows unknown"
+          }
+        ],
+        "reason": "no matched draw with known current and previous rows"
+      },
+      "temporal": {
+        "status": "unavailable",
+        "reason": "previous captured frame readback not available"
+      },
+      "depth": {
+        "status": "unavailable",
+        "reason": "no R32F depth image for frame N (current captures do not read scene depth back)"
+      }
+    },
+    {
+      "device": 1,
+      "frame": 2,
+      "captured": true,
+      "notes": [],
+      "counters": {
+        "status": "pass",
+        "observed": {
+          "routed": 2,
+          "matched": 0,
+          "gate1": 0,
+          "gate2": 0,
+          "gate3": 0,
+          "gate4": 0,
+          "gate5": 2,
+          "gate6": 0
+        },
+        "mismatches": [],
+        "non_scene_draws_in_counters": 1,
+        "gate_histogram": {
+          "gate5": 2
+        }
+      },
+      "static_state": "no_matched",
+      "history_pairing": {
+        "predictable_draws": 0,
+        "disagreements": []
+      },
+      "routed_viewports": [
+        [
+          0,
+          0,
+          64,
+          64
+        ]
+      ],
+      "draws": [
+        {
+          "index": 2,
+          "gate": 5,
+          "routed": 1,
+          "matched": 0,
+          "predicted_match": null,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00000000",
+            "camera": "00000000",
+            "node_handle": "0",
+            "camera_handle": "0",
+            "node_serial": "0",
+            "camera_serial": "0",
+            "load_epoch": "0",
+            "registry_epoch": "0",
+            "model": "00000000",
+            "lod": "00000000",
+            "vb": "3",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "6e1905db0b783f53",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,3f4ccccd",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "3e000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": null,
+          "previous_index": null,
+          "note": null,
+          "draw_result": "00000000"
+        },
+        {
+          "index": 3,
+          "gate": 5,
+          "routed": 1,
+          "matched": 0,
+          "predicted_match": null,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00000000",
+            "camera": "00000000",
+            "node_handle": "0",
+            "camera_handle": "0",
+            "node_serial": "0",
+            "camera_serial": "0",
+            "load_epoch": "0",
+            "registry_epoch": "0",
+            "model": "00000000",
+            "lod": "00000000",
+            "vb": "4",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "8804f37c47da2009",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,bd4ccccd",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,3dcccccd",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": null,
+          "previous_index": null,
+          "note": null,
+          "draw_result": "00000000"
+        }
+      ],
+      "readback": {
+        "file": "motion_1_2.rgba32f",
+        "width": 64,
+        "height": 64,
+        "result": "00000000",
+        "bytes_logged": 65536,
+        "status": "ok",
+        "sha256": "40a7f9ecdfcb9433a0727a914a2d13fa1e83a56c9032c69b102bf24a783644dd",
+        "validity_counts": {
+          "valid": 0,
+          "zero": 0,
+          "sentinel": 4096,
+          "other": 0
+        },
+        "validity_fractions": {
+          "valid": 0.0,
+          "zero": 0.0,
+          "sentinel": 1.0,
+          "other": 0.0
+        },
+        "nonfinite_values": 0,
+        "abi_clean": true
+      },
+      "pixels": {
+        "valid_pixels": 0,
+        "uv_range": null,
+        "depth_range": null,
+        "previous_uv_outside_unit": 0,
+        "displacement_px": {
+          "count": 0
+        },
+        "displacement_x_px": {
+          "count": 0
+        },
+        "displacement_y_px": {
+          "count": 0
+        },
+        "displacement_histogram": {
+          "[0,0.5)": 0,
+          "[0.5,1)": 0,
+          "[1,2)": 0,
+          "[2,4)": 0,
+          "[4,8)": 0,
+          "[8,16)": 0,
+          "[16,32)": 0,
+          "[32,64)": 0,
+          "[64,128)": 0,
+          "[128,inf)": 0
+        },
+        "suspicious_over_bound": 0,
+        "suspicious_fraction": null,
+        "static_max_error_px": null,
+        "static_violations": null
+      },
+      "static_test": {
+        "status": "not_applicable",
+        "tolerance_px": 0.01,
+        "max_error_px": null,
+        "violations": null
+      },
+      "row_consistency": {
+        "status": "unavailable",
+        "matched_draws": 0,
+        "draws_with_row_pairs": 0,
+        "skipped_draws": [],
+        "reason": "no matched draw with known current and previous rows"
+      },
+      "temporal": {
+        "status": "unavailable",
+        "reason": "no in-range valid pixels",
+        "previous_frame": 1,
+        "valid_pixels": 0,
+        "previous_offscreen": 0,
+        "previous_covered": 0,
+        "previous_uncovered": 0,
+        "covered_fraction": null,
+        "criterion_applies": false,
+        "criterion_min_matched_ratio": 0.99,
+        "previous_frame_routed": 2,
+        "previous_frame_matched": 2
+      },
+      "depth": {
+        "status": "unavailable",
+        "reason": "no R32F depth image for frame N (current captures do not read scene depth back)"
+      }
+    },
+    {
+      "device": 1,
+      "frame": 3,
+      "captured": true,
+      "notes": [],
+      "counters": {
+        "status": "pass",
+        "observed": {
+          "routed": 2,
+          "matched": 0,
+          "gate1": 0,
+          "gate2": 0,
+          "gate3": 0,
+          "gate4": 0,
+          "gate5": 0,
+          "gate6": 2
+        },
+        "mismatches": [],
+        "non_scene_draws_in_counters": 1,
+        "gate_histogram": {
+          "gate6": 2
+        }
+      },
+      "static_state": "no_matched",
+      "history_pairing": {
+        "predictable_draws": 2,
+        "disagreements": []
+      },
+      "routed_viewports": [
+        [
+          0,
+          0,
+          64,
+          64
+        ]
+      ],
+      "draws": [
+        {
+          "index": 2,
+          "gate": 6,
+          "routed": 1,
+          "matched": 0,
+          "predicted_match": false,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00001000",
+            "camera": "00002000",
+            "node_handle": "7",
+            "camera_handle": "9",
+            "node_serial": "11",
+            "camera_serial": "21",
+            "load_epoch": "3",
+            "registry_epoch": "5",
+            "model": "00000011",
+            "lod": "00000002",
+            "vb": "3",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "712d59ff944d11a8",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,3f400000",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": null,
+          "previous_index": null,
+          "note": null,
+          "draw_result": "00000000"
+        },
+        {
+          "index": 3,
+          "gate": 6,
+          "routed": 1,
+          "matched": 0,
+          "predicted_match": false,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00001100",
+            "camera": "00002000",
+            "node_handle": "8",
+            "camera_handle": "9",
+            "node_serial": "12",
+            "camera_serial": "21",
+            "load_epoch": "3",
+            "registry_epoch": "5",
+            "model": "00000012",
+            "lod": "00000002",
+            "vb": "4",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "1b0c97ae01a7ec05",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,00000000",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": null,
+          "previous_index": null,
+          "note": null,
+          "draw_result": "00000000"
+        }
+      ],
+      "readback": {
+        "file": "motion_1_3.rgba32f",
+        "width": 64,
+        "height": 64,
+        "result": "00000000",
+        "bytes_logged": 65536,
+        "status": "ok",
+        "sha256": "40a7f9ecdfcb9433a0727a914a2d13fa1e83a56c9032c69b102bf24a783644dd",
+        "validity_counts": {
+          "valid": 0,
+          "zero": 0,
+          "sentinel": 4096,
+          "other": 0
+        },
+        "validity_fractions": {
+          "valid": 0.0,
+          "zero": 0.0,
+          "sentinel": 1.0,
+          "other": 0.0
+        },
+        "nonfinite_values": 0,
+        "abi_clean": true
+      },
+      "pixels": {
+        "valid_pixels": 0,
+        "uv_range": null,
+        "depth_range": null,
+        "previous_uv_outside_unit": 0,
+        "displacement_px": {
+          "count": 0
+        },
+        "displacement_x_px": {
+          "count": 0
+        },
+        "displacement_y_px": {
+          "count": 0
+        },
+        "displacement_histogram": {
+          "[0,0.5)": 0,
+          "[0.5,1)": 0,
+          "[1,2)": 0,
+          "[2,4)": 0,
+          "[4,8)": 0,
+          "[8,16)": 0,
+          "[16,32)": 0,
+          "[32,64)": 0,
+          "[64,128)": 0,
+          "[128,inf)": 0
+        },
+        "suspicious_over_bound": 0,
+        "suspicious_fraction": null,
+        "static_max_error_px": null,
+        "static_violations": null
+      },
+      "static_test": {
+        "status": "not_applicable",
+        "tolerance_px": 0.01,
+        "max_error_px": null,
+        "violations": null
+      },
+      "row_consistency": {
+        "status": "unavailable",
+        "matched_draws": 0,
+        "draws_with_row_pairs": 0,
+        "skipped_draws": [],
+        "reason": "no matched draw with known current and previous rows"
+      },
+      "temporal": {
+        "status": "unavailable",
+        "reason": "no in-range valid pixels",
+        "previous_frame": 2,
+        "valid_pixels": 0,
+        "previous_offscreen": 0,
+        "previous_covered": 0,
+        "previous_uncovered": 0,
+        "covered_fraction": null,
+        "criterion_applies": false,
+        "criterion_min_matched_ratio": 0.99,
+        "previous_frame_routed": 2,
+        "previous_frame_matched": 0
+      },
+      "depth": {
+        "status": "unavailable",
+        "reason": "no R32F depth image for frame N (current captures do not read scene depth back)"
+      }
+    },
+    {
+      "device": 1,
+      "frame": 4,
+      "captured": true,
+      "notes": [],
+      "counters": {
+        "status": "pass",
+        "observed": {
+          "routed": 2,
+          "matched": 2,
+          "gate1": 0,
+          "gate2": 0,
+          "gate3": 1,
+          "gate4": 1,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "mismatches": [],
+        "non_scene_draws_in_counters": 1,
+        "gate_histogram": {
+          "matched": 2,
+          "gate3": 1,
+          "gate4": 1
+        }
+      },
+      "static_state": "moving",
+      "history_pairing": {
+        "predictable_draws": 2,
+        "disagreements": []
+      },
+      "routed_viewports": [
+        [
+          0,
+          0,
+          64,
+          64
+        ]
+      ],
+      "draws": [
+        {
+          "index": 2,
+          "gate": 0,
+          "routed": 1,
+          "matched": 1,
+          "predicted_match": true,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00001000",
+            "camera": "00002000",
+            "node_handle": "7",
+            "camera_handle": "9",
+            "node_serial": "11",
+            "camera_serial": "21",
+            "load_epoch": "3",
+            "registry_epoch": "5",
+            "model": "00000011",
+            "lod": "00000002",
+            "vb": "3",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "6e1905db0b783f53",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,3f4ccccd",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "3e000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": [
+            "3f800000,00000000,00000000,3f400000",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_index": 2,
+          "note": null,
+          "draw_result": "00000000"
+        },
+        {
+          "index": 3,
+          "gate": 0,
+          "routed": 1,
+          "matched": 1,
+          "predicted_match": true,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00001100",
+            "camera": "00002000",
+            "node_handle": "8",
+            "camera_handle": "9",
+            "node_serial": "12",
+            "camera_serial": "21",
+            "load_epoch": "3",
+            "registry_epoch": "5",
+            "model": "00000012",
+            "lod": "00000002",
+            "vb": "4",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "8804f37c47da2009",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,bd4ccccd",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,3dcccccd",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": [
+            "3f800000,00000000,00000000,00000000",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_index": 3,
+          "note": null,
+          "draw_result": "00000000"
+        },
+        {
+          "index": 4,
+          "gate": 4,
+          "routed": 0,
+          "matched": 0,
+          "predicted_match": null,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00000000",
+            "camera": "00000000",
+            "node_handle": "0",
+            "camera_handle": "0",
+            "node_serial": "0",
+            "camera_serial": "0",
+            "load_epoch": "0",
+            "registry_epoch": "0",
+            "model": "00000000",
+            "lod": "00000000",
+            "vb": "0",
+            "ib": "0",
+            "declaration": "0000000000000000",
+            "offset": "0",
+            "stride": "0",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "0",
+            "topology": "0",
+            "first": "0",
+            "primitives": "0",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "0000000000000000",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,3f4ccccd",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "3e000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": null,
+          "previous_index": null,
+          "note": null,
+          "draw_result": "00000000"
+        },
+        {
+          "index": 5,
+          "gate": 3,
+          "routed": 0,
+          "matched": 0,
+          "predicted_match": null,
+          "vs": "53a0a641107ed76c",
+          "ps": "98731d5594e36226",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00000000",
+            "camera": "00000000",
+            "node_handle": "0",
+            "camera_handle": "0",
+            "node_serial": "0",
+            "camera_serial": "0",
+            "load_epoch": "0",
+            "registry_epoch": "0",
+            "model": "00000000",
+            "lod": "00000000",
+            "vb": "0",
+            "ib": "0",
+            "declaration": "0000000000000000",
+            "offset": "0",
+            "stride": "0",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "0",
+            "topology": "0",
+            "first": "0",
+            "primitives": "0",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "0000000000000000",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,3f4ccccd",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "3e000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": null,
+          "previous_index": null,
+          "note": null,
+          "draw_result": "00000000"
+        }
+      ],
+      "readback": {
+        "file": "motion_1_4.rgba32f",
+        "width": 64,
+        "height": 64,
+        "result": "00000000",
+        "bytes_logged": 65536,
+        "status": "ok",
+        "sha256": "351da51d4fec85945a8b4e7e7dbed8c41e985f11e758d7cffb9a15242dba099b",
+        "validity_counts": {
+          "valid": 2680,
+          "zero": 0,
+          "sentinel": 1416,
+          "other": 0
+        },
+        "validity_fractions": {
+          "valid": 0.654296875,
+          "zero": 0.0,
+          "sentinel": 0.345703125,
+          "other": 0.0
+        },
+        "nonfinite_values": 0,
+        "abi_clean": true
+      },
+      "pixels": {
+        "valid_pixels": 2680,
+        "uv_range": {
+          "u": [
+            0.0640869140625,
+            0.9788027405738831
+          ],
+          "v": [
+            0.009093701839447021,
+            1.0038243532180786
+          ]
+        },
+        "depth_range": [
+          0.5,
+          0.5
+        ],
+        "previous_uv_outside_unit": 2,
+        "displacement_px": {
+          "count": 2680,
+          "min": 0.7338334918022156,
+          "max": 4.033135414123535,
+          "mean": 2.0997716492458958,
+          "median": 2.145053505897522,
+          "p95": 3.1558249235153197,
+          "p99": 3.6033919525146483
+        },
+        "displacement_x_px": {
+          "count": 2680,
+          "min": -2.2751998901367188,
+          "max": 1.6015625,
+          "mean": -1.5170119598730287,
+          "median": -1.8575172424316406,
+          "p95": 1.6015625,
+          "p99": 1.6015625
+        },
+        "displacement_y_px": {
+          "count": 2680,
+          "min": -3.8429489135742188,
+          "max": 3.9658126831054688,
+          "mean": 0.02571972590773853,
+          "median": 0.0,
+          "p95": 2.297451591491699,
+          "p99": 3.2291946792602553
+        },
+        "displacement_histogram": {
+          "[0,0.5)": 0,
+          "[0.5,1)": 61,
+          "[1,2)": 1048,
+          "[2,4)": 1570,
+          "[4,8)": 1,
+          "[8,16)": 0,
+          "[16,32)": 0,
+          "[32,64)": 0,
+          "[64,128)": 0,
+          "[128,inf)": 0
+        },
+        "suspicious_over_bound": 0,
+        "suspicious_fraction": 0.0,
+        "static_max_error_px": 3.9658126831054688,
+        "static_violations": 2680
+      },
+      "static_test": {
+        "status": "not_applicable",
+        "tolerance_px": 0.01,
+        "max_error_px": null,
+        "violations": null
+      },
+      "row_consistency": {
+        "status": "evaluated",
+        "matched_draws": 2,
+        "draws_with_row_pairs": 2,
+        "skipped_draws": [],
+        "sample_stride": 1,
+        "sampled_pixels": 2680,
+        "explained_pixels": 2680,
+        "unexplained_pixels": 0,
+        "unexplained_fraction": 0.0,
+        "ambiguous_pixels": 0,
+        "max_error_px": 0.0017749608224377766,
+        "groups": [
+          {
+            "draws": [
+              2
+            ],
+            "attributed_pixels": 2490
+          },
+          {
+            "draws": [
+              3
+            ],
+            "attributed_pixels": 190
+          }
+        ],
+        "per_draw": [
+          {
+            "index": 2,
+            "previous_index": 2,
+            "group": 0,
+            "origin_current_raster": [
+              57.60000038146973,
+              32.0
+            ],
+            "origin_previous_raster": [
+              56.0,
+              32.0
+            ],
+            "expected_origin_displacement_px": [
+              -1.6000003814697266,
+              0.0
+            ],
+            "group_attributed_pixels": 2490,
+            "group_median_displacement_px": [
+              -1.8693199157714844,
+              0.000118255615234375
+            ],
+            "origin_vs_median_difference_px": 0.2693195602642078,
+            "group_max_error_px": 0.0017749608224377766
+          },
+          {
+            "index": 3,
+            "previous_index": 3,
+            "group": 1,
+            "origin_current_raster": [
+              30.399999976158142,
+              32.0
+            ],
+            "origin_previous_raster": [
+              32.0,
+              32.0
+            ],
+            "expected_origin_displacement_px": [
+              1.600000023841858,
+              0.0
+            ],
+            "group_attributed_pixels": 190,
+            "group_median_displacement_px": [
+              1.6015625,
+              0.0
+            ],
+            "origin_vs_median_difference_px": 0.0015624761581420898,
+            "group_max_error_px": 0.0015624761581420898
+          }
+        ],
+        "unexplained_examples": []
+      },
+      "temporal": {
+        "status": "evaluated",
+        "reason": null,
+        "previous_frame": 3,
+        "valid_pixels": 2680,
+        "previous_offscreen": 2,
+        "previous_covered": 0,
+        "previous_uncovered": 2678,
+        "covered_fraction": 0.0,
+        "criterion_applies": false,
+        "criterion_min_matched_ratio": 0.99,
+        "previous_frame_routed": 2,
+        "previous_frame_matched": 0
+      },
+      "depth": {
+        "status": "unavailable",
+        "reason": "no R32F depth image for frame N (current captures do not read scene depth back)"
+      }
+    },
+    {
+      "device": 1,
+      "frame": 5,
+      "captured": true,
+      "notes": [],
+      "counters": {
+        "status": "pass",
+        "observed": {
+          "routed": 3,
+          "matched": 2,
+          "gate1": 0,
+          "gate2": 0,
+          "gate3": 0,
+          "gate4": 0,
+          "gate5": 0,
+          "gate6": 1
+        },
+        "mismatches": [],
+        "non_scene_draws_in_counters": 1,
+        "gate_histogram": {
+          "matched": 2,
+          "gate6": 1
+        }
+      },
+      "static_state": "moving",
+      "history_pairing": {
+        "predictable_draws": 3,
+        "disagreements": []
+      },
+      "routed_viewports": [
+        [
+          0,
+          0,
+          64,
+          64
+        ]
+      ],
+      "draws": [
+        {
+          "index": 2,
+          "gate": 0,
+          "routed": 1,
+          "matched": 1,
+          "predicted_match": true,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00001000",
+            "camera": "00002000",
+            "node_handle": "7",
+            "camera_handle": "9",
+            "node_serial": "11",
+            "camera_serial": "21",
+            "load_epoch": "3",
+            "registry_epoch": "5",
+            "model": "00000011",
+            "lod": "00000002",
+            "vb": "3",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "712d59ff944d11a8",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,3f400000",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": [
+            "3f800000,00000000,00000000,3f4ccccd",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "3e000000,00000000,00000000,3f800000"
+          ],
+          "previous_index": 2,
+          "note": null,
+          "draw_result": "00000000"
+        },
+        {
+          "index": 3,
+          "gate": 6,
+          "routed": 1,
+          "matched": 0,
+          "predicted_match": false,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00001000",
+            "camera": "00002000",
+            "node_handle": "7",
+            "camera_handle": "9",
+            "node_serial": "11",
+            "camera_serial": "21",
+            "load_epoch": "3",
+            "registry_epoch": "5",
+            "model": "00000011",
+            "lod": "00000002",
+            "vb": "3",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "712d59ff944d11a8",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,3f400000",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": null,
+          "previous_index": null,
+          "note": "current frame duplicate key (consumed once)",
+          "draw_result": "00000000"
+        },
+        {
+          "index": 4,
+          "gate": 0,
+          "routed": 1,
+          "matched": 1,
+          "predicted_match": true,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00001100",
+            "camera": "00002000",
+            "node_handle": "8",
+            "camera_handle": "9",
+            "node_serial": "12",
+            "camera_serial": "21",
+            "load_epoch": "3",
+            "registry_epoch": "5",
+            "model": "00000012",
+            "lod": "00000002",
+            "vb": "4",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "1b0c97ae01a7ec05",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,00000000",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": [
+            "3f800000,00000000,00000000,bd4ccccd",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,3dcccccd",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_index": 3,
+          "note": null,
+          "draw_result": "00000000"
+        }
+      ],
+      "readback": {
+        "file": "motion_1_5.rgba32f",
+        "width": 64,
+        "height": 64,
+        "result": "00000000",
+        "bytes_logged": 65536,
+        "status": "ok",
+        "sha256": "c1136b8232642f862c281f7a73c2cd8f47c452c7198c2f2d70496679a19c10cc",
+        "validity_counts": {
+          "valid": 171,
+          "zero": 0,
+          "sentinel": 3925,
+          "other": 0
+        },
+        "validity_fractions": {
+          "valid": 0.041748046875,
+          "zero": 0.0,
+          "sentinel": 0.958251953125,
+          "other": 0.0
+        },
+        "nonfinite_values": 0,
+        "abi_clean": true
+      },
+      "pixels": {
+        "valid_pixels": 171,
+        "uv_range": {
+          "u": [
+            0.04531252384185791,
+            0.3109375238418579
+          ],
+          "v": [
+            0.0703125,
+            0.3359375
+          ]
+        },
+        "depth_range": [
+          0.6000000238418579,
+          0.6000000238418579
+        ],
+        "previous_uv_outside_unit": 0,
+        "displacement_px": {
+          "count": 171,
+          "min": 1.5999984741210938,
+          "max": 1.5999984741210938,
+          "mean": 1.5999984741210938,
+          "median": 1.5999984741210938,
+          "p95": 1.5999984741210938,
+          "p99": 1.5999984741210938
+        },
+        "displacement_x_px": {
+          "count": 171,
+          "min": -1.5999984741210938,
+          "max": -1.5999984741210938,
+          "mean": -1.5999984741210938,
+          "median": -1.5999984741210938,
+          "p95": -1.5999984741210938,
+          "p99": -1.5999984741210938
+        },
+        "displacement_y_px": {
+          "count": 171,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "displacement_histogram": {
+          "[0,0.5)": 0,
+          "[0.5,1)": 0,
+          "[1,2)": 171,
+          "[2,4)": 0,
+          "[4,8)": 0,
+          "[8,16)": 0,
+          "[16,32)": 0,
+          "[32,64)": 0,
+          "[64,128)": 0,
+          "[128,inf)": 0
+        },
+        "suspicious_over_bound": 0,
+        "suspicious_fraction": 0.0,
+        "static_max_error_px": 1.5999984741210938,
+        "static_violations": 171
+      },
+      "static_test": {
+        "status": "not_applicable",
+        "tolerance_px": 0.01,
+        "max_error_px": null,
+        "violations": null
+      },
+      "row_consistency": {
+        "status": "evaluated",
+        "matched_draws": 2,
+        "draws_with_row_pairs": 2,
+        "skipped_draws": [],
+        "sample_stride": 1,
+        "sampled_pixels": 171,
+        "explained_pixels": 171,
+        "unexplained_pixels": 0,
+        "unexplained_fraction": 0.0,
+        "ambiguous_pixels": 0,
+        "max_error_px": 1.5497207641601562e-06,
+        "groups": [
+          {
+            "draws": [
+              2
+            ],
+            "attributed_pixels": 0
+          },
+          {
+            "draws": [
+              4
+            ],
+            "attributed_pixels": 171
+          }
+        ],
+        "per_draw": [
+          {
+            "index": 2,
+            "previous_index": 2,
+            "group": 0,
+            "origin_current_raster": [
+              56.0,
+              32.0
+            ],
+            "origin_previous_raster": [
+              57.60000038146973,
+              32.0
+            ],
+            "expected_origin_displacement_px": [
+              1.6000003814697266,
+              0.0
+            ],
+            "group_attributed_pixels": 0,
+            "group_median_displacement_px": null,
+            "origin_vs_median_difference_px": null,
+            "group_max_error_px": null
+          },
+          {
+            "index": 4,
+            "previous_index": 3,
+            "group": 1,
+            "origin_current_raster": [
+              32.0,
+              32.0
+            ],
+            "origin_previous_raster": [
+              30.399999976158142,
+              32.0
+            ],
+            "expected_origin_displacement_px": [
+              -1.600000023841858,
+              0.0
+            ],
+            "group_attributed_pixels": 171,
+            "group_median_displacement_px": [
+              -1.5999984741210938,
+              0.0
+            ],
+            "origin_vs_median_difference_px": 1.5497207641601562e-06,
+            "group_max_error_px": 1.5497207641601562e-06
+          }
+        ],
+        "unexplained_examples": []
+      },
+      "temporal": {
+        "status": "evaluated",
+        "reason": null,
+        "previous_frame": 4,
+        "valid_pixels": 171,
+        "previous_offscreen": 0,
+        "previous_covered": 171,
+        "previous_uncovered": 0,
+        "covered_fraction": 1.0,
+        "criterion_applies": true,
+        "criterion_min_matched_ratio": 0.99,
+        "previous_frame_routed": 2,
+        "previous_frame_matched": 2
+      },
+      "depth": {
+        "status": "unavailable",
+        "reason": "no R32F depth image for frame N (current captures do not read scene depth back)"
+      }
+    },
+    {
+      "device": 1,
+      "frame": 6,
+      "captured": true,
+      "notes": [],
+      "counters": {
+        "status": "pass",
+        "observed": {
+          "routed": 2,
+          "matched": 1,
+          "gate1": 0,
+          "gate2": 0,
+          "gate3": 0,
+          "gate4": 0,
+          "gate5": 0,
+          "gate6": 1
+        },
+        "mismatches": [],
+        "non_scene_draws_in_counters": 1,
+        "gate_histogram": {
+          "matched": 1,
+          "gate6": 1
+        }
+      },
+      "static_state": "moving",
+      "history_pairing": {
+        "predictable_draws": 2,
+        "disagreements": []
+      },
+      "routed_viewports": [
+        [
+          0,
+          0,
+          64,
+          64
+        ]
+      ],
+      "draws": [
+        {
+          "index": 2,
+          "gate": 6,
+          "routed": 1,
+          "matched": 0,
+          "predicted_match": false,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00001000",
+            "camera": "00002000",
+            "node_handle": "7",
+            "camera_handle": "9",
+            "node_serial": "11",
+            "camera_serial": "21",
+            "load_epoch": "3",
+            "registry_epoch": "5",
+            "model": "00000011",
+            "lod": "00000002",
+            "vb": "3",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "6e1905db0b783f53",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,3f4ccccd",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "3e000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": null,
+          "previous_index": null,
+          "note": "previous frame duplicate key (poisoned)",
+          "draw_result": "00000000"
+        },
+        {
+          "index": 3,
+          "gate": 0,
+          "routed": 1,
+          "matched": 1,
+          "predicted_match": true,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00001100",
+            "camera": "00002000",
+            "node_handle": "8",
+            "camera_handle": "9",
+            "node_serial": "12",
+            "camera_serial": "21",
+            "load_epoch": "3",
+            "registry_epoch": "5",
+            "model": "00000012",
+            "lod": "00000002",
+            "vb": "4",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "8804f37c47da2009",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,bd4ccccd",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,3dcccccd",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": [
+            "3f800000,00000000,00000000,00000000",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_index": 4,
+          "note": null,
+          "draw_result": "00000000"
+        }
+      ],
+      "readback": {
+        "file": "motion_1_6.rgba32f",
+        "width": 64,
+        "height": 64,
+        "result": "00000000",
+        "bytes_logged": 65536,
+        "status": "ok",
+        "sha256": "0078c3e7deda59743b9f9a6134cf93e796183aa46cde96ec439b8c1e06d3a394",
+        "validity_counts": {
+          "valid": 190,
+          "zero": 0,
+          "sentinel": 3906,
+          "other": 0
+        },
+        "validity_fractions": {
+          "valid": 0.04638671875,
+          "zero": 0.0,
+          "sentinel": 0.95361328125,
+          "other": 0.0
+        },
+        "nonfinite_values": 0,
+        "abi_clean": true
+      },
+      "pixels": {
+        "valid_pixels": 190,
+        "uv_range": {
+          "u": [
+            0.0640869140625,
+            0.3453369140625
+          ],
+          "v": [
+            0.0703125,
+            0.3515625
+          ]
+        },
+        "depth_range": [
+          0.5,
+          0.5
+        ],
+        "previous_uv_outside_unit": 0,
+        "displacement_px": {
+          "count": 190,
+          "min": 1.6015625,
+          "max": 1.6015625,
+          "mean": 1.6015625,
+          "median": 1.6015625,
+          "p95": 1.6015625,
+          "p99": 1.6015625
+        },
+        "displacement_x_px": {
+          "count": 190,
+          "min": 1.6015625,
+          "max": 1.6015625,
+          "mean": 1.6015625,
+          "median": 1.6015625,
+          "p95": 1.6015625,
+          "p99": 1.6015625
+        },
+        "displacement_y_px": {
+          "count": 190,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "displacement_histogram": {
+          "[0,0.5)": 0,
+          "[0.5,1)": 0,
+          "[1,2)": 190,
+          "[2,4)": 0,
+          "[4,8)": 0,
+          "[8,16)": 0,
+          "[16,32)": 0,
+          "[32,64)": 0,
+          "[64,128)": 0,
+          "[128,inf)": 0
+        },
+        "suspicious_over_bound": 0,
+        "suspicious_fraction": 0.0,
+        "static_max_error_px": 1.6015625,
+        "static_violations": 190
+      },
+      "static_test": {
+        "status": "not_applicable",
+        "tolerance_px": 0.01,
+        "max_error_px": null,
+        "violations": null
+      },
+      "row_consistency": {
+        "status": "evaluated",
+        "matched_draws": 1,
+        "draws_with_row_pairs": 1,
+        "skipped_draws": [],
+        "sample_stride": 1,
+        "sampled_pixels": 190,
+        "explained_pixels": 190,
+        "unexplained_pixels": 0,
+        "unexplained_fraction": 0.0,
+        "ambiguous_pixels": 0,
+        "max_error_px": 0.0015624761581420898,
+        "groups": [
+          {
+            "draws": [
+              3
+            ],
+            "attributed_pixels": 190
+          }
+        ],
+        "per_draw": [
+          {
+            "index": 3,
+            "previous_index": 4,
+            "group": 0,
+            "origin_current_raster": [
+              30.399999976158142,
+              32.0
+            ],
+            "origin_previous_raster": [
+              32.0,
+              32.0
+            ],
+            "expected_origin_displacement_px": [
+              1.600000023841858,
+              0.0
+            ],
+            "group_attributed_pixels": 190,
+            "group_median_displacement_px": [
+              1.6015625,
+              0.0
+            ],
+            "origin_vs_median_difference_px": 0.0015624761581420898,
+            "group_max_error_px": 0.0015624761581420898
+          }
+        ],
+        "unexplained_examples": []
+      },
+      "temporal": {
+        "status": "evaluated",
+        "reason": null,
+        "previous_frame": 5,
+        "valid_pixels": 190,
+        "previous_offscreen": 0,
+        "previous_covered": 171,
+        "previous_uncovered": 19,
+        "covered_fraction": 0.9,
+        "criterion_applies": false,
+        "criterion_min_matched_ratio": 0.99,
+        "previous_frame_routed": 3,
+        "previous_frame_matched": 2
+      },
+      "depth": {
+        "status": "unavailable",
+        "reason": "no R32F depth image for frame N (current captures do not read scene depth back)"
+      }
+    },
+    {
+      "device": 1,
+      "frame": 7,
+      "captured": true,
+      "notes": [],
+      "counters": {
+        "status": "pass",
+        "observed": {
+          "routed": 1,
+          "matched": 1,
+          "gate1": 0,
+          "gate2": 0,
+          "gate3": 1,
+          "gate4": 0,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "mismatches": [],
+        "non_scene_draws_in_counters": 1,
+        "gate_histogram": {
+          "matched": 1,
+          "gate3": 1
+        }
+      },
+      "static_state": "moving",
+      "history_pairing": {
+        "predictable_draws": 1,
+        "disagreements": []
+      },
+      "routed_viewports": [
+        [
+          0,
+          0,
+          64,
+          64
+        ]
+      ],
+      "draws": [
+        {
+          "index": 2,
+          "gate": 3,
+          "routed": 0,
+          "matched": 0,
+          "predicted_match": null,
+          "vs": "53a0a641107ed76c",
+          "ps": "98731d5594e36226",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00000000",
+            "camera": "00000000",
+            "node_handle": "0",
+            "camera_handle": "0",
+            "node_serial": "0",
+            "camera_serial": "0",
+            "load_epoch": "0",
+            "registry_epoch": "0",
+            "model": "00000000",
+            "lod": "00000000",
+            "vb": "0",
+            "ib": "0",
+            "declaration": "0000000000000000",
+            "offset": "0",
+            "stride": "0",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "0",
+            "topology": "0",
+            "first": "0",
+            "primitives": "0",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "0000000000000000",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,3f400000",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": null,
+          "previous_index": null,
+          "note": null,
+          "draw_result": "00000000"
+        },
+        {
+          "index": 3,
+          "gate": 0,
+          "routed": 1,
+          "matched": 1,
+          "predicted_match": true,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00001100",
+            "camera": "00002000",
+            "node_handle": "8",
+            "camera_handle": "9",
+            "node_serial": "12",
+            "camera_serial": "21",
+            "load_epoch": "3",
+            "registry_epoch": "5",
+            "model": "00000012",
+            "lod": "00000002",
+            "vb": "4",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "1b0c97ae01a7ec05",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,00000000",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": [
+            "3f800000,00000000,00000000,bd4ccccd",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,3dcccccd",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_index": 3,
+          "note": null,
+          "draw_result": "00000000"
+        }
+      ],
+      "readback": {
+        "file": "motion_1_7.rgba32f",
+        "width": 64,
+        "height": 64,
+        "result": "00000000",
+        "bytes_logged": 65536,
+        "status": "ok",
+        "sha256": "c1136b8232642f862c281f7a73c2cd8f47c452c7198c2f2d70496679a19c10cc",
+        "validity_counts": {
+          "valid": 171,
+          "zero": 0,
+          "sentinel": 3925,
+          "other": 0
+        },
+        "validity_fractions": {
+          "valid": 0.041748046875,
+          "zero": 0.0,
+          "sentinel": 0.958251953125,
+          "other": 0.0
+        },
+        "nonfinite_values": 0,
+        "abi_clean": true
+      },
+      "pixels": {
+        "valid_pixels": 171,
+        "uv_range": {
+          "u": [
+            0.04531252384185791,
+            0.3109375238418579
+          ],
+          "v": [
+            0.0703125,
+            0.3359375
+          ]
+        },
+        "depth_range": [
+          0.6000000238418579,
+          0.6000000238418579
+        ],
+        "previous_uv_outside_unit": 0,
+        "displacement_px": {
+          "count": 171,
+          "min": 1.5999984741210938,
+          "max": 1.5999984741210938,
+          "mean": 1.5999984741210938,
+          "median": 1.5999984741210938,
+          "p95": 1.5999984741210938,
+          "p99": 1.5999984741210938
+        },
+        "displacement_x_px": {
+          "count": 171,
+          "min": -1.5999984741210938,
+          "max": -1.5999984741210938,
+          "mean": -1.5999984741210938,
+          "median": -1.5999984741210938,
+          "p95": -1.5999984741210938,
+          "p99": -1.5999984741210938
+        },
+        "displacement_y_px": {
+          "count": 171,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "displacement_histogram": {
+          "[0,0.5)": 0,
+          "[0.5,1)": 0,
+          "[1,2)": 171,
+          "[2,4)": 0,
+          "[4,8)": 0,
+          "[8,16)": 0,
+          "[16,32)": 0,
+          "[32,64)": 0,
+          "[64,128)": 0,
+          "[128,inf)": 0
+        },
+        "suspicious_over_bound": 0,
+        "suspicious_fraction": 0.0,
+        "static_max_error_px": 1.5999984741210938,
+        "static_violations": 171
+      },
+      "static_test": {
+        "status": "not_applicable",
+        "tolerance_px": 0.01,
+        "max_error_px": null,
+        "violations": null
+      },
+      "row_consistency": {
+        "status": "evaluated",
+        "matched_draws": 1,
+        "draws_with_row_pairs": 1,
+        "skipped_draws": [],
+        "sample_stride": 1,
+        "sampled_pixels": 171,
+        "explained_pixels": 171,
+        "unexplained_pixels": 0,
+        "unexplained_fraction": 0.0,
+        "ambiguous_pixels": 0,
+        "max_error_px": 1.5497207641601562e-06,
+        "groups": [
+          {
+            "draws": [
+              3
+            ],
+            "attributed_pixels": 171
+          }
+        ],
+        "per_draw": [
+          {
+            "index": 3,
+            "previous_index": 3,
+            "group": 0,
+            "origin_current_raster": [
+              32.0,
+              32.0
+            ],
+            "origin_previous_raster": [
+              30.399999976158142,
+              32.0
+            ],
+            "expected_origin_displacement_px": [
+              -1.600000023841858,
+              0.0
+            ],
+            "group_attributed_pixels": 171,
+            "group_median_displacement_px": [
+              -1.5999984741210938,
+              0.0
+            ],
+            "origin_vs_median_difference_px": 1.5497207641601562e-06,
+            "group_max_error_px": 1.5497207641601562e-06
+          }
+        ],
+        "unexplained_examples": []
+      },
+      "temporal": {
+        "status": "evaluated",
+        "reason": null,
+        "previous_frame": 6,
+        "valid_pixels": 171,
+        "previous_offscreen": 0,
+        "previous_covered": 171,
+        "previous_uncovered": 0,
+        "covered_fraction": 1.0,
+        "criterion_applies": false,
+        "criterion_min_matched_ratio": 0.99,
+        "previous_frame_routed": 2,
+        "previous_frame_matched": 1
+      },
+      "depth": {
+        "status": "unavailable",
+        "reason": "no R32F depth image for frame N (current captures do not read scene depth back)"
+      }
+    },
+    {
+      "device": 1,
+      "frame": 8,
+      "captured": true,
+      "notes": [
+        "Reset logged after 2 route decisions: later lookups see an empty table"
+      ],
+      "counters": {
+        "status": "pass",
+        "observed": {
+          "routed": 2,
+          "matched": 1,
+          "gate1": 0,
+          "gate2": 0,
+          "gate3": 0,
+          "gate4": 0,
+          "gate5": 0,
+          "gate6": 1
+        },
+        "mismatches": [],
+        "non_scene_draws_in_counters": 1,
+        "gate_histogram": {
+          "matched": 1,
+          "gate6": 1
+        }
+      },
+      "static_state": "moving",
+      "history_pairing": {
+        "predictable_draws": 2,
+        "disagreements": []
+      },
+      "routed_viewports": [
+        [
+          0,
+          0,
+          64,
+          64
+        ]
+      ],
+      "draws": [
+        {
+          "index": 2,
+          "gate": 6,
+          "routed": 1,
+          "matched": 0,
+          "predicted_match": false,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00001000",
+            "camera": "00002000",
+            "node_handle": "7",
+            "camera_handle": "9",
+            "node_serial": "11",
+            "camera_serial": "21",
+            "load_epoch": "3",
+            "registry_epoch": "5",
+            "model": "00000011",
+            "lod": "00000002",
+            "vb": "3",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "712d59ff944d11a8",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,3f400000",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": null,
+          "previous_index": null,
+          "note": null,
+          "draw_result": "00000000"
+        },
+        {
+          "index": 3,
+          "gate": 0,
+          "routed": 1,
+          "matched": 1,
+          "predicted_match": true,
+          "vs": "53a0a641107ed76c",
+          "ps": "8759c7838bbc86c2",
+          "viewport": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "key": {
+            "node": "00001100",
+            "camera": "00002000",
+            "node_handle": "8",
+            "camera_handle": "9",
+            "node_serial": "12",
+            "camera_serial": "21",
+            "load_epoch": "3",
+            "registry_epoch": "5",
+            "model": "00000012",
+            "lod": "00000002",
+            "vb": "4",
+            "ib": "0",
+            "declaration": "0cdf6a8c884ad955",
+            "offset": "0",
+            "stride": "24",
+            "vs": "53a0a641107ed76c",
+            "position_offset": "0",
+            "position_type": "16",
+            "topology": "4",
+            "first": "0",
+            "primitives": "1",
+            "base_vertex": "0",
+            "min_vertex": "0",
+            "vertex_count": "0",
+            "indexed": "0"
+          },
+          "rows_hash": "8804f37c47da2009",
+          "rows_c24_27": [
+            "3f800000,00000000,00000000,bd4ccccd",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,3dcccccd",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_rows_c24_27": [
+            "3f800000,00000000,00000000,00000000",
+            "00000000,3f800000,00000000,00000000",
+            "00000000,00000000,3f800000,00000000",
+            "00000000,00000000,00000000,3f800000"
+          ],
+          "previous_index": 3,
+          "note": null,
+          "draw_result": "00000000"
+        }
+      ],
+      "readback": {
+        "file": "motion_1_8.rgba32f",
+        "width": 64,
+        "height": 64,
+        "result": "00000000",
+        "bytes_logged": 65536,
+        "status": "ok",
+        "sha256": "0078c3e7deda59743b9f9a6134cf93e796183aa46cde96ec439b8c1e06d3a394",
+        "validity_counts": {
+          "valid": 190,
+          "zero": 0,
+          "sentinel": 3906,
+          "other": 0
+        },
+        "validity_fractions": {
+          "valid": 0.04638671875,
+          "zero": 0.0,
+          "sentinel": 0.95361328125,
+          "other": 0.0
+        },
+        "nonfinite_values": 0,
+        "abi_clean": true
+      },
+      "pixels": {
+        "valid_pixels": 190,
+        "uv_range": {
+          "u": [
+            0.0640869140625,
+            0.3453369140625
+          ],
+          "v": [
+            0.0703125,
+            0.3515625
+          ]
+        },
+        "depth_range": [
+          0.5,
+          0.5
+        ],
+        "previous_uv_outside_unit": 0,
+        "displacement_px": {
+          "count": 190,
+          "min": 1.6015625,
+          "max": 1.6015625,
+          "mean": 1.6015625,
+          "median": 1.6015625,
+          "p95": 1.6015625,
+          "p99": 1.6015625
+        },
+        "displacement_x_px": {
+          "count": 190,
+          "min": 1.6015625,
+          "max": 1.6015625,
+          "mean": 1.6015625,
+          "median": 1.6015625,
+          "p95": 1.6015625,
+          "p99": 1.6015625
+        },
+        "displacement_y_px": {
+          "count": 190,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "displacement_histogram": {
+          "[0,0.5)": 0,
+          "[0.5,1)": 0,
+          "[1,2)": 190,
+          "[2,4)": 0,
+          "[4,8)": 0,
+          "[8,16)": 0,
+          "[16,32)": 0,
+          "[32,64)": 0,
+          "[64,128)": 0,
+          "[128,inf)": 0
+        },
+        "suspicious_over_bound": 0,
+        "suspicious_fraction": 0.0,
+        "static_max_error_px": 1.6015625,
+        "static_violations": 190
+      },
+      "static_test": {
+        "status": "not_applicable",
+        "tolerance_px": 0.01,
+        "max_error_px": null,
+        "violations": null
+      },
+      "row_consistency": {
+        "status": "evaluated",
+        "matched_draws": 1,
+        "draws_with_row_pairs": 1,
+        "skipped_draws": [],
+        "sample_stride": 1,
+        "sampled_pixels": 190,
+        "explained_pixels": 190,
+        "unexplained_pixels": 0,
+        "unexplained_fraction": 0.0,
+        "ambiguous_pixels": 0,
+        "max_error_px": 0.0015624761581420898,
+        "groups": [
+          {
+            "draws": [
+              3
+            ],
+            "attributed_pixels": 190
+          }
+        ],
+        "per_draw": [
+          {
+            "index": 3,
+            "previous_index": 3,
+            "group": 0,
+            "origin_current_raster": [
+              30.399999976158142,
+              32.0
+            ],
+            "origin_previous_raster": [
+              32.0,
+              32.0
+            ],
+            "expected_origin_displacement_px": [
+              1.600000023841858,
+              0.0
+            ],
+            "group_attributed_pixels": 190,
+            "group_median_displacement_px": [
+              1.6015625,
+              0.0
+            ],
+            "origin_vs_median_difference_px": 0.0015624761581420898,
+            "group_max_error_px": 0.0015624761581420898
+          }
+        ],
+        "unexplained_examples": []
+      },
+      "temporal": {
+        "status": "evaluated",
+        "reason": null,
+        "previous_frame": 7,
+        "valid_pixels": 190,
+        "previous_offscreen": 0,
+        "previous_covered": 171,
+        "previous_uncovered": 19,
+        "covered_fraction": 0.9,
+        "criterion_applies": true,
+        "criterion_min_matched_ratio": 0.99,
+        "previous_frame_routed": 1,
+        "previous_frame_matched": 1
+      },
+      "depth": {
+        "status": "unavailable",
+        "reason": "no R32F depth image for frame N (current captures do not read scene depth back)"
+      }
+    }
+  ]
+}

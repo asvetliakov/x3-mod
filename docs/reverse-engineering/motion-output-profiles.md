@@ -8,8 +8,8 @@ and 1041), which the first
 This document derives the same facts for the other SM3 material programs the
 captured session draws; the transformer is now driven by the generated table
 below (see [material-motion-prototype.md](../architecture/material-motion-prototype.md))
-so the [live route](../architecture/live-motion-route.md) covers the class A
-and B pairs without a second hand-written transformer.
+so the [live route](../architecture/live-motion-route.md) covers the class A,
+B and C pairs without a second hand-written transformer.
 
 Everything here is derived structure: hashes, DWORD offsets, register numbers
 and counts. No shader words, literals or disassembly are reproduced. Original
@@ -119,12 +119,13 @@ temporary and **c252–255**, one new PS input **v5**, the relocated fragment in
 two position register numbers change between pairs; the emitted instruction
 words are the same as today's hard-coded fragment. One of
 these PS programs (`63f96eba9eea7880`) additionally declares `vFace`, which the
-fragment does not touch. No class A or B pixel program contains `texkill`,
-predication or an oDepth write (`texkill_dwords`, `predicated_or_coissued_dwords`
-and `depth_output_dwords` are empty for all twelve), and every class A or B
-vertex program declares `o0` as POSITION0; the transformer refuses programs
-that violate any of these, so the classes are defined as straight-line
-programs whose depth is the rasterized depth.
+fragment does not touch. No class A, B or C pixel program contains `texkill`,
+predication, relative addressing or an oDepth write (`texkill_dwords`,
+`predicated_or_coissued_dwords` and `depth_output_dwords` are empty for all
+sixteen), and every transformable vertex program declares `o0` as POSITION0;
+the transformer refuses programs that violate any of these, so classes A and B
+are defined as straight-line programs, class C as the static-branch programs
+described below, all with the rasterized depth.
 
 **B — relocated registers (6 pairs, 21.90%).** Same shape and same offset table,
 but the reference indices are occupied and the transformer must substitute:
@@ -138,12 +139,22 @@ case; `c252–255` is free in every SM3 material VS (highest direct constant is
 c42 or c47).
 
 **C — relocated registers with static branches in the PS (4 pairs, 40.72%).**
-As B, plus the pixel shader contains two balanced `if`/`else`/`endif` blocks on
-boolean constants `b0`/`b1` (maximum nesting depth 1, depth 0 at END). The append point is
-still at nesting depth 0 immediately before END, so the appended fragment is
-unconditional, but a table-driven transformer must verify balance and append
-depth rather than assume straight-line code as the current module does. These are
-the largest pairs by draw count, so this check cannot be deferred indefinitely.
+As B, plus the pixel shader contains two sequential balanced `if`/`else`/`endif`
+blocks on boolean constants `b0`/`b1` (maximum nesting depth 1, depth 0 at END;
+`static_branches` in the JSON records each site and that every condition is a
+direct boolean register). The append point is at nesting depth 0 immediately
+before END, so the appended fragment is unconditional. The tool classifies a
+pair as C only when its control flow consists of nothing but `if`/`else`/`endif`
+with boolean conditions, is balanced and nests at most one deep
+(`ps_control_flow_not_static_boolean_if` / `ps_control_flow_depth_*_exceeds_1`
+block otherwise); the transformer revalidates the same rule from the words
+with a depth counter and refuses `ifc`, `rep`/`loop`, `break*`, `call`/`ret`
+and predication in every class (see
+[material-motion-prototype.md](../architecture/material-motion-prototype.md)).
+The four programs use samplers up to s4 (`494fe349b8bc12ec` pairs) or s6
+(`37c34a7478544c14` pairs), with the cubemap at s3 or s4; the register choices
+are v6/r6–8 and, for the `37c34a7478544c14` pairs, o9/TEXCOORD7 → v8. These are
+the largest pairs by draw count: 40.72% of the captured Scene draws.
 
 Because the PS side determines two of the four register choices, eligibility
 must be keyed by the **pair**, not by the VS program. In this capture every
@@ -166,13 +177,13 @@ python3 tools/analysis/inspect_motion_output_profiles.py \
   --emit-header src/renderer/motion_output_profiles_inc.h
 ```
 
-**12 rows** are emitted today: the six class-A and six class-B pairs. Class C
-is deliberately left out until the transformer validates control-flow balance
-and append depth, but its enumerator name
-(`MotionOutputClass::RelocatedRegistersWithBranches`) is already reserved in the
-banner and defined by the consumer, so adding those four rows will not change
-the schema (the transformer currently refuses that class with
-`UnsupportedShader`).
+**16 rows** are emitted today: the six class-A, six class-B and four class-C
+pairs. Adding class C (`MotionOutputClass::RelocatedRegistersWithBranches`)
+changed no field: the branch structure is not a row fact but a revalidated
+property of the pixel words, and the banner states the rule the transformer
+enforces. Rows sharing a vertex program (`494fe349b8bc12ec` carries one class A
+and two class C rows; `37c34a7478544c14` two class C rows) agree on the VS side,
+which the consumer's `static_assert` requires.
 
 Rows are ordered by descending captured Scene draws, then by vertex and pixel
 fingerprint, so regeneration is byte-reproducible. Field order, one row:
@@ -181,7 +192,7 @@ fingerprint, so regeneration is byte-reproducible. Field order, one row:
 | --- | --- |
 | `vertex_fingerprint`, `vertex_dword_count`, `vertex_version` | Exact original VS identity and length; `0xfffe0300`. |
 | `pixel_fingerprint`, `pixel_dword_count`, `pixel_version` | Exact original PS identity and length; `0xffff0300`. |
-| `transformation_class` | `ReferenceRegisters` (A) or `RelocatedRegisters` (B). |
+| `transformation_class` | `ReferenceRegisters` (A), `RelocatedRegisters` (B) or `RelocatedRegistersWithBranches` (C). |
 | `matrix_register`, `position_temporary` | The `c24` row base and the temporary the position dots read. |
 | `position_dp4_dwords[4]`, `position_lane_masks[4]` | The four original DP4 offsets in XYZW order and their single-lane destination masks, for revalidation before splicing. |
 | `vertex_declaration_insert_dword` | Original VS header end; the new output declaration goes here. |

@@ -33,8 +33,8 @@ bool material_motion_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) no
 // proxy's byte hash of the same bytecode, so create-time hashes identify pairs.
 std::uint64_t material_motion_fingerprint(const std::uint32_t* words, std::size_t count) noexcept;
 
-// Table-driven transformer for the reviewed SM3 material pairs (classes A and
-// B). All original position and color instructions remain unchanged. A
+// Table-driven transformer for the reviewed SM3 material pairs (classes A, B
+// and C). All original position and color instructions remain unchanged. A
 // previous-clip interpolator feeds our existing RGBA32F previous-UV/depth/
 // validity program in the row's output register (oC1 for every row).
 //
@@ -43,8 +43,9 @@ std::uint64_t material_motion_fingerprint(const std::uint32_t* words, std::size_
 // each stage transforms independently: the program is matched to a table row
 // by exact fingerprint, length and version, and the row's offsets and register
 // choices are then revalidated against the actual words (instruction framing,
-// header boundaries, the four position dots, and that the chosen registers are
-// unused by the original). Success replaces the owned output; failure leaves
+// header boundaries, the four position dots, the class C branch structure, and
+// that the chosen registers are unused by the original, inside branches
+// included). Success replaces the owned output; failure leaves
 // it intact. Input may alias the output vector. The caller must separately
 // establish opaque scene coverage, compatible MRT state, the row's light-loop
 // bound, valid history, and ownership/restoration of the reserved constants

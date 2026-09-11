@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "Derived SM3 motion-output insertion facts for captured material pairs. Offsets are zero-based DWORD indices from the version token including comments. Not an eligibility or equivalence proof.",
-  "tool_sha256": "d63da737f6a581410896ffbfe360bc42e60a7ee9520a198e664ca75d21b060f3",
+  "tool_sha256": "d3ac38f8f517cba39e3a9db909a1583d3bc67f33c1ec234e3e2fb1c846ed5a43",
   "inventory_sha256": "794be7b6ceccfc2db45f29369982a4f61a568114f08cef303a75fd3ce9bbc737",
   "capture": {
     "source_basename": "x3-iteration05-completed-snapshot.log",
@@ -1434,6 +1434,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -1568,6 +1573,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [],
       "highest_direct_constant": null,
       "defined_constant_registers": [],
@@ -1816,6 +1826,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -2118,6 +2133,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -2299,6 +2319,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -2413,6 +2438,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -2727,6 +2757,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -3102,6 +3137,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -3456,6 +3496,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -3858,6 +3903,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -4341,6 +4391,43 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 1,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [
+          {
+            "dword": 1458,
+            "opcode": "if",
+            "condition": "b0",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 1524,
+            "opcode": "else"
+          },
+          {
+            "dword": 1528,
+            "opcode": "endif"
+          },
+          {
+            "dword": 1646,
+            "opcode": "if",
+            "condition": "b1",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 1708,
+            "opcode": "else"
+          },
+          {
+            "dword": 1720,
+            "opcode": "endif"
+          }
+        ],
+        "only_boolean_if": true,
+        "boolean_conditions": [
+          "b0",
+          "b1"
+        ]
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -4801,6 +4888,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -5218,6 +5310,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -5604,6 +5701,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -5887,6 +5989,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -6161,6 +6268,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -6526,6 +6638,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -6922,6 +7039,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -7196,6 +7318,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1
@@ -7443,6 +7570,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -7887,6 +8019,43 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 1,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [
+          {
+            "dword": 1346,
+            "opcode": "if",
+            "condition": "b0",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 1412,
+            "opcode": "else"
+          },
+          {
+            "dword": 1416,
+            "opcode": "endif"
+          },
+          {
+            "dword": 1555,
+            "opcode": "if",
+            "condition": "b1",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 1617,
+            "opcode": "else"
+          },
+          {
+            "dword": 1629,
+            "opcode": "endif"
+          }
+        ],
+        "only_boolean_if": true,
+        "boolean_conditions": [
+          "b0",
+          "b1"
+        ]
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -8401,6 +8570,43 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 1,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [
+          {
+            "dword": 1403,
+            "opcode": "if",
+            "condition": "b0",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 1469,
+            "opcode": "else"
+          },
+          {
+            "dword": 1473,
+            "opcode": "endif"
+          },
+          {
+            "dword": 1672,
+            "opcode": "if",
+            "condition": "b1",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 1734,
+            "opcode": "else"
+          },
+          {
+            "dword": 1746,
+            "opcode": "endif"
+          }
+        ],
+        "only_boolean_if": true,
+        "boolean_conditions": [
+          "b0",
+          "b1"
+        ]
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -8735,6 +8941,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -8955,6 +9166,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -9290,6 +9506,43 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 1,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [
+          {
+            "dword": 1338,
+            "opcode": "if",
+            "condition": "b0",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 1404,
+            "opcode": "else"
+          },
+          {
+            "dword": 1408,
+            "opcode": "endif"
+          },
+          {
+            "dword": 1529,
+            "opcode": "if",
+            "condition": "b1",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 1591,
+            "opcode": "else"
+          },
+          {
+            "dword": 1603,
+            "opcode": "endif"
+          }
+        ],
+        "only_boolean_if": true,
+        "boolean_conditions": [
+          "b0",
+          "b1"
+        ]
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -9618,6 +9871,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1
@@ -9957,6 +10215,36 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 1,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [
+          {
+            "dword": 387,
+            "opcode": "rep"
+          },
+          {
+            "dword": 445,
+            "opcode": "endrep"
+          },
+          {
+            "dword": 520,
+            "opcode": "if",
+            "condition": "b0",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 541,
+            "opcode": "else"
+          },
+          {
+            "dword": 545,
+            "opcode": "endif"
+          }
+        ],
+        "only_boolean_if": false,
+        "boolean_conditions": [
+          "b0"
+        ]
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -10422,6 +10710,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -10858,6 +11151,36 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 1,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [
+          {
+            "dword": 549,
+            "opcode": "rep"
+          },
+          {
+            "dword": 607,
+            "opcode": "endrep"
+          },
+          {
+            "dword": 666,
+            "opcode": "if",
+            "condition": "b0",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 687,
+            "opcode": "else"
+          },
+          {
+            "dword": 691,
+            "opcode": "endif"
+          }
+        ],
+        "only_boolean_if": false,
+        "boolean_conditions": [
+          "b0"
+        ]
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -11454,6 +11777,36 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 1,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [
+          {
+            "dword": 393,
+            "opcode": "rep"
+          },
+          {
+            "dword": 451,
+            "opcode": "endrep"
+          },
+          {
+            "dword": 510,
+            "opcode": "if",
+            "condition": "b0",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 531,
+            "opcode": "else"
+          },
+          {
+            "dword": 535,
+            "opcode": "endif"
+          }
+        ],
+        "only_boolean_if": false,
+        "boolean_conditions": [
+          "b0"
+        ]
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -11985,6 +12338,36 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 1,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [
+          {
+            "dword": 384,
+            "opcode": "rep"
+          },
+          {
+            "dword": 442,
+            "opcode": "endrep"
+          },
+          {
+            "dword": 483,
+            "opcode": "if",
+            "condition": "b0",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 504,
+            "opcode": "else"
+          },
+          {
+            "dword": 508,
+            "opcode": "endif"
+          }
+        ],
+        "only_boolean_if": false,
+        "boolean_conditions": [
+          "b0"
+        ]
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -12492,6 +12875,36 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 1,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [
+          {
+            "dword": 384,
+            "opcode": "rep"
+          },
+          {
+            "dword": 442,
+            "opcode": "endrep"
+          },
+          {
+            "dword": 483,
+            "opcode": "if",
+            "condition": "b0",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 504,
+            "opcode": "else"
+          },
+          {
+            "dword": 508,
+            "opcode": "endif"
+          }
+        ],
+        "only_boolean_if": false,
+        "boolean_conditions": [
+          "b0"
+        ]
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -12911,6 +13324,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -13178,6 +13596,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0
       ],
@@ -13354,6 +13777,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -13709,6 +14137,36 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 1,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [
+          {
+            "dword": 375,
+            "opcode": "rep"
+          },
+          {
+            "dword": 433,
+            "opcode": "endrep"
+          },
+          {
+            "dword": 490,
+            "opcode": "if",
+            "condition": "b0",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 511,
+            "opcode": "else"
+          },
+          {
+            "dword": 515,
+            "opcode": "endif"
+          }
+        ],
+        "only_boolean_if": false,
+        "boolean_conditions": [
+          "b0"
+        ]
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -14136,6 +14594,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -14522,6 +14985,36 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 1,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [
+          {
+            "dword": 387,
+            "opcode": "rep"
+          },
+          {
+            "dword": 445,
+            "opcode": "endrep"
+          },
+          {
+            "dword": 486,
+            "opcode": "if",
+            "condition": "b0",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 507,
+            "opcode": "else"
+          },
+          {
+            "dword": 511,
+            "opcode": "endif"
+          }
+        ],
+        "only_boolean_if": false,
+        "boolean_conditions": [
+          "b0"
+        ]
+      },
       "constant_registers_direct": [
         0,
         1,
@@ -14981,6 +15474,11 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 0,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [],
+        "only_boolean_if": true,
+        "boolean_conditions": []
+      },
       "constant_registers_direct": [
         0
       ],
@@ -15208,6 +15706,28 @@
       "control_flow_balanced": true,
       "control_flow_max_depth": 1,
       "control_flow_depth_at_end": 0,
+      "static_branches": {
+        "sites": [
+          {
+            "dword": 178,
+            "opcode": "if",
+            "condition": "b0",
+            "condition_register_type": 14
+          },
+          {
+            "dword": 237,
+            "opcode": "else"
+          },
+          {
+            "dword": 241,
+            "opcode": "endif"
+          }
+        ],
+        "only_boolean_if": true,
+        "boolean_conditions": [
+          "b0"
+        ]
+      },
       "constant_registers_direct": [
         0,
         1,

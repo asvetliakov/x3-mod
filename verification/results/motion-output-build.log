@@ -1,10 +1,10 @@
--- Configuring done (0.1s)
+-- Configuring done (0.2s)
 -- Generating done (0.0s)
 -- Build files have been written to: /Users/asvetl/x3-mod/build
+[  7%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
 [  7%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
-[ 11%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
+[ 11%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/motion_capture.cpp.obj
 [ 14%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj
-[ 14%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/motion_capture.cpp.obj
 [ 18%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/execution_state.cpp.obj
 [ 22%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/application_admission.cpp.obj
 [ 25%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/application_admission_abi.cpp.obj
@@ -21,7 +21,7 @@
 [ 66%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/temporal_pass.cpp.obj
 [ 70%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/material_radiance.cpp.obj
 [ 74%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/motion_history.cpp.obj
-[ 81%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/rigid_position.cpp.obj
+[ 77%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/rigid_position.cpp.obj
 [ 81%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/material_motion.cpp.obj
 [ 85%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/motion_row_history.cpp.obj
 [ 88%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/motion_output.cpp.obj

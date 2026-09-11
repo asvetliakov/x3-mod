@@ -1,4 +1,4 @@
-D3D9 loaded: Y:\x3-mod\verification\probe\build\ownership-integration-off-smoke-20260912-024237-602946\d3d9.dll
+D3D9 loaded: Y:\x3-mod\verification\probe\build\ownership-integration-off-smoke-20260912-031512-272616\d3d9.dll
 D3D9 QueryInterface IUnknown: 0x00000000 PASS
 D3D9 COM identity: PASS
 DEVICE ITERATION 0

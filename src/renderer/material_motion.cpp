@@ -13,9 +13,16 @@ using Words = std::vector<std::uint32_t>;
 // 28-30 and 11-12.
 constexpr std::uint32_t end_token = 0x0000ffffu;
 constexpr unsigned op_dp4 = 0x09, op_dcl = 0x1f, op_def = 0x51, op_defb = 0x2f, op_defi = 0x30;
+constexpr unsigned op_if = 0x28, op_else = 0x2a, op_endif = 0x2b;
+constexpr unsigned op_call = 0x19, op_callnz = 0x1a, op_loop = 0x1b, op_ret = 0x1c, op_endloop = 0x1d;
+constexpr unsigned op_label = 0x1e, op_rep = 0x26, op_endrep = 0x27, op_ifc = 0x29;
 constexpr unsigned op_texkill = 0x41, op_comment = 0xfffe, op_end = 0xffff;
 constexpr unsigned temporary_class = 0, input_class = 1, constant_class = 2;
 constexpr unsigned output_class = 6, color_output_class = 8, depth_output_class = 9;
+constexpr unsigned boolean_class = 14;
+// Class C pixel programs hold `if b#`/`else`/`endif` blocks nested at most this
+// deep; the four captured programs have two sequential blocks (depth 1).
+constexpr unsigned max_branch_depth = 1;
 constexpr std::uint32_t parameter_bit = 0x80000000u, relative_bit = 0x00002000u;
 constexpr std::uint32_t predicated_bit = 0x10000000u;
 constexpr unsigned position_usage = 0, texcoord_usage = 5;
@@ -32,17 +39,37 @@ std::size_t instruction_length(std::uint32_t token) noexcept {
 bool definition_opcode(unsigned opcode) noexcept {
     return opcode == op_def || opcode == op_defi || opcode == op_defb;
 }
-// Control-flow and predication opcodes. Classes A and B are straight-line
-// pixel programs, so any of these in a pixel program refuses the transform.
-bool control_flow_opcode(unsigned opcode) noexcept {
+// Control-flow and predication opcodes other than the static `if b#`/`else`/
+// `endif` that class C admits. Classes A and B are straight-line pixel
+// programs, so any control flow refuses them; class C refuses these.
+bool refused_flow_opcode(unsigned opcode) noexcept {
     switch (opcode) {
     case 0x19: case 0x1a: case 0x1b: case 0x1c: case 0x1d: case 0x1e: // call, callnz, loop, ret, endloop, label
-    case 0x26: case 0x27: case 0x28: case 0x29: case 0x2a: case 0x2b: // rep, endrep, if, ifc, else, endif
+    case 0x26: case 0x27: case 0x29:                                  // rep, endrep, ifc (if_comp)
     case 0x2c: case 0x2d: case 0x5e: case 0x60:                       // break, breakc, setp, breakp
         return true;
     default:
         return false;
     }
+}
+bool static_branch_opcode(unsigned opcode) noexcept {
+    return opcode == op_if || opcode == op_else || opcode == op_endif;
+}
+// Vertex-side block structure: every table VS holds a `rep` light loop and an
+// `if b#` block, so the position dots and the arithmetic insert must be proven
+// to sit outside every block (the new dots would otherwise run conditionally
+// or per iteration). Subroutines make "depth 0" meaningless and refuse.
+bool block_open_opcode(unsigned opcode) noexcept {
+    return opcode == op_rep || opcode == op_loop || opcode == op_if || opcode == op_ifc;
+}
+bool block_close_opcode(unsigned opcode) noexcept {
+    return opcode == op_endrep || opcode == op_endloop || opcode == op_endif;
+}
+bool subroutine_opcode(unsigned opcode) noexcept {
+    return opcode == op_call || opcode == op_callnz || opcode == op_ret || opcode == op_label;
+}
+bool branching_class(const MotionOutputProfile& row) noexcept {
+    return row.transformation_class == MotionOutputClass::RelocatedRegistersWithBranches;
 }
 
 std::uint64_t fingerprint(const std::uint32_t* words, std::size_t count) noexcept {
@@ -116,17 +143,19 @@ bool pixel_reserved(const MotionOutputProfile& row, std::uint32_t token) noexcep
 // rows, the arithmetic insert one past the last dot, and no original
 // declaration, write or read of the chosen output register, TEXCOORD index or
 // previous-row constants. Relative addressing is permitted only when the row
-// says the draw-time light-loop bound applies.
+// says the draw-time light-loop bound applies. Block depth (`rep`/`loop`/`if`/
+// `ifc` against `endrep`/`endloop`/`endif`) must be zero at every position dot,
+// at the arithmetic insert and at END; `call`/`callnz`/`ret`/`label` refuse.
 bool vertex_structure(const MotionOutputProfile& row, const std::uint32_t* words,
                       std::size_t count) noexcept {
     if (words[0] != row.vertex_version) return false;
     const std::size_t header_end = row.vertex_declaration_insert_dword;
     bool header_boundary = false, arithmetic_boundary = false, relative = false;
     bool position_declared = false;
-    unsigned dots = 0;
+    unsigned dots = 0, depth = 0;
     const bool framed = walk(words, count, [&](std::size_t at, std::uint32_t token, std::size_t length) {
         if (at == header_end) header_boundary = true;
-        if (at == std::size_t(row.vertex_arithmetic_insert_dword)) arithmetic_boundary = true;
+        if (at == std::size_t(row.vertex_arithmetic_insert_dword)) arithmetic_boundary = depth == 0;
         const auto opcode = token & 0xffff;
         if (opcode == op_comment) return true;
         const bool declaration = opcode == op_dcl, definition = definition_opcode(opcode);
@@ -147,10 +176,15 @@ bool vertex_structure(const MotionOutputProfile& row, const std::uint32_t* words
                 return length >= 1 && (words[at + 1] & parameter_bit) && !vertex_reserved(row, words[at + 1]);
             return false;
         }
-        if (declaration || definition) return false;
+        if (declaration || definition || subroutine_opcode(opcode)) return false;
+        if (block_open_opcode(opcode)) ++depth;
+        else if (block_close_opcode(opcode) || opcode == op_else) {
+            if (depth == 0) return false;
+            if (opcode != op_else) --depth;
+        }
         for (unsigned lane = 0; lane < 4; ++lane)
             if (at == std::size_t(row.position_dp4_dwords[lane])) {
-                if (token != ((3u << 24) | op_dp4) ||
+                if (depth != 0 || token != ((3u << 24) | op_dp4) ||
                     words[at + 1] != (0xe0000000u | (std::uint32_t(row.position_lane_masks[lane]) << 16)) ||
                     words[at + 2] != (0x80e40000u | row.position_temporary) ||
                     words[at + 3] != (0xa0e40000u | (row.matrix_register + lane)))
@@ -160,23 +194,32 @@ bool vertex_structure(const MotionOutputProfile& row, const std::uint32_t* words
         return for_each_parameter(words, at, length, relative,
                                   [&](std::uint32_t parameter) { return !vertex_reserved(row, parameter); });
     });
-    return framed && header_boundary && position_declared && arithmetic_boundary && dots == 4 &&
+    return framed && header_boundary && position_declared && arithmetic_boundary && dots == 4 && depth == 0 &&
         (!relative || row.light_loop_bound_required);
 }
 
 // Revalidate the row's pixel-side facts: literal definitions up to the
-// definition insert, declarations up to the declaration insert, straight-line
-// executable code (no control flow, predication, texkill, oDepth write or
-// relative addressing; classes A and B are defined as straight-line programs
-// whose depth is the rasterized depth) up to the END at the append point, and
-// no original reference to the chosen input, TEXCOORD index, temporaries,
-// constants or color output.
+// definition insert, declarations up to the declaration insert, executable
+// code with no predication, texkill, oDepth write or relative addressing up to
+// the END at the append point, and no original reference to the chosen input,
+// TEXCOORD index, temporaries, constants or color output. Classes A and B are
+// straight-line programs; class C additionally admits `if b#`/`else`/`endif`
+// on a boolean constant register, balanced, nested at most max_branch_depth,
+// with one `else` per block and depth 0 at the append point (so the appended
+// fragment is unconditional), and requires at least one such block. Every
+// other control-flow opcode refuses. The walk is linear over all
+// instructions, so the register checks cover the branch bodies too. Depth is
+// the rasterized depth in every class, which the previous-depth output relies
+// on.
 bool pixel_structure(const MotionOutputProfile& row, const std::uint32_t* words,
                      std::size_t count) noexcept {
     if (words[0] != row.pixel_version || std::size_t(row.pixel_append_dword) != count - 1) return false;
     const std::size_t definition_end = row.pixel_definition_insert_dword;
     const std::size_t header_end = row.pixel_declaration_insert_dword;
     bool definition_boundary = false, header_boundary = false, relative = false;
+    const bool branches_allowed = branching_class(row);
+    unsigned depth = 0, blocks = 0;
+    bool else_seen[max_branch_depth + 1] = {};
     const bool framed = walk(words, count, [&](std::size_t at, std::uint32_t token, std::size_t length) {
         if (at == definition_end) definition_boundary = true;
         if (at == header_end) header_boundary = true;
@@ -194,14 +237,36 @@ bool pixel_structure(const MotionOutputProfile& row, const std::uint32_t* words,
                 declaration_usage(usage) != texcoord_usage ||
                 declaration_usage_index(usage) != row.texcoord_index;
         }
-        if (opcode == op_dcl || definition_opcode(opcode) || control_flow_opcode(opcode) ||
+        if (opcode == op_dcl || definition_opcode(opcode) || refused_flow_opcode(opcode) ||
             opcode == op_texkill || (token & predicated_bit))
             return false;
+        if (static_branch_opcode(opcode)) {
+            if (!branches_allowed || token != ((opcode == op_if ? 1u << 24 : 0u) | opcode)) return false;
+            if (opcode == op_if) {
+                // Exactly one direct boolean constant register as the condition.
+                const auto condition = words[at + 1];
+                if (depth == max_branch_depth || !(condition & parameter_bit) || (condition & relative_bit) ||
+                    register_type(condition) != boolean_class)
+                    return false;
+                else_seen[++depth] = false;
+                ++blocks;
+                return true;
+            }
+            if (depth == 0) return false;
+            if (opcode == op_else) {
+                if (else_seen[depth]) return false;
+                else_seen[depth] = true;
+            } else {
+                --depth;
+            }
+            return true;
+        }
         return for_each_parameter(words, at, length, relative, [&](std::uint32_t parameter) {
             return !pixel_reserved(row, parameter) && register_type(parameter) != depth_output_class;
         });
     });
-    return framed && definition_boundary && header_boundary && !relative;
+    return framed && definition_boundary && header_boundary && !relative && depth == 0 &&
+        (blocks != 0) == branches_allowed;
 }
 
 // Move one operand of our authored motion program to the row's registers.
@@ -278,10 +343,12 @@ bool motion_fragment(const MotionOutputProfile& row, Words& constants, Words& in
 
 bool supported_class(const MotionOutputProfile& row) noexcept {
     return row.transformation_class == MotionOutputClass::ReferenceRegisters ||
-        row.transformation_class == MotionOutputClass::RelocatedRegisters;
+        row.transformation_class == MotionOutputClass::RelocatedRegisters ||
+        branching_class(row);
 }
 // First row of a supported class for this program. A program shared with a
-// deferred-class row (none today) must still transform for its A/B pairs.
+// row of an unsupported class (none today) must still transform for its
+// supported pairs.
 const MotionOutputProfile* vertex_row(std::uint64_t hash, std::size_t count) noexcept {
     if (!hash) return nullptr;
     for (const auto& row : motion_output_profiles)

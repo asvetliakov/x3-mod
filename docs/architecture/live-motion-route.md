@@ -59,7 +59,7 @@ failed gate draws the original pair with no RT1 bound, exactly as today.
    frame in this mode, not only in requested capture frames.
 3. Shader pair: the currently bound VS and PS are both originals that have a
    registered variant, and the pair is one row of the reviewed profile table
-   (12 class A/B pairs; see "Pair keying" below).
+   (16 class A/B/C pairs; see "Pair keying" below).
 4. Draw state: alpha blend off, alpha test off, sRGB write off, Z enable and Z
    write on, COLORWRITEENABLE 15, no instancing on stream 0, integer constant
    i0.x in [0, 8] for profiles with a relative light loop.
@@ -117,23 +117,41 @@ output until that comparison passes on user-managed gameplay captures.
 Integration tests run the real DLL under Wine with the synthetic device fixtures
 in `verification/probe/` and check: capability refusal paths, sentinel fill,
 variant substitution with restore, constant shadow/restore, Reset with RT1
-owned, device release, and that non-eligible draws are untouched.
+owned, device release, and that non-eligible draws are untouched. The same
+runs repeat under the ownership wrapper (`X3M_OWNERSHIP=1`, alone, with the
+copy-depth/scene-depth path and with the admission monitor), because the
+gameplay run needs the wrapper for object lifetime and the route's native
+slots are then the wrapper's forwarders: the route must leave the wrapper's
+depth epochs, scene/state-block flags and admission untouched, order its
+target release before the wrapper's Reset, hold exactly one logical device
+reference per owned object so the final-Release probe still matches, and
+observe no loss the application would not observe. The analysis and results
+are in [motion-output verification](../verification/motion-output.md)
+("Ownership wrapper interaction"), together with the documented gameplay
+diagnostic command.
 
 ## Coverage plan
 
-The one reviewed Argon pair covers 24.2% of the 9,001 iteration-5 scene draws,
-between 0% and 41% per frame. The [key validation](../reverse-engineering/motion-history-key.md)
-shows the full key above matches 99.97% of keyable scene draws across adjacent
-frames with no in-frame duplicates; dropping buffer identity produces
-ambiguous sub-mesh splits. Broadening coverage requires per-profile insertion
-facts for the other SM3 material programs: 16 pairs covering 97.6% of scene
-draws fall into three transformation classes, tracked in
-[motion output profiles](../reverse-engineering/motion-output-profiles.md).
-The transformer is now table-driven for classes A and B (12 pairs, 56.9% of
-the captured scene draws); class C (four pairs, 40.7%) still needs the
-control-flow validation described there.
-Particles, stardust, overlays and SM2 programs remain outside this route and
-keep the sentinel, so the temporal resolve rejects history there.
+Two denominators appear in the evidence. The key validation uses the 24
+gameplay frames selected by the runtime boundary rules (9,001 scene draws);
+the profile study uses a clear-segment approximation over all 28 captured
+frames (11,493 scene-segment draws). Against the profile denominator, the
+Argon pair alone is 19.0% of scene draws and the 16 transformable pairs are
+97.6%; against the gameplay denominator the Argon pair is 24.2%, between 0%
+and 41% per frame.
+
+The [key validation](../reverse-engineering/motion-history-key.md) shows the
+full key above matches 99.97% of keyable scene draws across adjacent frames
+with no in-frame duplicates; dropping buffer identity produces ambiguous
+sub-mesh splits. The transformer is table-driven for classes A, B and C from
+[motion output profiles](../reverse-engineering/motion-output-profiles.md):
+16 pairs (35.0% + 21.9% + 40.7%). The remaining 2.4% of scene-segment draws
+(four direct-clip bloom pairs, five SM1/SM2 pairs) has no row and keeps the
+sentinel. Background and planet draws before the scene's depth clear,
+particles, stardust, overlays and GUI also keep the sentinel, so the temporal
+resolve rejects history there. The inventory comes from one capture session;
+pairs first seen in other sectors are refused at gate 3 and show up in the
+per-frame gate histogram, after which the generator can classify them.
 
 ## Implementation (checkpoint B1, 2026-09-12)
 
@@ -149,7 +167,7 @@ captures are the next step.
 | `src/proxy/motion_output.{h,cpp}` | Per-device route: variant registry, state shadow, motion target, capability self test, sentinel fill, gates, substitution/restoration, history, diagnostics |
 | `src/renderer/motion_row_history.{h,cpp}` | Pure in-frame previous-row table (lookup against the sealed previous frame while collecting); `MotionHistory` stays untouched as the replay reference |
 | `src/renderer/material_motion.{h,cpp}` | Table-driven transformer, `material_motion_vertex_variant` / `material_motion_pixel_variant` (each stage is created separately by the game); the pair function remains for the detached fixtures; `material_motion_reviewed_pairs` is the profile table |
-| `src/renderer/motion_output_profiles.h` + `motion_output_profiles_inc.h` | Row struct, class enum and the generated 12-row table (classes A and B) with compile-time consistency checks; see [material-motion-prototype.md](material-motion-prototype.md) |
+| `src/renderer/motion_output_profiles.h` + `motion_output_profiles_inc.h` | Row struct, class enum and the generated 16-row table (classes A, B and C) with compile-time consistency checks; see [material-motion-prototype.md](material-motion-prototype.md) |
 | `src/proxy/capture.cpp` | Hook installation, state block wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT` parsing |
 | `src/proxy/scene_capture.{h,cpp}` | `describe_surface` shared with the route |
 | `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only) |
@@ -268,8 +286,8 @@ of these before and after each fill and each routed draw.
 
 ### Not covered
 
-Jitter, any temporal consumer, gameplay captures, class C pairs and the
-SM1/SM2/bloom programs outside the table, instanced or user-memory draws,
+Jitter, any temporal consumer, gameplay captures, the SM1/SM2/bloom programs
+outside the table, instanced or user-memory draws,
 MSAA targets, Direct3D9Ex, native Windows
 execution (cross-compiled only), and the measured cost of the setter hooks in
 the game (each still takes the capture mutex and the admission entry; the

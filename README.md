@@ -55,7 +55,11 @@ The live motion route is opt-in and diagnostic: `--motion-output` (env
 `X3M_MOTION_OUTPUT=1`) draws the reviewed material pair through transformed
 variants into a private RGBA32F RT1 and writes it back in capture frames. Object
 history needs `--object-trace --object-lifetime`; without them the route runs in
-sentinel-only mode. See [live motion route](docs/architecture/live-motion-route.md).
+sentinel-only mode. See [live motion route](docs/architecture/live-motion-route.md)
+and the exact gameplay diagnostic command in
+[motion-output verification](docs/verification/motion-output.md#gameplay-diagnostic-run).
+`launch --dry-run` validates the options and prints the resolved command and
+`X3M_*` environment without starting the game.
 
 ```sh
 python3 tools/manage.py status

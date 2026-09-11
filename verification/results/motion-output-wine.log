@@ -2,3 +2,15 @@
 ==== production-on
 ==== seam-off
 ==== seam-on
+==== production-ownership-off
+==== production-ownership-on
+==== seam-ownership-off
+==== seam-ownership-on
+==== production-depth-off
+==== production-depth-on
+==== seam-depth-off
+==== seam-depth-on
+==== production-admission-off
+==== production-admission-on
+==== seam-admission-off
+==== seam-admission-on

@@ -37,9 +37,15 @@ PROFILES = RESULTS / 'motion-output-profiles.json'
 ROW_PATTERN = re.compile(
     r'\{0x([0-9a-f]{16})ull, (\d+), 0xfffe0300u,\s*0x([0-9a-f]{16})ull, (\d+), 0xffff0300u,\s*'
     r'MotionOutputClass::(\w+),')
-CLASS_LETTER = {'ReferenceRegisters': 'A', 'RelocatedRegisters': 'B'}
+CLASS_LETTER = {'ReferenceRegisters': 'A', 'RelocatedRegisters': 'B', 'RelocatedRegistersWithBranches': 'C'}
 ROW_CHECKS_PER_CONFIG = 14  # same_draw, replay reference, 9 covered samples, 2 bilateral, changed depth
 ROW_SAMPLES_PER_CONFIG = 36
+# Pixel boolean settings (b0 = bit 0, b1 = bit 1) per row class: class C repeats
+# its configurations under all four, after a per-format control that the
+# booleans change the original image.
+BOOLEAN_COMBINATIONS = {'A': [0], 'B': [0], 'C': [0, 1, 2, 3]}
+BOOLEAN_CONTROL = 'CHECK boolean branches change original material PASS'
+ARGON = ('53a0a641107ed76c', '8759c7838bbc86c2')
 
 def table_rows():
     """Rows of the generated header: (vs, vs_dwords, ps, ps_dwords, class letter)."""
@@ -88,11 +94,18 @@ def validate_rows(lines, mixed, first_config, rows, inputs):
         at += 2
         end = next(k for k in range(at, len(lines)) if lines[k].startswith('ROW '))
         block, at = lines[at:end], end + 1
-        configs = re.findall(r'^CONFIG id=(\d+) width=32 height=32 format=(\d+) packed=(\d) perspective=(\d) lights=0 valid=(\d) translation=([-\d.]+) jitter=([-\d.]+),([-\d.]+)$', '\n'.join(block), re.M)
+        configs = re.findall(r'^CONFIG id=(\d+) width=32 height=32 format=(\d+) packed=(\d) perspective=(\d) lights=0 valid=(\d) translation=([-\d.]+) jitter=([-\d.]+),([-\d.]+) booleans=(\d)$', '\n'.join(block), re.M)
         formats = [116, 21] if mixed else [116]
-        assert [int(c[0]) for c in configs] == list(range(config_id, config_id + 3 * len(formats)))
-        assert [int(c[1]) for c in configs] == [f for f in formats for _ in range(3)]
-        assert [(c[2], c[3], c[4]) for c in configs] == [('0', '0', '1'), ('1', '1', '1'), ('1', '1', '0')] * len(formats)
+        combinations = BOOLEAN_COMBINATIONS[letter]
+        assert [int(c[0]) for c in configs] == list(range(config_id, config_id + 3 * len(formats) * len(combinations)))
+        assert [int(c[1]) for c in configs] == [f for f in formats for _ in range(3 * len(combinations))]
+        assert [(c[2], c[3], c[4]) for c in configs] == [('0', '0', '1'), ('1', '1', '1'), ('1', '1', '0')] * (len(formats) * len(combinations))
+        assert [int(c[8]) for c in configs] == [b for _ in formats for b in combinations for _ in range(3)]
+        # Class C: the boolean control precedes each format's configurations.
+        controls = [k for k, l in enumerate(block) if l == BOOLEAN_CONTROL]
+        config_lines = [k for k, l in enumerate(block) if l.startswith('CONFIG ')]
+        assert len(controls) == (len(formats) if letter == 'C' else 0)
+        assert controls == [config_lines[3 * len(combinations) * f] - 1 for f in range(len(formats))] if controls else True
         config_id += len(configs)
         color = re.findall(r'^COLOR (\w+) width=32 height=32 format=(\d+) components=(\d+) covered=(\d+) mismatches=(\d+) maximum=([^\s]+)$', '\n'.join(block), re.M)
         # 32x32 targets: at least half the pixels must be covered original geometry for the identity to mean anything.
@@ -110,14 +123,15 @@ def validate_rows(lines, mixed, first_config, rows, inputs):
         reference = re.findall(r'^REFERENCE config=(\d+) components=4096 mismatches=(\d+) max=([^\s]+)$', '\n'.join(block), re.M)
         assert len(reference) == len(configs) and all(int(r[1]) == 0 and float(r[2]) <= 2e-6 for r in reference)
         checks = [l for l in block if l.startswith('CHECK ')]
-        assert len(checks) == ROW_CHECKS_PER_CONFIG * len(configs) and all(l.endswith(' PASS') for l in checks)
+        assert len(checks) == ROW_CHECKS_PER_CONFIG * len(configs) + len(controls) and all(l.endswith(' PASS') for l in checks)
         assert lines[end] == head + f'PASS configurations={len(configs)}', lines[end]
         assert len(block) == len(configs) + len(color) + len(samples) + len(reference) + len(checks), 'unexpected lines in row block'
         totals['checks'] += 1 + len(checks); totals['numerical'] += len(samples)
         totals['color_components'] += sum(int(c[2]) for c in color)
         totals['depth_cases'] += 2 * len(configs); totals['configurations'] += len(configs)
         results.append(dict(index=index, vs=vs, ps=ps, transformation_class=letter, status='PASS',
-                            configurations=len(configs), checks=1 + len(checks), samples=len(samples),
+                            configurations=len(configs), boolean_combinations=combinations, boolean_controls=len(controls),
+                            checks=1 + len(checks), samples=len(samples),
                             color_components=sum(int(c[2]) for c in color), min_covered=min(int(c[3]) for c in color),
                             max_analytic_uv_error_pixels=uv, max_analytic_previous_depth_error=depth,
                             max_replay_reference_error=max(float(r[2]) for r in reference)))
@@ -140,7 +154,7 @@ def validate_report(text):
     table = table_rows()  # Not `rows`: the timing loop below reuses that name.
     row_results, row_totals = validate_rows(row_lines, mixed, expected[4] + 1, table, row_inputs(table))
     transformed = sum(r['status'] == 'PASS' for r in row_results)
-    assert transformed >= 1 and row_results[0]['status'] == 'PASS', 'the Argon row must run'
+    assert any(r['status'] == 'PASS' and (r['vs'], r['ps']) == ARGON for r in row_results), 'the Argon row must run'
     terminal = 'RESULT PASS checks=%u numerical=%u color_components=%u depth_cases=%u configurations=%u devices=3 rows=%u row_transformed=%u row_skipped=%u' % (
         expected[0] + row_totals['checks'], expected[1] + row_totals['numerical'], expected[2] + row_totals['color_components'],
         expected[3] + row_totals['depth_cases'], expected[4] + row_totals['configurations'], len(table), transformed, len(table) - transformed)
@@ -155,7 +169,7 @@ def validate_report(text):
     for name in ('d3d9.dll', 'wined3d.dll'):
         modules = re.findall(r'^MODULE name=' + re.escape(name) + r' path=(.+)$', text, re.M)
         assert len(modules) == 2 and all(p.lower().rstrip('\r') == 'c:\\windows\\system32\\' + name for p in modules)
-    configs = re.findall(r'^CONFIG id=(\d+) width=(\d+) height=(\d+) format=(\d+) packed=(\d) perspective=(\d) lights=(\d+) valid=(\d) translation=([-\d.]+) jitter=([-\d.]+),([-\d.]+)$', text, re.M)
+    configs = re.findall(r'^CONFIG id=(\d+) width=(\d+) height=(\d+) format=(\d+) packed=(\d) perspective=(\d) lights=(\d+) valid=(\d) translation=([-\d.]+) jitter=([-\d.]+),([-\d.]+) booleans=0$', text, re.M)
     assert len(configs) == expected[4] and [int(c[0]) for c in configs] == list(range(1, expected[4]+1))
     assert {(int(c[1]), int(c[2])) for c in configs} == {(32,32),(1280,768),(5120,1440)}
     assert {int(c[6]) for c in configs} == {0,1,8} and {int(c[7]) for c in configs} == {0,1}

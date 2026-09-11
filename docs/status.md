@@ -38,16 +38,30 @@ Evidence at this checkpoint:
   matches 99.97% of keyable scene draws across 18 adjacent frame pairs with no
   in-frame duplicates; dropping buffer identity leaves 174 ambiguous sub-mesh
   splits. See [motion history key](reverse-engineering/motion-history-key.md).
-- Shader coverage: 16 SM3 material pairs covering 97.6% of scene draws fall into
-  three transformation classes. The transformer is now table-driven from
-  `src/renderer/motion_output_profiles_inc.h` and transforms all 12 class A and
-  B pairs (56.9% of scene draws): 121 structural checks, 622,336 single-bit
-  mutations rejected, 24 program perturbations per row, and the GPU fixture
-  passes every row with color identical and motion within 0.00086 px. The four
-  class C pairs (40.7%) with static branches are still refused. See
+- Shader coverage: the transformer is table-driven from
+  `src/renderer/motion_output_profiles_inc.h` and transforms all 16
+  transformable SM3 material pairs (97.6% of scene-segment draws; classes A, B
+  and C, the last with static boolean branches): 161 structural check groups,
+  925,248 single-bit mutations rejected, 26–40 program perturbations per row,
+  and the GPU fixture passes every row and every branch combination with color
+  identical and motion within 0.00086 px. The remaining 2.4% (bloom, SM1/SM2)
+  keeps the sentinel. See
   [motion output profiles](reverse-engineering/motion-output-profiles.md),
-  [material motion](verification/material-motion.md) and
-  [review 13](verification/review-13.md).
+  [material motion](verification/material-motion.md),
+  [review 13](verification/review-13.md) and [review 14](verification/review-14.md).
+- The motion-output fixture now runs in 16 environments including the
+  ownership wrapper, depth copy and admission, which the gameplay run needs.
+  That coverage found and fixed a refcount defect that would have leaked the
+  device under the wrapper. See [motion output](verification/motion-output.md).
+- [Motion readback analyzer](verification/motion-readback.md) checks capture
+  readbacks without geometry: integrity, static consistency, row-pair
+  consistency (3,402/3,402 fixture pixels explained at 0.0018 px), displacement
+  statistics and temporal cross-checks. The depth comparison stays unavailable
+  until the route writes a depth image.
+- [Temporal integration design](architecture/temporal-integration.md): resolve
+  at the pre-bloom copy point, current depth from a third R32F target written by
+  the variants, reactive coverage derived from its sentinel, per-draw explicit
+  jitter because the game's state manager skips repeated uploads.
 - [Constant upload disassembly](reverse-engineering/constant-uploads.md): all
   game shader/constant setters come from its two D3DX effect state managers in
   BeginPass; no game code writes the reserved constant ranges; the pure-device
@@ -65,14 +79,15 @@ cost in gameplay is unmeasured, and no temporal consumer reads the output.
 
 ## Concrete next work
 
-1. Extend the table-driven transformer to class C (balanced static branches in
-   the PS) with control-flow depth validation and the same fixtures.
-2. User-managed diagnostic run with `X3M_MOTION_OUTPUT=1`, object trace and
-   lifetime enabled: capture frames with motion readback, compare against the
-   CPU projection of stored previous rows, check color bit-identity against a
-   route-off capture of the same scene, and measure frame time with the route
-   off/on. Include the constant-upload disassembly findings when choosing which
-   setter hooks stay on the hot path.
+1. Implement step 1 of the temporal integration design: R32F current-depth
+   target written by the variants, per-draw jitter, fixtures, and depth support
+   in the readback analyzer.
+2. User-managed diagnostic run with the installed route (command in
+   [motion output](verification/motion-output.md), "Gameplay diagnostic run"):
+   capture runs of at least three consecutive frames including one stationary
+   view, then run the readback analyzer, compare color against a route-off
+   capture of the same scene, and read the per-frame gate histogram for
+   unclassified shader pairs and frame time.
 3. Add projection jitter in the same hook and connect matched color/depth/motion
    to the temporal resolve; define the camera-cut policy from the observed
    camera-serial and view-delta evidence.

@@ -230,15 +230,15 @@ void surface_info(const char* name, IDirect3DSurface9* surface) {
             surface,id,desc.Width,desc.Height,desc.Format,desc.Usage,desc.MultiSampleType,parent_id,parent_type,container_result);
     else log("surface role=%s ptr=%p identity=%llu result=%08lx",name,surface,id,result);
 }
-void ownership_depth_info(IDirect3DDevice9* d, uint64_t device, const char* phase) {
+void ownership_depth_info(IDirect3DDevice9* d, uint64_t device, uint64_t frame, const char* phase) {
     // This is a borrowed diagnostic snapshot, never a resource adoption or a
     // GPU allocation. Native/default mode must not query ownership internals.
     if (!ownership::borrowed_native_device(d)) return;
     ownership::CopyDepthView view{};
     const HRESULT result = ownership::get_copy_depth_view(d, &view);
     const auto& desc = view.source_desc;
-    log("ownership_copy_depth phase=%s device=%llu result=%08lx status=%08lx requested=%u available=%u source_bound=%u copy_valid=%u generation=%llu source_epoch=%llu copy_epoch=%llu source_width=%u source_height=%u source_format=%u source_type=%u source_usage=%lu source_pool=%u source_msaa=%u source_quality=%lu",
-        phase,device,result,view.status,view.requested,view.available,view.source_bound,view.copy_valid,
+    log("ownership_copy_depth phase=%s device=%llu frame=%llu result=%08lx status=%08lx requested=%u available=%u source_bound=%u copy_valid=%u generation=%llu source_epoch=%llu copy_epoch=%llu source_width=%u source_height=%u source_format=%u source_type=%u source_usage=%lu source_pool=%u source_msaa=%u source_quality=%lu",
+        phase,device, frame,result,view.status,view.requested,view.available,view.source_bound,view.copy_valid,
         view.generation,view.source_epoch,view.copy_epoch,desc.Width,desc.Height,desc.Format,desc.Type,
         desc.Usage,desc.Pool,desc.MultiSampleType,desc.MultiSampleQuality);
 }
@@ -423,6 +423,11 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     }
     if (ctx.capture || ctx.frame%300==0) log("frame_end device=%llu frame=%llu draws=%llu capture=%u present=%08lx",ctx.id,ctx.frame,ctx.draws,ctx.capture,hr);
     if(ctx.capture||ctx.frame%300==0)finite_upload_metrics(d,ctx,"present");
+    // With the route requested, log the wrapper's copy-depth epochs per capture
+    // frame: source_epoch counts the application's depth clears that found the
+    // original depth bound, so it witnesses that the route's own depth unbind
+    // (the sentinel fill, restored inside the draw hook) never reached one.
+    if(ctx.capture&&motion_output_requested)ownership_depth_info(d,ctx.id,ctx.frame,"present");
     if(ctx.capture||ctx.frame%300==0){
         if(auto* monitor=ownership::process_admission_monitor()){
             const auto state=ownership::admission_snapshot(monitor);
@@ -462,7 +467,7 @@ HRESULT WINAPI reset(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p) {
     HRESULT hr=fn(d,p);cpu.after_original(); telemetry::record(ctx.stats,telemetry::Metric::Reset,telemetry::now()-begin,FAILED(hr));
     presentation_parameters("reset_after",ctx.id,ctx.stats.focus_window,p);
     ctx.motion_output.after_reset(hr);
-    ownership_depth_info(d,ctx.id,"reset_after");
+    ownership_depth_info(d,ctx.id,ctx.frame,"reset_after");
     finite_upload_metrics(d,ctx,"reset_after");
     if(SUCCEEDED(hr)&&p&&p->hDeviceWindow)ctx.stats.window=p->hDeviceWindow;
     telemetry::summary(ctx.stats,"reset",ctx.frame);
@@ -945,7 +950,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         hooked.set(87,set_declaration);hooked.set(89,set_fvf);hooked.set(47,set_viewport);
         hooked.set(59,create_stateblock);hooked.set(60,begin_stateblock);hooked.set(61,end_stateblock);
     }
-    ownership_depth_info(d,devices.at(d)->id,"create_after");
+    ownership_depth_info(d,devices.at(d)->id,devices.at(d)->frame,"create_after");
 }
 ULONG WINAPI release_factory(IDirect3D9* d) {
     CpuCallBoundary cpu;

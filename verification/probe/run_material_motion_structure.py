@@ -36,10 +36,20 @@ ROW_CHECKS = [
     'authored_fragment_register_bits_literals_and_opcodes',
     'invalid_wrong_pair_truncated_appended_atomic_refusal',
     'twenty_one_row_perturbations_refused_atomically',
-    'twenty_four_program_perturbations_refused_by_revalidation',
+    None,  # program perturbations: class-dependent, see PROGRAM_PERTURBATIONS
     'every_input_dword_every_bit_atomic_refusals',
     'six_input_output_alias_layouts_applied', 'cross_alias_refusal_atomic',
 ]
+# Every class proves refusal of an unterminated vertex-side block before the
+# position dots; straight-line classes prove refusal of a well-formed pixel
+# static branch; class C additionally proves the balance, depth, opcode,
+# condition and in-branch register refusals of the transformer's branch rule.
+PROGRAM_PERTURBATIONS = {
+    'A': (26, 'twenty_six_program_perturbations_refused_by_revalidation'),
+    'B': (26, 'twenty_six_program_perturbations_refused_by_revalidation'),
+    'C': (40, 'forty_program_perturbations_refused_by_revalidation')}
+CLASS_LETTER = {'ReferenceRegisters': 'A', 'RelocatedRegisters': 'B',
+                'RelocatedRegistersWithBranches': 'C'}
 ARGON_CHECK = 'argon_output_byte_identical_to_previous_transformer'
 ARGON = ('53a0a641107ed76c', '8759c7838bbc86c2')
 ROW_PATTERN = re.compile(
@@ -106,23 +116,24 @@ def validate(text, rows, inputs):
                             'reason': 'missing_local_program' + missing})
             at += 1
             continue
-        expected = ['CHECK row=%d %s' % (index, name) for name in ROW_CHECKS]
+        letter = CLASS_LETTER[klass]
+        program_perturbations, perturbation_check = PROGRAM_PERTURBATIONS[letter]
+        expected = ['CHECK row=%d %s' % (index, name or perturbation_check) for name in ROW_CHECKS]
         if (vs, ps) == ARGON:
             expected.insert(1, 'CHECK row=%d %s' % (index, ARGON_CHECK))
         assert lines[at:at + len(expected)] == expected, (index, lines[at:at + len(expected)])
         at += len(expected)
         row_mutations = 32 * (vs_dwords + ps_dwords)
-        letter = {'ReferenceRegisters': 'A', 'RelocatedRegisters': 'B'}[klass]
         vertex_words, pixel_words = vs_dwords + 19, ps_dwords + 132
         assert lines[at] == (f'ROW index={index} vs={vs} ps={ps} class={letter} status=PASS '
                              f'vertex_words={vertex_words} pixel_words={pixel_words} mutations={row_mutations} '
-                             f'program_perturbations=24'), lines[at]
+                             f'program_perturbations={program_perturbations}'), lines[at]
         at += 1
         checks += len(expected); mutations += row_mutations; aliases += 6
         results.append({'index': index, 'vs': vs, 'ps': ps, 'class': letter, 'status': 'PASS',
                         'checks': len(expected), 'vertex_words': vertex_words, 'pixel_words': pixel_words,
                         'single_bit_mutations': row_mutations, 'row_perturbations': 21,
-                        'program_perturbations': 24, 'alias_layouts': 6})
+                        'program_perturbations': program_perturbations, 'alias_layouts': 6})
     transformed = sum(r['status'] == 'PASS' for r in results)
     skipped = len(results) - transformed
     terminal = (f'RESULT PASS rows={len(rows)} transformed={transformed} skipped={skipped} '
@@ -149,7 +160,9 @@ def main():
         report.update(sources_before=before, programs_directory=str(PROGRAMS), inputs_before=raw_before,
                       profiles_json_sha256=sha(PROFILES),
                       compiler=subprocess.check_output([compiler, '--version'], text=True).strip(),
-                      compiler_path=compiler, host_only=True, expected_row_checks=ROW_CHECKS,
+                      compiler_path=compiler, host_only=True,
+                      expected_row_checks=[name or 'program_perturbations_by_class' for name in ROW_CHECKS],
+                      expected_program_perturbations={k: v[0] for k, v in PROGRAM_PERTURBATIONS.items()},
                       expected_argon_check=ARGON_CHECK)
         # Input SHA256s are provenance; the transformer independently qualifies
         # each exact pair using its full-program fingerprint, size and structure.

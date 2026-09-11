@@ -8,8 +8,10 @@
 // Classes emitted:
 //   A_reference_registers = MotionOutputClass::ReferenceRegisters
 //   B_relocated_registers = MotionOutputClass::RelocatedRegisters
-// Deferred, name reserved so the schema does not change:
 //   C_relocated_registers_with_static_branches = MotionOutputClass::RelocatedRegistersWithBranches
+// RelocatedRegistersWithBranches rows: the pixel program holds only
+// if b#/else/endif blocks (boolean constant conditions, nesting depth <= 1,
+// balanced, depth 0 at the append point); the transformer revalidates this.
 // Field order:
 //   vertex_fingerprint, vertex_dword_count, vertex_version
 //   pixel_fingerprint, pixel_dword_count, pixel_version
@@ -26,11 +28,21 @@
 // light_loop_bound_required means the vertex program reads constants
 // relatively: refuse the variant unless integer i0.x is checked in
 // [0, light_loop_max_count] at draw time.
+{0x494fe349b8bc12ecull, 526, 0xfffe0300u,
+ 0xfffdabd910793abaull, 1648, 0xffff0300u,
+ MotionOutputClass::RelocatedRegistersWithBranches, 24, 1, {450, 454, 458, 462}, {1, 2, 4, 8},
+ 335, 466, 1280, 1313, 1647,
+ 6, 4, 6, 6, 1, 252, 216, true, 8},
 {0x53a0a641107ed76cull, 526, 0xfffe0300u,
  0x8759c7838bbc86c2ull, 1260, 0xffff0300u,
  MotionOutputClass::ReferenceRegisters, 24, 1, {450, 454, 458, 462}, {1, 2, 4, 8},
  335, 466, 1047, 1074, 1259,
  6, 4, 5, 5, 1, 252, 216, true, 8},
+{0x37c34a7478544c14ull, 768, 0xfffe0300u,
+ 0x5f82ecacd39529cdull, 1765, 0xffff0300u,
+ MotionOutputClass::RelocatedRegistersWithBranches, 24, 2, {633, 637, 641, 645}, {1, 2, 4, 8},
+ 500, 649, 1325, 1370, 1764,
+ 9, 7, 8, 6, 1, 252, 216, true, 8},
 {0x4944d81dfe531b37ull, 556, 0xfffe0300u,
  0xca6bfa4a6cca7e2aull, 1328, 0xffff0300u,
  MotionOutputClass::RelocatedRegisters, 24, 2, {477, 481, 485, 489}, {1, 2, 4, 8},
@@ -46,6 +58,11 @@
  MotionOutputClass::RelocatedRegisters, 24, 2, {477, 481, 485, 489}, {1, 2, 4, 8},
  344, 493, 1062, 1098, 1353,
  7, 5, 6, 7, 1, 252, 216, true, 8},
+{0x37c34a7478544c14ull, 768, 0xfffe0300u,
+ 0xf1b0e820c7b488c3ull, 1791, 0xffff0300u,
+ MotionOutputClass::RelocatedRegistersWithBranches, 24, 2, {633, 637, 641, 645}, {1, 2, 4, 8},
+ 500, 649, 1325, 1373, 1790,
+ 9, 7, 8, 6, 1, 252, 216, true, 8},
 {0x53a0a641107ed76cull, 526, 0xfffe0300u,
  0x63f96eba9eea7880ull, 1292, 0xffff0300u,
  MotionOutputClass::ReferenceRegisters, 24, 1, {450, 454, 458, 462}, {1, 2, 4, 8},
@@ -56,6 +73,11 @@
  MotionOutputClass::RelocatedRegisters, 24, 2, {471, 475, 479, 483}, {1, 2, 4, 8},
  347, 487, 241, 274, 447,
  8, 6, 7, 5, 1, 252, 216, true, 8},
+{0x494fe349b8bc12ecull, 526, 0xfffe0300u,
+ 0xe6794b6ec37ff71aull, 1674, 0xffff0300u,
+ MotionOutputClass::RelocatedRegistersWithBranches, 24, 1, {450, 454, 458, 462}, {1, 2, 4, 8},
+ 335, 466, 1280, 1316, 1673,
+ 6, 4, 6, 6, 1, 252, 216, true, 8},
 {0x53a0a641107ed76cull, 526, 0xfffe0300u,
  0x3b94320087e81945ull, 1264, 0xffff0300u,
  MotionOutputClass::ReferenceRegisters, 24, 1, {450, 454, 458, 462}, {1, 2, 4, 8},

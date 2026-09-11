@@ -71,6 +71,15 @@ def synthetic_pixel(extra=()):
     return words(0xffff0300, *(w for item in body for w in item), 0x0000ffff)
 
 
+# Static branch tokens: `if` (0x28) takes one source, `else`/`endif` none.
+IF_B0 = instruction(0x28, source(14, 0))
+IF_B1 = instruction(0x28, source(14, 1))
+ELSE, ENDIF = instruction(0x2a), instruction(0x2b)
+MOVE = instruction(1, destination(0, 0), source(1, 0))
+STATIC_BLOCKS = [*IF_B0, *MOVE, *ELSE, *MOVE, *ENDIF, *IF_B1, *MOVE, *ENDIF]
+CLASS_C = 'C_relocated_registers_with_static_branches'
+
+
 class MotionOutputProfileTests(unittest.TestCase):
     def setUp(self):
         self.result = load()
@@ -342,6 +351,64 @@ class MotionOutputProfileTests(unittest.TestCase):
             _, blocking, _, _ = classify(profile(synthetic_vertex(), 'vs_test', 'vs', '3_0'), pixel)
             assert reason in blocking, (reason, blocking)
 
+    def test_class_c_programs_hold_two_boolean_blocks(self):
+        rows = [p for p in self.pairs if p['transformation_class'] == CLASS_C]
+        assert len(rows) == 4 and sum(p['draws'] for p in rows) == 4680
+        for pair in rows:
+            pixel = self.programs['ps_' + pair['ps']]
+            assert pixel['control_flow_counts'] == {'else': 2, 'endif': 2, 'if': 2}
+            assert pixel['control_flow_balanced'] is True
+            assert pixel['control_flow_max_depth'] == 1
+            assert pixel['control_flow_depth_at_end'] == 0
+            branches = pixel['static_branches']
+            assert branches['only_boolean_if'] is True
+            assert branches['boolean_conditions'] == ['b0', 'b1']
+            assert [s['opcode'] for s in branches['sites']] == ['if', 'else', 'endif'] * 2
+            assert [s['condition'] for s in branches['sites'] if s['opcode'] == 'if'] == ['b0', 'b1']
+            assert all(s['dword'] < pixel['append_dword'] for s in branches['sites'])
+            assert pixel['texkill_dwords'] == [] and pixel['depth_output_dwords'] == []
+            assert pixel['predicated_or_coissued_dwords'] == []
+            assert pixel['relative_addressing']['present'] is False
+            assert 'ps_control_flow_else,endif,if' in pair['differences_from_reference']
+            assert pair['insertion_plan']['ps_temporaries'] == [6, 7, 8]
+        assert {(p['vs'], p['ps']) for p in rows} == {
+            ('494fe349b8bc12ec', 'fffdabd910793aba'), ('37c34a7478544c14', '5f82ecacd39529cd'),
+            ('37c34a7478544c14', 'f1b0e820c7b488c3'), ('494fe349b8bc12ec', 'e6794b6ec37ff71a')}
+
+    def test_synthetic_static_boolean_blocks_are_class_c(self):
+        pixel = profile(synthetic_pixel(extra=[STATIC_BLOCKS]), 'ps_test', 'ps', '3_0')
+        assert pixel['control_flow_balanced'] and pixel['control_flow_max_depth'] == 1
+        assert pixel['static_branches']['only_boolean_if'] is True
+        assert pixel['static_branches']['boolean_conditions'] == ['b0', 'b1']
+        name, blocking, differences, plan = classify(
+            profile(synthetic_vertex(), 'vs_test', 'vs', '3_0'), pixel)
+        assert name == CLASS_C and blocking == [], blocking
+        assert 'ps_control_flow_else,endif,if' in differences
+        assert plan['ps_append_dword'] == pixel['end_dword']
+
+    def test_synthetic_other_control_flow_is_not_class_c(self):
+        vertex = profile(synthetic_vertex(), 'vs_test', 'vs', '3_0')
+        cases = {
+            'nested': [*IF_B0, *IF_B1, *MOVE, *ENDIF, *ENDIF],
+            'if_comp': [*instruction(0x29, source(1, 0), source(1, 0)), *MOVE, *ENDIF],
+            'float_condition': [*instruction(0x28, source(2, 8)), *MOVE, *ENDIF],
+            'predicate_condition': [*instruction(0x28, source(19, 0)), *MOVE, *ENDIF],
+            'rep': [*instruction(0x26, source(7, 0)), *MOVE, *instruction(0x27)],
+            'break_inside': [*IF_B0, *instruction(0x2c), *ENDIF],
+            'missing_endif': [*IF_B0, *MOVE],
+            'else_without_if': [*ELSE, *MOVE],
+        }
+        for label, extra in cases.items():
+            pixel = profile(synthetic_pixel(extra=[extra]), 'ps_test', 'ps', '3_0')
+            name, blocking, _, plan = classify(vertex, pixel)
+            assert name.startswith('X_') and blocking and plan == {}, (label, name, blocking)
+            if label == 'nested':
+                assert 'ps_control_flow_depth_2_exceeds_1' in blocking
+            elif label in ('missing_endif', 'else_without_if'):
+                assert 'ps_control_flow_not_balanced' in blocking
+            else:
+                assert 'ps_control_flow_not_static_boolean_if' in blocking, (label, blocking)
+
     def test_malformed_programs_fail_closed(self):
         for code, label in ((b'\x00\x03\xfe\xff', 'no_end'),
                             (words(0xfffe0300, 0x0000ffff, 0x0000ffff), 'trailing'),
@@ -403,18 +470,51 @@ class GeneratedHeaderTests(unittest.TestCase):
             assert any('%s = MotionOutputClass::%s' % (name, symbol) in line
                        for line in banner), name
 
-    def test_only_classes_a_and_b_are_emitted(self):
+    def test_classes_a_b_and_c_are_emitted(self):
         expected = header_rows(self.result)
-        assert len(self.rows) == len(expected)
+        assert len(self.rows) == len(expected) == 16
         emitted = {'MotionOutputClass::' + symbol for symbol in HEADER_CLASSES.values()}
         deferred = {pair['ps'] for pair in self.result['pairs']
                     if pair['transformation_class'] in DEFERRED_CLASSES}
+        blocked = {pair['ps'] for pair in self.result['pairs']
+                   if pair['transformation_class'].startswith('X_')}
         for row, pair in zip(self.rows, expected):
             assert row[6] in emitted, row[6]
+            assert row[6] == 'MotionOutputClass::' + HEADER_CLASSES[pair['transformation_class']]
             assert row[0] == '0x%sull' % pair['vs']
             assert row[3] == '0x%sull' % pair['ps']
-        for fingerprint in deferred:
+        for fingerprint in deferred | blocked:
             assert fingerprint not in self.text
+        classes = [row[6].split('::')[1] for row in self.rows]
+        assert classes.count('ReferenceRegisters') == 6
+        assert classes.count('RelocatedRegisters') == 6
+        assert classes.count('RelocatedRegistersWithBranches') == 4
+
+    def test_class_c_rows_carry_their_derived_numbers(self):
+        rows = [row for row in self.rows if row[6].endswith('RelocatedRegistersWithBranches')]
+        assert [(row[0], row[3]) for row in rows] == [
+            ('0x494fe349b8bc12ecull', '0xfffdabd910793abaull'),
+            ('0x37c34a7478544c14ull', '0x5f82ecacd39529cdull'),
+            ('0x37c34a7478544c14ull', '0xf1b0e820c7b488c3ull'),
+            ('0x494fe349b8bc12ecull', '0xe6794b6ec37ff71aull')]
+        for row in rows:
+            pair = next(p for p in self.result['pairs']
+                        if '0x%sull' % p['vs'] == row[0] and '0x%sull' % p['ps'] == row[3])
+            plan = pair['insertion_plan']
+            assert row[1] == str(self.result['programs']['vs_' + pair['vs']]['dword_count'])
+            assert row[4] == str(self.result['programs']['ps_' + pair['ps']]['dword_count'])
+            assert [int(v) for v in row[9:13]] == plan['vs_position_dp4_dwords']
+            assert [int(v) for v in row[17:22]] == [
+                plan['vs_declaration_insert_dword'], plan['vs_arithmetic_insert_dword'],
+                plan['ps_definition_insert_dword'], plan['ps_declaration_insert_dword'],
+                plan['ps_append_dword']]
+            assert [int(v) for v in row[22:27]] == [
+                plan['vs_output_register'], plan['texcoord_index'], plan['ps_input_register'],
+                plan['ps_temporary_base'], plan['ps_output_register']]
+            assert row[25] == '6'  # r6-8: r0-5 are in use in every class C pixel program.
+        # Rows sharing a vertex program agree on its side of the splice.
+        assert rows[0][17:19] == ['335', '466'] and rows[0][22:24] == ['6', '4']
+        assert rows[1][17:19] == ['500', '649'] and rows[1][22:24] == ['9', '7']
 
     def test_rows_are_ordered_by_draws_then_fingerprints(self):
         expected = header_rows(self.result)
@@ -434,7 +534,12 @@ class GeneratedHeaderTests(unittest.TestCase):
 
     def test_argon_row_matches_the_reference_numbers(self):
         assert ARGON_HEADER_ROW in self.rows
-        assert self.rows[0] == ARGON_HEADER_ROW
+        # Second by captured draws, behind the largest class C pair; unchanged
+        # by the class C extension.
+        assert self.rows[1] == ARGON_HEADER_ROW
+        assert self.rows.index(ARGON_HEADER_ROW) == [
+            (p['vs'], p['ps']) for p in header_rows(self.result)].index(
+                (ARGON_VS[3:], ARGON_PS[3:]))
         vertex = self.result['programs'][ARGON_VS]
         pixel = self.result['programs'][ARGON_PS]
         assert vertex['literal_definitions'][0]['dword'] == 302
