@@ -8,6 +8,9 @@ The overall renderer modernization objective is not complete.**
 No HDR/TAA/AgX/material/clustered-lighting
 visual enhancement is enabled yet. See the [full user objective](user-objective.md)
 and [roadmap](architecture/roadmap.md).
+Native Windows/Direct3D is also a required feature target. Current tests run on
+CrossOver; the Wine-pinned finite-buffer evidence producer still needs a
+portable/native-Windows counterpart. See [portability requirements and gaps](architecture/platform-portability.md).
 
 ## Latest checkpoint
 

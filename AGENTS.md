@@ -7,6 +7,16 @@ notes before continuing. This is X3: Albion Prelude, x86, in the Steam bottle of
 
 User preferences recorded 2026-09-10:
 
+- Native Windows/Direct3D is a required target alongside CrossOver Preview
+  (added 2026-09-11). Rendering features must support both; forwarding without
+  the enhancements is not Windows feature support. Use documented Windows/D3D
+  APIs in shared production code. Do not make Wine/CrossOver-specific exports,
+  internal locks, layouts or patched binaries a renderer prerequisite. Isolate
+  any optional backend-specific adapter behind an explicit capability boundary
+  and provide a portable/native-Windows implementation for required features.
+  The user cannot test Windows currently: distinguish Windows-compatible source
+  and cross-compilation from verified behavior on native Windows. Existing
+  Wine-pinned finite-buffer qualification remains a documented portability gap.
 - Work in testable iterations. TAA is required; spatial AA alone does not satisfy it.
 - Commit after each logical checkpoint, including relevant documentation and
   verification evidence. Keep generated build products and raw captures untracked.
