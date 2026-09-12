@@ -143,6 +143,48 @@ passes `--motion-output`; see the run command in
 [motion output](verification/motion-output.md). The installed build predates the
 archive-wide table and the selector correction.
 
+## Session handoff (2026-09-12, before orchestrator compaction)
+
+Committed state: `398f00e` on `main`. Installed DLL: commit `162b2f7` build,
+SHA256 `200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9`
+(TAA with the corrected history convention). Rollbacks:
+`artifacts/rollback/d3d9-iteration05.dll`; the motion-only build is commit `66d91a4`.
+
+Gameplay evidence on disk (local, never committed): iteration-6 log
+`/tmp/x3-iteration06-snapshot.log`; run A (first TAA, trembling)
+`/tmp/x3-iteration07-snapshot.log`; rerun with the fix `/tmp/x3-iteration08/`
+(log + 20 color/depth/motion/taa readbacks, five bursts; user still saw edge
+tremble, thin-line shimmer, and "dotted" thin lines at distance which the
+vanilla game also shows); Run B without TAA, same scene, `/tmp/x3-iteration08-runB/`
+(user: FPS feels the same as with TAA).
+
+Work in flight when the session was compacted, all uncommitted in the working
+tree and owned by subagents that must not be duplicated (they report by
+notification; if their reports were lost, inspect `git status`/`git diff`
+and finish or rerun per the briefs summarized here):
+
+1. **Rerun analysis (Opus)**: `tools/analysis/analyze_iteration08_taa.py`,
+   `verification/results/iteration-08-taa-*`, `docs/verification/iteration-08.md`:
+   tremble re-measured, flicker classified per pixel class (sentinel /
+   routed interior / silhouette / thin features), blur, and a controlled
+   timing comparison of the TAA run versus Run B.
+2. **Resolve quality pass (Fable)**: `src/temporal/resolve.hlsl` and fixtures:
+   variance clipping instead of hard depth rejection, closest-depth dilated
+   motion, Catmull-Rom history, thin-line and silhouette fixture cases;
+   regenerated `temporal_resolve_program*`; docs.
+3. **Telemetry + lazy MRT binding (Fable)**: `src/proxy/telemetry.*`,
+   `src/proxy/motion_output.*`, `run_motion_output.py`: per-frame cost metrics
+   (route apply/undo, jitter writes, fills, resolve split, copy-back,
+   readbacks, native StretchRect) and `X3M_MOTION_RT_MODE=lazy` with an
+   equivalence fixture; A/B run procedure in `docs/verification/motion-output.md`.
+
+Then: combined review (review 18) on the final tree with the full suite chain
+(one Wine runner at a time), status update, commit, build + `tools/manage.py
+install`, and the next user run: TAA on, then proxy with route off
+(`launch --direct --telemetry` only) for the route-cost baseline. After that:
+camera reprojection for non-routed pixels (shadow view-inverse rows c34–36,
+recover projection) so background and effects stop crawling when turning.
+
 ## Concrete next work
 
 1. First visual TAA gameplay run with `--taa --taa-debug` and a route-off
