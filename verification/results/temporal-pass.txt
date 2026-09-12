@@ -73,7 +73,7 @@ SAMPLE epoch plane=depth actual=0.500000000 expected=0.500000000 PASS
 CHECK prior output cannot alias current input PASS
 CHECK history alias refusal preserves state PASS
 CHECK explicit invalidate PASS
-CHECK before_reset shuts down runtime PASS
+CHECK before_reset refuses runs until after_reset PASS
 REACTIVE_CASES
 CHECK reactive warmup PASS
 CHECK reactive atomic output validity PASS
@@ -230,7 +230,136 @@ CHECK reactive atomic output validity PASS
 CHECK reactive snapshot policy PASS
 CHECK Known to Required demands owned mask history PASS
 CHECK reactive reset releases runtime PASS
+ROUTE_CASES
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK 8-bit copy first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK resolved surface is level 0 of resolved color PASS
+COPY rule=truncate nearest=421 truncated=768 of 768 max_abs_error=0.000486374 alpha_one=256 of 256
+CHECK 8-bit copy is v/255 within one FP16 ulp for all 256 codes, no gamma PASS
+CHECK FP16 direct first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit copy path equals direct FP16 path bit-exactly PASS
+CHECK copy-back round trip restores the exact 8-bit bytes PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK 8-bit copy accumulation PASS
+CHECK route atomic outputs valid PASS
+CHECK FP16 direct accumulation PASS
+CHECK route atomic outputs valid PASS
+CHECK both paths accumulate PASS
+CHECK accumulated 8-bit copy path equals direct FP16 path bit-exactly PASS
+CHECK both color inputs refused PASS
+CHECK no color input refused PASS
+CHECK both depth inputs refused PASS
+CHECK no depth input refused PASS
+CHECK resolved surface cannot alias the color input PASS
+CHECK owned depth history cannot alias current depth PASS
+CHECK wrong current depth format refused PASS
+CHECK decoded first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK R32F first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK decoded accumulation PASS
+CHECK route atomic outputs valid PASS
+CHECK R32F accumulation PASS
+CHECK route atomic outputs valid PASS
+CHECK sample texture exists PASS
+SAMPLE R32F outside quad accumulates actual=0.500000000 expected=0.500000000 PASS
+CHECK sample texture exists PASS
+SAMPLE R32F inside stable quad accumulates actual=0.500000000 expected=0.500000000 PASS
+CHECK sample texture exists PASS
+SAMPLE R32F depth change rejects history actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE R32F depth history holds the copied quad depth actual=0.250000000 expected=0.250000000 PASS
+CHECK R32F path color equals decoded D24X8 path bit-exactly PASS
+DEPTH decoded_vs_r32f_max_error=0.0000000298
+CHECK decoded depth within two D24 steps of R32F depth PASS
+CHECK sentinel first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK sentinel policy establishes history without a mask PASS
+CHECK sentinel accumulation PASS
+CHECK route atomic outputs valid PASS
+CHECK sentinel policy accumulates PASS
+CHECK sample texture exists PASS
+SAMPLE sentinel current pixel resolves current-only actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE sentinel copied into depth history actual=-1.000000000 expected=-1.000000000 PASS
+CHECK sample texture exists PASS
+SAMPLE opaque pixel accumulates beside sentinel actual=0.500000000 expected=0.500000000 PASS
+CHECK sentinel history tap PASS
+CHECK route atomic outputs valid PASS
+CHECK sample texture exists PASS
+SAMPLE previous sentinel tap contributes nothing actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE opaque correspondence keeps accumulating actual=0.375000000 expected=0.375000000 PASS
+CHECK sentinel policy requires direct R32F depth PASS
+CHECK sentinel to known transition PASS
+CHECK route atomic outputs valid PASS
+CHECK policy transition invalidates history PASS
+CHECK known to sentinel transition PASS
+CHECK route atomic outputs valid PASS
+CHECK transition back invalidates history PASS
+CHECK before cut PASS
+CHECK route atomic outputs valid PASS
+CHECK route cut PASS
+CHECK route atomic outputs valid PASS
+CHECK cut rejects history PASS
+CHECK sample texture exists PASS
+SAMPLE cut frame is current-only actual=0.250000000 expected=0.250000000 PASS
+CHECK after cut PASS
+CHECK route atomic outputs valid PASS
+CHECK accumulation resumes after cut PASS
+CHECK jitter warmup PASS
+CHECK atomic outputs valid PASS
+CHECK motion previous jitter PASS
+CHECK atomic outputs valid PASS
+SAMPLE motion path applies previous jitter once plane=color actual=0.625000000 expected=0.625000000 PASS
+SAMPLE motion path applies previous jitter once plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK jitter warmup PASS
+CHECK atomic outputs valid PASS
+CHECK motion both jitters PASS
+CHECK atomic outputs valid PASS
+SAMPLE motion path ignores current jitter plane=color actual=0.625000000 expected=0.625000000 PASS
+SAMPLE motion path ignores current jitter plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK jitter warmup PASS
+CHECK atomic outputs valid PASS
+CHECK motion current jitter only PASS
+CHECK atomic outputs valid PASS
+SAMPLE motion path without previous jitter stays put plane=color actual=0.250000000 expected=0.250000000 PASS
+SAMPLE motion path without previous jitter stays put plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK jitter warmup PASS
+CHECK atomic outputs valid PASS
+CHECK pre-subtracted producer PASS
+CHECK atomic outputs valid PASS
+SAMPLE producer RG that already subtracted previous jitter cancels it plane=color actual=0.250000000 expected=0.250000000 PASS
+SAMPLE producer RG that already subtracted previous jitter cancels it plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK jitter warmup PASS
+CHECK atomic outputs valid PASS
+CHECK camera current jitter PASS
+CHECK atomic outputs valid PASS
+SAMPLE camera path applies current jitter plane=color actual=0.625000000 expected=0.625000000 PASS
+SAMPLE camera path applies current jitter plane=depth actual=0.500000000 expected=0.500000000 PASS
+RESET_CONTINUITY
+CHECK before reset frame PASS
+CHECK atomic outputs valid PASS
+CHECK before reset accumulation PASS
+CHECK atomic outputs valid PASS
+CHECK history before reset PASS
+CHECK before_reset releases history and pends PASS
+CHECK run refused while reset pending PASS
+CHECK failed Reset keeps refusing PASS
 RESET PASS
+CHECK after_reset clears pending PASS
+CHECK after reset first frame PASS
+CHECK atomic outputs valid PASS
+CHECK reset invalidates history PASS
+SAMPLE after reset plane=color actual=0.750000000 expected=0.750000000 PASS
+SAMPLE after reset plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK after reset accumulation PASS
+CHECK atomic outputs valid PASS
+CHECK history rebuilt after reset without initialize PASS
+SAMPLE after reset blend plane=color actual=0.500000000 expected=0.500000000 PASS
+SAMPLE after reset blend plane=depth actual=0.500000000 expected=0.500000000 PASS
 GENERATION 1
 CHECK first frame PASS
 CHECK atomic outputs valid PASS
@@ -304,7 +433,7 @@ SAMPLE epoch plane=depth actual=0.500000000 expected=0.500000000 PASS
 CHECK prior output cannot alias current input PASS
 CHECK history alias refusal preserves state PASS
 CHECK explicit invalidate PASS
-CHECK before_reset shuts down runtime PASS
+CHECK before_reset refuses runs until after_reset PASS
 REACTIVE_CASES
 CHECK reactive warmup PASS
 CHECK reactive atomic output validity PASS
@@ -461,4 +590,113 @@ CHECK reactive atomic output validity PASS
 CHECK reactive snapshot policy PASS
 CHECK Known to Required demands owned mask history PASS
 CHECK reactive reset releases runtime PASS
-RESULT PASS numerical=98 state_restorations=102 generations=2
+ROUTE_CASES
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK 8-bit copy first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK resolved surface is level 0 of resolved color PASS
+COPY rule=truncate nearest=421 truncated=768 of 768 max_abs_error=0.000486374 alpha_one=256 of 256
+CHECK 8-bit copy is v/255 within one FP16 ulp for all 256 codes, no gamma PASS
+CHECK FP16 direct first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit copy path equals direct FP16 path bit-exactly PASS
+CHECK copy-back round trip restores the exact 8-bit bytes PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK 8-bit copy accumulation PASS
+CHECK route atomic outputs valid PASS
+CHECK FP16 direct accumulation PASS
+CHECK route atomic outputs valid PASS
+CHECK both paths accumulate PASS
+CHECK accumulated 8-bit copy path equals direct FP16 path bit-exactly PASS
+CHECK both color inputs refused PASS
+CHECK no color input refused PASS
+CHECK both depth inputs refused PASS
+CHECK no depth input refused PASS
+CHECK resolved surface cannot alias the color input PASS
+CHECK owned depth history cannot alias current depth PASS
+CHECK wrong current depth format refused PASS
+CHECK decoded first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK R32F first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK decoded accumulation PASS
+CHECK route atomic outputs valid PASS
+CHECK R32F accumulation PASS
+CHECK route atomic outputs valid PASS
+CHECK sample texture exists PASS
+SAMPLE R32F outside quad accumulates actual=0.500000000 expected=0.500000000 PASS
+CHECK sample texture exists PASS
+SAMPLE R32F inside stable quad accumulates actual=0.500000000 expected=0.500000000 PASS
+CHECK sample texture exists PASS
+SAMPLE R32F depth change rejects history actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE R32F depth history holds the copied quad depth actual=0.250000000 expected=0.250000000 PASS
+CHECK R32F path color equals decoded D24X8 path bit-exactly PASS
+DEPTH decoded_vs_r32f_max_error=0.0000000298
+CHECK decoded depth within two D24 steps of R32F depth PASS
+CHECK sentinel first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK sentinel policy establishes history without a mask PASS
+CHECK sentinel accumulation PASS
+CHECK route atomic outputs valid PASS
+CHECK sentinel policy accumulates PASS
+CHECK sample texture exists PASS
+SAMPLE sentinel current pixel resolves current-only actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE sentinel copied into depth history actual=-1.000000000 expected=-1.000000000 PASS
+CHECK sample texture exists PASS
+SAMPLE opaque pixel accumulates beside sentinel actual=0.500000000 expected=0.500000000 PASS
+CHECK sentinel history tap PASS
+CHECK route atomic outputs valid PASS
+CHECK sample texture exists PASS
+SAMPLE previous sentinel tap contributes nothing actual=0.250000000 expected=0.250000000 PASS
+CHECK sample texture exists PASS
+SAMPLE opaque correspondence keeps accumulating actual=0.375000000 expected=0.375000000 PASS
+CHECK sentinel policy requires direct R32F depth PASS
+CHECK sentinel to known transition PASS
+CHECK route atomic outputs valid PASS
+CHECK policy transition invalidates history PASS
+CHECK known to sentinel transition PASS
+CHECK route atomic outputs valid PASS
+CHECK transition back invalidates history PASS
+CHECK before cut PASS
+CHECK route atomic outputs valid PASS
+CHECK route cut PASS
+CHECK route atomic outputs valid PASS
+CHECK cut rejects history PASS
+CHECK sample texture exists PASS
+SAMPLE cut frame is current-only actual=0.250000000 expected=0.250000000 PASS
+CHECK after cut PASS
+CHECK route atomic outputs valid PASS
+CHECK accumulation resumes after cut PASS
+CHECK jitter warmup PASS
+CHECK atomic outputs valid PASS
+CHECK motion previous jitter PASS
+CHECK atomic outputs valid PASS
+SAMPLE motion path applies previous jitter once plane=color actual=0.625000000 expected=0.625000000 PASS
+SAMPLE motion path applies previous jitter once plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK jitter warmup PASS
+CHECK atomic outputs valid PASS
+CHECK motion both jitters PASS
+CHECK atomic outputs valid PASS
+SAMPLE motion path ignores current jitter plane=color actual=0.625000000 expected=0.625000000 PASS
+SAMPLE motion path ignores current jitter plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK jitter warmup PASS
+CHECK atomic outputs valid PASS
+CHECK motion current jitter only PASS
+CHECK atomic outputs valid PASS
+SAMPLE motion path without previous jitter stays put plane=color actual=0.250000000 expected=0.250000000 PASS
+SAMPLE motion path without previous jitter stays put plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK jitter warmup PASS
+CHECK atomic outputs valid PASS
+CHECK pre-subtracted producer PASS
+CHECK atomic outputs valid PASS
+SAMPLE producer RG that already subtracted previous jitter cancels it plane=color actual=0.250000000 expected=0.250000000 PASS
+SAMPLE producer RG that already subtracted previous jitter cancels it plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK jitter warmup PASS
+CHECK atomic outputs valid PASS
+CHECK camera current jitter PASS
+CHECK atomic outputs valid PASS
+SAMPLE camera path applies current jitter plane=color actual=0.625000000 expected=0.625000000 PASS
+SAMPLE camera path applies current jitter plane=depth actual=0.500000000 expected=0.500000000 PASS
+RESULT PASS numerical=154 state_restorations=158 generations=2

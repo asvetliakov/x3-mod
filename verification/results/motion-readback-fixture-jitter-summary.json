@@ -1,8 +1,8 @@
 {
   "tool": "tools/analysis/analyze_motion_readback.py",
-  "log": "verification/probe/build/motion-output-seam-on-20260912-055051-678207/x3-modern-captures/session-20260912-055052-2552.log",
-  "log_sha256": "344fa4b756150b93cfdb91d2ab8e2c18d7d3f5f86c0db18ee5afdead45a0a0ea",
-  "readback_dir": "verification/probe/build/motion-output-seam-on-20260912-055051-678207/x3-modern-captures",
+  "log": "verification/probe/build/motion-output-seam-jitter-on-20260912-055117-131766/x3-modern-captures/session-20260912-055117-1804.log",
+  "log_sha256": "6838da03a17097222460f545d89de95fed41ad6c05988b5f66b7fbf1158d6400",
+  "readback_dir": "verification/probe/build/motion-output-seam-jitter-on-20260912-055117-131766/x3-modern-captures",
   "devices": {
     "1": {
       "device": "1",
@@ -29,7 +29,7 @@
       "depth_reason": "ok",
       "depth_detail": "stage=compare",
       "r32f": "00000000",
-      "jitter": "0",
+      "jitter": "1",
       "jitter_samples": "8"
     }
   },
@@ -89,10 +89,10 @@
     "displacement": {
       "status": "pass",
       "bound_px": 64.0,
-      "valid_pixels": 6082,
+      "valid_pixels": 6078,
       "suspicious_pixels": 0,
       "suspicious_fraction": 0.0,
-      "max_displacement_px": 4.033135414123535
+      "max_displacement_px": 4.184277534484863
     },
     "row_consistency": {
       "status": "pass",
@@ -104,10 +104,10 @@
         7,
         8
       ],
-      "sampled_pixels": 3402,
+      "sampled_pixels": 3418,
       "unexplained_pixels": 0,
       "unexplained_fraction": 0.0,
-      "max_error_px": 0.0017749608224377766
+      "max_error_px": 0.43750154972076416
     },
     "temporal_coverage": {
       "status": "pass",
@@ -148,10 +148,10 @@
       "worst_covered_fraction": 0.9,
       "covered_fractions": {
         "3->4": 0.0,
-        "4->5": 1.0,
+        "4->5": 0.9,
         "5->6": 0.9,
         "6->7": 1.0,
-        "7->8": 0.9
+        "7->8": 1.0
       }
     },
     "depth_image_integrity": {
@@ -168,32 +168,32 @@
       ],
       "unclean_frames": [],
       "sentinel_fraction": {
-        "1": 0.345703125,
-        "2": 0.345703125,
-        "3": 0.333251953125,
-        "4": 0.345703125,
-        "5": 0.333251953125,
-        "6": 0.345703125,
-        "7": 0.958251953125,
-        "8": 0.32861328125
+        "1": 0.3505859375,
+        "2": 0.344970703125,
+        "3": 0.32861328125,
+        "4": 0.346435546875,
+        "5": 0.32861328125,
+        "6": 0.361328125,
+        "7": 0.95361328125,
+        "8": 0.333251953125
       },
       "written_fraction": {
-        "1": 0.654296875,
-        "2": 0.654296875,
-        "3": 0.666748046875,
-        "4": 0.654296875,
-        "5": 0.666748046875,
-        "6": 0.654296875,
-        "7": 0.041748046875,
-        "8": 0.67138671875
+        "1": 0.6494140625,
+        "2": 0.655029296875,
+        "3": 0.67138671875,
+        "4": 0.653564453125,
+        "5": 0.67138671875,
+        "6": 0.638671875,
+        "7": 0.04638671875,
+        "8": 0.666748046875
       },
       "written_range": {
         "1": [
-          0.48828235268592834,
+          0.4877398908138275,
           0.6000000238418579
         ],
         "2": [
-          0.48828235268592834,
+          0.4888249635696411,
           0.6000000238418579
         ],
         "3": [
@@ -201,7 +201,7 @@
           0.5
         ],
         "4": [
-          0.48828235268592834,
+          0.4885537326335907,
           0.6000000238418579
         ],
         "5": [
@@ -209,7 +209,7 @@
           0.5
         ],
         "6": [
-          0.48828235268592834,
+          0.4890962541103363,
           0.6000000238418579
         ],
         "7": [
@@ -235,8 +235,8 @@
         8
       ],
       "worst_within_fraction": 1.0,
-      "compared_pixels": 3343,
-      "previous_sentinel": 57,
+      "compared_pixels": 3380,
+      "previous_sentinel": 38,
       "max_error": 0,
       "tolerance": 0.0001,
       "minimum_within_fraction": 0.99
@@ -396,72 +396,72 @@
         "result": "00000000",
         "bytes_logged": 65536,
         "status": "ok",
-        "sha256": "351da51d4fec85945a8b4e7e7dbed8c41e985f11e758d7cffb9a15242dba099b",
+        "sha256": "6604b34c3094d23ff82bd48f049c44e670e1c92ff00626384180de6ae102bacd",
         "validity_counts": {
-          "valid": 2680,
+          "valid": 2660,
           "zero": 0,
-          "sentinel": 1416,
+          "sentinel": 1436,
           "other": 0
         },
         "validity_fractions": {
-          "valid": 0.654296875,
+          "valid": 0.6494140625,
           "zero": 0.0,
-          "sentinel": 0.345703125,
+          "sentinel": 0.3505859375,
           "other": 0.0
         },
         "nonfinite_values": 0,
         "abi_clean": true
       },
       "pixels": {
-        "valid_pixels": 2680,
+        "valid_pixels": 2660,
         "uv_range": {
           "u": [
-            0.0640869140625,
-            0.9788027405738831
+            0.0679931640625,
+            0.9833589792251587
           ],
           "v": [
-            0.009093701839447021,
-            1.0038243532180786
+            0.00815543532371521,
+            1.0017001628875732
           ]
         },
         "depth_range": [
           0.5,
           0.5
         ],
-        "previous_uv_outside_unit": 2,
+        "previous_uv_outside_unit": 1,
         "displacement_px": {
-          "count": 2680,
-          "min": 0.7338334918022156,
-          "max": 4.033135414123535,
-          "mean": 2.0997716492458958,
-          "median": 2.145053505897522,
-          "p95": 3.1558249235153197,
-          "p99": 3.6033919525146483
+          "count": 2660,
+          "min": 0.5209206938743591,
+          "max": 3.9968438148498535,
+          "mean": 1.9195864081382752,
+          "median": 1.9191489815711975,
+          "p95": 3.034666717052458,
+          "p99": 3.5238497447967516
         },
         "displacement_x_px": {
-          "count": 2680,
-          "min": -2.2751998901367188,
-          "max": 1.6015625,
-          "mean": -1.5170119598730287,
-          "median": -1.8575172424316406,
-          "p95": 1.6015625,
-          "p99": 1.6015625
+          "count": 2660,
+          "min": -2.0252227783203125,
+          "max": 1.8515625,
+          "mean": -1.2897654626602517,
+          "median": -1.5856132507324219,
+          "p95": 1.8515625,
+          "p99": 1.8515625
         },
         "displacement_y_px": {
-          "count": 2680,
-          "min": -3.8429489135742188,
-          "max": 3.9658126831054688,
-          "mean": 0.02571972590773853,
-          "median": 0.0,
-          "p95": 2.297451591491699,
-          "p99": 3.2291946792602553
+          "count": 2660,
+          "min": -3.9628143310546875,
+          "max": 3.7951507568359375,
+          "mean": -0.13199606372001477,
+          "median": -0.16796875,
+          "p95": 2.1310381889343253,
+          "p99": 3.069471530914302
         },
         "displacement_histogram": {
           "[0,0.5)": 0,
-          "[0.5,1)": 61,
-          "[1,2)": 1048,
-          "[2,4)": 1570,
-          "[4,8)": 1,
+          "[0.5,1)": 210,
+          "[1,2)": 1294,
+          "[2,4)": 1156,
+          "[4,8)": 0,
           "[8,16)": 0,
           "[16,32)": 0,
           "[32,64)": 0,
@@ -470,8 +470,8 @@
         },
         "suspicious_over_bound": 0,
         "suspicious_fraction": 0.0,
-        "static_max_error_px": 3.9658126831054688,
-        "static_violations": 2680
+        "static_max_error_px": 3.9628143310546875,
+        "static_violations": 2660
       },
       "static_test": {
         "status": "unknown",
@@ -514,27 +514,27 @@
         "bound_px": 2.4,
         "bound_missing": 0.25,
         "jitter_px": [
-          0.0,
-          0.0
+          -0.25,
+          0.166667
         ],
         "jitter_previous_px": [
           0.0,
-          0.0
+          -0.166667
         ]
       },
       "depth_image": {
         "file": "depth_1_1.r32f",
         "status": "loaded",
-        "sha256": "a5c7c186becb12b40033486c836f659fd7c4da48f44dc873726c2ecd865c2ddc",
+        "sha256": "e209a26675d057c59413225c041bc500430dac93e7c2819f72dac533554689cf",
         "pixels": 4096,
         "nonfinite": 0,
-        "sentinel": 1416,
-        "written": 2680,
+        "sentinel": 1436,
+        "written": 2660,
         "out_of_range": 0,
-        "sentinel_fraction": 0.345703125,
-        "written_fraction": 0.654296875,
+        "sentinel_fraction": 0.3505859375,
+        "written_fraction": 0.6494140625,
         "written_range": [
-          0.48828235268592834,
+          0.4877398908138275,
           0.6000000238418579
         ],
         "clean": true,
@@ -772,8 +772,8 @@
         "previous_frame": 1,
         "sampling": "nearest",
         "previous_jitter_px": [
-          0.0,
-          0.0
+          -0.25,
+          0.166667
         ],
         "compared_pixels": 0,
         "previous_offscreen": 0,
@@ -805,27 +805,27 @@
         "bound_px": 2.4,
         "bound_missing": 0.25,
         "jitter_px": [
-          0.0,
-          0.0
+          0.25,
+          -0.388889
         ],
         "jitter_previous_px": [
-          0.0,
-          0.0
+          -0.25,
+          0.166667
         ]
       },
       "depth_image": {
         "file": "depth_1_2.r32f",
         "status": "loaded",
-        "sha256": "a5c7c186becb12b40033486c836f659fd7c4da48f44dc873726c2ecd865c2ddc",
+        "sha256": "98920514ece2709ac0fa9b9bd3d26bbb5a77326c0253fdef68cdc9db80343adc",
         "pixels": 4096,
         "nonfinite": 0,
-        "sentinel": 1416,
-        "written": 2680,
+        "sentinel": 1413,
+        "written": 2683,
         "out_of_range": 0,
-        "sentinel_fraction": 0.345703125,
-        "written_fraction": 0.654296875,
+        "sentinel_fraction": 0.344970703125,
+        "written_fraction": 0.655029296875,
         "written_range": [
-          0.48828235268592834,
+          0.4888249635696411,
           0.6000000238418579
         ],
         "clean": true,
@@ -1063,8 +1063,8 @@
         "previous_frame": 2,
         "sampling": "nearest",
         "previous_jitter_px": [
-          0.0,
-          0.0
+          0.25,
+          -0.388889
         ],
         "compared_pixels": 0,
         "previous_offscreen": 0,
@@ -1096,25 +1096,25 @@
         "bound_px": 2.4,
         "bound_missing": 0.25,
         "jitter_px": [
-          0.0,
-          0.0
+          -0.375,
+          -0.055556
         ],
         "jitter_previous_px": [
-          0.0,
-          0.0
+          0.25,
+          -0.388889
         ]
       },
       "depth_image": {
         "file": "depth_1_3.r32f",
         "status": "loaded",
-        "sha256": "8f1ee547a7c9c5ff81955e4b697da9334c36aead57d915f0c47b07cda52c95fb",
+        "sha256": "c14b88fb5924191fcc49d9c1d21e3558c784261f66fc09e98af53defe83b7e36",
         "pixels": 4096,
         "nonfinite": 0,
-        "sentinel": 1365,
-        "written": 2731,
+        "sentinel": 1346,
+        "written": 2750,
         "out_of_range": 0,
-        "sentinel_fraction": 0.333251953125,
-        "written_fraction": 0.666748046875,
+        "sentinel_fraction": 0.32861328125,
+        "written_fraction": 0.67138671875,
         "written_range": [
           0.5,
           0.5
@@ -1392,72 +1392,72 @@
         "result": "00000000",
         "bytes_logged": 65536,
         "status": "ok",
-        "sha256": "351da51d4fec85945a8b4e7e7dbed8c41e985f11e758d7cffb9a15242dba099b",
+        "sha256": "0da36977eb010b9a6d1ad99cc1765b385bb3b509db7a96c09b9dce317c52cc16",
         "validity_counts": {
-          "valid": 2680,
+          "valid": 2677,
           "zero": 0,
-          "sentinel": 1416,
+          "sentinel": 1419,
           "other": 0
         },
         "validity_fractions": {
-          "valid": 0.654296875,
+          "valid": 0.653564453125,
           "zero": 0.0,
-          "sentinel": 0.345703125,
+          "sentinel": 0.346435546875,
           "other": 0.0
         },
         "nonfinite_values": 0,
         "abi_clean": true
       },
       "pixels": {
-        "valid_pixels": 2680,
+        "valid_pixels": 2677,
         "uv_range": {
           "u": [
-            0.0640869140625,
-            0.9788027405738831
+            0.0621337890625,
+            0.9765284061431885
           ],
           "v": [
-            0.009093701839447021,
-            1.0038243532180786
+            0.009375542402267456,
+            0.9990880489349365
           ]
         },
         "depth_range": [
           0.5,
           0.5
         ],
-        "previous_uv_outside_unit": 2,
+        "previous_uv_outside_unit": 0,
         "displacement_px": {
-          "count": 2680,
-          "min": 0.7338334918022156,
-          "max": 4.033135414123535,
-          "mean": 2.0997716492458958,
-          "median": 2.145053505897522,
-          "p95": 3.1558249235153197,
-          "p99": 3.6033919525146483
+          "count": 2677,
+          "min": 0.8403899073600769,
+          "max": 4.184277534484863,
+          "mean": 2.207919567411499,
+          "median": 2.270366668701172,
+          "p95": 3.2529338359832756,
+          "p99": 3.7007024002075175
         },
         "displacement_x_px": {
-          "count": 2680,
-          "min": -2.2751998901367188,
-          "max": 1.6015625,
-          "mean": -1.5170119598730287,
-          "median": -1.8575172424316406,
-          "p95": 1.6015625,
-          "p99": 1.6015625
+          "count": 2677,
+          "min": -2.399993896484375,
+          "max": 1.4765625,
+          "mean": -1.6416541659925517,
+          "median": -1.9844474792480469,
+          "p95": 1.4765625,
+          "p99": 1.4765625
         },
         "displacement_y_px": {
-          "count": 2680,
-          "min": -3.8429489135742188,
-          "max": 3.9658126831054688,
-          "mean": 0.02571972590773853,
-          "median": 0.0,
-          "p95": 2.297451591491699,
-          "p99": 3.2291946792602553
+          "count": 2677,
+          "min": -4.099018096923828,
+          "max": 3.7362499237060547,
+          "mean": -0.2376858779285931,
+          "median": -0.27734375,
+          "p95": 2.0565219879150383,
+          "p99": 2.998010101318352
         },
         "displacement_histogram": {
           "[0,0.5)": 0,
-          "[0.5,1)": 61,
-          "[1,2)": 1048,
-          "[2,4)": 1570,
-          "[4,8)": 1,
+          "[0.5,1)": 12,
+          "[1,2)": 947,
+          "[2,4)": 1714,
+          "[4,8)": 4,
           "[8,16)": 0,
           "[16,32)": 0,
           "[32,64)": 0,
@@ -1466,8 +1466,8 @@
         },
         "suspicious_over_bound": 0,
         "suspicious_fraction": 0.0,
-        "static_max_error_px": 3.9658126831054688,
-        "static_violations": 2680
+        "static_max_error_px": 4.099018096923828,
+        "static_violations": 2677
       },
       "static_test": {
         "status": "not_applicable",
@@ -1481,18 +1481,18 @@
         "draws_with_row_pairs": 2,
         "skipped_draws": [],
         "sample_stride": 1,
-        "sampled_pixels": 2680,
-        "explained_pixels": 2680,
+        "sampled_pixels": 2677,
+        "explained_pixels": 2677,
         "unexplained_pixels": 0,
         "unexplained_fraction": 0.0,
         "ambiguous_pixels": 0,
-        "max_error_px": 0.0017749608224377766,
+        "max_error_px": 0.2784476944133232,
         "groups": [
           {
             "draws": [
               2
             ],
-            "attributed_pixels": 2490
+            "attributed_pixels": 2487
           },
           {
             "draws": [
@@ -1518,13 +1518,13 @@
               -1.6000003814697266,
               0.0
             ],
-            "group_attributed_pixels": 2490,
+            "group_attributed_pixels": 2487,
             "group_median_displacement_px": [
-              -1.8693199157714844,
-              0.000118255615234375
+              -1.993255615234375,
+              -0.2654991149902344
             ],
-            "origin_vs_median_difference_px": 0.2693195602642078,
-            "group_max_error_px": 0.0017749608224377766
+            "origin_vs_median_difference_px": 0.4744886288878649,
+            "group_max_error_px": 0.2784476944133232
           },
           {
             "index": 3,
@@ -1544,11 +1544,11 @@
             ],
             "group_attributed_pixels": 190,
             "group_median_displacement_px": [
-              1.6015625,
-              0.0
+              1.4765625,
+              -0.27734375
             ],
-            "origin_vs_median_difference_px": 0.0015624761581420898,
-            "group_max_error_px": 0.0015624761581420898
+            "origin_vs_median_difference_px": 0.3035726897404833,
+            "group_max_error_px": 0.27734375
           }
         ],
         "unexplained_examples": []
@@ -1557,10 +1557,10 @@
         "status": "evaluated",
         "reason": null,
         "previous_frame": 3,
-        "valid_pixels": 2680,
-        "previous_offscreen": 2,
+        "valid_pixels": 2677,
+        "previous_offscreen": 0,
         "previous_covered": 0,
-        "previous_uncovered": 2678,
+        "previous_uncovered": 2677,
         "covered_fraction": 0.0,
         "criterion_applies": false,
         "criterion_min_matched_ratio": 0.99,
@@ -1573,17 +1573,17 @@
         "previous_frame": 3,
         "sampling": "nearest",
         "previous_jitter_px": [
-          0.0,
-          0.0
+          -0.375,
+          -0.055556
         ],
-        "compared_pixels": 2659,
-        "previous_offscreen": 2,
-        "previous_sentinel": 19,
+        "compared_pixels": 2677,
+        "previous_offscreen": 0,
+        "previous_sentinel": 0,
         "tolerance": 0.0001,
-        "within_tolerance": 2659,
+        "within_tolerance": 2677,
         "within_fraction": 1.0,
         "error": {
-          "count": 2659,
+          "count": 2677,
           "min": 0.0,
           "max": 0.0,
           "mean": 0.0,
@@ -1592,7 +1592,7 @@
           "p99": 0.0
         },
         "error_histogram": {
-          "[0,1e-06)": 2659,
+          "[0,1e-06)": 2677,
           "[1e-06,1e-05)": 0,
           "[1e-05,0.0001)": 0,
           "[0.0001,0.001)": 0,
@@ -1612,27 +1612,27 @@
         "bound_px": 2.4,
         "bound_missing": 0.25,
         "jitter_px": [
-          0.0,
-          0.0
+          0.125,
+          0.277778
         ],
         "jitter_previous_px": [
-          0.0,
-          0.0
+          -0.375,
+          -0.055556
         ]
       },
       "depth_image": {
         "file": "depth_1_4.r32f",
         "status": "loaded",
-        "sha256": "a5c7c186becb12b40033486c836f659fd7c4da48f44dc873726c2ecd865c2ddc",
+        "sha256": "13f0ca78dfef0c932acc30d95d25a32f18581f90017a5f598555040a13917a7f",
         "pixels": 4096,
         "nonfinite": 0,
-        "sentinel": 1416,
-        "written": 2680,
+        "sentinel": 1419,
+        "written": 2677,
         "out_of_range": 0,
-        "sentinel_fraction": 0.345703125,
-        "written_fraction": 0.654296875,
+        "sentinel_fraction": 0.346435546875,
+        "written_fraction": 0.653564453125,
         "written_range": [
-          0.48828235268592834,
+          0.4885537326335907,
           0.6000000238418579
         ],
         "clean": true,
@@ -1854,32 +1854,32 @@
         "result": "00000000",
         "bytes_logged": 65536,
         "status": "ok",
-        "sha256": "c1136b8232642f862c281f7a73c2cd8f47c452c7198c2f2d70496679a19c10cc",
+        "sha256": "907f1928ec8d7221dc8cf9fbf311f41f0e579c3a7e32b07ff0628632f1a6aed4",
         "validity_counts": {
-          "valid": 171,
+          "valid": 190,
           "zero": 0,
-          "sentinel": 3925,
+          "sentinel": 3906,
           "other": 0
         },
         "validity_fractions": {
-          "valid": 0.041748046875,
+          "valid": 0.04638671875,
           "zero": 0.0,
-          "sentinel": 0.958251953125,
+          "sentinel": 0.95361328125,
           "other": 0.0
         },
         "nonfinite_values": 0,
         "abi_clean": true
       },
       "pixels": {
-        "valid_pixels": 171,
+        "valid_pixels": 190,
         "uv_range": {
           "u": [
-            0.04531252384185791,
-            0.3109375238418579
+            0.04726564884185791,
+            0.3285156488418579
           ],
           "v": [
-            0.0703125,
-            0.3359375
+            0.05902099609375,
+            0.34027099609375
           ]
         },
         "depth_range": [
@@ -1888,36 +1888,36 @@
         ],
         "previous_uv_outside_unit": 0,
         "displacement_px": {
-          "count": 171,
-          "min": 1.5999984741210938,
-          "max": 1.5999984741210938,
-          "mean": 1.5999984741210938,
-          "median": 1.5999984741210938,
-          "p95": 1.5999984741210938,
-          "p99": 1.5999984741210938
+          "count": 190,
+          "min": 1.5008465051651,
+          "max": 1.5008465051651,
+          "mean": 1.5008465051651,
+          "median": 1.5008465051651,
+          "p95": 1.5008465051651,
+          "p99": 1.5008465051651
         },
         "displacement_x_px": {
-          "count": 171,
-          "min": -1.5999984741210938,
-          "max": -1.5999984741210938,
-          "mean": -1.5999984741210938,
-          "median": -1.5999984741210938,
-          "p95": -1.5999984741210938,
-          "p99": -1.5999984741210938
+          "count": 190,
+          "min": -1.4749984741210938,
+          "max": -1.4749984741210938,
+          "mean": -1.4749984741210938,
+          "median": -1.4749984741210938,
+          "p95": -1.4749984741210938,
+          "p99": -1.4749984741210938
         },
         "displacement_y_px": {
-          "count": 171,
-          "min": 0.0,
-          "max": 0.0,
-          "mean": 0.0,
-          "median": 0.0,
-          "p95": 0.0,
-          "p99": 0.0
+          "count": 190,
+          "min": 0.27734375,
+          "max": 0.27734375,
+          "mean": 0.27734375,
+          "median": 0.27734375,
+          "p95": 0.27734375,
+          "p99": 0.27734375
         },
         "displacement_histogram": {
           "[0,0.5)": 0,
           "[0.5,1)": 0,
-          "[1,2)": 171,
+          "[1,2)": 190,
           "[2,4)": 0,
           "[4,8)": 0,
           "[8,16)": 0,
@@ -1928,8 +1928,8 @@
         },
         "suspicious_over_bound": 0,
         "suspicious_fraction": 0.0,
-        "static_max_error_px": 1.5999984741210938,
-        "static_violations": 171
+        "static_max_error_px": 1.4749984741210938,
+        "static_violations": 190
       },
       "static_test": {
         "status": "not_applicable",
@@ -1943,12 +1943,12 @@
         "draws_with_row_pairs": 2,
         "skipped_draws": [],
         "sample_stride": 1,
-        "sampled_pixels": 171,
-        "explained_pixels": 171,
+        "sampled_pixels": 190,
+        "explained_pixels": 190,
         "unexplained_pixels": 0,
         "unexplained_fraction": 0.0,
         "ambiguous_pixels": 0,
-        "max_error_px": 1.5497207641601562e-06,
+        "max_error_px": 0.27734375,
         "groups": [
           {
             "draws": [
@@ -1960,7 +1960,7 @@
             "draws": [
               4
             ],
-            "attributed_pixels": 171
+            "attributed_pixels": 190
           }
         ],
         "per_draw": [
@@ -2001,13 +2001,13 @@
               -1.600000023841858,
               0.0
             ],
-            "group_attributed_pixels": 171,
+            "group_attributed_pixels": 190,
             "group_median_displacement_px": [
-              -1.5999984741210938,
-              0.0
+              -1.4749984741210938,
+              0.27734375
             ],
-            "origin_vs_median_difference_px": 1.5497207641601562e-06,
-            "group_max_error_px": 1.5497207641601562e-06
+            "origin_vs_median_difference_px": 0.3042120035380839,
+            "group_max_error_px": 0.27734375
           }
         ],
         "unexplained_examples": []
@@ -2016,11 +2016,11 @@
         "status": "evaluated",
         "reason": null,
         "previous_frame": 4,
-        "valid_pixels": 171,
+        "valid_pixels": 190,
         "previous_offscreen": 0,
         "previous_covered": 171,
-        "previous_uncovered": 0,
-        "covered_fraction": 1.0,
+        "previous_uncovered": 19,
+        "covered_fraction": 0.9,
         "criterion_applies": true,
         "criterion_min_matched_ratio": 0.99,
         "previous_frame_routed": 2,
@@ -2032,12 +2032,12 @@
         "previous_frame": 4,
         "sampling": "nearest",
         "previous_jitter_px": [
-          0.0,
-          0.0
+          0.125,
+          0.277778
         ],
         "compared_pixels": 171,
         "previous_offscreen": 0,
-        "previous_sentinel": 0,
+        "previous_sentinel": 19,
         "tolerance": 0.0001,
         "within_tolerance": 171,
         "within_fraction": 1.0,
@@ -2071,25 +2071,25 @@
         "bound_px": 2.4,
         "bound_missing": 0.25,
         "jitter_px": [
-          0.0,
-          0.0
+          -0.125,
+          -0.277778
         ],
         "jitter_previous_px": [
-          0.0,
-          0.0
+          0.125,
+          0.277778
         ]
       },
       "depth_image": {
         "file": "depth_1_5.r32f",
         "status": "loaded",
-        "sha256": "8f1ee547a7c9c5ff81955e4b697da9334c36aead57d915f0c47b07cda52c95fb",
+        "sha256": "14a5832d2c2eed71310df831ec3e9a53d37cf8dc0f40e4cc5dc5f27f67280170",
         "pixels": 4096,
         "nonfinite": 0,
-        "sentinel": 1365,
-        "written": 2731,
+        "sentinel": 1346,
+        "written": 2750,
         "out_of_range": 0,
-        "sentinel_fraction": 0.333251953125,
-        "written_fraction": 0.666748046875,
+        "sentinel_fraction": 0.32861328125,
+        "written_fraction": 0.67138671875,
         "written_range": [
           0.5,
           0.5
@@ -2255,7 +2255,7 @@
         "result": "00000000",
         "bytes_logged": 65536,
         "status": "ok",
-        "sha256": "0078c3e7deda59743b9f9a6134cf93e796183aa46cde96ec439b8c1e06d3a394",
+        "sha256": "544d43d86132b9d5fd5c1c5f64ed12af641c76fe50cb5b9c7d78640c2e919880",
         "validity_counts": {
           "valid": 190,
           "zero": 0,
@@ -2275,12 +2275,12 @@
         "valid_pixels": 190,
         "uv_range": {
           "u": [
-            0.0640869140625,
-            0.3453369140625
+            0.0582275390625,
+            0.3394775390625
           ],
           "v": [
-            0.0703125,
-            0.3515625
+            0.0694580078125,
+            0.3507080078125
           ]
         },
         "depth_range": [
@@ -2290,30 +2290,30 @@
         "previous_uv_outside_unit": 0,
         "displacement_px": {
           "count": 190,
-          "min": 1.6015625,
-          "max": 1.6015625,
-          "mean": 1.6015625,
-          "median": 1.6015625,
-          "p95": 1.6015625,
-          "p99": 1.6015625
+          "min": 1.227781057357788,
+          "max": 1.227781057357788,
+          "mean": 1.227781057357788,
+          "median": 1.227781057357788,
+          "p95": 1.227781057357788,
+          "p99": 1.227781057357788
         },
         "displacement_x_px": {
           "count": 190,
-          "min": 1.6015625,
-          "max": 1.6015625,
-          "mean": 1.6015625,
-          "median": 1.6015625,
-          "p95": 1.6015625,
-          "p99": 1.6015625
+          "min": 1.2265625,
+          "max": 1.2265625,
+          "mean": 1.2265625,
+          "median": 1.2265625,
+          "p95": 1.2265625,
+          "p99": 1.2265625
         },
         "displacement_y_px": {
           "count": 190,
-          "min": 0.0,
-          "max": 0.0,
-          "mean": 0.0,
-          "median": 0.0,
-          "p95": 0.0,
-          "p99": 0.0
+          "min": -0.0546875,
+          "max": -0.0546875,
+          "mean": -0.0546875,
+          "median": -0.0546875,
+          "p95": -0.0546875,
+          "p99": -0.0546875
         },
         "displacement_histogram": {
           "[0,0.5)": 0,
@@ -2329,7 +2329,7 @@
         },
         "suspicious_over_bound": 0,
         "suspicious_fraction": 0.0,
-        "static_max_error_px": 1.6015625,
+        "static_max_error_px": 1.2265625,
         "static_violations": 190
       },
       "static_test": {
@@ -2349,7 +2349,7 @@
         "unexplained_pixels": 0,
         "unexplained_fraction": 0.0,
         "ambiguous_pixels": 0,
-        "max_error_px": 0.0015624761581420898,
+        "max_error_px": 0.3734375238418579,
         "groups": [
           {
             "draws": [
@@ -2377,11 +2377,11 @@
             ],
             "group_attributed_pixels": 190,
             "group_median_displacement_px": [
-              1.6015625,
-              0.0
+              1.2265625,
+              -0.0546875
             ],
-            "origin_vs_median_difference_px": 0.0015624761581420898,
-            "group_max_error_px": 0.0015624761581420898
+            "origin_vs_median_difference_px": 0.37742059677419326,
+            "group_max_error_px": 0.3734375238418579
           }
         ],
         "unexplained_examples": []
@@ -2406,8 +2406,8 @@
         "previous_frame": 5,
         "sampling": "nearest",
         "previous_jitter_px": [
-          0.0,
-          0.0
+          -0.125,
+          -0.277778
         ],
         "compared_pixels": 171,
         "previous_offscreen": 0,
@@ -2445,27 +2445,27 @@
         "bound_px": 2.4,
         "bound_missing": 0.25,
         "jitter_px": [
-          0.0,
-          0.0
+          0.375,
+          0.055556
         ],
         "jitter_previous_px": [
-          0.0,
-          0.0
+          -0.125,
+          -0.277778
         ]
       },
       "depth_image": {
         "file": "depth_1_6.r32f",
         "status": "loaded",
-        "sha256": "a5c7c186becb12b40033486c836f659fd7c4da48f44dc873726c2ecd865c2ddc",
+        "sha256": "4c2a43eaba3e6add3ae87ed99df1aa96aeee1590e06147386331348ca0caef6f",
         "pixels": 4096,
         "nonfinite": 0,
-        "sentinel": 1416,
-        "written": 2680,
+        "sentinel": 1480,
+        "written": 2616,
         "out_of_range": 0,
-        "sentinel_fraction": 0.345703125,
-        "written_fraction": 0.654296875,
+        "sentinel_fraction": 0.361328125,
+        "written_fraction": 0.638671875,
         "written_range": [
-          0.48828235268592834,
+          0.4890962541103363,
           0.6000000238418579
         ],
         "clean": true,
@@ -2629,32 +2629,32 @@
         "result": "00000000",
         "bytes_logged": 65536,
         "status": "ok",
-        "sha256": "c1136b8232642f862c281f7a73c2cd8f47c452c7198c2f2d70496679a19c10cc",
+        "sha256": "453417bdf6e43794468ef5396c83458bbf203f68478027984268cbbdfaedd2e7",
         "validity_counts": {
-          "valid": 171,
+          "valid": 190,
           "zero": 0,
-          "sentinel": 3925,
+          "sentinel": 3906,
           "other": 0
         },
         "validity_fractions": {
-          "valid": 0.041748046875,
+          "valid": 0.04638671875,
           "zero": 0.0,
-          "sentinel": 0.958251953125,
+          "sentinel": 0.95361328125,
           "other": 0.0
         },
         "nonfinite_values": 0,
         "abi_clean": true
       },
       "pixels": {
-        "valid_pixels": 171,
+        "valid_pixels": 190,
         "uv_range": {
           "u": [
-            0.04531252384185791,
-            0.3109375238418579
+            0.03652346134185791,
+            0.3177734613418579
           ],
           "v": [
-            0.0703125,
-            0.3359375
+            0.064208984375,
+            0.345458984375
           ]
         },
         "depth_range": [
@@ -2663,36 +2663,36 @@
         ],
         "previous_uv_outside_unit": 0,
         "displacement_px": {
-          "count": 171,
-          "min": 1.5999984741210938,
-          "max": 1.5999984741210938,
-          "mean": 1.5999984741210938,
-          "median": 1.5999984741210938,
-          "p95": 1.5999984741210938,
-          "p99": 1.5999984741210938
+          "count": 190,
+          "min": 1.2263729572296143,
+          "max": 1.2263729572296143,
+          "mean": 1.2263729572296143,
+          "median": 1.2263729572296143,
+          "p95": 1.2263729572296143,
+          "p99": 1.2263729572296143
         },
         "displacement_x_px": {
-          "count": 171,
-          "min": -1.5999984741210938,
-          "max": -1.5999984741210938,
-          "mean": -1.5999984741210938,
-          "median": -1.5999984741210938,
-          "p95": -1.5999984741210938,
-          "p99": -1.5999984741210938
+          "count": 190,
+          "min": -1.1624984741210938,
+          "max": -1.1624984741210938,
+          "mean": -1.1624984741210938,
+          "median": -1.1624984741210938,
+          "p95": -1.1624984741210938,
+          "p99": -1.1624984741210938
         },
         "displacement_y_px": {
-          "count": 171,
-          "min": 0.0,
-          "max": 0.0,
-          "mean": 0.0,
-          "median": 0.0,
-          "p95": 0.0,
-          "p99": 0.0
+          "count": 190,
+          "min": -0.390625,
+          "max": -0.390625,
+          "mean": -0.390625,
+          "median": -0.390625,
+          "p95": -0.390625,
+          "p99": -0.390625
         },
         "displacement_histogram": {
           "[0,0.5)": 0,
           "[0.5,1)": 0,
-          "[1,2)": 171,
+          "[1,2)": 190,
           "[2,4)": 0,
           "[4,8)": 0,
           "[8,16)": 0,
@@ -2703,8 +2703,8 @@
         },
         "suspicious_over_bound": 0,
         "suspicious_fraction": 0.0,
-        "static_max_error_px": 1.5999984741210938,
-        "static_violations": 171
+        "static_max_error_px": 1.1624984741210938,
+        "static_violations": 190
       },
       "static_test": {
         "status": "not_applicable",
@@ -2718,18 +2718,18 @@
         "draws_with_row_pairs": 1,
         "skipped_draws": [],
         "sample_stride": 1,
-        "sampled_pixels": 171,
-        "explained_pixels": 171,
+        "sampled_pixels": 190,
+        "explained_pixels": 190,
         "unexplained_pixels": 0,
         "unexplained_fraction": 0.0,
         "ambiguous_pixels": 0,
-        "max_error_px": 1.5497207641601562e-06,
+        "max_error_px": 0.43750154972076416,
         "groups": [
           {
             "draws": [
               3
             ],
-            "attributed_pixels": 171
+            "attributed_pixels": 190
           }
         ],
         "per_draw": [
@@ -2749,13 +2749,13 @@
               -1.600000023841858,
               0.0
             ],
-            "group_attributed_pixels": 171,
+            "group_attributed_pixels": 190,
             "group_median_displacement_px": [
-              -1.5999984741210938,
-              0.0
+              -1.1624984741210938,
+              -0.390625
             ],
-            "origin_vs_median_difference_px": 1.5497207641601562e-06,
-            "group_max_error_px": 1.5497207641601562e-06
+            "origin_vs_median_difference_px": 0.5865112928435994,
+            "group_max_error_px": 0.43750154972076416
           }
         ],
         "unexplained_examples": []
@@ -2764,9 +2764,9 @@
         "status": "evaluated",
         "reason": null,
         "previous_frame": 6,
-        "valid_pixels": 171,
+        "valid_pixels": 190,
         "previous_offscreen": 0,
-        "previous_covered": 171,
+        "previous_covered": 190,
         "previous_uncovered": 0,
         "covered_fraction": 1.0,
         "criterion_applies": false,
@@ -2780,17 +2780,17 @@
         "previous_frame": 6,
         "sampling": "nearest",
         "previous_jitter_px": [
-          0.0,
-          0.0
+          0.375,
+          0.055556
         ],
-        "compared_pixels": 171,
+        "compared_pixels": 190,
         "previous_offscreen": 0,
         "previous_sentinel": 0,
         "tolerance": 0.0001,
-        "within_tolerance": 171,
+        "within_tolerance": 190,
         "within_fraction": 1.0,
         "error": {
-          "count": 171,
+          "count": 190,
           "min": 0.0,
           "max": 0.0,
           "mean": 0.0,
@@ -2799,7 +2799,7 @@
           "p99": 0.0
         },
         "error_histogram": {
-          "[0,1e-06)": 171,
+          "[0,1e-06)": 190,
           "[1e-06,1e-05)": 0,
           "[1e-05,0.0001)": 0,
           "[0.0001,0.001)": 0,
@@ -2819,25 +2819,25 @@
         "bound_px": 2.4,
         "bound_missing": 0.25,
         "jitter_px": [
-          0.0,
-          0.0
+          -0.4375,
+          0.388889
         ],
         "jitter_previous_px": [
-          0.0,
-          0.0
+          0.375,
+          0.055556
         ]
       },
       "depth_image": {
         "file": "depth_1_7.r32f",
         "status": "loaded",
-        "sha256": "73777f83193c5b86bd1275184c57b5b8c01d60aa0389d93a4d8ba3f97a7e9031",
+        "sha256": "3a517fde611710ead91f9a581d720c7a2d0fdd155423f7b48473f299b0cb1b4f",
         "pixels": 4096,
         "nonfinite": 0,
-        "sentinel": 3925,
-        "written": 171,
+        "sentinel": 3906,
+        "written": 190,
         "out_of_range": 0,
-        "sentinel_fraction": 0.958251953125,
-        "written_fraction": 0.041748046875,
+        "sentinel_fraction": 0.95361328125,
+        "written_fraction": 0.04638671875,
         "written_range": [
           0.5,
           0.5
@@ -3005,32 +3005,32 @@
         "result": "00000000",
         "bytes_logged": 65536,
         "status": "ok",
-        "sha256": "0078c3e7deda59743b9f9a6134cf93e796183aa46cde96ec439b8c1e06d3a394",
+        "sha256": "e01b2b9d660e5c40e3d1a041019228a24bb372e7be0cbc4ee36f2d52bd10135f",
         "validity_counts": {
-          "valid": 190,
+          "valid": 171,
           "zero": 0,
-          "sentinel": 3906,
+          "sentinel": 3925,
           "other": 0
         },
         "validity_fractions": {
-          "valid": 0.04638671875,
+          "valid": 0.041748046875,
           "zero": 0.0,
-          "sentinel": 0.95361328125,
+          "sentinel": 0.958251953125,
           "other": 0.0
         },
         "nonfinite_values": 0,
         "abi_clean": true
       },
       "pixels": {
-        "valid_pixels": 190,
+        "valid_pixels": 171,
         "uv_range": {
           "u": [
             0.0640869140625,
-            0.3453369140625
+            0.3297119140625
           ],
           "v": [
-            0.0703125,
-            0.3515625
+            0.07293701171875,
+            0.33856201171875
           ]
         },
         "depth_range": [
@@ -3039,16 +3039,16 @@
         ],
         "previous_uv_outside_unit": 0,
         "displacement_px": {
-          "count": 190,
-          "min": 1.6015625,
-          "max": 1.6015625,
-          "mean": 1.6015625,
-          "median": 1.6015625,
-          "p95": 1.6015625,
-          "p99": 1.6015625
+          "count": 171,
+          "min": 1.6103465557098389,
+          "max": 1.6103465557098389,
+          "mean": 1.6103465557098389,
+          "median": 1.6103465557098389,
+          "p95": 1.6103465557098389,
+          "p99": 1.6103465557098389
         },
         "displacement_x_px": {
-          "count": 190,
+          "count": 171,
           "min": 1.6015625,
           "max": 1.6015625,
           "mean": 1.6015625,
@@ -3057,18 +3057,18 @@
           "p99": 1.6015625
         },
         "displacement_y_px": {
-          "count": 190,
-          "min": 0.0,
-          "max": 0.0,
-          "mean": 0.0,
-          "median": 0.0,
-          "p95": 0.0,
-          "p99": 0.0
+          "count": 171,
+          "min": 0.16796875,
+          "max": 0.16796875,
+          "mean": 0.16796875,
+          "median": 0.16796875,
+          "p95": 0.16796875,
+          "p99": 0.16796875
         },
         "displacement_histogram": {
           "[0,0.5)": 0,
           "[0.5,1)": 0,
-          "[1,2)": 190,
+          "[1,2)": 171,
           "[2,4)": 0,
           "[4,8)": 0,
           "[8,16)": 0,
@@ -3080,7 +3080,7 @@
         "suspicious_over_bound": 0,
         "suspicious_fraction": 0.0,
         "static_max_error_px": 1.6015625,
-        "static_violations": 190
+        "static_violations": 171
       },
       "static_test": {
         "status": "not_applicable",
@@ -3094,18 +3094,18 @@
         "draws_with_row_pairs": 1,
         "skipped_draws": [],
         "sample_stride": 1,
-        "sampled_pixels": 190,
-        "explained_pixels": 190,
+        "sampled_pixels": 171,
+        "explained_pixels": 171,
         "unexplained_pixels": 0,
         "unexplained_fraction": 0.0,
         "ambiguous_pixels": 0,
-        "max_error_px": 0.0015624761581420898,
+        "max_error_px": 0.16796875,
         "groups": [
           {
             "draws": [
               3
             ],
-            "attributed_pixels": 190
+            "attributed_pixels": 171
           }
         ],
         "per_draw": [
@@ -3125,13 +3125,13 @@
               1.600000023841858,
               0.0
             ],
-            "group_attributed_pixels": 190,
+            "group_attributed_pixels": 171,
             "group_median_displacement_px": [
               1.6015625,
-              0.0
+              0.16796875
             ],
-            "origin_vs_median_difference_px": 0.0015624761581420898,
-            "group_max_error_px": 0.0015624761581420898
+            "origin_vs_median_difference_px": 0.16797601706287496,
+            "group_max_error_px": 0.16796875
           }
         ],
         "unexplained_examples": []
@@ -3140,11 +3140,11 @@
         "status": "evaluated",
         "reason": null,
         "previous_frame": 7,
-        "valid_pixels": 190,
+        "valid_pixels": 171,
         "previous_offscreen": 0,
         "previous_covered": 171,
-        "previous_uncovered": 19,
-        "covered_fraction": 0.9,
+        "previous_uncovered": 0,
+        "covered_fraction": 1.0,
         "criterion_applies": true,
         "criterion_min_matched_ratio": 0.99,
         "previous_frame_routed": 1,
@@ -3156,12 +3156,12 @@
         "previous_frame": 7,
         "sampling": "nearest",
         "previous_jitter_px": [
-          0.0,
-          0.0
+          -0.4375,
+          0.388889
         ],
         "compared_pixels": 171,
         "previous_offscreen": 0,
-        "previous_sentinel": 19,
+        "previous_sentinel": 0,
         "tolerance": 0.0001,
         "within_tolerance": 171,
         "within_fraction": 1.0,
@@ -3196,24 +3196,24 @@
         "bound_missing": 0.25,
         "jitter_px": [
           0.0,
-          0.0
+          -0.166667
         ],
         "jitter_previous_px": [
-          0.0,
-          0.0
+          -0.4375,
+          0.388889
         ]
       },
       "depth_image": {
         "file": "depth_1_8.r32f",
         "status": "loaded",
-        "sha256": "5ea092ec466e55d24e7a73b5a47bf6fe48de60793441e07fc70820773f84c007",
+        "sha256": "b746b9b7e635877874ec255288e2414d9e54f08fa7f10cd8e9a68b838632ec2b",
         "pixels": 4096,
         "nonfinite": 0,
-        "sentinel": 1346,
-        "written": 2750,
+        "sentinel": 1365,
+        "written": 2731,
         "out_of_range": 0,
-        "sentinel_fraction": 0.32861328125,
-        "written_fraction": 0.67138671875,
+        "sentinel_fraction": 0.333251953125,
+        "written_fraction": 0.666748046875,
         "written_range": [
           0.5,
           0.6000000238418579

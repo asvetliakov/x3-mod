@@ -1,5 +1,6 @@
 #include "material_motion.h"
 #include "rigid_motion_pixel_program.h"
+#include "current_depth_pixel_program.h"
 #include <iterator>
 
 namespace x3m::renderer {
@@ -116,9 +117,14 @@ bool for_each_parameter(const std::uint32_t* words, std::size_t at, std::size_t 
     return true;
 }
 
+// Registers the row reserves in each stage. The depth registers are reserved
+// whenever the row names them, whether or not a caller asks for the depth
+// output: a row is a static fact about the program and must be right either way.
 bool vertex_reserved(const MotionOutputProfile& row, std::uint32_t token) noexcept {
     const auto type = register_type(token), index = register_index(token);
-    if (type == output_class) return index == row.vertex_output_register;
+    if (type == output_class)
+        return index == row.vertex_output_register ||
+            (motion_output_vertex_exports_depth(row) && index == row.vertex_depth_output_register);
     if (type == constant_class)
         return index >= row.vertex_constant_base && index < row.vertex_constant_base + 4u;
     return false;
@@ -128,12 +134,22 @@ bool pixel_reserved(const MotionOutputProfile& row, std::uint32_t token) noexcep
     switch (type) {
     case temporary_class:
         return index >= row.pixel_temporary_base && index < row.pixel_temporary_base + 3u;
-    case input_class: return index == row.pixel_input_register;
+    case input_class:
+        return index == row.pixel_input_register || (row.depth_output && index == row.pixel_depth_input_register);
     case constant_class:
         return index >= row.pixel_constant_base && index < row.pixel_constant_base + 5u;
-    case color_output_class: return index == row.pixel_output_register;
+    case color_output_class:
+        return index == row.pixel_output_register || (row.depth_output && index == MaterialMotionAbi::depth_render_target);
     default: return false;
     }
+}
+// TEXCOORD indices the row reserves: the motion interpolator and, when the
+// stage takes part in the depth export, the depth interpolator.
+bool vertex_texcoord_reserved(const MotionOutputProfile& row, unsigned index) noexcept {
+    return index == row.texcoord_index || (motion_output_vertex_exports_depth(row) && index == row.depth_texcoord_index);
+}
+bool pixel_texcoord_reserved(const MotionOutputProfile& row, unsigned index) noexcept {
+    return index == row.texcoord_index || (row.depth_output && index == row.depth_texcoord_index);
 }
 
 // Revalidate the row's vertex-side facts against the actual words: contiguous
@@ -170,7 +186,7 @@ bool vertex_structure(const MotionOutputProfile& row, const std::uint32_t* words
                     declaration_usage_index(usage) == 0)
                     position_declared = true;
                 return declaration_usage(usage) != texcoord_usage ||
-                    declaration_usage_index(usage) != row.texcoord_index;
+                    !vertex_texcoord_reserved(row, declaration_usage_index(usage));
             }
             if (definition)
                 return length >= 1 && (words[at + 1] & parameter_bit) && !vertex_reserved(row, words[at + 1]);
@@ -247,7 +263,7 @@ bool pixel_structure(const MotionOutputProfile& row, const std::uint32_t* words,
                 return false;
             return register_type(target) != input_class ||
                 declaration_usage(usage) != texcoord_usage ||
-                declaration_usage_index(usage) != row.texcoord_index;
+                !pixel_texcoord_reserved(row, declaration_usage_index(usage));
         }
         if (opcode == op_dcl || definition_opcode(opcode) || refused_flow_opcode(opcode) ||
             opcode == op_texkill || (token & predicated_bit))
@@ -345,6 +361,70 @@ bool motion_fragment(const MotionOutputProfile& row, Words& constants, Words& in
                 auto operand = code[at + i];
                 if (i == 1 && register_type(operand) == color_output_class) ++outputs;
                 if (!relocate_register(row, operand)) return false;
+                body.push_back(operand);
+            }
+        }
+        at += operands + 1;
+    }
+    return false;
+}
+
+// Move one operand of the authored depth fragment: its single input v0 to the
+// row's depth input, its temporary r0 to the first motion temporary (dead
+// once the motion fragment has written oC1, which precedes this fragment),
+// and oC0 to the depth target. No constants exist in that program.
+bool relocate_depth_register(const MotionOutputProfile& row, std::uint32_t& token) noexcept {
+    if (!(token & parameter_bit) || (token & relative_bit)) return false;
+    const auto type = register_type(token), index = register_index(token);
+    unsigned relocated;
+    switch (type) {
+    case temporary_class: if (index != 0) return false; relocated = row.pixel_temporary_base; break;
+    case input_class: if (index != 0) return false; relocated = row.pixel_depth_input_register; break;
+    case color_output_class: if (index != 0) return false; relocated = MaterialMotionAbi::depth_render_target; break;
+    default: return false;
+    }
+    token = (token & ~std::uint32_t(0x7ff)) | relocated;
+    return true;
+}
+// Relocate only our authored current-depth program: one TEXCOORD1 input
+// declaration, no definitions, a straight-line body (rcp, mul) and one color
+// output write. Its shape is fixed at compile time of the fragment.
+bool depth_fragment(const MotionOutputProfile& row, Words& inputs, Words& body) {
+    const auto& code = current_depth_pixel_program();
+    if (code[0] != 0xffff0300u) return false;
+    bool body_started = false;
+    unsigned declarations = 0, outputs = 0;
+    for (std::size_t at = 1; at < std::size(code);) {
+        const auto token = code[at], opcode = token & 0xffff;
+        if (opcode == op_end)
+            return token == end_token && at == std::size(code) - 1 && declarations == 1 && outputs == 1;
+        const std::size_t operands = instruction_length(token);
+        if (operands > std::size(code) - at - 1) return false;
+        if (opcode == op_comment) { at += operands + 1; continue; }
+        if (opcode == op_dcl) {
+            // dcl_texcoord1 v0.xy: the usage index and the register move to the row's choices.
+            if (body_started || token != 0x0200001fu || operands != 2 ||
+                code[at + 1] != 0x80010005u || code[at + 2] != 0x90030000u)
+                return false;
+            inputs.insert(inputs.end(), {token, 0x80000005u | (std::uint32_t(row.depth_texcoord_index) << 16),
+                                         0x90030000u | row.pixel_depth_input_register});
+            ++declarations;
+        } else if (definition_opcode(opcode)) {
+            return false;
+        } else {
+            body_started = true;
+            unsigned expected;
+            switch (opcode) {
+            case 6: expected = 2; break;  // RCP
+            case 5: expected = 3; break;  // MUL
+            default: return false;
+            }
+            if (token != (expected << 24 | opcode) || operands != expected) return false;
+            body.push_back(token);
+            for (std::size_t i = 1; i <= operands; ++i) {
+                auto operand = code[at + i];
+                if (i == 1 && register_type(operand) == color_output_class) ++outputs;
+                if (!relocate_depth_register(row, operand)) return false;
                 body.push_back(operand);
             }
         }
@@ -498,8 +578,16 @@ const MotionOutputProfile* material_motion_pixel_row(std::uint64_t pixel, std::s
     return pixel_row(pixel, words);
 }
 
+bool material_motion_vertex_exports_depth(const MotionOutputProfile& row, bool current_depth) noexcept {
+    return current_depth && motion_output_vertex_exports_depth(row);
+}
+bool material_motion_pixel_writes_depth(const MotionOutputProfile& row, bool current_depth) noexcept {
+    return current_depth && row.depth_output;
+}
+
 MaterialMotionResult material_motion_vertex_variant_for(const MotionOutputProfile& row,
-    const std::uint32_t* vertex, std::size_t vertex_words, std::vector<std::uint32_t>& output) noexcept {
+    const std::uint32_t* vertex, std::size_t vertex_words, std::vector<std::uint32_t>& output,
+    bool current_depth) noexcept {
     if (!vertex || vertex_words < 2) return MaterialMotionResult::InvalidInput;
     if (!supported_class(row) || vertex_words != row.vertex_dword_count ||
         fingerprint(vertex, vertex_words) != row.vertex_fingerprint)
@@ -508,15 +596,20 @@ MaterialMotionResult material_motion_vertex_variant_for(const MotionOutputProfil
         return MaterialMotionResult::ProfileMismatch;
     const std::size_t declaration_at = row.vertex_declaration_insert_dword;
     const std::size_t arithmetic_at = row.vertex_arithmetic_insert_dword;
+    const bool depth = material_motion_vertex_exports_depth(row, current_depth);
     try {
         Words variant;
-        variant.reserve(vertex_words + 19);
+        variant.reserve(vertex_words + 19 + (depth ? 11 : 0));
         variant.insert(variant.end(), vertex, vertex + declaration_at);
         // New output o<n> is TEXCOORD<i> without centroid or precision modifiers;
         // existing declarations and math are intact.
         variant.insert(variant.end(), {0x0200001fu,
             0x80000005u | (std::uint32_t(row.texcoord_index) << 16),
             0xe00f0000u | row.vertex_output_register});
+        if (depth)
+            variant.insert(variant.end(), {0x0200001fu,
+                0x80000005u | (std::uint32_t(row.depth_texcoord_index) << 16),
+                0xe00f0000u | row.vertex_depth_output_register});
         variant.insert(variant.end(), vertex + declaration_at, vertex + arithmetic_at);
         // Previous clip position: the same position temporary against the
         // previous rows, one lane per dot exactly like the original quad.
@@ -525,6 +618,15 @@ MaterialMotionResult material_motion_vertex_variant_for(const MotionOutputProfil
                 0xe0000000u | (std::uint32_t(row.position_lane_masks[lane]) << 16) | row.vertex_output_register,
                 0x80e40000u | row.position_temporary,
                 0xa0e40000u | (row.vertex_constant_base + lane)});
+        // Current clip z and w: the same dots the original issues for o0.z and
+        // o0.w (matrix rows 2 and 3), written to .xz and .yw so every lane of
+        // the interpolator is defined without a literal zero: (z, w, z, w).
+        if (depth)
+            for (unsigned lane = 0; lane < 2; ++lane)
+                variant.insert(variant.end(), {(3u << 24) | op_dp4,
+                    0xe0000000u | ((lane ? 0xau : 0x5u) << 16) | row.vertex_depth_output_register,
+                    0x80e40000u | row.position_temporary,
+                    0xa0e40000u | (row.matrix_register + 2 + lane)});
         variant.insert(variant.end(), vertex + arithmetic_at, vertex + vertex_words);
         output.swap(variant);
         return MaterialMotionResult::Applied;
@@ -532,7 +634,8 @@ MaterialMotionResult material_motion_vertex_variant_for(const MotionOutputProfil
 }
 
 MaterialMotionResult material_motion_pixel_variant_for(const MotionOutputProfile& row,
-    const std::uint32_t* pixel, std::size_t pixel_words, std::vector<std::uint32_t>& output) noexcept {
+    const std::uint32_t* pixel, std::size_t pixel_words, std::vector<std::uint32_t>& output,
+    bool current_depth) noexcept {
     if (!pixel || pixel_words < 2) return MaterialMotionResult::InvalidInput;
     if (!supported_class(row) || pixel_words != row.pixel_dword_count ||
         fingerprint(pixel, pixel_words) != row.pixel_fingerprint)
@@ -542,9 +645,13 @@ MaterialMotionResult material_motion_pixel_variant_for(const MotionOutputProfile
     const std::size_t definition_at = row.pixel_definition_insert_dword;
     const std::size_t declaration_at = row.pixel_declaration_insert_dword;
     const std::size_t append_at = row.pixel_append_dword;
+    const bool depth = material_motion_pixel_writes_depth(row, current_depth);
     try {
         Words constants, inputs, body;
         if (!motion_fragment(row, constants, inputs, body)) return MaterialMotionResult::ProfileMismatch;
+        // The depth fragment follows the motion fragment: its declaration after
+        // the motion input, its two instructions after the motion body.
+        if (depth && !depth_fragment(row, inputs, body)) return MaterialMotionResult::ProfileMismatch;
         Words variant;
         variant.reserve(pixel_words + constants.size() + inputs.size() + body.size());
         variant.insert(variant.end(), pixel, pixel + definition_at);
@@ -560,26 +667,26 @@ MaterialMotionResult material_motion_pixel_variant_for(const MotionOutputProfile
 }
 
 MaterialMotionResult material_motion_vertex_variant(const std::uint32_t* vertex,
-    std::size_t vertex_words, std::vector<std::uint32_t>& output) noexcept {
+    std::size_t vertex_words, std::vector<std::uint32_t>& output, bool current_depth) noexcept {
     if (!vertex || vertex_words < 2) return MaterialMotionResult::InvalidInput;
     // Rows sharing a vertex program agree on its side of the splice
     // (static_assert in motion_output_profiles.h), so the first row serves.
     const auto* row = vertex_row(fingerprint(vertex, vertex_words), vertex_words);
     if (!row) return MaterialMotionResult::UnsupportedShader;
-    return material_motion_vertex_variant_for(*row, vertex, vertex_words, output);
+    return material_motion_vertex_variant_for(*row, vertex, vertex_words, output, current_depth);
 }
 
 MaterialMotionResult material_motion_pixel_variant(const std::uint32_t* pixel,
-    std::size_t pixel_words, std::vector<std::uint32_t>& output) noexcept {
+    std::size_t pixel_words, std::vector<std::uint32_t>& output, bool current_depth) noexcept {
     if (!pixel || pixel_words < 2) return MaterialMotionResult::InvalidInput;
     const auto* row = pixel_row(fingerprint(pixel, pixel_words), pixel_words);
     if (!row) return MaterialMotionResult::UnsupportedShader;
-    return material_motion_pixel_variant_for(*row, pixel, pixel_words, output);
+    return material_motion_pixel_variant_for(*row, pixel, pixel_words, output, current_depth);
 }
 
 MaterialMotionResult material_motion_variant(const std::uint32_t* vertex,
     std::size_t vertex_words, const std::uint32_t* pixel, std::size_t pixel_words,
-    MaterialMotionVariant& output) noexcept {
+    MaterialMotionVariant& output, bool current_depth) noexcept {
     if (!vertex || !pixel || vertex_words < 2 || pixel_words < 2)
         return MaterialMotionResult::InvalidInput;
     // Qualify both fingerprints against one row before either stage transforms,
@@ -590,9 +697,9 @@ MaterialMotionResult material_motion_variant(const std::uint32_t* vertex,
     if (!row || vertex_words != row->vertex_dword_count || pixel_words != row->pixel_dword_count)
         return MaterialMotionResult::UnsupportedShader;
     MaterialMotionVariant variant;
-    const auto vertex_result = material_motion_vertex_variant_for(*row, vertex, vertex_words, variant.vertex);
+    const auto vertex_result = material_motion_vertex_variant_for(*row, vertex, vertex_words, variant.vertex, current_depth);
     if (vertex_result != MaterialMotionResult::Applied) return vertex_result;
-    const auto pixel_result = material_motion_pixel_variant_for(*row, pixel, pixel_words, variant.pixel);
+    const auto pixel_result = material_motion_pixel_variant_for(*row, pixel, pixel_words, variant.pixel, current_depth);
     if (pixel_result != MaterialMotionResult::Applied) return pixel_result;
     output.vertex.swap(variant.vertex);
     output.pixel.swap(variant.pixel);

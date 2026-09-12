@@ -9,7 +9,7 @@ struct ResolveConstants {
     float size_jitter[4]{};
     float history[4]{};
     float rejection[4]{0.0001f, 0.0f, 65000.0f, 0.000001f};
-    float options[4]{}; // motion enabled, reactive masks enabled, mask-snapshot mode, reserved
+    float options[4]{}; // motion enabled, reactive masks enabled, mask-snapshot mode, depth-sentinel reactive
 };
 static_assert(sizeof(ResolveConstants) == 8 * 4 * sizeof(float));
 
@@ -36,7 +36,8 @@ struct HistoryState {
 inline bool prepare(ResolveConstants& out, const HistoryState& state,
                     const float* matrix_rows, float current_x, float current_y,
                     float previous_x, float previous_y, float weight,
-                    bool motion_enabled, bool reactive_enabled=false) noexcept {
+                    bool motion_enabled, bool reactive_enabled=false,
+                    bool depth_sentinel_reactive=false) noexcept {
     if(!matrix_rows || !state.width || !state.height || !std::isfinite(weight)
         || weight<0 || weight>1 || !std::isfinite(current_x) || !std::isfinite(current_y)
         || !std::isfinite(previous_x) || !std::isfinite(previous_y)) return false;
@@ -54,7 +55,8 @@ inline bool prepare(ResolveConstants& out, const HistoryState& state,
     out.history[2]=weight; out.history[3]=state.valid?1.f:0.f;
     out.options[0]=motion_enabled?1.f:0.f;
     out.options[1]=reactive_enabled?1.f:0.f;
-    out.options[2]=out.options[3]=0;
+    out.options[2]=0;
+    out.options[3]=depth_sentinel_reactive?1.f:0.f;
     return true;
 }
 } // namespace x3::temporal

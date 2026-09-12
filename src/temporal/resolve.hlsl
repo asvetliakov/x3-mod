@@ -13,7 +13,7 @@ float4 reprojection3 : register(c3);
 float4 sizeJitter : register(c4); // 1/W, 1/H, current jitter UV xy
 float4 history : register(c5); // previous jitter UV xy, weight, valid
 float4 rejection : register(c6); // absolute device-depth tolerance, relative tolerance, HDR limit, minimum W
-float4 options : register(c7); // motion enabled, reactive enabled, mask snapshot mode, reserved
+float4 options : register(c7); // motion enabled, reactive enabled, mask snapshot mode, depth-sentinel reactive
 
 bool finiteColor(float3 v) { return all(v == v) && all(abs(v) <= rejection.z); }
 bool validDepth(float v) { return v == v && v >= 0 && v <= 1; }
@@ -47,6 +47,12 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float3 raw = tex2D(currentColor, uv).rgb;
     float3 color = cleanColor(raw);
     float depth = tex2D(currentDepth, uv).r;
+    // Depth-sentinel reactive mode (options.w): a negative current depth marks a
+    // pixel no routed opaque draw wrote (background, particles, unknown
+    // programs); it is current-only. Sentinel history taps are rejected one by
+    // one inside historyTap by validDepth, so a silhouette footprint keeps its
+    // surviving opaque taps. No mask texture or snapshot draw is involved.
+    if (options.w > 0.5 && depth < 0) return float4(color, 1);
     if (history.w < 0.5 || history.z <= 0 || !finiteColor(raw) || !validDepth(depth))
         return float4(color, 1);
     if (options.y > 0.5 && !maskSafe(tex2D(currentReactive, uv).r))

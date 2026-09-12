@@ -32,8 +32,14 @@ Checks (details in docs/verification/motion-readback.md):
    ``M_current * inverse(M_previous)`` of some matched draw must land on the
    pixel itself), which also attributes pixels to draws without geometry;
 4. temporal cross-check of consecutive captured frames;
-5. previous-depth comparison against an optional R32F depth image of frame N
-   (unavailable from current captures; see the document).
+5. RT2 depth-image integrity (``depth_<device>_<frame>.r32f``, R32F device
+   depth in [0,1] where a routed draw covered the pixel, ``-1`` elsewhere:
+   finiteness, range and sentinel fraction) and the previous-depth comparison:
+   frame N+1's previous-depth channel at the previous UV (offset by frame N's
+   raster jitter, which the route logs as ``jitter_previous_x/y``) against
+   frame N's depth image, sampled nearest (default) or bilinear over the
+   non-sentinel taps, with the error distribution reported. Sentinel taps are
+   excluded from the comparison and counted.
 
 The log is never loaded whole; only bounded per-draw metadata is kept.
 """
@@ -61,6 +67,7 @@ ROW_REGISTERS = (24, 25, 26, 27)
 RECORDING_GATES = (0, 6)
 GATE_NAMES = {0: 'matched', 1: 'gate1', 2: 'gate2', 3: 'gate3', 4: 'gate4', 5: 'gate5', 6: 'gate6'}
 DISPLACEMENT_BINS = (0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0)
+DEPTH_ERROR_BINS = (1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1)
 PIXEL_BYTES = 16
 
 
@@ -77,6 +84,15 @@ def number(text, default=None):
         return int(text, 10)
     except (TypeError, ValueError):
         return default
+
+
+def real(text, default=None):
+    """Float field (jitter, cut statistics); None/default when absent or malformed."""
+    try:
+        value = float(text)
+    except (TypeError, ValueError):
+        return default
+    return value if math.isfinite(value) else default
 
 
 def hresult_ok(text):
@@ -122,6 +138,8 @@ class Frame:
         self.draws = []          # scene draws with a motion_route line, in order
         self.summary = None      # motion_output_frame fields
         self.readback = None     # motion_output_readback fields
+        self.depth_readback = None  # motion_output_depth_readback fields (RT2, step 1)
+        self.cut = None          # motion_output_cut fields (data-only cut detector)
         self.reset_at = None     # route draws seen before a motion_output_reset logged in this frame
         self.notes = []
 
@@ -233,6 +251,14 @@ def parse_log(lines):
             record = frame_for(fields)
             if record is not None:
                 record.readback = fields
+        elif tag == 'motion_output_depth_readback':
+            record = frame_for(fields)
+            if record is not None:
+                record.depth_readback = fields
+        elif tag == 'motion_output_cut':
+            record = frame_for(fields)
+            if record is not None:
+                record.cut = fields
         elif tag == 'motion_output_reset':
             device = number(fields.get('device'))
             record = current.get(device)
@@ -379,6 +405,9 @@ def load_readback(path, width, height):
     return result
 
 
+DEPTH_SENTINEL = -1.0
+
+
 def load_r32f(path, width, height):
     size = path.stat().st_size
     if size != width * height * 4:
@@ -389,6 +418,33 @@ def load_r32f(path, width, height):
     if sys.byteorder != 'little':
         data.byteswap()
     return data
+
+
+def depth_image_stats(data):
+    """RT2 contract: finite, device depth in [0,1] where written, -1 sentinel elsewhere."""
+    isfinite = math.isfinite
+    nonfinite = sentinel = written = out_of_range = 0
+    low, high = None, None
+    for value in data:
+        if not isfinite(value):
+            nonfinite += 1
+        elif value == DEPTH_SENTINEL:
+            sentinel += 1
+        elif 0.0 <= value <= 1.0:
+            written += 1
+            low = value if low is None or value < low else low
+            high = value if high is None or value > high else high
+        else:
+            out_of_range += 1
+    total = len(data)
+    return {
+        'pixels': total, 'nonfinite': nonfinite, 'sentinel': sentinel, 'written': written,
+        'out_of_range': out_of_range,
+        'sentinel_fraction': (sentinel / total) if total else None,
+        'written_fraction': (written / total) if total else None,
+        'written_range': [low, high] if written else None,
+        'clean': nonfinite == 0 and out_of_range == 0,
+    }
 
 
 # ---- statistics helpers ------------------------------------------------------------
@@ -699,31 +755,83 @@ def temporal_cross_check(previous_frame, previous_readback, frame, readback, min
     }
 
 
-def depth_cross_check(previous_frame, previous_depth, frame, readback, tolerance):
+def sample_depth(depth, width, height, u, v, bilinear):
+    """Depth of frame N at texture UV (u, v); None off-screen or when every tap is
+    the sentinel. Nearest takes the texel whose centre is closest; bilinear
+    weights the four surrounding texel centres and drops sentinel taps,
+    renormalizing the rest (a depth edge then leans on its written side)."""
+    if not bilinear:
+        px, py = int(math.floor(u * width)), int(math.floor(v * height))
+        if px < 0 or py < 0 or px >= width or py >= height:
+            return None, 'offscreen'
+        value = depth[py * width + px]
+        return (None, 'sentinel') if value == DEPTH_SENTINEL else (value, None)
+    fx, fy = u * width - 0.5, v * height - 0.5
+    x0, y0 = int(math.floor(fx)), int(math.floor(fy))
+    tx, ty = fx - x0, fy - y0
+    if x0 < -1 or y0 < -1 or x0 >= width or y0 >= height:
+        return None, 'offscreen'
+    total = accumulated = 0.0
+    for (px, py, weight) in ((x0, y0, (1 - tx) * (1 - ty)), (x0 + 1, y0, tx * (1 - ty)),
+                             (x0, y0 + 1, (1 - tx) * ty), (x0 + 1, y0 + 1, tx * ty)):
+        if weight <= 0.0 or px < 0 or py < 0 or px >= width or py >= height:
+            continue
+        value = depth[py * width + px]
+        if value == DEPTH_SENTINEL:
+            continue
+        total += weight
+        accumulated += weight * value
+    if total <= 0.0:
+        return None, 'sentinel'
+    return accumulated / total, None
+
+
+def previous_jitter_px(frame):
+    """Frame N's raster jitter as logged by frame N+1 (`jitter_previous_x/y`, pixels,
+    +X right, +Y down); zero when the route ran without jitter or the field is absent."""
+    summary = frame.summary or {}
+    return (real(summary.get('jitter_previous_x'), 0.0), real(summary.get('jitter_previous_y'), 0.0))
+
+
+def depth_cross_check(previous_frame, previous_depth, frame, readback, tolerance, bilinear=False):
+    """Previous-depth channel (B) of frame N+1's valid pixels against frame N's RT2
+    image at the previous UV. The producer's RG is the previous *unjittered*
+    texture-centre UV while frame N was rasterized with its own jitter, so the
+    sample position is RG plus frame N's jitter in UV units."""
     if previous_depth is None:
         return {'status': 'unavailable',
-                'reason': 'no R32F depth image for frame N (current captures do not read scene depth back)'}
+                'reason': 'no R32F depth image for frame N (depth_<device>_<frame>.r32f absent)'}
     if previous_frame is None or previous_frame.frame != frame.frame - 1:
         return {'status': 'unavailable', 'reason': 'previous captured frame is not frame N-1'}
     width, height = readback.width, readback.height
+    jx, jy = previous_jitter_px(frame)
+    du, dv = jx / width, jy / height
     errors = []
-    offscreen = 0
+    offscreen = sentinel = 0
     for n in range(len(readback.index)):
-        u, v = readback.u[n], readback.v[n]
-        px, py = int(math.floor(u * width)), int(math.floor(v * height))
-        if px < 0 or py < 0 or px >= width or py >= height:
-            offscreen += 1
+        value, reason = sample_depth(previous_depth, width, height, readback.u[n] + du, readback.v[n] + dv, bilinear)
+        if value is None:
+            if reason == 'offscreen':
+                offscreen += 1
+            else:
+                sentinel += 1
             continue
-        errors.append(abs(readback.z[n] - previous_depth[py * width + px]))
+        errors.append(abs(readback.z[n] - value))
     within = sum(1 for error in errors if error <= tolerance)
     return {
         'status': 'evaluated' if errors else 'unavailable',
+        'reason': None if errors else 'no valid pixel lands on written previous depth',
         'previous_frame': previous_frame.frame,
+        'sampling': 'bilinear' if bilinear else 'nearest',
+        'previous_jitter_px': [jx, jy],
         'compared_pixels': len(errors),
         'previous_offscreen': offscreen,
+        'previous_sentinel': sentinel,
+        'tolerance': tolerance,
         'within_tolerance': within,
         'within_fraction': (within / len(errors)) if errors else None,
         'error': describe(errors),
+        'error_histogram': histogram(errors, DEPTH_ERROR_BINS),
     }
 
 
@@ -807,6 +915,7 @@ def analyze(log_path, readback_dir, options, depth_pattern=None):
     temporal_pairs = []
     consistency_frames = []
     depth_frames = []
+    depth_images = []
     for frame in sorted(captured, key=lambda f: (f.device, f.frame)):
         report = OrderedDict()
         report['device'] = frame.device
@@ -889,23 +998,48 @@ def analyze(log_path, readback_dir, options, depth_pattern=None):
                                                   options['temporal_criterion_min_matched_ratio'])
         if report['temporal']['status'] == 'evaluated':
             temporal_pairs.append(report)
-        report['depth'] = depth_cross_check(prev_frame, prev_depth, frame, readback, options['depth_tolerance'])
+        report['depth'] = depth_cross_check(prev_frame, prev_depth, frame, readback, options['depth_tolerance'],
+                                            options['depth_sampling'] == 'bilinear')
         if report['depth']['status'] == 'evaluated':
             depth_frames.append(report)
+        report['cut'] = cut_report(frame)
+        # RT2 of this frame: the logged depth readback names the file; the
+        # pattern is the fallback for captures without the log line.
         depth = None
-        if depth_pattern:
-            depth_path = readback_dir / depth_pattern.format(device=frame.device, frame=frame.frame)
-            if depth_path.is_file():
+        depth_name = (frame.depth_readback or {}).get('file') or (depth_pattern.format(device=frame.device, frame=frame.frame) if depth_pattern else None)
+        if depth_name:
+            depth_path = readback_dir / depth_name
+            if frame.depth_readback is not None and not hresult_ok(frame.depth_readback.get('result')):
+                report['depth_image'] = {'file': depth_name, 'status': 'malformed',
+                                         'reason': f"depth readback result {frame.depth_readback.get('result')}"}
+                hard_errors.append(f'{depth_name}: depth readback result {frame.depth_readback.get("result")}')
+            elif depth_path.is_file():
                 try:
                     depth = load_r32f(depth_path, width, height)
-                    report['depth_image'] = {'file': depth_path.name, 'status': 'loaded'}
+                    stats = depth_image_stats(depth)
+                    report['depth_image'] = {'file': depth_path.name, 'status': 'loaded', 'sha256': sha256_stream(depth_path), **stats}
+                    depth_images.append(report)
+                    if not stats['clean']:
+                        hard_errors.append(f"{depth_path.name}: {stats['nonfinite']} nonfinite, {stats['out_of_range']} outside [0,1] and the -1 sentinel")
+                    # Every motion-valid pixel of this frame was written by a routed
+                    # draw whose row carries the depth output, so RT2 must be written there.
+                    missing = sum(1 for index in readback.index if depth[index] == DEPTH_SENTINEL)
+                    report['depth_image']['valid_motion_without_depth'] = missing
+                    if missing:
+                        report['notes'].append(f'{missing} motion-valid pixels carry the depth sentinel (motion-only rows or a write-mask difference)')
                 except MalformedInput as error:
                     report['depth_image'] = {'file': depth_path.name, 'status': 'malformed', 'reason': str(error)}
                     hard_errors.append(str(error))
+            elif frame.depth_readback is not None:
+                report['depth_image'] = {'file': depth_name, 'status': 'missing', 'reason': 'logged depth readback file absent'}
+                hard_errors.append(f'{depth_name}: file missing')
+            else:
+                report['depth_image'] = {'file': depth_name, 'status': 'absent'}
         previous_state[frame.device] = (frame, readback, depth)
         frame_reports.append(report)
 
-    checks = build_checks(frame_reports, hard_errors, static_frames, consistency_frames, temporal_pairs, depth_frames, options)
+    checks = build_checks(frame_reports, hard_errors, static_frames, consistency_frames, temporal_pairs, depth_frames, options,
+                          depth_images)
     failed = [name for name, check in checks.items() if check['status'] == 'fail']
     return OrderedDict([
         ('tool', 'tools/analysis/analyze_motion_readback.py'),
@@ -924,7 +1058,8 @@ def analyze(log_path, readback_dir, options, depth_pattern=None):
     ])
 
 
-def build_checks(frame_reports, hard_errors, static_frames, consistency_frames, temporal_pairs, depth_frames, options):
+def build_checks(frame_reports, hard_errors, static_frames, consistency_frames, temporal_pairs, depth_frames, options,
+                 depth_images=()):
     checks = OrderedDict()
     readbacks = [r for r in frame_reports if 'readback' in r]
     clean = [r for r in readbacks if r['readback'].get('status') == 'ok' and r['readback'].get('abi_clean')]
@@ -987,15 +1122,53 @@ def build_checks(frame_reports, hard_errors, static_frames, consistency_frames, 
         'worst_covered_fraction': worst,
         'covered_fractions': {f"{r['temporal']['previous_frame']}->{r['frame']}": r['temporal']['covered_fraction'] for r in temporal_pairs},
     }
+    if depth_images:
+        unclean = [r['frame'] for r in depth_images if not r['depth_image']['clean']]
+        without = sum(r['depth_image'].get('valid_motion_without_depth', 0) for r in depth_images)
+        checks['depth_image_integrity'] = {
+            'status': 'pass' if not unclean else 'fail',
+            'frames': [r['frame'] for r in depth_images], 'unclean_frames': unclean,
+            'sentinel_fraction': {r['frame']: r['depth_image']['sentinel_fraction'] for r in depth_images},
+            'written_fraction': {r['frame']: r['depth_image']['written_fraction'] for r in depth_images},
+            'written_range': {r['frame']: r['depth_image']['written_range'] for r in depth_images},
+            'valid_motion_without_depth': without,
+            'note': 'R32F device depth in [0,1] where a routed depth row covered the pixel, -1 elsewhere; nonfinite or out-of-range values fail',
+        }
+    else:
+        checks['depth_image_integrity'] = {'status': 'unavailable', 'reason': 'no depth_<device>_<frame>.r32f image beside the readbacks'}
     if depth_frames:
         worst_depth = min(r['depth']['within_fraction'] for r in depth_frames)
         checks['depth'] = {'status': 'pass' if worst_depth >= options['depth_within_min'] else 'fail',
+                           'sampling': options['depth_sampling'],
                            'frames_evaluated': [r['frame'] for r in depth_frames], 'worst_within_fraction': worst_depth,
-                           'tolerance': options['depth_tolerance']}
+                           'compared_pixels': sum(r['depth']['compared_pixels'] for r in depth_frames),
+                           'previous_sentinel': sum(r['depth']['previous_sentinel'] for r in depth_frames),
+                           'max_error': max((r['depth']['error'].get('max') or 0) for r in depth_frames),
+                           'tolerance': options['depth_tolerance'], 'minimum_within_fraction': options['depth_within_min']}
     else:
         checks['depth'] = {'status': 'unavailable',
-                           'reason': 'the capture provides no readable depth image; see docs/verification/motion-readback.md'}
+                           'reason': 'no consecutive captured frame pair with a readable depth image of frame N; see docs/verification/motion-readback.md'}
     return checks
+
+
+def cut_report(frame):
+    """The route's data-only cut verdict for the frame (motion_output_cut line and the
+    per-frame summary): reported, never judged, until a consumer exists."""
+    summary = frame.summary or {}
+    cut = frame.cut or {}
+    if not cut and 'cut' not in summary:
+        return {'status': 'unavailable'}
+    return {
+        'status': 'reported',
+        'cut': number(cut.get('cut', summary.get('cut'))),
+        'median_px': real(cut.get('median_px', summary.get('cut_median_px'))),
+        'missing_fraction': real(cut.get('missing_fraction', summary.get('cut_missing'))),
+        'samples': number(cut.get('samples', summary.get('cut_samples'))),
+        'keyed': number(cut.get('keyed')), 'missing': number(cut.get('missing')),
+        'bound_px': real(cut.get('bound_px')), 'bound_missing': real(cut.get('bound_missing')),
+        'jitter_px': [real(summary.get('jitter_x'), 0.0), real(summary.get('jitter_y'), 0.0)],
+        'jitter_previous_px': list(previous_jitter_px(frame)),
+    }
 
 
 def render_report(summary):
@@ -1050,9 +1223,18 @@ def render_report(summary):
             lines.append(f"  temporal: {t['status']} {t.get('reason', '')}")
         dp = report['depth']
         if dp['status'] == 'evaluated':
-            lines.append(f"  depth {dp['previous_frame']}->{report['frame']}: compared={dp['compared_pixels']} within={dp['within_fraction']:.4f} error={json.dumps(dp['error'])}")
+            lines.append(f"  depth {dp['previous_frame']}->{report['frame']} ({dp['sampling']}, previous jitter {dp['previous_jitter_px']} px): compared={dp['compared_pixels']} sentinel={dp['previous_sentinel']} offscreen={dp['previous_offscreen']} within={dp['within_fraction']:.4f} error={json.dumps(dp['error'])}")
+            lines.append(f"  depth error histogram: {json.dumps(dp['error_histogram'])}")
         else:
             lines.append(f"  depth: {dp['status']} {dp.get('reason', '')}")
+        di = report.get('depth_image')
+        if di and di.get('status') == 'loaded':
+            lines.append(f"  depth image: {di['file']} written={di['written']} ({di['written_fraction']:.4f}) sentinel={di['sentinel']} ({di['sentinel_fraction']:.4f}) nonfinite={di['nonfinite']} out_of_range={di['out_of_range']} range={di['written_range']} valid_motion_without_depth={di.get('valid_motion_without_depth')}")
+        elif di:
+            lines.append(f"  depth image: {di.get('status')} {di.get('reason', '')}")
+        cut = report.get('cut', {})
+        if cut.get('status') == 'reported':
+            lines.append(f"  cut detector (data only): cut={cut['cut']} median_px={cut['median_px']} missing_fraction={cut['missing_fraction']} samples={cut['samples']} bounds=({cut['bound_px']} px, {cut['bound_missing']}) jitter={cut['jitter_px']} previous={cut['jitter_previous_px']}")
         lines.append('')
     return '\n'.join(lines) + '\n'
 
@@ -1070,6 +1252,7 @@ def default_options(**overrides):
         'temporal_criterion_min_matched_ratio': 0.99,
         'depth_tolerance': 1e-4,
         'depth_within_min': 0.99,
+        'depth_sampling': 'nearest',
         'jitter_uv': (0.0, 0.0),
         'draw_details': True,
     }
@@ -1096,9 +1279,12 @@ def main(argv=None):
     parser.add_argument('--temporal-criterion-min-matched-ratio', type=float, default=0.99,
                         help='the coverage criterion applies only when frame N matched at least this fraction of its routed draws')
     parser.add_argument('--depth-pattern', default='depth_{device}_{frame}.r32f',
-                        help='optional row-major R32F depth image of frame N beside the readbacks')
+                        help='row-major R32F depth image of frame N beside the readbacks (RT2; the logged '
+                             'motion_output_depth_readback file name takes precedence)')
     parser.add_argument('--depth-tolerance', type=float, default=1e-4)
     parser.add_argument('--depth-within-min', type=float, default=0.99)
+    parser.add_argument('--depth-sampling', choices=('nearest', 'bilinear'), default='nearest',
+                        help='how frame N depth is sampled at the previous UV (bilinear drops sentinel taps)')
     parser.add_argument('--jitter-uv', type=float, nargs=2, default=(0.0, 0.0), metavar=('U', 'V'),
                         help='prior jitter UV subtracted by the producer (zero at checkpoint B1)')
     parser.add_argument('--no-draw-details', action='store_true', help='omit per-draw keys and rows from the JSON')
@@ -1114,6 +1300,7 @@ def main(argv=None):
         temporal_criterion_min_matched_ratio=args.temporal_criterion_min_matched_ratio,
         depth_tolerance=args.depth_tolerance,
         depth_within_min=args.depth_within_min,
+        depth_sampling=args.depth_sampling,
         jitter_uv=tuple(args.jitter_uv),
         draw_details=not args.no_draw_details,
     )

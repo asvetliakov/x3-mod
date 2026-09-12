@@ -1,280 +1,280 @@
 motion_capture_mode requested=0 enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0
-motion_output_mode requested=0 scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=0
+motion_output_mode requested=0 scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=0 jitter=0 jitter_samples=8 cut_median_px=48.000 cut_missing=0.250
 x3-modern-renderer version=0.4 schema=2 capture_start=1 capture_frames=0 pointer_bits=32
-telemetry_start schema=1 qpc_frequency=10000000 qpc=9023193360593 anchor=proxy_initialize cpu_only=1
+telemetry_start schema=1 qpc_frequency=10000000 qpc=9073476168537 anchor=proxy_initialize cpu_only=1
 application_admission_mode requested=0 enabled=0 live_replay=0 coverage_complete=0
-telemetry_span name=backend_load qpc_begin=9023193364563 qpc_end=9023193440157 thread=2276 success=1 error=0
+telemetry_span name=backend_load qpc_begin=9073476172535 qpc_end=9073476249992 thread=1412 success=1 error=0
 backend path=C:\windows\system32\d3d9.dll
 object_trace active=0 status=disabled recovery_required=0
 object_lifetime active=0 status=disabled recovery_required=0 baseline_complete=0 baseline_entries=0
-telemetry_span name=direct3d_create9 qpc_begin=9023193443474 qpc_end=9023202598597 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073476253184 qpc_end=9073480617537 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=0 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=0011fb10 device=1 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=1 frame=0 reason=device_destroy qpc=9023202734440 since_start_us=937384.700 interval_us=4466.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=1 name=texture count=1 failures=0 total_us=237.200 min_us=237.200 max_us=237.200 bytes=0 buckets=0,0,1,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023202741987 since_start_us=938139.400 interval_us=938139.400 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=2.600 min_us=0.100 max_us=0.600 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=6517.700 min_us=6517.700 max_us=6517.700 bytes=0 buckets=0,0,0,1,0,0
+telemetry_summary device=1 frame=0 reason=device_destroy qpc=9073480749990 since_start_us=458145.300 interval_us=4592.900 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=texture count=1 failures=0 total_us=248.900 min_us=248.900 max_us=248.900 bytes=0 buckets=0,0,1,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073480751369 since_start_us=458283.200 interval_us=458283.200 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=3.000 min_us=0.100 max_us=0.600 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=6506.400 min_us=6506.400 max_us=6506.400 bytes=0 buckets=0,0,0,1,0,0
 device_destroy ptr=0011fb10 device=1
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023202752717 qpc_end=9023203640420 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073480760112 qpc_end=9073481633710 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=2 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=2 frame=0 reason=device_destroy qpc=9023203689025 since_start_us=1032843.200 interval_us=2709.600 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=2 name=texture count=1 failures=0 total_us=5.700 min_us=5.700 max_us=5.700 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023203689426 since_start_us=1032883.300 interval_us=94743.900 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=2.000 min_us=0.100 max_us=0.600 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1925.800 min_us=1925.800 max_us=1925.800 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=2 frame=0 reason=device_destroy qpc=9073481667665 since_start_us=549912.800 interval_us=1343.000 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=2 name=texture count=1 failures=0 total_us=5.200 min_us=5.200 max_us=5.200 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073481668041 since_start_us=549950.400 interval_us=91667.200 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.400 min_us=0.100 max_us=0.300 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1847.800 min_us=1847.800 max_us=1847.800 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=2
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023203699213 qpc_end=9023204863898 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073481674992 qpc_end=9073482527189 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=3 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=3 frame=0 reason=device_destroy qpc=9023204918391 since_start_us=1155779.800 interval_us=3585.900 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=3 name=texture count=1 failures=0 total_us=6.000 min_us=6.000 max_us=6.000 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023204918690 since_start_us=1155809.700 interval_us=122926.400 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.500 min_us=0.000 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1667.100 min_us=1667.100 max_us=1667.100 bytes=0 buckets=0,0,0,1,0,0
+telemetry_summary device=3 frame=0 reason=device_destroy qpc=9073482556253 since_start_us=638771.600 interval_us=1480.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=3 name=texture count=1 failures=0 total_us=4.000 min_us=4.000 max_us=4.000 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073482556495 since_start_us=638795.800 interval_us=88845.400 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.300 min_us=0.100 max_us=0.300 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1272.100 min_us=1272.100 max_us=1272.100 bytes=0 buckets=0,0,0,1,0,0
 telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=3
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023204928381 qpc_end=9023206007019 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073482561157 qpc_end=9073483397158 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=4 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=4 frame=0 reason=device_destroy qpc=9023206112413 since_start_us=1275182.000 interval_us=1597.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=4 name=texture count=1 failures=0 total_us=8.000 min_us=8.000 max_us=8.000 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023206112750 since_start_us=1275215.700 interval_us=119406.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=2.000 min_us=0.100 max_us=0.800 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=8686.500 min_us=8686.500 max_us=8686.500 bytes=0 buckets=0,0,0,1,0,0
+telemetry_summary device=4 frame=0 reason=device_destroy qpc=9073483424372 since_start_us=725583.500 interval_us=1275.300 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=4 name=texture count=1 failures=0 total_us=5.200 min_us=5.200 max_us=5.200 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073483424605 since_start_us=725606.800 interval_us=86811.000 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=0.800 min_us=0.000 max_us=0.200 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1262.100 min_us=1262.100 max_us=1262.100 bytes=0 buckets=0,0,0,1,0,0
 telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=4
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023206119431 qpc_end=9023207089797 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073483429719 qpc_end=9073484264401 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=5 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=5 frame=0 reason=device_destroy qpc=9023207123614 since_start_us=1376302.100 interval_us=1372.900 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=5 name=texture count=1 failures=0 total_us=5.500 min_us=5.500 max_us=5.500 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023207123887 since_start_us=1376329.400 interval_us=101113.700 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.900 min_us=0.100 max_us=0.600 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1809.300 min_us=1809.300 max_us=1809.300 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=5 frame=0 reason=device_destroy qpc=9073484292569 since_start_us=812403.200 interval_us=1432.300 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=5 name=texture count=1 failures=0 total_us=5.200 min_us=5.200 max_us=5.200 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073484292823 since_start_us=812428.600 interval_us=86821.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.200 min_us=0.100 max_us=0.400 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1212.300 min_us=1212.300 max_us=1212.300 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.300 min_us=0.300 max_us=0.300 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=5
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023207131273 qpc_end=9023208087106 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073484298179 qpc_end=9073485121682 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=6 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=6 frame=0 reason=device_destroy qpc=9023208128271 since_start_us=1476767.800 interval_us=1887.400 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=6 name=texture count=1 failures=0 total_us=6.400 min_us=6.400 max_us=6.400 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023208128543 since_start_us=1476795.000 interval_us=100465.600 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.500 min_us=0.000 max_us=0.400 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2040.400 min_us=2040.400 max_us=2040.400 bytes=0 buckets=0,0,0,1,0,0
+telemetry_summary device=6 frame=0 reason=device_destroy qpc=9073485152935 since_start_us=898439.800 interval_us=1433.500 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=6 name=texture count=1 failures=0 total_us=5.600 min_us=5.600 max_us=5.600 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073485153181 since_start_us=898464.400 interval_us=86035.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.500 min_us=0.100 max_us=0.300 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1513.900 min_us=1513.900 max_us=1513.900 bytes=0 buckets=0,0,0,1,0,0
 telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=6
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023208134425 qpc_end=9023209065013 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073485158240 qpc_end=9073486087069 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=7 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=7 frame=0 reason=device_destroy qpc=9023209135803 since_start_us=1577521.000 interval_us=5267.500 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=7 name=texture count=1 failures=0 total_us=7.600 min_us=7.600 max_us=7.600 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023209136130 since_start_us=1577553.700 interval_us=100758.700 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.500 min_us=0.100 max_us=0.400 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1617.300 min_us=1617.300 max_us=1617.300 bytes=0 buckets=0,0,0,1,0,0
+telemetry_summary device=7 frame=0 reason=device_destroy qpc=9073486116480 since_start_us=994794.300 interval_us=1405.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=7 name=texture count=1 failures=0 total_us=5.700 min_us=5.700 max_us=5.700 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073486116733 since_start_us=994819.600 interval_us=96355.200 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.400 min_us=0.000 max_us=0.300 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1346.900 min_us=1346.900 max_us=1346.900 bytes=0 buckets=0,0,0,1,0,0
 telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=7
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023209142594 qpc_end=9023210124739 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073486122123 qpc_end=9073487002774 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=8 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=8 frame=0 reason=device_destroy qpc=9023210162117 since_start_us=1680152.400 interval_us=1819.300 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=8 name=texture count=1 failures=0 total_us=4.500 min_us=4.500 max_us=4.500 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023210162446 since_start_us=1680185.300 interval_us=102631.600 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.300 min_us=0.000 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1700.400 min_us=1700.400 max_us=1700.400 bytes=0 buckets=0,0,0,1,0,0
+telemetry_summary device=8 frame=0 reason=device_destroy qpc=9073487046002 since_start_us=1087746.500 interval_us=1518.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=8 name=texture count=1 failures=0 total_us=7.500 min_us=7.500 max_us=7.500 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073487046280 since_start_us=1087774.300 interval_us=92954.700 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.800 min_us=0.100 max_us=0.600 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2588.900 min_us=2588.900 max_us=2588.900 bytes=0 buckets=0,0,0,1,0,0
 telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=8
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023210169253 qpc_end=9023211209710 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073487054079 qpc_end=9073487916284 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=9 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=9 frame=0 reason=device_destroy qpc=9023211277009 since_start_us=1791641.600 interval_us=1946.200 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=9 name=texture count=1 failures=0 total_us=5.700 min_us=5.700 max_us=5.700 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023211277282 since_start_us=1791668.900 interval_us=111483.600 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.500 min_us=0.100 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=4588.300 min_us=4588.300 max_us=4588.300 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=9 frame=0 reason=device_destroy qpc=9073487947620 since_start_us=1177908.300 interval_us=1409.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=9 name=texture count=1 failures=0 total_us=4.800 min_us=4.800 max_us=4.800 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073487947876 since_start_us=1177933.900 interval_us=90159.600 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.300 min_us=0.100 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1528.100 min_us=1528.100 max_us=1528.100 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=9
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023211283338 qpc_end=9023212281857 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073487953231 qpc_end=9073488828552 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=10 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=10 frame=0 reason=device_destroy qpc=9023212336795 since_start_us=1897620.200 interval_us=3425.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=10 name=texture count=1 failures=0 total_us=6.800 min_us=6.800 max_us=6.800 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023212337080 since_start_us=1897648.700 interval_us=105979.800 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.400 min_us=0.000 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1847.900 min_us=1847.900 max_us=1847.900 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=10 frame=0 reason=device_destroy qpc=9073488857111 since_start_us=1268857.400 interval_us=1417.900 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=10 name=texture count=1 failures=0 total_us=5.100 min_us=5.100 max_us=5.100 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073488857379 since_start_us=1268884.200 interval_us=90950.300 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.500 min_us=0.100 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1269.300 min_us=1269.300 max_us=1269.300 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=10
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023212346194 qpc_end=9023213420288 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073488862982 qpc_end=9073489805789 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=11 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=11 frame=0 reason=device_destroy qpc=9023213459690 since_start_us=2009909.700 interval_us=1578.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=11 name=texture count=1 failures=0 total_us=5.900 min_us=5.900 max_us=5.900 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023213459959 since_start_us=2009936.600 interval_us=112287.900 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.300 min_us=0.100 max_us=0.400 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2155.300 min_us=2155.300 max_us=2155.300 bytes=0 buckets=0,0,0,1,0,0
+telemetry_summary device=11 frame=0 reason=device_destroy qpc=9073489847482 since_start_us=1367894.500 interval_us=1539.000 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=11 name=texture count=1 failures=0 total_us=6.500 min_us=6.500 max_us=6.500 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073489847767 since_start_us=1367923.000 interval_us=99038.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.700 min_us=0.000 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2421.600 min_us=2421.600 max_us=2421.600 bytes=0 buckets=0,0,0,1,0,0
 telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=11
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023213468200 qpc_end=9023214580336 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073489852878 qpc_end=9073490805920 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=12 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=12 frame=0 reason=device_destroy qpc=9023214619895 since_start_us=2125930.200 interval_us=1546.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=12 name=texture count=1 failures=0 total_us=6.100 min_us=6.100 max_us=6.100 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023214620161 since_start_us=2125956.800 interval_us=116020.200 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.400 min_us=0.100 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2209.000 min_us=2209.000 max_us=2209.000 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=12 frame=0 reason=device_destroy qpc=9073490845994 since_start_us=1467745.700 interval_us=1430.100 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=12 name=texture count=1 failures=0 total_us=6.400 min_us=6.400 max_us=6.400 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073490846254 since_start_us=1467771.700 interval_us=99848.700 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.100 min_us=0.000 max_us=0.400 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2349.100 min_us=2349.100 max_us=2349.100 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.300 min_us=0.300 max_us=0.300 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=12
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023214625772 qpc_end=9023215662889 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073490851927 qpc_end=9073491771798 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=13 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=13 frame=0 reason=device_destroy qpc=9023215749787 since_start_us=2238919.400 interval_us=3658.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=13 name=texture count=1 failures=0 total_us=5.400 min_us=5.400 max_us=5.400 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023215750124 since_start_us=2238953.100 interval_us=112996.300 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.600 min_us=0.100 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=4837.900 min_us=4837.900 max_us=4837.900 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=13 frame=0 reason=device_destroy qpc=9073491802232 since_start_us=1563369.500 interval_us=1560.000 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=13 name=texture count=1 failures=0 total_us=5.600 min_us=5.600 max_us=5.600 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073491802492 since_start_us=1563395.500 interval_us=95623.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.400 min_us=0.100 max_us=0.400 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1291.300 min_us=1291.300 max_us=1291.300 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=13
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023215760416 qpc_end=9023216747975 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073491809357 qpc_end=9073492743224 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=14 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=14 frame=0 reason=device_destroy qpc=9023216786337 since_start_us=2342574.400 interval_us=1618.300 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=14 name=texture count=1 failures=0 total_us=6.100 min_us=6.100 max_us=6.100 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023216786594 since_start_us=2342600.100 interval_us=103647.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.500 min_us=0.100 max_us=0.400 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2031.300 min_us=2031.300 max_us=2031.300 bytes=0 buckets=0,0,0,1,0,0
+telemetry_summary device=14 frame=0 reason=device_destroy qpc=9073492772254 since_start_us=1660371.700 interval_us=1473.300 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=14 name=texture count=1 failures=0 total_us=5.300 min_us=5.300 max_us=5.300 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073492772519 since_start_us=1660398.200 interval_us=97002.700 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.700 min_us=0.100 max_us=0.500 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1243.300 min_us=1243.300 max_us=1243.300 bytes=0 buckets=0,0,0,1,0,0
 telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=14
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023216792088 qpc_end=9023217753470 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073492778051 qpc_end=9073493672705 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=15 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=15 frame=0 reason=device_destroy qpc=9023217835032 since_start_us=2447443.900 interval_us=3185.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=15 name=texture count=1 failures=0 total_us=5.300 min_us=5.300 max_us=5.300 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023217835303 since_start_us=2447471.000 interval_us=104870.900 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.500 min_us=0.100 max_us=0.600 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=4774.800 min_us=4774.800 max_us=4774.800 bytes=0 buckets=0,0,0,1,0,0
+telemetry_summary device=15 frame=0 reason=device_destroy qpc=9073493701467 since_start_us=1753293.000 interval_us=1419.700 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=15 name=texture count=1 failures=0 total_us=5.400 min_us=5.400 max_us=5.400 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073493701707 since_start_us=1753317.000 interval_us=92918.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.100 min_us=0.100 max_us=0.200 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1276.100 min_us=1276.100 max_us=1276.100 bytes=0 buckets=0,0,0,1,0,0
 telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=15
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_span name=direct3d_create9 qpc_begin=9023217845206 qpc_end=9023218773893 thread=2276 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9073493706942 qpc_end=9073494593465 thread=1412 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2276 focus_window=00e701d6 device_window=00e701d6 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=1412 focus_window=011001d2 device_window=011001d2 width=64 height=64 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00c91270 device=16 ex=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_summary device=16 frame=0 reason=device_destroy qpc=9023218815072 since_start_us=2545447.900 interval_us=2375.200 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=16 name=texture count=1 failures=0 total_us=4.600 min_us=4.600 max_us=4.600 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=0 reason=device_destroy qpc=9023218815348 since_start_us=2545475.500 interval_us=98004.500 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.300 min_us=0.100 max_us=0.400 bytes=0 buckets=8,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1567.100 min_us=1567.100 max_us=1567.100 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=16 frame=0 reason=device_destroy qpc=9073494621615 since_start_us=1845307.800 interval_us=1411.300 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=16 name=texture count=1 failures=0 total_us=4.500 min_us=4.500 max_us=4.500 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=0 reason=device_destroy qpc=9073494621858 since_start_us=1845332.100 interval_us=92015.100 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=8 failures=0 total_us=1.100 min_us=0.000 max_us=0.600 bytes=0 buckets=8,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=1233.200 min_us=1233.200 max_us=1233.200 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00c91270 device=16
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0

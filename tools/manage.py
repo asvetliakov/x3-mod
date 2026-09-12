@@ -42,6 +42,7 @@ def main():
     parser.add_argument('--finite-positions', action='store_true', help='Validate positions from verified existing buffer uploads (requires --ownership --telemetry)')
     parser.add_argument('--motion-capture', action='store_true', help='Produce private rigid-motion diagnostics during capture (requires scene depth, finite positions and object lifetime)')
     parser.add_argument('--motion-output', action='store_true', help='Route the reviewed material pair through motion-output variants into a private RT1 (history needs --object-trace --object-lifetime; otherwise sentinel-only)')
+    parser.add_argument('--motion-jitter', action='store_true', help='Per-draw sub-pixel jitter of every scene draw with a table VS (requires --motion-output; Halton 2,3 sequence, temporal step 1; no consumer yet)')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
     if args.dry_run and args.action != 'launch':
@@ -60,6 +61,8 @@ def main():
         parser.error('--motion-capture requires --scene-depth-capture, --finite-positions and --object-lifetime.')
     if args.motion_output and (args.object_trace != args.object_lifetime):
         parser.error('--motion-output history needs both --object-trace and --object-lifetime, or neither for sentinel-only mode.')
+    if args.motion_jitter and not args.motion_output:
+        parser.error('--motion-jitter requires --motion-output.')
     if args.motion_capture and args.capture_frames < 2:
         parser.error('--motion-capture requires --capture-frames between 2 and 8 for adjacent-frame correspondence.')
     game = args.game_dir.resolve()
@@ -112,6 +115,7 @@ def main():
         env['X3M_FINITE_POSITIONS'] = '1' if args.finite_positions else '0'
         env['X3M_MOTION_CAPTURE'] = '1' if args.motion_capture else '0'
         env['X3M_MOTION_OUTPUT'] = '1' if args.motion_output else '0'
+        env['X3M_MOTION_JITTER'] = '1' if args.motion_jitter else '0'
         # --dll applies to this child only, preserving the user's other overrides.
         command = [str(WINE), '--bottle', args.bottle, '--no-update',
                    '--dll', 'd3d9=b' if args.vanilla else 'd3d9=n,b',

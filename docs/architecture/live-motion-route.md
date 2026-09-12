@@ -98,10 +98,14 @@ the application depends on them.
 
 ## Jitter
 
-Not part of this step. When TAA jitter is added it will be applied in the same
-hook by adding the sub-pixel clip offset to the submitted rows
-(`row0 += jx·row3`, `row1 += jy·row3`) for every scene draw, and the previous
-rows stored in history stay jitter-free so `c216.zw` carries the prior jitter.
+Implemented in temporal step 1 (see "Implementation" below and
+[temporal-integration.md](temporal-integration.md)). The sub-pixel clip offset
+is applied in the same hook by rewriting the submitted rows
+(`row0 += jx_ndc·row3`, `row1 += jy_ndc·row3`) for every scene draw whose VS
+has a table row, and the previous rows stored in history stay jitter-free.
+Because the history rows are unjittered, `c216.zw` is uploaded as **zero**:
+the motion fragment then writes the previous unjittered UV the ABI specifies
+and the resolve adds the previous raster jitter once itself.
 
 ## Verification
 
@@ -169,10 +173,12 @@ refused at gate 3 now means a program outside the archives (a mod, a loose
 override or a dynamically generated shader), not an unvisited sector; it
 shows up in the per-frame gate histogram.
 
-## Implementation (checkpoint B1, 2026-09-12)
+## Implementation (checkpoint B1, 2026-09-12; temporal step 1 added the same day)
 
-Delivered as a diagnostic route: the motion target is produced and read back,
-no temporal consumer reads it. Verified only through the synthetic fixtures in
+Delivered as a diagnostic route: the motion target (RT1) and, since temporal
+step 1, the current-depth target (RT2), the per-draw jitter and the data-only
+cut detector are produced and read back; no temporal consumer reads them.
+Verified only through the synthetic fixtures in
 [motion-output verification](../verification/motion-output.md); gameplay
 captures are the next step.
 
@@ -180,17 +186,83 @@ captures are the next step.
 
 | File | Role |
 | --- | --- |
-| `src/proxy/motion_output.{h,cpp}` | Per-device route: variant registry, state shadow, motion target, capability self test, sentinel fill, gates, substitution/restoration, history, diagnostics |
+| `src/proxy/motion_output.{h,cpp}` | Per-device route: variant registry, state shadow, motion (RT1) and current-depth (RT2) targets, capability self test, sentinel fill, gates, substitution/restoration, per-draw jitter, history, cut detector, diagnostics |
 | `src/renderer/motion_row_history.{h,cpp}` | Pure in-frame previous-row table (lookup against the sealed previous frame while collecting); `MotionHistory` stays untouched as the replay reference |
 | `src/renderer/material_motion.{h,cpp}` | Table-driven transformer, `material_motion_vertex_variant` / `material_motion_pixel_variant` (each stage is created separately by the game); the pair function remains for the detached fixtures; `material_motion_reviewed_pairs` is the profile table |
-| `src/renderer/motion_output_profiles.h` + `motion_output_profiles_inc.h` | Row struct, class enum and the generated 169-row archive-wide table (classes A, B and C) with compile-time consistency checks; see [material-motion-prototype.md](material-motion-prototype.md) |
-| `src/proxy/capture.cpp` | Hook installation, state block wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT` parsing |
+| `src/renderer/motion_output_profiles.h` + `motion_output_profiles_inc.h` | Row struct, class enum and the generated 169-row archive-wide table (classes A, B and C, each row with its current-depth registers) with compile-time consistency checks; see [material-motion-prototype.md](material-motion-prototype.md) |
+| `src/temporal/current_depth_ps.hlsl` + `src/renderer/current_depth_pixel_program{,_inc}.h` | Authored depth fragment (`oC2 = z/w`), compiled by `tools/shaders/generate_rigid_motion_pixel.py` like the motion fragment |
+| `src/proxy/capture.cpp` | Hook installation, state block wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT`, `X3M_MOTION_JITTER[_SAMPLES]` and `X3M_MOTION_CUT_*` parsing |
 | `src/proxy/scene_capture.{h,cpp}` | `describe_surface` shared with the route |
 | `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only) |
 
 `X3M_MOTION_OUTPUT=1` enables the route. Without `X3M_OBJECT_TRACE=1` and
 `X3M_OBJECT_LIFETIME=1` gate 5 never passes and every eligible draw writes the
 sentinel (mode 0); the selector, fill, substitution and restoration still run.
+`X3M_MOTION_JITTER=1` (default off) enables the per-draw jitter with a
+centred Halton(2,3) sequence of `X3M_MOTION_JITTER_SAMPLES` entries (default
+8, clamped to 2..64); `X3M_MOTION_CUT_MEDIAN_PX` (default 48, stated at
+1280 px width) and `X3M_MOTION_CUT_MISSING` (default 0.25) are the cut
+detector bounds.
+
+### Current depth target (temporal step 1)
+
+Every table row carries a second interpolator: the vertex variant exports the
+current clip z and w of the rasterized position (two DP4s against
+`c<matrix+2>` and `c<matrix+3>`, written to a second free output register
+under a second free TEXCOORD index), and the pixel variant divides them into
+`oC2`, so RT2 (R32F, main dimensions) holds ordinary device depth in [0,1]
+wherever a routed draw covered the pixel and the -1 sentinel elsewhere. The
+TEXCOORD index is chosen per VS/PS sharing component of the table, so the
+per-program variant scheme above still links every pair; the header's
+`static_assert`s cover the new fields. All 169 archive rows have the export
+(`depth_output=true`); the format supports motion-only rows (register 255)
+and the route creates motion-only variants (`current_depth=false`) on a
+device that fails the RT2 gate: `NumSimultaneousRTs >= 3`, R32F render-target
+support with the main format and a three-format self test (A8R8G8B8 +
+A32B32G32R32F + R32F). The RT2 gate failing leaves the route motion-only
+(`depth=0 depth_reason=...` on the device line); the two-format self test then
+decides as before. The route owns RT2 alongside RT1 (same allocation
+failure policy: a device producing depth must own both), fills both in one
+sentinel draw (a second ps_2_0 writing `oC1 = -1`), binds RT2 with
+`COLORWRITEENABLE2 = 15` around depth-capable routed draws and restores
+`COLORWRITEENABLE2`, then RT2, before the RT1 restoration, releases RT2 with
+RT1 before Reset and at device release, and reads it back in capture frames
+as `depth_<device>_<frame>.r32f` (row-major R32F) beside the motion file.
+
+### Per-draw jitter (temporal step 1)
+
+The jitter sequence advances once per frame at the latching Clear (index
+`latches mod samples`, sample `index + 1` of Halton(2,3) minus 0.5 per axis,
+in raster pixels, +X right and +Y down). Every scene-phase draw whose bound VS
+has a table row and whose clip-row window is known is jittered before the
+gates that decide routing: the route writes the four rows of the VS row's
+matrix register through the native setter with `rows[0] += jx_ndc·rows[3]`
+and `rows[1] += jy_ndc·rows[3]`, `jx_ndc = 2·jx_px/width`,
+`jy_ndc = -2·jy_px/height`, then draws (the variant or the original), then
+writes the application's rows back bit-exactly from the shadow. The shadow
+never sees the jittered rows, so the history records unjittered rows and the
+route uploads `c216.zw = (0, 0)` (see "Jitter" above). Draws outside the
+scene phase, draws whose VS has no row and the route's own fills are not
+jittered. The current and previous jitter of the frame are in
+`MotionFrameCounters` (`jitter`, `jitter_previous`, `jitter_index`) and on
+the `motion_output_frame` line for the resolve caller. Jitter on changes the
+rasterized color by construction; the fixture proves the sign and scale with
+a coverage oracle at the jittered sample positions
+([motion-output verification](../verification/motion-output.md)).
+
+### Cut detector (temporal step 1, data only)
+
+For every matched draw the route records the screen displacement of the
+projected object origin (`(c24.w/c27.w, c25.w/c27.w)` of the current versus
+the previous unjittered rows, scaled to pixels) into a vector reserved once
+at attach (4,096 samples, never grown per draw). When the selector leaves the
+scene phase, or before Present for a frame that never leaves it, the frame's
+median displacement (`nth_element`) and the fraction of keyed routed draws
+whose key the previous frame lacked (gate 6 among gates 0 and 6) are
+computed; `cut` is set when the median exceeds the bound scaled by
+width/1280 or the fraction exceeds its bound. The values are in the frame
+counters, on the `motion_output_frame` line and, in capture frames, on the
+`motion_output_cut` line. No consumer exists yet.
 
 ### Pair keying
 
@@ -288,21 +360,27 @@ ZWRITEENABLE, ALPHATESTENABLE, ALPHABLENDENABLE, CULLMODE, FILLMODE,
 COLORWRITEENABLE, SCISSORTESTENABLE, STENCILENABLE, FOGENABLE, SRGBWRITEENABLE,
 CLIPPLANEENABLE. Nothing changes if the initial state query fails.
 
-A routed draw sets, and `after_draw` restores in reverse: COLORWRITEENABLE1,
+A routed draw sets, and `after_draw` restores in reverse: COLORWRITEENABLE2
+and RT2 (depth-capable rows on a depth-producing device), COLORWRITEENABLE1,
 RT1, pixel shader, vertex shader, and the reserved constant ranges only when
 this draw set them and the shadow has seen the application write them (state
-block Apply marks them written conservatively). The fixture compares every one
-of these before and after each fill and each routed draw.
+block Apply marks them written conservatively); a jittered draw, routed or
+not, then gets its clip rows written back from the shadow. The fixture
+compares every one of these (RT0–2, depth, viewport, scissor, declaration,
+shaders, stream, `c24–27`, `c252–255`, the render states including
+COLORWRITEENABLE1/2) before and after each fill and each draw.
 
 ### Failure behavior
 
 - Capability gate or self-test failure: route disabled for the device, one
   `motion_output_device` line with the reason; nothing else changes.
-- Motion target allocation failure: no fill or routing until the next Reset.
+- Motion or depth target allocation failure: no fill or routing until the
+  next Reset (a device that produces depth needs both targets).
 - Partial application of a routed draw: already-set state is undone and the
   original pair draws; counted as `apply_failures`.
-- Restoration failure: counted, logged at most 16 times per device, the frame's
-  history is still committed only if the fill succeeded.
+- Restoration failure (including the jitter row write-back,
+  `what=jitter_rows`): counted, logged at most 16 times per device, the
+  frame's history is still committed only if the fill succeeded.
 - Reset: target released before the native call, history/selector invalidated,
   shadow resynchronized after success; variants survive.
 - Final device Release: owned variants and target each hold a device reference,
@@ -311,8 +389,10 @@ of these before and after each fill and each routed draw.
 
 ### Not covered
 
-Jitter, any temporal consumer, gameplay captures, the SM1/SM2/bloom programs
-outside the table, instanced or user-memory draws,
+Any temporal consumer (the cut verdict and the jitter values are data only),
+gameplay captures with RT2 or jitter, the SM1/SM2/bloom programs outside the
+table (their draws are neither routed nor jittered), instanced or user-memory
+draws,
 MSAA targets, Direct3D9Ex, native Windows
 execution (cross-compiled only), and the measured cost of the setter hooks in
 the game (each still takes the capture mutex and the admission entry; the

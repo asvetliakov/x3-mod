@@ -34,6 +34,9 @@ bool scene_depth_capture_requested = false;
 bool finite_positions_requested = false;
 bool motion_capture_requested = false;
 bool motion_output_requested = false;
+bool motion_jitter_requested = false;
+unsigned motion_jitter_samples = 8;
+float motion_cut_median_px = 48.f, motion_cut_missing = .25f;
 // Component fixtures serialize every write and replay. The live capture mutex
 // does not cover worker-thread VB/IB Lock/Unlock or mapped writes. No production
 // exclusion token is available yet: do not turn a requested diagnostic into an
@@ -936,6 +939,8 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     fixture_apply(hooked);
 #endif
+    hooked.motion_output.configure_jitter(motion_jitter_requested,motion_jitter_samples);
+    hooked.motion_output.configure_cut_bounds(motion_cut_median_px,motion_cut_missing);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested);
     if(hooked.motion_output.enabled()){
         // The route needs the complete selector event stream plus setter
@@ -1008,7 +1013,15 @@ void initialize_log(HMODULE module) {
         scene_depth_capture_requested && finite_positions_requested;
     log("motion_capture_mode requested=%u enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0",motion_capture_requested);
     motion_output_requested=GetEnvironmentVariableW(L"X3M_MOTION_OUTPUT",setting,32)==1 && setting[0]==L'1';
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=0",motion_output_requested);
+    // Per-draw jitter (off by default) with its Halton sample count, and the
+    // cut detector bounds (median origin displacement at 1280 px width,
+    // missing-key fraction); see docs/architecture/temporal-integration.md.
+    motion_jitter_requested=GetEnvironmentVariableW(L"X3M_MOTION_JITTER",setting,32)==1 && setting[0]==L'1';
+    if(GetEnvironmentVariableW(L"X3M_MOTION_JITTER_SAMPLES",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=2&&n<=64)motion_jitter_samples=unsigned(n);}
+    if(GetEnvironmentVariableW(L"X3M_MOTION_CUT_MEDIAN_PX",setting,32)>0)motion_cut_median_px=wcstof(setting,nullptr);
+    if(GetEnvironmentVariableW(L"X3M_MOTION_CUT_MISSING",setting,32)>0)motion_cut_missing=wcstof(setting,nullptr);
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=0 jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f",
+        motion_output_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing);
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     if(telemetry::enabled())loading_trace::initialize();
@@ -1048,10 +1061,23 @@ extern "C" __declspec(dllexport) void x3m_motion_output_fixture_configure(const 
     x3m::fixture_config=*config; x3m::fixture_configured=true;
     for(auto& entry:x3m::devices) x3m::fixture_apply(*entry.second);
 }
-extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback(IDirect3DDevice9* device,float* out,unsigned floats,unsigned* width,unsigned* height) {
+extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback_target(IDirect3DDevice9* device,unsigned target,float* out,unsigned floats,unsigned* width,unsigned* height) {
     std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
-    return it->second->motion_output.fixture_readback(out,floats,width,height);
+    return it->second->motion_output.fixture_readback(target,out,floats,width,height);
+}
+// Compatibility spellings: RT1 (motion, 4 floats per pixel) and RT2 (depth, 1 float per pixel).
+extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback(IDirect3DDevice9* device,float* out,unsigned floats,unsigned* width,unsigned* height) {
+    return x3m_motion_output_fixture_readback_target(device,1,out,floats,width,height);
+}
+extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_last_pixel_abi(IDirect3DDevice9* device,float* out,unsigned floats) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    const auto it=x3m::devices.find(device);
+    if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
+    return it->second->motion_output.fixture_last_pixel_abi(out,floats);
+}
+extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback_depth(IDirect3DDevice9* device,float* out,unsigned floats,unsigned* width,unsigned* height) {
+    return x3m_motion_output_fixture_readback_target(device,2,out,floats,width,height);
 }
 #endif

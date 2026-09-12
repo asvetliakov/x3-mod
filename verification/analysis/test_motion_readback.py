@@ -6,6 +6,7 @@ readback pixels are produced by an independent forward model (object-space
 point -> previous rows -> UV) so the analyzer's inverse mapping is not used to
 build its own expectations.
 """
+import array
 import contextlib
 import io
 import json
@@ -74,8 +75,11 @@ def draw_block(frame, index, gate, key, rows, rows_hash, viewport=(0, 0, W, H), 
     return lines
 
 
-def frame_lines(frame, draws, captured=True, readback=True, committed=1, counters=None, reset_after=None):
-    """draws: list of (gate, key_name, rows, rows_hash); index 1 is a non-scene background draw."""
+def frame_lines(frame, draws, captured=True, readback=True, committed=1, counters=None, reset_after=None,
+                depth_readback=False, extra='', cut=None):
+    """draws: list of (gate, key_name, rows, rows_hash); index 1 is a non-scene background draw.
+    depth_readback adds the RT2 readback line, extra is appended to the frame summary
+    (jitter and cut fields of temporal step 1), cut adds a motion_output_cut line."""
     lines = [f'frame_begin device=1 frame={frame}']
     lines += draw_block(frame, 1, None, None, affine(0, 0, 0), '0', route=False)
     for position, (gate, key_name, rows, rows_hash) in enumerate(draws):
@@ -85,6 +89,11 @@ def frame_lines(frame, draws, captured=True, readback=True, committed=1, counter
     if readback:
         lines.append(f'motion_output_readback device=1 frame={frame} file=motion_1_{frame}.rgba32f width={W} '
                      f'height={H} format=rgba32f_row_major result=00000000 bytes={W * H * 16}')
+    if depth_readback:
+        lines.append(f'motion_output_depth_readback device=1 frame={frame} file=depth_1_{frame}.r32f width={W} '
+                     f'height={H} format=r32f_row_major result=00000000 bytes={W * H * 4}')
+    if cut:
+        lines.append(f'motion_output_cut device=1 frame={frame} ' + ' '.join(f'{k}={v}' for k, v in cut.items()))
     gates = {g: sum(1 for d in draws if d[0] == g) for g in range(7)}
     routed = sum(1 for d in draws if d[0] in (0, 5, 6))
     summary = dict(draws=len(draws) + 1, routed=routed, matched=gates[0], gate1=0, gate2=1, gate3=gates[3],
@@ -94,7 +103,7 @@ def frame_lines(frame, draws, captured=True, readback=True, committed=1, counter
     lines.append('motion_output_frame device=1 frame={f} latched=1 filled=1 fill_result=00000000 fill_restore=00000000 '
                  'draws={draws} routed={routed} matched={matched} gate1={gate1} gate2={gate2} gate3={gate3} gate4={gate4} '
                  'gate5={gate5} gate6={gate6} apply_failures=0 restore_failures=0 history_previous=0 history_current=0 '
-                 'committed={c} selector_state=2 present=00000000'.format(f=frame, c=committed, **summary))
+                 'committed={c} selector_state=2 present=00000000'.format(f=frame, c=committed, **summary) + extra)
     lines.append(f'frame_end device=1 frame={frame} draws={len(draws) + 1} capture={1 if captured else 0} present=00000000')
     return lines
 
@@ -181,7 +190,9 @@ def build_scenario(directory, **variant):
         (directory / 'motion_1_1.rgba32f').write_bytes(data[:-16])
     gate_a2 = variant.get('frame2_gate_a', 0)
     log += frame_lines(2, [(gate_a2, 'A', A2, 'a2'), (0, 'B', B2, 'b2'), (0, 'C', C2, 'c2')],
-                       readback=not variant.get('no_readback_frame2', False))
+                       readback=not variant.get('no_readback_frame2', False),
+                       depth_readback=variant.get('depth_readback_lines', False),
+                       extra=variant.get('frame2_extra', ''), cut=variant.get('frame2_cut'))
     image2 = Image()
     paint_affine(image2, FOOT_A2, A2, A0)
     # B's object points sit at z=0.65: depth 0.75 under B0 (tz=0.1) in frame 1, 0.65 under B2 now.
@@ -191,13 +202,29 @@ def build_scenario(directory, **variant):
         image2.set(15, 15, 5.0, 5.0, 0.5)
     image2.write(directory / 'motion_1_2.rgba32f')
     if variant.get('depth_image'):
-        depth = [1.0] * (W * H)
+        # Frame 1's RT2: device depth where A and B were drawn; elsewhere the
+        # clear value 1.0 (a pre-step-1 image) or the route's -1 sentinel.
+        background = -1.0 if variant['depth_image'] == 'sentinel' else 1.0
+        depth = [background] * (W * H)
+        shift = variant.get('depth_shift_px', 0)
         for px, py in FOOT_A1:
-            depth[py * W + px] = 0.5
+            depth[py * W + px + shift] = 0.5
         for px, py in FOOT_B1:
-            depth[py * W + px] = 0.75
+            depth[py * W + px + shift] = 0.75
+        if variant.get('depth_bad_values'):
+            depth[0] = float('nan')
+            depth[1] = 1.5
+            depth[2] = -0.25
         with (directory / 'depth_1_1.r32f').open('wb') as stream:
             stream.write(struct.pack('<%df' % (W * H), *depth))
+        if variant.get('depth_readback_lines'):
+            log = [line for line in log]
+            for number in (0, 2):
+                image = [-1.0] * (W * H)
+                for px, py in (FOOT_A2 + FOOT_B2 + FOOT_C2) if number == 2 else []:
+                    image[py * W + px] = 0.25
+                with (directory / f'depth_1_{number}.r32f').open('wb') as stream:
+                    stream.write(struct.pack('<%df' % (W * H), *image))
     if variant.get('drop_readback_lines'):
         log = [line for line in log if not line.startswith('motion_output_readback')]
     (directory / 'session.log').write_text('\n'.join(log) + '\n', encoding='utf-8')
@@ -372,6 +399,96 @@ class MotionReadbackTests(unittest.TestCase):
         self.assertEqual(summary['checks']['depth']['status'], 'fail')
         (self.dir / 'depth_1_1.r32f').unlink()
         self.assertEqual(run(self.dir)['checks']['depth']['status'], 'unavailable')
+
+    def test_depth_sentinel_taps_are_excluded_and_integrity_is_checked(self):
+        # Route-style image: -1 where no routed draw wrote. A's six pixels whose
+        # previous position lies outside its frame-1 footprint and C (unwritten in
+        # frame 1) become sentinel taps, not depth errors, so the check passes.
+        build_scenario(self.dir, depth_image='sentinel', depth_readback_lines=True,
+                       frame2_extra=' depth=1 depth_routed=3 jitter=0 jitter_index=0 jitter_x=0.000000 jitter_y=0.000000'
+                                    ' jitter_previous_x=0.000000 jitter_previous_y=0.000000 jittered=0 cut=0'
+                                    ' cut_median_px=1.2500 cut_missing=0.0000 cut_samples=3',
+                       frame2_cut={'samples': 3, 'median_px': '1.2500', 'keyed': 3, 'missing': 0, 'missing_fraction': '0.0000',
+                                   'bound_px': '0.600', 'bound_missing': '0.250', 'cut': 0})
+        summary = run(self.dir)
+        d = frame(summary, 2)['depth']
+        self.assertEqual(d['status'], 'evaluated')
+        self.assertEqual(d['sampling'], 'nearest')
+        self.assertEqual(d['previous_jitter_px'], [0.0, 0.0])
+        self.assertEqual(d['compared_pixels'], len(FOOT_A2) - 6 + len(FOOT_B2))
+        self.assertEqual(d['previous_sentinel'], 6 + len(FOOT_C2))
+        self.assertEqual(d['within_fraction'], 1.0)
+        self.assertEqual(d['error']['max'], 0.0)
+        self.assertEqual(summary['checks']['depth']['status'], 'pass')
+        integrity = summary['checks']['depth_image_integrity']
+        self.assertEqual(integrity['status'], 'pass')
+        self.assertEqual(integrity['frames'], [0, 1, 2])
+        self.assertEqual(integrity['valid_motion_without_depth'], 0)
+        # Frame 2's logged readback names the file; its stats follow the RT2 contract.
+        image = frame(summary, 2)['depth_image']
+        self.assertEqual((image['status'], image['file']), ('loaded', 'depth_1_2.r32f'))
+        self.assertEqual(image['written'], len(FOOT_A2) + len(FOOT_B2) + len(FOOT_C2))
+        self.assertEqual(image['sentinel'], W * H - image['written'])
+        self.assertEqual(image['written_range'], [0.25, 0.25])
+        self.assertTrue(image['clean'])
+        self.assertAlmostEqual(image['sentinel_fraction'], 1 - image['written'] / (W * H))
+        # Frame 1 (pattern only, no log line): written where A and B were drawn.
+        self.assertEqual(frame(summary, 1)['depth_image']['written'], len(FOOT_A1) + len(FOOT_B1))
+        cut = frame(summary, 2)['cut']
+        self.assertEqual(cut['status'], 'reported')
+        self.assertEqual((cut['cut'], cut['median_px'], cut['samples'], cut['bound_px']), (0, 1.25, 3, 0.6))
+        self.assertEqual(frame(summary, 1)['cut']['status'], 'unavailable')
+        self.assertIn('depth image:', amr.render_report(summary))
+        self.assertIn('cut detector (data only): cut=0', amr.render_report(summary))
+
+    def test_depth_image_integrity_rejects_nonfinite_and_out_of_range(self):
+        build_scenario(self.dir, depth_image='sentinel', depth_bad_values=True)
+        summary = run(self.dir)
+        image = frame(summary, 1)['depth_image']
+        self.assertEqual((image['nonfinite'], image['out_of_range'], image['clean']), (1, 2, False))
+        self.assertEqual(summary['checks']['depth_image_integrity']['status'], 'fail')
+        self.assertEqual(summary['checks']['depth_image_integrity']['unclean_frames'], [1])
+        self.assertEqual(summary['checks']['readback_integrity']['status'], 'fail')
+        self.assertTrue(any('depth_1_1.r32f' in error for error in summary['hard_errors']))
+
+    def test_depth_comparison_applies_the_previous_raster_jitter(self):
+        # Frame 1 was rasterized one pixel to the right (jitter +1 px); its depth
+        # image is shifted accordingly while the producer's RG stays unjittered.
+        # Frame 2 logs jitter_previous_x=1, which the comparison adds back.
+        extra = ' jitter=1 jitter_index=2 jitter_x=-0.250000 jitter_y=0.166667 jitter_previous_x=1.000000 jitter_previous_y=0.000000'
+        build_scenario(self.dir, depth_image='sentinel', depth_shift_px=1, frame2_extra=extra)
+        summary = run(self.dir)
+        d = frame(summary, 2)['depth']
+        self.assertEqual(d['previous_jitter_px'], [1.0, 0.0])
+        self.assertEqual(d['compared_pixels'], len(FOOT_A2) - 6 + len(FOOT_B2))
+        self.assertEqual(d['within_fraction'], 1.0)
+        # Without the jitter field the comparison reads one texel to the left of
+        # the shifted image: A's leftmost column of taps becomes sentinel or wrong.
+        build_scenario(self.dir, depth_image='sentinel', depth_shift_px=1)
+        shifted = frame(run(self.dir), 2)['depth']
+        self.assertLess(shifted['compared_pixels'] - shifted['previous_sentinel'], d['compared_pixels'])
+
+    def test_bilinear_depth_sampling(self):
+        build_scenario(self.dir, depth_image='sentinel')
+        d = frame(run(self.dir, depth_sampling='bilinear'), 2)['depth']
+        self.assertEqual(d['sampling'], 'bilinear')
+        # Interior taps agree exactly; taps at the footprint border average with
+        # dropped sentinel neighbours, i.e. still the written value.
+        self.assertEqual(d['within_fraction'], 1.0)
+        self.assertEqual(d['error']['max'], 0.0)
+        depth = array.array('f', [-1.0] * (W * H))
+        depth[5 * W + 5], depth[5 * W + 6] = 0.5, 0.7
+        # Halfway between the two texel centres: nearest picks (6,5), bilinear averages.
+        u, v = 6.0 / W, 5.5 / H
+        nearest = amr.sample_depth(depth, W, H, u, v, False)
+        self.assertAlmostEqual(nearest[0], 0.7, places=6)
+        self.assertIsNone(nearest[1])
+        self.assertAlmostEqual(amr.sample_depth(depth, W, H, u, v, True)[0], 0.6)
+        # Quarter of the way: the sentinel row below is dropped and renormalized.
+        self.assertAlmostEqual(amr.sample_depth(depth, W, H, 5.75 / W, 5.75 / H, True)[0], 0.55)
+        self.assertEqual(amr.sample_depth(depth, W, H, 10.5 / W, 10.5 / H, True), (None, 'sentinel'))
+        self.assertEqual(amr.sample_depth(depth, W, H, 1.5, 0.5, True), (None, 'offscreen'))
+        self.assertEqual(amr.sample_depth(depth, W, H, 1.5, 0.5, False), (None, 'offscreen'))
 
     def test_malformed_readback_rejected(self):
         build_scenario(self.dir, truncate=True)

@@ -6,11 +6,11 @@
 
 Create an explicit `TemporalPass` instance and call `initialize` with the borrowed native device and compiled `ps_3_0` bytecode for `src/temporal/depth_decode.hlsl` and `src/temporal/resolve.hlsl`. Shader creation consumes the bytecode synchronously; the module retains only its created native shaders. There is no compiler dependency in production. There is no device AddRef, application wrapper reference, global registry or ownership cycle.
 
-The caller must hold the native device alive and serialize rendering, reset and teardown. Call `before_reset()` before native Reset and initialize again after a successful Reset. Destroy or `shutdown()` the pass before final native device teardown. All shaders, texture references and surface references are released. Do not let a borrowed output remain in use across `run`, `invalidate`, `before_reset`, shutdown or destruction.
+The caller must hold the native device alive and serialize rendering, reset and teardown. Call `before_reset()` before native Reset: it releases every default-pool object (histories, masks, scratch) and keeps the compiled shaders; `run` is refused until `after_reset(result)` reports a successful Reset, after which resources are re-created lazily with invalid history. Destroy or `shutdown()` the pass before final native device teardown; that releases the shaders too. Do not let a borrowed output remain in use across `run`, `invalidate`, `before_reset`, shutdown or destruction.
 
-Each `run` accepts scene-linear FP16 color and the already-copied native D24X8 comparison texture at identical dimensions. This format is the explicitly verified CrossOver Preview comparison-sampling route; raw INTZ or R32F inputs must not be passed as the comparison snapshot. Decode writes the next R32F history directly. Resolve then writes the next FP16 color history, sampling the previous pair only when valid. The two native color and two native depth textures are allocated on first use or resize. No application input texture is overwritten.
+Each `run` accepts current color as either a scene-linear FP16 texture (`color`) or the game's 8-bit A8R8G8B8/X8R8G8B8 render-target surface (`color_surface`, copied by `StretchRect` into an owned FP16 scratch), and current depth as either the already-copied native D24X8 comparison texture (`depth_snapshot`, decoded by a draw) or the route's R32F texture (`current_depth`, device depth with the -1 sentinel, copied into the owned history without a decoder draw). Exactly one input of each kind is set. Raw INTZ or R32F inputs must not be passed as the comparison snapshot. Resolve writes the next FP16 color history, sampling the previous pair only when valid. The two native color and two native depth textures are allocated on first use or resize; the scratch only when the surface path is used. No application input is overwritten. `Output::color_surface` exposes level 0 of the resolved color for the caller's copy-back; the caller owns state save/restore around the copy / run / copy-back sequence. See the delimited section "Route inputs (step 2)" in the [shader contract](../temporal/README.md).
 
-`FrameInputs` supplies the unjittered clip-to-previous matrix, current/previous raster-pixel jitter, rejection constants and blend weight with the existing [shader ABI](../temporal/README.md). The stable epoch distinguishes camera/scene/resource regimes; it must not increment for ordinary frames or depth clears. `camera_cut`, disabled `history_allowed`, dimension/epoch changes, explicit invalidation, failed input validation, any failed pass, failed restoration, reset and shutdown reject previous history.
+`FrameInputs` supplies the unjittered clip-to-previous matrix, current/previous raster-pixel jitter, rejection constants and blend weight with the existing [shader ABI](../temporal/README.md). The stable epoch distinguishes camera/scene/resource regimes; it must not increment for ordinary frames or depth clears. `camera_cut`, the route's `cut` verdict, disabled `history_allowed`, dimension/epoch changes, explicit invalidation, failed input validation, any failed pass, failed restoration, reset and shutdown reject previous history.
 
 Motion policy is mandatory. `KnownCameraOnly` asserts that the producer knows camera reprojection covers the inputs; it is not a fallback for missing dynamic-object correspondence. `PerPixel` requires a same-sized native RGBA32F texture following the shader's exact alpha/UV/depth contract. Missing or unsupported policy fails closed. The runtime cannot verify semantic motion coverage, exposure consistency, correct scene boundaries or matrix provenance.
 
@@ -34,11 +34,11 @@ This is synthetic verification of a detached module. No scene selection, game mo
 
 The verified fixture includes generic restoration failure followed by a synthetic DEVICELOST, checks that loss takes precedence and stops further setters, and rejects unknown motion enum values and unknown/active query state. Synthetic loss injection changes only the fixture vtable; it does not simulate real GPU loss or claim recovery without Reset.
 
-Current checkpoint: **44 numerical checks and 40 complete fixture state comparisons passed across two pure-device generations with native Reset**, including output-as-input alias refusal. The source and executable remained unchanged throughout the fresh-build run. Exact hashes, command and raw report hash are in `verification/results/temporal-pass-summary.json`; output is `temporal-pass.txt`.
+Current checkpoint: **154 numerical checks and 158 complete fixture state comparisons passed across two pure-device generations with native Reset**, including output-as-input alias refusal and the step-2 route-input cases (8-bit copy path, direct R32F depth, depth-sentinel reactive policy, cut flag, motion-path jitter, Reset continuity) listed in [temporal resolve verification](../../docs/verification/temporal-resolve.md). The source and executable remained unchanged throughout the fresh-build run. Exact hashes, command and raw report hash are in `verification/results/temporal-pass-summary.json`; output is `temporal-pass.txt`.
 
-Production implementation SHA256: `b1ccd1bbc8d398c4a39f1f94980f83faa5a16c883eca20cd1d9a8ef1e52d1f5e`.
+Production implementation SHA256: `6ce852e0d8ef6f30df195da9bc98bfdbe41938deb55a7c2f4f3629c53e7d8d34`.
 Fixture executable SHA256 with the explicit SSE2/legacy-stack compiler policy:
-`b3161866e5dee80b4d03ef7f2f5bad7c6515cdc124744c30205df0eab7f15d74`.
+`024cc9da008330a0a5e4797681fb25db43db30e3c372293b1427c69b28aac960`.
 
 ## Live motion route components
 
@@ -49,7 +49,14 @@ profile table in `motion_output_profiles.h` / `motion_output_profiles_inc.h`
 (classes A, B and C; `material_motion_reviewed_pairs` is that table). Every
 row's offsets and register choices are revalidated against the actual program
 words before splicing; class C rows additionally have their static
-`if b#`/`else`/`endif` structure revalidated. `motion_row_history.{h,cpp}` is the live
+`if b#`/`else`/`endif` structure revalidated. Since temporal step 1 each row
+also names a second interpolator: the vertex variant exports the current
+clip z/w and the pixel variant appends the authored `current_depth_ps.hlsl`
+fragment (`current_depth_pixel_program{,_inc}.h`) writing device depth to
+oC2 for the route's R32F RT2; `current_depth=false` yields the motion-only
+variants for a device without a third target. The four depth fields are
+generated per VS/PS sharing component and covered by the header's
+compile-time agreement checks. `motion_row_history.{h,cpp}` is the live
 route's pure previous-row table: it answers lookups against the sealed previous
 frame while the current frame collects, poisons duplicate keys at commit,
 consumes a matched entry once, reserves its tables at construction and

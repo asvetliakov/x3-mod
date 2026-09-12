@@ -31,9 +31,11 @@ per-draw metadata is kept, so gameplay logs of any size are acceptable. A
 - `motion_<device>_<frame>.rgba32f` beside the log (or `--readback-dir`):
   row-major `width × height` RGBA float32, exactly 16 bytes per pixel as
   `MotionOutput::readback` writes it.
-- Optional `depth_<device>_<frame>.r32f` (`--depth-pattern`): row-major R32F
-  device depth of frame N at the readback dimensions. **No current capture
-  writes this file**; see [depth](#5-previous-depth-cross-check).
+- `depth_<device>_<frame>.r32f`, the route's RT2 readback of the same frame
+  (row-major R32F device depth, -1 sentinel; logged as
+  `motion_output_depth_readback`, `--depth-pattern` is the fallback name).
+  Captures made before temporal step 1 have none; the depth checks then
+  report `unavailable`. See [depth](#5-depth-image-and-previous-depth-cross-check-depth_image_integrity-depth).
 
 ## Conventions assumed
 
@@ -127,49 +129,81 @@ routed-but-unmatched draws, the pass criterion (`--temporal-coverage-min`,
 pairs are reported as informative. A history pairing error (wrong previous
 draw) shows up here as a low fraction even when checks 2–3 pass.
 
-### 5. Previous-depth cross-check (`depth`)
+### 5. Depth image and previous-depth cross-check (`depth_image_integrity`, `depth`)
 
-Frame N+1's B channel is the depth the surface had in frame N. Comparing it
-against frame N's device depth at the previous texel needs a depth image of
-frame N at the readback dimensions. **Current captures provide none**: the
-capture log records `scene_depth_copy`/`scene_depth_boundary` events for the
-GPU-side D24X8 snapshot ([copied depth](copied-depth.md)) and the R32F
-[decoder](depth-decode.md) is verified in fixtures, but neither the snapshot
-nor a decoded image is read back to disk, and `draw`/`constant` records carry
-no depth. The check therefore reports `unavailable`. Enabling it requires the
-scene-depth adapter to decode its snapshot at the scene boundary and write
-`depth_<device>_<frame>.r32f` (row-major R32F device depth in [0,1], MinZ 0 /
-MaxZ 1 viewport) beside the motion file in requested capture frames; the
-analyzer then reports the absolute error distribution and the fraction within
-`--depth-tolerance` (1e-4 device-depth units, the resolve's default rejection
-tolerance) and fails below `--depth-within-min` (0.99). Depth-1 (cleared)
-texels at disoccluded positions count as errors, so the threshold must be
-read together with the temporal coverage fraction.
+Since temporal step 1 the route reads RT2 back in capture frames as
+`depth_<device>_<frame>.r32f` (row-major R32F device depth in [0,1] where a
+routed draw covered the pixel, -1 elsewhere, MinZ 0 / MaxZ 1 viewport) and
+logs it as `motion_output_depth_readback`; the analyzer takes the file named
+there (falling back to `--depth-pattern`). Two checks use it:
+
+- `depth_image_integrity`: every value finite and either the -1 sentinel or
+  in [0,1]; the sentinel and written fractions, the written range and the
+  number of motion-valid pixels whose depth is the sentinel (zero when every
+  routed row carries the depth output) are reported per frame; a nonfinite or
+  out-of-range value fails.
+- `depth`: frame N+1's B channel (expected previous device depth) at each
+  valid pixel against frame N's image at the previous UV. The producer's RG is
+  the previous **unjittered** texture-centre UV while frame N was rasterized
+  with its own jitter, so the sample position is RG plus frame N's jitter in
+  UV units (`jitter_previous_x/y` of frame N+1's summary, zero without
+  jitter). Sampling is nearest by default (`--depth-sampling bilinear`
+  averages the four surrounding texel centres and drops sentinel taps,
+  renormalizing); a sentinel or off-screen sample is counted, not compared.
+  The absolute error distribution (min/median/p95/p99/max and a histogram
+  with edges 1e-6..1e-1) and the fraction within `--depth-tolerance` (1e-4,
+  the resolve's default rejection tolerance) are reported; the check fails
+  below `--depth-within-min` (0.99). Disoccluded positions whose previous
+  depth belongs to another surface count as errors, so the threshold must be
+  read together with the temporal coverage fraction.
+
+The cut detector's data (`motion_output_cut` and the summary's `cut`,
+`cut_median_px`, `cut_missing`, `cut_samples`, jitter fields) is reported per
+frame under `cut` without a verdict of its own.
 
 ## Results on the synthetic fixture
 
 `verification/results/motion-readback-fixture-summary.json` /
-`motion-readback-fixture.txt` come from the seam-on run
-`verification/probe/build/motion-output-seam-on-20260912-031430-123134`
-(log sha256 `5424c7da…e9632`, eight captured 64×64 frames, 6,082 valid
-pixels): **PASS**. Integrity, counters and history pairing pass on all frames
-(12 predictable draws, including the Reset after frame 8's decisions and the
-duplicate-key cases). No fixture frame is static (frame 1's previous frame 0
-is not captured; frames 4–8 move), so the static check is unavailable there
-and is exercised by the unit fixtures instead. Row-pair consistency explains
-3,402/3,402 sampled pixels in frames 4–8 with a maximum error of 0.0018 px,
-matching the CPU oracle's 0.0016 px. Displacements are 0.7–4.1 px, none
-suspicious. Temporal coverage: 1.0 for 4→5 and 6→7, 0.9 for 5→6 and 7→8 (the
-seam alternates triangle depth/offset between frames, so 19 of 190 small
-triangle pixels point at texels the previous frame did not cover), 0.0 for
-3→4 where frame 3 matched nothing (informative). Depth: unavailable.
+`motion-readback-fixture.txt` come from the seam-on run of the temporal
+step 1 suite (log sha256 `344fa4b7…`, eight captured 64×64 frames with
+motion and depth readbacks, 6,082 valid pixels): **PASS**. Integrity,
+counters and history pairing pass on all frames (12 predictable draws,
+including the Reset after frame 8's decisions and the duplicate-key cases).
+No fixture frame is static (frame 1's previous frame 0 is not captured;
+frames 4–8 move), so the static check is unavailable there and is exercised
+by the unit fixtures instead. Row-pair consistency explains every sampled
+pixel in frames 4–8 with a maximum error of 0.0018 px, matching the CPU
+oracle's 0.0016 px. Displacements are 0.7–4.1 px, none suspicious. Temporal
+coverage: 1.0 for 4→5 and 6→7, 0.9 for 5→6 and 7→8 (the seam
+alternates triangle depth/offset between frames, so a few small-triangle
+pixels point at texels the previous frame did not cover), 0.0 for 3→4 where
+frame 3 matched nothing (informative). **Depth image integrity** passes on
+frames 1–8 (sentinel fractions 0.346–0.958, the
+latter frame 7 where only the small triangle routes; no motion-valid pixel
+without depth) and the **previous-depth comparison** evaluates frames
+[4, 5, 6, 7, 8]: 3,343 pixels compared, 57 previous taps on the
+sentinel (excluded), maximum error 0 (the fixture's stationary
+depth 0.5/0.6 surfaces reproject exactly), within fraction 1.0.
+The cut data is reported per frame (median 1.6 px, verdict 1 in the frames
+whose keyed draws miss). `motion-readback-fixture-jitter-summary.json`
+repeats this on the seam run with `X3M_MOTION_JITTER=1` (log
+`6838da03…`): the comparison applies the logged previous jitter
+([-0.375, -0.055556], [0.125, 0.277778], [-0.125, -0.277778], [0.375, 0.055556], [-0.4375, 0.388889] px for frames [4, 5, 6, 7, 8]), 3,380 pixels compared,
+maximum error 0, within fraction 1.0. In that run the row-pair consistency
+check reports a maximum error of 0.44 px: it maps pixels through the
+unjittered rows while the raster is displaced by the current jitter, so a
+jittered capture must be analyzed with `--jitter-uv` set to the frame's
+current jitter in UV units (the analyzer has no per-frame value yet; an open
+item for the gameplay run with jitter on).
 
-The unit tests (`verification/analysis/test_motion_readback.py`, 15 cases)
+The unit tests (`verification/analysis/test_motion_readback.py`, 19 cases)
 generate 16×16 logs and readbacks with an independent forward model (affine
 and perspective rows) and cover the static test and its tolerance, displacement
 statistics, row-pair consistency and its rejection of shifted previous UVs,
 suspicious displacements, the temporal check with and without its criterion,
-history-pairing disagreements, counter mismatches, the optional depth image,
+history-pairing disagreements, counter mismatches, the depth image (sentinel
+exclusion, integrity failures, the previous-jitter offset, nearest and
+bilinear sampling, the logged readback line and the cut data),
 truncated files, nonfinite and out-of-ABI values, logs without readbacks and
 the CLI outputs.
 

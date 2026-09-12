@@ -26,6 +26,8 @@ SOURCES = (
     'src/renderer/rigid_position_profiles_inc.h', 'src/renderer/position_path_profiles_inc.h',
     'src/renderer/pixel_coverage_profiles_inc.h', 'src/renderer/rigid_motion_pixel_program.h',
     'src/renderer/rigid_motion_pixel_program_inc.h', 'src/temporal/rigid_motion_ps.hlsl',
+    'src/renderer/current_depth_pixel_program.h', 'src/renderer/current_depth_pixel_program_inc.h',
+    'src/temporal/current_depth_ps.hlsl',
     'verification/probe/material_motion_fixture.cpp', 'verification/probe/build_material_motion.sh',
     'verification/probe/run_material_motion.py')
 PROGRAMS = Path('/tmp/x3-shader-sweep/programs')
@@ -38,7 +40,8 @@ ROW_PATTERN = re.compile(
     r'\{0x([0-9a-f]{16})ull, (\d+), 0xfffe0300u,\s*0x([0-9a-f]{16})ull, (\d+), 0xffff0300u,\s*'
     r'MotionOutputClass::(\w+),')
 CLASS_LETTER = {'ReferenceRegisters': 'A', 'RelocatedRegisters': 'B', 'RelocatedRegistersWithBranches': 'C'}
-ROW_CHECKS_PER_CONFIG = 14  # same_draw, replay reference, 9 covered samples, 2 bilateral, changed depth
+ROW_CHECKS_PER_CONFIG = 17  # same_draw, depth coverage, depth reference, replay reference, 9 covered samples, depth samples, 2 bilateral, changed depth
+DEPTH_SAMPLES_PER_CONFIG = 9
 ROW_SAMPLES_PER_CONFIG = 36
 # Pixel boolean settings (b0 = bit 0, b1 = bit 1) per row class: class C repeats
 # its configurations under all four, after a per-format control that the
@@ -94,13 +97,15 @@ def validate_rows(lines, mixed, first_config, rows, inputs):
         at += 2
         end = next(k for k in range(at, len(lines)) if lines[k].startswith('ROW '))
         block, at = lines[at:end], end + 1
-        configs = re.findall(r'^CONFIG id=(\d+) width=32 height=32 format=(\d+) packed=(\d) perspective=(\d) lights=0 valid=(\d) translation=([-\d.]+) jitter=([-\d.]+),([-\d.]+) booleans=(\d)$', '\n'.join(block), re.M)
+        configs = re.findall(r'^CONFIG id=(\d+) width=32 height=32 format=(\d+) packed=(\d) perspective=(\d) lights=0 valid=(\d) translation=([-\d.]+) jitter=([-\d.]+),([-\d.]+) booleans=(\d) depth_slope=([-\d.]+)$', '\n'.join(block), re.M)
         formats = [116, 21] if mixed else [116]
         combinations = BOOLEAN_COMBINATIONS[letter]
         assert [int(c[0]) for c in configs] == list(range(config_id, config_id + 3 * len(formats) * len(combinations)))
         assert [int(c[1]) for c in configs] == [f for f in formats for _ in range(3 * len(combinations))]
         assert [(c[2], c[3], c[4]) for c in configs] == [('0', '0', '1'), ('1', '1', '1'), ('1', '1', '0')] * (len(formats) * len(combinations))
         assert [int(c[8]) for c in configs] == [b for _ in formats for b in combinations for _ in range(3)]
+        # The perspective configurations tilt the current clip z (depth_slope .05) so RT2 varies over the image.
+        assert [float(c[9]) for c in configs] == [0.0 if c[3] == '0' else 0.05 for c in configs]
         # Class C: the boolean control precedes each format's configurations.
         controls = [k for k, l in enumerate(block) if l == BOOLEAN_CONTROL]
         config_lines = [k for k, l in enumerate(block) if l.startswith('CONFIG ')]
@@ -122,10 +127,11 @@ def validate_rows(lines, mixed, first_config, rows, inputs):
             if k == 2: depth = max(depth, values[2])
         reference = re.findall(r'^REFERENCE config=(\d+) components=4096 mismatches=(\d+) max=([^\s]+)$', '\n'.join(block), re.M)
         assert len(reference) == len(configs) and all(int(r[1]) == 0 and float(r[2]) <= 2e-6 for r in reference)
+        depth_samples, depth_coverage, depth_reference, max_current_depth = validate_depth(block, len(configs))
         checks = [l for l in block if l.startswith('CHECK ')]
         assert len(checks) == ROW_CHECKS_PER_CONFIG * len(configs) + len(controls) and all(l.endswith(' PASS') for l in checks)
         assert lines[end] == head + f'PASS configurations={len(configs)}', lines[end]
-        assert len(block) == len(configs) + len(color) + len(samples) + len(reference) + len(checks), 'unexpected lines in row block'
+        assert len(block) == len(configs) + len(color) + len(samples) + len(reference) + len(checks) + len(depth_samples) + len(depth_coverage) + len(depth_reference), 'unexpected lines in row block'
         totals['checks'] += 1 + len(checks); totals['numerical'] += len(samples)
         totals['color_components'] += sum(int(c[2]) for c in color)
         totals['depth_cases'] += 2 * len(configs); totals['configurations'] += len(configs)
@@ -134,9 +140,27 @@ def validate_rows(lines, mixed, first_config, rows, inputs):
                             checks=1 + len(checks), samples=len(samples),
                             color_components=sum(int(c[2]) for c in color), min_covered=min(int(c[3]) for c in color),
                             max_analytic_uv_error_pixels=uv, max_analytic_previous_depth_error=depth,
-                            max_replay_reference_error=max(float(r[2]) for r in reference)))
+                            max_replay_reference_error=max(float(r[2]) for r in reference),
+                            current_depth_samples=len(depth_samples), current_depth_reference_pixels=sum(int(r[1]) for r in depth_reference),
+                            max_current_depth_error=max_current_depth))
     assert at == len(lines), 'trailing row output'
     return results, totals
+
+def validate_depth(text_or_lines, config_count):
+    """RT2 evidence per configuration: nine analytic z/w samples (4e-6, the route
+    oracle's tolerance), the covered/uncovered pattern and the ZFUNC EQUAL replay
+    comparison (2e-6); returns the line groups and the largest analytic error."""
+    text = '\n'.join(text_or_lines) if isinstance(text_or_lines, list) else text_or_lines
+    samples = re.findall(r'^DEPTH_SAMPLE config=(\d+) x=(\d+) y=(\d+) actual=([^ ]+) expected=([^ ]+) error=([^ ]+) PASS$', text, re.M)
+    assert len(samples) == DEPTH_SAMPLES_PER_CONFIG * config_count, (len(samples), config_count)
+    for _, _, _, actual, want, error in samples:
+        values = list(map(float, (actual, want, error)))
+        assert all(map(math.isfinite, values)) and 0 <= values[0] <= 1 and abs(abs(values[0] - values[1]) - values[2]) <= 1e-8 and values[2] <= 4e-6
+    coverage = re.findall(r'^DEPTH_COVERAGE config=(\d+) covered=(\d+) bad=(\d+)$', text, re.M)
+    assert len(coverage) == config_count and all(int(c[1]) > 0 and int(c[2]) == 0 for c in coverage)
+    reference = re.findall(r'^DEPTH_REFERENCE config=(\d+) compared=(\d+) mismatches=(\d+) max=([^\s]+)$', text, re.M)
+    assert len(reference) == config_count and all(int(r[1]) > 0 and int(r[2]) == 0 and float(r[3]) <= 2e-6 for r in reference)
+    return samples, coverage, reference, max(float(s[5]) for s in samples)
 
 def validate_report(text):
     all_lines = text.splitlines()
@@ -147,7 +171,9 @@ def validate_report(text):
     devices = re.findall(r'^DEVICE pure=(\d) mixed=(\d)$', head, re.M)
     assert len(devices) == 2 and [d[0] for d in devices] == ['0', '1'] and devices[0][1] == devices[1][1]
     mixed = devices[0][1] == '1'
-    expected = (1182, 2952, 101318656, 164, 82) if mixed else (606, 1512, 100794368, 84, 42)
+    # Per configuration three more checks than checkpoint B1 (RT2 coverage,
+    # RT2 replay reference, RT2 analytic samples): 82 configurations -> +246.
+    expected = (1428, 2952, 101318656, 164, 82) if mixed else (732, 1512, 100794368, 84, 42)
     assert all_lines[begin[0]] == 'ROWS_BEGIN checks=%u numerical=%u color_components=%u depth_cases=%u configurations=%u' % expected
     assert [s for s in all_lines if s.startswith('RESULT ')] == [terminal_line]
     assert 'FAIL' not in text
@@ -165,12 +191,16 @@ def validate_report(text):
     assert lines.count('RESET PASS') == 2
     cap = re.findall(r'^CAPS mrt=(\d+) misc=([0-9a-f]+) vs=([0-9a-f]+) ps=([0-9a-f]+) max_vs_const=(\d+) vs_slots=(\d+) ps_slots=(\d+)$', text, re.M)
     assert len(cap) == 1 and int(cap[0][0]) >= 2 and bool(int(cap[0][1],16) & 0x40000) == mixed
-    assert len(re.findall(r'^FORMAT ', text, re.M)) == 3
+    assert len(re.findall(r'^FORMAT ', text, re.M)) == 4
+    r32f = re.findall(r'^FORMAT value=114 rt=([0-9a-f]+) ', text, re.M)
+    assert r32f == ['00000000'], 'R32F render target support'
     for name in ('d3d9.dll', 'wined3d.dll'):
         modules = re.findall(r'^MODULE name=' + re.escape(name) + r' path=(.+)$', text, re.M)
         assert len(modules) == 2 and all(p.lower().rstrip('\r') == 'c:\\windows\\system32\\' + name for p in modules)
-    configs = re.findall(r'^CONFIG id=(\d+) width=(\d+) height=(\d+) format=(\d+) packed=(\d) perspective=(\d) lights=(\d+) valid=(\d) translation=([-\d.]+) jitter=([-\d.]+),([-\d.]+) booleans=0$', text, re.M)
+    configs = re.findall(r'^CONFIG id=(\d+) width=(\d+) height=(\d+) format=(\d+) packed=(\d) perspective=(\d) lights=(\d+) valid=(\d) translation=([-\d.]+) jitter=([-\d.]+),([-\d.]+) booleans=0 depth_slope=([-\d.]+)$', text, re.M)
     assert len(configs) == expected[4] and [int(c[0]) for c in configs] == list(range(1, expected[4]+1))
+    assert all(float(c[11]) == (0.05 if c[5] == '1' else 0.0) for c in configs), 'perspective configurations tilt the current depth'
+    depth_samples, depth_coverage, depth_reference, max_current_depth = validate_depth(text, expected[4])
     assert {(int(c[1]), int(c[2])) for c in configs} == {(32,32),(1280,768),(5120,1440)}
     assert {int(c[6]) for c in configs} == {0,1,8} and {int(c[7]) for c in configs} == {0,1}
     samples = re.findall(r'^SAMPLE config=(\d+) x=(\d+) y=(\d+) channel=(\d) actual=([^ ]+) expected=([^ ]+) error=([^ ]+) pixel_error=([^ ]+) PASS$', text, re.M)
@@ -203,7 +233,10 @@ def validate_report(text):
         ('native point-light count changes original material',groups),
         ('native material constant changes original material',groups),
         ('changed depth rejects all tested fragments',expected[4]),
-        ('same-draw output matches independent authored replay',expected[4])):
+        ('same-draw output matches independent authored replay',expected[4]),
+        ('current depth written exactly where the original covered',expected[4]),
+        ('current depth matches the ZFUNC EQUAL replay of the rasterized depth',expected[4]),
+        ('current depth samples match the analytic z/w',expected[4])):
         assert lines.count('CHECK ' + label + ' PASS') == count
     reference = re.findall(r'^REFERENCE config=(\d+) components=(\d+) mismatches=(\d+) max=([^\s]+)$',text,re.M)
     assert len(reference) == expected[4] and [int(r[0]) for r in reference] == list(range(1,expected[4]+1))
@@ -223,6 +256,8 @@ def validate_report(text):
     return dict(zip(('checks','numerical','color_components','depth_cases','configurations'),expected),mixed_bit_depth=mixed,
                 max_analytic_uv_error_pixels=maximum_uv_pixels,max_analytic_previous_depth_error=maximum_depth,
                 max_replay_reference_error=max(float(r[3]) for r in reference),timings=timing_summary,
+                current_depth_samples=len(depth_samples),current_depth_reference_pixels=sum(int(r[1]) for r in depth_reference),
+                max_current_depth_error=max_current_depth,
                 rows=len(table),row_transformed=transformed,row_skipped=len(table)-transformed,
                 row_configurations=row_totals['configurations'],row_checks=row_totals['checks'],
                 row_samples=row_totals['numerical'],row_color_components=row_totals['color_components'],
@@ -236,7 +271,7 @@ def main():
     result_path=RESULTS/'material-motion-summary.json'
     report_path=RESULTS/'material-motion.txt'
     result={'passed':False,'status':'RUNNING','game_launched':False,
-            'scope':'Argon pair full inventory plus every profile-table row (lights 0) with the same original synthetic geometry/textures/constants; detached zero-origin opaque prototype, no production draw routing',
+            'scope':'Argon pair full inventory plus every profile-table row (lights 0) with the same original synthetic geometry/textures/constants, motion (RT1) and current depth (RT2) outputs; detached zero-origin opaque prototype, no production draw routing',
             'timing_scope':'QPC through EVENT completion, including clear/draw/switches; common setup fenced before QPC; one Begin/EndScene pair per workload; modes0color,1same-draw,2color+authoredGPUreplay; no timed readback or isolatedGPUduration',
             'cpu_baseline':'SSE2; stack realignment; four-byte incoming Win32 stack'}
     result_path.write_text(json.dumps(result,indent=2)+'\n')

@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""Compile our original motion HLSL with a local native D3DX compiler.
+"""Compile our original ps_3_0 fragments with a local native D3DX compiler.
 
---check recompiles and compares both checked-in artifacts without changing them.
-The compiler DLL is an external local prerequisite, never redistributed. Only
-our authored shader's compiled program and deterministic provenance are retained.
-No D3D device is created; X3AP must nevertheless be stopped for this tool.
+Two authored fragments are embedded: the motion program
+(src/temporal/rigid_motion_ps.hlsl -> src/renderer/rigid_motion_pixel_program_inc.h)
+and the current-depth program
+(src/temporal/current_depth_ps.hlsl -> src/renderer/current_depth_pixel_program_inc.h).
+`--shader` selects one (default: both). --check recompiles and compares the
+checked-in artifacts without changing them. The compiler DLL is an external
+local prerequisite, never redistributed. Only our authored shaders' compiled
+programs and deterministic provenance are retained. No D3D device is created;
+X3AP must nevertheless be stopped for this tool.
 """
 import argparse
 import hashlib
@@ -16,10 +21,15 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / 'src/temporal/rigid_motion_ps.hlsl'
 COMPILER_SOURCE = ROOT / 'tools/shaders/compile_rigid_motion_pixel.cpp'
-HEADER = ROOT / 'src/renderer/rigid_motion_pixel_program_inc.h'
-PROVENANCE = ROOT / 'verification/results/rigid-motion-pixel-program.json'
+SHADERS = {
+    'rigid_motion': dict(source=ROOT / 'src/temporal/rigid_motion_ps.hlsl',
+                         header=ROOT / 'src/renderer/rigid_motion_pixel_program_inc.h',
+                         provenance=ROOT / 'verification/results/rigid-motion-pixel-program.json'),
+    'current_depth': dict(source=ROOT / 'src/temporal/current_depth_ps.hlsl',
+                          header=ROOT / 'src/renderer/current_depth_pixel_program_inc.h',
+                          provenance=ROOT / 'verification/results/current-depth-pixel-program.json'),
+}
 
 
 def sha(data):
@@ -44,35 +54,30 @@ def validate(data):
     return words
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--check', action='store_true')
-    parser.add_argument('--d3dx', type=Path, default=Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll')
-    args = parser.parse_args()
-    active = subprocess.run(['pgrep', '-ifl', '[X]3AP[.]exe'], capture_output=True, text=True)
-    if active.returncode != 1 or active.stdout.strip():
-        raise RuntimeError('X3AP running or process inventory failed; postpone compilation')
-    inputs = (SOURCE, COMPILER_SOURCE, Path(__file__).resolve(), args.d3dx.resolve())
+def compile_one(name, args):
+    shader = SHADERS[name]
+    source, header, provenance = shader['source'], shader['header'], shader['provenance']
+    inputs = (source, COMPILER_SOURCE, Path(__file__).resolve(), args.d3dx.resolve())
     before = {path: sha(path.read_bytes()) for path in inputs}
     with tempfile.TemporaryDirectory(prefix='x3-original-motion-') as directory:
         work = Path(directory)
-        exe, binary = work / 'compile.exe', work / 'motion.bin'
+        exe, binary = work / 'compile.exe', work / 'program.bin'
         subprocess.run(['i686-w64-mingw32-g++', '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
                         '-msse2', '-mfpmath=sse', '-mstackrealign', '-mincoming-stack-boundary=2',
                         '-static', str(COMPILER_SOURCE), '-o', str(exe)], check=True)
         subprocess.run(['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
                         '--bottle', 'Steam', '--no-update', '--dll', 'd3dx9_37=n',
-                        str(exe), 'Z:' + str(inputs[-1]), 'Z:' + str(SOURCE), 'Z:' + str(binary)],
+                        str(exe), 'Z:' + str(inputs[-1]), 'Z:' + str(source), 'Z:' + str(binary)],
                        check=True, timeout=60, env=dict(os.environ, WINEDLLOVERRIDES='d3dx9_37=n'))
         data = binary.read_bytes()
     if before != {path: sha(path.read_bytes()) for path in inputs}:
         raise RuntimeError('Compilation inputs changed')
     words = validate(data)
-    text = '// Generated from our original src/temporal/rigid_motion_ps.hlsl. Do not edit.\n'
+    text = '// Generated from our original %s. Do not edit.\n' % source.relative_to(ROOT)
     text += '// Reproduce: python3 tools/shaders/generate_rigid_motion_pixel.py --check\n'
     text += ''.join('    ' + ', '.join(f'0x{v:08x}u' for v in words[i:i+6]) + ',\n'
                     for i in range(0, len(words), 6))
-    record = dict(schema=1, source=str(SOURCE.relative_to(ROOT)), source_sha256=before[SOURCE],
+    record = dict(schema=1, source=str(source.relative_to(ROOT)), source_sha256=before[source],
                   compiler='native d3dx9_37.dll D3DXCompileShader', compiler_sha256=before[inputs[-1]],
                   entry='main', target='ps_3_0', flags=32768, flags_name='D3DXSHADER_OPTIMIZATION_LEVEL3',
                   defines=None, includes=None, word_count=len(words), bytecode_sha256=sha(data),
@@ -82,12 +87,26 @@ def main():
                   creates_d3d_device=False)
     manifest = json.dumps(record, indent=2) + '\n'
     if args.check:
-        if HEADER.read_text() != text or PROVENANCE.read_text() != manifest:
-            raise ValueError('Embedded shader/provenance differs from current native compilation')
+        if header.read_text() != text or provenance.read_text() != manifest:
+            raise ValueError('%s: embedded shader/provenance differs from current native compilation' % name)
     else:
-        HEADER.write_text(text)
-        PROVENANCE.write_text(manifest)
-    print(json.dumps(dict(result='PASS', check=args.check, word_count=len(words), bytecode_sha256=sha(data))))
+        header.write_text(text)
+        provenance.write_text(manifest)
+    return dict(shader=name, word_count=len(words), bytecode_sha256=sha(data))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--check', action='store_true')
+    parser.add_argument('--shader', choices=sorted(SHADERS), action='append',
+                        help='fragment to (re)compile; default: every fragment')
+    parser.add_argument('--d3dx', type=Path, default=Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll')
+    args = parser.parse_args()
+    active = subprocess.run(['pgrep', '-ifl', '[X]3AP[.]exe'], capture_output=True, text=True)
+    if active.returncode != 1 or active.stdout.strip():
+        raise RuntimeError('X3AP running or process inventory failed; postpone compilation')
+    results = [compile_one(name, args) for name in (args.shader or sorted(SHADERS))]
+    print(json.dumps(dict(result='PASS', check=args.check, shaders=results)))
 
 
 if __name__ == '__main__':

@@ -28,18 +28,33 @@ SOURCES = [
     'src/renderer/rigid_motion_pixel_program_inc.h',
     'verification/probe/material_motion_structure.cpp',
     'verification/probe/run_material_motion_structure.py',
+    'src/renderer/current_depth_pixel_program.h', 'src/renderer/current_depth_pixel_program_inc.h',
 ]
 ROW_CHECKS = [
     'pair_and_per_stage_lookups_applied_identically',
     'all_original_words_preserved',
-    'vertex_previous_clip_and_public_abi',
-    'authored_fragment_register_bits_literals_and_opcodes',
+    'vertex_previous_clip_and_public_abi',            # ..._current_depth_... when the VS exports depth
+    'authored_fragment_register_bits_literals_and_opcodes',  # authored_fragments_... when the PS writes depth
     'invalid_wrong_pair_truncated_appended_atomic_refusal',
-    'twenty_one_row_perturbations_refused_atomically',
+    'twenty_one_row_perturbations_refused_atomically',  # twenty_six_... for a row with both depth sides
     None,  # program perturbations: class-dependent, see PROGRAM_PERTURBATIONS
     'mutations',  # full or sampled sweep, see MUTATION_CHECKS
     'six_input_output_alias_layouts_applied', 'cross_alias_refusal_atomic',
 ]
+# Current-depth output (temporal step 1): a row whose VS exports the clip z/w
+# interpolator adds one declaration and two dots (11 DWORDs) and three row
+# perturbations plus two program perturbation sites; a row whose PS divides it
+# into oC2 adds one declaration and the rcp/mul pair (10 DWORDs), two row
+# perturbations and three program perturbation sites.
+DEPTH_NONE = 255
+VERTEX_DEPTH_WORDS, PIXEL_DEPTH_WORDS = 11, 10
+VERTEX_DEPTH_ROW_PERTURBATIONS, PIXEL_DEPTH_ROW_PERTURBATIONS = 3, 2
+VERTEX_DEPTH_PROGRAM_PERTURBATIONS, PIXEL_DEPTH_PROGRAM_PERTURBATIONS = 2, 3
+DEPTH_CHECK_NAMES = {
+    'vertex_previous_clip_and_public_abi': 'vertex_previous_clip_current_depth_and_public_abi',
+    'authored_fragment_register_bits_literals_and_opcodes': 'authored_fragments_register_bits_literals_and_opcodes',
+    'twenty_one_row_perturbations_refused_atomically': 'twenty_six_row_perturbations_refused_atomically',
+}
 # Rows the captured session drew (observed_scene_draws != 0 in the table) get
 # every bit of every input DWORD; archive-only rows get a deterministic evenly
 # strided sample of SAMPLED_MUTATIONS bit positions per program.
@@ -65,7 +80,8 @@ ALLOWED_SKIPS = {
     'chosen TEXCOORD index declared', 'chosen output register written',
     'previous-row constant read', 'ABI constant defined', 'chosen temporary written',
     'ABI constant read', 'relative addressing in the pixel program',
-    'chosen temporary written inside a branch', 'ABI constant read inside a branch'}
+    'chosen temporary written inside a branch', 'ABI constant read inside a branch',
+    'chosen depth TEXCOORD index declared'}
 ARGON_CHECK = 'argon_output_byte_identical_to_previous_transformer'
 ARGON = ('53a0a641107ed76c', '8759c7838bbc86c2')
 ROW_PATTERN = re.compile(
@@ -82,21 +98,27 @@ def sources():
 
 
 def table_rows():
-    """Rows of the generated header: (vs, vs_dwords, ps, ps_dwords, class, observed draws)."""
+    """Rows of the generated header: (vs, vs_dwords, ps, ps_dwords, class, observed
+    draws, position quad adjacent, VS exports depth, PS writes depth)."""
     text = HEADER.read_text()
     heads = [(m[1], int(m[2]), m[3], int(m[4]), m[5]) for m in ROW_PATTERN.finditer(text)]
     quads = [[int(v) for v in m.split(',')] for m in re.findall(r'\{(\d+, \d+, \d+, \d+)\}, \{1, 2, 4, 8\}', text)]
     assert len(quads) == len(heads)
-    # The trailing field of every row is the observed_scene_draws metadata.
-    observed = [int(m) for m in re.findall(r', (?:true|false), \d+, (\d+)\},$', text, re.M)]
-    assert heads and len(observed) == len(heads), 'no rows parsed from the generated header'
+    # The last line of every row: the current-depth registers/index, the
+    # depth_output flag and the observed_scene_draws metadata.
+    tails = re.findall(r'^ (\d+), (\d+), (\d+), (true|false), (\d+)\},$', text, re.M)
+    assert heads and len(tails) == len(heads), 'no rows parsed from the generated header'
     assert text.count('{0x') == len(heads)
-    rows = [(*head, draws, all(q[i] == q[i - 1] + 4 for i in range(1, 4)))
-            for head, draws, q in zip(heads, observed, quads)]
+    rows = []
+    for head, tail, q in zip(heads, tails, quads):
+        vertex_register, index, pixel_register, output, draws = int(tail[0]), int(tail[1]), int(tail[2]), tail[3] == 'true', int(tail[4])
+        vertex_depth = vertex_register != DEPTH_NONE and index != DEPTH_NONE
+        assert not output or (vertex_depth and pixel_register != DEPTH_NONE), 'depth output without its interpolator'
+        rows.append((*head, draws, all(q[i] == q[i - 1] + 4 for i in range(1, 4)), vertex_depth, output))
     # The header's metadata must agree with the derived JSON it was rendered from.
     pairs = {(p['vs'], p['ps']): p for p in json.loads(PROFILES.read_text())['pairs']}
     assert all(pairs[(vs, ps)]['observed_draws'] == draws and pairs[(vs, ps)]['position_quad_contiguous'] == adjacent
-               for vs, _, ps, _, _, draws, adjacent in rows), 'header/JSON metadata differ'
+               for vs, _, ps, _, _, draws, adjacent, _, _ in rows), 'header/JSON metadata differ'
     return rows
 
 
@@ -104,7 +126,7 @@ def row_inputs(rows):
     """Local program files per row with their SHA-256 (None when absent)."""
     programs = json.loads(PROFILES.read_text())['programs']
     result = []
-    for vs, vs_dwords, ps, ps_dwords, klass, _, _ in rows:
+    for vs, vs_dwords, ps, ps_dwords, klass, _, _, _, _ in rows:
         entry = {}
         for stage, fingerprint, dwords in (('vs', vs, vs_dwords), ('ps', ps, ps_dwords)):
             path = PROGRAMS / f'{stage}_{fingerprint}.bin'
@@ -135,7 +157,8 @@ def validate(text, rows, inputs):
     sweeps = {'full': 0, 'sampled': 0}
     at = 1
     for index, (row, files) in enumerate(zip(rows, inputs)):
-        vs, vs_dwords, ps, ps_dwords, klass, observed, adjacent = row
+        vs, vs_dwords, ps, ps_dwords, klass, observed, adjacent, vertex_depth, pixel_depth = row
+        vd, pd = int(vertex_depth), int(pixel_depth)
         present = files['vs'] is not None and files['ps'] is not None
         if not present:
             missing = ''.join(f' {stage}' for stage in ('vs', 'ps') if files[stage] is None)
@@ -146,8 +169,16 @@ def validate(text, rows, inputs):
             continue
         letter = CLASS_LETTER[klass]
         sweep = 'full' if observed else 'sampled'
-        program_perturbations = PROGRAM_PERTURBATIONS[letter] + (0 if adjacent else SPACED_QUAD_PERTURBATIONS)
+        program_perturbations = (PROGRAM_PERTURBATIONS[letter] + (0 if adjacent else SPACED_QUAD_PERTURBATIONS) +
+                                 vd * VERTEX_DEPTH_PROGRAM_PERTURBATIONS + pd * PIXEL_DEPTH_PROGRAM_PERTURBATIONS)
+        row_perturbations = 21 + vd * VERTEX_DEPTH_ROW_PERTURBATIONS + pd * PIXEL_DEPTH_ROW_PERTURBATIONS
         names = {None: PERTURBATION_CHECK, 'mutations': MUTATION_CHECKS[sweep]}
+        if vd:
+            names['vertex_previous_clip_and_public_abi'] = DEPTH_CHECK_NAMES['vertex_previous_clip_and_public_abi']
+        if pd:
+            names['authored_fragment_register_bits_literals_and_opcodes'] = DEPTH_CHECK_NAMES['authored_fragment_register_bits_literals_and_opcodes']
+        if vd and pd:
+            names['twenty_one_row_perturbations_refused_atomically'] = DEPTH_CHECK_NAMES['twenty_one_row_perturbations_refused_atomically']
         expected = ['CHECK row=%d %s' % (index, names.get(name, name)) for name in ROW_CHECKS]
         if (vs, ps) == ARGON:
             expected.insert(1, 'CHECK row=%d %s' % (index, ARGON_CHECK))
@@ -161,19 +192,20 @@ def validate(text, rows, inputs):
         assert not (observed and skips), f'captured row {index} skipped {skips}'
         executed = program_perturbations - len(skips)
         row_mutations = 32 * (vs_dwords + ps_dwords) if sweep == 'full' else 2 * SAMPLED_MUTATIONS
-        vertex_words, pixel_words = vs_dwords + 19, ps_dwords + 132
+        vertex_words, pixel_words = vs_dwords + 19 + vd * VERTEX_DEPTH_WORDS, ps_dwords + 132 + pd * PIXEL_DEPTH_WORDS
         assert lines[at] == (f'ROW index={index} vs={vs} ps={ps} class={letter} status=PASS '
                              f'vertex_words={vertex_words} pixel_words={pixel_words} mutations={row_mutations} '
                              f'sweep={sweep} program_perturbations={executed} skipped={len(skips)} '
-                             f'quad={"adjacent" if adjacent else "spaced"}'), lines[at]
+                             f'quad={"adjacent" if adjacent else "spaced"} depth={vd + pd}'), lines[at]
         at += 1
         checks += len(expected); mutations += row_mutations; aliases += 6; sweeps[sweep] += 1
         results.append({'index': index, 'vs': vs, 'ps': ps, 'class': letter, 'status': 'PASS',
                         'observed_scene_draws': observed, 'mutation_sweep': sweep,
                         'checks': len(expected), 'vertex_words': vertex_words, 'pixel_words': pixel_words,
-                        'single_bit_mutations': row_mutations, 'row_perturbations': 21,
+                        'single_bit_mutations': row_mutations, 'row_perturbations': row_perturbations,
                         'program_perturbations': executed, 'program_perturbation_sites': program_perturbations,
                         'position_quad_adjacent': adjacent,
+                        'vertex_exports_depth': vertex_depth, 'pixel_writes_depth': pixel_depth,
                         'skipped_perturbations': skips, 'alias_layouts': 6})
     transformed = sum(r['status'] == 'PASS' for r in results)
     skipped = len(results) - transformed
@@ -195,6 +227,9 @@ def validate(text, rows, inputs):
                      'full_sweep_rows': sweeps['full'], 'sampled_sweep_rows': sweeps['sampled'],
                      'sampled_mutations_per_program': SAMPLED_MUTATIONS,
                      'lookup_absent_pairs': int(lookups.group(1)),
+                     'row_perturbations': sum(r.get('row_perturbations', 0) for r in results),
+                     'depth_output_rows': sum(r['status'] == 'PASS' and r['pixel_writes_depth'] for r in results),
+                     'motion_only_rows': sum(r['status'] == 'PASS' and not r['pixel_writes_depth'] for r in results),
                      'rows': len(rows), 'transformed': transformed, 'skipped': skipped}
 
 
@@ -218,6 +253,9 @@ def main():
                       expected_row_checks=[name or 'program_perturbations_by_class' for name in ROW_CHECKS],
                       expected_program_perturbations=PROGRAM_PERTURBATIONS,
                       spaced_quad_perturbations=SPACED_QUAD_PERTURBATIONS,
+                      depth_perturbations={'vertex_row': VERTEX_DEPTH_ROW_PERTURBATIONS, 'pixel_row': PIXEL_DEPTH_ROW_PERTURBATIONS,
+                                           'vertex_program': VERTEX_DEPTH_PROGRAM_PERTURBATIONS, 'pixel_program': PIXEL_DEPTH_PROGRAM_PERTURBATIONS},
+                      depth_check_names=DEPTH_CHECK_NAMES,
                       expected_argon_check=ARGON_CHECK)
         # Input SHA256s are provenance; the transformer independently qualifies
         # each exact pair using its full-program fingerprint, size and structure.
@@ -256,13 +294,13 @@ def main():
         report.update(result='PASS', passed=True, sources_after=sources(), inputs_after=row_inputs(rows),
                       source_input_executable_unchanged=True)
         save(report)
-        print('PASS material motion structure: %d rows (%d transformed, %d skipped) / %d checks / '
-              '%d mutations (%d full-sweep rows, %d sampled rows at %d per program) / '
+        print('PASS material motion structure: %d rows (%d transformed, %d skipped; %d with depth output, %d motion-only) / %d checks / '
+              '%d mutations (%d full-sweep rows, %d sampled rows at %d per program) / %d row perturbations / '
               '%d program perturbations (%d absent sites in %d rows) / %d aliases '
               'in release and ASan/UBSan' % (
-                  totals['rows'], totals['transformed'], totals['skipped'], totals['checks'],
-                  totals['single_bit_mutations'], totals['full_sweep_rows'], totals['sampled_sweep_rows'],
-                  totals['sampled_mutations_per_program'], totals['program_perturbations'],
+                  totals['rows'], totals['transformed'], totals['skipped'], totals['depth_output_rows'], totals['motion_only_rows'],
+                  totals['checks'], totals['single_bit_mutations'], totals['full_sweep_rows'], totals['sampled_sweep_rows'],
+                  totals['sampled_mutations_per_program'], totals['row_perturbations'], totals['program_perturbations'],
                   totals['skipped_perturbation_sites'], totals['rows_with_skipped_sites'], totals['alias_layouts']))
     except Exception as error:
         report.update(result='FAIL', passed=False, error=str(error))

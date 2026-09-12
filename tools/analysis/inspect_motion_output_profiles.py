@@ -782,7 +782,12 @@ HEADER_FIELDS = (
     'pixel_input_register', 'pixel_temporary_base', 'pixel_output_register',
     'vertex_constant_base', 'pixel_constant_base',
     'light_loop_bound_required', 'light_loop_max_count',
+    'vertex_depth_output_register', 'depth_texcoord_index',
+    'pixel_depth_input_register', 'depth_output',
     'observed_scene_draws')
+# Row fields the header carries beyond the insertion plan: the current-depth
+# interpolator (see depth_plan). NONE marks a register the program cannot spare.
+DEPTH_NONE = 255
 
 
 def header_rows(result):
@@ -790,6 +795,72 @@ def header_rows(result):
     rows = [pair for pair in result['pairs']
             if pair['transformation_class'] in HEADER_CLASSES]
     return sorted(rows, key=lambda pair: (-pair['observed_draws'], pair['vs'], pair['ps']))
+
+
+def depth_plan(result):
+    """Second interpolator per row: the current clip z/w the pixel variant
+    divides into RT2 (R32F device depth).
+
+    The live route creates one variant per original program, so the choice
+    must be consistent across every row a program takes part in: the vertex
+    register is the first free output other than the motion output (the same
+    for every row of a VS, because rows sharing a VS agree on the motion
+    output); the pixel register is the first free input other than the motion
+    input; the TEXCOORD index is chosen per connected component of the
+    VS/PS sharing graph as the smallest index declared by no program of the
+    component and different from its motion index. A component whose VS side
+    cannot export (no register or no index) gets no depth output at all; a PS
+    without a spare input keeps motion only (its VS may still export an
+    interpolator nobody reads, which SM3 permits). Rows sharing a PS therefore
+    agree on `depth_output`, which the per-program pixel variant relies on.
+    """
+    programs = result['programs']
+    rows = header_rows(result)
+    parent = {}
+
+    def find(node):
+        while parent.setdefault(node, node) != node:
+            parent[node] = parent[parent[node]]
+            node = parent[node]
+        return node
+
+    for pair in rows:
+        parent[find('vs_' + pair['vs'])] = find('ps_' + pair['ps'])
+    components = {}
+    for pair in rows:
+        components.setdefault(find('vs_' + pair['vs']), set()).update({'vs_' + pair['vs'], 'ps_' + pair['ps']})
+    vertex_register, pixel_register, motion_index = {}, {}, {}
+    for pair in rows:
+        plan = pair['insertion_plan']
+        vertex = programs['vs_' + pair['vs']]
+        pixel = programs['ps_' + pair['ps']]
+        free = [n for n in vertex.get('free_output_registers') or [] if n != plan['vs_output_register']]
+        vertex_register.setdefault(pair['vs'], free[0] if free else DEPTH_NONE)
+        free = [n for n in pixel.get('free_input_registers') or [] if n != plan['ps_input_register']]
+        pixel_register.setdefault(pair['ps'], free[0] if free else DEPTH_NONE)
+        motion_index.setdefault(find('vs_' + pair['vs']), set()).add(plan['texcoord_index'])
+    texcoord = {}
+    exportable = {}
+    for root, members in components.items():
+        used = set(motion_index[root])
+        for name in members:
+            program = programs[name]
+            used.update(program.get('declared_texcoord_output_indices') or [])
+            used.update(program.get('declared_texcoord_input_indices') or [])
+        free = [n for n in range(16) if n not in used]
+        texcoord[root] = free[0] if free else DEPTH_NONE
+        exportable[root] = texcoord[root] != DEPTH_NONE and all(
+            vertex_register[name[3:]] != DEPTH_NONE for name in members if name.startswith('vs_'))
+    result_rows = {}
+    for pair in rows:
+        root = find('vs_' + pair['vs'])
+        exports = exportable[root]
+        result_rows[(pair['vs'], pair['ps'])] = {
+            'vertex_depth_output_register': vertex_register[pair['vs']] if exports else DEPTH_NONE,
+            'depth_texcoord_index': texcoord[root] if exports else DEPTH_NONE,
+            'pixel_depth_input_register': pixel_register[pair['ps']],
+            'depth_output': exports and pixel_register[pair['ps']] != DEPTH_NONE}
+    return result_rows
 
 
 def render_header(result):
@@ -821,6 +892,10 @@ def render_header(result):
         '// position_dp4_dwords need not be adjacent: the arithmetic insert follows the',
         '// last dot and the span between the first dot and the insert is revalidated',
         '// to rewrite no position temporary and hold no control-flow instruction.',
+        '// vertex_depth_output_register / depth_texcoord_index / pixel_depth_input_register',
+        '// carry the current clip z/w interpolator for the R32F depth target (RT2);',
+        '// %d means none. depth_output=false keeps the row motion-only. The index' % DEPTH_NONE,
+        '// is shared by every program of one VS/PS sharing component (see depth_plan).',
     ]
     lines.append('// Field order:')
     for index in range(0, len(HEADER_FIELDS), 3):
@@ -833,10 +908,12 @@ def render_header(result):
         '// relatively: refuse the variant unless integer i0.x is checked in',
         '// [0, light_loop_max_count] at draw time.',
     ]
+    depth = depth_plan(result)
     for pair in header_rows(result):
         plan = pair['insertion_plan']
         vertex = programs['vs_' + pair['vs']]
         pixel = programs['ps_' + pair['ps']]
+        depth_row = depth[(pair['vs'], pair['ps'])]
         lines += [
             '{0x%sull, %d, %su,' % (pair['vs'], vertex['dword_count'], vertex['version']),
             ' 0x%sull, %d, %su,' % (pair['ps'], pixel['dword_count'], pixel['version']),
@@ -849,13 +926,17 @@ def render_header(result):
                 plan['vs_declaration_insert_dword'], plan['vs_arithmetic_insert_dword'],
                 plan['ps_definition_insert_dword'], plan['ps_declaration_insert_dword'],
                 plan['ps_append_dword']),
-            ' %d, %d, %d, %d, %d, %d, %d, %s, %d, %d},' % (
+            ' %d, %d, %d, %d, %d, %d, %d, %s, %d,' % (
                 plan['vs_output_register'], plan['texcoord_index'],
                 plan['ps_input_register'], plan['ps_temporary_base'],
                 plan['ps_output_register'], plan['vs_constant_base'],
                 plan['ps_constant_base'],
                 'true' if plan['light_loop_bound_required'] else 'false',
-                plan['light_loop_max_count'], pair['observed_draws']),
+                plan['light_loop_max_count']),
+            ' %d, %d, %d, %s, %d},' % (
+                depth_row['vertex_depth_output_register'], depth_row['depth_texcoord_index'],
+                depth_row['pixel_depth_input_register'],
+                'true' if depth_row['depth_output'] else 'false', pair['observed_draws']),
         ]
     return '\n'.join(lines) + '\n'
 

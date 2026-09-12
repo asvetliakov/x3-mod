@@ -207,3 +207,122 @@ The decoder clamps its interior midpoint below one before explicit endpoint
 classification, preventing float32 midpoint rounding from aliasing nearby
 geometry with clear depth. An independent CPU oracle covers exact-D24 and
 float32-normalized comparison models; see the decoder verification document.
+
+<!-- BEGIN current depth (step 1); appended by the live-route depth output, keep delimited -->
+## Current depth (step 1)
+
+`current_depth_ps.hlsl` is the authored fragment the live route appends to
+every transformed material pixel program after the motion fragment
+(`src/renderer/material_motion.cpp`; compiled by
+`tools/shaders/generate_rigid_motion_pixel.py` into
+`src/renderer/current_depth_pixel_program_inc.h`). It reads one TEXCOORD
+interpolator holding the current clip z in `.x` and w in `.y`, exported by the
+vertex variant from the same position temporary and the same matrix rows
+(`c<matrix+2>`, `c<matrix+3>`) that produce `o0.zw`, and writes `z/w` to
+`COLOR0`; the transformer relocates the input register/index, the one
+temporary and the output (to `oC2`). With a MinZ 0 / MaxZ 1 viewport the value
+is the screen-linear device depth the rasterizer writes for the same sample,
+so RT2 (R32F, main dimensions) is ordinary D3D depth in [0,1] wherever a
+routed draw covered the pixel and keeps the fill sentinel **-1** elsewhere:
+exactly the `FrameInputs::current_depth` contract of the step-2 section
+below. The fragment holds no literal and no constant, so the pixel ABI range
+(c216–220) is unchanged.
+
+The route fills RT1 and RT2 in one sentinel draw, binds RT2 with
+`COLORWRITEENABLE2 = 15` for depth-capable rows, and reads it back in capture
+frames as `depth_<device>_<frame>.r32f` (row-major R32F, no header). The GPU
+fixture proves `oC2` against the analytic z/w (4e-6), the covered/uncovered
+pattern and the authored replay drawn with `ZFUNC EQUAL` over the original's
+D24 depth (exact on the tested backend); the route fixture proves the
+sentinel/written pattern and z/w of the front-most routed draw per pixel
+(4e-6). Per-draw jitter (`X3M_MOTION_JITTER=1`) moves the raster of RT0, RT1
+and RT2 together; the depth is that of the jittered raster, which is what
+the resolve's s1 expects. See
+[temporal-integration.md](../../docs/architecture/temporal-integration.md),
+"Step 1 implementation".
+<!-- END current depth (step 1) -->
+
+<!-- BEGIN route inputs (step 2); appended by the TemporalPass adaptation, keep delimited -->
+## Route inputs (step 2)
+
+This section describes how `TemporalPass` (`src/renderer/temporal_pass.{h,cpp}`)
+maps the live route's outputs onto the sampler contract above. The shader ABI
+is unchanged except for one new flag, `c7.w`.
+
+**Current color from the 8-bit main target.** `FrameInputs::color_surface`
+accepts the game's A8R8G8B8/X8R8G8B8 default-pool render-target surface (it
+need not be a texture level). The pass copies it once with `StretchRect`
+(point filter, same size) into an owned A16B16G16R16F scratch texture that
+becomes s0. The FP16 texture input (`FrameInputs::color`) remains for fixtures;
+exactly one of the two must be set. The game writes linear values encoded as
+8-bit UNORM; no sRGB decoding or encoding may happen on this path. The pass
+sets `D3DSAMP_SRGBTEXTURE=FALSE` on every sampler and `D3DRS_SRGBWRITEENABLE=FALSE`
+before every draw, and `StretchRect` performs a plain UNORM-to-float
+conversion. The fixture drives all 256 codes through the copy under hostile
+sRGB sampler/write states: every value is `v/255` within one FP16 ulp
+(the CrossOver Preview backend truncates toward zero; 421 of 768 samples also
+equal round-to-nearest-even), and a copy-back `StretchRect` of the resolved
+FP16 surface into the 8-bit target restores the exact bytes. A gamma curve
+would deviate by tens of ulps (code 63 decodes to 0.0497 instead of 0.247).
+
+**Current depth from RT2.** `FrameInputs::current_depth` accepts the route's
+R32F texture: device depth z/w in [0,1] where a routed opaque draw wrote,
+and the -1 sentinel elsewhere. The pass copies it with `StretchRect` into the
+owned R32F history slot for the frame (that slot is s1 now and s3 next frame)
+and runs **no decoder draw**. The D24X8 comparison snapshot (`depth_snapshot`,
+26 fetches per pixel through `depth_decode.hlsl`) remains for fixtures and
+compatibility; exactly one of the two must be set. On one synthetic scene both
+paths produce bit-identical color and depth within half a D24 step.
+
+**Reactive coverage derived from the sentinel.** `ReactivePolicy::DerivedFromDepthSentinel`
+requires `current_depth` and no mask texture. `prepare(..., depth_sentinel_reactive=true)`
+sets `c7.w=1`: a current pixel with negative depth returns current color
+(`validDepth` already rejects it; the flag makes the intent explicit), and a
+previous tap with sentinel depth contributes no energy while the remaining taps
+of the footprint renormalize. Unlike `RequiredMask`, a sentinel tap does not
+reject the whole footprint: the sentinel marks pixels that had no opaque
+history at all (background, particles, unknown programs), not opaque history
+contaminated by a blended contributor, so silhouettes against the background
+keep their surviving opaque taps. Blended effects drawn over routed opaque
+geometry are **not** detected by the sentinel; the 3x3 neighborhood clip
+bounds, but does not remove, their history contribution. This policy
+completes usable history (unlike `Unavailable`, which invalidates every frame).
+No third draw and no snapshot mask are involved.
+
+**Jitter.** `FrameInputs::current_jitter` / `previous_jitter` are raster
+pixels, positive Y down; `prepare` divides them by the viewport size into
+`c4.zw` / `c5.xy`. The camera path subtracts the current jitter before the
+inverse projection and adds the previous jitter after it. The motion path uses
+the current jitter **nowhere** (the motion texture is rasterized on the
+current jittered grid) and adds the previous jitter **once** to the
+producer's RG. The producer contract is therefore: RG is the previous
+**unjittered** texture-center UV. `rigid_motion_ps.hlsl` subtracts `c0.zw`
+(the route's `c216.zw`) from the previous projection to satisfy that contract
+**only if the previous rows it interpolates were jittered**. The live route
+keeps unjittered rows in its shadow (see the integration design); with
+unjittered previous rows the route must pass **zero** in `c216.zw`, otherwise
+the subtraction and the resolve's addition cancel and the motion path samples
+the history one jitter offset away from the camera path. The fixture proves
+the resolve side: previous jitter +1 pixel with RG at the pixel's own center
+selects the neighbor once (not twice), current jitter leaves the motion path
+unchanged while it moves the camera path, and RG that already subtracted the
+previous jitter lands unjittered.
+
+**Cut.** `FrameInputs::cut` carries the route's displacement/missing-key
+verdict; it invalidates history for the frame exactly like `camera_cut`, and
+accumulation resumes on the next frame.
+
+**Output for copy-back.** `Output::color_surface` is level 0 of the resolved
+FP16 texture. The caller copies it back into the 8-bit main target with
+`StretchRect` (point, same size) before the application's own bloom copy. The
+caller owns state save/restore around the whole copy / run / copy-back
+sequence; `run` captures and restores everything it touches itself (state
+block, render targets, depth, viewport, scissor); the two `StretchRect` copies
+inside `run` touch no device state.
+
+**Reset.** `before_reset` releases every default-pool object (histories,
+masks, scratch) and keeps the compiled shaders and the borrowed device; `run`
+is refused until `after_reset(SUCCEEDED)`, after which resources are
+re-created lazily on the next run with invalid history. `shutdown` remains the
+full teardown. The fixture keeps one pass alive across a real device Reset.
+<!-- END route inputs (step 2) -->

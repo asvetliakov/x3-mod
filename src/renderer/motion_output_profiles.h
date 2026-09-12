@@ -50,11 +50,22 @@ struct MotionOutputProfile {
     std::uint16_t pixel_constant_base;     // Five pixel ABI constants.
     bool light_loop_bound_required;        // VS reads constants relatively.
     std::uint8_t light_loop_max_count;     // Draw-time bound on integer i0.x.
+    // Current-depth interpolator for the R32F depth target (RT2): the VS
+    // exports the current clip z (.x) and w (.y) of the rasterized position in
+    // a second free output, the PS divides them into oC2. motion_output_depth_none
+    // marks a register the program cannot spare; depth_output=false keeps the
+    // row motion-only (its VS may still export an interpolator nobody reads).
+    std::uint8_t vertex_depth_output_register;
+    std::uint8_t depth_texcoord_index;     // Free in every program of the row's sharing component.
+    std::uint8_t pixel_depth_input_register;
+    bool depth_output;
     std::uint32_t observed_scene_draws;    // Metadata: Scene draws of this pair in one
                                            // captured session, zero when never observed.
                                            // Orders the rows and selects the fixtures'
                                            // exhaustive mutation sweep; no runtime meaning.
 };
+
+inline constexpr std::uint8_t motion_output_depth_none = 255;
 
 // Derived numbers only; regenerate with --emit-header, never edit by hand.
 inline constexpr MotionOutputProfile motion_output_profiles[] = {
@@ -63,11 +74,30 @@ inline constexpr MotionOutputProfile motion_output_profiles[] = {
 inline constexpr std::size_t motion_output_profile_count =
     sizeof motion_output_profiles / sizeof motion_output_profiles[0];
 
+// The vertex variant exports the current clip z/w when the row names both a
+// spare output register and a spare TEXCOORD index; the pixel variant reads
+// it only when depth_output is set (which requires the export).
+constexpr bool motion_output_vertex_exports_depth(const MotionOutputProfile& row) noexcept {
+    return row.vertex_depth_output_register != motion_output_depth_none &&
+        row.depth_texcoord_index != motion_output_depth_none;
+}
 // Every row must name registers the shader model can address, and the rows
 // that share one original program must agree on that program's side of the
 // splice, because the live route creates one variant per original program
 // (see docs/architecture/live-motion-route.md, "Pair keying"). Proven here at
 // compile time so a regenerated table cannot silently break the scheme.
+constexpr bool motion_output_depth_valid(const MotionOutputProfile& row) noexcept {
+    const bool vertex_ok = row.vertex_depth_output_register == motion_output_depth_none ||
+        (row.vertex_depth_output_register < 12 && row.vertex_depth_output_register != row.vertex_output_register);
+    const bool index_ok = row.depth_texcoord_index == motion_output_depth_none ||
+        (row.depth_texcoord_index < 16 && row.depth_texcoord_index != row.texcoord_index);
+    const bool pixel_ok = row.pixel_depth_input_register == motion_output_depth_none ||
+        (row.pixel_depth_input_register < 10 && row.pixel_depth_input_register != row.pixel_input_register);
+    // A pixel program can only read an interpolator its vertex program writes.
+    const bool output_ok = !row.depth_output ||
+        (motion_output_vertex_exports_depth(row) && row.pixel_depth_input_register != motion_output_depth_none);
+    return vertex_ok && index_ok && pixel_ok && output_ok;
+}
 constexpr bool motion_output_profile_valid(const MotionOutputProfile& row) noexcept {
     bool ok = row.vertex_version == 0xfffe0300u && row.pixel_version == 0xffff0300u &&
         row.vertex_dword_count > 2 && row.pixel_dword_count > 2 &&
@@ -81,7 +111,8 @@ constexpr bool motion_output_profile_valid(const MotionOutputProfile& row) noexc
         row.pixel_definition_insert_dword <= row.pixel_declaration_insert_dword &&
         row.pixel_declaration_insert_dword < row.pixel_append_dword &&
         row.pixel_append_dword + 1u == row.pixel_dword_count &&
-        row.position_dp4_dwords[3] + 4 == row.vertex_arithmetic_insert_dword;
+        row.position_dp4_dwords[3] + 4 == row.vertex_arithmetic_insert_dword &&
+        motion_output_depth_valid(row);
     // The four dots are issued in XYZW order but need not be adjacent (other
     // work may sit between them); the arithmetic insert follows the last one.
     for (unsigned lane = 0; lane < 4; ++lane) {
@@ -98,6 +129,8 @@ constexpr bool motion_output_vertex_sides_agree(const MotionOutputProfile& a,
         a.vertex_declaration_insert_dword == b.vertex_declaration_insert_dword &&
         a.vertex_arithmetic_insert_dword == b.vertex_arithmetic_insert_dword &&
         a.vertex_output_register == b.vertex_output_register && a.texcoord_index == b.texcoord_index &&
+        a.vertex_depth_output_register == b.vertex_depth_output_register &&
+        a.depth_texcoord_index == b.depth_texcoord_index &&
         a.vertex_constant_base == b.vertex_constant_base &&
         a.light_loop_bound_required == b.light_loop_bound_required &&
         a.light_loop_max_count == b.light_loop_max_count;
@@ -115,7 +148,11 @@ constexpr bool motion_output_pixel_sides_agree(const MotionOutputProfile& a,
         a.pixel_input_register == b.pixel_input_register &&
         a.pixel_temporary_base == b.pixel_temporary_base &&
         a.pixel_output_register == b.pixel_output_register &&
-        a.pixel_constant_base == b.pixel_constant_base;
+        a.pixel_constant_base == b.pixel_constant_base &&
+        // The one pixel variant either reads the depth interpolator from this
+        // register under this index in every pair, or in none.
+        a.pixel_depth_input_register == b.pixel_depth_input_register &&
+        a.depth_texcoord_index == b.depth_texcoord_index && a.depth_output == b.depth_output;
 }
 constexpr bool motion_output_profiles_consistent() noexcept {
     for (std::size_t i = 0; i < motion_output_profile_count; ++i) {

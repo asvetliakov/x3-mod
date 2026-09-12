@@ -41,15 +41,28 @@ struct SavedState {
         return first;
     }
 };
+template<class Resource> HRESULT same_device(IDirect3DDevice9* device,Resource* resource) noexcept {
+    IDirect3DDevice9* owner=nullptr;HRESULT hr=resource->GetDevice(&owner);
+    if(FAILED(hr))return hr;
+    const bool same=owner==device;drop(owner);
+    return same?S_OK:E_INVALIDARG;
+}
 HRESULT texture_input(IDirect3DDevice9* device,IDirect3DTexture9* texture,UINT w,UINT h,D3DFORMAT format) noexcept {
     if(!texture)return E_INVALIDARG;
     D3DSURFACE_DESC desc{};
     HRESULT hr=texture->GetLevelDesc(0,&desc);if(FAILED(hr))return hr;
     if(desc.Width!=w||desc.Height!=h||desc.Format!=format||desc.MultiSampleType!=D3DMULTISAMPLE_NONE)return E_INVALIDARG;
-    IDirect3DDevice9* owner=nullptr;hr=texture->GetDevice(&owner);
-    if(FAILED(hr))return hr;
-    const bool same=owner==device;drop(owner);
-    return same?S_OK:E_INVALIDARG;
+    return same_device(device,texture);
+}
+// The 8-bit main target: a default-pool, non-multisampled 32-bit surface that
+// StretchRect can read. It need not be a texture level.
+HRESULT surface_input(IDirect3DDevice9* device,IDirect3DSurface9* surface,UINT w,UINT h) noexcept {
+    if(!surface)return E_INVALIDARG;
+    D3DSURFACE_DESC desc{};
+    HRESULT hr=surface->GetDesc(&desc);if(FAILED(hr))return hr;
+    if(desc.Width!=w||desc.Height!=h||(desc.Format!=D3DFMT_A8R8G8B8&&desc.Format!=D3DFMT_X8R8G8B8)||
+       desc.Pool!=D3DPOOL_DEFAULT||desc.MultiSampleType!=D3DMULTISAMPLE_NONE)return E_INVALIDARG;
+    return same_device(device,surface);
 }
 struct Vertex { float x,y,z,rhw,u,v; };
 HRESULT quad(IDirect3DDevice9* d,UINT w,UINT h) noexcept {
@@ -97,14 +110,19 @@ void TemporalPass::invalidate() noexcept {history_.invalidate();diagnostics_.his
 void TemporalPass::release_history() noexcept {
     invalidate();for(auto& p:color_surfaces_)drop(p);for(auto& p:depth_surfaces_)drop(p);
     for(auto& p:reactive_surfaces_)drop(p);
+    drop(scratch_surface_);
     for(auto& p:colors_)drop(p);
     for(auto& p:depths_)drop(p);
     for(auto& p:reactive_)drop(p);
+    drop(scratch_);
     reactive_policy_=ReactivePolicy::Unavailable;
     width_=height_=current_=0;
 }
-void TemporalPass::shutdown() noexcept {release_history();drop(decoder_);drop(resolve_);device_=nullptr;render_targets_=streams_=0;}
-void TemporalPass::before_reset() noexcept {shutdown();}
+void TemporalPass::shutdown() noexcept {release_history();drop(decoder_);drop(resolve_);device_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
+// Every owned texture is D3DPOOL_DEFAULT and must not exist across Reset; the
+// compiled shaders survive it. Runs are refused until after_reset succeeds.
+void TemporalPass::before_reset() noexcept {release_history();diagnostics_.reset_pending=device_!=nullptr;}
+void TemporalPass::after_reset(HRESULT result) noexcept {invalidate();if(SUCCEEDED(result))diagnostics_.reset_pending=false;}
 HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const DWORD* resolve) noexcept {
     shutdown();diagnostics_={};if(!d||!decoder||!resolve)return E_INVALIDARG;
     D3DCAPS9 caps{};HRESULT hr=d->GetDeviceCaps(&caps);if(FAILED(hr))return hr;
@@ -128,42 +146,65 @@ HRESULT TemporalPass::allocate(UINT w,UINT h,bool reactive) noexcept {
     }
     if(FAILED(hr)){release_history();return hr;}width_=w;height_=h;return S_OK;
 }
+HRESULT TemporalPass::ensure_scratch() noexcept {
+    if(scratch_)return S_OK;
+    HRESULT hr=device_->CreateTexture(width_,height_,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&scratch_,nullptr);
+    if(SUCCEEDED(hr))hr=scratch_->GetSurfaceLevel(0,&scratch_surface_);
+    if(FAILED(hr)){drop(scratch_surface_);drop(scratch_);}
+    return hr;
+}
 HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(out)*out={};
     diagnostics_.operation=diagnostics_.restoration=S_OK;
     auto fail=[&](HRESULT hr){invalidate();diagnostics_.operation=hr;return hr;};
-    if(!out||!device_||!decoder_||!resolve_||!in.width||!in.height||in.caller_stateblock_recording||!in.caller_queries_idle||
+    const bool sentinel=in.reactive_policy==ReactivePolicy::DerivedFromDepthSentinel;
+    if(!out||!device_||!decoder_||!resolve_||diagnostics_.reset_pending||!in.width||!in.height||in.caller_stateblock_recording||!in.caller_queries_idle||
         (in.motion_policy!=MotionPolicy::KnownCameraOnly&&in.motion_policy!=MotionPolicy::PerPixel)||
         (in.reactive_policy!=ReactivePolicy::Unavailable&&in.reactive_policy!=ReactivePolicy::KnownNonReactive&&
-         in.reactive_policy!=ReactivePolicy::RequiredMask)||
-        (in.reactive_policy!=ReactivePolicy::RequiredMask&&in.reactive))return fail(E_INVALIDARG);
-    for(UINT i=0;i<2;++i)for(auto* owned:{colors_[i],depths_[i],reactive_[i]})
-        if(owned&&(in.color==owned||in.depth_snapshot==owned||in.motion==owned||in.reactive==owned))return fail(E_INVALIDARG);
-    HRESULT hr=texture_input(device_,in.color,in.width,in.height,D3DFMT_A16B16G16R16F);
-    if(SUCCEEDED(hr))hr=texture_input(device_,in.depth_snapshot,in.width,in.height,D3DFMT_D24X8);
+         in.reactive_policy!=ReactivePolicy::RequiredMask&&!sentinel)||
+        (in.reactive_policy!=ReactivePolicy::RequiredMask&&in.reactive)||
+        bool(in.color)==bool(in.color_surface)||bool(in.depth_snapshot)==bool(in.current_depth)||
+        (sentinel&&!in.current_depth))return fail(E_INVALIDARG);
+    for(UINT i=0;i<2;++i){
+        for(auto* owned:{colors_[i],depths_[i],reactive_[i],scratch_})
+            if(owned&&(in.color==owned||in.depth_snapshot==owned||in.current_depth==owned||in.motion==owned||in.reactive==owned))return fail(E_INVALIDARG);
+        if(in.color_surface&&(in.color_surface==color_surfaces_[i]||in.color_surface==scratch_surface_))return fail(E_INVALIDARG);
+    }
+    HRESULT hr=in.color?texture_input(device_,in.color,in.width,in.height,D3DFMT_A16B16G16R16F):surface_input(device_,in.color_surface,in.width,in.height);
+    if(SUCCEEDED(hr))hr=in.current_depth?texture_input(device_,in.current_depth,in.width,in.height,D3DFMT_R32F):texture_input(device_,in.depth_snapshot,in.width,in.height,D3DFMT_D24X8);
     if(SUCCEEDED(hr)&&in.motion_policy==MotionPolicy::PerPixel)hr=texture_input(device_,in.motion,in.width,in.height,D3DFMT_A32B32G32R32F);
     if(SUCCEEDED(hr)&&in.reactive_policy==ReactivePolicy::RequiredMask)hr=texture_input(device_,in.reactive,in.width,in.height,D3DFMT_R32F);
     if(FAILED(hr))return fail(hr);
     hr=allocate(in.width,in.height,in.reactive_policy==ReactivePolicy::RequiredMask);if(FAILED(hr))return fail(hr);
     history_.begin(in.width,in.height,in.epoch);
-    if(in.camera_cut||!in.history_allowed||in.reactive_policy==ReactivePolicy::Unavailable||
+    if(in.camera_cut||in.cut||!in.history_allowed||in.reactive_policy==ReactivePolicy::Unavailable||
        in.reactive_policy!=reactive_policy_)invalidate();
     x3::temporal::ResolveConstants constants{};std::copy(in.rejection,in.rejection+4,constants.rejection);
     if(!x3::temporal::prepare(constants,history_,in.clip_to_previous,in.current_jitter[0],in.current_jitter[1],
         in.previous_jitter[0],in.previous_jitter[1],in.weight,in.motion_policy==MotionPolicy::PerPixel,
-        in.reactive_policy==ReactivePolicy::RequiredMask))return fail(E_INVALIDARG);
+        in.reactive_policy==ReactivePolicy::RequiredMask,sentinel))return fail(E_INVALIDARG);
     const bool used=history_.valid&&in.weight>0;
     SavedState saved(device_,render_targets_);hr=saved.capture();if(FAILED(hr))return fail(hr);
     const UINT next=current_^1;
     bool own_scene=false;
     hr=normalize(device_,render_targets_,streams_,in.width,in.height);
     auto step=[&](HRESULT value){hr=value;return SUCCEEDED(hr);};
+    // Copies touch no device state; they run after normalize so the scratch and
+    // the next depth history are bound nowhere. StretchRect is legal inside or
+    // outside a scene. No sRGB flag is set on any sampler or target, so the
+    // 8-bit copy is a plain UNORM-to-FP16 conversion of the linear-encoded data.
+    if(SUCCEEDED(hr)&&in.color_surface&&step(ensure_scratch()))hr=device_->StretchRect(in.color_surface,nullptr,scratch_surface_,nullptr,D3DTEXF_POINT);
+    if(SUCCEEDED(hr)&&in.current_depth){
+        IDirect3DSurface9* source=nullptr;
+        if(step(in.current_depth->GetSurfaceLevel(0,&source)))hr=device_->StretchRect(source,nullptr,depth_surfaces_[next],nullptr,D3DTEXF_POINT);
+        drop(source);
+    }
     if(SUCCEEDED(hr)&&!in.caller_scene_open){hr=device_->BeginScene();own_scene=SUCCEEDED(hr);}
-    if(SUCCEEDED(hr)&&step(device_->SetRenderTarget(0,depth_surfaces_[next]))&&
+    if(SUCCEEDED(hr)&&in.depth_snapshot&&step(device_->SetRenderTarget(0,depth_surfaces_[next]))&&
         step(device_->SetPixelShader(decoder_))&&step(device_->SetTexture(0,in.depth_snapshot)))hr=quad(device_,in.width,in.height);
     if(SUCCEEDED(hr)&&step(device_->SetTexture(0,nullptr))&&step(device_->SetRenderTarget(0,color_surfaces_[next]))&&
         step(device_->SetPixelShader(resolve_))&&step(device_->SetPixelShaderConstantF(0,&constants.clip_to_previous[0][0],8))&&
-        step(device_->SetTexture(0,in.color))&&step(device_->SetTexture(1,depths_[next]))&&
+        step(device_->SetTexture(0,in.color?in.color:scratch_))&&step(device_->SetTexture(1,depths_[next]))&&
         step(device_->SetTexture(2,history_.valid?colors_[current_]:nullptr))&&
         step(device_->SetTexture(3,history_.valid?depths_[current_]:nullptr))&&
         step(device_->SetTexture(4,in.motion_policy==MotionPolicy::PerPixel?in.motion:nullptr))&&
@@ -185,6 +226,6 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     current_=next;reactive_policy_=in.reactive_policy;
     if(reactive_policy_!=ReactivePolicy::Unavailable)history_.completed();
     diagnostics_.history_valid=history_.valid;++diagnostics_.completed_frames;++generation_;
-    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_]};return S_OK;
+    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_],color_surfaces_[current_]};return S_OK;
 }
 } // namespace x3m::renderer

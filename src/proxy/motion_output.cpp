@@ -6,6 +6,7 @@
 #include "object_trace.h"
 #include "object_lifetime.h"
 #include "../renderer/material_motion.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -114,6 +115,13 @@ using GetCreationFn = HRESULT(WINAPI*)(D, D3DDEVICE_CREATION_PARAMETERS*);
 constexpr DWORD sentinel_program[] = {
     0xffff0200u, 0x05000051u, 0xa00f0000u, 0x00000000u, 0x00000000u, 0x00000000u, 0xbf800000u,
     0x02000001u, 0x800f0800u, 0xa0e40000u, 0x0000ffffu};
+// The same with a second output: oC1 = c0.wwww = (-1, -1, -1, -1) fills the
+// R32F depth target (which stores .x only) with its sentinel -1 in the same
+// draw; ps_2_0 `def c0, 0, 0, 0, -1; mov oC0, c0; mov oC1, c0.wwww`.
+constexpr DWORD sentinel_mrt_program[] = {
+    0xffff0200u, 0x05000051u, 0xa00f0000u, 0x00000000u, 0x00000000u, 0x00000000u, 0xbf800000u,
+    0x02000001u, 0x800f0800u, 0xa0e40000u,
+    0x02000001u, 0x800f0801u, 0xa0ff0000u, 0x0000ffffu};
 // ps_2_0 self-test: oC0 = (0.25, 0.5, 0.75, 1) into A8R8G8B8, oC1 = (1, 2, 3, -1)
 // into A32B32G32R32F. Both targets are read back to prove mixed-format MRT.
 constexpr DWORD self_test_program[] = {
@@ -123,12 +131,31 @@ constexpr DWORD self_test_program[] = {
     0x02000001u, 0x800f0800u, 0xa0e40000u,
     0x02000001u, 0x800f0801u, 0xa0e40001u,
     0x0000ffffu};
+// Three-format form: additionally oC2 = (0.625, 0.375, 0.125, 1) into R32F.
+constexpr DWORD self_test_depth_program[] = {
+    0xffff0200u,
+    0x05000051u, 0xa00f0000u, 0x3e800000u, 0x3f000000u, 0x3f400000u, 0x3f800000u,
+    0x05000051u, 0xa00f0001u, 0x3f800000u, 0x40000000u, 0x40400000u, 0xbf800000u,
+    0x05000051u, 0xa00f0002u, 0x3f200000u, 0x3ec00000u, 0x3e000000u, 0x3f800000u,
+    0x02000001u, 0x800f0800u, 0xa0e40000u,
+    0x02000001u, 0x800f0801u, 0xa0e40001u,
+    0x02000001u, 0x800f0802u, 0xa0e40002u,
+    0x0000ffffu};
+constexpr float self_test_depth_value = 0.625f;
+// Halton sequences in bases 2 and 3 give the jitter offsets; index is 1-based
+// so no sample lands on the raster centre twice in a row.
+float halton(unsigned index, unsigned base) noexcept {
+    float fraction = 1.f, result = 0.f;
+    while (index) { fraction /= float(base); result += fraction * float(index % base); index /= base; }
+    return result;
+}
 // Render states the injected fullscreen draws set; each is saved and restored.
 constexpr D3DRENDERSTATETYPE touched_states[] = {
     D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ALPHATESTENABLE, D3DRS_ALPHABLENDENABLE,
     D3DRS_CULLMODE, D3DRS_FILLMODE, D3DRS_COLORWRITEENABLE, D3DRS_SCISSORTESTENABLE,
-    D3DRS_STENCILENABLE, D3DRS_FOGENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_CLIPPLANEENABLE};
-constexpr DWORD touched_values[] = {FALSE, FALSE, FALSE, FALSE, D3DCULL_NONE, D3DFILL_SOLID, 15, FALSE, FALSE, FALSE, FALSE, 0};
+    D3DRS_STENCILENABLE, D3DRS_FOGENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_CLIPPLANEENABLE,
+    D3DRS_COLORWRITEENABLE1, D3DRS_COLORWRITEENABLE2};
+constexpr DWORD touched_values[] = {FALSE, FALSE, FALSE, FALSE, D3DCULL_NONE, D3DFILL_SOLID, 15, FALSE, FALSE, FALSE, FALSE, 0, 15, 15};
 constexpr unsigned touched_count = sizeof(touched_states) / sizeof(touched_states[0]);
 static_assert(touched_count == sizeof(touched_values) / sizeof(touched_values[0]));
 constexpr unsigned failure_log_limit = 16;
@@ -146,6 +173,10 @@ bool same(const renderer::Surface& a, const renderer::Surface& b) noexcept {
            a.width == b.width && a.height == b.height && a.format == b.format && a.msaa == b.msaa;
 }
 } // namespace
+
+float motion_jitter_sample(unsigned index, unsigned axis) noexcept {
+    return halton(index, axis ? 3u : 2u) - .5f;
+}
 
 // Everything the fullscreen draws touch. COM references returned by the getters
 // are released by the destructor after restoration.
@@ -174,7 +205,9 @@ MotionOutput::~MotionOutput() { release_resources(); }
 unsigned MotionOutput::device_references() const noexcept {
     if (releasing_) return 0;
     unsigned count = target_surface_ ? 1 : 0;
+    if (depth_surface_) ++count;
     if (sentinel_ps_) ++count;
+    if (sentinel_mrt_ps_) ++count;
     for (const auto& entry : vertex_) if (entry.second.variant) ++count;
     for (const auto& entry : pixel_) if (entry.second.variant) ++count;
     return count;
@@ -190,6 +223,7 @@ void MotionOutput::release_resources() noexcept {
     releasing_ = true;
     release_target();
     release(sentinel_ps_);
+    release(sentinel_mrt_ps_);
     for (auto& entry : vertex_) release(entry.second.variant);
     for (auto& entry : pixel_) release(entry.second.variant);
     shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
@@ -199,12 +233,23 @@ void MotionOutput::release_resources() noexcept {
 }
 
 void MotionOutput::release_target() noexcept {
+    release(depth_surface_);
     release(target_surface_);
     target_width_ = target_height_ = 0;
 }
 
-// Lazily (re)creates the RGBA32F motion target at the latched main dimensions.
-// Only the level-0 surface is retained. A texture level keeps its container
+void MotionOutput::configure_jitter(bool enabled, unsigned samples) noexcept {
+    jitter_requested_ = enabled;
+    jitter_samples_ = samples < 2 ? 2u : samples > 64 ? 64u : samples;
+}
+void MotionOutput::configure_cut_bounds(float median_px_at_1280, float missing_fraction) noexcept {
+    if (std::isfinite(median_px_at_1280) && median_px_at_1280 > 0) cut_median_bound_ = median_px_at_1280;
+    if (std::isfinite(missing_fraction) && missing_fraction > 0 && missing_fraction <= 1) cut_missing_bound_ = missing_fraction;
+}
+
+// Lazily (re)creates the RGBA32F motion target and, when the device produces
+// depth, the R32F depth target at the latched main dimensions. Only the
+// level-0 surfaces are retained. A texture level keeps its container
 // alive on D3D9 (the level shares the texture's reference count, which holds
 // the device reference), so one owned object is one device reference. Holding
 // the texture as well would be harmless natively but not through the ownership
@@ -217,33 +262,48 @@ bool MotionOutput::ensure_target(UINT width, UINT height) noexcept {
     release_target();
     if (target_failed_ || !width || !height) return false;
     IDirect3DTexture9* texture = nullptr;
-    const HRESULT hr = native<CreateTextureFn>(CreateTexture)(device_, width, height, 1, D3DUSAGE_RENDERTARGET,
+    HRESULT hr = native<CreateTextureFn>(CreateTexture)(device_, width, height, 1, D3DUSAGE_RENDERTARGET,
         D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &texture, nullptr);
-    HRESULT level = E_FAIL;
+    HRESULT level = E_FAIL, depth_hr = S_FALSE, depth_level = S_FALSE;
     if (SUCCEEDED(hr) && texture) level = texture->GetSurfaceLevel(0, &target_surface_);
     release(texture);
+    if (depth_enabled_ && SUCCEEDED(hr) && SUCCEEDED(level) && target_surface_) {
+        // The variants of depth rows write oC2 unconditionally, so a device
+        // producing depth must own RT2 whenever it routes: a failed depth
+        // allocation disables routing like a failed motion allocation.
+        depth_hr = native<CreateTextureFn>(CreateTexture)(device_, width, height, 1, D3DUSAGE_RENDERTARGET,
+            D3DFMT_R32F, D3DPOOL_DEFAULT, &texture, nullptr);
+        depth_level = E_FAIL;
+        if (SUCCEEDED(depth_hr) && texture) depth_level = texture->GetSurfaceLevel(0, &depth_surface_);
+        release(texture);
+        if (FAILED(depth_hr) || FAILED(depth_level) || !depth_surface_) hr = FAILED(depth_hr) ? depth_hr : E_FAIL;
+    }
     if (FAILED(hr) || FAILED(level) || !target_surface_) {
-        log("motion_output_target device=%llu width=%u height=%u create=%08lx level=%08lx", id_, width, height, hr, level);
+        log("motion_output_target device=%llu width=%u height=%u create=%08lx level=%08lx depth=%u depth_create=%08lx depth_level=%08lx",
+            id_, width, height, hr, level, depth_enabled_, depth_hr, depth_level);
         release_target();
         target_failed_ = true; // Retry only after Reset; do not spam allocation per frame.
         return false;
     }
     target_width_ = width; target_height_ = height;
     history_.invalidate();
-    log("motion_output_target device=%llu width=%u height=%u create=%08lx level=%08lx", id_, width, height, hr, level);
+    log("motion_output_target device=%llu width=%u height=%u create=%08lx level=%08lx depth=%u depth_create=%08lx depth_level=%08lx",
+        id_, width, height, hr, level, depth_enabled_, depth_hr, depth_level);
     return true;
 }
 
 void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::uint64_t device_id,
                           const D3DCAPS9& caps, bool requested) noexcept {
     device_ = device; native_ = native_table; id_ = device_id; caps_ = caps; requested_ = requested;
-    enabled_ = false;
+    enabled_ = false; depth_enabled_ = false;
     if (!requested) return;
     history_ = renderer::MotionRowHistory(4096); // Reserves both tables once; ready() false on failure.
+    try { displacements_.reserve(4096); } catch (...) { displacements_.clear(); displacements_.shrink_to_fit(); }
     history_available_ = object_trace::active() && object_lifetime::active();
     const char* reason = "ok";
+    const char* depth_reason = "ok";
     char detail[160] = "";
-    HRESULT format_result = S_OK;
+    HRESULT format_result = S_OK, depth_format_result = S_OK;
     if (caps.NumSimultaneousRTs < 2) reason = "mrt_count";
     else if (caps.MaxVertexShaderConst < 256) reason = "vs_constants";
     else if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS)) reason = "mrt_bit_depths";
@@ -260,34 +320,57 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
             format_result = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, mode.Format,
                 D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE, D3DFMT_A32B32G32R32F);
             if (FAILED(format_result)) reason = "rgba32f_target";
+            // The current-depth target needs a third simultaneous target and
+            // an R32F render target; without them the route stays motion-only.
+            if (caps.NumSimultaneousRTs < 3) depth_reason = "mrt_count";
+            else {
+                depth_format_result = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, mode.Format,
+                    D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE, D3DFMT_R32F);
+                if (FAILED(depth_format_result)) depth_reason = "r32f_target";
+            }
         }
         release(factory);
     }
+    depth_enabled_ = !std::strcmp(reason, "ok") && !std::strcmp(depth_reason, "ok");
     if (!std::strcmp(reason, "ok")) {
         const HRESULT hr = native<CreatePsFn>(CreatePixelShader)(device_, sentinel_program, &sentinel_ps_);
         if (FAILED(hr) || !sentinel_ps_) { reason = "sentinel_shader"; std::snprintf(detail, sizeof detail, "%08lx", hr); }
     }
-    if (!std::strcmp(reason, "ok") && !self_test(detail, sizeof detail)) reason = "self_test";
+    if (!std::strcmp(reason, "ok") && depth_enabled_) {
+        const HRESULT hr = native<CreatePsFn>(CreatePixelShader)(device_, sentinel_mrt_program, &sentinel_mrt_ps_);
+        if (FAILED(hr) || !sentinel_mrt_ps_) { depth_enabled_ = false; depth_reason = "sentinel_shader"; release(sentinel_mrt_ps_); }
+    }
+    // The three-format self test proves depth; if it fails, the two-format
+    // test decides whether the route runs motion-only.
+    char depth_detail[160] = "";
+    if (!std::strcmp(reason, "ok") && depth_enabled_ && !self_test(true, depth_detail, sizeof depth_detail)) {
+        depth_enabled_ = false; depth_reason = "self_test"; release(sentinel_mrt_ps_);
+    }
+    if (!std::strcmp(reason, "ok") && !depth_enabled_ && !self_test(false, detail, sizeof detail)) reason = "self_test";
+    if (!std::strcmp(reason, "ok") && depth_enabled_) std::memcpy(detail, depth_detail, sizeof detail);
     enabled_ = !std::strcmp(reason, "ok");
-    if (!enabled_) release(sentinel_ps_);
+    if (!enabled_) { release(sentinel_ps_); release(sentinel_mrt_ps_); depth_enabled_ = false; }
     else { resync_shadow(); begin_frame(0, false); } // The first frame has no preceding Present.
     if (!history_available_) history_.invalidate();
-    log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u",
+    log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u",
         id_, enabled_, reason, detail[0] ? detail : "-", caps.NumSimultaneousRTs, caps.MaxVertexShaderConst,
         caps.PrimitiveMiscCaps, caps.VertexShaderVersion, caps.PixelShaderVersion, format_result,
-        history_available_, unsigned(history_.stats().capacity));
+        history_available_, unsigned(history_.stats().capacity), depth_enabled_, depth_reason,
+        depth_detail[0] ? depth_detail : "-", depth_format_result, jitter_requested_, jitter_samples_);
 }
 
-// One actual mixed-format MRT draw into a 4x4 A8R8G8B8 + A32B32G32R32F pair,
-// read back through system memory. A device that reports the capability but
-// cannot execute the combination is refused here rather than during gameplay.
-bool MotionOutput::self_test(char* reason, std::size_t reason_size) noexcept {
+// One actual mixed-format MRT draw into a 4x4 A8R8G8B8 + A32B32G32R32F pair
+// (plus an R32F third target when the device is to produce depth), read back
+// through system memory. A device that reports the capability but cannot
+// execute the combination is refused here rather than during gameplay.
+bool MotionOutput::self_test(bool with_depth, char* reason, std::size_t reason_size) noexcept {
     IDirect3DSurface9* color = nullptr; IDirect3DTexture9* motion = nullptr; IDirect3DSurface9* motion_surface = nullptr;
-    IDirect3DSurface9* color_copy = nullptr; IDirect3DSurface9* motion_copy = nullptr;
+    IDirect3DTexture9* depth = nullptr; IDirect3DSurface9* depth_surface = nullptr;
+    IDirect3DSurface9* color_copy = nullptr; IDirect3DSurface9* motion_copy = nullptr; IDirect3DSurface9* depth_copy = nullptr;
     IDirect3DPixelShader9* shader = nullptr;
     bool ok = false;
     HRESULT hr = S_OK, restore = S_OK, draw = S_OK, scene = S_OK;
-    unsigned color_errors = 0, motion_errors = 0;
+    unsigned color_errors = 0, motion_errors = 0, depth_errors = 0;
     const char* stage = "create";
     do {
         if (FAILED(hr = native<CreateRtFn>(CreateRenderTarget)(device_, 4, 4, D3DFMT_A8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &color, nullptr))) break;
@@ -295,12 +378,17 @@ bool MotionOutput::self_test(char* reason, std::size_t reason_size) noexcept {
         if (FAILED(hr = motion->GetSurfaceLevel(0, &motion_surface))) break;
         if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 4, 4, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &color_copy, nullptr))) break;
         if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 4, 4, D3DFMT_A32B32G32R32F, D3DPOOL_SYSTEMMEM, &motion_copy, nullptr))) break;
-        if (FAILED(hr = native<CreatePsFn>(CreatePixelShader)(device_, self_test_program, &shader))) break;
+        if (with_depth) {
+            if (FAILED(hr = native<CreateTextureFn>(CreateTexture)(device_, 4, 4, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R32F, D3DPOOL_DEFAULT, &depth, nullptr))) break;
+            if (FAILED(hr = depth->GetSurfaceLevel(0, &depth_surface))) break;
+            if (FAILED(hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 4, 4, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &depth_copy, nullptr))) break;
+        }
+        if (FAILED(hr = native<CreatePsFn>(CreatePixelShader)(device_, with_depth ? self_test_depth_program : self_test_program, &shader))) break;
         stage = "scene";
         // Attach runs right after CreateDevice, outside any application scene.
         if (FAILED(scene = native<SceneFn>(BeginScene)(device_))) { hr = scene; break; }
         stage = "draw";
-        draw = draw_quad(color, motion_surface, shader, 4, 4, &restore);
+        draw = draw_quad(color, motion_surface, depth_surface, shader, 4, 4, &restore);
         scene = native<SceneFn>(EndScene)(device_);
         if (FAILED(draw)) { hr = draw; break; }
         if (FAILED(restore)) { hr = restore; stage = "restore"; break; }
@@ -308,6 +396,7 @@ bool MotionOutput::self_test(char* reason, std::size_t reason_size) noexcept {
         stage = "readback";
         if (FAILED(hr = native<GetRtDataFn>(GetRenderTargetData)(device_, color, color_copy))) break;
         if (FAILED(hr = native<GetRtDataFn>(GetRenderTargetData)(device_, motion_surface, motion_copy))) break;
+        if (with_depth && FAILED(hr = native<GetRtDataFn>(GetRenderTargetData)(device_, depth_surface, depth_copy))) break;
         D3DLOCKED_RECT lock{};
         if (FAILED(hr = color_copy->LockRect(&lock, nullptr, D3DLOCK_READONLY))) break;
         for (unsigned y = 0; y < 4; ++y) for (unsigned x = 0; x < 4; ++x) {
@@ -322,12 +411,21 @@ bool MotionOutput::self_test(char* reason, std::size_t reason_size) noexcept {
             if (value[0] != 1.f || value[1] != 2.f || value[2] != 3.f || value[3] != -1.f) ++motion_errors;
         }
         motion_copy->UnlockRect();
+        if (with_depth) {
+            if (FAILED(hr = depth_copy->LockRect(&lock, nullptr, D3DLOCK_READONLY))) break;
+            for (unsigned y = 0; y < 4; ++y) for (unsigned x = 0; x < 4; ++x) {
+                float value; std::memcpy(&value, static_cast<const char*>(lock.pBits) + y * lock.Pitch + x * 4, 4);
+                if (value != self_test_depth_value) ++depth_errors;
+            }
+            depth_copy->UnlockRect();
+        }
         stage = "compare";
-        ok = !color_errors && !motion_errors;
+        ok = !color_errors && !motion_errors && !depth_errors;
     } while (false);
-    release(shader); release(motion_copy); release(color_copy); release(motion_surface); release(motion); release(color);
-    std::snprintf(reason, reason_size, "stage=%s result=%08lx draw=%08lx restore=%08lx scene=%08lx color_errors=%u motion_errors=%u",
-                  stage, hr, draw, restore, scene, color_errors, motion_errors);
+    release(shader); release(depth_copy); release(motion_copy); release(color_copy);
+    release(depth_surface); release(depth); release(motion_surface); release(motion); release(color);
+    std::snprintf(reason, reason_size, "stage=%s result=%08lx draw=%08lx restore=%08lx scene=%08lx color_errors=%u motion_errors=%u depth_errors=%u targets=%u",
+                  stage, hr, draw, restore, scene, color_errors, motion_errors, depth_errors, with_depth ? 3u : 2u);
     return ok;
 }
 
@@ -379,11 +477,11 @@ HRESULT MotionOutput::restore_state(const SavedState& saved) noexcept {
 }
 
 // Fullscreen XYZRHW strip through the fixed-function vertex path with `shader`
-// bound, RT0/RT1 as given, no depth, full viewport. Returns the operation
-// result; *restore receives the restoration result separately. Nothing is
-// changed if the initial state query fails.
-HRESULT MotionOutput::draw_quad(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, IDirect3DPixelShader9* shader,
-                                UINT width, UINT height, HRESULT* restore) noexcept {
+// bound, RT0/RT1/RT2 as given (null unbinds), no depth, full viewport. Returns
+// the operation result; *restore receives the restoration result separately.
+// Nothing is changed if the initial state query fails.
+HRESULT MotionOutput::draw_quad(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, IDirect3DSurface9* rt2,
+                                IDirect3DPixelShader9* shader, UINT width, UINT height, HRESULT* restore) noexcept {
     *restore = S_OK;
     SavedState saved;
     HRESULT hr = save_state(saved);
@@ -392,7 +490,7 @@ HRESULT MotionOutput::draw_quad(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, 
     auto step = [&](HRESULT result) { if (SUCCEEDED(op) && FAILED(result)) op = result; };
     step(native<SetRenderTargetFn>(SetRenderTarget)(device_, 0, rt0));
     for (unsigned i = 1; i < saved.target_count; ++i)
-        step(native<SetRenderTargetFn>(SetRenderTarget)(device_, i, i == 1 ? rt1 : nullptr));
+        step(native<SetRenderTargetFn>(SetRenderTarget)(device_, i, i == 1 ? rt1 : i == 2 ? rt2 : nullptr));
     step(native<SetDepthFn>(SetDepthStencilSurface)(device_, nullptr));
     const D3DVIEWPORT9 viewport{0, 0, width, height, 0.f, 1.f};
     step(native<SetViewportFn>(SetViewport)(device_, &viewport));
@@ -411,14 +509,17 @@ HRESULT MotionOutput::draw_quad(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, 
     return op;
 }
 
-// Writes the invalid sentinel over the whole motion target. Deferred from the
-// latching Clear to the next draw hook so it always runs inside the
-// application's BeginScene/EndScene, on both Windows and Wine.
+// Writes the invalid sentinel over the whole motion target and, when the
+// device produces depth, over the depth target in the same draw (-1 in
+// R32F). Deferred from the latching Clear to the next draw hook so it always
+// runs inside the application's BeginScene/EndScene, on both Windows and Wine.
 void MotionOutput::fill_sentinel() noexcept {
     fill_pending_ = false;
-    if (!target_surface_ || !sentinel_ps_ || shadow_.recording) { counters_.fill_result = E_ABORT; return; }
+    const bool depth = depth_enabled_ && depth_surface_ && sentinel_mrt_ps_;
+    if (!target_surface_ || !sentinel_ps_ || shadow_.recording || (depth_enabled_ && !depth)) { counters_.fill_result = E_ABORT; return; }
     HRESULT restore = S_OK;
-    const HRESULT hr = draw_quad(target_surface_, nullptr, sentinel_ps_, target_width_, target_height_, &restore);
+    const HRESULT hr = draw_quad(target_surface_, depth ? depth_surface_ : nullptr, nullptr,
+                                 depth ? sentinel_mrt_ps_ : sentinel_ps_, target_width_, target_height_, &restore);
     counters_.fill_result = hr; counters_.fill_restore = restore;
     counters_.filled = SUCCEEDED(hr) && SUCCEEDED(restore);
     if ((FAILED(hr) || FAILED(restore)) && logged_failures_ < failure_log_limit) {
@@ -466,14 +567,14 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         if (shadow_.vs == shader) shadow_.vs_row = entry.row;
         if (!entry.row) return;
         std::vector<std::uint32_t> words;
-        const auto result = renderer::material_motion_vertex_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words);
+        const auto result = renderer::material_motion_vertex_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words, depth_enabled_);
         IDirect3DVertexShader9* variant = nullptr;
         HRESULT hr = E_FAIL;
         if (result == renderer::MaterialMotionResult::Applied)
             hr = native<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
         if (SUCCEEDED(hr) && variant) entry.variant = variant;
-        log("motion_output_variant device=%llu kind=vs original=%016llx transform=%u create=%08lx words=%u",
-            id_, hash, unsigned(result), hr, unsigned(words.size()));
+        log("motion_output_variant device=%llu kind=vs original=%016llx transform=%u create=%08lx words=%u depth=%u",
+            id_, hash, unsigned(result), hr, unsigned(words.size()), renderer::material_motion_vertex_exports_depth(*entry.row, depth_enabled_));
     } catch (...) {}
 }
 void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DWORD* code,
@@ -488,14 +589,14 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         entry.row = renderer::material_motion_pixel_row(hash, bytes / 4);
         if (!entry.row) return;
         std::vector<std::uint32_t> words;
-        const auto result = renderer::material_motion_pixel_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words);
+        const auto result = renderer::material_motion_pixel_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words, depth_enabled_);
         IDirect3DPixelShader9* variant = nullptr;
         HRESULT hr = E_FAIL;
         if (result == renderer::MaterialMotionResult::Applied)
             hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
         if (SUCCEEDED(hr) && variant) entry.variant = variant;
-        log("motion_output_variant device=%llu kind=ps original=%016llx transform=%u create=%08lx words=%u",
-            id_, hash, unsigned(result), hr, unsigned(words.size()));
+        log("motion_output_variant device=%llu kind=ps original=%016llx transform=%u create=%08lx words=%u depth=%u",
+            id_, hash, unsigned(result), hr, unsigned(words.size()), renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_));
     } catch (...) {}
 }
 
@@ -669,7 +770,12 @@ void MotionOutput::bindings(renderer::Event& e) const noexcept {
 }
 void MotionOutput::observe(renderer::Event& e, HRESULT result) noexcept {
     e.result_known = true; e.result = static_cast<std::uint32_t>(result);
+    const bool was_scene = selector_.state() == renderer::BoundaryState::Scene;
     selector_.observe(e);
+    // The scene phase ends with the event that moves the selector past Scene
+    // (the bloom copy or a rejection); the cut verdict is complete then, so a
+    // future consumer at the copy boundary can read it before Present.
+    if (was_scene && selector_.state() != renderer::BoundaryState::Scene && !cut_finished_) finish_cut_detector();
 }
 bool MotionOutput::scene_bound() const noexcept {
     const auto& v = shadow_.viewport;
@@ -682,7 +788,9 @@ bool MotionOutput::scene_bound() const noexcept {
 void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     frame_ = frame; capture_ = capture; telemetry_ = telemetry::enabled();
     counters_ = {};
-    sequence_ = 0; pending_valid_ = false; fill_pending_ = false;
+    counters_.cut_median_bound_px = cut_median_bound_; counters_.cut_missing_bound = cut_missing_bound_;
+    sequence_ = 0; pending_valid_ = false; fill_pending_ = false; jitter_active_ = false; cut_finished_ = false;
+    displacements_.clear();
     if (!enabled_) return;
     selector_ = renderer::SceneBoundarySelector{signatures()};
     selector_.begin_frame(id_, generation_, frame + 1);
@@ -706,6 +814,16 @@ void MotionOutput::after_clear(HRESULT result) noexcept {
         // target and schedule the sentinel fill for the next draw.
         main_ = pending_.rt; main_depth_ = pending_.depth;
         counters_.latched = true;
+        // Advance the jitter sequence once per latched frame: the previous
+        // latched frame's jitter is what routed draws report in PS c216.zw.
+        jitter_previous_[0] = jitter_[0]; jitter_previous_[1] = jitter_[1];
+        const unsigned index = jitter_latched_++ % jitter_samples_;
+        jitter_active_ = jitter_requested_;
+        jitter_[0] = jitter_active_ ? motion_jitter_sample(index + 1, 0) : 0.f;
+        jitter_[1] = jitter_active_ ? motion_jitter_sample(index + 1, 1) : 0.f;
+        counters_.jitter_active = jitter_active_; counters_.jitter_index = index;
+        counters_.jitter[0] = jitter_[0]; counters_.jitter[1] = jitter_[1];
+        counters_.jitter_previous[0] = jitter_previous_[0]; counters_.jitter_previous[1] = jitter_previous_[1];
         if (ensure_target(main_.width, main_.height)) {
             fill_pending_ = true;
             history_.begin_frame({generation_, main_.width, main_.height});
@@ -787,6 +905,8 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
 void MotionOutput::undo(MotionRoute& route) noexcept {
     HRESULT first = S_OK;
     auto step = [&](HRESULT hr) { if (SUCCEEDED(first) && FAILED(hr)) first = hr; };
+    if (route.write2_set) step(native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, route.saved_write2));
+    if (route.rt2_set) step(native<SetRenderTargetFn>(SetRenderTarget)(device_, 2, nullptr));
     if (route.write_set) step(native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, route.saved_write1));
     if (route.rt_set) step(native<SetRenderTargetFn>(SetRenderTarget)(device_, 1, nullptr));
     if (route.ps_set) step(native<SetPsFn>(SetPixelShader)(device_, shadow_.ps));
@@ -799,6 +919,7 @@ void MotionOutput::undo(MotionRoute& route) noexcept {
     if (route.ps_constants_set && shadow_.ps_reserved_written)
         step(native<SetConstantsFFn>(SetPixelShaderConstantF)(device_, 216, shadow_.ps_reserved, 2));
     route.write_set = route.rt_set = route.ps_set = route.vs_set = false;
+    route.write2_set = route.rt2_set = false;
     route.vs_constants_set = route.ps_constants_set = false;
     if (FAILED(first)) {
         ++counters_.restore_failures;
@@ -806,6 +927,26 @@ void MotionOutput::undo(MotionRoute& route) noexcept {
             ++logged_failures_;
             log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx", id_, frame_, counters_.draws, first);
         }
+    }
+}
+
+// Jitter the submitted clip rows of the bound VS row by this frame's sub-pixel
+// offset: rows[0] += jx_ndc * rows[3], rows[1] += jy_ndc * rows[3] with
+// jx_ndc = 2 * jx_px / width and jy_ndc = -2 * jy_px / height, so the raster
+// image moves by (+jx_px right, +jy_px down), the resolve's convention
+// (src/temporal/README.md). The shadow keeps the application's unjittered
+// rows: history records them and after_draw writes them back bit-exactly.
+void MotionOutput::apply_jitter(MotionRoute& route) noexcept {
+    const auto& row = *shadow_.vs_row;
+    const std::size_t window = window_of(row.matrix_register);
+    if (!shadow_.rows_known[window] || !main_.width || !main_.height) return;
+    float rows[16];
+    std::memcpy(rows, shadow_.rows[window], sizeof rows);
+    const float jx = 2.f * jitter_[0] / float(main_.width), jy = -2.f * jitter_[1] / float(main_.height);
+    for (unsigned k = 0; k < 4; ++k) { rows[k] += jx * rows[12 + k]; rows[4 + k] += jy * rows[12 + k]; }
+    if (SUCCEEDED(native<SetConstantsFFn>(SetVertexShaderConstantF)(device_, row.matrix_register, rows, 4))) {
+        route.jittered = true; route.jitter_register = row.matrix_register;
+        ++counters_.jittered;
     }
 }
 
@@ -837,13 +978,18 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     // Gate 2: scene phase with the latched main color/depth bound.
     if (!scene_bound()) { route.gate = MotionGate::Scene; ++counters_.gates[2]; return route; }
     route.scene = true;
+    // Every scene draw whose VS has a table row is jittered, routed or not,
+    // so the rasterized coverage of the whole scene moves together.
+    if (jitter_active_ && shadow_.vs_row) apply_jitter(route);
     // Gate 3: exact reviewed pair (one profile-table row) with both variants
     // registered. Variants are per program; the pair check is what keys
     // eligibility, so a VS alias shared with an unreviewed PS never routes.
-    if (!shadow_.vs_variant || !shadow_.ps_variant || !shadow_.vs_row ||
-        !renderer::material_motion_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash)) {
+    const renderer::MotionOutputProfile* pair = shadow_.vs_variant && shadow_.ps_variant && shadow_.vs_row
+        ? renderer::material_motion_profile(shadow_.vs_hash, shadow_.ps_hash) : nullptr;
+    if (!pair || !renderer::material_motion_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash)) {
         route.gate = MotionGate::Pair; ++counters_.gates[3]; return route;
     }
+    route.depth = depth_enabled_ && renderer::material_motion_pixel_writes_depth(*pair, depth_enabled_);
     // Gate 4: opaque ordinary draw state, known rows in the VS row's clip-row
     // window, the row's light-loop bound where it reads constants relatively,
     // no user-memory geometry, no instancing, known declaration/stream identity.
@@ -878,9 +1024,28 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     // covered pixels of this material carry the sentinel, never stale history.
     bool matched = false;
     if (!sample_scope(route)) { route.gate = MotionGate::Scope; ++counters_.gates[5]; }
-    else if (!history_.lookup_and_record(key, rows, previous)) { route.gate = MotionGate::History; ++counters_.gates[6]; }
-    else { matched = true; route.gate = MotionGate::None; ++counters_.gates[0]; }
-    // Apply: variant pair, previous rows (or zeros), pixel ABI, RT1 and its write mask.
+    else if (!history_.lookup_and_record(key, rows, previous)) { route.gate = MotionGate::History; ++counters_.gates[6]; ++counters_.keyed; ++counters_.missing; }
+    else { matched = true; route.gate = MotionGate::None; ++counters_.gates[0]; ++counters_.keyed; }
+    if (matched) {
+        // Cut detector sample: screen displacement of the projected object
+        // origin (translation column over w) between the previous and the
+        // current unjittered rows. Bounded storage, reserved at attach.
+        const float* c = rows.data(); const float* p = previous.data();
+        if (c[15] > 1e-6f && p[15] > 1e-6f && displacements_.size() < displacements_.capacity()) {
+            const float dx = (c[3] / c[15] - p[3] / p[15]) * .5f * float(target_width_);
+            const float dy = (c[7] / c[15] - p[7] / p[15]) * .5f * float(target_height_);
+            const float magnitude = std::sqrt(dx * dx + dy * dy);
+            if (std::isfinite(magnitude)) displacements_.push_back(magnitude);
+        }
+    }
+    // Apply: variant pair, previous rows (or zeros), pixel ABI, RT1/RT2 and
+    // their write masks. c216.zw ("previous jitter", subtracted by the motion
+    // fragment from the interpolated previous projection) is uploaded as zero:
+    // the history rows are the application's unjittered rows, so the fragment
+    // already produces the previous UNJITTERED UV the RGBA32F ABI specifies and
+    // the resolve adds the previous raster jitter exactly once when it samples
+    // history. The previous jitter itself stays in the frame diagnostics for
+    // the resolve's frame inputs (counters().jitter_previous).
     static const float zeros[16]{};
     const float pixel[8] = {1.f / float(target_width_), 1.f / float(target_height_), 0.f, 0.f,
                             matched ? 1.f : 0.f, 0.f, 0.f, 0.f};
@@ -896,9 +1061,17 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
         hr = native<SetConstantsFFn>(SetPixelShaderConstantF)(device_,
             renderer::MaterialMotionAbi::pixel_coordinates_constant, pixel, 2);
         route.ps_constants_set = SUCCEEDED(hr);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        if (SUCCEEDED(hr)) { std::memcpy(fixture_last_pixel_abi_, pixel, sizeof pixel); fixture_abi_known_ = true; }
+#endif
     }
     if (SUCCEEDED(hr)) { hr = native<SetRenderTargetFn>(SetRenderTarget)(device_, 1, target_surface_); route.rt_set = SUCCEEDED(hr); }
     if (SUCCEEDED(hr)) { hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, 15); route.write_set = SUCCEEDED(hr); }
+    if (SUCCEEDED(hr) && route.depth) {
+        hr = native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_COLORWRITEENABLE2, &route.saved_write2);
+        if (SUCCEEDED(hr)) { hr = native<SetRenderTargetFn>(SetRenderTarget)(device_, 2, depth_surface_); route.rt2_set = SUCCEEDED(hr); }
+        if (SUCCEEDED(hr)) { hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, 15); route.write2_set = SUCCEEDED(hr); }
+    }
     if (FAILED(hr)) {
         // Partial application: put back what was set and draw the original.
         undo(route);
@@ -910,18 +1083,33 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
         return route;
     }
     route.routed = true; route.matched = matched;
-    ++counters_.routed; if (matched) ++counters_.matched;
+    ++counters_.routed; if (matched) ++counters_.matched; if (route.depth) ++counters_.depth_routed;
     return route;
 }
 
 void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     if (!enabled_) return;
+    const bool jittered = route.jittered;
     if (route.routed) undo(route);
+    if (route.jittered) {
+        // The application's own rows, bit-exact from the shadow.
+        const std::size_t window = window_of(route.jitter_register);
+        const HRESULT hr = window < motion_matrix_windows_max
+            ? native<SetConstantsFFn>(SetVertexShaderConstantF)(device_, route.jitter_register, shadow_.rows[window], 4) : E_FAIL;
+        route.jittered = false;
+        if (FAILED(hr)) {
+            ++counters_.restore_failures;
+            if (logged_failures_ < failure_log_limit) {
+                ++logged_failures_;
+                log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=jitter_rows", id_, frame_, counters_.draws, hr);
+            }
+        }
+    }
     if (pending_valid_) { pending_valid_ = false; observe(pending_, result); }
     if (capture_ && route.scene) {
         const auto& k = route.key;
-        log("motion_route device=%llu frame=%llu index=%lu gate=%u routed=%u matched=%u vs=%016llx ps=%016llx node=%p camera=%p node_handle=%lu camera_handle=%lu node_serial=%llu camera_serial=%llu load_epoch=%llu registry_epoch=%llu model=%08lx lod=%08lx vb=%llu ib=%llu declaration=%016llx offset=%u stride=%u position_offset=%u position_type=%u topology=%u first=%u primitives=%u base_vertex=%d min_vertex=%u vertex_count=%u indexed=%u rows_hash=%016llx result=%08lx",
-            id_, frame_, counters_.draws, unsigned(route.gate), route.routed, route.matched, shadow_.vs_hash, shadow_.ps_hash,
+        log("motion_route device=%llu frame=%llu index=%lu gate=%u routed=%u matched=%u depth=%u jittered=%u vs=%016llx ps=%016llx node=%p camera=%p node_handle=%lu camera_handle=%lu node_serial=%llu camera_serial=%llu load_epoch=%llu registry_epoch=%llu model=%08lx lod=%08lx vb=%llu ib=%llu declaration=%016llx offset=%u stride=%u position_offset=%u position_type=%u topology=%u first=%u primitives=%u base_vertex=%d min_vertex=%u vertex_count=%u indexed=%u rows_hash=%016llx result=%08lx",
+            id_, frame_, counters_.draws, unsigned(route.gate), route.routed, route.matched, route.routed && route.depth, jittered, shadow_.vs_hash, shadow_.ps_hash,
             reinterpret_cast<void*>(k.node), reinterpret_cast<void*>(k.camera), static_cast<unsigned long>(k.node_handle),
             static_cast<unsigned long>(k.camera_handle), k.object_lifetime, k.camera_lifetime, route.load_epoch, route.registry_epoch,
             static_cast<unsigned long>(k.model), static_cast<unsigned long>(k.lod), k.vertex_buffer, k.index_buffer, k.declaration,
@@ -932,18 +1120,20 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
 
 // ---- frame end -------------------------------------------------------------
 
-void MotionOutput::readback() noexcept {
-    if (!target_surface_ || !counters_.filled) return;
+// Copies one owned target through system memory to <prefix>_<device>_<frame>.<extension>
+// beside the capture log (row-major, bytes_per_pixel per pixel, no header).
+HRESULT MotionOutput::readback_surface(IDirect3DSurface9* surface, D3DFORMAT format, unsigned bytes_per_pixel,
+                                       const wchar_t* prefix, const wchar_t* extension, const char* tag, const char* format_name) noexcept {
     IDirect3DSurface9* copy = nullptr;
     HRESULT hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, target_width_, target_height_,
-        D3DFMT_A32B32G32R32F, D3DPOOL_SYSTEMMEM, &copy, nullptr);
-    if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, target_surface_, copy);
+        format, D3DPOOL_SYSTEMMEM, &copy, nullptr);
+    if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, surface, copy);
     std::size_t written = 0;
     // Fixed buffers: this runs inside a noexcept hook path, so no std::wstring.
     wchar_t name[96]{}, path[MAX_PATH + 96]{};
     const wchar_t* dir = capture_directory();
     const std::size_t dir_length = std::wcslen(dir);
-    swprintf(name, 96, L"\\motion_%llu_%llu.rgba32f", static_cast<unsigned long long>(id_), static_cast<unsigned long long>(frame_));
+    swprintf(name, 96, L"\\%ls_%llu_%llu.%ls", prefix, static_cast<unsigned long long>(id_), static_cast<unsigned long long>(frame_), extension);
     if (dir_length + std::wcslen(name) + 1 > sizeof path / sizeof path[0]) hr = E_FAIL;
     else { std::wmemcpy(path, dir, dir_length); std::wcscpy(path + dir_length, name); }
     if (SUCCEEDED(hr)) {
@@ -953,52 +1143,104 @@ void MotionOutput::readback() noexcept {
             FILE* file = _wfopen(path, L"wb");
             if (file) {
                 for (UINT y = 0; y < target_height_; ++y)
-                    written += std::fwrite(static_cast<const char*>(lock.pBits) + y * lock.Pitch, 1, std::size_t(target_width_) * 16, file);
+                    written += std::fwrite(static_cast<const char*>(lock.pBits) + y * lock.Pitch, 1, std::size_t(target_width_) * bytes_per_pixel, file);
                 if (std::fclose(file)) hr = E_FAIL;
             } else hr = E_FAIL;
             copy->UnlockRect();
         }
     }
     release(copy);
-    log("motion_output_readback device=%llu frame=%llu file=motion_%llu_%llu.rgba32f width=%u height=%u format=rgba32f_row_major result=%08lx bytes=%u",
-        id_, frame_, id_, frame_, target_width_, target_height_, hr, unsigned(written));
+    log("%s device=%llu frame=%llu file=%ls_%llu_%llu.%ls width=%u height=%u format=%s result=%08lx bytes=%u",
+        tag, id_, frame_, prefix, id_, frame_, extension, target_width_, target_height_, format_name, hr, unsigned(written));
+    return hr;
+}
+// Capture frames: RT1 as motion_<device>_<frame>.rgba32f and, when produced,
+// RT2 as depth_<device>_<frame>.r32f (R32F device depth, -1 where no routed
+// depth row covered the pixel).
+void MotionOutput::readback() noexcept {
+    if (!target_surface_ || !counters_.filled) return;
+    readback_surface(target_surface_, D3DFMT_A32B32G32R32F, 16, L"motion", L"rgba32f", "motion_output_readback", "rgba32f_row_major");
+    if (depth_enabled_ && depth_surface_)
+        readback_surface(depth_surface_, D3DFMT_R32F, 4, L"depth", L"r32f", "motion_output_depth_readback", "r32f_row_major");
+}
+
+// End of the frame's scene phase (data only; no consumer): the median of the
+// matched draws' projected-origin displacements and the fraction of keyed
+// routed draws whose key the previous frame lacked, against the bounds. Runs
+// once per frame: when the selector leaves Scene, or before Present for a
+// frame that never left it (the synthetic fixtures, or a rejected frame).
+void MotionOutput::finish_cut_detector() noexcept {
+    cut_finished_ = true;
+    auto& c = counters_;
+    c.displacement_samples = std::uint32_t(displacements_.size());
+    c.cut_median_px = 0.f;
+    if (!displacements_.empty()) {
+        const std::size_t middle = displacements_.size() / 2;
+        std::nth_element(displacements_.begin(), displacements_.begin() + middle, displacements_.end());
+        c.cut_median_px = displacements_[middle];
+    }
+    c.cut_missing_fraction = c.keyed ? float(c.missing) / float(c.keyed) : 0.f;
+    // The median bound is stated at 1280 px width and scales with the target.
+    c.cut_median_bound_px = cut_median_bound_ * (target_width_ ? float(target_width_) / 1280.f : 1.f);
+    c.cut_missing_bound = cut_missing_bound_;
+    c.cut = (c.displacement_samples && c.cut_median_px > c.cut_median_bound_px) ||
+            (c.keyed && c.cut_missing_fraction > c.cut_missing_bound);
+    if (capture_)
+        log("motion_output_cut device=%llu frame=%llu samples=%lu median_px=%.4f keyed=%lu missing=%lu missing_fraction=%.4f bound_px=%.3f bound_missing=%.3f cut=%u",
+            id_, frame_, static_cast<unsigned long>(c.displacement_samples), c.cut_median_px, static_cast<unsigned long>(c.keyed),
+            static_cast<unsigned long>(c.missing), c.cut_missing_fraction, c.cut_median_bound_px, c.cut_missing_bound, c.cut);
 }
 
 void MotionOutput::before_present() noexcept {
-    if (enabled_ && capture_) readback();
+    if (!enabled_) return;
+    if (!cut_finished_) finish_cut_detector();
+    if (capture_) readback();
 }
 void MotionOutput::after_present(HRESULT result) noexcept {
     if (!enabled_) return;
     const bool committed = history_.commit(SUCCEEDED(result) && counters_.filled);
     const auto stats = history_.stats();
     if (capture_ || (telemetry_ && frame_ % 60 == 0))
-        log("motion_output_frame device=%llu frame=%llu latched=%u filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx",
+        log("motion_output_frame device=%llu frame=%llu latched=%u filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu",
             id_, frame_, counters_.latched, counters_.filled, counters_.fill_result, counters_.fill_restore,
             static_cast<unsigned long>(counters_.draws), static_cast<unsigned long>(counters_.routed), static_cast<unsigned long>(counters_.matched),
             static_cast<unsigned long>(counters_.gates[1]), static_cast<unsigned long>(counters_.gates[2]), static_cast<unsigned long>(counters_.gates[3]),
             static_cast<unsigned long>(counters_.gates[4]), static_cast<unsigned long>(counters_.gates[5]), static_cast<unsigned long>(counters_.gates[6]),
             static_cast<unsigned long>(counters_.apply_failures), static_cast<unsigned long>(counters_.restore_failures),
-            unsigned(stats.previous), unsigned(stats.current), committed, unsigned(selector_.state()), result);
+            unsigned(stats.previous), unsigned(stats.current), committed, unsigned(selector_.state()), result,
+            depth_enabled_, static_cast<unsigned long>(counters_.depth_routed), counters_.jitter_active, counters_.jitter_index,
+            counters_.jitter[0], counters_.jitter[1], counters_.jitter_previous[0], counters_.jitter_previous[1],
+            static_cast<unsigned long>(counters_.jittered), counters_.cut, counters_.cut_median_px, counters_.cut_missing_fraction,
+            static_cast<unsigned long>(counters_.displacement_samples));
 }
 
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 void MotionOutput::fixture_configure(const MotionOutputFixtureConfig& config) noexcept {
     fixture_ = config; fixture_configured_ = true;
 }
-HRESULT MotionOutput::fixture_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept {
+HRESULT MotionOutput::fixture_last_pixel_abi(float* out, std::size_t floats) const noexcept {
+    if (!out || floats < 8) return D3DERR_MOREDATA;
+    if (!fixture_abi_known_) return D3DERR_NOTFOUND;
+    std::memcpy(out, fixture_last_pixel_abi_, sizeof fixture_last_pixel_abi_);
+    return S_OK;
+}
+HRESULT MotionOutput::fixture_readback(unsigned target, float* out, std::size_t floats, UINT* width, UINT* height) noexcept {
     if (width) *width = target_width_;
     if (height) *height = target_height_;
-    if (!target_surface_) return D3DERR_NOTFOUND;
-    if (!out || floats < std::size_t(target_width_) * target_height_ * 4) return D3DERR_MOREDATA;
+    if (target != 1 && target != 2) return D3DERR_INVALIDCALL;
+    IDirect3DSurface9* surface = target == 1 ? target_surface_ : depth_surface_;
+    const unsigned components = target == 1 ? 4u : 1u;
+    if (!surface) return D3DERR_NOTFOUND;
+    if (!out || floats < std::size_t(target_width_) * target_height_ * components) return D3DERR_MOREDATA;
     IDirect3DSurface9* copy = nullptr;
     HRESULT hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, target_width_, target_height_,
-        D3DFMT_A32B32G32R32F, D3DPOOL_SYSTEMMEM, &copy, nullptr);
-    if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, target_surface_, copy);
+        target == 1 ? D3DFMT_A32B32G32R32F : D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &copy, nullptr);
+    if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, surface, copy);
     D3DLOCKED_RECT lock{};
     if (SUCCEEDED(hr)) hr = copy->LockRect(&lock, nullptr, D3DLOCK_READONLY);
     if (SUCCEEDED(hr)) {
         for (UINT y = 0; y < target_height_; ++y)
-            std::memcpy(out + std::size_t(y) * target_width_ * 4, static_cast<const char*>(lock.pBits) + y * lock.Pitch, std::size_t(target_width_) * 16);
+            std::memcpy(out + std::size_t(y) * target_width_ * components, static_cast<const char*>(lock.pBits) + y * lock.Pitch, std::size_t(target_width_) * components * 4);
         copy->UnlockRect();
     }
     release(copy);

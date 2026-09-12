@@ -6,10 +6,13 @@
 // so the shadow state and the scene selector observe application calls only.
 //
 // Responsibilities: shader-variant registry, application state shadow, motion
-// render target ownership across Reset/release, one-time capability self-test,
-// per-frame sentinel fill, per-draw gate evaluation with variant substitution
-// and exact restoration, previous-row history, and capture-frame diagnostics.
-// See docs/architecture/live-motion-route.md (Implementation section).
+// (RT1, RGBA32F) and current-depth (RT2, R32F) render target ownership across
+// Reset/release, one-time capability self-test, per-frame sentinel fill,
+// per-draw gate evaluation with variant substitution and exact restoration,
+// per-draw sub-pixel jitter (X3M_MOTION_JITTER=1), previous-row history, the
+// data-only cut detector and capture-frame diagnostics.
+// See docs/architecture/live-motion-route.md (Implementation section) and
+// docs/architecture/temporal-integration.md (step 1).
 #include <d3d9.h>
 #include <cstddef>
 #include <cstdint>
@@ -44,17 +47,36 @@ struct MotionRoute {
     bool routed = false, matched = false, scene = false;
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
-    DWORD saved_write1 = 15;
+    bool depth = false, rt2_set = false, write2_set = false;   // RT2 bound for this draw (row has depth_output).
+    bool jittered = false;                                     // Jittered rows written; restore after the draw.
+    UINT jitter_register = 0;                                  // The VS row's clip-row window base.
+    DWORD saved_write1 = 15, saved_write2 = 15;
     renderer::RigidDrawKey key{};
     std::uint64_t rows_hash = 0;
     std::uint64_t load_epoch = 0, registry_epoch = 0;
 };
 struct MotionFrameCounters {
     std::uint32_t draws = 0, routed = 0, matched = 0, gates[7]{};
+    std::uint32_t depth_routed = 0, jittered = 0;
     std::uint32_t apply_failures = 0, restore_failures = 0;
     bool latched = false, filled = false;
     HRESULT fill_result = S_FALSE, fill_restore = S_OK;
+    // Jitter used for this frame's scene draws (raster pixels, +X right, +Y
+    // down) and the previous latched frame's. Neither is uploaded to the
+    // variants (PS c216.zw stays zero: history rows are unjittered); the
+    // resolve receives both through its frame inputs.
+    bool jitter_active = false;
+    std::uint32_t jitter_index = 0;
+    float jitter[2]{}, jitter_previous[2]{};
+    // Cut detector (data only, no consumer): median screen displacement of the
+    // matched draws' projected origins against their previous rows, and the
+    // fraction of keyed routed draws whose key the previous frame lacked.
+    bool cut = false;
+    std::uint32_t displacement_samples = 0, keyed = 0, missing = 0;
+    float cut_median_px = 0, cut_missing_fraction = 0, cut_median_bound_px = 0, cut_missing_bound = 0;
 };
+// Halton(2,3) sample i (1-based) centred on zero, in raster pixels.
+float motion_jitter_sample(unsigned index, unsigned axis) noexcept;
 
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Original synthetic fixture seam; absent from production builds. It replaces
@@ -85,6 +107,15 @@ public:
     void attach(IDirect3DDevice9* device, void** native, std::uint64_t device_id,
                 const D3DCAPS9& caps, bool requested) noexcept;
     bool enabled() const noexcept { return enabled_; }
+    // RT2 (R32F current depth) is produced on this device: three simultaneous
+    // targets, R32F render-target support and the three-format self test.
+    bool depth_enabled() const noexcept { return depth_enabled_; }
+    // Per-draw jitter (X3M_MOTION_JITTER=1) with a Halton(2,3) sequence of
+    // `samples` entries advanced at each latching Clear; effective from the
+    // next latch. Default off. Bounds of the cut detector: the median bound
+    // is stated at 1280 px width and scaled by width/1280 at run time.
+    void configure_jitter(bool enabled, unsigned samples) noexcept;
+    void configure_cut_bounds(float median_px_at_1280, float missing_fraction) noexcept;
     // Device references held by owned objects (variants, sentinel shader,
     // motion target surface), one per object in every reference model the
     // route runs under (native D3D9 and the ownership wrapper; see
@@ -146,7 +177,11 @@ public:
 
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     void fixture_configure(const MotionOutputFixtureConfig& config) noexcept;
-    HRESULT fixture_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept;
+    // target 1: the RGBA32F motion target (4 floats per pixel); 2: the R32F
+    // depth target (1 float per pixel).
+    HRESULT fixture_readback(unsigned target, float* out, std::size_t floats, UINT* width, UINT* height) noexcept;
+    // The PS c216-217 values the last routed draw uploaded (eight floats).
+    HRESULT fixture_last_pixel_abi(float* out, std::size_t floats) const noexcept;
 #endif
 
 private:
@@ -180,9 +215,13 @@ private:
     };
     struct SavedState;
     template<typename Fn> Fn native(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
-    bool self_test(char* reason, std::size_t reason_size) noexcept;
-    HRESULT draw_quad(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, IDirect3DPixelShader9* shader,
-                      UINT width, UINT height, HRESULT* restore) noexcept;
+    bool self_test(bool with_depth, char* reason, std::size_t reason_size) noexcept;
+    HRESULT draw_quad(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, IDirect3DSurface9* rt2,
+                      IDirect3DPixelShader9* shader, UINT width, UINT height, HRESULT* restore) noexcept;
+    HRESULT readback_surface(IDirect3DSurface9* surface, D3DFORMAT format, unsigned bytes_per_pixel,
+                             const wchar_t* prefix, const wchar_t* extension, const char* tag, const char* format_name) noexcept;
+    void apply_jitter(MotionRoute& route) noexcept;
+    void finish_cut_detector() noexcept;
     HRESULT save_state(SavedState& saved) noexcept;
     HRESULT restore_state(const SavedState& saved) noexcept;
     bool ensure_target(UINT width, UINT height) noexcept;
@@ -203,14 +242,26 @@ private:
     void** native_ = nullptr;
     std::uint64_t id_ = 0, frame_ = 0, generation_ = 1, sequence_ = 0;
     D3DCAPS9 caps_{};
-    bool requested_ = false, enabled_ = false, capture_ = false, telemetry_ = false;
+    bool requested_ = false, enabled_ = false, depth_enabled_ = false, capture_ = false, telemetry_ = false;
     bool history_available_ = false, releasing_ = false;
     std::map<void*, ShaderEntry> vertex_, pixel_;
     Shadow shadow_{};
-    IDirect3DSurface9* target_surface_ = nullptr; // Level 0 of the owned RGBA32F texture.
+    IDirect3DSurface9* target_surface_ = nullptr; // Level 0 of the owned RGBA32F texture (RT1).
+    IDirect3DSurface9* depth_surface_ = nullptr;  // Level 0 of the owned R32F texture (RT2).
     UINT target_width_ = 0, target_height_ = 0;
     bool target_failed_ = false;
-    IDirect3DPixelShader9* sentinel_ps_ = nullptr;
+    IDirect3DPixelShader9* sentinel_ps_ = nullptr;      // One output: motion target alone.
+    IDirect3DPixelShader9* sentinel_mrt_ps_ = nullptr;  // Two outputs: motion and depth targets.
+    // Jitter sequence state: requested switch, sample count, latches seen,
+    // this frame's and the previous latched frame's jitter in raster pixels.
+    bool jitter_requested_ = false, jitter_active_ = false;
+    unsigned jitter_samples_ = 8, jitter_latched_ = 0;
+    float jitter_[2]{}, jitter_previous_[2]{};
+    // Cut detector: displacement magnitudes of this frame's matched draws,
+    // reserved once at attach (never grows per draw); bounds see configure.
+    std::vector<float> displacements_;
+    float cut_median_bound_ = 48.f, cut_missing_bound_ = .25f;
+    bool cut_finished_ = false; // Verdict computed for this frame (end of scene phase or before Present).
     renderer::SceneBoundarySelector selector_;
     renderer::Surface main_, main_depth_;
     renderer::Event pending_{};
@@ -222,7 +273,8 @@ private:
     unsigned logged_failures_ = 0;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     MotionOutputFixtureConfig fixture_{};
-    bool fixture_configured_ = false;
+    bool fixture_configured_ = false, fixture_abi_known_ = false;
+    float fixture_last_pixel_abi_[8]{};
 #endif
 };
 } // namespace x3m

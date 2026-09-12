@@ -1,1865 +1,1865 @@
 TABLE rows=169
 CHECK row=0 pair_and_per_stage_lookups_applied_identically
 CHECK row=0 all_original_words_preserved
-CHECK row=0 vertex_previous_clip_and_public_abi
-CHECK row=0 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=0 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=0 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=0 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=0 twenty_one_row_perturbations_refused_atomically
+CHECK row=0 twenty_six_row_perturbations_refused_atomically
 CHECK row=0 program_perturbations_refused_by_revalidation
 CHECK row=0 every_input_dword_every_bit_atomic_refusals
 CHECK row=0 six_input_output_alias_layouts_applied
 CHECK row=0 cross_alias_refusal_atomic
-ROW index=0 vs=494fe349b8bc12ec ps=fffdabd910793aba class=C status=PASS vertex_words=545 pixel_words=1780 mutations=69568 sweep=full program_perturbations=40 skipped=0 quad=adjacent
+ROW index=0 vs=494fe349b8bc12ec ps=fffdabd910793aba class=C status=PASS vertex_words=556 pixel_words=1790 mutations=69568 sweep=full program_perturbations=45 skipped=0 quad=adjacent depth=2
 CHECK row=1 pair_and_per_stage_lookups_applied_identically
 CHECK row=1 argon_output_byte_identical_to_previous_transformer
 CHECK row=1 all_original_words_preserved
-CHECK row=1 vertex_previous_clip_and_public_abi
-CHECK row=1 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=1 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=1 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=1 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=1 twenty_one_row_perturbations_refused_atomically
+CHECK row=1 twenty_six_row_perturbations_refused_atomically
 CHECK row=1 program_perturbations_refused_by_revalidation
 CHECK row=1 every_input_dword_every_bit_atomic_refusals
 CHECK row=1 six_input_output_alias_layouts_applied
 CHECK row=1 cross_alias_refusal_atomic
-ROW index=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 class=A status=PASS vertex_words=545 pixel_words=1392 mutations=57152 sweep=full program_perturbations=26 skipped=0 quad=adjacent
+ROW index=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 class=A status=PASS vertex_words=556 pixel_words=1402 mutations=57152 sweep=full program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=2 pair_and_per_stage_lookups_applied_identically
 CHECK row=2 all_original_words_preserved
-CHECK row=2 vertex_previous_clip_and_public_abi
-CHECK row=2 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=2 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=2 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=2 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=2 twenty_one_row_perturbations_refused_atomically
+CHECK row=2 twenty_six_row_perturbations_refused_atomically
 CHECK row=2 program_perturbations_refused_by_revalidation
 CHECK row=2 every_input_dword_every_bit_atomic_refusals
 CHECK row=2 six_input_output_alias_layouts_applied
 CHECK row=2 cross_alias_refusal_atomic
-ROW index=2 vs=37c34a7478544c14 ps=5f82ecacd39529cd class=C status=PASS vertex_words=787 pixel_words=1897 mutations=81056 sweep=full program_perturbations=40 skipped=0 quad=adjacent
+ROW index=2 vs=37c34a7478544c14 ps=5f82ecacd39529cd class=C status=PASS vertex_words=798 pixel_words=1907 mutations=81056 sweep=full program_perturbations=45 skipped=0 quad=adjacent depth=2
 CHECK row=3 pair_and_per_stage_lookups_applied_identically
 CHECK row=3 all_original_words_preserved
-CHECK row=3 vertex_previous_clip_and_public_abi
-CHECK row=3 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=3 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=3 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=3 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=3 twenty_one_row_perturbations_refused_atomically
+CHECK row=3 twenty_six_row_perturbations_refused_atomically
 CHECK row=3 program_perturbations_refused_by_revalidation
 CHECK row=3 every_input_dword_every_bit_atomic_refusals
 CHECK row=3 six_input_output_alias_layouts_applied
 CHECK row=3 cross_alias_refusal_atomic
-ROW index=3 vs=4944d81dfe531b37 ps=ca6bfa4a6cca7e2a class=B status=PASS vertex_words=575 pixel_words=1460 mutations=60288 sweep=full program_perturbations=26 skipped=0 quad=adjacent
+ROW index=3 vs=4944d81dfe531b37 ps=ca6bfa4a6cca7e2a class=B status=PASS vertex_words=586 pixel_words=1470 mutations=60288 sweep=full program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=4 pair_and_per_stage_lookups_applied_identically
 CHECK row=4 all_original_words_preserved
-CHECK row=4 vertex_previous_clip_and_public_abi
-CHECK row=4 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=4 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=4 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=4 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=4 twenty_one_row_perturbations_refused_atomically
+CHECK row=4 twenty_six_row_perturbations_refused_atomically
 CHECK row=4 program_perturbations_refused_by_revalidation
 CHECK row=4 every_input_dword_every_bit_atomic_refusals
 CHECK row=4 six_input_output_alias_layouts_applied
 CHECK row=4 cross_alias_refusal_atomic
-ROW index=4 vs=b0602757fce6e870 ps=517540ae6d5e5410 class=A status=PASS vertex_words=539 pixel_words=529 mutations=29344 sweep=full program_perturbations=26 skipped=0 quad=adjacent
+ROW index=4 vs=b0602757fce6e870 ps=517540ae6d5e5410 class=A status=PASS vertex_words=550 pixel_words=539 mutations=29344 sweep=full program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=5 pair_and_per_stage_lookups_applied_identically
 CHECK row=5 all_original_words_preserved
-CHECK row=5 vertex_previous_clip_and_public_abi
-CHECK row=5 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=5 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=5 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=5 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=5 twenty_one_row_perturbations_refused_atomically
+CHECK row=5 twenty_six_row_perturbations_refused_atomically
 CHECK row=5 program_perturbations_refused_by_revalidation
 CHECK row=5 every_input_dword_every_bit_atomic_refusals
 CHECK row=5 six_input_output_alias_layouts_applied
 CHECK row=5 cross_alias_refusal_atomic
-ROW index=5 vs=4944d81dfe531b37 ps=5e0a10fe752b6140 class=B status=PASS vertex_words=575 pixel_words=1486 mutations=61120 sweep=full program_perturbations=26 skipped=0 quad=adjacent
+ROW index=5 vs=4944d81dfe531b37 ps=5e0a10fe752b6140 class=B status=PASS vertex_words=586 pixel_words=1496 mutations=61120 sweep=full program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=6 pair_and_per_stage_lookups_applied_identically
 CHECK row=6 all_original_words_preserved
-CHECK row=6 vertex_previous_clip_and_public_abi
-CHECK row=6 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=6 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=6 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=6 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=6 twenty_one_row_perturbations_refused_atomically
+CHECK row=6 twenty_six_row_perturbations_refused_atomically
 CHECK row=6 program_perturbations_refused_by_revalidation
 CHECK row=6 every_input_dword_every_bit_atomic_refusals
 CHECK row=6 six_input_output_alias_layouts_applied
 CHECK row=6 cross_alias_refusal_atomic
-ROW index=6 vs=37c34a7478544c14 ps=f1b0e820c7b488c3 class=C status=PASS vertex_words=787 pixel_words=1923 mutations=81888 sweep=full program_perturbations=40 skipped=0 quad=adjacent
+ROW index=6 vs=37c34a7478544c14 ps=f1b0e820c7b488c3 class=C status=PASS vertex_words=798 pixel_words=1933 mutations=81888 sweep=full program_perturbations=45 skipped=0 quad=adjacent depth=2
 CHECK row=7 pair_and_per_stage_lookups_applied_identically
 CHECK row=7 all_original_words_preserved
-CHECK row=7 vertex_previous_clip_and_public_abi
-CHECK row=7 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=7 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=7 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=7 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=7 twenty_one_row_perturbations_refused_atomically
+CHECK row=7 twenty_six_row_perturbations_refused_atomically
 CHECK row=7 program_perturbations_refused_by_revalidation
 CHECK row=7 every_input_dword_every_bit_atomic_refusals
 CHECK row=7 six_input_output_alias_layouts_applied
 CHECK row=7 cross_alias_refusal_atomic
-ROW index=7 vs=53a0a641107ed76c ps=63f96eba9eea7880 class=A status=PASS vertex_words=545 pixel_words=1424 mutations=58176 sweep=full program_perturbations=26 skipped=0 quad=adjacent
+ROW index=7 vs=53a0a641107ed76c ps=63f96eba9eea7880 class=A status=PASS vertex_words=556 pixel_words=1434 mutations=58176 sweep=full program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=8 pair_and_per_stage_lookups_applied_identically
 CHECK row=8 all_original_words_preserved
-CHECK row=8 vertex_previous_clip_and_public_abi
-CHECK row=8 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=8 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=8 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=8 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=8 twenty_one_row_perturbations_refused_atomically
+CHECK row=8 twenty_six_row_perturbations_refused_atomically
 CHECK row=8 program_perturbations_refused_by_revalidation
 CHECK row=8 every_input_dword_every_bit_atomic_refusals
 CHECK row=8 six_input_output_alias_layouts_applied
 CHECK row=8 cross_alias_refusal_atomic
-ROW index=8 vs=167eb2d5629ab9d3 ps=d44db87778a43b61 class=B status=PASS vertex_words=585 pixel_words=580 mutations=32448 sweep=full program_perturbations=26 skipped=0 quad=adjacent
+ROW index=8 vs=167eb2d5629ab9d3 ps=d44db87778a43b61 class=B status=PASS vertex_words=596 pixel_words=590 mutations=32448 sweep=full program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=9 pair_and_per_stage_lookups_applied_identically
 CHECK row=9 all_original_words_preserved
-CHECK row=9 vertex_previous_clip_and_public_abi
-CHECK row=9 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=9 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=9 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=9 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=9 twenty_one_row_perturbations_refused_atomically
+CHECK row=9 twenty_six_row_perturbations_refused_atomically
 CHECK row=9 program_perturbations_refused_by_revalidation
 CHECK row=9 every_input_dword_every_bit_atomic_refusals
 CHECK row=9 six_input_output_alias_layouts_applied
 CHECK row=9 cross_alias_refusal_atomic
-ROW index=9 vs=494fe349b8bc12ec ps=e6794b6ec37ff71a class=C status=PASS vertex_words=545 pixel_words=1806 mutations=70400 sweep=full program_perturbations=40 skipped=0 quad=adjacent
+ROW index=9 vs=494fe349b8bc12ec ps=e6794b6ec37ff71a class=C status=PASS vertex_words=556 pixel_words=1816 mutations=70400 sweep=full program_perturbations=45 skipped=0 quad=adjacent depth=2
 CHECK row=10 pair_and_per_stage_lookups_applied_identically
 CHECK row=10 all_original_words_preserved
-CHECK row=10 vertex_previous_clip_and_public_abi
-CHECK row=10 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=10 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=10 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=10 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=10 twenty_one_row_perturbations_refused_atomically
+CHECK row=10 twenty_six_row_perturbations_refused_atomically
 CHECK row=10 program_perturbations_refused_by_revalidation
 CHECK row=10 every_input_dword_every_bit_atomic_refusals
 CHECK row=10 six_input_output_alias_layouts_applied
 CHECK row=10 cross_alias_refusal_atomic
-ROW index=10 vs=53a0a641107ed76c ps=3b94320087e81945 class=A status=PASS vertex_words=545 pixel_words=1396 mutations=57280 sweep=full program_perturbations=26 skipped=0 quad=adjacent
+ROW index=10 vs=53a0a641107ed76c ps=3b94320087e81945 class=A status=PASS vertex_words=556 pixel_words=1406 mutations=57280 sweep=full program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=11 pair_and_per_stage_lookups_applied_identically
 CHECK row=11 all_original_words_preserved
-CHECK row=11 vertex_previous_clip_and_public_abi
-CHECK row=11 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=11 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=11 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=11 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=11 twenty_one_row_perturbations_refused_atomically
+CHECK row=11 twenty_six_row_perturbations_refused_atomically
 CHECK row=11 program_perturbations_refused_by_revalidation
 CHECK row=11 every_input_dword_every_bit_atomic_refusals
 CHECK row=11 six_input_output_alias_layouts_applied
 CHECK row=11 cross_alias_refusal_atomic
-ROW index=11 vs=53a0a641107ed76c ps=462342e3e5781384 class=A status=PASS vertex_words=545 pixel_words=1382 mutations=56832 sweep=full program_perturbations=26 skipped=0 quad=adjacent
+ROW index=11 vs=53a0a641107ed76c ps=462342e3e5781384 class=A status=PASS vertex_words=556 pixel_words=1392 mutations=56832 sweep=full program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=12 pair_and_per_stage_lookups_applied_identically
 CHECK row=12 all_original_words_preserved
-CHECK row=12 vertex_previous_clip_and_public_abi
-CHECK row=12 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=12 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=12 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=12 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=12 twenty_one_row_perturbations_refused_atomically
+CHECK row=12 twenty_six_row_perturbations_refused_atomically
 CHECK row=12 program_perturbations_refused_by_revalidation
 CHECK row=12 every_input_dword_every_bit_atomic_refusals
 CHECK row=12 six_input_output_alias_layouts_applied
 CHECK row=12 cross_alias_refusal_atomic
-ROW index=12 vs=4944d81dfe531b37 ps=64bac8bb307eb896 class=B status=PASS vertex_words=575 pixel_words=1524 mutations=62336 sweep=full program_perturbations=26 skipped=0 quad=adjacent
+ROW index=12 vs=4944d81dfe531b37 ps=64bac8bb307eb896 class=B status=PASS vertex_words=586 pixel_words=1534 mutations=62336 sweep=full program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=13 pair_and_per_stage_lookups_applied_identically
 CHECK row=13 all_original_words_preserved
-CHECK row=13 vertex_previous_clip_and_public_abi
-CHECK row=13 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=13 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=13 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=13 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=13 twenty_one_row_perturbations_refused_atomically
+CHECK row=13 twenty_six_row_perturbations_refused_atomically
 CHECK row=13 program_perturbations_refused_by_revalidation
 CHECK row=13 every_input_dword_every_bit_atomic_refusals
 CHECK row=13 six_input_output_alias_layouts_applied
 CHECK row=13 cross_alias_refusal_atomic
-ROW index=13 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 class=A status=PASS vertex_words=545 pixel_words=1430 mutations=58368 sweep=full program_perturbations=26 skipped=0 quad=adjacent
+ROW index=13 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 class=A status=PASS vertex_words=556 pixel_words=1440 mutations=58368 sweep=full program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=14 pair_and_per_stage_lookups_applied_identically
 CHECK row=14 all_original_words_preserved
-CHECK row=14 vertex_previous_clip_and_public_abi
-CHECK row=14 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=14 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=14 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=14 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=14 twenty_one_row_perturbations_refused_atomically
+CHECK row=14 twenty_six_row_perturbations_refused_atomically
 CHECK row=14 program_perturbations_refused_by_revalidation
 CHECK row=14 every_input_dword_every_bit_atomic_refusals
 CHECK row=14 six_input_output_alias_layouts_applied
 CHECK row=14 cross_alias_refusal_atomic
-ROW index=14 vs=4944d81dfe531b37 ps=0c1f3f0f440e4a0c class=B status=PASS vertex_words=575 pixel_words=1498 mutations=61504 sweep=full program_perturbations=26 skipped=0 quad=adjacent
+ROW index=14 vs=4944d81dfe531b37 ps=0c1f3f0f440e4a0c class=B status=PASS vertex_words=586 pixel_words=1508 mutations=61504 sweep=full program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=15 pair_and_per_stage_lookups_applied_identically
 CHECK row=15 all_original_words_preserved
-CHECK row=15 vertex_previous_clip_and_public_abi
-CHECK row=15 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=15 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=15 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=15 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=15 twenty_one_row_perturbations_refused_atomically
+CHECK row=15 twenty_six_row_perturbations_refused_atomically
 CHECK row=15 program_perturbations_refused_by_revalidation
 CHECK row=15 every_input_dword_every_bit_atomic_refusals
 CHECK row=15 six_input_output_alias_layouts_applied
 CHECK row=15 cross_alias_refusal_atomic
-ROW index=15 vs=c30104cb0efb6675 ps=a66fb1981ba755b2 class=B status=PASS vertex_words=569 pixel_words=441 mutations=27488 sweep=full program_perturbations=26 skipped=0 quad=adjacent
+ROW index=15 vs=c30104cb0efb6675 ps=a66fb1981ba755b2 class=B status=PASS vertex_words=580 pixel_words=451 mutations=27488 sweep=full program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=16 pair_and_per_stage_lookups_applied_identically
 CHECK row=16 all_original_words_preserved
-CHECK row=16 vertex_previous_clip_and_public_abi
-CHECK row=16 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=16 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=16 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=16 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=16 twenty_one_row_perturbations_refused_atomically
+CHECK row=16 twenty_six_row_perturbations_refused_atomically
 CHECK row=16 program_perturbations_refused_by_revalidation
 CHECK row=16 sampled_input_bit_atomic_refusals
 CHECK row=16 six_input_output_alias_layouts_applied
 CHECK row=16 cross_alias_refusal_atomic
-ROW index=16 vs=0c223ad11bce02d5 ps=7a0c3388065bb08d class=A status=PASS vertex_words=536 pixel_words=455 mutations=4096 sweep=sampled program_perturbations=28 skipped=0 quad=spaced
+ROW index=16 vs=0c223ad11bce02d5 ps=7a0c3388065bb08d class=A status=PASS vertex_words=547 pixel_words=465 mutations=4096 sweep=sampled program_perturbations=33 skipped=0 quad=spaced depth=2
 CHECK row=17 pair_and_per_stage_lookups_applied_identically
 CHECK row=17 all_original_words_preserved
-CHECK row=17 vertex_previous_clip_and_public_abi
-CHECK row=17 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=17 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=17 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=17 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=17 twenty_one_row_perturbations_refused_atomically
+CHECK row=17 twenty_six_row_perturbations_refused_atomically
 CHECK row=17 program_perturbations_refused_by_revalidation
 CHECK row=17 sampled_input_bit_atomic_refusals
 CHECK row=17 six_input_output_alias_layouts_applied
 CHECK row=17 cross_alias_refusal_atomic
-ROW index=17 vs=12b8a13f13fe8cfe ps=550c2a4d4d3ed70f class=B status=PASS vertex_words=537 pixel_words=506 mutations=4096 sweep=sampled program_perturbations=28 skipped=0 quad=spaced
+ROW index=17 vs=12b8a13f13fe8cfe ps=550c2a4d4d3ed70f class=B status=PASS vertex_words=548 pixel_words=516 mutations=4096 sweep=sampled program_perturbations=33 skipped=0 quad=spaced depth=2
 CHECK row=18 pair_and_per_stage_lookups_applied_identically
 CHECK row=18 all_original_words_preserved
-CHECK row=18 vertex_previous_clip_and_public_abi
-CHECK row=18 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=18 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=18 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=18 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=18 twenty_one_row_perturbations_refused_atomically
+CHECK row=18 twenty_six_row_perturbations_refused_atomically
 CHECK row=18 program_perturbations_refused_by_revalidation
 CHECK row=18 sampled_input_bit_atomic_refusals
 CHECK row=18 six_input_output_alias_layouts_applied
 CHECK row=18 cross_alias_refusal_atomic
-ROW index=18 vs=19a246a56e9d9700 ps=042c9ae16f41feff class=B status=PASS vertex_words=530 pixel_words=1380 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=18 vs=19a246a56e9d9700 ps=042c9ae16f41feff class=B status=PASS vertex_words=541 pixel_words=1390 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=19 pair_and_per_stage_lookups_applied_identically
 CHECK row=19 all_original_words_preserved
-CHECK row=19 vertex_previous_clip_and_public_abi
-CHECK row=19 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=19 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=19 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=19 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=19 twenty_one_row_perturbations_refused_atomically
+CHECK row=19 twenty_six_row_perturbations_refused_atomically
 CHECK row=19 program_perturbations_refused_by_revalidation
 CHECK row=19 sampled_input_bit_atomic_refusals
 CHECK row=19 six_input_output_alias_layouts_applied
 CHECK row=19 cross_alias_refusal_atomic
-ROW index=19 vs=19a246a56e9d9700 ps=1ed1bf0fdec00e1a class=B status=PASS vertex_words=530 pixel_words=1413 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=19 vs=19a246a56e9d9700 ps=1ed1bf0fdec00e1a class=B status=PASS vertex_words=541 pixel_words=1423 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=20 pair_and_per_stage_lookups_applied_identically
 CHECK row=20 all_original_words_preserved
-CHECK row=20 vertex_previous_clip_and_public_abi
-CHECK row=20 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=20 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=20 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=20 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=20 twenty_one_row_perturbations_refused_atomically
+CHECK row=20 twenty_six_row_perturbations_refused_atomically
 CHECK row=20 program_perturbations_refused_by_revalidation
 CHECK row=20 sampled_input_bit_atomic_refusals
 CHECK row=20 six_input_output_alias_layouts_applied
 CHECK row=20 cross_alias_refusal_atomic
-ROW index=20 vs=19a246a56e9d9700 ps=22cc5b05a55ef61e class=B status=PASS vertex_words=530 pixel_words=482 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=20 vs=19a246a56e9d9700 ps=22cc5b05a55ef61e class=B status=PASS vertex_words=541 pixel_words=492 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=21 pair_and_per_stage_lookups_applied_identically
 CHECK row=21 all_original_words_preserved
-CHECK row=21 vertex_previous_clip_and_public_abi
-CHECK row=21 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=21 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=21 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=21 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=21 twenty_one_row_perturbations_refused_atomically
+CHECK row=21 twenty_six_row_perturbations_refused_atomically
 CHECK row=21 program_perturbations_refused_by_revalidation
 CHECK row=21 sampled_input_bit_atomic_refusals
 CHECK row=21 six_input_output_alias_layouts_applied
 CHECK row=21 cross_alias_refusal_atomic
-ROW index=21 vs=19a246a56e9d9700 ps=2b04461d0dae038b class=B status=PASS vertex_words=530 pixel_words=468 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=21 vs=19a246a56e9d9700 ps=2b04461d0dae038b class=B status=PASS vertex_words=541 pixel_words=478 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=22 pair_and_per_stage_lookups_applied_identically
 CHECK row=22 all_original_words_preserved
-CHECK row=22 vertex_previous_clip_and_public_abi
-CHECK row=22 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=22 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=22 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=22 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=22 twenty_one_row_perturbations_refused_atomically
+CHECK row=22 twenty_six_row_perturbations_refused_atomically
 CHECK row=22 program_perturbations_refused_by_revalidation
 CHECK row=22 sampled_input_bit_atomic_refusals
 CHECK row=22 six_input_output_alias_layouts_applied
 CHECK row=22 cross_alias_refusal_atomic
-ROW index=22 vs=19a246a56e9d9700 ps=4f052209611387f0 class=B status=PASS vertex_words=530 pixel_words=1458 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=22 vs=19a246a56e9d9700 ps=4f052209611387f0 class=B status=PASS vertex_words=541 pixel_words=1468 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=23 pair_and_per_stage_lookups_applied_identically
 CHECK row=23 all_original_words_preserved
-CHECK row=23 vertex_previous_clip_and_public_abi
-CHECK row=23 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=23 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=23 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=23 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=23 twenty_one_row_perturbations_refused_atomically
+CHECK row=23 twenty_six_row_perturbations_refused_atomically
 CHECK row=23 program_perturbations_refused_by_revalidation
 CHECK row=23 sampled_input_bit_atomic_refusals
 CHECK row=23 six_input_output_alias_layouts_applied
 CHECK row=23 cross_alias_refusal_atomic
-ROW index=23 vs=19a246a56e9d9700 ps=5c823b8507fa1442 class=B status=PASS vertex_words=530 pixel_words=455 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=23 vs=19a246a56e9d9700 ps=5c823b8507fa1442 class=B status=PASS vertex_words=541 pixel_words=465 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=24 pair_and_per_stage_lookups_applied_identically
 CHECK row=24 all_original_words_preserved
-CHECK row=24 vertex_previous_clip_and_public_abi
-CHECK row=24 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=24 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=24 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=24 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=24 twenty_one_row_perturbations_refused_atomically
+CHECK row=24 twenty_six_row_perturbations_refused_atomically
 CHECK row=24 program_perturbations_refused_by_revalidation
 CHECK row=24 sampled_input_bit_atomic_refusals
 CHECK row=24 six_input_output_alias_layouts_applied
 CHECK row=24 cross_alias_refusal_atomic
-ROW index=24 vs=19a246a56e9d9700 ps=63379470db8d2a86 class=B status=PASS vertex_words=530 pixel_words=1383 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=24 vs=19a246a56e9d9700 ps=63379470db8d2a86 class=B status=PASS vertex_words=541 pixel_words=1393 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=25 pair_and_per_stage_lookups_applied_identically
 CHECK row=25 all_original_words_preserved
-CHECK row=25 vertex_previous_clip_and_public_abi
-CHECK row=25 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=25 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=25 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=25 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=25 twenty_one_row_perturbations_refused_atomically
+CHECK row=25 twenty_six_row_perturbations_refused_atomically
 CHECK row=25 program_perturbations_refused_by_revalidation
 CHECK row=25 sampled_input_bit_atomic_refusals
 CHECK row=25 six_input_output_alias_layouts_applied
 CHECK row=25 cross_alias_refusal_atomic
-ROW index=25 vs=19a246a56e9d9700 ps=68915563dd0aac9a class=B status=PASS vertex_words=530 pixel_words=464 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=25 vs=19a246a56e9d9700 ps=68915563dd0aac9a class=B status=PASS vertex_words=541 pixel_words=474 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=26 pair_and_per_stage_lookups_applied_identically
 CHECK row=26 all_original_words_preserved
-CHECK row=26 vertex_previous_clip_and_public_abi
-CHECK row=26 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=26 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=26 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=26 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=26 twenty_one_row_perturbations_refused_atomically
+CHECK row=26 twenty_six_row_perturbations_refused_atomically
 CHECK row=26 program_perturbations_refused_by_revalidation
 CHECK row=26 sampled_input_bit_atomic_refusals
 CHECK row=26 six_input_output_alias_layouts_applied
 CHECK row=26 cross_alias_refusal_atomic
-ROW index=26 vs=19a246a56e9d9700 ps=68f0dd6791fd7d3d class=B status=PASS vertex_words=530 pixel_words=1406 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=26 vs=19a246a56e9d9700 ps=68f0dd6791fd7d3d class=B status=PASS vertex_words=541 pixel_words=1416 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=27 pair_and_per_stage_lookups_applied_identically
 CHECK row=27 all_original_words_preserved
-CHECK row=27 vertex_previous_clip_and_public_abi
-CHECK row=27 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=27 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=27 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=27 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=27 twenty_one_row_perturbations_refused_atomically
+CHECK row=27 twenty_six_row_perturbations_refused_atomically
 CHECK row=27 program_perturbations_refused_by_revalidation
 CHECK row=27 sampled_input_bit_atomic_refusals
 CHECK row=27 six_input_output_alias_layouts_applied
 CHECK row=27 cross_alias_refusal_atomic
-ROW index=27 vs=19a246a56e9d9700 ps=769c3814fc0efba8 class=B status=PASS vertex_words=530 pixel_words=456 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=27 vs=19a246a56e9d9700 ps=769c3814fc0efba8 class=B status=PASS vertex_words=541 pixel_words=466 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=28 pair_and_per_stage_lookups_applied_identically
 CHECK row=28 all_original_words_preserved
-CHECK row=28 vertex_previous_clip_and_public_abi
-CHECK row=28 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=28 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=28 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=28 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=28 twenty_one_row_perturbations_refused_atomically
+CHECK row=28 twenty_six_row_perturbations_refused_atomically
 CHECK row=28 program_perturbations_refused_by_revalidation
 CHECK row=28 sampled_input_bit_atomic_refusals
 CHECK row=28 six_input_output_alias_layouts_applied
 CHECK row=28 cross_alias_refusal_atomic
-ROW index=28 vs=19a246a56e9d9700 ps=789449ffd931d23e class=B status=PASS vertex_words=530 pixel_words=1432 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=28 vs=19a246a56e9d9700 ps=789449ffd931d23e class=B status=PASS vertex_words=541 pixel_words=1442 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=29 pair_and_per_stage_lookups_applied_identically
 CHECK row=29 all_original_words_preserved
-CHECK row=29 vertex_previous_clip_and_public_abi
-CHECK row=29 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=29 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=29 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=29 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=29 twenty_one_row_perturbations_refused_atomically
+CHECK row=29 twenty_six_row_perturbations_refused_atomically
 CHECK row=29 program_perturbations_refused_by_revalidation
 CHECK row=29 sampled_input_bit_atomic_refusals
 CHECK row=29 six_input_output_alias_layouts_applied
 CHECK row=29 cross_alias_refusal_atomic
-ROW index=29 vs=19a246a56e9d9700 ps=78963cdc7c710e04 class=B status=PASS vertex_words=530 pixel_words=1387 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=29 vs=19a246a56e9d9700 ps=78963cdc7c710e04 class=B status=PASS vertex_words=541 pixel_words=1397 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=30 pair_and_per_stage_lookups_applied_identically
 CHECK row=30 all_original_words_preserved
-CHECK row=30 vertex_previous_clip_and_public_abi
-CHECK row=30 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=30 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=30 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=30 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=30 twenty_one_row_perturbations_refused_atomically
+CHECK row=30 twenty_six_row_perturbations_refused_atomically
 CHECK row=30 program_perturbations_refused_by_revalidation
 CHECK row=30 sampled_input_bit_atomic_refusals
 CHECK row=30 six_input_output_alias_layouts_applied
 CHECK row=30 cross_alias_refusal_atomic
-ROW index=30 vs=19a246a56e9d9700 ps=a6e1328c0bb3f401 class=B status=PASS vertex_words=530 pixel_words=487 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=30 vs=19a246a56e9d9700 ps=a6e1328c0bb3f401 class=B status=PASS vertex_words=541 pixel_words=497 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=31 pair_and_per_stage_lookups_applied_identically
 CHECK row=31 all_original_words_preserved
-CHECK row=31 vertex_previous_clip_and_public_abi
-CHECK row=31 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=31 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=31 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=31 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=31 twenty_one_row_perturbations_refused_atomically
+CHECK row=31 twenty_six_row_perturbations_refused_atomically
 CHECK row=31 program_perturbations_refused_by_revalidation
 CHECK row=31 sampled_input_bit_atomic_refusals
 CHECK row=31 six_input_output_alias_layouts_applied
 CHECK row=31 cross_alias_refusal_atomic
-ROW index=31 vs=19a246a56e9d9700 ps=abf3c0fad53456d8 class=B status=PASS vertex_words=530 pixel_words=507 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=31 vs=19a246a56e9d9700 ps=abf3c0fad53456d8 class=B status=PASS vertex_words=541 pixel_words=517 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=32 pair_and_per_stage_lookups_applied_identically
 CHECK row=32 all_original_words_preserved
-CHECK row=32 vertex_previous_clip_and_public_abi
-CHECK row=32 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=32 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=32 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=32 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=32 twenty_one_row_perturbations_refused_atomically
+CHECK row=32 twenty_six_row_perturbations_refused_atomically
 CHECK row=32 program_perturbations_refused_by_revalidation
 CHECK row=32 sampled_input_bit_atomic_refusals
 CHECK row=32 six_input_output_alias_layouts_applied
 CHECK row=32 cross_alias_refusal_atomic
-ROW index=32 vs=19a246a56e9d9700 ps=acc83ed2509d84a1 class=B status=PASS vertex_words=530 pixel_words=494 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=32 vs=19a246a56e9d9700 ps=acc83ed2509d84a1 class=B status=PASS vertex_words=541 pixel_words=504 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=33 pair_and_per_stage_lookups_applied_identically
 CHECK row=33 all_original_words_preserved
-CHECK row=33 vertex_previous_clip_and_public_abi
-CHECK row=33 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=33 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=33 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=33 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=33 twenty_one_row_perturbations_refused_atomically
+CHECK row=33 twenty_six_row_perturbations_refused_atomically
 CHECK row=33 program_perturbations_refused_by_revalidation
 CHECK row=33 sampled_input_bit_atomic_refusals
 CHECK row=33 six_input_output_alias_layouts_applied
 CHECK row=33 cross_alias_refusal_atomic
-ROW index=33 vs=19a246a56e9d9700 ps=b0f9313b77cc78ee class=B status=PASS vertex_words=530 pixel_words=1421 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=33 vs=19a246a56e9d9700 ps=b0f9313b77cc78ee class=B status=PASS vertex_words=541 pixel_words=1431 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=34 pair_and_per_stage_lookups_applied_identically
 CHECK row=34 all_original_words_preserved
-CHECK row=34 vertex_previous_clip_and_public_abi
-CHECK row=34 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=34 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=34 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=34 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=34 twenty_one_row_perturbations_refused_atomically
+CHECK row=34 twenty_six_row_perturbations_refused_atomically
 CHECK row=34 program_perturbations_refused_by_revalidation
 CHECK row=34 sampled_input_bit_atomic_refusals
 CHECK row=34 six_input_output_alias_layouts_applied
 CHECK row=34 cross_alias_refusal_atomic
-ROW index=34 vs=19a246a56e9d9700 ps=cf449bcb069aec4f class=B status=PASS vertex_words=530 pixel_words=539 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=34 vs=19a246a56e9d9700 ps=cf449bcb069aec4f class=B status=PASS vertex_words=541 pixel_words=549 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=35 pair_and_per_stage_lookups_applied_identically
 CHECK row=35 all_original_words_preserved
-CHECK row=35 vertex_previous_clip_and_public_abi
-CHECK row=35 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=35 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=35 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=35 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=35 twenty_one_row_perturbations_refused_atomically
+CHECK row=35 twenty_six_row_perturbations_refused_atomically
 CHECK row=35 program_perturbations_refused_by_revalidation
 CHECK row=35 sampled_input_bit_atomic_refusals
 CHECK row=35 six_input_output_alias_layouts_applied
 CHECK row=35 cross_alias_refusal_atomic
-ROW index=35 vs=19a246a56e9d9700 ps=d086fde54698070c class=B status=PASS vertex_words=530 pixel_words=1409 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=35 vs=19a246a56e9d9700 ps=d086fde54698070c class=B status=PASS vertex_words=541 pixel_words=1419 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=36 pair_and_per_stage_lookups_applied_identically
 CHECK row=36 all_original_words_preserved
-CHECK row=36 vertex_previous_clip_and_public_abi
-CHECK row=36 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=36 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=36 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=36 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=36 twenty_one_row_perturbations_refused_atomically
+CHECK row=36 twenty_six_row_perturbations_refused_atomically
 CHECK row=36 program_perturbations_refused_by_revalidation
 CHECK row=36 sampled_input_bit_atomic_refusals
 CHECK row=36 six_input_output_alias_layouts_applied
 CHECK row=36 cross_alias_refusal_atomic
-ROW index=36 vs=19a246a56e9d9700 ps=d514bf852d8a9c58 class=B status=PASS vertex_words=530 pixel_words=1447 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=36 vs=19a246a56e9d9700 ps=d514bf852d8a9c58 class=B status=PASS vertex_words=541 pixel_words=1457 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=37 pair_and_per_stage_lookups_applied_identically
 CHECK row=37 all_original_words_preserved
-CHECK row=37 vertex_previous_clip_and_public_abi
-CHECK row=37 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=37 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=37 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=37 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=37 twenty_one_row_perturbations_refused_atomically
+CHECK row=37 twenty_six_row_perturbations_refused_atomically
 CHECK row=37 program_perturbations_refused_by_revalidation
 CHECK row=37 sampled_input_bit_atomic_refusals
 CHECK row=37 six_input_output_alias_layouts_applied
 CHECK row=37 cross_alias_refusal_atomic
-ROW index=37 vs=19a246a56e9d9700 ps=dff6a3d360603fa2 class=B status=PASS vertex_words=530 pixel_words=496 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=37 vs=19a246a56e9d9700 ps=dff6a3d360603fa2 class=B status=PASS vertex_words=541 pixel_words=506 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=38 pair_and_per_stage_lookups_applied_identically
 CHECK row=38 all_original_words_preserved
-CHECK row=38 vertex_previous_clip_and_public_abi
-CHECK row=38 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=38 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=38 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=38 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=38 twenty_one_row_perturbations_refused_atomically
+CHECK row=38 twenty_six_row_perturbations_refused_atomically
 CHECK row=38 program_perturbations_refused_by_revalidation
 CHECK row=38 sampled_input_bit_atomic_refusals
 CHECK row=38 six_input_output_alias_layouts_applied
 CHECK row=38 cross_alias_refusal_atomic
-ROW index=38 vs=19a246a56e9d9700 ps=e5ea78b8b0b0fe07 class=B status=PASS vertex_words=530 pixel_words=1375 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=38 vs=19a246a56e9d9700 ps=e5ea78b8b0b0fe07 class=B status=PASS vertex_words=541 pixel_words=1385 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=39 pair_and_per_stage_lookups_applied_identically
 CHECK row=39 all_original_words_preserved
-CHECK row=39 vertex_previous_clip_and_public_abi
-CHECK row=39 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=39 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=39 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=39 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=39 twenty_one_row_perturbations_refused_atomically
+CHECK row=39 twenty_six_row_perturbations_refused_atomically
 CHECK row=39 program_perturbations_refused_by_revalidation
 CHECK row=39 sampled_input_bit_atomic_refusals
 CHECK row=39 six_input_output_alias_layouts_applied
 CHECK row=39 cross_alias_refusal_atomic
-ROW index=39 vs=19a246a56e9d9700 ps=f17fffd88d134b04 class=B status=PASS vertex_words=530 pixel_words=490 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=39 vs=19a246a56e9d9700 ps=f17fffd88d134b04 class=B status=PASS vertex_words=541 pixel_words=500 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=40 pair_and_per_stage_lookups_applied_identically
 CHECK row=40 all_original_words_preserved
-CHECK row=40 vertex_previous_clip_and_public_abi
-CHECK row=40 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=40 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=40 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=40 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=40 twenty_one_row_perturbations_refused_atomically
+CHECK row=40 twenty_six_row_perturbations_refused_atomically
 CHECK row=40 program_perturbations_refused_by_revalidation
 CHECK row=40 sampled_input_bit_atomic_refusals
 CHECK row=40 six_input_output_alias_layouts_applied
 CHECK row=40 cross_alias_refusal_atomic
-ROW index=40 vs=19a246a56e9d9700 ps=f1d14a7dbf7c6173 class=B status=PASS vertex_words=530 pixel_words=528 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=40 vs=19a246a56e9d9700 ps=f1d14a7dbf7c6173 class=B status=PASS vertex_words=541 pixel_words=538 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=41 pair_and_per_stage_lookups_applied_identically
 CHECK row=41 all_original_words_preserved
-CHECK row=41 vertex_previous_clip_and_public_abi
-CHECK row=41 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=41 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=41 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=41 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=41 twenty_one_row_perturbations_refused_atomically
+CHECK row=41 twenty_six_row_perturbations_refused_atomically
 CHECK row=41 program_perturbations_refused_by_revalidation
 CHECK row=41 sampled_input_bit_atomic_refusals
 CHECK row=41 six_input_output_alias_layouts_applied
 CHECK row=41 cross_alias_refusal_atomic
-ROW index=41 vs=19a246a56e9d9700 ps=f42202faf57a3c89 class=B status=PASS vertex_words=530 pixel_words=1401 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=41 vs=19a246a56e9d9700 ps=f42202faf57a3c89 class=B status=PASS vertex_words=541 pixel_words=1411 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=42 pair_and_per_stage_lookups_applied_identically
 CHECK row=42 all_original_words_preserved
-CHECK row=42 vertex_previous_clip_and_public_abi
-CHECK row=42 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=42 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=42 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=42 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=42 twenty_one_row_perturbations_refused_atomically
+CHECK row=42 twenty_six_row_perturbations_refused_atomically
 CHECK row=42 program_perturbations_refused_by_revalidation
 CHECK row=42 sampled_input_bit_atomic_refusals
 CHECK row=42 six_input_output_alias_layouts_applied
 CHECK row=42 cross_alias_refusal_atomic
-ROW index=42 vs=233d17d26ce0c1fc ps=7a0c3388065bb08d class=A status=PASS vertex_words=491 pixel_words=455 mutations=4096 sweep=sampled program_perturbations=28 skipped=0 quad=spaced
+ROW index=42 vs=233d17d26ce0c1fc ps=7a0c3388065bb08d class=A status=PASS vertex_words=502 pixel_words=465 mutations=4096 sweep=sampled program_perturbations=33 skipped=0 quad=spaced depth=2
 CHECK row=43 pair_and_per_stage_lookups_applied_identically
 CHECK row=43 all_original_words_preserved
-CHECK row=43 vertex_previous_clip_and_public_abi
-CHECK row=43 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=43 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=43 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=43 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=43 twenty_one_row_perturbations_refused_atomically
+CHECK row=43 twenty_six_row_perturbations_refused_atomically
 CHECK row=43 program_perturbations_refused_by_revalidation
 CHECK row=43 sampled_input_bit_atomic_refusals
 CHECK row=43 six_input_output_alias_layouts_applied
 CHECK row=43 cross_alias_refusal_atomic
-ROW index=43 vs=29d7c575396ed280 ps=39eb3c2258a516e1 class=B status=PASS vertex_words=596 pixel_words=564 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=43 vs=29d7c575396ed280 ps=39eb3c2258a516e1 class=B status=PASS vertex_words=607 pixel_words=574 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=44 pair_and_per_stage_lookups_applied_identically
 CHECK row=44 all_original_words_preserved
-CHECK row=44 vertex_previous_clip_and_public_abi
-CHECK row=44 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=44 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=44 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=44 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=44 twenty_one_row_perturbations_refused_atomically
+CHECK row=44 twenty_six_row_perturbations_refused_atomically
 CHECK row=44 program_perturbations_refused_by_revalidation
 CHECK row=44 sampled_input_bit_atomic_refusals
 CHECK row=44 six_input_output_alias_layouts_applied
 CHECK row=44 cross_alias_refusal_atomic
-ROW index=44 vs=29d7c575396ed280 ps=57acf59d19c73791 class=B status=PASS vertex_words=596 pixel_words=596 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=44 vs=29d7c575396ed280 ps=57acf59d19c73791 class=B status=PASS vertex_words=607 pixel_words=606 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=45 pair_and_per_stage_lookups_applied_identically
 CHECK row=45 all_original_words_preserved
-CHECK row=45 vertex_previous_clip_and_public_abi
-CHECK row=45 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=45 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=45 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=45 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=45 twenty_one_row_perturbations_refused_atomically
+CHECK row=45 twenty_six_row_perturbations_refused_atomically
 CHECK row=45 program_perturbations_refused_by_revalidation
 CHECK row=45 sampled_input_bit_atomic_refusals
 CHECK row=45 six_input_output_alias_layouts_applied
 CHECK row=45 cross_alias_refusal_atomic
-ROW index=45 vs=2a560f246c90fa64 ps=43c9405568d2226f class=B status=PASS vertex_words=571 pixel_words=1479 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=45 vs=2a560f246c90fa64 ps=43c9405568d2226f class=B status=PASS vertex_words=582 pixel_words=1489 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=46 pair_and_per_stage_lookups_applied_identically
 CHECK row=46 all_original_words_preserved
-CHECK row=46 vertex_previous_clip_and_public_abi
-CHECK row=46 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=46 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=46 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=46 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=46 twenty_one_row_perturbations_refused_atomically
+CHECK row=46 twenty_six_row_perturbations_refused_atomically
 CHECK row=46 program_perturbations_refused_by_revalidation
 CHECK row=46 sampled_input_bit_atomic_refusals
 CHECK row=46 six_input_output_alias_layouts_applied
 CHECK row=46 cross_alias_refusal_atomic
-ROW index=46 vs=2a560f246c90fa64 ps=5e056627e9ff3a8d class=B status=PASS vertex_words=571 pixel_words=534 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=46 vs=2a560f246c90fa64 ps=5e056627e9ff3a8d class=B status=PASS vertex_words=582 pixel_words=544 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=47 pair_and_per_stage_lookups_applied_identically
 CHECK row=47 all_original_words_preserved
-CHECK row=47 vertex_previous_clip_and_public_abi
-CHECK row=47 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=47 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=47 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=47 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=47 twenty_one_row_perturbations_refused_atomically
+CHECK row=47 twenty_six_row_perturbations_refused_atomically
 CHECK row=47 program_perturbations_refused_by_revalidation
 CHECK row=47 sampled_input_bit_atomic_refusals
 CHECK row=47 six_input_output_alias_layouts_applied
 CHECK row=47 cross_alias_refusal_atomic
-ROW index=47 vs=2a560f246c90fa64 ps=7e5e41276b3d7514 class=B status=PASS vertex_words=571 pixel_words=1453 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=47 vs=2a560f246c90fa64 ps=7e5e41276b3d7514 class=B status=PASS vertex_words=582 pixel_words=1463 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=48 pair_and_per_stage_lookups_applied_identically
 CHECK row=48 all_original_words_preserved
-CHECK row=48 vertex_previous_clip_and_public_abi
-CHECK row=48 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=48 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=48 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=48 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=48 twenty_one_row_perturbations_refused_atomically
+CHECK row=48 twenty_six_row_perturbations_refused_atomically
 CHECK row=48 program_perturbations_refused_by_revalidation
 CHECK row=48 sampled_input_bit_atomic_refusals
 CHECK row=48 six_input_output_alias_layouts_applied
 CHECK row=48 cross_alias_refusal_atomic
-ROW index=48 vs=2a560f246c90fa64 ps=fce465befff2f623 class=B status=PASS vertex_words=571 pixel_words=560 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=48 vs=2a560f246c90fa64 ps=fce465befff2f623 class=B status=PASS vertex_words=582 pixel_words=570 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=49 pair_and_per_stage_lookups_applied_identically
 CHECK row=49 all_original_words_preserved
-CHECK row=49 vertex_previous_clip_and_public_abi
-CHECK row=49 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=49 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=49 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=49 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=49 twenty_one_row_perturbations_refused_atomically
+CHECK row=49 twenty_six_row_perturbations_refused_atomically
 CHECK row=49 program_perturbations_refused_by_revalidation
 CHECK row=49 sampled_input_bit_atomic_refusals
 CHECK row=49 six_input_output_alias_layouts_applied
 CHECK row=49 cross_alias_refusal_atomic
-ROW index=49 vs=2e0254dd999841c2 ps=675f9077d8fd21c4 class=B status=PASS vertex_words=582 pixel_words=498 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=49 vs=2e0254dd999841c2 ps=675f9077d8fd21c4 class=B status=PASS vertex_words=593 pixel_words=508 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=50 pair_and_per_stage_lookups_applied_identically
 CHECK row=50 all_original_words_preserved
-CHECK row=50 vertex_previous_clip_and_public_abi
-CHECK row=50 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=50 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=50 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=50 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=50 twenty_one_row_perturbations_refused_atomically
+CHECK row=50 twenty_six_row_perturbations_refused_atomically
 CHECK row=50 program_perturbations_refused_by_revalidation
 CHECK row=50 sampled_input_bit_atomic_refusals
 CHECK row=50 six_input_output_alias_layouts_applied
 CHECK row=50 cross_alias_refusal_atomic
-ROW index=50 vs=2e0254dd999841c2 ps=c997a37560e266df class=B status=PASS vertex_words=582 pixel_words=472 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=50 vs=2e0254dd999841c2 ps=c997a37560e266df class=B status=PASS vertex_words=593 pixel_words=482 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=51 pair_and_per_stage_lookups_applied_identically
 CHECK row=51 all_original_words_preserved
-CHECK row=51 vertex_previous_clip_and_public_abi
-CHECK row=51 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=51 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=51 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=51 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=51 twenty_one_row_perturbations_refused_atomically
+CHECK row=51 twenty_six_row_perturbations_refused_atomically
 CHECK row=51 program_perturbations_refused_by_revalidation
 CHECK row=51 sampled_input_bit_atomic_refusals
 CHECK row=51 six_input_output_alias_layouts_applied
 CHECK row=51 cross_alias_refusal_atomic
-ROW index=51 vs=2e0254dd999841c2 ps=ebf41e1ace7af45b class=B status=PASS vertex_words=582 pixel_words=1417 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=51 vs=2e0254dd999841c2 ps=ebf41e1ace7af45b class=B status=PASS vertex_words=593 pixel_words=1427 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=52 pair_and_per_stage_lookups_applied_identically
 CHECK row=52 all_original_words_preserved
-CHECK row=52 vertex_previous_clip_and_public_abi
-CHECK row=52 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=52 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=52 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=52 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=52 twenty_one_row_perturbations_refused_atomically
+CHECK row=52 twenty_six_row_perturbations_refused_atomically
 CHECK row=52 program_perturbations_refused_by_revalidation
 CHECK row=52 sampled_input_bit_atomic_refusals
 CHECK row=52 six_input_output_alias_layouts_applied
 CHECK row=52 cross_alias_refusal_atomic
-ROW index=52 vs=2e0254dd999841c2 ps=f646f03be5a8708d class=B status=PASS vertex_words=582 pixel_words=1391 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=52 vs=2e0254dd999841c2 ps=f646f03be5a8708d class=B status=PASS vertex_words=593 pixel_words=1401 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=53 pair_and_per_stage_lookups_applied_identically
 CHECK row=53 all_original_words_preserved
-CHECK row=53 vertex_previous_clip_and_public_abi
-CHECK row=53 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=53 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=53 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=53 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=53 twenty_one_row_perturbations_refused_atomically
+CHECK row=53 twenty_six_row_perturbations_refused_atomically
 CHECK row=53 program_perturbations_refused_by_revalidation
 CHECK row=53 sampled_input_bit_atomic_refusals
 CHECK row=53 six_input_output_alias_layouts_applied
 CHECK row=53 cross_alias_refusal_atomic
-ROW index=53 vs=330ceb9dd874ede2 ps=550c2a4d4d3ed70f class=B status=PASS vertex_words=582 pixel_words=506 mutations=4096 sweep=sampled program_perturbations=28 skipped=0 quad=spaced
+ROW index=53 vs=330ceb9dd874ede2 ps=550c2a4d4d3ed70f class=B status=PASS vertex_words=593 pixel_words=516 mutations=4096 sweep=sampled program_perturbations=33 skipped=0 quad=spaced depth=2
 CHECK row=54 pair_and_per_stage_lookups_applied_identically
 CHECK row=54 all_original_words_preserved
-CHECK row=54 vertex_previous_clip_and_public_abi
-CHECK row=54 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=54 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=54 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=54 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=54 twenty_one_row_perturbations_refused_atomically
+CHECK row=54 twenty_six_row_perturbations_refused_atomically
 CHECK row=54 program_perturbations_refused_by_revalidation
 CHECK row=54 sampled_input_bit_atomic_refusals
 CHECK row=54 six_input_output_alias_layouts_applied
 CHECK row=54 cross_alias_refusal_atomic
-ROW index=54 vs=33388c8897d428a5 ps=188c5ab9dbb98393 class=B status=PASS vertex_words=622 pixel_words=1479 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=54 vs=33388c8897d428a5 ps=188c5ab9dbb98393 class=B status=PASS vertex_words=633 pixel_words=1489 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=55 pair_and_per_stage_lookups_applied_identically
 CHECK row=55 all_original_words_preserved
-CHECK row=55 vertex_previous_clip_and_public_abi
-CHECK row=55 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=55 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=55 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=55 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=55 twenty_one_row_perturbations_refused_atomically
+CHECK row=55 twenty_six_row_perturbations_refused_atomically
 CHECK row=55 program_perturbations_refused_by_revalidation
 CHECK row=55 sampled_input_bit_atomic_refusals
 CHECK row=55 six_input_output_alias_layouts_applied
 CHECK row=55 cross_alias_refusal_atomic
-ROW index=55 vs=33388c8897d428a5 ps=18d372968af4a480 class=B status=PASS vertex_words=622 pixel_words=1453 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=55 vs=33388c8897d428a5 ps=18d372968af4a480 class=B status=PASS vertex_words=633 pixel_words=1463 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=56 pair_and_per_stage_lookups_applied_identically
 CHECK row=56 all_original_words_preserved
-CHECK row=56 vertex_previous_clip_and_public_abi
-CHECK row=56 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=56 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=56 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=56 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=56 twenty_one_row_perturbations_refused_atomically
+CHECK row=56 twenty_six_row_perturbations_refused_atomically
 CHECK row=56 program_perturbations_refused_by_revalidation
 CHECK row=56 sampled_input_bit_atomic_refusals
 CHECK row=56 six_input_output_alias_layouts_applied
 CHECK row=56 cross_alias_refusal_atomic
-ROW index=56 vs=37c34a7478544c14 ps=1de3d2dde345a7e3 class=C status=PASS vertex_words=787 pixel_words=1842 mutations=4096 sweep=sampled program_perturbations=40 skipped=0 quad=adjacent
+ROW index=56 vs=37c34a7478544c14 ps=1de3d2dde345a7e3 class=C status=PASS vertex_words=798 pixel_words=1852 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
 CHECK row=57 pair_and_per_stage_lookups_applied_identically
 CHECK row=57 all_original_words_preserved
-CHECK row=57 vertex_previous_clip_and_public_abi
-CHECK row=57 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=57 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=57 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=57 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=57 twenty_one_row_perturbations_refused_atomically
+CHECK row=57 twenty_six_row_perturbations_refused_atomically
 CHECK row=57 program_perturbations_refused_by_revalidation
 CHECK row=57 sampled_input_bit_atomic_refusals
 CHECK row=57 six_input_output_alias_layouts_applied
 CHECK row=57 cross_alias_refusal_atomic
-ROW index=57 vs=37c34a7478544c14 ps=496049cec2066ed3 class=C status=PASS vertex_words=787 pixel_words=1912 mutations=4096 sweep=sampled program_perturbations=40 skipped=0 quad=adjacent
+ROW index=57 vs=37c34a7478544c14 ps=496049cec2066ed3 class=C status=PASS vertex_words=798 pixel_words=1922 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
 CHECK row=58 pair_and_per_stage_lookups_applied_identically
 CHECK row=58 all_original_words_preserved
-CHECK row=58 vertex_previous_clip_and_public_abi
-CHECK row=58 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=58 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=58 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=58 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=58 twenty_one_row_perturbations_refused_atomically
+CHECK row=58 twenty_six_row_perturbations_refused_atomically
 CHECK row=58 program_perturbations_refused_by_revalidation
 CHECK row=58 sampled_input_bit_atomic_refusals
 CHECK row=58 six_input_output_alias_layouts_applied
 CHECK row=58 cross_alias_refusal_atomic
-ROW index=58 vs=37c34a7478544c14 ps=6733b119142c8d42 class=C status=PASS vertex_words=787 pixel_words=1886 mutations=4096 sweep=sampled program_perturbations=40 skipped=0 quad=adjacent
+ROW index=58 vs=37c34a7478544c14 ps=6733b119142c8d42 class=C status=PASS vertex_words=798 pixel_words=1896 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
 CHECK row=59 pair_and_per_stage_lookups_applied_identically
 CHECK row=59 all_original_words_preserved
-CHECK row=59 vertex_previous_clip_and_public_abi
-CHECK row=59 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=59 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=59 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=59 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=59 twenty_one_row_perturbations_refused_atomically
+CHECK row=59 twenty_six_row_perturbations_refused_atomically
 CHECK row=59 program_perturbations_refused_by_revalidation
 CHECK row=59 sampled_input_bit_atomic_refusals
 CHECK row=59 six_input_output_alias_layouts_applied
 CHECK row=59 cross_alias_refusal_atomic
-ROW index=59 vs=37c34a7478544c14 ps=75fb9c6b05e28ea2 class=C status=PASS vertex_words=787 pixel_words=1805 mutations=4096 sweep=sampled program_perturbations=40 skipped=0 quad=adjacent
+ROW index=59 vs=37c34a7478544c14 ps=75fb9c6b05e28ea2 class=C status=PASS vertex_words=798 pixel_words=1815 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
 CHECK row=60 pair_and_per_stage_lookups_applied_identically
 CHECK row=60 all_original_words_preserved
-CHECK row=60 vertex_previous_clip_and_public_abi
-CHECK row=60 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=60 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=60 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=60 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=60 twenty_one_row_perturbations_refused_atomically
+CHECK row=60 twenty_six_row_perturbations_refused_atomically
 CHECK row=60 program_perturbations_refused_by_revalidation
 CHECK row=60 sampled_input_bit_atomic_refusals
 CHECK row=60 six_input_output_alias_layouts_applied
 CHECK row=60 cross_alias_refusal_atomic
-ROW index=60 vs=37c34a7478544c14 ps=d22f2ce2c740e6a7 class=C status=PASS vertex_words=787 pixel_words=1816 mutations=4096 sweep=sampled program_perturbations=40 skipped=0 quad=adjacent
+ROW index=60 vs=37c34a7478544c14 ps=d22f2ce2c740e6a7 class=C status=PASS vertex_words=798 pixel_words=1826 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
 CHECK row=61 pair_and_per_stage_lookups_applied_identically
 CHECK row=61 all_original_words_preserved
-CHECK row=61 vertex_previous_clip_and_public_abi
-CHECK row=61 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=61 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=61 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=61 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=61 twenty_one_row_perturbations_refused_atomically
+CHECK row=61 twenty_six_row_perturbations_refused_atomically
 CHECK row=61 program_perturbations_refused_by_revalidation
 CHECK row=61 sampled_input_bit_atomic_refusals
 CHECK row=61 six_input_output_alias_layouts_applied
 CHECK row=61 cross_alias_refusal_atomic
-ROW index=61 vs=37c34a7478544c14 ps=edaef099780fcafe class=C status=PASS vertex_words=787 pixel_words=1831 mutations=4096 sweep=sampled program_perturbations=40 skipped=0 quad=adjacent
+ROW index=61 vs=37c34a7478544c14 ps=edaef099780fcafe class=C status=PASS vertex_words=798 pixel_words=1841 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
 CHECK row=62 pair_and_per_stage_lookups_applied_identically
 CHECK row=62 all_original_words_preserved
-CHECK row=62 vertex_previous_clip_and_public_abi
-CHECK row=62 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=62 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=62 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=62 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=62 twenty_one_row_perturbations_refused_atomically
+CHECK row=62 twenty_six_row_perturbations_refused_atomically
 CHECK row=62 program_perturbations_refused_by_revalidation
 CHECK row=62 sampled_input_bit_atomic_refusals
 CHECK row=62 six_input_output_alias_layouts_applied
 CHECK row=62 cross_alias_refusal_atomic
-ROW index=62 vs=37e6956afd8b8d76 ps=9d27e7ba242f3831 class=B status=PASS vertex_words=582 pixel_words=1391 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=62 vs=37e6956afd8b8d76 ps=9d27e7ba242f3831 class=B status=PASS vertex_words=593 pixel_words=1401 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=63 pair_and_per_stage_lookups_applied_identically
 CHECK row=63 all_original_words_preserved
-CHECK row=63 vertex_previous_clip_and_public_abi
-CHECK row=63 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=63 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=63 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=63 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=63 twenty_one_row_perturbations_refused_atomically
+CHECK row=63 twenty_six_row_perturbations_refused_atomically
 CHECK row=63 program_perturbations_refused_by_revalidation
 CHECK row=63 sampled_input_bit_atomic_refusals
 CHECK row=63 six_input_output_alias_layouts_applied
 CHECK row=63 cross_alias_refusal_atomic
-ROW index=63 vs=37e6956afd8b8d76 ps=e1acf8a03850acaf class=B status=PASS vertex_words=582 pixel_words=1417 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=63 vs=37e6956afd8b8d76 ps=e1acf8a03850acaf class=B status=PASS vertex_words=593 pixel_words=1427 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=64 pair_and_per_stage_lookups_applied_identically
 CHECK row=64 all_original_words_preserved
-CHECK row=64 vertex_previous_clip_and_public_abi
-CHECK row=64 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=64 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=64 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=64 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=64 twenty_one_row_perturbations_refused_atomically
+CHECK row=64 twenty_six_row_perturbations_refused_atomically
 CHECK row=64 program_perturbations_refused_by_revalidation
 CHECK row=64 sampled_input_bit_atomic_refusals
 CHECK row=64 six_input_output_alias_layouts_applied
 CHECK row=64 cross_alias_refusal_atomic
-ROW index=64 vs=44c4a41ca92ae2e3 ps=042c9ae16f41feff class=B status=PASS vertex_words=575 pixel_words=1380 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=64 vs=44c4a41ca92ae2e3 ps=042c9ae16f41feff class=B status=PASS vertex_words=586 pixel_words=1390 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=65 pair_and_per_stage_lookups_applied_identically
 CHECK row=65 all_original_words_preserved
-CHECK row=65 vertex_previous_clip_and_public_abi
-CHECK row=65 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=65 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=65 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=65 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=65 twenty_one_row_perturbations_refused_atomically
+CHECK row=65 twenty_six_row_perturbations_refused_atomically
 CHECK row=65 program_perturbations_refused_by_revalidation
 CHECK row=65 sampled_input_bit_atomic_refusals
 CHECK row=65 six_input_output_alias_layouts_applied
 CHECK row=65 cross_alias_refusal_atomic
-ROW index=65 vs=44c4a41ca92ae2e3 ps=1ed1bf0fdec00e1a class=B status=PASS vertex_words=575 pixel_words=1413 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=65 vs=44c4a41ca92ae2e3 ps=1ed1bf0fdec00e1a class=B status=PASS vertex_words=586 pixel_words=1423 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=66 pair_and_per_stage_lookups_applied_identically
 CHECK row=66 all_original_words_preserved
-CHECK row=66 vertex_previous_clip_and_public_abi
-CHECK row=66 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=66 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=66 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=66 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=66 twenty_one_row_perturbations_refused_atomically
+CHECK row=66 twenty_six_row_perturbations_refused_atomically
 CHECK row=66 program_perturbations_refused_by_revalidation
 CHECK row=66 sampled_input_bit_atomic_refusals
 CHECK row=66 six_input_output_alias_layouts_applied
 CHECK row=66 cross_alias_refusal_atomic
-ROW index=66 vs=44c4a41ca92ae2e3 ps=22cc5b05a55ef61e class=B status=PASS vertex_words=575 pixel_words=482 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=66 vs=44c4a41ca92ae2e3 ps=22cc5b05a55ef61e class=B status=PASS vertex_words=586 pixel_words=492 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=67 pair_and_per_stage_lookups_applied_identically
 CHECK row=67 all_original_words_preserved
-CHECK row=67 vertex_previous_clip_and_public_abi
-CHECK row=67 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=67 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=67 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=67 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=67 twenty_one_row_perturbations_refused_atomically
+CHECK row=67 twenty_six_row_perturbations_refused_atomically
 CHECK row=67 program_perturbations_refused_by_revalidation
 CHECK row=67 sampled_input_bit_atomic_refusals
 CHECK row=67 six_input_output_alias_layouts_applied
 CHECK row=67 cross_alias_refusal_atomic
-ROW index=67 vs=44c4a41ca92ae2e3 ps=2b04461d0dae038b class=B status=PASS vertex_words=575 pixel_words=468 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=67 vs=44c4a41ca92ae2e3 ps=2b04461d0dae038b class=B status=PASS vertex_words=586 pixel_words=478 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=68 pair_and_per_stage_lookups_applied_identically
 CHECK row=68 all_original_words_preserved
-CHECK row=68 vertex_previous_clip_and_public_abi
-CHECK row=68 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=68 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=68 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=68 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=68 twenty_one_row_perturbations_refused_atomically
+CHECK row=68 twenty_six_row_perturbations_refused_atomically
 CHECK row=68 program_perturbations_refused_by_revalidation
 CHECK row=68 sampled_input_bit_atomic_refusals
 CHECK row=68 six_input_output_alias_layouts_applied
 CHECK row=68 cross_alias_refusal_atomic
-ROW index=68 vs=44c4a41ca92ae2e3 ps=4f052209611387f0 class=B status=PASS vertex_words=575 pixel_words=1458 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=68 vs=44c4a41ca92ae2e3 ps=4f052209611387f0 class=B status=PASS vertex_words=586 pixel_words=1468 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=69 pair_and_per_stage_lookups_applied_identically
 CHECK row=69 all_original_words_preserved
-CHECK row=69 vertex_previous_clip_and_public_abi
-CHECK row=69 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=69 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=69 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=69 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=69 twenty_one_row_perturbations_refused_atomically
+CHECK row=69 twenty_six_row_perturbations_refused_atomically
 CHECK row=69 program_perturbations_refused_by_revalidation
 CHECK row=69 sampled_input_bit_atomic_refusals
 CHECK row=69 six_input_output_alias_layouts_applied
 CHECK row=69 cross_alias_refusal_atomic
-ROW index=69 vs=44c4a41ca92ae2e3 ps=5c823b8507fa1442 class=B status=PASS vertex_words=575 pixel_words=455 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=69 vs=44c4a41ca92ae2e3 ps=5c823b8507fa1442 class=B status=PASS vertex_words=586 pixel_words=465 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=70 pair_and_per_stage_lookups_applied_identically
 CHECK row=70 all_original_words_preserved
-CHECK row=70 vertex_previous_clip_and_public_abi
-CHECK row=70 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=70 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=70 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=70 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=70 twenty_one_row_perturbations_refused_atomically
+CHECK row=70 twenty_six_row_perturbations_refused_atomically
 CHECK row=70 program_perturbations_refused_by_revalidation
 CHECK row=70 sampled_input_bit_atomic_refusals
 CHECK row=70 six_input_output_alias_layouts_applied
 CHECK row=70 cross_alias_refusal_atomic
-ROW index=70 vs=44c4a41ca92ae2e3 ps=63379470db8d2a86 class=B status=PASS vertex_words=575 pixel_words=1383 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=70 vs=44c4a41ca92ae2e3 ps=63379470db8d2a86 class=B status=PASS vertex_words=586 pixel_words=1393 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=71 pair_and_per_stage_lookups_applied_identically
 CHECK row=71 all_original_words_preserved
-CHECK row=71 vertex_previous_clip_and_public_abi
-CHECK row=71 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=71 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=71 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=71 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=71 twenty_one_row_perturbations_refused_atomically
+CHECK row=71 twenty_six_row_perturbations_refused_atomically
 CHECK row=71 program_perturbations_refused_by_revalidation
 CHECK row=71 sampled_input_bit_atomic_refusals
 CHECK row=71 six_input_output_alias_layouts_applied
 CHECK row=71 cross_alias_refusal_atomic
-ROW index=71 vs=44c4a41ca92ae2e3 ps=68915563dd0aac9a class=B status=PASS vertex_words=575 pixel_words=464 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=71 vs=44c4a41ca92ae2e3 ps=68915563dd0aac9a class=B status=PASS vertex_words=586 pixel_words=474 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=72 pair_and_per_stage_lookups_applied_identically
 CHECK row=72 all_original_words_preserved
-CHECK row=72 vertex_previous_clip_and_public_abi
-CHECK row=72 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=72 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=72 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=72 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=72 twenty_one_row_perturbations_refused_atomically
+CHECK row=72 twenty_six_row_perturbations_refused_atomically
 CHECK row=72 program_perturbations_refused_by_revalidation
 CHECK row=72 sampled_input_bit_atomic_refusals
 CHECK row=72 six_input_output_alias_layouts_applied
 CHECK row=72 cross_alias_refusal_atomic
-ROW index=72 vs=44c4a41ca92ae2e3 ps=68f0dd6791fd7d3d class=B status=PASS vertex_words=575 pixel_words=1406 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=72 vs=44c4a41ca92ae2e3 ps=68f0dd6791fd7d3d class=B status=PASS vertex_words=586 pixel_words=1416 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=73 pair_and_per_stage_lookups_applied_identically
 CHECK row=73 all_original_words_preserved
-CHECK row=73 vertex_previous_clip_and_public_abi
-CHECK row=73 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=73 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=73 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=73 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=73 twenty_one_row_perturbations_refused_atomically
+CHECK row=73 twenty_six_row_perturbations_refused_atomically
 CHECK row=73 program_perturbations_refused_by_revalidation
 CHECK row=73 sampled_input_bit_atomic_refusals
 CHECK row=73 six_input_output_alias_layouts_applied
 CHECK row=73 cross_alias_refusal_atomic
-ROW index=73 vs=44c4a41ca92ae2e3 ps=769c3814fc0efba8 class=B status=PASS vertex_words=575 pixel_words=456 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=73 vs=44c4a41ca92ae2e3 ps=769c3814fc0efba8 class=B status=PASS vertex_words=586 pixel_words=466 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=74 pair_and_per_stage_lookups_applied_identically
 CHECK row=74 all_original_words_preserved
-CHECK row=74 vertex_previous_clip_and_public_abi
-CHECK row=74 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=74 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=74 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=74 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=74 twenty_one_row_perturbations_refused_atomically
+CHECK row=74 twenty_six_row_perturbations_refused_atomically
 CHECK row=74 program_perturbations_refused_by_revalidation
 CHECK row=74 sampled_input_bit_atomic_refusals
 CHECK row=74 six_input_output_alias_layouts_applied
 CHECK row=74 cross_alias_refusal_atomic
-ROW index=74 vs=44c4a41ca92ae2e3 ps=789449ffd931d23e class=B status=PASS vertex_words=575 pixel_words=1432 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=74 vs=44c4a41ca92ae2e3 ps=789449ffd931d23e class=B status=PASS vertex_words=586 pixel_words=1442 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=75 pair_and_per_stage_lookups_applied_identically
 CHECK row=75 all_original_words_preserved
-CHECK row=75 vertex_previous_clip_and_public_abi
-CHECK row=75 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=75 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=75 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=75 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=75 twenty_one_row_perturbations_refused_atomically
+CHECK row=75 twenty_six_row_perturbations_refused_atomically
 CHECK row=75 program_perturbations_refused_by_revalidation
 CHECK row=75 sampled_input_bit_atomic_refusals
 CHECK row=75 six_input_output_alias_layouts_applied
 CHECK row=75 cross_alias_refusal_atomic
-ROW index=75 vs=44c4a41ca92ae2e3 ps=78963cdc7c710e04 class=B status=PASS vertex_words=575 pixel_words=1387 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=75 vs=44c4a41ca92ae2e3 ps=78963cdc7c710e04 class=B status=PASS vertex_words=586 pixel_words=1397 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=76 pair_and_per_stage_lookups_applied_identically
 CHECK row=76 all_original_words_preserved
-CHECK row=76 vertex_previous_clip_and_public_abi
-CHECK row=76 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=76 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=76 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=76 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=76 twenty_one_row_perturbations_refused_atomically
+CHECK row=76 twenty_six_row_perturbations_refused_atomically
 CHECK row=76 program_perturbations_refused_by_revalidation
 CHECK row=76 sampled_input_bit_atomic_refusals
 CHECK row=76 six_input_output_alias_layouts_applied
 CHECK row=76 cross_alias_refusal_atomic
-ROW index=76 vs=44c4a41ca92ae2e3 ps=a6e1328c0bb3f401 class=B status=PASS vertex_words=575 pixel_words=487 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=76 vs=44c4a41ca92ae2e3 ps=a6e1328c0bb3f401 class=B status=PASS vertex_words=586 pixel_words=497 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=77 pair_and_per_stage_lookups_applied_identically
 CHECK row=77 all_original_words_preserved
-CHECK row=77 vertex_previous_clip_and_public_abi
-CHECK row=77 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=77 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=77 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=77 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=77 twenty_one_row_perturbations_refused_atomically
+CHECK row=77 twenty_six_row_perturbations_refused_atomically
 CHECK row=77 program_perturbations_refused_by_revalidation
 CHECK row=77 sampled_input_bit_atomic_refusals
 CHECK row=77 six_input_output_alias_layouts_applied
 CHECK row=77 cross_alias_refusal_atomic
-ROW index=77 vs=44c4a41ca92ae2e3 ps=abf3c0fad53456d8 class=B status=PASS vertex_words=575 pixel_words=507 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=77 vs=44c4a41ca92ae2e3 ps=abf3c0fad53456d8 class=B status=PASS vertex_words=586 pixel_words=517 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=78 pair_and_per_stage_lookups_applied_identically
 CHECK row=78 all_original_words_preserved
-CHECK row=78 vertex_previous_clip_and_public_abi
-CHECK row=78 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=78 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=78 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=78 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=78 twenty_one_row_perturbations_refused_atomically
+CHECK row=78 twenty_six_row_perturbations_refused_atomically
 CHECK row=78 program_perturbations_refused_by_revalidation
 CHECK row=78 sampled_input_bit_atomic_refusals
 CHECK row=78 six_input_output_alias_layouts_applied
 CHECK row=78 cross_alias_refusal_atomic
-ROW index=78 vs=44c4a41ca92ae2e3 ps=acc83ed2509d84a1 class=B status=PASS vertex_words=575 pixel_words=494 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=78 vs=44c4a41ca92ae2e3 ps=acc83ed2509d84a1 class=B status=PASS vertex_words=586 pixel_words=504 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=79 pair_and_per_stage_lookups_applied_identically
 CHECK row=79 all_original_words_preserved
-CHECK row=79 vertex_previous_clip_and_public_abi
-CHECK row=79 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=79 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=79 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=79 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=79 twenty_one_row_perturbations_refused_atomically
+CHECK row=79 twenty_six_row_perturbations_refused_atomically
 CHECK row=79 program_perturbations_refused_by_revalidation
 CHECK row=79 sampled_input_bit_atomic_refusals
 CHECK row=79 six_input_output_alias_layouts_applied
 CHECK row=79 cross_alias_refusal_atomic
-ROW index=79 vs=44c4a41ca92ae2e3 ps=b0f9313b77cc78ee class=B status=PASS vertex_words=575 pixel_words=1421 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=79 vs=44c4a41ca92ae2e3 ps=b0f9313b77cc78ee class=B status=PASS vertex_words=586 pixel_words=1431 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=80 pair_and_per_stage_lookups_applied_identically
 CHECK row=80 all_original_words_preserved
-CHECK row=80 vertex_previous_clip_and_public_abi
-CHECK row=80 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=80 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=80 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=80 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=80 twenty_one_row_perturbations_refused_atomically
+CHECK row=80 twenty_six_row_perturbations_refused_atomically
 CHECK row=80 program_perturbations_refused_by_revalidation
 CHECK row=80 sampled_input_bit_atomic_refusals
 CHECK row=80 six_input_output_alias_layouts_applied
 CHECK row=80 cross_alias_refusal_atomic
-ROW index=80 vs=44c4a41ca92ae2e3 ps=cf449bcb069aec4f class=B status=PASS vertex_words=575 pixel_words=539 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=80 vs=44c4a41ca92ae2e3 ps=cf449bcb069aec4f class=B status=PASS vertex_words=586 pixel_words=549 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=81 pair_and_per_stage_lookups_applied_identically
 CHECK row=81 all_original_words_preserved
-CHECK row=81 vertex_previous_clip_and_public_abi
-CHECK row=81 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=81 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=81 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=81 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=81 twenty_one_row_perturbations_refused_atomically
+CHECK row=81 twenty_six_row_perturbations_refused_atomically
 CHECK row=81 program_perturbations_refused_by_revalidation
 CHECK row=81 sampled_input_bit_atomic_refusals
 CHECK row=81 six_input_output_alias_layouts_applied
 CHECK row=81 cross_alias_refusal_atomic
-ROW index=81 vs=44c4a41ca92ae2e3 ps=d086fde54698070c class=B status=PASS vertex_words=575 pixel_words=1409 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=81 vs=44c4a41ca92ae2e3 ps=d086fde54698070c class=B status=PASS vertex_words=586 pixel_words=1419 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=82 pair_and_per_stage_lookups_applied_identically
 CHECK row=82 all_original_words_preserved
-CHECK row=82 vertex_previous_clip_and_public_abi
-CHECK row=82 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=82 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=82 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=82 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=82 twenty_one_row_perturbations_refused_atomically
+CHECK row=82 twenty_six_row_perturbations_refused_atomically
 CHECK row=82 program_perturbations_refused_by_revalidation
 CHECK row=82 sampled_input_bit_atomic_refusals
 CHECK row=82 six_input_output_alias_layouts_applied
 CHECK row=82 cross_alias_refusal_atomic
-ROW index=82 vs=44c4a41ca92ae2e3 ps=d514bf852d8a9c58 class=B status=PASS vertex_words=575 pixel_words=1447 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=82 vs=44c4a41ca92ae2e3 ps=d514bf852d8a9c58 class=B status=PASS vertex_words=586 pixel_words=1457 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=83 pair_and_per_stage_lookups_applied_identically
 CHECK row=83 all_original_words_preserved
-CHECK row=83 vertex_previous_clip_and_public_abi
-CHECK row=83 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=83 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=83 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=83 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=83 twenty_one_row_perturbations_refused_atomically
+CHECK row=83 twenty_six_row_perturbations_refused_atomically
 CHECK row=83 program_perturbations_refused_by_revalidation
 CHECK row=83 sampled_input_bit_atomic_refusals
 CHECK row=83 six_input_output_alias_layouts_applied
 CHECK row=83 cross_alias_refusal_atomic
-ROW index=83 vs=44c4a41ca92ae2e3 ps=dff6a3d360603fa2 class=B status=PASS vertex_words=575 pixel_words=496 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=83 vs=44c4a41ca92ae2e3 ps=dff6a3d360603fa2 class=B status=PASS vertex_words=586 pixel_words=506 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=84 pair_and_per_stage_lookups_applied_identically
 CHECK row=84 all_original_words_preserved
-CHECK row=84 vertex_previous_clip_and_public_abi
-CHECK row=84 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=84 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=84 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=84 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=84 twenty_one_row_perturbations_refused_atomically
+CHECK row=84 twenty_six_row_perturbations_refused_atomically
 CHECK row=84 program_perturbations_refused_by_revalidation
 CHECK row=84 sampled_input_bit_atomic_refusals
 CHECK row=84 six_input_output_alias_layouts_applied
 CHECK row=84 cross_alias_refusal_atomic
-ROW index=84 vs=44c4a41ca92ae2e3 ps=e5ea78b8b0b0fe07 class=B status=PASS vertex_words=575 pixel_words=1375 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=84 vs=44c4a41ca92ae2e3 ps=e5ea78b8b0b0fe07 class=B status=PASS vertex_words=586 pixel_words=1385 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=85 pair_and_per_stage_lookups_applied_identically
 CHECK row=85 all_original_words_preserved
-CHECK row=85 vertex_previous_clip_and_public_abi
-CHECK row=85 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=85 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=85 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=85 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=85 twenty_one_row_perturbations_refused_atomically
+CHECK row=85 twenty_six_row_perturbations_refused_atomically
 CHECK row=85 program_perturbations_refused_by_revalidation
 CHECK row=85 sampled_input_bit_atomic_refusals
 CHECK row=85 six_input_output_alias_layouts_applied
 CHECK row=85 cross_alias_refusal_atomic
-ROW index=85 vs=44c4a41ca92ae2e3 ps=f17fffd88d134b04 class=B status=PASS vertex_words=575 pixel_words=490 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=85 vs=44c4a41ca92ae2e3 ps=f17fffd88d134b04 class=B status=PASS vertex_words=586 pixel_words=500 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=86 pair_and_per_stage_lookups_applied_identically
 CHECK row=86 all_original_words_preserved
-CHECK row=86 vertex_previous_clip_and_public_abi
-CHECK row=86 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=86 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=86 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=86 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=86 twenty_one_row_perturbations_refused_atomically
+CHECK row=86 twenty_six_row_perturbations_refused_atomically
 CHECK row=86 program_perturbations_refused_by_revalidation
 CHECK row=86 sampled_input_bit_atomic_refusals
 CHECK row=86 six_input_output_alias_layouts_applied
 CHECK row=86 cross_alias_refusal_atomic
-ROW index=86 vs=44c4a41ca92ae2e3 ps=f1d14a7dbf7c6173 class=B status=PASS vertex_words=575 pixel_words=528 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=86 vs=44c4a41ca92ae2e3 ps=f1d14a7dbf7c6173 class=B status=PASS vertex_words=586 pixel_words=538 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=87 pair_and_per_stage_lookups_applied_identically
 CHECK row=87 all_original_words_preserved
-CHECK row=87 vertex_previous_clip_and_public_abi
-CHECK row=87 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=87 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=87 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=87 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=87 twenty_one_row_perturbations_refused_atomically
+CHECK row=87 twenty_six_row_perturbations_refused_atomically
 CHECK row=87 program_perturbations_refused_by_revalidation
 CHECK row=87 sampled_input_bit_atomic_refusals
 CHECK row=87 six_input_output_alias_layouts_applied
 CHECK row=87 cross_alias_refusal_atomic
-ROW index=87 vs=44c4a41ca92ae2e3 ps=f42202faf57a3c89 class=B status=PASS vertex_words=575 pixel_words=1401 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=87 vs=44c4a41ca92ae2e3 ps=f42202faf57a3c89 class=B status=PASS vertex_words=586 pixel_words=1411 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=88 pair_and_per_stage_lookups_applied_identically
 CHECK row=88 all_original_words_preserved
-CHECK row=88 vertex_previous_clip_and_public_abi
-CHECK row=88 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=88 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=88 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=88 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=88 twenty_one_row_perturbations_refused_atomically
+CHECK row=88 twenty_six_row_perturbations_refused_atomically
 CHECK row=88 program_perturbations_refused_by_revalidation
 CHECK row=88 sampled_input_bit_atomic_refusals
 CHECK row=88 six_input_output_alias_layouts_applied
 CHECK row=88 cross_alias_refusal_atomic
-ROW index=88 vs=4944d81dfe531b37 ps=1f26d41bcb7dac1e class=B status=PASS vertex_words=575 pixel_words=1464 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=88 vs=4944d81dfe531b37 ps=1f26d41bcb7dac1e class=B status=PASS vertex_words=586 pixel_words=1474 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=89 pair_and_per_stage_lookups_applied_identically
 CHECK row=89 all_original_words_preserved
-CHECK row=89 vertex_previous_clip_and_public_abi
-CHECK row=89 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=89 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=89 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=89 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=89 twenty_one_row_perturbations_refused_atomically
+CHECK row=89 twenty_six_row_perturbations_refused_atomically
 CHECK row=89 program_perturbations_refused_by_revalidation
 CHECK row=89 sampled_input_bit_atomic_refusals
 CHECK row=89 six_input_output_alias_layouts_applied
 CHECK row=89 cross_alias_refusal_atomic
-ROW index=89 vs=4944d81dfe531b37 ps=3006f8030a467739 class=B status=PASS vertex_words=575 pixel_words=1444 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=89 vs=4944d81dfe531b37 ps=3006f8030a467739 class=B status=PASS vertex_words=586 pixel_words=1454 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=90 pair_and_per_stage_lookups_applied_identically
 CHECK row=90 all_original_words_preserved
-CHECK row=90 vertex_previous_clip_and_public_abi
-CHECK row=90 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=90 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=90 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=90 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=90 twenty_one_row_perturbations_refused_atomically
+CHECK row=90 twenty_six_row_perturbations_refused_atomically
 CHECK row=90 program_perturbations_refused_by_revalidation
 CHECK row=90 sampled_input_bit_atomic_refusals
 CHECK row=90 six_input_output_alias_layouts_applied
 CHECK row=90 cross_alias_refusal_atomic
-ROW index=90 vs=4944d81dfe531b37 ps=3602b05ce11ca6ff class=B status=PASS vertex_words=575 pixel_words=1456 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=90 vs=4944d81dfe531b37 ps=3602b05ce11ca6ff class=B status=PASS vertex_words=586 pixel_words=1466 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=91 pair_and_per_stage_lookups_applied_identically
 CHECK row=91 all_original_words_preserved
-CHECK row=91 vertex_previous_clip_and_public_abi
-CHECK row=91 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=91 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=91 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=91 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=91 twenty_one_row_perturbations_refused_atomically
+CHECK row=91 twenty_six_row_perturbations_refused_atomically
 CHECK row=91 program_perturbations_refused_by_revalidation
 CHECK row=91 sampled_input_bit_atomic_refusals
 CHECK row=91 six_input_output_alias_layouts_applied
 CHECK row=91 cross_alias_refusal_atomic
-ROW index=91 vs=4944d81dfe531b37 ps=8e58ac79b59b02b1 class=B status=PASS vertex_words=575 pixel_words=1482 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=91 vs=4944d81dfe531b37 ps=8e58ac79b59b02b1 class=B status=PASS vertex_words=586 pixel_words=1492 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=92 pair_and_per_stage_lookups_applied_identically
 CHECK row=92 all_original_words_preserved
-CHECK row=92 vertex_previous_clip_and_public_abi
-CHECK row=92 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=92 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=92 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=92 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=92 twenty_one_row_perturbations_refused_atomically
+CHECK row=92 twenty_six_row_perturbations_refused_atomically
 CHECK row=92 program_perturbations_refused_by_revalidation
 CHECK row=92 sampled_input_bit_atomic_refusals
 CHECK row=92 six_input_output_alias_layouts_applied
 CHECK row=92 cross_alias_refusal_atomic
-ROW index=92 vs=4944d81dfe531b37 ps=99153c144030c396 class=B status=PASS vertex_words=575 pixel_words=1487 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=92 vs=4944d81dfe531b37 ps=99153c144030c396 class=B status=PASS vertex_words=586 pixel_words=1497 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=93 pair_and_per_stage_lookups_applied_identically
 CHECK row=93 all_original_words_preserved
-CHECK row=93 vertex_previous_clip_and_public_abi
-CHECK row=93 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=93 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=93 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=93 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=93 twenty_one_row_perturbations_refused_atomically
+CHECK row=93 twenty_six_row_perturbations_refused_atomically
 CHECK row=93 program_perturbations_refused_by_revalidation
 CHECK row=93 sampled_input_bit_atomic_refusals
 CHECK row=93 six_input_output_alias_layouts_applied
 CHECK row=93 cross_alias_refusal_atomic
-ROW index=93 vs=4944d81dfe531b37 ps=bdcdb3ab996ae4e0 class=B status=PASS vertex_words=575 pixel_words=1490 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=93 vs=4944d81dfe531b37 ps=bdcdb3ab996ae4e0 class=B status=PASS vertex_words=586 pixel_words=1500 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=94 pair_and_per_stage_lookups_applied_identically
 CHECK row=94 all_original_words_preserved
-CHECK row=94 vertex_previous_clip_and_public_abi
-CHECK row=94 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=94 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=94 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=94 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=94 twenty_one_row_perturbations_refused_atomically
+CHECK row=94 twenty_six_row_perturbations_refused_atomically
 CHECK row=94 program_perturbations_refused_by_revalidation
 CHECK row=94 sampled_input_bit_atomic_refusals
 CHECK row=94 six_input_output_alias_layouts_applied
 CHECK row=94 cross_alias_refusal_atomic
-ROW index=94 vs=4944d81dfe531b37 ps=c1452981fd0bff64 class=B status=PASS vertex_words=575 pixel_words=1513 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=94 vs=4944d81dfe531b37 ps=c1452981fd0bff64 class=B status=PASS vertex_words=586 pixel_words=1523 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=95 pair_and_per_stage_lookups_applied_identically
 CHECK row=95 all_original_words_preserved
-CHECK row=95 vertex_previous_clip_and_public_abi
-CHECK row=95 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=95 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=95 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=95 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=95 twenty_one_row_perturbations_refused_atomically
+CHECK row=95 twenty_six_row_perturbations_refused_atomically
 CHECK row=95 program_perturbations_refused_by_revalidation
 CHECK row=95 sampled_input_bit_atomic_refusals
 CHECK row=95 six_input_output_alias_layouts_applied
 CHECK row=95 cross_alias_refusal_atomic
-ROW index=95 vs=4944d81dfe531b37 ps=d6e8bdde0e4c515f class=B status=PASS vertex_words=575 pixel_words=1470 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=95 vs=4944d81dfe531b37 ps=d6e8bdde0e4c515f class=B status=PASS vertex_words=586 pixel_words=1480 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=96 pair_and_per_stage_lookups_applied_identically
 CHECK row=96 all_original_words_preserved
-CHECK row=96 vertex_previous_clip_and_public_abi
-CHECK row=96 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=96 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=96 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=96 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=96 twenty_one_row_perturbations_refused_atomically
+CHECK row=96 twenty_six_row_perturbations_refused_atomically
 CHECK row=96 program_perturbations_refused_by_revalidation
 CHECK row=96 sampled_input_bit_atomic_refusals
 CHECK row=96 six_input_output_alias_layouts_applied
 CHECK row=96 cross_alias_refusal_atomic
-ROW index=96 vs=494fe349b8bc12ec ps=dd87737d697c6764 class=C status=PASS vertex_words=545 pixel_words=1719 mutations=4096 sweep=sampled program_perturbations=40 skipped=0 quad=adjacent
+ROW index=96 vs=494fe349b8bc12ec ps=dd87737d697c6764 class=C status=PASS vertex_words=556 pixel_words=1729 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
 CHECK row=97 pair_and_per_stage_lookups_applied_identically
 CHECK row=97 all_original_words_preserved
-CHECK row=97 vertex_previous_clip_and_public_abi
-CHECK row=97 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=97 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=97 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=97 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=97 twenty_one_row_perturbations_refused_atomically
+CHECK row=97 twenty_six_row_perturbations_refused_atomically
 CHECK row=97 program_perturbations_refused_by_revalidation
 CHECK row=97 sampled_input_bit_atomic_refusals
 CHECK row=97 six_input_output_alias_layouts_applied
 CHECK row=97 cross_alias_refusal_atomic
-ROW index=97 vs=494fe349b8bc12ec ps=e70adc744a38ca59 class=A status=PASS vertex_words=545 pixel_words=1456 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=97 vs=494fe349b8bc12ec ps=e70adc744a38ca59 class=A status=PASS vertex_words=556 pixel_words=1466 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=98 pair_and_per_stage_lookups_applied_identically
 CHECK row=98 all_original_words_preserved
-CHECK row=98 vertex_previous_clip_and_public_abi
-CHECK row=98 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=98 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=98 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=98 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=98 twenty_one_row_perturbations_refused_atomically
+CHECK row=98 twenty_six_row_perturbations_refused_atomically
 CHECK row=98 program_perturbations_refused_by_revalidation
 CHECK row=98 sampled_input_bit_atomic_refusals
 CHECK row=98 six_input_output_alias_layouts_applied
 CHECK row=98 cross_alias_refusal_atomic
-ROW index=98 vs=494fe349b8bc12ec ps=fd58e6b7e8cf969c class=C status=PASS vertex_words=545 pixel_words=1693 mutations=4096 sweep=sampled program_perturbations=40 skipped=0 quad=adjacent
+ROW index=98 vs=494fe349b8bc12ec ps=fd58e6b7e8cf969c class=C status=PASS vertex_words=556 pixel_words=1703 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
 CHECK row=99 pair_and_per_stage_lookups_applied_identically
 CHECK row=99 all_original_words_preserved
-CHECK row=99 vertex_previous_clip_and_public_abi
-CHECK row=99 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=99 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=99 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=99 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=99 twenty_one_row_perturbations_refused_atomically
+CHECK row=99 twenty_six_row_perturbations_refused_atomically
 CHECK row=99 program_perturbations_refused_by_revalidation
 CHECK row=99 sampled_input_bit_atomic_refusals
 CHECK row=99 six_input_output_alias_layouts_applied
 CHECK row=99 cross_alias_refusal_atomic
-ROW index=99 vs=53a0a641107ed76c ps=827d8d2d617bedce class=A status=PASS vertex_words=545 pixel_words=1408 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=99 vs=53a0a641107ed76c ps=827d8d2d617bedce class=A status=PASS vertex_words=556 pixel_words=1418 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=100 pair_and_per_stage_lookups_applied_identically
 CHECK row=100 all_original_words_preserved
-CHECK row=100 vertex_previous_clip_and_public_abi
-CHECK row=100 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=100 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=100 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=100 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=100 twenty_one_row_perturbations_refused_atomically
+CHECK row=100 twenty_six_row_perturbations_refused_atomically
 CHECK row=100 program_perturbations_refused_by_revalidation
 CHECK row=100 sampled_input_bit_atomic_refusals
 CHECK row=100 six_input_output_alias_layouts_applied
 CHECK row=100 cross_alias_refusal_atomic
-ROW index=100 vs=53a0a641107ed76c ps=91b6c09eb47f8555 class=A status=PASS vertex_words=545 pixel_words=1414 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=100 vs=53a0a641107ed76c ps=91b6c09eb47f8555 class=A status=PASS vertex_words=556 pixel_words=1424 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=101 pair_and_per_stage_lookups_applied_identically
 CHECK row=101 all_original_words_preserved
-CHECK row=101 vertex_previous_clip_and_public_abi
-CHECK row=101 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=101 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=101 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=101 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=101 twenty_one_row_perturbations_refused_atomically
+CHECK row=101 twenty_six_row_perturbations_refused_atomically
 CHECK row=101 program_perturbations_refused_by_revalidation
 CHECK row=101 sampled_input_bit_atomic_refusals
 CHECK row=101 six_input_output_alias_layouts_applied
 CHECK row=101 cross_alias_refusal_atomic
-ROW index=101 vs=53a0a641107ed76c ps=e3b7acc16da9932d class=A status=PASS vertex_words=545 pixel_words=1428 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=101 vs=53a0a641107ed76c ps=e3b7acc16da9932d class=A status=PASS vertex_words=556 pixel_words=1438 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=102 pair_and_per_stage_lookups_applied_identically
 CHECK row=102 all_original_words_preserved
-CHECK row=102 vertex_previous_clip_and_public_abi
-CHECK row=102 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=102 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=102 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=102 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=102 twenty_one_row_perturbations_refused_atomically
+CHECK row=102 twenty_six_row_perturbations_refused_atomically
 CHECK row=102 program_perturbations_refused_by_revalidation
 CHECK row=102 sampled_input_bit_atomic_refusals
 CHECK row=102 six_input_output_alias_layouts_applied
 CHECK row=102 cross_alias_refusal_atomic
-ROW index=102 vs=53a0a641107ed76c ps=ef2bf556f207b8bd class=A status=PASS vertex_words=545 pixel_words=1388 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=102 vs=53a0a641107ed76c ps=ef2bf556f207b8bd class=A status=PASS vertex_words=556 pixel_words=1398 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=103 pair_and_per_stage_lookups_applied_identically
 CHECK row=103 all_original_words_preserved
-CHECK row=103 vertex_previous_clip_and_public_abi
-CHECK row=103 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=103 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=103 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=103 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=103 twenty_one_row_perturbations_refused_atomically
+CHECK row=103 twenty_six_row_perturbations_refused_atomically
 CHECK row=103 program_perturbations_refused_by_revalidation
 CHECK row=103 sampled_input_bit_atomic_refusals
 CHECK row=103 six_input_output_alias_layouts_applied
 CHECK row=103 cross_alias_refusal_atomic
-ROW index=103 vs=57392213f62fef19 ps=62c180abe017e239 class=B status=PASS vertex_words=636 pixel_words=658 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=103 vs=57392213f62fef19 ps=62c180abe017e239 class=B status=PASS vertex_words=647 pixel_words=668 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=104 pair_and_per_stage_lookups_applied_identically
 CHECK row=104 all_original_words_preserved
-CHECK row=104 vertex_previous_clip_and_public_abi
-CHECK row=104 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=104 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=104 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=104 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=104 twenty_one_row_perturbations_refused_atomically
+CHECK row=104 twenty_six_row_perturbations_refused_atomically
 CHECK row=104 program_perturbations_refused_by_revalidation
 CHECK row=104 sampled_input_bit_atomic_refusals
 CHECK row=104 six_input_output_alias_layouts_applied
 CHECK row=104 cross_alias_refusal_atomic
-ROW index=104 vs=57392213f62fef19 ps=a910daef935891ce class=B status=PASS vertex_words=636 pixel_words=632 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=104 vs=57392213f62fef19 ps=a910daef935891ce class=B status=PASS vertex_words=647 pixel_words=642 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=105 pair_and_per_stage_lookups_applied_identically
 CHECK row=105 all_original_words_preserved
-CHECK row=105 vertex_previous_clip_and_public_abi
-CHECK row=105 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=105 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=105 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=105 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=105 twenty_one_row_perturbations_refused_atomically
+CHECK row=105 twenty_six_row_perturbations_refused_atomically
 CHECK row=105 program_perturbations_refused_by_revalidation
 CHECK row=105 sampled_input_bit_atomic_refusals
 CHECK row=105 six_input_output_alias_layouts_applied
 CHECK row=105 cross_alias_refusal_atomic
-ROW index=105 vs=5c17a381b149b3b9 ps=ed44232013f67072 class=B status=PASS vertex_words=667 pixel_words=520 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=105 vs=5c17a381b149b3b9 ps=ed44232013f67072 class=B status=PASS vertex_words=678 pixel_words=530 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=106 pair_and_per_stage_lookups_applied_identically
 CHECK row=106 all_original_words_preserved
-CHECK row=106 vertex_previous_clip_and_public_abi
-CHECK row=106 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=106 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=106 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=106 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=106 twenty_one_row_perturbations_refused_atomically
+CHECK row=106 twenty_six_row_perturbations_refused_atomically
 CHECK row=106 program_perturbations_refused_by_revalidation
 CHECK row=106 sampled_input_bit_atomic_refusals
 CHECK row=106 six_input_output_alias_layouts_applied
 CHECK row=106 cross_alias_refusal_atomic
-ROW index=106 vs=5c17a381b149b3b9 ps=f286856c3f400377 class=B status=PASS vertex_words=667 pixel_words=546 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=106 vs=5c17a381b149b3b9 ps=f286856c3f400377 class=B status=PASS vertex_words=678 pixel_words=556 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=107 pair_and_per_stage_lookups_applied_identically
 CHECK row=107 all_original_words_preserved
-CHECK row=107 vertex_previous_clip_and_public_abi
-CHECK row=107 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=107 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=107 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=107 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=107 twenty_one_row_perturbations_refused_atomically
+CHECK row=107 twenty_six_row_perturbations_refused_atomically
 CHECK row=107 program_perturbations_refused_by_revalidation
 CHECK row=107 sampled_input_bit_atomic_refusals
 CHECK row=107 six_input_output_alias_layouts_applied
 CHECK row=107 cross_alias_refusal_atomic
-ROW index=107 vs=719856ce0c213220 ps=02606104fa59fb29 class=A status=PASS vertex_words=545 pixel_words=1313 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=107 vs=719856ce0c213220 ps=02606104fa59fb29 class=A status=PASS vertex_words=556 pixel_words=1323 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=108 pair_and_per_stage_lookups_applied_identically
 CHECK row=108 all_original_words_preserved
-CHECK row=108 vertex_previous_clip_and_public_abi
-CHECK row=108 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=108 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=108 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=108 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=108 twenty_one_row_perturbations_refused_atomically
+CHECK row=108 twenty_six_row_perturbations_refused_atomically
 CHECK row=108 program_perturbations_refused_by_revalidation
 CHECK row=108 sampled_input_bit_atomic_refusals
 CHECK row=108 six_input_output_alias_layouts_applied
 CHECK row=108 cross_alias_refusal_atomic
-ROW index=108 vs=719856ce0c213220 ps=1d638938d93421b3 class=A status=PASS vertex_words=545 pixel_words=1339 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=108 vs=719856ce0c213220 ps=1d638938d93421b3 class=A status=PASS vertex_words=556 pixel_words=1349 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=109 pair_and_per_stage_lookups_applied_identically
 CHECK row=109 all_original_words_preserved
-CHECK row=109 vertex_previous_clip_and_public_abi
-CHECK row=109 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=109 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=109 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=109 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=109 twenty_one_row_perturbations_refused_atomically
+CHECK row=109 twenty_six_row_perturbations_refused_atomically
 CHECK row=109 program_perturbations_refused_by_revalidation
 CHECK row=109 sampled_input_bit_atomic_refusals
 CHECK row=109 six_input_output_alias_layouts_applied
 CHECK row=109 cross_alias_refusal_atomic
-ROW index=109 vs=719856ce0c213220 ps=3755809bd40afc13 class=A status=PASS vertex_words=545 pixel_words=1338 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=109 vs=719856ce0c213220 ps=3755809bd40afc13 class=A status=PASS vertex_words=556 pixel_words=1348 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=110 pair_and_per_stage_lookups_applied_identically
 CHECK row=110 all_original_words_preserved
-CHECK row=110 vertex_previous_clip_and_public_abi
-CHECK row=110 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=110 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=110 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=110 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=110 twenty_one_row_perturbations_refused_atomically
+CHECK row=110 twenty_six_row_perturbations_refused_atomically
 CHECK row=110 program_perturbations_refused_by_revalidation
 CHECK row=110 sampled_input_bit_atomic_refusals
 CHECK row=110 six_input_output_alias_layouts_applied
 CHECK row=110 cross_alias_refusal_atomic
-ROW index=110 vs=719856ce0c213220 ps=55826dc176afe464 class=A status=PASS vertex_words=545 pixel_words=471 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=110 vs=719856ce0c213220 ps=55826dc176afe464 class=A status=PASS vertex_words=556 pixel_words=481 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=111 pair_and_per_stage_lookups_applied_identically
 CHECK row=111 all_original_words_preserved
-CHECK row=111 vertex_previous_clip_and_public_abi
-CHECK row=111 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=111 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=111 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=111 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=111 twenty_one_row_perturbations_refused_atomically
+CHECK row=111 twenty_six_row_perturbations_refused_atomically
 CHECK row=111 program_perturbations_refused_by_revalidation
 CHECK row=111 sampled_input_bit_atomic_refusals
 CHECK row=111 six_input_output_alias_layouts_applied
 CHECK row=111 cross_alias_refusal_atomic
-ROW index=111 vs=719856ce0c213220 ps=593e5dea9b3457d5 class=A status=PASS vertex_words=545 pixel_words=396 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=111 vs=719856ce0c213220 ps=593e5dea9b3457d5 class=A status=PASS vertex_words=556 pixel_words=406 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=112 pair_and_per_stage_lookups_applied_identically
 CHECK row=112 all_original_words_preserved
-CHECK row=112 vertex_previous_clip_and_public_abi
-CHECK row=112 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=112 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=112 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=112 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=112 twenty_one_row_perturbations_refused_atomically
+CHECK row=112 twenty_six_row_perturbations_refused_atomically
 CHECK row=112 program_perturbations_refused_by_revalidation
 CHECK row=112 sampled_input_bit_atomic_refusals
 CHECK row=112 six_input_output_alias_layouts_applied
 CHECK row=112 cross_alias_refusal_atomic
-ROW index=112 vs=719856ce0c213220 ps=61418505e5d8f998 class=A status=PASS vertex_words=545 pixel_words=393 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=112 vs=719856ce0c213220 ps=61418505e5d8f998 class=A status=PASS vertex_words=556 pixel_words=403 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=113 pair_and_per_stage_lookups_applied_identically
 CHECK row=113 all_original_words_preserved
-CHECK row=113 vertex_previous_clip_and_public_abi
-CHECK row=113 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=113 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=113 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=113 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=113 twenty_one_row_perturbations_refused_atomically
+CHECK row=113 twenty_six_row_perturbations_refused_atomically
 CHECK row=113 program_perturbations_refused_by_revalidation
 CHECK row=113 sampled_input_bit_atomic_refusals
 CHECK row=113 six_input_output_alias_layouts_applied
 CHECK row=113 cross_alias_refusal_atomic
-ROW index=113 vs=719856ce0c213220 ps=7a0bb00a8070496a class=A status=PASS vertex_words=545 pixel_words=1347 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=113 vs=719856ce0c213220 ps=7a0bb00a8070496a class=A status=PASS vertex_words=556 pixel_words=1357 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=114 pair_and_per_stage_lookups_applied_identically
 CHECK row=114 all_original_words_preserved
-CHECK row=114 vertex_previous_clip_and_public_abi
-CHECK row=114 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=114 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=114 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=114 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=114 twenty_one_row_perturbations_refused_atomically
+CHECK row=114 twenty_six_row_perturbations_refused_atomically
 CHECK row=114 program_perturbations_refused_by_revalidation
 CHECK row=114 sampled_input_bit_atomic_refusals
 CHECK row=114 six_input_output_alias_layouts_applied
 CHECK row=114 cross_alias_refusal_atomic
-ROW index=114 vs=719856ce0c213220 ps=7a14d4dcb28f27e5 class=A status=PASS vertex_words=545 pixel_words=1319 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=114 vs=719856ce0c213220 ps=7a14d4dcb28f27e5 class=A status=PASS vertex_words=556 pixel_words=1329 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=115 pair_and_per_stage_lookups_applied_identically
 CHECK row=115 all_original_words_preserved
-CHECK row=115 vertex_previous_clip_and_public_abi
-CHECK row=115 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=115 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=115 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=115 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=115 twenty_one_row_perturbations_refused_atomically
+CHECK row=115 twenty_six_row_perturbations_refused_atomically
 CHECK row=115 program_perturbations_refused_by_revalidation
 CHECK row=115 sampled_input_bit_atomic_refusals
 CHECK row=115 six_input_output_alias_layouts_applied
 CHECK row=115 cross_alias_refusal_atomic
-ROW index=115 vs=719856ce0c213220 ps=8ab6188a40ca15ea class=A status=PASS vertex_words=545 pixel_words=1351 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=115 vs=719856ce0c213220 ps=8ab6188a40ca15ea class=A status=PASS vertex_words=556 pixel_words=1361 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=116 pair_and_per_stage_lookups_applied_identically
 CHECK row=116 all_original_words_preserved
-CHECK row=116 vertex_previous_clip_and_public_abi
-CHECK row=116 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=116 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=116 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=116 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=116 twenty_one_row_perturbations_refused_atomically
+CHECK row=116 twenty_six_row_perturbations_refused_atomically
 CHECK row=116 program_perturbations_refused_by_revalidation
 CHECK row=116 sampled_input_bit_atomic_refusals
 CHECK row=116 six_input_output_alias_layouts_applied
 CHECK row=116 cross_alias_refusal_atomic
-ROW index=116 vs=719856ce0c213220 ps=8d5b2ba0fb4d13bf class=A status=PASS vertex_words=545 pixel_words=1315 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=116 vs=719856ce0c213220 ps=8d5b2ba0fb4d13bf class=A status=PASS vertex_words=556 pixel_words=1325 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=117 pair_and_per_stage_lookups_applied_identically
 CHECK row=117 all_original_words_preserved
-CHECK row=117 vertex_previous_clip_and_public_abi
-CHECK row=117 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=117 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=117 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=117 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=117 twenty_one_row_perturbations_refused_atomically
+CHECK row=117 twenty_six_row_perturbations_refused_atomically
 CHECK row=117 program_perturbations_refused_by_revalidation
 CHECK row=117 sampled_input_bit_atomic_refusals
 CHECK row=117 six_input_output_alias_layouts_applied
 CHECK row=117 cross_alias_refusal_atomic
-ROW index=117 vs=719856ce0c213220 ps=8df6143d0e77d92e class=A status=PASS vertex_words=545 pixel_words=400 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=117 vs=719856ce0c213220 ps=8df6143d0e77d92e class=A status=PASS vertex_words=556 pixel_words=410 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=118 pair_and_per_stage_lookups_applied_identically
 CHECK row=118 all_original_words_preserved
-CHECK row=118 vertex_previous_clip_and_public_abi
-CHECK row=118 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=118 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=118 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=118 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=118 twenty_one_row_perturbations_refused_atomically
+CHECK row=118 twenty_six_row_perturbations_refused_atomically
 CHECK row=118 program_perturbations_refused_by_revalidation
 CHECK row=118 sampled_input_bit_atomic_refusals
 CHECK row=118 six_input_output_alias_layouts_applied
 CHECK row=118 cross_alias_refusal_atomic
-ROW index=118 vs=719856ce0c213220 ps=b5f1d4145171026b class=A status=PASS vertex_words=545 pixel_words=419 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=118 vs=719856ce0c213220 ps=b5f1d4145171026b class=A status=PASS vertex_words=556 pixel_words=429 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=119 pair_and_per_stage_lookups_applied_identically
 CHECK row=119 all_original_words_preserved
-CHECK row=119 vertex_previous_clip_and_public_abi
-CHECK row=119 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=119 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=119 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=119 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=119 twenty_one_row_perturbations_refused_atomically
+CHECK row=119 twenty_six_row_perturbations_refused_atomically
 CHECK row=119 program_perturbations_refused_by_revalidation
 CHECK row=119 sampled_input_bit_atomic_refusals
 CHECK row=119 six_input_output_alias_layouts_applied
 CHECK row=119 cross_alias_refusal_atomic
-ROW index=119 vs=719856ce0c213220 ps=bd4d51c08486c6e0 class=A status=PASS vertex_words=545 pixel_words=388 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=119 vs=719856ce0c213220 ps=bd4d51c08486c6e0 class=A status=PASS vertex_words=556 pixel_words=398 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=120 pair_and_per_stage_lookups_applied_identically
 CHECK row=120 all_original_words_preserved
-CHECK row=120 vertex_previous_clip_and_public_abi
-CHECK row=120 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=120 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=120 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=120 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=120 twenty_one_row_perturbations_refused_atomically
+CHECK row=120 twenty_six_row_perturbations_refused_atomically
 CHECK row=120 program_perturbations_refused_by_revalidation
 CHECK row=120 sampled_input_bit_atomic_refusals
 CHECK row=120 six_input_output_alias_layouts_applied
 CHECK row=120 cross_alias_refusal_atomic
-ROW index=120 vs=719856ce0c213220 ps=cc09f17db377fd9e class=A status=PASS vertex_words=545 pixel_words=1312 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=120 vs=719856ce0c213220 ps=cc09f17db377fd9e class=A status=PASS vertex_words=556 pixel_words=1322 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=121 pair_and_per_stage_lookups_applied_identically
 CHECK row=121 all_original_words_preserved
-CHECK row=121 vertex_previous_clip_and_public_abi
-CHECK row=121 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=121 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=121 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=121 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=121 twenty_one_row_perturbations_refused_atomically
+CHECK row=121 twenty_six_row_perturbations_refused_atomically
 CHECK row=121 program_perturbations_refused_by_revalidation
 CHECK row=121 sampled_input_bit_atomic_refusals
 CHECK row=121 six_input_output_alias_layouts_applied
 CHECK row=121 cross_alias_refusal_atomic
-ROW index=121 vs=719856ce0c213220 ps=dab93928f26906f7 class=A status=PASS vertex_words=545 pixel_words=428 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=121 vs=719856ce0c213220 ps=dab93928f26906f7 class=A status=PASS vertex_words=556 pixel_words=438 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=122 pair_and_per_stage_lookups_applied_identically
 CHECK row=122 all_original_words_preserved
-CHECK row=122 vertex_previous_clip_and_public_abi
-CHECK row=122 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=122 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=122 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=122 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=122 twenty_one_row_perturbations_refused_atomically
+CHECK row=122 twenty_six_row_perturbations_refused_atomically
 CHECK row=122 program_perturbations_refused_by_revalidation
 CHECK row=122 sampled_input_bit_atomic_refusals
 CHECK row=122 six_input_output_alias_layouts_applied
 CHECK row=122 cross_alias_refusal_atomic
-ROW index=122 vs=719856ce0c213220 ps=db644b73b68c0547 class=A status=PASS vertex_words=545 pixel_words=1364 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=122 vs=719856ce0c213220 ps=db644b73b68c0547 class=A status=PASS vertex_words=556 pixel_words=1374 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=123 pair_and_per_stage_lookups_applied_identically
 CHECK row=123 all_original_words_preserved
-CHECK row=123 vertex_previous_clip_and_public_abi
-CHECK row=123 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=123 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=123 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=123 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=123 twenty_one_row_perturbations_refused_atomically
+CHECK row=123 twenty_six_row_perturbations_refused_atomically
 CHECK row=123 program_perturbations_refused_by_revalidation
 CHECK row=123 sampled_input_bit_atomic_refusals
 CHECK row=123 six_input_output_alias_layouts_applied
 CHECK row=123 cross_alias_refusal_atomic
-ROW index=123 vs=719856ce0c213220 ps=de2dd381fa64193d class=A status=PASS vertex_words=545 pixel_words=420 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=123 vs=719856ce0c213220 ps=de2dd381fa64193d class=A status=PASS vertex_words=556 pixel_words=430 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=124 pair_and_per_stage_lookups_applied_identically
 CHECK row=124 all_original_words_preserved
-CHECK row=124 vertex_previous_clip_and_public_abi
-CHECK row=124 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=124 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=124 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=124 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=124 twenty_one_row_perturbations_refused_atomically
+CHECK row=124 twenty_six_row_perturbations_refused_atomically
 CHECK row=124 program_perturbations_refused_by_revalidation
 CHECK row=124 sampled_input_bit_atomic_refusals
 CHECK row=124 six_input_output_alias_layouts_applied
 CHECK row=124 cross_alias_refusal_atomic
-ROW index=124 vs=719856ce0c213220 ps=e16a9806ee3544c3 class=A status=PASS vertex_words=545 pixel_words=432 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=124 vs=719856ce0c213220 ps=e16a9806ee3544c3 class=A status=PASS vertex_words=556 pixel_words=442 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=125 pair_and_per_stage_lookups_applied_identically
 CHECK row=125 all_original_words_preserved
-CHECK row=125 vertex_previous_clip_and_public_abi
-CHECK row=125 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=125 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=125 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=125 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=125 twenty_one_row_perturbations_refused_atomically
+CHECK row=125 twenty_six_row_perturbations_refused_atomically
 CHECK row=125 program_perturbations_refused_by_revalidation
 CHECK row=125 sampled_input_bit_atomic_refusals
 CHECK row=125 six_input_output_alias_layouts_applied
 CHECK row=125 cross_alias_refusal_atomic
-ROW index=125 vs=719856ce0c213220 ps=f6a501717c3e5ca8 class=A status=PASS vertex_words=545 pixel_words=445 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=125 vs=719856ce0c213220 ps=f6a501717c3e5ca8 class=A status=PASS vertex_words=556 pixel_words=455 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=126 pair_and_per_stage_lookups_applied_identically
 CHECK row=126 all_original_words_preserved
-CHECK row=126 vertex_previous_clip_and_public_abi
-CHECK row=126 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=126 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=126 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=126 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=126 twenty_one_row_perturbations_refused_atomically
+CHECK row=126 twenty_six_row_perturbations_refused_atomically
 CHECK row=126 program_perturbations_refused_by_revalidation
 CHECK row=126 sampled_input_bit_atomic_refusals
 CHECK row=126 six_input_output_alias_layouts_applied
 CHECK row=126 cross_alias_refusal_atomic
-ROW index=126 vs=719856ce0c213220 ps=ff32b602a271c327 class=A status=PASS vertex_words=545 pixel_words=1390 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=126 vs=719856ce0c213220 ps=ff32b602a271c327 class=A status=PASS vertex_words=556 pixel_words=1400 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=127 pair_and_per_stage_lookups_applied_identically
 CHECK row=127 all_original_words_preserved
-CHECK row=127 vertex_previous_clip_and_public_abi
-CHECK row=127 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=127 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=127 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=127 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=127 twenty_one_row_perturbations_refused_atomically
+CHECK row=127 twenty_six_row_perturbations_refused_atomically
 CHECK row=127 program_perturbations_refused_by_revalidation
 CHECK row=127 sampled_input_bit_atomic_refusals
 CHECK row=127 six_input_output_alias_layouts_applied
 CHECK row=127 cross_alias_refusal_atomic
-ROW index=127 vs=74fdc00d802b4027 ps=9d49f288800f898d class=B status=PASS vertex_words=524 pixel_words=390 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=127 vs=74fdc00d802b4027 ps=9d49f288800f898d class=B status=PASS vertex_words=535 pixel_words=400 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=128 pair_and_per_stage_lookups_applied_identically
 CHECK row=128 all_original_words_preserved
-CHECK row=128 vertex_previous_clip_and_public_abi
-CHECK row=128 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=128 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=128 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=128 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=128 twenty_one_row_perturbations_refused_atomically
+CHECK row=128 twenty_six_row_perturbations_refused_atomically
 CHECK row=128 program_perturbations_refused_by_revalidation
 CHECK row=128 sampled_input_bit_atomic_refusals
 CHECK row=128 six_input_output_alias_layouts_applied
 CHECK row=128 cross_alias_refusal_atomic
-ROW index=128 vs=74fdc00d802b4027 ps=f31c9e2701c8eee4 class=B status=PASS vertex_words=524 pixel_words=358 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=128 vs=74fdc00d802b4027 ps=f31c9e2701c8eee4 class=B status=PASS vertex_words=535 pixel_words=368 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=129 pair_and_per_stage_lookups_applied_identically
 CHECK row=129 all_original_words_preserved
-CHECK row=129 vertex_previous_clip_and_public_abi
-CHECK row=129 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=129 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=129 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=129 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=129 twenty_one_row_perturbations_refused_atomically
+CHECK row=129 twenty_six_row_perturbations_refused_atomically
 CHECK row=129 program_perturbations_refused_by_revalidation
 CHECK row=129 sampled_input_bit_atomic_refusals
 CHECK row=129 six_input_output_alias_layouts_applied
 CHECK row=129 cross_alias_refusal_atomic
 SKIPPED row=129 perturbation=ABI constant defined
-ROW index=129 vs=8198903322dd82fb ps=6aaaa2cb27e92cc8 class=A status=PASS vertex_words=521 pixel_words=402 mutations=4096 sweep=sampled program_perturbations=27 skipped=1 quad=spaced
+ROW index=129 vs=8198903322dd82fb ps=6aaaa2cb27e92cc8 class=A status=PASS vertex_words=532 pixel_words=412 mutations=4096 sweep=sampled program_perturbations=32 skipped=1 quad=spaced depth=2
 CHECK row=130 pair_and_per_stage_lookups_applied_identically
 CHECK row=130 all_original_words_preserved
-CHECK row=130 vertex_previous_clip_and_public_abi
-CHECK row=130 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=130 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=130 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=130 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=130 twenty_one_row_perturbations_refused_atomically
+CHECK row=130 twenty_six_row_perturbations_refused_atomically
 CHECK row=130 program_perturbations_refused_by_revalidation
 CHECK row=130 sampled_input_bit_atomic_refusals
 CHECK row=130 six_input_output_alias_layouts_applied
 CHECK row=130 cross_alias_refusal_atomic
 SKIPPED row=130 perturbation=ABI constant defined
-ROW index=130 vs=866d428119221f3a ps=6aaaa2cb27e92cc8 class=A status=PASS vertex_words=476 pixel_words=402 mutations=4096 sweep=sampled program_perturbations=25 skipped=1 quad=adjacent
+ROW index=130 vs=866d428119221f3a ps=6aaaa2cb27e92cc8 class=A status=PASS vertex_words=487 pixel_words=412 mutations=4096 sweep=sampled program_perturbations=30 skipped=1 quad=adjacent depth=2
 CHECK row=131 pair_and_per_stage_lookups_applied_identically
 CHECK row=131 all_original_words_preserved
-CHECK row=131 vertex_previous_clip_and_public_abi
-CHECK row=131 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=131 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=131 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=131 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=131 twenty_one_row_perturbations_refused_atomically
+CHECK row=131 twenty_six_row_perturbations_refused_atomically
 CHECK row=131 program_perturbations_refused_by_revalidation
 CHECK row=131 sampled_input_bit_atomic_refusals
 CHECK row=131 six_input_output_alias_layouts_applied
 CHECK row=131 cross_alias_refusal_atomic
-ROW index=131 vs=a420a010b0271479 ps=77a5b2d62fb3be48 class=B status=PASS vertex_words=624 pixel_words=484 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=131 vs=a420a010b0271479 ps=77a5b2d62fb3be48 class=B status=PASS vertex_words=635 pixel_words=494 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=132 pair_and_per_stage_lookups_applied_identically
 CHECK row=132 all_original_words_preserved
-CHECK row=132 vertex_previous_clip_and_public_abi
-CHECK row=132 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=132 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=132 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=132 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=132 twenty_one_row_perturbations_refused_atomically
+CHECK row=132 twenty_six_row_perturbations_refused_atomically
 CHECK row=132 program_perturbations_refused_by_revalidation
 CHECK row=132 sampled_input_bit_atomic_refusals
 CHECK row=132 six_input_output_alias_layouts_applied
 CHECK row=132 cross_alias_refusal_atomic
-ROW index=132 vs=a420a010b0271479 ps=f917d48ee826da1f class=B status=PASS vertex_words=624 pixel_words=452 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=132 vs=a420a010b0271479 ps=f917d48ee826da1f class=B status=PASS vertex_words=635 pixel_words=462 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=133 pair_and_per_stage_lookups_applied_identically
 CHECK row=133 all_original_words_preserved
-CHECK row=133 vertex_previous_clip_and_public_abi
-CHECK row=133 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=133 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=133 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=133 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=133 twenty_one_row_perturbations_refused_atomically
+CHECK row=133 twenty_six_row_perturbations_refused_atomically
 CHECK row=133 program_perturbations_refused_by_revalidation
 CHECK row=133 sampled_input_bit_atomic_refusals
 CHECK row=133 six_input_output_alias_layouts_applied
 CHECK row=133 cross_alias_refusal_atomic
-ROW index=133 vs=a7cddf2c98d61117 ps=675f9077d8fd21c4 class=B status=PASS vertex_words=531 pixel_words=498 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=133 vs=a7cddf2c98d61117 ps=675f9077d8fd21c4 class=B status=PASS vertex_words=542 pixel_words=508 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=134 pair_and_per_stage_lookups_applied_identically
 CHECK row=134 all_original_words_preserved
-CHECK row=134 vertex_previous_clip_and_public_abi
-CHECK row=134 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=134 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=134 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=134 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=134 twenty_one_row_perturbations_refused_atomically
+CHECK row=134 twenty_six_row_perturbations_refused_atomically
 CHECK row=134 program_perturbations_refused_by_revalidation
 CHECK row=134 sampled_input_bit_atomic_refusals
 CHECK row=134 six_input_output_alias_layouts_applied
 CHECK row=134 cross_alias_refusal_atomic
-ROW index=134 vs=a7cddf2c98d61117 ps=c997a37560e266df class=B status=PASS vertex_words=531 pixel_words=472 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=134 vs=a7cddf2c98d61117 ps=c997a37560e266df class=B status=PASS vertex_words=542 pixel_words=482 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=135 pair_and_per_stage_lookups_applied_identically
 CHECK row=135 all_original_words_preserved
-CHECK row=135 vertex_previous_clip_and_public_abi
-CHECK row=135 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=135 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=135 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=135 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=135 twenty_one_row_perturbations_refused_atomically
+CHECK row=135 twenty_six_row_perturbations_refused_atomically
 CHECK row=135 program_perturbations_refused_by_revalidation
 CHECK row=135 sampled_input_bit_atomic_refusals
 CHECK row=135 six_input_output_alias_layouts_applied
 CHECK row=135 cross_alias_refusal_atomic
-ROW index=135 vs=a7cddf2c98d61117 ps=ebf41e1ace7af45b class=B status=PASS vertex_words=531 pixel_words=1417 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=135 vs=a7cddf2c98d61117 ps=ebf41e1ace7af45b class=B status=PASS vertex_words=542 pixel_words=1427 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=136 pair_and_per_stage_lookups_applied_identically
 CHECK row=136 all_original_words_preserved
-CHECK row=136 vertex_previous_clip_and_public_abi
-CHECK row=136 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=136 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=136 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=136 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=136 twenty_one_row_perturbations_refused_atomically
+CHECK row=136 twenty_six_row_perturbations_refused_atomically
 CHECK row=136 program_perturbations_refused_by_revalidation
 CHECK row=136 sampled_input_bit_atomic_refusals
 CHECK row=136 six_input_output_alias_layouts_applied
 CHECK row=136 cross_alias_refusal_atomic
-ROW index=136 vs=a7cddf2c98d61117 ps=f646f03be5a8708d class=B status=PASS vertex_words=531 pixel_words=1391 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=136 vs=a7cddf2c98d61117 ps=f646f03be5a8708d class=B status=PASS vertex_words=542 pixel_words=1401 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=137 pair_and_per_stage_lookups_applied_identically
 CHECK row=137 all_original_words_preserved
-CHECK row=137 vertex_previous_clip_and_public_abi
-CHECK row=137 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=137 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=137 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=137 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=137 twenty_one_row_perturbations_refused_atomically
+CHECK row=137 twenty_six_row_perturbations_refused_atomically
 CHECK row=137 program_perturbations_refused_by_revalidation
 CHECK row=137 sampled_input_bit_atomic_refusals
 CHECK row=137 six_input_output_alias_layouts_applied
 CHECK row=137 cross_alias_refusal_atomic
-ROW index=137 vs=a804f173f693944a ps=ed44232013f67072 class=B status=PASS vertex_words=619 pixel_words=520 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=137 vs=a804f173f693944a ps=ed44232013f67072 class=B status=PASS vertex_words=630 pixel_words=530 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=138 pair_and_per_stage_lookups_applied_identically
 CHECK row=138 all_original_words_preserved
-CHECK row=138 vertex_previous_clip_and_public_abi
-CHECK row=138 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=138 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=138 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=138 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=138 twenty_one_row_perturbations_refused_atomically
+CHECK row=138 twenty_six_row_perturbations_refused_atomically
 CHECK row=138 program_perturbations_refused_by_revalidation
 CHECK row=138 sampled_input_bit_atomic_refusals
 CHECK row=138 six_input_output_alias_layouts_applied
 CHECK row=138 cross_alias_refusal_atomic
-ROW index=138 vs=a804f173f693944a ps=f286856c3f400377 class=B status=PASS vertex_words=619 pixel_words=546 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=138 vs=a804f173f693944a ps=f286856c3f400377 class=B status=PASS vertex_words=630 pixel_words=556 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=139 pair_and_per_stage_lookups_applied_identically
 CHECK row=139 all_original_words_preserved
-CHECK row=139 vertex_previous_clip_and_public_abi
-CHECK row=139 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=139 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=139 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=139 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=139 twenty_one_row_perturbations_refused_atomically
+CHECK row=139 twenty_six_row_perturbations_refused_atomically
 CHECK row=139 program_perturbations_refused_by_revalidation
 CHECK row=139 sampled_input_bit_atomic_refusals
 CHECK row=139 six_input_output_alias_layouts_applied
 CHECK row=139 cross_alias_refusal_atomic
-ROW index=139 vs=b4059ab6af8fc529 ps=43c9405568d2226f class=B status=PASS vertex_words=622 pixel_words=1479 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=139 vs=b4059ab6af8fc529 ps=43c9405568d2226f class=B status=PASS vertex_words=633 pixel_words=1489 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=140 pair_and_per_stage_lookups_applied_identically
 CHECK row=140 all_original_words_preserved
-CHECK row=140 vertex_previous_clip_and_public_abi
-CHECK row=140 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=140 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=140 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=140 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=140 twenty_one_row_perturbations_refused_atomically
+CHECK row=140 twenty_six_row_perturbations_refused_atomically
 CHECK row=140 program_perturbations_refused_by_revalidation
 CHECK row=140 sampled_input_bit_atomic_refusals
 CHECK row=140 six_input_output_alias_layouts_applied
 CHECK row=140 cross_alias_refusal_atomic
-ROW index=140 vs=b4059ab6af8fc529 ps=5e056627e9ff3a8d class=B status=PASS vertex_words=622 pixel_words=534 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=140 vs=b4059ab6af8fc529 ps=5e056627e9ff3a8d class=B status=PASS vertex_words=633 pixel_words=544 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=141 pair_and_per_stage_lookups_applied_identically
 CHECK row=141 all_original_words_preserved
-CHECK row=141 vertex_previous_clip_and_public_abi
-CHECK row=141 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=141 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=141 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=141 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=141 twenty_one_row_perturbations_refused_atomically
+CHECK row=141 twenty_six_row_perturbations_refused_atomically
 CHECK row=141 program_perturbations_refused_by_revalidation
 CHECK row=141 sampled_input_bit_atomic_refusals
 CHECK row=141 six_input_output_alias_layouts_applied
 CHECK row=141 cross_alias_refusal_atomic
-ROW index=141 vs=b4059ab6af8fc529 ps=7e5e41276b3d7514 class=B status=PASS vertex_words=622 pixel_words=1453 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=141 vs=b4059ab6af8fc529 ps=7e5e41276b3d7514 class=B status=PASS vertex_words=633 pixel_words=1463 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=142 pair_and_per_stage_lookups_applied_identically
 CHECK row=142 all_original_words_preserved
-CHECK row=142 vertex_previous_clip_and_public_abi
-CHECK row=142 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=142 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=142 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=142 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=142 twenty_one_row_perturbations_refused_atomically
+CHECK row=142 twenty_six_row_perturbations_refused_atomically
 CHECK row=142 program_perturbations_refused_by_revalidation
 CHECK row=142 sampled_input_bit_atomic_refusals
 CHECK row=142 six_input_output_alias_layouts_applied
 CHECK row=142 cross_alias_refusal_atomic
-ROW index=142 vs=b4059ab6af8fc529 ps=fce465befff2f623 class=B status=PASS vertex_words=622 pixel_words=560 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=142 vs=b4059ab6af8fc529 ps=fce465befff2f623 class=B status=PASS vertex_words=633 pixel_words=570 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=143 pair_and_per_stage_lookups_applied_identically
 CHECK row=143 all_original_words_preserved
-CHECK row=143 vertex_previous_clip_and_public_abi
-CHECK row=143 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=143 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=143 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=143 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=143 twenty_one_row_perturbations_refused_atomically
+CHECK row=143 twenty_six_row_perturbations_refused_atomically
 CHECK row=143 program_perturbations_refused_by_revalidation
 CHECK row=143 sampled_input_bit_atomic_refusals
 CHECK row=143 six_input_output_alias_layouts_applied
 CHECK row=143 cross_alias_refusal_atomic
-ROW index=143 vs=badefd5143b3024f ps=02606104fa59fb29 class=A status=PASS vertex_words=500 pixel_words=1313 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=143 vs=badefd5143b3024f ps=02606104fa59fb29 class=A status=PASS vertex_words=511 pixel_words=1323 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=144 pair_and_per_stage_lookups_applied_identically
 CHECK row=144 all_original_words_preserved
-CHECK row=144 vertex_previous_clip_and_public_abi
-CHECK row=144 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=144 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=144 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=144 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=144 twenty_one_row_perturbations_refused_atomically
+CHECK row=144 twenty_six_row_perturbations_refused_atomically
 CHECK row=144 program_perturbations_refused_by_revalidation
 CHECK row=144 sampled_input_bit_atomic_refusals
 CHECK row=144 six_input_output_alias_layouts_applied
 CHECK row=144 cross_alias_refusal_atomic
-ROW index=144 vs=badefd5143b3024f ps=1d638938d93421b3 class=A status=PASS vertex_words=500 pixel_words=1339 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=144 vs=badefd5143b3024f ps=1d638938d93421b3 class=A status=PASS vertex_words=511 pixel_words=1349 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=145 pair_and_per_stage_lookups_applied_identically
 CHECK row=145 all_original_words_preserved
-CHECK row=145 vertex_previous_clip_and_public_abi
-CHECK row=145 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=145 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=145 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=145 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=145 twenty_one_row_perturbations_refused_atomically
+CHECK row=145 twenty_six_row_perturbations_refused_atomically
 CHECK row=145 program_perturbations_refused_by_revalidation
 CHECK row=145 sampled_input_bit_atomic_refusals
 CHECK row=145 six_input_output_alias_layouts_applied
 CHECK row=145 cross_alias_refusal_atomic
-ROW index=145 vs=badefd5143b3024f ps=3755809bd40afc13 class=A status=PASS vertex_words=500 pixel_words=1338 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=145 vs=badefd5143b3024f ps=3755809bd40afc13 class=A status=PASS vertex_words=511 pixel_words=1348 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=146 pair_and_per_stage_lookups_applied_identically
 CHECK row=146 all_original_words_preserved
-CHECK row=146 vertex_previous_clip_and_public_abi
-CHECK row=146 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=146 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=146 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=146 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=146 twenty_one_row_perturbations_refused_atomically
+CHECK row=146 twenty_six_row_perturbations_refused_atomically
 CHECK row=146 program_perturbations_refused_by_revalidation
 CHECK row=146 sampled_input_bit_atomic_refusals
 CHECK row=146 six_input_output_alias_layouts_applied
 CHECK row=146 cross_alias_refusal_atomic
-ROW index=146 vs=badefd5143b3024f ps=55826dc176afe464 class=A status=PASS vertex_words=500 pixel_words=471 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=146 vs=badefd5143b3024f ps=55826dc176afe464 class=A status=PASS vertex_words=511 pixel_words=481 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=147 pair_and_per_stage_lookups_applied_identically
 CHECK row=147 all_original_words_preserved
-CHECK row=147 vertex_previous_clip_and_public_abi
-CHECK row=147 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=147 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=147 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=147 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=147 twenty_one_row_perturbations_refused_atomically
+CHECK row=147 twenty_six_row_perturbations_refused_atomically
 CHECK row=147 program_perturbations_refused_by_revalidation
 CHECK row=147 sampled_input_bit_atomic_refusals
 CHECK row=147 six_input_output_alias_layouts_applied
 CHECK row=147 cross_alias_refusal_atomic
-ROW index=147 vs=badefd5143b3024f ps=593e5dea9b3457d5 class=A status=PASS vertex_words=500 pixel_words=396 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=147 vs=badefd5143b3024f ps=593e5dea9b3457d5 class=A status=PASS vertex_words=511 pixel_words=406 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=148 pair_and_per_stage_lookups_applied_identically
 CHECK row=148 all_original_words_preserved
-CHECK row=148 vertex_previous_clip_and_public_abi
-CHECK row=148 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=148 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=148 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=148 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=148 twenty_one_row_perturbations_refused_atomically
+CHECK row=148 twenty_six_row_perturbations_refused_atomically
 CHECK row=148 program_perturbations_refused_by_revalidation
 CHECK row=148 sampled_input_bit_atomic_refusals
 CHECK row=148 six_input_output_alias_layouts_applied
 CHECK row=148 cross_alias_refusal_atomic
-ROW index=148 vs=badefd5143b3024f ps=61418505e5d8f998 class=A status=PASS vertex_words=500 pixel_words=393 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=148 vs=badefd5143b3024f ps=61418505e5d8f998 class=A status=PASS vertex_words=511 pixel_words=403 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=149 pair_and_per_stage_lookups_applied_identically
 CHECK row=149 all_original_words_preserved
-CHECK row=149 vertex_previous_clip_and_public_abi
-CHECK row=149 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=149 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=149 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=149 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=149 twenty_one_row_perturbations_refused_atomically
+CHECK row=149 twenty_six_row_perturbations_refused_atomically
 CHECK row=149 program_perturbations_refused_by_revalidation
 CHECK row=149 sampled_input_bit_atomic_refusals
 CHECK row=149 six_input_output_alias_layouts_applied
 CHECK row=149 cross_alias_refusal_atomic
-ROW index=149 vs=badefd5143b3024f ps=7a0bb00a8070496a class=A status=PASS vertex_words=500 pixel_words=1347 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=149 vs=badefd5143b3024f ps=7a0bb00a8070496a class=A status=PASS vertex_words=511 pixel_words=1357 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=150 pair_and_per_stage_lookups_applied_identically
 CHECK row=150 all_original_words_preserved
-CHECK row=150 vertex_previous_clip_and_public_abi
-CHECK row=150 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=150 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=150 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=150 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=150 twenty_one_row_perturbations_refused_atomically
+CHECK row=150 twenty_six_row_perturbations_refused_atomically
 CHECK row=150 program_perturbations_refused_by_revalidation
 CHECK row=150 sampled_input_bit_atomic_refusals
 CHECK row=150 six_input_output_alias_layouts_applied
 CHECK row=150 cross_alias_refusal_atomic
-ROW index=150 vs=badefd5143b3024f ps=7a14d4dcb28f27e5 class=A status=PASS vertex_words=500 pixel_words=1319 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=150 vs=badefd5143b3024f ps=7a14d4dcb28f27e5 class=A status=PASS vertex_words=511 pixel_words=1329 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=151 pair_and_per_stage_lookups_applied_identically
 CHECK row=151 all_original_words_preserved
-CHECK row=151 vertex_previous_clip_and_public_abi
-CHECK row=151 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=151 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=151 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=151 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=151 twenty_one_row_perturbations_refused_atomically
+CHECK row=151 twenty_six_row_perturbations_refused_atomically
 CHECK row=151 program_perturbations_refused_by_revalidation
 CHECK row=151 sampled_input_bit_atomic_refusals
 CHECK row=151 six_input_output_alias_layouts_applied
 CHECK row=151 cross_alias_refusal_atomic
-ROW index=151 vs=badefd5143b3024f ps=8ab6188a40ca15ea class=A status=PASS vertex_words=500 pixel_words=1351 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=151 vs=badefd5143b3024f ps=8ab6188a40ca15ea class=A status=PASS vertex_words=511 pixel_words=1361 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=152 pair_and_per_stage_lookups_applied_identically
 CHECK row=152 all_original_words_preserved
-CHECK row=152 vertex_previous_clip_and_public_abi
-CHECK row=152 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=152 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=152 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=152 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=152 twenty_one_row_perturbations_refused_atomically
+CHECK row=152 twenty_six_row_perturbations_refused_atomically
 CHECK row=152 program_perturbations_refused_by_revalidation
 CHECK row=152 sampled_input_bit_atomic_refusals
 CHECK row=152 six_input_output_alias_layouts_applied
 CHECK row=152 cross_alias_refusal_atomic
-ROW index=152 vs=badefd5143b3024f ps=8d5b2ba0fb4d13bf class=A status=PASS vertex_words=500 pixel_words=1315 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=152 vs=badefd5143b3024f ps=8d5b2ba0fb4d13bf class=A status=PASS vertex_words=511 pixel_words=1325 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=153 pair_and_per_stage_lookups_applied_identically
 CHECK row=153 all_original_words_preserved
-CHECK row=153 vertex_previous_clip_and_public_abi
-CHECK row=153 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=153 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=153 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=153 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=153 twenty_one_row_perturbations_refused_atomically
+CHECK row=153 twenty_six_row_perturbations_refused_atomically
 CHECK row=153 program_perturbations_refused_by_revalidation
 CHECK row=153 sampled_input_bit_atomic_refusals
 CHECK row=153 six_input_output_alias_layouts_applied
 CHECK row=153 cross_alias_refusal_atomic
-ROW index=153 vs=badefd5143b3024f ps=8df6143d0e77d92e class=A status=PASS vertex_words=500 pixel_words=400 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=153 vs=badefd5143b3024f ps=8df6143d0e77d92e class=A status=PASS vertex_words=511 pixel_words=410 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=154 pair_and_per_stage_lookups_applied_identically
 CHECK row=154 all_original_words_preserved
-CHECK row=154 vertex_previous_clip_and_public_abi
-CHECK row=154 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=154 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=154 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=154 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=154 twenty_one_row_perturbations_refused_atomically
+CHECK row=154 twenty_six_row_perturbations_refused_atomically
 CHECK row=154 program_perturbations_refused_by_revalidation
 CHECK row=154 sampled_input_bit_atomic_refusals
 CHECK row=154 six_input_output_alias_layouts_applied
 CHECK row=154 cross_alias_refusal_atomic
-ROW index=154 vs=badefd5143b3024f ps=b5f1d4145171026b class=A status=PASS vertex_words=500 pixel_words=419 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=154 vs=badefd5143b3024f ps=b5f1d4145171026b class=A status=PASS vertex_words=511 pixel_words=429 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=155 pair_and_per_stage_lookups_applied_identically
 CHECK row=155 all_original_words_preserved
-CHECK row=155 vertex_previous_clip_and_public_abi
-CHECK row=155 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=155 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=155 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=155 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=155 twenty_one_row_perturbations_refused_atomically
+CHECK row=155 twenty_six_row_perturbations_refused_atomically
 CHECK row=155 program_perturbations_refused_by_revalidation
 CHECK row=155 sampled_input_bit_atomic_refusals
 CHECK row=155 six_input_output_alias_layouts_applied
 CHECK row=155 cross_alias_refusal_atomic
-ROW index=155 vs=badefd5143b3024f ps=bd4d51c08486c6e0 class=A status=PASS vertex_words=500 pixel_words=388 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=155 vs=badefd5143b3024f ps=bd4d51c08486c6e0 class=A status=PASS vertex_words=511 pixel_words=398 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=156 pair_and_per_stage_lookups_applied_identically
 CHECK row=156 all_original_words_preserved
-CHECK row=156 vertex_previous_clip_and_public_abi
-CHECK row=156 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=156 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=156 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=156 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=156 twenty_one_row_perturbations_refused_atomically
+CHECK row=156 twenty_six_row_perturbations_refused_atomically
 CHECK row=156 program_perturbations_refused_by_revalidation
 CHECK row=156 sampled_input_bit_atomic_refusals
 CHECK row=156 six_input_output_alias_layouts_applied
 CHECK row=156 cross_alias_refusal_atomic
-ROW index=156 vs=badefd5143b3024f ps=cc09f17db377fd9e class=A status=PASS vertex_words=500 pixel_words=1312 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=156 vs=badefd5143b3024f ps=cc09f17db377fd9e class=A status=PASS vertex_words=511 pixel_words=1322 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=157 pair_and_per_stage_lookups_applied_identically
 CHECK row=157 all_original_words_preserved
-CHECK row=157 vertex_previous_clip_and_public_abi
-CHECK row=157 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=157 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=157 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=157 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=157 twenty_one_row_perturbations_refused_atomically
+CHECK row=157 twenty_six_row_perturbations_refused_atomically
 CHECK row=157 program_perturbations_refused_by_revalidation
 CHECK row=157 sampled_input_bit_atomic_refusals
 CHECK row=157 six_input_output_alias_layouts_applied
 CHECK row=157 cross_alias_refusal_atomic
-ROW index=157 vs=badefd5143b3024f ps=dab93928f26906f7 class=A status=PASS vertex_words=500 pixel_words=428 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=157 vs=badefd5143b3024f ps=dab93928f26906f7 class=A status=PASS vertex_words=511 pixel_words=438 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=158 pair_and_per_stage_lookups_applied_identically
 CHECK row=158 all_original_words_preserved
-CHECK row=158 vertex_previous_clip_and_public_abi
-CHECK row=158 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=158 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=158 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=158 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=158 twenty_one_row_perturbations_refused_atomically
+CHECK row=158 twenty_six_row_perturbations_refused_atomically
 CHECK row=158 program_perturbations_refused_by_revalidation
 CHECK row=158 sampled_input_bit_atomic_refusals
 CHECK row=158 six_input_output_alias_layouts_applied
 CHECK row=158 cross_alias_refusal_atomic
-ROW index=158 vs=badefd5143b3024f ps=db644b73b68c0547 class=A status=PASS vertex_words=500 pixel_words=1364 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=158 vs=badefd5143b3024f ps=db644b73b68c0547 class=A status=PASS vertex_words=511 pixel_words=1374 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=159 pair_and_per_stage_lookups_applied_identically
 CHECK row=159 all_original_words_preserved
-CHECK row=159 vertex_previous_clip_and_public_abi
-CHECK row=159 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=159 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=159 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=159 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=159 twenty_one_row_perturbations_refused_atomically
+CHECK row=159 twenty_six_row_perturbations_refused_atomically
 CHECK row=159 program_perturbations_refused_by_revalidation
 CHECK row=159 sampled_input_bit_atomic_refusals
 CHECK row=159 six_input_output_alias_layouts_applied
 CHECK row=159 cross_alias_refusal_atomic
-ROW index=159 vs=badefd5143b3024f ps=de2dd381fa64193d class=A status=PASS vertex_words=500 pixel_words=420 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=159 vs=badefd5143b3024f ps=de2dd381fa64193d class=A status=PASS vertex_words=511 pixel_words=430 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=160 pair_and_per_stage_lookups_applied_identically
 CHECK row=160 all_original_words_preserved
-CHECK row=160 vertex_previous_clip_and_public_abi
-CHECK row=160 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=160 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=160 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=160 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=160 twenty_one_row_perturbations_refused_atomically
+CHECK row=160 twenty_six_row_perturbations_refused_atomically
 CHECK row=160 program_perturbations_refused_by_revalidation
 CHECK row=160 sampled_input_bit_atomic_refusals
 CHECK row=160 six_input_output_alias_layouts_applied
 CHECK row=160 cross_alias_refusal_atomic
-ROW index=160 vs=badefd5143b3024f ps=e16a9806ee3544c3 class=A status=PASS vertex_words=500 pixel_words=432 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=160 vs=badefd5143b3024f ps=e16a9806ee3544c3 class=A status=PASS vertex_words=511 pixel_words=442 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=161 pair_and_per_stage_lookups_applied_identically
 CHECK row=161 all_original_words_preserved
-CHECK row=161 vertex_previous_clip_and_public_abi
-CHECK row=161 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=161 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=161 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=161 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=161 twenty_one_row_perturbations_refused_atomically
+CHECK row=161 twenty_six_row_perturbations_refused_atomically
 CHECK row=161 program_perturbations_refused_by_revalidation
 CHECK row=161 sampled_input_bit_atomic_refusals
 CHECK row=161 six_input_output_alias_layouts_applied
 CHECK row=161 cross_alias_refusal_atomic
-ROW index=161 vs=badefd5143b3024f ps=f6a501717c3e5ca8 class=A status=PASS vertex_words=500 pixel_words=445 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=161 vs=badefd5143b3024f ps=f6a501717c3e5ca8 class=A status=PASS vertex_words=511 pixel_words=455 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=162 pair_and_per_stage_lookups_applied_identically
 CHECK row=162 all_original_words_preserved
-CHECK row=162 vertex_previous_clip_and_public_abi
-CHECK row=162 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=162 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=162 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=162 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=162 twenty_one_row_perturbations_refused_atomically
+CHECK row=162 twenty_six_row_perturbations_refused_atomically
 CHECK row=162 program_perturbations_refused_by_revalidation
 CHECK row=162 sampled_input_bit_atomic_refusals
 CHECK row=162 six_input_output_alias_layouts_applied
 CHECK row=162 cross_alias_refusal_atomic
-ROW index=162 vs=badefd5143b3024f ps=ff32b602a271c327 class=A status=PASS vertex_words=500 pixel_words=1390 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=162 vs=badefd5143b3024f ps=ff32b602a271c327 class=A status=PASS vertex_words=511 pixel_words=1400 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=163 pair_and_per_stage_lookups_applied_identically
 CHECK row=163 all_original_words_preserved
-CHECK row=163 vertex_previous_clip_and_public_abi
-CHECK row=163 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=163 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=163 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=163 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=163 twenty_one_row_perturbations_refused_atomically
+CHECK row=163 twenty_six_row_perturbations_refused_atomically
 CHECK row=163 program_perturbations_refused_by_revalidation
 CHECK row=163 sampled_input_bit_atomic_refusals
 CHECK row=163 six_input_output_alias_layouts_applied
 CHECK row=163 cross_alias_refusal_atomic
-ROW index=163 vs=c30104cb0efb6675 ps=ebc9b2b3f1564e9a class=B status=PASS vertex_words=569 pixel_words=473 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=163 vs=c30104cb0efb6675 ps=ebc9b2b3f1564e9a class=B status=PASS vertex_words=580 pixel_words=483 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=164 pair_and_per_stage_lookups_applied_identically
 CHECK row=164 all_original_words_preserved
-CHECK row=164 vertex_previous_clip_and_public_abi
-CHECK row=164 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=164 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=164 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=164 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=164 twenty_one_row_perturbations_refused_atomically
+CHECK row=164 twenty_six_row_perturbations_refused_atomically
 CHECK row=164 program_perturbations_refused_by_revalidation
 CHECK row=164 sampled_input_bit_atomic_refusals
 CHECK row=164 six_input_output_alias_layouts_applied
 CHECK row=164 cross_alias_refusal_atomic
-ROW index=164 vs=d706d31100be1be9 ps=c002d0727537c5de class=A status=PASS vertex_words=321 pixel_words=220 mutations=4096 sweep=sampled program_perturbations=28 skipped=0 quad=spaced
+ROW index=164 vs=d706d31100be1be9 ps=c002d0727537c5de class=A status=PASS vertex_words=332 pixel_words=230 mutations=4096 sweep=sampled program_perturbations=33 skipped=0 quad=spaced depth=2
 CHECK row=165 pair_and_per_stage_lookups_applied_identically
 CHECK row=165 all_original_words_preserved
-CHECK row=165 vertex_previous_clip_and_public_abi
-CHECK row=165 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=165 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=165 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=165 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=165 twenty_one_row_perturbations_refused_atomically
+CHECK row=165 twenty_six_row_perturbations_refused_atomically
 CHECK row=165 program_perturbations_refused_by_revalidation
 CHECK row=165 sampled_input_bit_atomic_refusals
 CHECK row=165 six_input_output_alias_layouts_applied
 CHECK row=165 cross_alias_refusal_atomic
-ROW index=165 vs=e2ad860d5fbb3e59 ps=9d49f288800f898d class=B status=PASS vertex_words=569 pixel_words=390 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=165 vs=e2ad860d5fbb3e59 ps=9d49f288800f898d class=B status=PASS vertex_words=580 pixel_words=400 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=166 pair_and_per_stage_lookups_applied_identically
 CHECK row=166 all_original_words_preserved
-CHECK row=166 vertex_previous_clip_and_public_abi
-CHECK row=166 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=166 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=166 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=166 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=166 twenty_one_row_perturbations_refused_atomically
+CHECK row=166 twenty_six_row_perturbations_refused_atomically
 CHECK row=166 program_perturbations_refused_by_revalidation
 CHECK row=166 sampled_input_bit_atomic_refusals
 CHECK row=166 six_input_output_alias_layouts_applied
 CHECK row=166 cross_alias_refusal_atomic
-ROW index=166 vs=e2ad860d5fbb3e59 ps=f31c9e2701c8eee4 class=B status=PASS vertex_words=569 pixel_words=358 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=166 vs=e2ad860d5fbb3e59 ps=f31c9e2701c8eee4 class=B status=PASS vertex_words=580 pixel_words=368 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=167 pair_and_per_stage_lookups_applied_identically
 CHECK row=167 all_original_words_preserved
-CHECK row=167 vertex_previous_clip_and_public_abi
-CHECK row=167 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=167 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=167 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=167 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=167 twenty_one_row_perturbations_refused_atomically
+CHECK row=167 twenty_six_row_perturbations_refused_atomically
 CHECK row=167 program_perturbations_refused_by_revalidation
 CHECK row=167 sampled_input_bit_atomic_refusals
 CHECK row=167 six_input_output_alias_layouts_applied
 CHECK row=167 cross_alias_refusal_atomic
-ROW index=167 vs=ea3d15b287892410 ps=77a5b2d62fb3be48 class=B status=PASS vertex_words=579 pixel_words=484 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=167 vs=ea3d15b287892410 ps=77a5b2d62fb3be48 class=B status=PASS vertex_words=590 pixel_words=494 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 CHECK row=168 pair_and_per_stage_lookups_applied_identically
 CHECK row=168 all_original_words_preserved
-CHECK row=168 vertex_previous_clip_and_public_abi
-CHECK row=168 authored_fragment_register_bits_literals_and_opcodes
+CHECK row=168 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=168 authored_fragments_register_bits_literals_and_opcodes
 CHECK row=168 invalid_wrong_pair_truncated_appended_atomic_refusal
-CHECK row=168 twenty_one_row_perturbations_refused_atomically
+CHECK row=168 twenty_six_row_perturbations_refused_atomically
 CHECK row=168 program_perturbations_refused_by_revalidation
 CHECK row=168 sampled_input_bit_atomic_refusals
 CHECK row=168 six_input_output_alias_layouts_applied
 CHECK row=168 cross_alias_refusal_atomic
-ROW index=168 vs=ea3d15b287892410 ps=f917d48ee826da1f class=B status=PASS vertex_words=579 pixel_words=452 mutations=4096 sweep=sampled program_perturbations=26 skipped=0 quad=adjacent
+ROW index=168 vs=ea3d15b287892410 ps=f917d48ee826da1f class=B status=PASS vertex_words=590 pixel_words=462 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
 TABLE lookups=PASS rows=169 absent_pairs=2535
 RESULT PASS rows=169 transformed=169 skipped=0 checks=1691 mutations=1551936 full_sweeps=16 sampled_sweeps=153 aliases=1014

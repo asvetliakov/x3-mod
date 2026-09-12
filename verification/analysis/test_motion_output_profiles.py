@@ -17,7 +17,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 from inspect_motion_output_profiles import (  # noqa: E402
-    DEFERRED_CLASSES, HEADER_CLASSES, HEADER_FIELDS, REFERENCE, REFERENCE_DEFINITION_DWORDS,
+    DEFERRED_CLASSES, DEPTH_NONE, HEADER_CLASSES, HEADER_FIELDS, REFERENCE, REFERENCE_DEFINITION_DWORDS, depth_plan,
     REFERENCE_POSITION_DWORDS, SM2_GROUPS, check, classify, header_rows, profile,
     render_header, sm2_feasibility)
 from effect_passes import parse_effect  # noqa: E402
@@ -698,11 +698,13 @@ ARGON_HEADER_ROW = [
     'MotionOutputClass::ReferenceRegisters', '24', '1',
     '450', '454', '458', '462', '1', '2', '4', '8',
     '335', '466', '1047', '1074', '1259',
-    '6', '4', '5', '5', '1', '252', '216', 'true', '8', '2180']
+    '6', '4', '5', '5', '1', '252', '216', 'true', '8',
+    '7', '5', '6', 'true', '2180']
 
 # The sixteen rows the capture-derived table emitted (commit 66d91a4), without
-# the trailing observed_scene_draws field the archive-wide table added. Their
-# fields and relative order must survive regeneration from the archive.
+# the trailing observed_scene_draws field the archive-wide table added and the
+# four current-depth fields (temporal step 1) before it. Their fields and
+# relative order must survive regeneration from the archive.
 OBSERVED_ROWS = [
     ['0x494fe349b8bc12ecull', '526', '0xfffe0300u', '0xfffdabd910793abaull', '1648', '0xffff0300u', 'MotionOutputClass::RelocatedRegistersWithBranches', '24', '1', '450', '454', '458', '462', '1', '2', '4', '8', '335', '466', '1280', '1313', '1647', '6', '4', '6', '6', '1', '252', '216', 'true', '8'],
     ['0x53a0a641107ed76cull', '526', '0xfffe0300u', '0x8759c7838bbc86c2ull', '1260', '0xffff0300u', 'MotionOutputClass::ReferenceRegisters', '24', '1', '450', '454', '458', '462', '1', '2', '4', '8', '335', '466', '1047', '1074', '1259', '6', '4', '5', '5', '1', '252', '216', 'true', '8'],
@@ -774,7 +776,7 @@ class GeneratedHeaderTests(unittest.TestCase):
         assert classes.count('RelocatedRegisters') == 101
         assert classes.count('RelocatedRegistersWithBranches') == 12
         # Two clip-row families; the bound flag follows the matrix register.
-        assert {(row[7], row[-3]) for row in self.rows} == {('24', 'true'), ('0', 'false')}
+        assert {(row[7], row[-7]) for row in self.rows} == {('24', 'true'), ('0', 'false')}
         assert sum(row[7] == '0' for row in self.rows) == 62
         spaced = [(row[0][2:-3], row[3][2:-3]) for row in self.rows
                   if [int(v) for v in row[9:13]] != list(range(int(row[9]), int(row[9]) + 16, 4))]
@@ -807,19 +809,52 @@ class GeneratedHeaderTests(unittest.TestCase):
         assert draws[:16] == OBSERVED_DRAWS and all(d == 0 for d in draws[16:])
 
     def test_observed_rows_keep_their_fields_and_order(self):
-        assert [row[:-1] for row in self.rows[:16]] == OBSERVED_ROWS
+        assert [row[:-5] for row in self.rows[:16]] == OBSERVED_ROWS
 
     def test_every_row_has_the_documented_field_count(self):
-        assert len(HEADER_FIELDS) == 26 and HEADER_FIELDS[-1] == 'observed_scene_draws'
+        assert len(HEADER_FIELDS) == 30 and HEADER_FIELDS[-1] == 'observed_scene_draws'
+        assert HEADER_FIELDS[-5:-1] == ('vertex_depth_output_register', 'depth_texcoord_index',
+                                        'pixel_depth_input_register', 'depth_output')
         for row in self.rows:
             assert len(row) == len(ARGON_HEADER_ROW), row
             # Four position DP4 offsets, then the XYZW single-lane masks.
             assert row[13:17] == ['1', '2', '4', '8']
             assert [int(value) for value in row[9:13]] == sorted(
                 int(value) for value in row[9:13])
-            assert row[-3] in ('true', 'false')
-            assert row[-5:-3] == ['252', '216']
-            assert row[-2] == '8'
+            assert row[-7] in ('true', 'false')
+            assert row[-9:-7] == ['252', '216']
+            assert row[-6] == '8'
+            assert row[-2] in ('true', 'false')
+
+    def test_depth_fields_follow_the_plan(self):
+        """The current-depth interpolator (RT2): registers free in every program
+        of the row, the TEXCOORD index free across the VS/PS sharing component,
+        rows sharing a program agreeing on its side, and no row left motion-only
+        in the archive-wide table (every program spares a register)."""
+        plan = depth_plan(self.result)
+        programs = self.result['programs']
+        by_vs, by_ps = {}, {}
+        for row in self.rows:
+            vs, ps = row[0][2:-3], row[3][2:-3]
+            expected = plan[(vs, ps)]
+            assert row[-5:-1] == [str(expected['vertex_depth_output_register']), str(expected['depth_texcoord_index']),
+                                  str(expected['pixel_depth_input_register']),
+                                  'true' if expected['depth_output'] else 'false'], (vs, ps, row[-5:-1])
+            vertex_register, index, pixel_register = int(row[-5]), int(row[-4]), int(row[-3])
+            motion_register, motion_index, motion_input = int(row[22]), int(row[23]), int(row[24])
+            assert row[-2] == 'true', 'every archive row carries the depth output'
+            assert vertex_register < 12 and vertex_register != motion_register
+            assert index < 16 and index != motion_index
+            assert pixel_register < 10 and pixel_register != motion_input
+            assert vertex_register in programs['vs_' + vs]['free_output_registers']
+            assert pixel_register in programs['ps_' + ps]['free_input_registers']
+            assert index not in programs['vs_' + vs]['declared_texcoord_output_indices']
+            assert index not in programs['ps_' + ps]['declared_texcoord_input_indices']
+            assert by_vs.setdefault(vs, row[-5:-3]) == row[-5:-3], 'rows sharing a VS agree on the vertex side'
+            assert by_ps.setdefault(ps, row[-4:-1]) == row[-4:-1], 'rows sharing a PS agree on the pixel side'
+        assert sum(row[-2] == 'true' for row in self.rows) == 169 and DEPTH_NONE == 255
+        assert any(line.startswith('// vertex_depth_output_register / depth_texcoord_index')
+                   for line in self.text.splitlines())
 
     def test_argon_row_matches_the_reference_numbers(self):
         assert ARGON_HEADER_ROW in self.rows

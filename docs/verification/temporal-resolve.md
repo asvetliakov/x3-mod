@@ -70,6 +70,32 @@ resize, explicit reset and
 new scene epoch. The fixture unbinds/releases all default-pool objects, executes
 actual D3D9 Reset, recreates shader resources and repeats every numeric case.
 
+## TemporalPass route-input cases (step 2)
+
+The production runtime fixture (`verification/probe/temporal_pass_fixture.cpp`,
+runner `run_temporal_pass.py`) now passes **154 numerical checks and 158
+complete state comparisons** (142 `SAMPLE` lines) across two device
+generations; the earlier 98/102 regression cases are unchanged inside it. The
+new cases exercise the inputs the live route provides at the pre-bloom copy
+point, on the same hidden 16x16 pure device:
+
+| Case | Result | What it establishes |
+| --- | --- | --- |
+| 8-bit main surface copy | all 768 RGB samples within one FP16 ulp of `v/255`, alpha one | A plain `CreateRenderTarget` A8R8G8B8 surface (not a texture level) filled with every 8-bit code is copied by `StretchRect` into the FP16 scratch under hostile sRGB sampler/write states; the backend truncates (421 of 768 also match round-to-nearest); max absolute error 0.000486 < 2^-11; no gamma curve |
+| Copy path equals FP16 path | bit-exact color and depth, first frame and accumulation | An FP16 texture holding the detected conversion of the same bytes resolves to identical bits through a second `TemporalPass` instance |
+| Copy-back round trip | exact bytes | `StretchRect` of `Output::color_surface` back into the 8-bit target restores the original 256 pixels exactly; `color_surface` is level 0 of `Output::color` |
+| Input exclusivity | `E_INVALIDARG` | Both or neither color inputs, both or neither depth inputs, resolved surface or owned depth history as input, wrong depth format |
+| R32F depth equals decoded D24X8 | bit-exact color; depth max error 2.98e-8 (half a D24 step) | One synthetic scene (clear 0.5, quad 0.25 shrinking between frames) rasterized into the D24X8 snapshot and modeled into R32F; outside/inside stable regions blend to 0.5, the uncovered region rejects to 0.25 |
+| Depth-sentinel reactive | 0.25 / -1 / 0.5 / 0.25 / 0.375 | Sentinel pixel resolves current-only and its -1 reaches the depth history; the opaque neighbor accumulates; a motion correspondence onto a previous sentinel tap contributes nothing; a correspondence onto opaque history keeps accumulating; the policy establishes history without a mask; it refuses the D24X8 input; transitions to and from it invalidate |
+| Route cut | current-only, then resumes | `cut=true` rejects history for that frame only |
+| Motion-path jitter | 0.625 / 0.625 / 0.25 / 0.25 / 0.625 | Previous jitter +1 with RG at the pixel's own center selects the neighbor once; adding current jitter changes nothing on the motion path; current jitter alone leaves the motion path in place while it moves the camera path; RG that already subtracted the previous jitter cancels it |
+| Reset continuity | history rebuilt without `initialize` | One pass accumulates, `before_reset` pends and refuses runs, `after_reset(E_FAIL)` keeps refusing, a real device `Reset` then `after_reset(S_OK)` resumes with invalid history and accumulates again |
+
+Evidence: [report](../../verification/results/temporal-pass.txt) and
+[summary](../../verification/results/temporal-pass-summary.json). The
+conversion-rule detection is printed as `COPY rule=...`; the D24 comparison
+as `DEPTH decoded_vs_r32f_max_error=...`.
+
 ## Reproduce
 
 ```sh

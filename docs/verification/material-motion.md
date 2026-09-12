@@ -9,12 +9,12 @@ previous homogeneous clip coordinates, and writes the existing RGBA32F
 previous-UV / previous-depth / validity ABI to COLOR1. It makes no D3D calls;
 the live route binds its output (see [motion-output.md](motion-output.md)).
 
-The Argon reference pair passes the full inventory: **1,182 checks, 2,952
+The Argon reference pair passes the full inventory: **1,428 checks, 2,952
 analytic motion samples, 101,318,656 color-component comparisons, and 164
 bilateral D24 EQUAL cases** across 82 configurations, on normal and pure
 hardware vertex-processing devices with an actual Reset on each. Every other
 table row then passes the same color/motion/depth comparison on a third
-device: **169 of 169 rows, 1,230 configurations, 17,413 checks, 44,280
+device: **169 of 169 rows, 1,230 configurations, 21,103 checks, 44,280
 analytic samples, 15,114,240 color components, 2,460 bilateral cases**, all
 with identical color, zero replay-reference difference and the same analytic
 maxima as the Argon row (0.00086 px UV, 8.7e-7 depth; the review-15 rerun
@@ -143,7 +143,26 @@ error from a transformer-only discrepancy.
 
 The final analytic bounds are **0.005 pixel in either UV axis and `2e-6` previous
 device depth**, with observed maxima `0.00100856683` pixel and
-`8.65642841e-7` depth. RGBA32F storage alone is not a claim of exact interpolants.
+`8.65642841e-7` depth.
+
+**Current depth (RT2, temporal step 1).** Every variant draw also binds an
+R32F third target (cleared to 1.0) that the pixel variant writes with the
+current clip z/w. Three checks per configuration: the covered/uncovered
+pattern (device depth in [0,1] and not the clear wherever the original
+covered the pixel, the clear elsewhere); the authored replay drawn with
+`ZFUNC EQUAL` over the original's D24 depth with previous rows := current
+rows (mode 1), whose `.z` output is the rasterized z/w, compared over every
+covered pixel (**exact**, maximum 0 over 7,755,681 pixels in the Argon inventory);
+and nine analytic samples per configuration against the double-precision
+`z/w` of the current rows at the object point behind the sample, with the
+perspective configurations tilting the current clip z by `0.05·y`
+(`depth_slope`) so the depth varies over the image. The analytic bound is
+`4e-6` (the route oracle's): the pixel-side `rcp`/`mul` of the interpolated
+z and w lands up to `2.56e-06` from the double value on this backend
+(`2.36e-6` on the first run against a `2e-6` bound), while the replay path,
+which performs the same division, agrees exactly. Together with the bilateral
+D24 EQUAL controls this proves that RT2 carries the depth the rasterizer
+stores for the same sample. RGBA32F storage alone is not a claim of exact interpolants.
 The two-pass reference is a detached GPU reference, without geometry leases,
 object-history lookup or application-admission overhead.
 
@@ -155,8 +174,9 @@ stationary, FLOAT16_4 perspective + translation + jitter, and the same with
 unknown history (mode 0). Light loop count `i0.x = 0` throughout; the same
 synthetic geometry, textures and constants as the Argon inventory. Per
 configuration: one full-image color comparison, the two-pass replay
-reference, nine analytic samples, two bilateral D24 EQUAL controls and the
-changed-depth negative control. Class C rows repeat the three configurations
+reference, nine analytic samples, the three RT2 current-depth checks (pattern,
+exact replay comparison, nine analytic z/w samples at 4e-6), two bilateral
+D24 EQUAL controls and the changed-depth negative control. Class C rows repeat the three configurations
 under pixel booleans `b0/b1` = 0/0, 1/0, 0/1 and 1/1 (`SetPixelShaderConstantB`,
 the `booleans` bitmask in the CONFIG line), so color identity and motion are
 proven in every branch combination; before each format's configurations the
@@ -169,11 +189,11 @@ Every row of a class produced the same inventory; the table gives the per-row
 numbers by class (169 rows: 56 A, 101 B, 12 C; row order is the table order,
 observed rows first).
 
-| Class | Rows | Configs per row | Booleans | Checks | Samples | Color components | Min covered | Max UV px | Max depth | Replay max |
-| :-: | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| A | 56 | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
-| B | 101 | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
-| C | 12 | 24 | 0/1/2/3 | 339 | 864 | 294,912 | 912 | 0.00086 | 8.66e-07 | 0 |
+| Class | Rows | Configs per row | Booleans | Checks | Samples | Color components | Min covered | Max UV px | Max depth | Replay max | RT2 samples | RT2 max |
+| :-: | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| A | 56 | 6 | 0 | 103 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 | 54 | 2.56e-06 |
+| B | 101 | 6 | 0 | 103 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 | 54 | 2.56e-06 |
+| C | 12 | 24 | 0/1/2/3 | 411 | 864 | 294,912 | 912 | 0.00086 | 8.66e-07 | 0 | 216 | 2.56e-06 |
 
 The sixteen rows the captured session drew (the previous table, unchanged
 fields and order) are rows 0–15:

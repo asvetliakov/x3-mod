@@ -2,8 +2,12 @@
 // the actual proxy DLL. The reviewed shader pair is read from LOCAL files at
 // runtime; no game bytes are embedded. Geometry, textures and constants are
 // original. Modes: "production" (plain build/d3d9.dll: fill, restoration,
-// Reset, no scene recognition) and "seam" (fixture DLL exporting the
-// X3M_MOTION_OUTPUT_FIXTURE seam: synthetic scope + own background signature).
+// Reset, sentinel-only routing) and "seam" (fixture DLL exporting the
+// X3M_MOTION_OUTPUT_FIXTURE seam: synthetic scope, RT1/RT2 readback, last
+// pixel ABI upload). With X3M_MOTION_JITTER=1 the route jitters every scene
+// draw; the fixture then expects the rasterized coverage at the jittered
+// sample positions (Halton 2,3 in raster pixels, +X right, +Y down) and the
+// motion readback from the UNJITTERED previous rows with zero prior jitter.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <d3d9.h>
@@ -22,7 +26,10 @@
 using Words = std::vector<std::uint32_t>;
 namespace {
 unsigned checks = 0, restorations = 0, motion_checked = 0, motion_matched = 0, frames_verified = 0;
-double max_uv_pixels = 0, max_depth_error = 0;
+unsigned depth_checked = 0, depth_written = 0, coverage_checked = 0, coverage_ambiguous = 0, coverage_frames = 0;
+double max_uv_pixels = 0, max_depth_error = 0, max_current_depth_error = 0;
+// Halton(2,3) sample `index` (1-based) centred on zero; the route's sequence.
+double halton(unsigned index, unsigned base) { double f = 1, r = 0; while (index) { f /= base; r += f * (index % base); index /= base; } return r; }
 void api(HRESULT h, const char* what) {
     if (FAILED(h)) { std::printf("API FAIL %s %08lx\n", what, h); throw std::runtime_error(what); }
 }
@@ -68,13 +75,13 @@ const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 constexpr D3DRENDERSTATETYPE watched_states[] = {
     D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ALPHATESTENABLE, D3DRS_ALPHABLENDENABLE, D3DRS_CULLMODE, D3DRS_FILLMODE,
     D3DRS_COLORWRITEENABLE, D3DRS_SCISSORTESTENABLE, D3DRS_STENCILENABLE, D3DRS_FOGENABLE, D3DRS_SRGBWRITEENABLE,
-    D3DRS_CLIPPLANEENABLE, D3DRS_COLORWRITEENABLE1, D3DRS_ZFUNC, D3DRS_LIGHTING};
+    D3DRS_CLIPPLANEENABLE, D3DRS_COLORWRITEENABLE1, D3DRS_ZFUNC, D3DRS_LIGHTING, D3DRS_COLORWRITEENABLE2};
 constexpr unsigned watched_count = sizeof(watched_states) / sizeof(watched_states[0]);
 
 // Every state the route or its fill may touch. Getters add references that
 // are dropped immediately: only pointer identity is compared.
 struct Snapshot {
-    IDirect3DSurface9* rt[2]{}; IDirect3DSurface9* depth = nullptr;
+    IDirect3DSurface9* rt[3]{}; IDirect3DSurface9* depth = nullptr;
     D3DVIEWPORT9 viewport{}; RECT scissor{}; DWORD fvf = 0;
     IDirect3DVertexDeclaration9* declaration = nullptr; IDirect3DVertexShader9* vs = nullptr; IDirect3DPixelShader9* ps = nullptr;
     IDirect3DVertexBuffer9* stream = nullptr; UINT offset = 0, stride = 0;
@@ -90,7 +97,9 @@ struct Object {
 };
 bool covers_a(double ox, double oy) { return ox >= -1 && oy <= 1 && ox - oy <= 2; }
 bool covers_b(double ox, double oy) { return ox >= -.9 && oy <= .9 && ox - oy <= -1.2; }
-struct DrawRecord { Object* object; float t, p, zo; bool routed, matched; float pt, pp, pzo; };
+// `flat`: drawn with the flat pixel program (never routed, flat colour);
+// `jittered`: the route jitters this draw's rows (scene draw with a table VS).
+struct DrawRecord { Object* object; float t, p, zo; bool routed, matched; float pt, pp, pzo; bool flat = false; bool jittered = false; };
 enum class Alter { None, Blend, FlatPixel };
 
 struct Fixture {
@@ -98,7 +107,12 @@ struct Fixture {
     HMODULE runtime = nullptr;
     void (*configure)(const x3m::MotionOutputFixtureConfig*) = nullptr;
     HRESULT (*readback)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
-    bool seam = false, enabled = false;
+    HRESULT (*readback_depth)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
+    HRESULT (*last_pixel_abi)(IDirect3DDevice9*, float*, unsigned) = nullptr;
+    bool seam = false, enabled = false, jitter = false;
+    unsigned jitter_samples = 8;
+    // This frame's and the previous frame's route jitter in raster pixels.
+    double jx = 0, jy = 0, pjx = 0, pjy = 0;
     HWND window = nullptr; D3DPRESENT_PARAMETERS pp{};
     Com<IDirect3D9> factory; Com<IDirect3DDevice9> d;
     Com<IDirect3DVertexShader9> vs; Com<IDirect3DPixelShader9> ps, flat;
@@ -193,20 +207,31 @@ struct Fixture {
         for (auto s : {D3DRS_ALPHABLENDENABLE, D3DRS_ALPHATESTENABLE, D3DRS_SEPARATEALPHABLENDENABLE, D3DRS_FOGENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_SCISSORTESTENABLE, D3DRS_STENCILENABLE, D3DRS_DITHERENABLE, D3DRS_CLIPPLANEENABLE, D3DRS_LIGHTING})
             api(d->SetRenderState(s, FALSE), "SetRenderState off");
         api(d->SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID), "fill"); api(d->SetRenderState(D3DRS_COLORWRITEENABLE, 15), "write");
-        api(d->SetRenderState(D3DRS_COLORWRITEENABLE1, 15), "write1"); api(d->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE), "cull");
+        api(d->SetRenderState(D3DRS_COLORWRITEENABLE1, 15), "write1"); api(d->SetRenderState(D3DRS_COLORWRITEENABLE2, 15), "write2"); api(d->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE), "cull");
         api(d->SetRenderState(D3DRS_ZENABLE, TRUE), "z"); api(d->SetRenderState(D3DRS_ZWRITEENABLE, TRUE), "zwrite");
         api(d->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL), "zfunc");
     }
     // Deliberately awkward state before the initial Clear: the fill must put
     // every one of these back, including scissor, stream 0 and the declaration.
+    // The scissor test itself is enabled after the Clear (frame_begin), so the
+    // Clear covers the whole target and the coverage oracle can predict every
+    // pixel no scene draw touches; the fill still sees and restores it.
     void hostile_states() {
         api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE), "h1"); api(d->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE), "h2");
         api(d->SetRenderState(D3DRS_CULLMODE, D3DCULL_CW), "h3"); api(d->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME), "h4");
-        api(d->SetRenderState(D3DRS_COLORWRITEENABLE, 7), "h5"); api(d->SetRenderState(D3DRS_SCISSORTESTENABLE, TRUE), "h6");
+        api(d->SetRenderState(D3DRS_COLORWRITEENABLE, 7), "h5"); api(d->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE), "h6");
         api(d->SetRenderState(D3DRS_STENCILENABLE, TRUE), "h7"); api(d->SetRenderState(D3DRS_FOGENABLE, TRUE), "h8");
-        api(d->SetRenderState(D3DRS_SRGBWRITEENABLE, TRUE), "h9"); api(d->SetRenderState(D3DRS_CLIPPLANEENABLE, 1), "h10");
+        // SRGBWRITEENABLE stays off here: this backend defers a full Clear and
+        // encodes its colour with the sRGB state of the first draw that follows,
+        // which with the route on is the fill (sRGB off) and with it off the
+        // hostile background draw, so a hostile TRUE would make the clear colour
+        // differ between route off and on (ff203040 versus its sRGB encoding
+        // ff637889) although no routed pixel changes. The fill's restoration of
+        // the state is still compared; its TRUE case was proven while the Clear
+        // was scissored (checkpoint B1).
+        api(d->SetRenderState(D3DRS_SRGBWRITEENABLE, FALSE), "h9"); api(d->SetRenderState(D3DRS_CLIPPLANEENABLE, 1), "h10");
         api(d->SetRenderState(D3DRS_ZENABLE, FALSE), "h11"); api(d->SetRenderState(D3DRS_ZWRITEENABLE, FALSE), "h12");
-        api(d->SetRenderState(D3DRS_COLORWRITEENABLE1, 3), "h13");
+        api(d->SetRenderState(D3DRS_COLORWRITEENABLE1, 3), "h13"); api(d->SetRenderState(D3DRS_COLORWRITEENABLE2, 5), "h14");
         const RECT scissor{8, 8, 40, 40}; api(d->SetScissorRect(&scissor), "SetScissorRect");
         const D3DVIEWPORT9 vp{0, 0, W, H, 0, 1}; api(d->SetViewport(&vp), "SetViewport");
     }
@@ -214,6 +239,7 @@ struct Fixture {
         Snapshot s{};
         api(d->GetRenderTarget(0, &s.rt[0]), "GetRenderTarget0"); s.rt[0]->Release();
         if (SUCCEEDED(d->GetRenderTarget(1, &s.rt[1])) && s.rt[1]) s.rt[1]->Release();
+        if (SUCCEEDED(d->GetRenderTarget(2, &s.rt[2])) && s.rt[2]) s.rt[2]->Release();
         if (SUCCEEDED(d->GetDepthStencilSurface(&s.depth)) && s.depth) s.depth->Release();
         api(d->GetViewport(&s.viewport), "GetViewport"); api(d->GetScissorRect(&s.scissor), "GetScissorRect");
         api(d->GetFVF(&s.fvf), "GetFVF");
@@ -231,7 +257,7 @@ struct Fixture {
     void compare(const Snapshot& x, const Snapshot& y, const char* label) {
         unsigned differences = 0;
         auto differs = [&](bool condition, const char* what) { if (condition) { ++differences; std::printf("RESTORE_DIFF %s %s\n", label, what); } };
-        differs(x.rt[0] != y.rt[0], "rt0"); differs(x.rt[1] != y.rt[1], "rt1"); differs(x.depth != y.depth, "depth");
+        differs(x.rt[0] != y.rt[0], "rt0"); differs(x.rt[1] != y.rt[1], "rt1"); differs(x.rt[2] != y.rt[2], "rt2"); differs(x.depth != y.depth, "depth");
         differs(std::memcmp(&x.viewport, &y.viewport, sizeof x.viewport) != 0, "viewport");
         differs(std::memcmp(&x.scissor, &y.scissor, sizeof x.scissor) != 0, "scissor");
         differs(x.fvf != y.fvf, "fvf"); differs(x.declaration != y.declaration, "declaration");
@@ -250,12 +276,18 @@ struct Fixture {
     }
     void frame_begin() {
         records.clear(); draw_index = 0;
+        // The route advances its Halton sequence at every latching Clear; every
+        // fixture frame latches, so frame f uses sample (f % samples) + 1.
+        pjx = jx; pjy = jy;
+        if (jitter) { const unsigned index = unsigned(frame % jitter_samples) + 1; jx = halton(index, 2) - .5; jy = halton(index, 3) - .5; }
+        else jx = jy = 0;
         hostile_states();
         api(d->SetStreamSource(0, vb_a.p, 0, 24), "SetStreamSource"); api(d->SetVertexDeclaration(declaration.p), "SetVertexDeclaration");
         api(d->SetVertexShader(vs.p), "SetVertexShader"); api(d->SetPixelShader(flat.p), "SetPixelShader flat");
         rows(0, 0, 0);
-        const Snapshot before = snapshot();
         api(d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0xff203040, 1, 0), "Clear initial");
+        api(d->SetRenderState(D3DRS_SCISSORTESTENABLE, TRUE), "h6 scissor");
+        const Snapshot before = snapshot();
         api(d->BeginScene(), "BeginScene");
         // Background draw: the pending sentinel fill runs inside this hook.
         scope(nullptr);
@@ -278,8 +310,8 @@ struct Fixture {
         compare(before, snapshot(), "draw");
         if (alter == Alter::Blend) api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE), "blend off");
         const bool live = enabled && seam;
-        records.push_back({&o, t, p, zo, live && routed, live && matched, o.rt, o.rp, o.rzo});
-        std::printf("EXPECT frame=%llu index=%u object=%s routed=%u matched=%u\n", frame, draw_index, o.name, live && routed, live && matched);
+        records.push_back({&o, t, p, zo, live && routed, live && matched, o.rt, o.rp, o.rzo, alter == Alter::FlatPixel, enabled && jitter});
+        std::printf("EXPECT frame=%llu index=%u object=%s routed=%u matched=%u jittered=%u\n", frame, draw_index, o.name, live && routed, live && matched, enabled && jitter);
         if (live && routed && known) { o.recorded = true; o.rt = t; o.rp = p; o.rzo = zo; }
     }
     void write_reserved() {
@@ -288,47 +320,127 @@ struct Fixture {
         api(d->SetVertexShaderConstantF(252, v, 4), "write c252"); api(d->SetPixelShaderConstantF(216, q, 2), "write c216");
         reserved_written = true;
     }
-    std::uint64_t color_hash() {
+    std::vector<DWORD> color_image() {
         Com<IDirect3DSurface9> sys; api(d->CreateOffscreenPlainSurface(W, H, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &sys.p, nullptr), "CreateOffscreenPlainSurface");
         api(d->GetRenderTargetData(back.p, sys.p), "GetRenderTargetData color");
         D3DLOCKED_RECT lock{}; api(sys->LockRect(&lock, nullptr, D3DLOCK_READONLY), "LockRect color");
-        std::uint64_t h = 14695981039346656037ull;
-        for (UINT y = 0; y < H; ++y) { auto row = static_cast<const unsigned char*>(lock.pBits) + y * lock.Pitch; for (UINT i = 0; i < W * 4; ++i) { h ^= row[i]; h *= 1099511628211ull; } }
+        std::vector<DWORD> image(std::size_t(W) * H);
+        for (UINT y = 0; y < H; ++y) std::memcpy(&image[std::size_t(y) * W], static_cast<const unsigned char*>(lock.pBits) + y * lock.Pitch, W * 4);
         sys->UnlockRect();
+        return image;
+    }
+    static std::uint64_t color_hash(const std::vector<DWORD>& image) {
+        std::uint64_t h = 14695981039346656037ull;
+        for (DWORD value : image) for (unsigned k = 0; k < 4; ++k) { h ^= (value >> (8 * k)) & 255u; h *= 1099511628211ull; }
         return h;
+    }
+    // Object-space point behind raster sample (px, py) under rows (t, p).
+    static void object_point(double px, double py, float t, float p, double& ox, double& oy, double& wc) {
+        const double nx = 2 * px / W - 1, ny = 1 - 2 * py / H;
+        ox = (nx - t) / (1 - p * nx); wc = 1 + p * ox; oy = ny * wc;
+    }
+    // Signed distance (NDC units, object space) to the nearest edge of the
+    // object's triangle: pixels within `eps` of an edge are ambiguous.
+    static double edge_distance(const Object& o, double ox, double oy) {
+        const bool a = o.covers == covers_a;
+        const double e1 = ox - (a ? -1. : -.9), e2 = (a ? 1. : .9) - oy, e3 = (a ? 2. : -1.2) - (ox - oy);
+        return std::min(std::fabs(e1), std::min(std::fabs(e2), std::fabs(e3) / 1.4142135623730951));
+    }
+    // Rasterized coverage against the CPU reference at the jittered sample
+    // positions: the route moves every scene draw's rows by (jx, jy) raster
+    // pixels (+X right, +Y down), so pixel (x, y) sees what the unjittered
+    // geometry has at (x - jx, y - jy). Per pixel the front-most passing scene
+    // draw decides the colour class: material program (any colour other than
+    // the background and flat colours), flat program (exactly its colour) or
+    // none. The background colour is the initial Clear as this backend stores
+    // it (a deferred full Clear takes the sRGB write state of the next draw),
+    // read from the frame's own first uncovered pixel; the hostile background draw
+    // is a wireframe of the A triangle at rows 0, whose lines lie on the x=0
+    // column, the y=0 row and the lower-right corner, all outside the hostile
+    // scissor rect (8,8)-(40,40) it is drawn under, so no other pixel differs
+    // from the Clear. Pixels within 0.03 px of any scene-draw edge are
+    // skipped; all others must agree. Runs in every case: with the route off
+    // or jitter off the offsets are zero and the oracle is its own control; a
+    // wrong jitter sign or scale would move every scene edge by up to 1 px
+    // and fail here.
+    void verify_coverage(const std::vector<DWORD>& image) {
+        constexpr double eps = 1e-3; // NDC units at 64 px: about 0.03 px.
+        constexpr DWORD flat_color = 0xff8040bf; // (.5, .25, .75) under scene states.
+        std::vector<unsigned char> expected(std::size_t(W) * H, 3); // 3 = ambiguous edge pixel.
+        unsigned ambiguous = 0;
+        bool have_background = false; DWORD background_color = 0;
+        for (UINT y = 0; y < H; ++y) for (UINT x = 0; x < W; ++x) {
+            double depth_value = 1; unsigned kind = 0; bool edge = false;
+            for (const auto& r : records) {
+                double ox, oy, wc;
+                object_point(x - (r.jittered ? jx : 0), y - (r.jittered ? jy : 0), r.t, r.p, ox, oy, wc);
+                if (edge_distance(*r.object, ox, oy) < eps) edge = true;
+                if (!r.object->covers(ox, oy)) continue;
+                const double z = (.5 + r.zo) / wc;
+                if (z > depth_value + 1e-7) continue;
+                depth_value = z; kind = r.flat ? 2 : 1;
+            }
+            if (edge) { ++ambiguous; continue; }
+            expected[std::size_t(y) * W + x] = static_cast<unsigned char>(kind);
+            if (kind == 0 && !have_background) { have_background = true; background_color = image[std::size_t(y) * W + x]; }
+        }
+        require(have_background && background_color != flat_color, "an uncovered pixel gives the frame's background colour");
+        unsigned checked = 0, mismatches = 0, material = 0, background = 0;
+        for (UINT y = 0; y < H; ++y) for (UINT x = 0; x < W; ++x) {
+            const unsigned kind = expected[std::size_t(y) * W + x];
+            if (kind == 3) continue;
+            const DWORD actual = image[std::size_t(y) * W + x];
+            const unsigned gpu = actual == flat_color ? 2 : actual == background_color ? 0 : 1;
+            ++checked; material += gpu == 1; background += gpu == 0;
+            if (gpu != kind) { if (++mismatches <= 8) std::printf("COVERAGE_DIFF frame=%llu x=%u y=%u actual=%08lx expected_kind=%u\n", frame, x, y, actual, kind); }
+        }
+        std::printf("COVERAGE frame=%llu jitter=%u jx=%.6f jy=%.6f background_color=%08lx checked=%u ambiguous=%u material=%u background=%u mismatches=%u\n", frame, jitter, jx, jy, background_color, checked, ambiguous, material, background, mismatches);
+        require(!mismatches && checked > 0 && material > 0 && background > 0 && ambiguous < W * H / 8, "rasterized coverage matches the CPU reference at the jittered sample positions");
+        coverage_checked += checked; coverage_ambiguous += ambiguous; ++coverage_frames;
     }
     // CPU oracle: per pixel, replay the frame's draws in order with the depth
     // test, writing the previous-UV/depth ABI for matched routed draws and the
     // sentinel for routed-unmatched ones; unrouted draws only touch depth.
     void verify_motion() {
         if (!(enabled && seam)) return;
-        std::vector<float> data(std::size_t(W) * H * 4); unsigned w = 0, h = 0;
+        std::vector<float> data(std::size_t(W) * H * 4), depth_data(std::size_t(W) * H); unsigned w = 0, h = 0;
         api(readback(d.p, data.data(), unsigned(data.size()), &w, &h), "fixture readback");
         require(w == W && h == H, "motion target matches the main dimensions");
-        unsigned checked = 0, skipped = 0, sentinel = 0, matched = 0, mismatches = 0;
+        api(readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h), "fixture depth readback");
+        require(w == W && h == H, "depth target matches the main dimensions");
+        // The route must upload zero prior jitter in c216.zw: history rows are
+        // unjittered, so the fragment's UV is already the previous unjittered UV.
+        if (records.size() && std::any_of(records.begin(), records.end(), [](const DrawRecord& r) { return r.routed; })) {
+            float abi[8]{}; api(last_pixel_abi(d.p, abi, 8), "last pixel ABI");
+            require(abi[0] == 1.f / W && abi[1] == 1.f / H && abi[2] == 0 && abi[3] == 0, "routed draws upload inverse size and zero prior jitter in c216");
+        }
+        unsigned checked = 0, skipped = 0, sentinel = 0, matched = 0, mismatches = 0, depth_mismatches = 0, written = 0;
         for (UINT y = 0; y < H; ++y) for (UINT x = 0; x < W; ++x) {
-            double depth_value = 1; double expected[4] = {0, 0, 0, -1}; bool ambiguous = false, is_match = false;
+            double depth_value = 1, expected_depth = -1; double expected[4] = {0, 0, 0, -1}; bool ambiguous = false, is_match = false;
             for (const auto& r : records) {
                 // D3D9 raster samples sit at integer window coordinates (pixel i is
-                // NDC 2i/W-1). Coverage must agree at the sample and at +-1.5 pixel
-                // offsets; edge pixels are skipped.
+                // NDC 2i/W-1); a jittered draw's geometry is displaced by (jx, jy)
+                // pixels, so its sample is taken at (x - jx, y - jy). Coverage must
+                // agree at the sample and at +-1.5 pixel offsets; edge pixels are skipped.
+                const double sx = x - (r.jittered ? jx : 0), sy = y - (r.jittered ? jy : 0);
                 bool covered = false, all_same = true;
                 for (int k = 0; k < 5; ++k) {
-                    const double px = x + (k == 1 ? 1.5 : k == 2 ? -1.5 : 0), py = y + (k == 3 ? 1.5 : k == 4 ? -1.5 : 0);
-                    const double nx = 2 * px / W - 1, ny = 1 - 2 * py / H;
-                    const double ox = (nx - r.t) / (1 - r.p * nx), wc = 1 + r.p * ox, oy = ny * wc;
+                    const double px = sx + (k == 1 ? 1.5 : k == 2 ? -1.5 : 0), py = sy + (k == 3 ? 1.5 : k == 4 ? -1.5 : 0);
+                    double ox, oy, wc; object_point(px, py, r.t, r.p, ox, oy, wc);
                     const bool c = r.object->covers(ox, oy);
                     if (k == 0) covered = c; else all_same = all_same && c == covered;
                 }
                 if (!all_same) { ambiguous = true; break; }
                 if (!covered) continue;
-                const double nx = 2.0 * x / W - 1, ny = 1 - 2.0 * y / H;
-                const double ox = (nx - r.t) / (1 - r.p * nx), wc = 1 + r.p * ox, oy = ny * wc;
+                double ox, oy, wc; object_point(sx, sy, r.t, r.p, ox, oy, wc);
                 const double z = (.5 + r.zo) / wc;
                 if (z > depth_value + 1e-7) continue; // LESSEQUAL failed
                 depth_value = z;
                 if (!r.routed) continue;
+                expected_depth = z; // Every routed draw writes RT2 (the reviewed row has depth_output).
                 if (!r.matched) { expected[0] = expected[1] = expected[2] = 0; expected[3] = -1; is_match = false; continue; }
+                // Previous rows are the unjittered rows of the earlier frame and the
+                // prior jitter uploaded is zero, so the expected UV carries no jitter term.
                 const double xp = ox + r.pt, wp = 1 + r.pp * ox, yp = oy, zp = .5 + r.pzo;
                 expected[0] = .5 * xp / wp + .5 + .5 / W; expected[1] = -.5 * yp / wp + .5 + .5 / H; expected[2] = zp / wp; expected[3] = 1;
                 is_match = true;
@@ -345,14 +457,24 @@ struct Fixture {
                 if (ok) { max_uv_pixels = std::max(max_uv_pixels, std::max(eu, ev)); max_depth_error = std::max(max_depth_error, ed); }
             }
             if (!ok) { if (++mismatches <= 8) std::printf("MOTION_DIFF frame=%llu x=%u y=%u actual=%.9g,%.9g,%.9g,%.9g expected=%.9g,%.9g,%.9g,%.9g\n", frame, x, y, actual[0], actual[1], actual[2], actual[3], expected[0], expected[1], expected[2], expected[3]); }
+            // RT2: device depth z/w of the front-most routed draw, sentinel elsewhere.
+            const float current = depth_data[std::size_t(y) * W + x];
+            ++depth_checked;
+            bool depth_ok;
+            if (expected_depth < 0) depth_ok = current == -1;
+            else { ++written; ++depth_written; const double e = std::fabs(current - expected_depth); depth_ok = std::isfinite(current) && e <= 4e-6; if (depth_ok) max_current_depth_error = std::max(max_current_depth_error, e); }
+            if (!depth_ok) { if (++depth_mismatches <= 8) std::printf("DEPTH_DIFF frame=%llu x=%u y=%u actual=%.9g expected=%.9g\n", frame, x, y, current, expected_depth); }
         }
-        std::printf("MOTION frame=%llu checked=%u skipped=%u sentinel=%u matched=%u mismatches=%u\n", frame, checked, skipped, sentinel, matched, mismatches);
+        std::printf("MOTION frame=%llu checked=%u skipped=%u sentinel=%u matched=%u mismatches=%u depth_written=%u depth_mismatches=%u\n", frame, checked, skipped, sentinel, matched, mismatches, written, depth_mismatches);
         require(!mismatches && checked > 0, "motion target matches the CPU oracle");
+        require(!depth_mismatches, "depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere)");
         ++frames_verified;
     }
     void frame_end() {
         api(d->EndScene(), "EndScene");
-        std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash()));
+        const auto image = color_image();
+        std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
+        verify_coverage(image);
         verify_motion();
         api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
         ++frame;
@@ -378,8 +500,8 @@ struct Fixture {
         compare(before, snapshot(), "stateblock");
         IDirect3DPixelShader9* bound = nullptr; api(d->GetPixelShader(&bound), "GetPixelShader"); if (bound) bound->Release();
         require(bound == flat.p, "state block Apply rebinding is honored (flat PS still bound)");
-        records.push_back({&a, .75f, 0, 0, false, false, a.rt, a.rp, a.rzo});
-        std::printf("EXPECT frame=%llu index=%u object=A routed=0 matched=0\n", frame, draw_index);
+        records.push_back({&a, .75f, 0, 0, false, false, a.rt, a.rp, a.rzo, true, enabled && jitter});
+        std::printf("EXPECT frame=%llu index=%u object=A routed=0 matched=0 jittered=%u\n", frame, draw_index, enabled && jitter);
     }
     void recreate_shaders() {
         api(d->SetVertexShader(nullptr), "unbind vs"); api(d->SetPixelShader(nullptr), "unbind ps");
@@ -429,11 +551,15 @@ int main(int argc, char** argv) {
         const std::string mode = argv[3];
         f.configure = symbol<void (*)(const x3m::MotionOutputFixtureConfig*)>(runtime, "x3m_motion_output_fixture_configure", false);
         f.readback = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_motion_output_fixture_readback", false);
-        f.seam = f.configure && f.readback;
+        f.readback_depth = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_motion_output_fixture_readback_depth", false);
+        f.last_pixel_abi = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned)>(runtime, "x3m_motion_output_fixture_last_pixel_abi", false);
+        f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi;
         require(f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
+        f.jitter = f.enabled && GetEnvironmentVariableA("X3M_MOTION_JITTER", setting, sizeof setting) == 1 && setting[0] == '1';
+        if (GetEnvironmentVariableA("X3M_MOTION_JITTER_SAMPLES", setting, sizeof setting) > 0) { const unsigned n = unsigned(std::atoi(setting)); if (n >= 2 && n <= 64) f.jitter_samples = n; }
         char path[MAX_PATH]{}; GetModuleFileNameA(runtime, path, MAX_PATH);
-        std::printf("MODE seam=%u enabled=%u dll=%s\n", f.seam, f.enabled, path);
+        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u dll=%s\n", f.seam, f.enabled, f.jitter, f.jitter_samples, path);
         f.vs_words = load(argv[1]); f.ps_words = load(argv[2]);
         f.vs_hash = fnv(f.vs_words.data(), f.vs_words.size() * 4); f.ps_hash = fnv(f.ps_words.data(), f.ps_words.size() * 4);
         f.flat_hash = fnv(flat_program, sizeof flat_program);
@@ -459,8 +585,8 @@ int main(int argc, char** argv) {
         require(device_refs == 0, "device final Release reaches zero with the route's objects released");
         const ULONG api_refs = f.factory.p->Release(); f.factory.p = nullptr;
         require(api_refs == 0, "factory final Release reaches zero");
-        std::printf("RESULT PASS checks=%u restorations=%u frames=%llu motion_pixels=%u matched_pixels=%u max_uv_pixels=%.9g max_depth_error=%.9g\n",
-                    checks, restorations, f.frame, motion_checked, motion_matched, max_uv_pixels, max_depth_error);
+        std::printf("RESULT PASS checks=%u restorations=%u frames=%llu motion_pixels=%u matched_pixels=%u max_uv_pixels=%.9g max_depth_error=%.9g depth_pixels=%u depth_written=%u max_current_depth_error=%.9g coverage_frames=%u coverage_pixels=%u coverage_ambiguous=%u jitter=%u\n",
+                    checks, restorations, f.frame, motion_checked, motion_matched, max_uv_pixels, max_depth_error, depth_checked, depth_written, max_current_depth_error, coverage_frames, coverage_checked, coverage_ambiguous, f.jitter);
         exit_code = 0;
     } catch (const std::exception& e) { std::printf("RESULT FAIL %s\n", e.what()); }
     if (runtime) FreeLibrary(runtime);

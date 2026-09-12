@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 """Fresh-build live motion route integration through the actual DLL; no game launch.
 
-Sixteen runs of one original synthetic device program under CrossOver Preview
+Eighteen runs of one original synthetic device program under CrossOver Preview
 Wine with a process-local d3d9 override: the production build/d3d9.dll with the
-route off and on (fill, exact restoration, Reset with RT1 owned, capture-frame
-readback, device release), and a seam DLL (production objects + capture.cpp and
-motion_output.cpp compiled with X3M_MOTION_OUTPUT_FIXTURE) off and on, which
-also exercises scene recognition, variant routing, history, sentinel-only mode
-and state block resynchronization against a CPU oracle. The four runs repeat
-in three environments the gameplay diagnostic launch uses: the ownership
-wrapper (X3M_OWNERSHIP=1), the wrapper with the copy-depth/scene-depth path
+route off and on (fill of RT1/RT2, exact restoration, Reset with the targets
+owned, capture-frame readback of motion and depth, device release), and a seam
+DLL (production objects + capture.cpp and motion_output.cpp compiled with
+X3M_MOTION_OUTPUT_FIXTURE) off and on, which also exercises scene recognition,
+variant routing, history, sentinel-only mode, the R32F current-depth target and
+state block resynchronization against a CPU oracle. The four runs repeat in
+three environments the gameplay diagnostic launch uses: the ownership wrapper
+(X3M_OWNERSHIP=1), the wrapper with the copy-depth/scene-depth path
 (X3M_DEPTH_COPY=1 X3M_SCENE_DEPTH_CAPTURE=1) and the wrapper with the
-admission monitor (X3M_ADMISSION=1). Reviewed shader bytes are read from local
-files and never enter the repository or the reports.
+admission monitor (X3M_ADMISSION=1). Two more plain runs enable the per-draw
+jitter (X3M_MOTION_JITTER=1): coverage must follow the Halton offsets, the
+readback must still match the oracle from unjittered history rows with zero
+prior jitter uploaded, and every application row must be restored bit-exactly.
+Reviewed shader bytes are read from local files and never enter the repository
+or the reports.
 """
 from pathlib import Path
 import datetime
@@ -50,8 +55,10 @@ VARIANTS = {
     'ownership': dict(X3M_OWNERSHIP='1'),
     'depth': dict(X3M_OWNERSHIP='1', X3M_DEPTH_COPY='1', X3M_SCENE_DEPTH_CAPTURE='1'),
     'admission': dict(X3M_OWNERSHIP='1', X3M_ADMISSION='1')}
-CASES = [(f'{dll}-{state}' if variant == 'plain' else f'{dll}-{variant}-{state}', dll, variant, enabled)
+CASES = [(f'{dll}-{state}' if variant == 'plain' else f'{dll}-{variant}-{state}', dll, variant, enabled, False)
          for variant in VARIANTS for dll in ('production', 'seam') for state, enabled in (('off', '0'), ('on', '1'))]
+CASES += [(f'{dll}-jitter-on', dll, 'plain', '1', True) for dll in ('production', 'seam')]
+JITTER_SAMPLES = 8
 # Application depth clears per fixture frame with the original depth bound
 # (color+depth Clear, depth-only Clear): the wrapper's source_epoch must count
 # exactly these, so the route's own depth unbind inside the fill never reached one.
@@ -68,6 +75,25 @@ SEAM_FRAMES = {
     7: dict(draws=3, routed=1, matched=1, gate2=1, gate3=1, gate4=0, gate5=0, gate6=0),
     8: dict(draws=3, routed=2, matched=1, gate2=1, gate3=0, gate4=0, gate5=0, gate6=1)}
 SENTINEL = (0.0, 0.0, 0.0, -1.0)
+# Cut detector verdict per seam frame: the missing-key fraction exceeds 0.25
+# wherever a keyed draw found no previous entry (gate 6); the matched draws'
+# origins move 0.05 NDC = 1.6 px, below the 48 px * 64/1280 = 2.4 px bound.
+SEAM_CUTS = {1: 0, 2: 0, 3: 1, 4: 0, 5: 1, 6: 1, 7: 0, 8: 1}
+ORIGIN_DISPLACEMENT_PX = 1.6
+
+
+def halton(index, base):
+    fraction, result = 1.0, 0.0
+    while index:
+        fraction /= base
+        result += fraction * (index % base)
+        index //= base
+    return result
+
+
+def expected_jitter(frame):
+    index = frame % JITTER_SAMPLES
+    return index, halton(index + 1, 2) - 0.5, halton(index + 1, 3) - 0.5
 
 
 def sha(path):
@@ -95,6 +121,12 @@ def read_motion(path, width=64, height=64):
     data = path.read_bytes()
     assert len(data) == width * height * 16, f'{path}: unexpected size {len(data)}'
     return [struct.unpack_from('<4f', data, i * 16) for i in range(width * height)]
+
+
+def read_depth(path, width=64, height=64):
+    data = path.read_bytes()
+    assert len(data) == width * height * 4, f'{path}: unexpected size {len(data)}'
+    return list(struct.unpack('<%df' % (width * height), data))
 
 
 def validate_ownership(name, variant, enabled, trace):
@@ -166,16 +198,20 @@ def validate_ownership(name, variant, enabled, trace):
     return result
 
 
-def validate_case(name, mode, variant, enabled, text, trace, directory):
+def validate_case(name, mode, variant, enabled, jitter, text, trace, directory):
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
     assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
     terminal = fields(lines[-1])
     seam = mode == 'seam'
     live = seam and enabled
-    assert fields([l for l in lines if l.startswith('MODE ')][0]) == {'seam': str(int(seam)), 'enabled': str(int(enabled)),
-                                                                        'dll': fields([l for l in lines if l.startswith('MODE ')][0])['dll']}
-    assert int(terminal['checks']) == (30 if live else 6), (name, terminal)
+    mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
+    assert mode_line == {'seam': str(int(seam)), 'enabled': str(int(enabled)), 'jitter': str(int(jitter)),
+                         'jitter_samples': str(JITTER_SAMPLES), 'dll': mode_line['dll']}, (name, mode_line)
+    # Per frame: the coverage oracle's background sample and verdict (every
+    # case) plus, live, motion/depth dimensions, the pixel-ABI upload, the
+    # motion oracle and the depth oracle.
+    assert int(terminal['checks']) == 30 + (60 if live else 0), (name, terminal)
     assert int(terminal['restorations']) == 39 and int(terminal['frames']) == 12, (name, terminal)
     assert text.count('RESET PASS') == 1
     restores = [fields(l) for l in lines if l.startswith('RESTORE ')]
@@ -183,17 +219,39 @@ def validate_case(name, mode, variant, enabled, text, trace, directory):
     colors = {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}
     assert sorted(colors) == list(range(12)), f'{name}: color inventory'
     motion = [fields(l) for l in lines if l.startswith('MOTION ')]
-    result = {'mode': mode, 'enabled': enabled, 'checks': int(terminal['checks']), 'restorations': 39, 'frames': 12,
+    coverage = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('COVERAGE ')}
+    result = {'mode': mode, 'enabled': enabled, 'jitter': jitter, 'checks': int(terminal['checks']), 'restorations': 39, 'frames': 12,
               'color_hashes': colors, 'motion_pixels': int(terminal['motion_pixels']),
               'matched_pixels': int(terminal['matched_pixels']), 'max_uv_error_pixels': float(terminal['max_uv_pixels']),
-              'max_previous_depth_error': float(terminal['max_depth_error'])}
+              'max_previous_depth_error': float(terminal['max_depth_error']),
+              'depth_pixels': int(terminal['depth_pixels']), 'depth_written_pixels': int(terminal['depth_written']),
+              'max_current_depth_error': float(terminal['max_current_depth_error']),
+              'coverage_frames': int(terminal['coverage_frames']), 'coverage_pixels': int(terminal['coverage_pixels']),
+              'coverage_ambiguous_pixels': int(terminal['coverage_ambiguous'])}
+    # Rasterized coverage agrees with the CPU reference at the (jittered)
+    # sample positions in every frame of every case (route off: the oracle's
+    # own control); the reference uses the route's Halton offsets, so a sign
+    # or scale error in the jitter would fail here.
+    assert sorted(coverage) == list(range(12)), (name, sorted(coverage))
+    assert all(c['mismatches'] == '0' and int(c['checked']) > 3000 and int(c['background']) > 0 for c in coverage.values()), (name, coverage)
+    assert len({c['background_color'] for c in coverage.values()}) == 1, (name, 'background colour differs between frames')
+    assert all(c['jitter'] == str(int(jitter)) for c in coverage.values())
+    for frame, c in coverage.items():
+        _, jx, jy = expected_jitter(frame) if jitter else (0, 0.0, 0.0)
+        assert abs(float(c['jx']) - jx) < 1e-6 and abs(float(c['jy']) - jy) < 1e-6, (name, frame, c)
+    assert result['coverage_frames'] == 12 and result['coverage_pixels'] > 40000
     if live:
-        assert len(motion) == 12 and all(m['mismatches'] == '0' and int(m['checked']) > 3000 for m in motion), f'{name}: oracle'
+        assert len(motion) == 12 and all(m['mismatches'] == '0' and m['depth_mismatches'] == '0' and int(m['checked']) > 3000 for m in motion), f'{name}: oracle'
         assert result['motion_pixels'] > 40000 and result['matched_pixels'] > 10000
         assert result['max_uv_error_pixels'] <= .01 and result['max_previous_depth_error'] <= 4e-6
+        assert result['depth_pixels'] == result['motion_pixels'] and result['depth_written_pixels'] > 20000
+        assert result['max_current_depth_error'] <= 4e-6
+        # Frame 7 routes only the small triangle (the A draw rebinds the flat PS
+        # through the state block, gate 3): about 170 pixels; other frames > 2,600.
+        assert all(int(m['depth_written']) > 100 for m in motion), f'{name}: every frame writes RT2 for its routed draws'
         assert sum(int(m['matched']) for m in motion if int(m['frame']) in (0, 2, 3, 9)) == 0, 'sentinel-only frames carried motion'
     else:
-        assert not motion and result['motion_pixels'] == 0
+        assert not motion and result['motion_pixels'] == 0 and result['depth_pixels'] == 0
     # Capture log: mode line, device gate, variants, target lifecycle, frames, readback.
     tl = trace.splitlines()
     assert sum(l.startswith('device_hooked ') for l in tl) == sum(l.startswith('device_destroy ') for l in tl) == 1
@@ -204,29 +262,58 @@ def validate_case(name, mode, variant, enabled, text, trace, directory):
     targets = [l for l in tl if l.startswith('motion_output_target ')]
     frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
     readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_readback ')}
+    depth_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_depth_readback ')}
+    cuts = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_cut ')}
     routes = [fields(l) for l in tl if l.startswith('motion_route ')]
+    modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
+    assert modes[0]['jitter'] == str(int(jitter)) and modes[0]['jitter_samples'] == str(JITTER_SAMPLES), (name, modes)
     if not enabled:
-        assert not devices and not variants and not targets and not frames and not readbacks and not routes, f'{name}: disabled route logged activity'
+        assert not devices and not variants and not targets and not frames and not readbacks and not depth_readbacks and not cuts and not routes, f'{name}: disabled route logged activity'
         assert not any(l.startswith('motion_output_release ') for l in tl)
         return result
     assert len(devices) == 1 and devices[0]['enabled'] == '1' and devices[0]['reason'] == 'ok', (name, devices)
     assert devices[0]['history_available'] == '0', 'synthetic process must not claim game observers'
-    assert devices[0]['detail'] == 'stage=compare' and 'color_errors=0' in trace and 'motion_errors=0' in trace
-    assert [(v['kind'], v['transform'], v['create']) for v in variants] == [('vs', '0', '00000000'), ('ps', '0', '00000000')] * 2, (name, variants)
+    # Three-format self test (A8R8G8B8 + A32B32G32R32F + R32F) on this backend.
+    assert devices[0]['depth'] == '1' and devices[0]['depth_reason'] == 'ok' and devices[0]['r32f'] == '00000000', (name, devices)
+    assert devices[0]['detail'] == 'stage=compare' and 'color_errors=0 motion_errors=0 depth_errors=0 targets=3' in trace
+    assert devices[0]['jitter'] == str(int(jitter)) and devices[0]['jitter_samples'] == str(JITTER_SAMPLES)
+    assert [(v['kind'], v['transform'], v['create'], v['depth']) for v in variants] == [('vs', '0', '00000000', '1'), ('ps', '0', '00000000', '1')] * 2, (name, variants)
     assert all(v['original'] in ('53a0a641107ed76c', '8759c7838bbc86c2') for v in variants)
-    assert len(targets) == 2 and all('create=00000000 level=00000000' in t for t in targets), 'target created at first latch and after Reset'
+    assert len(targets) == 2 and all('create=00000000 level=00000000 depth=1 depth_create=00000000 depth_level=00000000' in t for t in targets), 'targets created at first latch and after Reset'
     assert 'motion_output_reset device=1 result=00000000 generation=2' in trace
     assert sum(l.startswith('motion_output_release ') for l in tl) == 1, 'owned objects released before the final device Release'
     assert not any(l.startswith(('motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed')) for l in tl)
     assert sorted(frames) == list(range(0, 9)), (name, sorted(frames))  # frame 0 via telemetry, 1..8 via capture
+    assert sorted(cuts) == list(range(1, 9)), (name, sorted(cuts))
     for frame, summary in frames.items():
         assert summary['latched'] == summary['filled'] == '1' and summary['fill_result'] == summary['fill_restore'] == '00000000'
         assert summary['apply_failures'] == summary['restore_failures'] == '0' and summary['committed'] == '1'
         assert summary['present'] == '00000000'
+        assert summary['depth'] == '1' and summary['depth_routed'] == summary['routed'], (name, frame, summary)
+        # Jitter: the sequence index advances at every latch whether or not the
+        # switch is on; the sample values and the previous latch's values are
+        # the Halton offsets with jitter on and zero otherwise, and every scene
+        # draw (all draw the table VS) is jittered only with the switch on.
+        index, jx, jy = expected_jitter(frame)
+        _, pjx, pjy = expected_jitter(frame - 1) if frame else (0, 0.0, 0.0)
+        if not jitter:
+            jx = jy = pjx = pjy = 0.0
+        assert summary['jitter'] == str(int(jitter)) and int(summary['jitter_index']) == index, (name, frame, summary)
+        assert abs(float(summary['jitter_x']) - jx) < 1e-6 and abs(float(summary['jitter_y']) - jy) < 1e-6, (name, frame, summary)
+        assert abs(float(summary['jitter_previous_x']) - pjx) < 1e-6 and abs(float(summary['jitter_previous_y']) - pjy) < 1e-6, (name, frame, summary)
+        assert int(summary['jittered']) == (int(summary['draws']) - 1 if jitter else 0), (name, frame, summary)
+        # Cut detector: samples are the matched draws, the median their 1.6 px
+        # origin displacement; the verdict follows the missing-key fraction.
+        assert int(summary['cut_samples']) == int(summary['matched']), (name, frame, summary)
+        if int(summary['matched']):
+            assert abs(float(summary['cut_median_px']) - ORIGIN_DISPLACEMENT_PX) < 1e-3, (name, frame, summary)
         if live and frame in SEAM_FRAMES:
             got = {k: int(summary[k]) for k in SEAM_FRAMES[frame]}
             assert got == SEAM_FRAMES[frame], (name, frame, got, SEAM_FRAMES[frame])
             assert summary['selector_state'] == '2', 'seam frames end inside the Scene phase'
+            assert int(summary['cut']) == SEAM_CUTS[frame], (name, frame, summary)
+            cut = cuts[frame]
+            assert int(cut['cut']) == SEAM_CUTS[frame] and cut['samples'] == summary['cut_samples'] and abs(float(cut['bound_px']) - 2.4) < 1e-6 and cut['bound_missing'] == '0.250'
         elif not live:
             # Production DLL: the structural selector enters the synthetic frame's
             # scene phase too, but without the game observers every scene draw
@@ -237,7 +324,8 @@ def validate_case(name, mode, variant, enabled, text, trace, directory):
             if frame in SEAM_FRAMES:
                 assert (got['gate3'], got['gate4']) == (SEAM_FRAMES[frame]['gate3'], SEAM_FRAMES[frame]['gate4']), (name, frame, got)
             assert summary['selector_state'] == '2', 'production frames also end inside the Scene phase'
-    assert sorted(readbacks) == list(range(1, 9)), (name, sorted(readbacks))
+    assert sorted(readbacks) == sorted(depth_readbacks) == list(range(1, 9)), (name, sorted(readbacks), sorted(depth_readbacks))
+    depth_stats = {}
     for frame, r in readbacks.items():
         assert r['result'] == '00000000' and r['bytes'] == '65536' and r['width'] == r['height'] == '64'
         pixels = read_motion(directory / 'x3-modern-captures' / r['file'])
@@ -248,9 +336,23 @@ def validate_case(name, mode, variant, enabled, text, trace, directory):
             assert valid > 2000, f'{name}: frame {frame} readback lacks matched motion'
         elif not live or frame in (2, 3):
             assert sentinel == len(pixels), f'{name}: frame {frame} readback is not all sentinel'
+        # RT2: device depth where a routed draw covered the pixel (matched or
+        # sentinel-only alike), -1 elsewhere; every motion-valid pixel has depth.
+        d = depth_readbacks[frame]
+        assert d['result'] == '00000000' and d['bytes'] == '16384' and d['width'] == d['height'] == '64' and d['format'] == 'r32f_row_major'
+        assert d['file'] == f'depth_1_{frame}.r32f'
+        depth = read_depth(directory / 'x3-modern-captures' / d['file'])
+        written = sum(1 for v in depth if v != -1.0)
+        assert all(v == -1.0 or 0.0 <= v <= 1.0 for v in depth), f'{name}: frame {frame} depth outside [0,1] or sentinel'
+        assert written > (100 if frame == 7 else 1000), f'{name}: frame {frame} depth target lacks routed coverage'
+        assert all(depth[i] != -1.0 for i, p in enumerate(pixels) if p[3] == 1.0), f'{name}: frame {frame} motion-valid pixel without depth'
+        depth_stats[frame] = {'written': written, 'min': min(v for v in depth if v != -1.0), 'max': max(v for v in depth if v != -1.0)}
+    result['depth_readbacks'] = depth_stats
     # Per-draw decisions logged in capture frames must agree with the fixture's script.
     expects = [fields(l) for l in lines if l.startswith('EXPECT ') and 1 <= int(fields(l)['frame']) <= 8]
     assert len(routes) == len(expects) == sum(SEAM_FRAMES[f]['draws'] - 1 for f in SEAM_FRAMES), (name, len(routes), len(expects))
+    assert all(r['jittered'] == e['jittered'] for e in expects for r in routes if r['frame'] == e['frame'] and r['index'] == e['index']), f'{name}: jittered flags'
+    assert all(r['depth'] == r['routed'] for r in routes), f'{name}: every routed draw of the reviewed row binds RT2'
     if live:
         for e in expects:
             match = [r for r in routes if r['frame'] == e['frame'] and r['index'] == e['index']]
@@ -266,8 +368,8 @@ def validate_case(name, mode, variant, enabled, text, trace, directory):
     return result
 
 
-def finish_case(name, mode, variant, enabled, text, trace, directory):
-    result = validate_case(name, mode, variant, enabled, text, trace, directory)
+def finish_case(name, mode, variant, enabled, jitter, text, trace, directory):
+    result = validate_case(name, mode, variant, enabled, jitter, text, trace, directory)
     result['variant'] = variant
     result['ownership'] = validate_ownership(name, variant, enabled, trace)
     return result
@@ -278,7 +380,7 @@ def main():
     summary_path = RESULTS / 'motion-output-summary.json'
     report_path = RESULTS / 'motion-output.txt'
     result = {'passed': False, 'status': 'RUNNING', 'game_launched': False,
-              'scope': 'Live same-draw route (checkpoint B1) through the actual proxy DLL with one original synthetic device program, plain and under the ownership wrapper (plus copy-depth and admission); seam DLL adds fixture scope/signature injection. Not gameplay validation.',
+              'scope': 'Live same-draw route (checkpoint B1 + temporal step 1: RT2 current depth, per-draw jitter, cut detector data) through the actual proxy DLL with one original synthetic device program, plain and under the ownership wrapper (plus copy-depth and admission); seam DLL adds fixture scope injection and target readback. Not gameplay validation.',
               'variants': VARIANTS,
               'cases': {}}
     save = lambda: summary_path.write_text(json.dumps(result, indent=2) + '\n')
@@ -303,12 +405,13 @@ def main():
         save()
         report = []
         wine_log = (RESULTS / 'motion-output-wine.log').open('w')
-        for name, mode, variant, enabled in CASES:
+        for name, mode, variant, enabled, jitter in CASES:
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(EXE, directory)
             shutil.copy(SEAM if mode == 'seam' else DLL, directory / 'd3d9.dll')
-            env = dict(os.environ, X3M_MOTION_OUTPUT=enabled, X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES='8', X3M_TELEMETRY='1',
+            env = dict(os.environ, X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
+                       X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES='8', X3M_TELEMETRY='1',
                        X3M_OWNERSHIP='0', X3M_DEPTH_COPY='0', X3M_SCENE_DEPTH_CAPTURE='0', X3M_OBJECT_TRACE='0', X3M_OBJECT_LIFETIME='0',
                        X3M_MESH_CACHE='0', X3M_ADMISSION='0', X3M_FINITE_POSITIONS='0', X3M_MOTION_CAPTURE='0')
             env.update(VARIANTS[variant])
@@ -322,7 +425,7 @@ def main():
             traces = list((directory / 'x3-modern-captures').glob('session-*.log'))
             assert completed.returncode == 0 and len(traces) == 1, f'{name}: exit {completed.returncode}, traces {len(traces)}'
             trace = traces[0].read_text()
-            case = finish_case(name, mode, variant, enabled == '1', text, trace, directory)
+            case = finish_case(name, mode, variant, enabled == '1', jitter, text, trace, directory)
             case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                         dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
             if enabled == '1':
@@ -333,6 +436,8 @@ def main():
         wine_log.close()
         # Color is bit-identical with the route off and on in every environment,
         # and the wrapper/depth/admission environments change nothing either.
+        # With jitter on the raster moves: the colour must differ from the
+        # unjittered run (the per-pixel coverage oracle above says by how much).
         for mode in ('production', 'seam'):
             reference = result['cases'][mode + '-off']['color_hashes']
             for variant in VARIANTS:
@@ -340,8 +445,14 @@ def main():
                 off, on = result['cases'][prefix + 'off']['color_hashes'], result['cases'][prefix + 'on']['color_hashes']
                 assert off == on, f'{prefix}: color differs between route off and on'
                 assert off == reference, f'{prefix}: color differs from the plain run'
+            jittered = result['cases'][mode + '-jitter-on']['color_hashes']
+            differing = [f for f in jittered if jittered[f] != reference[f]]
+            assert len(differing) >= 6, f'{mode}-jitter-on: jitter changed the colour of only {len(differing)} of 12 frames'
+            result['cases'][mode + '-jitter-on']['frames_differing_from_unjittered'] = differing
+        assert result['cases']['production-jitter-on']['color_hashes'] == result['cases']['seam-jitter-on']['color_hashes'], 'jitter colour differs between the production and the seam DLL'
         result['color_identical_off_vs_on'] = True
         result['color_identical_across_variants'] = True
+        result['jitter_changes_color'] = True
         report_path.write_text(''.join(report))
         result['report_sha256'] = sha(report_path)
         assert sources() == result['sources_before_build'], 'Sources changed during run'
@@ -349,6 +460,8 @@ def main():
         assert {str(p.relative_to(ROOT)): sha(p) for p in (EXE, SEAM, DLL)} == result['binaries'], 'Binaries changed during run'
         result['sources_after_run'] = sources()
         result['limits'] = ['Synthetic device program; not gameplay validation, TAA or temporal consumption.',
+                            'Jitter is proven by coverage against a CPU reference at the Halton offsets on a 64x64 target; the resolve consumes it in step 2.',
+                            'The cut detector is data only: its verdict is logged and exposed, nothing consumes it.',
                             'Ownership modes wrap the synthetic device; the game observers stay inactive, so wrapper interaction is proven for fill, routing, Reset and release, not for object history.',
                             'Object scope is injected through the fixture seam; the game observers are not exercised here.',
                             'CrossOver Preview builtin D3D9 only; Windows is cross-compiled, not verified.']

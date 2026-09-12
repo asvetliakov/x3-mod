@@ -64,7 +64,24 @@ Evidence at this checkpoint:
   iteration-6 and 24/4 iteration-5 frames correctly. Load/registry epochs did
   not advance across sector changes, so the temporal design gained a
   displacement-based cut detector.
-- The motion-output fixture now runs in 16 environments including the
+- **Temporal integration steps 1 and 2 are implemented in source
+  ([design](architecture/temporal-integration.md)).** Step 1: every one of the
+  169 rows also writes current device depth to an owned R32F third target
+  (exact against ZFUNC-EQUAL replay over 7.76 M pixels, max z/w error
+  2.6e-6), sentinel-filled with RT1; per-draw Halton jitter behind
+  `X3M_MOTION_JITTER=1` applied as explicit row writes and restored bit-exactly
+  (sign convention verified by a coverage oracle over 48,957 pixels; routed
+  draws upload zero prior jitter because history rows are unjittered); a
+  displacement/missing-key cut detector logs per frame; the readback analyzer
+  compares previous depth against the prior frame's depth image (max error 0
+  on fixtures). Step 2: `TemporalPass` accepts the 8-bit main surface through
+  an FP16 point copy (bit-transparent within one FP16 ulp, no gamma), takes
+  R32F depth directly without the decoder, derives the reactive mask from the
+  depth sentinel, honors the cut flag, exposes the resolved surface for
+  copy-back and survives Reset; 154 numerical checks and 158 state
+  comparisons pass. Step 3 (wiring the resolve at the pre-bloom copy point) is
+  next; no visible TAA yet.
+- The motion-output fixture now runs in 18 environments including the
   ownership wrapper, depth copy and admission, which the gameplay run needs.
   That coverage found and fixed a refcount defect that would have leaked the
   device under the wrapper. See [motion output](verification/motion-output.md).
@@ -104,9 +121,9 @@ archive-wide table and the selector correction.
 
 ## Concrete next work
 
-1. Implement step 1 of the temporal integration design: R32F current-depth
-   target written by the variants, per-draw jitter, fixtures, and depth support
-   in the readback analyzer.
+1. Wire the adapted resolve into the route at the pre-bloom copy point behind
+   an off-by-default switch with copy-back (temporal integration step 3),
+   review, install, and run the first visual TAA comparison.
 2. User-managed diagnostic run with the installed route (command in
    [motion output](verification/motion-output.md), "Gameplay diagnostic run"):
    capture runs of at least three consecutive frames including one stationary

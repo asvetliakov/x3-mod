@@ -16,8 +16,12 @@ effects binds, so coverage no longer depends on which sectors a capture visited.
 The VS gains one declaration and four dot products at a point where the original
 homogeneous vertex position is still available. Those products apply previous
 submitted WVP rows in c252–255 and write the row's output register as a new
-TEXCOORD interpolator (o6/TEXCOORD4 for the reference pair). Existing vertex
-fetch, current position, material outputs and instruction order are unchanged.
+TEXCOORD interpolator (o6/TEXCOORD4 for the reference pair). Since temporal
+step 1 a second declaration and two more dot products follow: the current
+clip z and w of the same position temporary against `c<matrix+2>` and
+`c<matrix+3>`, written to the row's depth output register as `(z, w, z, w)`
+(o7/TEXCOORD5 for the reference pair). Existing vertex fetch, current
+position, material outputs and instruction order are unchanged.
 
 The PS gains the matching input declaration plus a relocated copy of our
 authored motion program. Its input moves from v0 to the row's input register,
@@ -26,7 +30,15 @@ c216–220, and output from oC0 to oC1. Relocation preserves operand swizzles,
 modifiers and masks; DEF literal bits are copied unchanged. The new definitions
 and declaration are inserted in the header, and executable work follows the
 original material instructions. The original comments, preshader metadata and
-color output remain intact.
+color output remain intact. For rows with `depth_output` the relocated
+current-depth fragment (`src/temporal/current_depth_ps.hlsl`: one TEXCOORD
+input, `rcp`, `mul`, no literal) follows: its input moves to the row's depth
+input register and index, its temporary to the first motion temporary (dead
+once oC1 is written) and its output to **oC2**, so RT2 (R32F) receives
+`z/w`, the rasterized device depth, wherever the draw covers a pixel. Every
+transformer entry point takes `current_depth` (default true); false yields
+the motion-only variant, byte-identical to the checkpoint-B1 output, for a
+device without a third simultaneous target.
 
 RT1 uses the existing RGBA32F previous-UV/depth/validity format. This is motion
 correspondence rather than an independent displacement convention: the temporal
@@ -39,6 +51,7 @@ its previous-W/depth validity checks, invalid sentinel and jitter handling.
 | PS c216 | Inverse viewport width/height; previous jitter in UV units |
 | PS c217.x | One to request valid history, zero to write the invalid sentinel |
 | RT1 | RGBA32F previous UV, previous clip Z/W, and validity |
+| RT2 | R32F current device depth z/w (rows with `depth_output`; -1 sentinel where nothing routed) |
 
 Every table row uses exactly these constant ranges and oC1 (a `static_assert`
 in `material_motion.cpp` checks the table against `MaterialMotionAbi`), so the
@@ -53,7 +66,14 @@ every transformable SM3 pairing of the 6,752 technique passes in the archives;
 32 distinct vertex and 108 distinct pixel programs). A row carries the original
 fingerprints, lengths and version tokens, the matrix register and position
 temporary, the four position DP4 offsets and lane masks, the five insertion
-offsets, the four register choices, the light-loop bound flag and bound, and
+offsets, the four register choices, the light-loop bound flag and bound, the
+current-depth registers (`vertex_depth_output_register`,
+`depth_texcoord_index`, `pixel_depth_input_register`, 255 = none, and
+`depth_output`; the inspector's `depth_plan` picks the first free register
+other than the motion one per program and the smallest TEXCOORD index no
+program of the row's VS/PS sharing component declares, so rows sharing a
+program agree; all 169 archive rows have the output, the worst pixel program
+reaching exactly the ten SM3 inputs), and
 `observed_scene_draws` (capture metadata: draws in one session, zero for the
 153 rows never observed; it orders the rows and has no runtime meaning). Rows
 are derived numbers only; the header states that they are transformer input,
@@ -117,7 +137,9 @@ are then revalidated against the actual words, and any inconsistency yields
 
 - Instruction framing over the whole program, comments included as opaque
   instructions, with END exactly at the last word.
-- VS: a contiguous DEF/DCL header ending exactly at the declaration insert
+- VS: the depth output register and TEXCOORD index are reserved like the
+  motion ones wherever the row names them (declared, written or read by the
+  original refuses); a contiguous DEF/DCL header ending exactly at the declaration insert
   and declaring o0 as POSITION0 (so the dots below are the clip position); no
   DEF or DCL afterwards; the four position DP4s at the recorded offsets with
   the exact opcode, o0 lane mask, position temporary and `c<matrix + lane>`
@@ -140,7 +162,8 @@ are then revalidated against the actual words, and any inconsistency yields
   relative addressing anywhere (every class is a program whose depth is the
   rasterized depth, which the previous-depth output relies on); no original
   reference to the chosen input register, TEXCOORD index, three temporaries,
-  c216–220 or oC1, inside branch bodies included (the walk is linear over all
+  c216–220 or oC1, nor (for depth rows) to the depth input register, its
+  TEXCOORD index or oC2, inside branch bodies included (the walk is linear over all
   instructions). Control flow: classes A and B refuse every control-flow
   opcode; class C admits only `if` (D3DSIO_IF, exactly one source that is a
   direct boolean constant register `b#`), `else` and `endif`, tracked with a
@@ -171,8 +194,12 @@ retention, native shader compilation or callback in this module.
 
 The host structural fixture passes in optimized and ASan/UBSan builds for all
 169 rows. It reconstructs both originals exactly after removing additions,
-independently checks relocated operands and literals, refuses 21 row
-perturbations per row (including the class family swapped between B and C,
+independently checks relocated operands and literals, proves the motion-only
+form is the depth form minus the depth words (and, for the Argon row, the
+earlier 545/1392-word programs), refuses 21 row
+perturbations per row (26 with the five depth-register perturbations of a
+depth row: o0 or TEXCOORD0 as the depth export, the depth output equal to the
+motion output, v0 as the depth input, an output without an input) (including the class family swapped between B and C,
 which the pixel words contradict; the previous-row constants placed on a
 constant the VS actually reads; and, for light-free rows, a relative operand
 injected under the row's denied bound) and 26 program perturbations per class
@@ -184,7 +211,9 @@ branch) or 40 per class C row (additionally: a missing `endif`, `endif` or
 `else` without `if`, a second `else`, a nested block, `ifc`, `rep`, `break`
 and `breakp` opcodes, a float or relatively addressed condition, a two-operand
 or predicated `if`, and a reserved temporary written or an ABI constant read
-inside a branch body); the six spaced-quad rows add two sites each (the
+inside a branch body), plus five depth sites per depth row (the depth output
+register or TEXCOORD index declared by the VS, the depth input register or
+index declared by the PS, oC2 written by the PS); the six spaced-quad rows add two sites each (the
 position temporary written between the dots, and a balanced `if b0`/`endif`
 placed between them). A site an archive program does not offer is reported
 as skipped, never fabricated: two rows share a pixel program with no literal

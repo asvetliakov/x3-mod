@@ -28,7 +28,7 @@ try:
     match=re.search(r'RESULT PASS numerical=(\d+) state_restorations=(\d+) generations=(\d+)',text)
     report['state_restorations']=int(match[2]) if match else 0
     report['generations']=int(match[3]) if match else 0
-    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(98,102,2) and report['samples']==98 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(154,158,2) and report['samples']==142 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
     assert report['source_unchanged'] and report['binary_unchanged'] and report['compiler_unchanged'],'Provenance changed during run'
     report['passed']=True
 finally:

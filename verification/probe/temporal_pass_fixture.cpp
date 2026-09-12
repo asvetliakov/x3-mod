@@ -52,6 +52,10 @@ unsigned short toHalf(float f){ // IEEE binary32 -> binary16, round to nearest/e
     // Addition carries a rounded mantissa into the exponent; bitwise OR does not.
     return static_cast<unsigned short>(sign|((unsigned(halfExponent)<<10)+(rounded>>13)));
 }
+unsigned short toHalfTruncate(float f){ // IEEE binary32 -> binary16, toward zero (no subnormal inputs expected).
+    unsigned bits;std::memcpy(&bits,&f,4);const unsigned sign=(bits>>16)&0x8000;const int halfExponent=int((bits>>23)&255)-127+15;
+    if(f==0||halfExponent<=0)return static_cast<unsigned short>(sign);
+    return static_cast<unsigned short>(sign|(unsigned(halfExponent)<<10)|((bits&0x7fffff)>>13));}
 using Compiler=decltype(&D3DXCompileShader);
 void compile(Compiler c,const std::string& source,const char* target,ID3DXBuffer** code){Com<ID3DXBuffer> errors;
     HRESULT hr=c(source.c_str(),UINT(source.size()),nullptr,nullptr,"main",target,D3DXSHADER_OPTIMIZATION_LEVEL3,code,&errors.p,nullptr);
@@ -191,7 +195,7 @@ void cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const DWOR
     check("combined loss EndScene",d->EndScene());f.hostile();
     in=f.inputs();in.epoch=2;auto epoch=f.run(pass,in,"new camera epoch");require(!epoch.used_history,"epoch invalidates history");f.sample(epoch,.25f,.5f,"epoch");
     in.color=epoch.color;f.hostile();Snapshot aliasBefore(d);require(pass.run(in,&missing)==E_INVALIDARG&&!missing.color&&!missing.depth&&!pass.diagnostics().history_valid,"prior output cannot alias current input");aliasBefore.equals(d,"history alias refusal preserves state");
-    pass.invalidate();require(!pass.diagnostics().history_valid,"explicit invalidate");pass.before_reset();require(pass.run(in,&missing)==E_INVALIDARG,"before_reset shuts down runtime");
+    pass.invalidate();require(!pass.diagnostics().history_valid,"explicit invalidate");pass.before_reset();require(pass.run(in,&missing)==E_INVALIDARG&&pass.diagnostics().reset_pending,"before_reset refuses runs until after_reset");
 }
 using x3m::renderer::ReactivePolicy;
 struct Particle {RECT rect;float rgb;float alpha=0;};
@@ -288,8 +292,139 @@ void reactive_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,c
     in=scene.inputs();auto required=scene.run(pass,in,"required after known");require(!required.used_history&&required.reactive,"Known to Required demands owned mask history");
     pass.before_reset();require(pass.run(in,&failed)==E_INVALIDARG&&!failed.reactive,"reactive reset releases runtime");
 }
+// Step-2 route inputs: 8-bit main surface copied to FP16 scratch, direct R32F
+// depth with the -1 sentinel, cut flag, motion-path jitter and Reset continuity.
+std::vector<unsigned char> readback(IDirect3DDevice9* d,IDirect3DSurface9* source,D3DFORMAT format,UINT pixel){Com<IDirect3DSurface9> read;check("route readback surface",d->CreateOffscreenPlainSurface(W,H,format,D3DPOOL_SYSTEMMEM,&read.p,nullptr));check("route validation-only readback",d->GetRenderTargetData(source,read.p));D3DLOCKED_RECT lock{};check("route readback lock",read->LockRect(&lock,nullptr,D3DLOCK_READONLY));std::vector<unsigned char> bytes(W*H*pixel);for(UINT y=0;y<H;++y)std::memcpy(&bytes[y*W*pixel],static_cast<char*>(lock.pBits)+y*lock.Pitch,W*pixel);check("route readback unlock",read->UnlockRect());return bytes;}
+std::vector<unsigned char> readback(IDirect3DDevice9* d,IDirect3DTexture9* texture){D3DSURFACE_DESC desc{};check("route level desc",texture->GetLevelDesc(0,&desc));Com<IDirect3DSurface9> level;check("route level",texture->GetSurfaceLevel(0,&level.p));return readback(d,level.p,desc.Format,desc.Format==D3DFMT_R32F?4:desc.Format==D3DFMT_A8R8G8B8?4:8);}
+template<class T> T at(const std::vector<unsigned char>& bytes,size_t index){T value;std::memcpy(&value,&bytes[index*sizeof(T)],sizeof value);return value;}
+struct RouteScene {
+    Fixture& f;IDirect3DDevice9* d;
+    Com<IDirect3DSurface9> main8;Com<IDirect3DTexture9> bytes8,exact16,depth32;Com<IDirect3DPixelShader9> textured;
+    std::vector<unsigned char> reference; // bytes last drawn into main8, B G R A per pixel
+    RouteScene(Fixture& fixture,Compiler compiler):f(fixture),d(f.d){
+        // The main target is a plain render-target surface, deliberately not a texture level.
+        check("main 8-bit target",d->CreateRenderTarget(W,H,D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&main8.p,nullptr));
+        check("8-bit source",d->CreateTexture(W,H,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&bytes8.p,nullptr));
+        check("exact FP16 twin",d->CreateTexture(W,H,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_MANAGED,&exact16.p,nullptr));
+        check("R32F current depth",d->CreateTexture(W,H,1,D3DUSAGE_RENDERTARGET,D3DFMT_R32F,D3DPOOL_DEFAULT,&depth32.p,nullptr));
+        Com<ID3DXBuffer> a;compile(compiler,"sampler2D source:register(s0);float4 main(float2 uv:TEXCOORD0):COLOR0{return tex2D(source,uv);}","ps_3_0",&a.p);
+        check("route textured PS",d->CreatePixelShader(static_cast<DWORD*>(a->GetBufferPointer()),&textured.p));
+    }
+    ~RouteScene(){for(UINT i=0;i<7;++i)d->SetTexture(i,nullptr);d->SetDepthStencilSurface(nullptr);d->SetRenderTarget(0,f.rt[0].p);d->SetPixelShader(nullptr);}
+    void plain(IDirect3DSurface9* rt,IDirect3DSurface9* ds,bool depth){
+        for(UINT n=0;n<20;++n)check("route unbind",d->SetTexture(n<16?n:D3DVERTEXTEXTURESAMPLER0+n-16,nullptr));
+        check("route MRT",d->SetRenderTarget(1,nullptr));check("route DS",d->SetDepthStencilSurface(ds));check("route RT",d->SetRenderTarget(0,rt));
+        D3DVIEWPORT9 vp{0,0,W,H,0,1};check("route VP",d->SetViewport(&vp));
+        check("route freq0",d->SetStreamSourceFreq(0,1));check("route freq1",d->SetStreamSourceFreq(1,1));
+        check("route VS",d->SetVertexShader(nullptr));check("route FVF",d->SetFVF(D3DFVF_XYZRHW|D3DFVF_TEX1));check("route IB",d->SetIndices(nullptr));
+        for(auto state:{D3DRS_STENCILENABLE,D3DRS_ALPHATESTENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_SEPARATEALPHABLENDENABLE,D3DRS_FOGENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_SCISSORTESTENABLE,D3DRS_CLIPPLANEENABLE,D3DRS_CLIPPING,D3DRS_LIGHTING,D3DRS_INDEXEDVERTEXBLENDENABLE,D3DRS_POINTSPRITEENABLE,D3DRS_DITHERENABLE,D3DRS_ANTIALIASEDLINEENABLE})check("route disable",d->SetRenderState(state,FALSE));
+        for(auto p:{std::pair<D3DRENDERSTATETYPE,DWORD>{D3DRS_ZENABLE,depth?TRUE:FALSE},{D3DRS_ZWRITEENABLE,depth?TRUE:FALSE},{D3DRS_ZFUNC,D3DCMP_ALWAYS},{D3DRS_VERTEXBLEND,D3DVBF_DISABLE},{D3DRS_FILLMODE,D3DFILL_SOLID},{D3DRS_CULLMODE,D3DCULL_NONE},{D3DRS_COLORWRITEENABLE,15},{D3DRS_MULTISAMPLEMASK,0xffffffff},{D3DRS_WRAP0,0}})check("route render state",d->SetRenderState(p.first,p.second));
+        for(auto p:{std::pair<D3DSAMPLERSTATETYPE,DWORD>{D3DSAMP_MINFILTER,D3DTEXF_POINT},{D3DSAMP_MAGFILTER,D3DTEXF_POINT},{D3DSAMP_MIPFILTER,D3DTEXF_NONE},{D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP},{D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP},{D3DSAMP_SRGBTEXTURE,FALSE},{D3DSAMP_MAXMIPLEVEL,0}})check("route sampler",d->SetSamplerState(0,p.first,p.second));
+        check("route PS",d->SetPixelShader(textured.p));
+    }
+    void quad(const RECT& r,float z){struct V{float x,y,z,rhw,u,v;};
+        const V v[]={{float(r.left)-.5f,float(r.top)-.5f,z,1,float(r.left)/W,float(r.top)/H},{float(r.right)-.5f,float(r.top)-.5f,z,1,float(r.right)/W,float(r.top)/H},
+            {float(r.left)-.5f,float(r.bottom)-.5f,z,1,float(r.left)/W,float(r.bottom)/H},{float(r.right)-.5f,float(r.bottom)-.5f,z,1,float(r.right)/W,float(r.bottom)/H}};
+        check("route raster",d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,2,v,sizeof(V)));}
+    // Every 8-bit code appears in R; G and B differ per pixel, so a gamma curve
+    // or channel swap would be caught.
+    void fill(unsigned seed){reference.assign(W*H*4,0);D3DLOCKED_RECT lock{};check("lock 8-bit",bytes8->LockRect(0,&lock,nullptr,0));
+        for(UINT y=0;y<H;++y)for(UINT x=0;x<W;++x){unsigned char* p=&reference[(y*W+x)*4];const unsigned r=(y*W+x+seed)&255;p[2]=static_cast<unsigned char>(r);p[1]=static_cast<unsigned char>(255-r);p[0]=static_cast<unsigned char>((x*y*7+seed*3)&255);p[3]=255;
+            std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*4,p,4);}
+        check("unlock 8-bit",bytes8->UnlockRect(0));
+        plain(main8.p,nullptr,false);check("fill Begin",d->BeginScene());check("fill texture",d->SetTexture(0,bytes8.p));quad({0,0,W,H},.5f);check("fill End",d->EndScene());
+        require(readback(d,main8.p,D3DFMT_A8R8G8B8,4)==reference,"8-bit main target holds the exact bytes");}
+    // The FP16 twin holds FP16(v/255) of the same bytes under the backend's
+    // detected conversion rule (round to nearest even or truncation toward zero).
+    void twin(bool truncate){D3DLOCKED_RECT half{};check("lock twin",exact16->LockRect(0,&half,nullptr,0));
+        for(UINT y=0;y<H;++y)for(UINT x=0;x<W;++x){const unsigned char* p=&reference[(y*W+x)*4];unsigned short px[4];for(UINT c=0;c<4;++c){const float v=p[c<3?2-c:3]/255.f;px[c]=truncate?toHalfTruncate(v):toHalf(v);}std::memcpy(static_cast<char*>(half.pBits)+y*half.Pitch+x*8,px,8);}
+        check("unlock twin",exact16->UnlockRect(0));}
+    // Same synthetic depth into the native D24X8 snapshot (rasterized) and the R32F texture (CPU model).
+    void depths(std::initializer_list<std::pair<RECT,float>> rects,float clear){
+        f.clear(clear);plain(f.rt[0].p,f.depthSurface.p,true);check("depth Begin",d->BeginScene());for(auto& r:rects)quad(r.first,r.second);check("depth End",d->EndScene());
+        depth([&](UINT x,UINT y){float z=clear;for(auto& r:rects)if(int(x)>=r.first.left&&int(x)<r.first.right&&int(y)>=r.first.top&&int(y)<r.first.bottom)z=r.second;return z;});}
+    template<class F> void depth(F value){Com<IDirect3DTexture9> staging;check("depth staging",d->CreateTexture(W,H,1,0,D3DFMT_R32F,D3DPOOL_SYSTEMMEM,&staging.p,nullptr));D3DLOCKED_RECT lock{};check("lock staging",staging->LockRect(0,&lock,nullptr,0));for(UINT y=0;y<H;++y)for(UINT x=0;x<W;++x){const float z=value(x,y);std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*4,&z,4);}check("unlock staging",staging->UnlockRect(0));check("depth upload",d->UpdateTexture(staging.p,depth32.p));}
+    FrameInputs inputs(){auto in=f.inputs();in.color=nullptr;in.color_surface=main8.p;in.depth_snapshot=nullptr;in.current_depth=depth32.p;return in;}
+    Output run(TemporalPass& pass,FrameInputs in,const char* label){f.hostile();Snapshot before(d);check("route caller Begin",d->BeginScene());Output out;check(label,pass.run(in,&out));check("route caller End",d->EndScene());before.equals(d,label);require(out.color&&out.depth&&out.color_surface&&pass.diagnostics().history_valid,"route atomic outputs valid");return out;}
+};
+void route_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const DWORD* resolver){
+    std::puts("ROUTE_CASES");Fixture f(d,compiler);RouteScene s(f,compiler);Output failed;
+    // 8-bit copy path against the direct FP16 path: bit-exact on the first frame
+    // and through accumulation; the copy is linear (no sRGB) up to FP16 rounding.
+    TemporalPass p8,p16;check("initialize 8-bit path",p8.initialize(d,decoder,resolver));check("initialize FP16 path",p16.initialize(d,decoder,resolver));
+    s.depth([](UINT,UINT){return .5f;});s.fill(0);
+    auto in8=s.inputs();auto in16=s.inputs();in16.color=s.exact16.p;in16.color_surface=nullptr;
+    auto a8=s.run(p8,in8,"8-bit copy first frame");
+    {Com<IDirect3DSurface9> level;check("resolved level",a8.color->GetSurfaceLevel(0,&level.p));require(level.p==a8.color_surface,"resolved surface is level 0 of resolved color");}
+    // The backend's UNORM8-to-FP16 conversion may round to nearest even or
+    // truncate toward zero; both stay within one FP16 ulp of v/255 and neither
+    // is a gamma curve (code 63 would become 0.0497 instead of 0.247 under sRGB
+    // decoding). One rule must explain every sample.
+    auto h8=readback(d,a8.color);unsigned nearest=0,truncated=0,alpha=0;float worst=0;
+    for(UINT i=0;i<W*H;++i){const unsigned char* p=&s.reference[i*4];for(UINT c=0;c<3;++c){const unsigned short actual=at<unsigned short>(h8,i*4+c);const float v=p[2-c]/255.f;
+            nearest+=actual==toHalf(v);truncated+=actual==toHalfTruncate(v);worst=std::max(worst,std::fabs(halfFloat(actual)-v));}alpha+=at<unsigned short>(h8,i*4+3)==toHalf(1);}
+    const bool truncate=truncated==W*H*3;
+    std::printf("COPY rule=%s nearest=%u truncated=%u of %u max_abs_error=%.9f alpha_one=%u of %u\n",truncate?"truncate":"nearest",nearest,truncated,W*H*3,worst,alpha,W*H);
+    ++numeric_checks;require((truncate||nearest==W*H*3)&&worst<1.f/2048&&alpha==W*H,"8-bit copy is v/255 within one FP16 ulp for all 256 codes, no gamma");
+    s.twin(truncate);auto a16=s.run(p16,in16,"FP16 direct first frame");
+    ++numeric_checks;require(h8==readback(d,a16.color)&&readback(d,a8.depth)==readback(d,a16.depth),"8-bit copy path equals direct FP16 path bit-exactly");
+    check("copy back",d->StretchRect(a8.color_surface,nullptr,s.main8.p,nullptr,D3DTEXF_POINT));++numeric_checks;require(readback(d,s.main8.p,D3DFMT_A8R8G8B8,4)==s.reference,"copy-back round trip restores the exact 8-bit bytes");
+    s.fill(97);s.twin(truncate);auto b8=s.run(p8,in8,"8-bit copy accumulation");auto b16=s.run(p16,in16,"FP16 direct accumulation");require(b8.used_history&&b16.used_history,"both paths accumulate");
+    ++numeric_checks;require(readback(d,b8.color)==readback(d,b16.color),"accumulated 8-bit copy path equals direct FP16 path bit-exactly");
+    // Input validation: exactly one color and one depth input.
+    auto in=s.inputs();in.color=s.exact16.p;require(p8.run(in,&failed)==E_INVALIDARG&&!failed.color,"both color inputs refused");
+    in=s.inputs();in.color_surface=nullptr;require(p8.run(in,&failed)==E_INVALIDARG,"no color input refused");
+    in=s.inputs();in.depth_snapshot=f.depth.p;require(p8.run(in,&failed)==E_INVALIDARG,"both depth inputs refused");
+    in=s.inputs();in.current_depth=nullptr;require(p8.run(in,&failed)==E_INVALIDARG,"no depth input refused");
+    in=s.inputs();in.color_surface=a8.color_surface;require(p8.run(in,&failed)==E_INVALIDARG,"resolved surface cannot alias the color input");
+    in=s.inputs();in.current_depth=a8.depth;require(p8.run(in,&failed)==E_INVALIDARG,"owned depth history cannot alias current depth");
+    {Com<IDirect3DTexture9> wrong;check("wrong depth format",d->CreateTexture(W,H,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_MANAGED,&wrong.p,nullptr));in=s.inputs();in.current_depth=wrong.p;require(p8.run(in,&failed)==E_INVALIDARG,"wrong current depth format refused");}
+    // Direct R32F depth equals the decoded D24X8 snapshot on one synthetic scene.
+    TemporalPass pd,pr;check("initialize decoded path",pd.initialize(d,decoder,resolver));check("initialize R32F path",pr.initialize(d,decoder,resolver));
+    s.depths({{{4,4,12,12},.25f}},.5f);f.upload(.75f,.75f);auto ind=f.inputs();auto inr=f.inputs();inr.depth_snapshot=nullptr;inr.current_depth=s.depth32.p;
+    s.run(pd,ind,"decoded first frame");s.run(pr,inr,"R32F first frame");
+    s.depths({{{4,4,8,12},.25f}},.5f);f.upload(.25f,1);auto od=s.run(pd,ind,"decoded accumulation");auto orf=s.run(pr,inr,"R32F accumulation");
+    reactive_sample(d,orf.color,2,8,.5f,"R32F outside quad accumulates");reactive_sample(d,orf.color,6,8,.5f,"R32F inside stable quad accumulates");reactive_sample(d,orf.color,10,8,.25f,"R32F depth change rejects history");
+    reactive_sample(d,orf.depth,6,8,.25f,"R32F depth history holds the copied quad depth");
+    ++numeric_checks;require(readback(d,od.color)==readback(d,orf.color),"R32F path color equals decoded D24X8 path bit-exactly");
+    {auto dd=readback(d,od.depth),dr=readback(d,orf.depth);float worst=0;for(UINT i=0;i<W*H;++i)worst=std::max(worst,std::fabs(at<float>(dd,i)-at<float>(dr,i)));std::printf("DEPTH decoded_vs_r32f_max_error=%.10f\n",worst);++numeric_checks;require(worst<=2.f/16777215.f,"decoded depth within two D24 steps of R32F depth");}
+    // Reactive derived from the depth sentinel: no mask texture, no third draw.
+    using x3m::renderer::ReactivePolicy;TemporalPass ps;check("initialize sentinel path",ps.initialize(d,decoder,resolver));
+    s.depth([](UINT x,UINT){return x<8?-1.f:.5f;});f.upload(.75f,.75f);in=f.inputs();in.depth_snapshot=nullptr;in.current_depth=s.depth32.p;in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;
+    auto s1=s.run(ps,in,"sentinel first frame");require(!s1.used_history&&!s1.reactive,"sentinel policy establishes history without a mask");
+    f.upload(.25f,1);auto s2=s.run(ps,in,"sentinel accumulation");require(s2.used_history,"sentinel policy accumulates");
+    reactive_sample(d,s2.color,4,8,.25f,"sentinel current pixel resolves current-only");reactive_sample(d,s2.depth,4,8,-1.f,"sentinel copied into depth history");
+    reactive_sample(d,s2.color,10,8,.5f,"opaque pixel accumulates beside sentinel");
+    f.uploadMotion(0);{D3DLOCKED_RECT ml{};check("lock sentinel correspondence",f.motion->LockRect(0,&ml,nullptr,0));const float corr[4]={4.5f/W,8.5f/H,.5f,1};std::memcpy(static_cast<char*>(ml.pBits)+8*ml.Pitch+8*16,corr,16);check("unlock sentinel correspondence",f.motion->UnlockRect(0));}
+    in.motion_policy=MotionPolicy::PerPixel;in.motion=f.motion.p;auto s3=s.run(ps,in,"sentinel history tap");reactive_sample(d,s3.color,8,8,.25f,"previous sentinel tap contributes nothing");reactive_sample(d,s3.color,10,8,.375f,"opaque correspondence keeps accumulating");
+    in=f.inputs();in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;require(ps.run(in,&failed)==E_INVALIDARG&&!failed.color,"sentinel policy requires direct R32F depth");
+    in=f.inputs();in.depth_snapshot=nullptr;in.current_depth=s.depth32.p;auto known=s.run(ps,in,"sentinel to known transition");require(!known.used_history,"policy transition invalidates history");
+    in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;auto back=s.run(ps,in,"known to sentinel transition");require(!back.used_history,"transition back invalidates history");
+    // Route cut verdict rejects history for the frame, then accumulation resumes.
+    f.upload(.75f,.75f);s.run(ps,in,"before cut");f.upload(.25f,1);in.cut=true;auto cut=s.run(ps,in,"route cut");require(!cut.used_history,"cut rejects history");reactive_sample(d,cut.color,10,8,.25f,"cut frame is current-only");
+    in.cut=false;auto resumed=s.run(ps,in,"after cut");require(resumed.used_history,"accumulation resumes after cut");
+    // Motion-override jitter: previous jitter applied once, current jitter not applied.
+    TemporalPass pj;check("initialize jitter path",pj.initialize(d,decoder,resolver));f.clear(.5f);f.uploadMotion(1);
+    auto checker=[&](){in=f.inputs();in.camera_cut=true;f.upload(.25f,1);f.run(pj,in,"jitter warmup");in.camera_cut=false;in.motion_policy=MotionPolicy::PerPixel;in.motion=f.motion.p;};
+    auto correspondence=[&](float u){D3DLOCKED_RECT ml{};check("lock jitter correspondence",f.motion->LockRect(0,&ml,nullptr,0));const float corr[4]={u,8.5f/H,.5f,1};std::memcpy(static_cast<char*>(ml.pBits)+8*ml.Pitch+8*16,corr,16);check("unlock jitter correspondence",f.motion->UnlockRect(0));};
+    checker();correspondence(8.5f/W);in.previous_jitter[0]=1;auto once=f.run(pj,in,"motion previous jitter");f.sample(once,.625f,.5f,"motion path applies previous jitter once");
+    checker();correspondence(8.5f/W);in.previous_jitter[0]=1;in.current_jitter[0]=1;auto both=f.run(pj,in,"motion both jitters");f.sample(both,.625f,.5f,"motion path ignores current jitter");
+    checker();correspondence(8.5f/W);in.current_jitter[0]=1;auto current=f.run(pj,in,"motion current jitter only");f.sample(current,.25f,.5f,"motion path without previous jitter stays put");
+    checker();correspondence(7.5f/W);in.previous_jitter[0]=1;auto cancelled=f.run(pj,in,"pre-subtracted producer");f.sample(cancelled,.25f,.5f,"producer RG that already subtracted previous jitter cancels it");
+    checker();in.motion_policy=MotionPolicy::KnownCameraOnly;in.motion=nullptr;in.current_jitter[0]=1;auto camera=f.run(pj,in,"camera current jitter");f.sample(camera,.625f,.5f,"camera path applies current jitter");
+}
+void reset_continuity(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS& pp,Compiler compiler,const DWORD* decoder,const DWORD* resolver){
+    std::puts("RESET_CONTINUITY");TemporalPass pass;check("continuity initialize",pass.initialize(d,decoder,resolver));Output out;
+    {Fixture f(d,compiler);auto in=f.inputs();f.run(pass,in,"before reset frame");f.upload(.25f,1);auto b=f.run(pass,in,"before reset accumulation");require(b.used_history,"history before reset");
+        pass.before_reset();require(pass.diagnostics().reset_pending&&!pass.diagnostics().history_valid,"before_reset releases history and pends");
+        require(pass.run(in,&out)==E_INVALIDARG&&!out.color,"run refused while reset pending");
+        pass.after_reset(E_FAIL);require(pass.diagnostics().reset_pending&&pass.run(in,&out)==E_INVALIDARG,"failed Reset keeps refusing");}
+    check("Reset",d->Reset(&pp));std::puts("RESET PASS");pass.after_reset(S_OK);require(!pass.diagnostics().reset_pending,"after_reset clears pending");
+    {Fixture f(d,compiler);auto in=f.inputs();auto a=f.run(pass,in,"after reset first frame");require(!a.used_history,"reset invalidates history");f.sample(a,.75f,.5f,"after reset");
+        f.upload(.25f,1);auto b=f.run(pass,in,"after reset accumulation");require(b.used_history,"history rebuilt after reset without initialize");f.sample(b,.5f,.5f,"after reset blend");}
+}
 int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=1;WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3TemporalPassFixture";RegisterClassA(&cls);HWND window=CreateWindowA(cls.lpszClassName,"X3 temporal production module",WS_OVERLAPPEDWINDOW,90,90,128,128,nullptr,nullptr,cls.hInstance,nullptr);
     try{if(argc!=4||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve>");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);compile(compiler,file(argv[3]),"ps_3_0",&rc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
-        for(unsigned generation=0;generation<2;++generation){cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()),generation);reactive_cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()));if(!generation){check("Reset",d->Reset(&pp));std::puts("RESET PASS");}}
+        for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
         std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);result=0;
     }catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());}if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);return result;}

@@ -14,3 +14,5 @@
 ==== production-admission-on
 ==== seam-admission-off
 ==== seam-admission-on
+==== production-jitter-on
+==== seam-jitter-on
