@@ -56,8 +56,10 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
         x3m::object_lifetime::initialize();
         x3m::camera_state::initialize(); // X3M_MOTION_OUTPUT=1 X3M_TAA=1; reads only, no patch
         x3m::log("camera_state active=%u status=%s",x3m::camera_state::available(),x3m::camera_state::status());
-        // X3M_SCENE_HOOK=1: the frame routine's compositing callsite, exact
-        // executable and exact bytes only; restored when the last device goes.
+        // X3M_SCENE_HOOK (default on with X3M_MOTION_OUTPUT=1, 0 off): the frame
+        // routine's compositing callsite, exact executable and exact bytes
+        // only, otherwise fails closed (the route keeps the copy/selector
+        // boundary); restored when the last device goes.
         x3m::scene_hook::initialize(&x3m::scene_end_signal);
         x3m::log("scene_hook active=%u status=%s",x3m::scene_hook::active(),x3m::scene_hook::status());
         const auto lifetime_stats=x3m::object_lifetime::stats();

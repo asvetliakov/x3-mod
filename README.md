@@ -73,9 +73,12 @@ The live motion route is opt-in and diagnostic: `--motion-output` (env
 variants into a private RGBA32F RT1 and writes it back in capture frames. Object
 history needs `--object-trace --object-lifetime`; without them the route runs in
 sentinel-only mode. `--taa` (env `X3M_TAA=1`, requires `--motion-output` with
-both history options, implies `--motion-jitter`) runs the temporal resolve at the game's pre-bloom
-copy and presents the resolved image; `--taa-debug` writes the resolved FP16
-image in capture frames. This is the first TAA that reaches the screen; it is
+both history options, implies `--motion-jitter`) runs the temporal resolve at
+the engine's scene end and presents the resolved image; `--taa-debug` writes the resolved FP16
+image in capture frames. The scene end comes from the engine scene-end hook
+(env `X3M_SCENE_HOOK`, on by default with `--motion-output`: a byte-verified
+patch of the compositing callsite that fails closed to the game's pre-bloom
+copy on any other executable; `--scene-hook off` keeps the copy boundary). This is the first TAA that reaches the screen; it is
 verified synthetically, not yet in gameplay. `--hdr` (env `X3M_HDR=1`,
 requires `--motion-output`) is the FP16 HDR scene path: the scene renders
 into an owned FP16 target and is written back into the game's 8-bit target.
@@ -93,7 +96,13 @@ and `--taa` together (stage 3) the temporal resolve runs on the FP16 scene
 before the write-back — no 8-bit round trip, the history in engine radiance,
 a reversible luminance weighting inside the resolve whose constant is the
 write-back's exposure (`--taa-k` fixes it; 0 is the unweighted resolve) —
-and the presented frame is the tonemap of the resolved image. See
+and the presented frame is the tonemap of the resolved image.
+`--taa-sharpen 0..1` (env `X3M_TAA_SHARPEN`, requires `--taa`) adds a
+robust contrast-adaptive sharpen (RCAS) of the presented image only — the
+history is never sharpened; 1 is the strongest setting, unset or 0 leaves
+every route bit-identical to the unsharpened one; on the HDR route it runs
+after the tonemap ([post-resolve sharpen](docs/architecture/temporal-integration.md#post-resolve-sharpen-2026-09-12),
+numbers in [taa-sharpen.md](docs/verification/taa-sharpen.md)). See
 [live motion route](docs/architecture/live-motion-route.md),
 [temporal integration](docs/architecture/temporal-integration.md) and the exact
 gameplay commands in

@@ -1,0 +1,23 @@
+MODULE C:\windows\system32\d3d9.dll
+MODULE C:\X3\d3dx9_37.dll
+SHARPEN_MEASURE
+CHECK measure input holds the exact bytes PASS
+CHECK the current-only resolve of the first frame returns the input through the FP16 round trip PASS
+CHECK measure image written PASS
+MEASURE sharpness=0 file=sharpen-measure-0.bgra8 width=128 height=128
+CHECK measure input holds the exact bytes PASS
+CHECK measure run wrote the display image PASS
+CHECK measure image inside the 3x3 bound of the input PASS
+CHECK measure image written PASS
+MEASURE sharpness=0.25 file=sharpen-measure-0.25.bgra8 width=128 height=128
+CHECK measure input holds the exact bytes PASS
+CHECK measure run wrote the display image PASS
+CHECK measure image inside the 3x3 bound of the input PASS
+CHECK measure image written PASS
+MEASURE sharpness=0.5 file=sharpen-measure-0.5.bgra8 width=128 height=128
+CHECK measure input holds the exact bytes PASS
+CHECK measure run wrote the display image PASS
+CHECK measure image inside the 3x3 bound of the input PASS
+CHECK measure image written PASS
+MEASURE sharpness=1 file=sharpen-measure-1.bgra8 width=128 height=128
+RESULT PASS numerical=3 sharpen_measure=1

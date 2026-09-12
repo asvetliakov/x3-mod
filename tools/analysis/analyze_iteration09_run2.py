@@ -88,6 +88,7 @@ import array
 import json
 import math
 import statistics
+import struct
 import sys
 from collections import Counter, OrderedDict
 from pathlib import Path
@@ -109,10 +110,12 @@ BYPASS_REASONS = ('input', 'runtime', 'floating_point', 'epsilon', 'configuratio
 FP_EXPECTED = {'control': 0x007f, 'tag': 0xffff, 'status_mask': 0xb800, 'mxcsr': 0x1f80,
                'mxcsr_ignore': 0x3f}
 ADJACENCY_OP = 'ID3DXMesh::GenerateAdjacency'
-SAMPLER_STATES = {5: 'magfilter', 6: 'minfilter', 7: 'mipfilter', 10: 'maxanisotropy',
-                  11: 'srgbtexture'}
-SAMPLER_MISSING = {8: 'D3DSAMP_MIPMAPLODBIAS', 9: 'D3DSAMP_MAXMIPLEVEL',
-                   1: 'D3DSAMP_ADDRESSU', 2: 'D3DSAMP_ADDRESSV'}
+# The states capture.cpp snapshots per draw. MIPMAPLODBIAS (8) and
+# MAXMIPLEVEL (9) were added by the mip-bias work: a log that predates it
+# reports them under states_not_recorded (computed from what the log holds).
+SAMPLER_STATES = {5: 'magfilter', 6: 'minfilter', 7: 'mipfilter', 8: 'mipmaplodbias',
+                  9: 'maxmiplevel', 10: 'maxanisotropy', 11: 'srgbtexture'}
+SAMPLER_NEVER = {1: 'addressu', 2: 'addressv'}   # never snapshotted; listed as missing
 TEXTURE_FILTER = {0: 'NONE', 1: 'POINT', 2: 'LINEAR', 3: 'ANISOTROPIC'}
 HISTORY_WEIGHT = it08.HISTORY_WEIGHT  # 0.9, src/renderer/temporal_pass.h
 WIDTH, HEIGHT = 1280, 768
@@ -150,6 +153,7 @@ def scan_log(path, device='1'):
         'sampler_groups': {'routed': Counter(), 'unrouted': Counter()},
         'sampler_stage_groups': {'routed': {}, 'unrouted': {}},
         'sampler_draws': {'routed': 0, 'unrouted': 0},
+        'sampler_states_seen': set(),
         'counts': Counter(),
     }
     # A captured draw's records arrive as one block: `draw`, then the state and
@@ -213,8 +217,18 @@ def scan_log(path, device='1'):
             f = fields(line)
             stage, state = number(f.get('stage')), number(f.get('state'))
             name = SAMPLER_STATES.get(state)
+            if name:
+                out['sampler_states_seen'].add(name)
             if stage is not None and name and stage in draw['stages']:
-                draw['stages'][stage][name] = number(f.get('value'))
+                # The LOD bias is a float bit pattern in the DWORD: capture.cpp
+                # logs it raw and as `bias=<float>`; the float is the value.
+                if state == 8:
+                    raw = number(f.get('value'))
+                    value = (float(f['bias']) if f.get('bias') is not None
+                             else struct.unpack('<f', struct.pack('<I', raw))[0] if raw is not None else None)
+                else:
+                    value = number(f.get('value'))
+                draw['stages'][stage][name] = value
         elif event == 'draw_result' and draw is not None:
             if draw['stages']:
                 fold_sampler_draw(out, draw)
@@ -226,7 +240,9 @@ def sampler_signature(state):
     return (TEXTURE_FILTER.get(state.get('minfilter'), state.get('minfilter')),
             TEXTURE_FILTER.get(state.get('magfilter'), state.get('magfilter')),
             TEXTURE_FILTER.get(state.get('mipfilter'), state.get('mipfilter')),
-            state.get('maxanisotropy'), state.get('srgbtexture'))
+            state.get('maxanisotropy'), state.get('srgbtexture'),
+            # None in a log that predates the two states (not the 0 default)
+            state.get('mipmaplodbias'), state.get('maxmiplevel'))
 
 
 def fold_sampler_draw(out, draw):
@@ -1167,16 +1183,28 @@ def sampler_report(scan):
 
     def render(counter):
         return [{'minfilter': k[0], 'magfilter': k[1], 'mipfilter': k[2],
-                 'maxanisotropy': k[3], 'srgbtexture': k[4], 'stage_samples': v}
+                 'maxanisotropy': k[3], 'srgbtexture': k[4], 'mipmaplodbias': k[5],
+                 'maxmiplevel': k[6], 'stage_samples': v}
                 for k, v in counter.most_common()]
+    seen = scan.get('sampler_states_seen', set())
+    missing = sorted('D3DSAMP_' + name.upper() for name in
+                     list(SAMPLER_STATES.values()) + list(SAMPLER_NEVER.values()) if name not in seen)
+    if 'mipmaplodbias' in seen:
+        note = ('src/proxy/capture.cpp snapshots MIN/MAG/MIPFILTER, MAXANISOTROPY, SRGBTEXTURE, '
+                'MIPMAPLODBIAS (raw and as bias=<float>) and MAXMIPLEVEL per bound stage; the '
+                'mipmaplodbias column is the LOD bias the device held at the draw (the route '
+                'restores its own bias before the capture diagnostics, so a routed draw shows '
+                'the application value, 0.0 unless the game wrote one).')
+    else:
+        note = ('src/proxy/capture.cpp snapshots only MINFILTER/MAGFILTER/MIPFILTER/'
+                'MAXANISOTROPY/SRGBTEXTURE in this log (it predates the mip-bias capture). '
+                'D3DSAMP_MIPMAPLODBIAS is absent, so this run carries no evidence of the '
+                'current LOD bias; absence is not proof of the 0.0 default.')
     return {
         'captured_draws': draws,
-        'states_recorded': sorted(SAMPLER_STATES.values()),
-        'states_not_recorded': sorted(SAMPLER_MISSING.values()),
-        'note': 'src/proxy/capture.cpp snapshots only MINFILTER/MAGFILTER/MIPFILTER/'
-                'MAXANISOTROPY/SRGBTEXTURE. D3DSAMP_MIPMAPLODBIAS is absent from the log, '
-                'so this run carries no evidence of the current LOD bias; absence is not '
-                'proof of the 0.0 default.',
+        'states_recorded': sorted(seen),
+        'states_not_recorded': missing,
+        'note': note,
         'routed': render(groups['routed']),
         'unrouted': render(groups['unrouted']),
         'routed_per_stage': {str(s): render(c) for s, c in
@@ -1424,11 +1452,13 @@ def render_text(report):
     for row in samplers['routed'][:8]:
         lines.append(f"  routed min={row['minfilter']} mag={row['magfilter']} "
                      f"mip={row['mipfilter']} aniso={row['maxanisotropy']} "
-                     f"srgb={row['srgbtexture']} n={row['stage_samples']}")
+                     f"srgb={row['srgbtexture']} bias={row['mipmaplodbias']} "
+                     f"maxmip={row['maxmiplevel']} n={row['stage_samples']}")
     for row in samplers['unrouted'][:4]:
         lines.append(f"  unrouted min={row['minfilter']} mag={row['magfilter']} "
                      f"mip={row['mipfilter']} aniso={row['maxanisotropy']} "
-                     f"srgb={row['srgbtexture']} n={row['stage_samples']}")
+                     f"srgb={row['srgbtexture']} bias={row['mipmaplodbias']} "
+                     f"maxmip={row['maxmiplevel']} n={row['stage_samples']}")
 
     health = report['health']
     lines.append('== health')

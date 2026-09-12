@@ -78,3 +78,15 @@ Run with candidate disabled first. Add scoped native observation of `lastTargetW
 With the same reproducible transition, enable candidate A and require: one software cursor only in the active client; native arrow usable immediately outside/in another application; unchanged Win32 hide count and pointer position; clean repeated activation/minimize/restore/exit; no focus stealing or pointer lock; one reconciliation per eligible transition; no added hide when native bookkeeping already says hidden. Test the external display first to match this run. Add built-in scale-2 and borderless coverage afterward.
 
 Keep host-cursor observation separate from screenshots that might omit the cursor. Use capture with explicit cursor inclusion or a direct observer; associate the symptom with a timestamp. Save native/Win32 event evidence whether the candidate succeeds or fails. Rendering-core work can continue independently while this bounded fixture resolves the host-input branch.
+
+## Observation 2026-09-12 (bottle X3, arm64 Wine + FEX, review-25 build)
+
+User report after run 3: at launch the game window comes up behind the
+desktop. The first alt-tab into it shows the duplicate cursor. Switching to
+the desktop and back again (a second alt-tab cycle) makes the duplicate
+disappear. The user attributes it to the original game/Wine behaviour rather
+than to our changes; it is consistent with the activation-transition
+mechanism above (a mismatch created on the first activation and reconciled by
+the next deactivate/activate pair). Not yet compared against a vanilla launch
+on this bottle (`--vanilla`) — that A/B stays the first step before any
+candidate is tried.

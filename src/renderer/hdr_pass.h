@@ -21,6 +21,7 @@
 #include <cstdint>
 #include "exposure.h"
 #include "../temporal/agx.h"
+#include "../temporal/sharpen.h"
 
 namespace x3m::renderer {
 // Attach-time verdict: caps.reason is "ok" or the first failed check.
@@ -45,6 +46,12 @@ struct HdrCaps {
     bool meter = false;
     const char* meter_reason = "off";
     HRESULT r32f_target = S_FALSE, r32f_sampling = S_FALSE, tonemap_shader = S_FALSE, meter_shader = S_FALSE;
+    // Post-resolve sharpen (X3M_TAA_SHARPEN > 0): its programs gate themselves
+    // like the tonemap; a refusal keeps the unsharpened write-backs. reason
+    // "ok", "off" (not requested), "shader".
+    bool sharpen = false;
+    const char* sharpen_reason = "off";
+    HRESULT sharpen_shader = S_FALSE;
 };
 enum class HdrTonemap : unsigned { Identity = 0, Agx = 1 };
 // Stage-2 switches (X3M_HDR_TONEMAP, X3M_HDR_DECODE, X3M_HDR_LOOK,
@@ -61,6 +68,9 @@ struct HdrConfig {
     float ev_manual = 0.f;
     ExposureParams params{};
     float fixed_dt = 0.f;
+    // X3M_TAA_SHARPEN in [0, 1]: RCAS of the tonemapped (or identity) image
+    // when the write-back samples a resolved TAA image (sharpen.h). 0: off.
+    float sharpen = 0.f;
 };
 const char* hdr_tonemap_name(HdrTonemap tonemap) noexcept;
 const char* hdr_look_name(x3::temporal::AgxLook look) noexcept;
@@ -83,6 +93,10 @@ struct HdrWriteback {
     bool tonemap = false, fallback = false;
     HRESULT tonemap_draw = S_FALSE, meter = S_FALSE;
     std::uint64_t ticks_meter = 0;
+    // Post-resolve sharpen: `sharpened` says the RCAS variant of the program
+    // produced the image; `sharpen_fallback` that the sharpened draw failed
+    // and the unsharpened program of the same kind was drawn instead.
+    bool sharpened = false, sharpen_fallback = false;
 };
 // The meter readback and adaptation step taken at a latch (begin_frame).
 struct HdrFrameBegin {
@@ -125,6 +139,9 @@ public:
     // auto exposure.
     bool tonemap_active() const noexcept { return caps_.tonemap && tonemap_shader_ && tonemap_failures_ < tonemap_failure_limit; }
     bool meter_active() const noexcept { return tonemap_active() && caps_.meter && config_.exposure == ExposureMode::Auto; }
+    // The sharpen programs are in use (configured, created and not disabled
+    // after repeated draw failures); applied only to a resolved source.
+    bool sharpen_active() const noexcept { return caps_.sharpen && sharpen_shader_ && sharpen_failures_ < tonemap_failure_limit; }
     const ExposureState& exposure() const noexcept { return exposure_; }
     // At the latch of a frame (after the redirect bound): copies the previous
     // frame's 1x1 meter from its ring target to system memory and locks it
@@ -182,6 +199,7 @@ private:
     struct Program {
         IDirect3DPixelShader9* shader = nullptr;
         const float* constants = nullptr;
+        const float* sharpen = nullptr;     // c23 when set (SharpenConstants::values)
         bool meter = false;
         HRESULT meter_result = S_FALSE;
         std::uint64_t ticks_meter = 0;
@@ -189,7 +207,7 @@ private:
     };
     static constexpr unsigned tonemap_failure_limit = 3;
     static constexpr unsigned chain_max_levels = 8;   // 4^8 = 65536 px per axis
-    static constexpr unsigned constant_count = x3::temporal::kAgxFirstRegister + x3::temporal::kAgxRegisterCount; // c0..c21 saved
+    static constexpr unsigned constant_count = x3::temporal::kSharpenRegister + 1; // c0..c23 saved (meter c0..c3, AgX c8..c21, sharpen c23)
     template<class Fn> Fn call(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
     bool self_test(bool with_depth, bool scene_open, char* detail, std::size_t detail_size) noexcept;
     HRESULT save(SavedState& saved) noexcept;
@@ -226,6 +244,12 @@ private:
     // readback surfaces, the host adaptation state.
     IDirect3DPixelShader9* tonemap_shader_ = nullptr;
     IDirect3DPixelShader9* meter_level0_shader_ = nullptr;
+    // Post-resolve sharpen: the identity+RCAS and AgX+RCAS programs, the c23
+    // block prepared per write-back, the failure count of sharpened draws.
+    IDirect3DPixelShader9* sharpen_shader_ = nullptr;
+    IDirect3DPixelShader9* tonemap_sharpen_shader_ = nullptr;
+    x3::temporal::SharpenConstants sharpen_{};
+    unsigned sharpen_failures_ = 0;
     IDirect3DPixelShader9* meter_reduce_shader_ = nullptr;
     x3::temporal::AgxConstants agx_{};
     IDirect3DSurface9* chain_[chain_max_levels]{};

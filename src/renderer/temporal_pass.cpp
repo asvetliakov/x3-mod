@@ -1,4 +1,5 @@
 #include "temporal_pass.h"
+#include "../temporal/sharpen.h"
 #include <algorithm>
 #include <cstring>
 
@@ -167,12 +168,12 @@ void TemporalPass::release_history() noexcept {
     reactive_policy_=ReactivePolicy::Unavailable;
     width_=height_=current_=0;
 }
-void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
+void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(sharpen_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
 // Every owned texture and the state block must not exist across Reset; the
 // compiled shaders survive it. Runs are refused until after_reset succeeds.
 void TemporalPass::before_reset() noexcept {release_history();drop(block_);diagnostics_.reset_pending=device_!=nullptr;}
 void TemporalPass::after_reset(HRESULT result) noexcept {invalidate();if(SUCCEEDED(result))diagnostics_.reset_pending=false;}
-HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const DWORD* resolve,void* const* native_vtable) noexcept {
+HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const DWORD* resolve,void* const* native_vtable,const DWORD* sharpen) noexcept {
     shutdown();diagnostics_={};if(!d||!resolve)return E_INVALIDARG;
     device_=d;vtable_=native_vtable;
     D3DCAPS9 caps{};HRESULT hr=call<CapsFn>(GetDeviceCaps)(d,&caps);
@@ -181,6 +182,7 @@ HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const 
     render_targets_=caps.NumSimultaneousRTs;streams_=caps.MaxStreams;
     if(decoder)hr=call<CreatePsFn>(CreatePixelShader)(d,decoder,&decoder_);
     if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(d,resolve,&resolve_);
+    if(SUCCEEDED(hr)&&sharpen)hr=call<CreatePsFn>(CreatePixelShader)(d,sharpen,&sharpen_);
     if(FAILED(hr))shutdown();
     return hr;
 }
@@ -224,7 +226,8 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
          in.reactive_policy!=ReactivePolicy::RequiredMask&&!sentinel)||
         (in.reactive_policy!=ReactivePolicy::RequiredMask&&in.reactive)||
         bool(in.color)==bool(in.color_surface)||bool(in.depth_snapshot)==bool(in.current_depth)||
-        (in.depth_snapshot&&!decoder_)||(sentinel&&!in.current_depth))return fail(E_INVALIDARG);
+        (in.depth_snapshot&&!decoder_)||(sentinel&&!in.current_depth)||
+        !x3::temporal::valid_sharpen(in.sharpen)||(in.sharpen>0&&(!in.color_surface||!sharpen_)))return fail(E_INVALIDARG);
     for(UINT i=0;i<2;++i){
         for(auto* owned:{colors_[i],depths_[i],reactive_[i],scratch_})
             if(owned&&(in.color==owned||in.depth_snapshot==owned||in.current_depth==owned||in.motion==owned||in.reactive==owned))return fail(E_INVALIDARG);
@@ -290,6 +293,28 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         if(step(call<SetRtFn>(SetRenderTarget)(d,0,reactive_surfaces_[next]))&&
            step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,7,constants.options,1)))hr=quad(in.width,in.height);
     }
+    // Post-resolve sharpen (sharpen.h): with the history set complete, RCAS of
+    // the new FP16 colour history is drawn into the caller's 8-bit surface
+    // (the resolve's own input, already copied into the scratch), inside the
+    // same state bracket and scene: no second capture/apply, no copy-back.
+    // The history texture leaves RT0 before it is sampled. c23 is the only
+    // constant register the sharpen touches; the block restores it.
+    // Review 26: the sharpened draw is the display's, not the history's. A
+    // lost device ends the run as anywhere else; any other failure of this
+    // draw leaves the resolve in force (the history set is complete and is
+    // published below) and hands the display to the caller's copy-back
+    // (Output::sharpen_result names the failure; the caller counts them).
+    bool display_written=false; HRESULT sharpen_result=S_FALSE;
+    if(SUCCEEDED(hr)&&in.sharpen>0){
+        x3::temporal::SharpenConstants sharpen{};
+        auto sub=[&](HRESULT value){sharpen_result=value;return SUCCEEDED(value);};
+        if(!x3::temporal::prepare_sharpen(sharpen,in.sharpen,in.width,in.height))sharpen_result=E_INVALIDARG;
+        else if(sub(call<SetRtFn>(SetRenderTarget)(d,0,in.color_surface))&&sub(call<SetPsFn>(SetPixelShader)(d,sharpen_))&&
+           sub(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,x3::temporal::kSharpenRegister,sharpen.values,1))&&
+           sub(call<SetTextureFn>(SetTexture)(d,0,colors_[next])))sub(quad(in.width,in.height));
+        display_written=SUCCEEDED(sharpen_result);
+        if(lost(sharpen_result))hr=sharpen_result;
+    }
     if(own_scene&&!lost(hr)){const HRESULT end=call<SceneFn>(EndScene)(d);if(SUCCEEDED(hr)||lost(end))hr=end;}
     diagnostics_.ticks_draw+=stamp()-mark;
     diagnostics_.operation=hr;
@@ -304,6 +329,6 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     current_=next;reactive_policy_=in.reactive_policy;
     if(reactive_policy_!=ReactivePolicy::Unavailable)history_.completed();
     diagnostics_.history_valid=history_.valid;++diagnostics_.completed_frames;++generation_;
-    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_],color_surfaces_[current_]};return S_OK;
+    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_],color_surfaces_[current_],display_written,sharpen_result};return S_OK;
 }
 } // namespace x3m::renderer

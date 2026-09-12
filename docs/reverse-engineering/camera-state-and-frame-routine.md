@@ -311,8 +311,9 @@ relative-call redirect, no prologue relocation) applies unchanged.
 
 ### Implemented hook: scene end / compositing begin (2026-09-12)
 
-`src/proxy/scene_hook.cpp` (`X3M_SCENE_HOOK=1`, `tools/manage.py launch
---scene-hook`; default off) patches the second row of the table. Exact
+`src/proxy/scene_hook.cpp` (`X3M_SCENE_HOOK`; on by default with
+`X3M_MOTION_OUTPUT=1` since review 26, `tools/manage.py launch --scene-hook
+off` disables it) patches the second row of the table. Exact
 contract as built and fixture-verified
 ([motion-output.md](../verification/motion-output.md#engine-scene-end-hook-x3m_scene_hook)):
 

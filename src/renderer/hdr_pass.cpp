@@ -1,6 +1,8 @@
 #include "hdr_pass.h"
 #include "hdr_writeback_program.h"
 #include "hdr_tonemap_program.h"
+#include "taa_sharpen_program.h"
+#include "hdr_tonemap_sharpen_program.h"
 #include "hdr_meter_program.h"
 #include <cmath>
 #include <cstdio>
@@ -196,9 +198,10 @@ std::uint64_t HdrPass::stamp(bool timing) const noexcept {
 void HdrPass::shutdown() noexcept {
     release_target();
     drop(shader_); drop(tonemap_shader_); drop(meter_level0_shader_); drop(meter_reduce_shader_);
+    drop(sharpen_shader_); drop(tonemap_sharpen_shader_);
     device_ = nullptr; native_ = nullptr;
     caps_ = HdrCaps{};
-    tonemap_failures_ = 0; latch_ticks_ = 0;
+    tonemap_failures_ = 0; sharpen_failures_ = 0; latch_ticks_ = 0;
     exposure_.reset();
 }
 
@@ -223,7 +226,8 @@ std::uint64_t HdrPass::chain_bytes() const noexcept {
 
 unsigned HdrPass::references() const noexcept {
     unsigned n = (target_ ? 1u : 0u) + (shader_ ? 1u : 0u) + (tonemap_shader_ ? 1u : 0u)
-        + (meter_level0_shader_ ? 1u : 0u) + (meter_reduce_shader_ ? 1u : 0u) + chain_count_;
+        + (meter_level0_shader_ ? 1u : 0u) + (meter_reduce_shader_ ? 1u : 0u) + chain_count_
+        + (sharpen_shader_ ? 1u : 0u) + (tonemap_sharpen_shader_ ? 1u : 0u);
     for (unsigned i = 0; i < 2; ++i) n += (chain_ring_[i] ? 1u : 0u) + (chain_readback_[i] ? 1u : 0u);
     return n;
 }
@@ -411,6 +415,8 @@ HRESULT HdrPass::copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* 
     step(call<SetPsFn>(SetPixelShader)(device_, program && program->shader ? program->shader : shader_));
     if (program && program->constants)
         step(call<SetPsConstFn>(SetPixelShaderConstantF)(device_, x3::temporal::kAgxFirstRegister, program->constants, x3::temporal::kAgxRegisterCount));
+    if (program && program->sharpen)
+        step(call<SetPsConstFn>(SetPixelShaderConstantF)(device_, x3::temporal::kSharpenRegister, program->sharpen, 1));
     step(call<SetTextureFn>(SetTexture)(device_, 0, source_texture));
     if (SUCCEEDED(op)) {
         // Integer raster sample positions: shift by -0.5 so every texel centre is
@@ -793,9 +799,20 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
             }
         }
     }
+    // Post-resolve sharpen: the identity+RCAS program always, the AgX+RCAS
+    // program with the tonemap; a creation failure keeps both write-backs
+    // unsharpened (X3M_HDR and the tonemap stay on).
+    if (!std::strcmp(reason, "ok") && config_.sharpen > 0.f) {
+        caps_.sharpen_shader = call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(taa_sharpen_program()), &sharpen_shader_);
+        if (SUCCEEDED(caps_.sharpen_shader) && caps_.tonemap)
+            caps_.sharpen_shader = call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(hdr_tonemap_sharpen_program()), &tonemap_sharpen_shader_);
+        if (FAILED(caps_.sharpen_shader) || !sharpen_shader_ || (caps_.tonemap && !tonemap_sharpen_shader_)) {
+            drop(sharpen_shader_); drop(tonemap_sharpen_shader_); caps_.sharpen = false; caps_.sharpen_reason = "shader";
+        } else { caps_.sharpen = true; caps_.sharpen_reason = "ok"; }
+    }
     exposure_.configure(config_.params, config_.exposure, config_.ev_manual);
     exposure_.reset();
-    tonemap_failures_ = 0; latch_ticks_ = 0; chain_slot_ = 0;
+    tonemap_failures_ = 0; sharpen_failures_ = 0; latch_ticks_ = 0; chain_slot_ = 0;
     if (!std::strcmp(reason, "ok")) {
         caps_.self_test_targets = with_depth ? 3u : 2u;
         if (!self_test(with_depth, false, caps_.self_test_detail, sizeof caps_.self_test_detail)) reason = "self_test";
@@ -883,15 +900,32 @@ HdrWriteback HdrPass::write_back(IDirect3DSurface9* main, IDirect3DSurface9* fin
         // an unwind (reason "tonemap") so the recovery self test runs at the
         // next latch; repeated failures disable the tonemap for the device.
         const bool use_tonemap = tonemap_active();
+        // Post-resolve sharpen: only a resolved TAA image is sharpened (the
+        // unresolved scene of a failed or absent resolve is written back as
+        // it is), with the RCAS variant of the program in use and c23.
+        const bool sharpen = source != nullptr && sharpen_active() && (!use_tonemap || tonemap_sharpen_shader_)
+            && x3::temporal::prepare_sharpen(sharpen_, config_.sharpen, width_, height_);
         if (SUCCEEDED(hr)) {
             Program program;
-            if (use_tonemap) {
-                program.shader = tonemap_shader_; program.constants = &agx_.exposure[0];
-                program.meter = meter_active() && chain_ring_[0] != nullptr; program.timing = timing;
+            if (use_tonemap || sharpen) {
+                program.shader = use_tonemap ? (sharpen ? tonemap_sharpen_shader_ : tonemap_shader_) : sharpen_shader_;
+                program.constants = use_tonemap ? &agx_.exposure[0] : nullptr;
+                program.sharpen = sharpen ? sharpen_.values : nullptr;
+                program.meter = use_tonemap && meter_active() && chain_ring_[0] != nullptr; program.timing = timing;
                 const HRESULT injected_tonemap = fault(HdrFault::TonemapDraw) ? E_FAIL : injected_draw;
                 hr = copy_draw(target_, texture, main, width_, height_, final_rt0, &result.restore, injected_tonemap, injected_restore, &program);
-                result.tonemap = true; result.tonemap_draw = hr; result.meter = program.meter_result; result.ticks_meter = program.ticks_meter;
-                if (FAILED(hr) && !lost(hr) && SUCCEEDED(result.restore) && SUCCEEDED(injected_draw)) {
+                result.tonemap = use_tonemap; result.sharpened = sharpen; result.tonemap_draw = use_tonemap ? hr : S_FALSE;
+                result.meter = program.meter_result; result.ticks_meter = program.ticks_meter;
+                if (sharpen && FAILED(hr) && !lost(hr) && SUCCEEDED(result.restore) && SUCCEEDED(injected_draw)) {
+                    // The sharpened draw failed with a clean restoration: count it
+                    // against the sharpen and redraw unsharpened (the meter, if it
+                    // ran, is not repeated); repeated failures disable the sharpen.
+                    ++sharpen_failures_; result.sharpened = false; result.sharpen_fallback = true;
+                    program.shader = use_tonemap ? tonemap_shader_ : shader_; program.sharpen = nullptr; program.meter = false;
+                    hr = copy_draw(target_, texture, main, width_, height_, final_rt0, &result.restore, injected_draw, injected_restore, &program);
+                    if (use_tonemap) result.tonemap_draw = hr;
+                }
+                if (use_tonemap && FAILED(hr) && !lost(hr) && SUCCEEDED(result.restore) && SUCCEEDED(injected_draw)) {
                     ++tonemap_failures_;
                     result.tonemap = false; result.fallback = true;
                     hr = copy_draw(target_, texture, main, width_, height_, final_rt0, &result.restore, injected_draw, injected_restore);

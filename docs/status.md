@@ -78,6 +78,12 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
 - **Analyses**: [iteration-10.md](verification/iteration-10.md) (FEX health
   clean, TAA no regression, frame time 24.1 → 8.4 ms route off, 34.2 → 16.9 ms
   route on; hook agrees 214/214, `rs_resyncs` 24 on a latch-only screen);
+  [iteration-11.md](verification/iteration-11.md) (review-25 run 9: attributed
+  route cost 34.4 → 11.9 µs/draw, 12.10 vs 16.91 ms at matched draw counts,
+  hook Agree 162/162 with 0 disagreements and `rs_resyncs` 0, history match
+  99.83 %, gz buffer 14.46 M calls → 175 real reads; per-draw stamps off, so
+  the route's own cost is no longer measurable and the readback row-pair,
+  temporal and depth-agreement checks were unavailable);
   [script-xml-load-stall.md](reverse-engineering/script-xml-load-stall.md)
   (the second save-load stall is a mixed asset phase: per-resource re-opens of
   the catalogue `.dat`, a redundant 22.5 MB memset, 1 KiB inflate chunks with a
@@ -88,18 +94,37 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   [native-windows-audit-2026-09-12.md](architecture/native-windows-audit-2026-09-12.md)
   (D1 format-converting StretchRect in-scene, D2 ps_3_0 with fixed-function
   VS, D3 MSAA mismatch on RT1/RT2, W1 missing d3d9 exports, W3 log path).
+**Installed (2026-09-12 night, after review 26, bottle X3):** `build/d3d9.dll`
+from commit `c782a5a` (sharpen, mip bias, scene hook default on with the
+route), SHA-256 `8864bff00e284db0a23ff152a1cf3e26c0ffaed161d010ec305be4bf46abb532`,
+through `tools/manage.py install`.
+
 **Installed (2026-09-12 night, after review 25, bottle X3):** `build/d3d9.dll`
 SHA-256 `38562f3a7e2bbb03c6ffd1e746540b062dbf1ec9d184163407d771d5cbfbc1f8`,
 through `tools/manage.py install` (default bottle X3; the Steam bottle keeps
 the stage-2 build `db63e120…`).
 
-- **In worktrees, reviewed next (review 26)**: post-resolve RCAS-style sharpen
-  (`X3M_TAA_SHARPEN`, `--taa-sharpen`; 8-bit path replaces the copy-back draw
-  at no cost, HDR path after AgX +0.8 ms at 5120×1440; MTF50 0.262 → 0.298 c/px
-  at full strength, history never sharpened) and the mip bias
-  (`X3M_TAA_MIP_BIAS`, `--taa-mip-bias`; bias only on mip-mapped filtered
-  stages of routed draws, restored before every unrouted draw; capture now
-  logs MIPMAPLODBIAS/MAXMIPLEVEL).
+- **Merged from the worktrees, reviewed in review 26 (2026-09-12)**:
+  - Post-resolve RCAS-style sharpen
+    ([design](architecture/temporal-integration.md#post-resolve-sharpen-2026-09-12),
+    [record](verification/taa-sharpen.md)): `X3M_TAA_SHARPEN=<0..1>`
+    (`--taa-sharpen`, requires `--taa`) applies RCAS (our HLSL reimplementation
+    of AMD's published FSR 1.0 RCAS, guarded and clamped to the 3×3 min/max)
+    to the display image only — never to the history — on both routes: the
+    8-bit route's copy-back becomes the sharpen draw inside the pass (cost
+    neutral at 5120×1440: 2.252 → 2.238 ms), the HDR write-back tonemaps five
+    taps then sharpens (+0.80 ms at 5120×1440). Off is bit-identical (twin
+    runs byte-equal; the seven existing shader programs kept their hashes).
+    Fixture measurement at 1.0: gradient-energy ratio 1.147, 10–90% rise
+    1.82 → 1.49 px, MTF50 0.262 → 0.298 c/px; GPU output within 0.5 code of
+    the Python reference on both routes, order verified as after-tonemap.
+    Synthetic only; not gameplay-verified.
+  - Mip LOD bias (TAA blur fix, sampler half): `--taa-mip-bias -0.5`
+    (`X3M_TAA_MIP_BIAS`, default off, next to `--taa-k`): the route biases
+    the mip-mapped stages of routed material draws while the jitter is on and
+    restores before every other draw, at the scene end and before Reset;
+    capture now logs `MIPMAPLODBIAS`/`MAXMIPLEVEL`. Fixture evidence in
+    [taa-mip-bias.md](verification/taa-mip-bias.md); not yet seen in game.
 
 ## Checkpoint: TAA tremble fixed, resolve quality pass, loading attribution (2026-09-12, superseded by the section above)
 
@@ -208,8 +233,8 @@ Evidence at this checkpoint (details in the linked documents):
   route's per-draw state queries from an eight-state shadow (native
   `GetRenderState` calls per fixture frame 295 → 144, 423 → 126 in bursts),
   resynchronised on state-block Apply, EndStateBlock and Reset; it also closes
-  the lazy-mode write-mask hole. `X3M_SCENE_HOOK=1` (default off,
-  `--scene-hook`) patches the frame routine's compositing callsite
+  the lazy-mode write-mask hole. `X3M_SCENE_HOOK` (default on with the route
+  since review 26; `--scene-hook off` disables it) patches the frame routine's compositing callsite
   (`0x004721b1`, bytes verified, restored at the last device release) so the
   route learns the scene end from the engine and the TAA resolve runs there
   before the glow pass; the bloom `StretchRect` becomes the fallback. Fixture:
@@ -588,15 +613,20 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
    `gz_buffer requested=1 enabled=1 imports=1` plus `gz_buffer_file` lines.
 3. **Run 3 — fast loading + engine reads**: `python3 tools/manage.py launch
    --direct --ownership --object-trace --object-lifetime --motion-output --taa
-   --telemetry --mesh-adjacency fast --gz-buffer --scene-hook`. Compare load
+   --telemetry --mesh-adjacency fast --gz-buffer` (the scene hook is on by
+   default with `--motion-output` since review 26). Compare load
    times with run 1 and the route cost with iteration 10 (`gate_us` needs
    `X3M_TELEMETRY_DRAW=1`, off by default; add it only if the per-draw
    attribution is wanted, it costs QPC per draw).
-4. **Run 4 — TAA sharpness**: run 3 plus `--taa-sharpen 0.5 --taa-mip-bias
-   -0.5` (after review 26 lands). Look for over-sharpening halos, texture
-   shimmer on distant hulls (the mip bias) and fill-rate cost; take a
-   stationary capture burst for the MTF50/gradient comparison against run 2 of
-   iteration 9.
+4. **Run 4 — TAA sharpness** (review-26 build installed): `python3
+   tools/manage.py launch --direct --ownership --object-trace --object-lifetime
+   --motion-output --taa --taa-debug --telemetry --gz-buffer --taa-sharpen 0.5
+   --taa-mip-bias -0.5 --capture-start 999999 --capture-frames 4` (the scene
+   hook is now on by default with the route). Look for over-sharpening halos,
+   texture shimmer on distant hulls (the mip bias) and fill-rate cost; take
+   three 4-frame capture bursts (stationary, turning, moving) for the
+   MTF50/gradient comparison against iteration 9 run 2 and the per-pixel
+   motion certification that run 3 lacked.
 5. **Run 5 — first tonemapped look**: run 4 plus `--hdr --hdr-tonemap`
    (optionally `--hdr-look golden`, `--hdr-ev -1`). Report what looks wrong;
    the orchestrator reads the `hdr_frame` ev/luma fields and `hdr_tonemap`.
@@ -614,9 +644,9 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
    functions with `X3ProfileSymbols.java`, then choose between the negative
    lookup cache, adjacency replacement, catalogue handle retention and engine
    patches per [loading orchestration](reverse-engineering/loading-orchestration.md).
-4. Confirm the scene-end hook in gameplay (`--scene-hook` run: the
-   `scene_end_check` and `draws_after_hook` distributions), then make it the
-   default resolve point.
+4. Done in iteration 10 and review 26: the scene-end hook is confirmed in
+   gameplay (214/214 agree, `draws_after_hook` max 0) and is the default
+   resolve point (`--scene-hook off` restores the copy/selector boundary).
 5. HDR stage 3 (TAA on HDR with luminance weighting), stage 4 (radiance
    clamp removal), stage 5 (HDR bloom) per the
    [design](architecture/hdr-scene-path.md); re-measure the 5120×1440 stage-2

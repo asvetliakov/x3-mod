@@ -531,3 +531,12 @@ profiler from the 16.91 ms frame.
 5. **`rs_resyncs` is no longer always zero** (§1.5) — one per frame on that same
    screen. Worth a look at the shadow's invalidation path on a scene that latches
    with no draws, but it cost nothing measurable and broke nothing.
+   *Review 26 follow-up:* the shadow resynchronizes on exactly three paths,
+   state-block `Apply`/`EndStateBlock`, `Reset` and a failed restoration of
+   the route's own state; those frames show `restore_failures=0` and no
+   `motion_output_reset`, so the resync is an application state block per
+   frame on that screen (a sprite/font-style save-and-restore), which is the
+   correct behaviour (an `Apply` can change every shadowed state). The frame
+   line now carries `sb_resyncs` so the next run attributes it directly, and
+   the disagreement record has its own 16-line budget (the 16 consecutive
+   records here would otherwise have exhausted the failure log's).

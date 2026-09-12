@@ -17,10 +17,13 @@ draws overlays. The selector recognizes that copy as `AwaitCopy`
 content survives until the frame's final depth-only Clear.
 
 The resolve runs at that copy point, before the application's `StretchRect`
-— or, since 2026-09-12 with `X3M_SCENE_HOOK=1`, at the engine's scene-end
-callsite just before the compositor is called, which precedes the same copy
-and exists whether or not glow is enabled (see "Resolve placement with the
-engine hook" under step 3):
+— or, since 2026-09-12 with the engine scene-end hook (`X3M_SCENE_HOOK`,
+on by default with the route since review 26; `0` turns it off), at the
+engine's scene-end callsite just before the compositor is called, which
+precedes the same copy and exists whether or not glow is enabled (see
+"Resolve placement with the engine hook" under step 3). The copy point stays
+the fallback whenever the patch is absent or refused (a differing executable
+or differing bytes at the site fail closed):
 
 ```text
 main RT (8-bit)  --StretchRect-->  FP16 scratch (current color)
@@ -322,8 +325,10 @@ full-rect `StretchRect` through the native slot; the application's copy then
 proceeds on the resolved image. Failure leaves the main target untouched and
 invalidates the history.
 
-**Resolve placement with the engine hook (2026-09-12).** With
-`X3M_SCENE_HOOK=1` the primary resolve point is the engine scene-end signal
+**Resolve placement with the engine hook (2026-09-12; the default since
+review 26).** With the hook active (`X3M_SCENE_HOOK` unset or `1` while
+`X3M_MOTION_OUTPUT=1`; `0` disables it) the primary resolve point is the
+engine scene-end signal
 (`src/proxy/scene_hook.cpp`: the patched `CALL 0x004c4750` at `0x004721b1`,
 [camera-state-and-frame-routine.md](../reverse-engineering/camera-state-and-frame-routine.md#implemented-hook-scene-end--compositing-begin-2026-09-12)),
 delivered to `MotionOutput::scene_end_hook` before the compositor runs and
@@ -745,3 +750,183 @@ line reports `taa_k`, `hdr_frame … k=`. Not chosen: a fixed default with
 manual exposure (manual EV is still an exposure the tonemap applies, so the
 derivation holds), and `k = 1` with the identity write-back (it would move
 the HDR twins away from their 8-bit references for no display benefit).
+
+## Mip LOD bias for routed material draws (2026-09-12)
+
+The sampler half of the TAA blur fix. Jittering the raster by sub-pixel
+offsets and blending frames supersamples the scene, so the texture
+minification the hardware computes per pixel is no longer the right
+footprint: the resolved image integrates several jittered samples of every
+pixel, and a mip level chosen for one sample's footprint is one level too
+coarse for the integrated result. The customary correction is a negative
+`D3DSAMP_MIPMAPLODBIAS` on the material samplers; the intended value here is
+**−0.5**, applied only while the jitter is active and only on the routed
+draws. Switch: `X3M_TAA_MIP_BIAS=<float>` (`tools/manage.py launch --taa
+--taa-mip-bias -0.5`); unset or `0` is off and bit-identical to before, which
+the fixture proves ([taa-mip-bias.md](../verification/taa-mip-bias.md)).
+
+**Why −0.5.** A mip level halves the sampling rate per axis (LOD +1 ≙ one
+octave). With the route's jitter sequence, four consecutive frames place the
+raster sample at the four quadrant offsets of the pixel and the resolve's
+exponential blend carries most of its weight over those frames, so the
+effective sampling rate per axis is about doubled: 2× per axis is one
+octave, and half of it, −0.5, is the conservative value that keeps the
+trilinear blend between the level the hardware would choose and the next
+finer one rather than jumping a whole level (a full −1 sharpens toward level
+0 at the cost of texture aliasing under motion, which the temporal filter
+then has to hide). The game's material mip chains are complete down to 1×1
+and level 0 is the sharpest image the game ever holds for a texture
+([sampler-states-and-mips.md](../reverse-engineering/sampler-states-and-mips.md),
+section 2), so the bias only moves the blend toward detail that exists;
+`VideoTextureQuality`'s top-level skip composes additively (a lower setting
+has a lower-resolution level 0, and the bias sharpens toward that).
+
+**Why only routed draws.** The game's `ID3DXEffectStateManager` shadows
+sampler state per `(stage, type)` and never writes `MIPMAPLODBIAS`, so a
+value the proxy sets stays on the device until the proxy puts it back
+(section 1 of the study). Left resident it would also bias the compositor,
+the bloom chain, `gui2d`/UI, particles and the skybox, whose stages sample
+1:1 render targets or unmipped textures with `MIPFILTER` `NONE`/`POINT` — a
+visible softening or aliasing of the composite. The routed
+transformed-shader pairs (the reviewed material `(VS, PS)` pairs of
+`motion_output_profiles`) are the only safe discriminator: they are exactly
+the ship, station, asteroid and planet materials whose stages 0–2 and 5–6
+run `ANISOTROPIC/LINEAR/LINEAR` over DXT mip chains, and they automatically
+exclude everything the bias must not touch ("after bloom == HUD" is not a
+valid partition; the sky pair is shared with `gui2d`). Within a routed draw
+the bias goes only to stages whose bound texture has more than one level
+and whose `MIPFILTER` is not `NONE` (the cube stages 3–4 are unmipped and
+stay untouched; the bias would be inert there anyway).
+
+**Mechanism** (`MotionOutput::apply_mip_bias` / `restore_mip_bias`,
+`src/proxy/motion_output.cpp`). Two light hooks (`SetTexture` slot 65,
+`SetSamplerState` slot 69; installed only with a non-zero bias) feed a
+16-stage sampler shadow: the application's texture pointer (identity only,
+never dereferenced later) with its level count (`GetLevelCount` asked once
+per pointer change inside the hook's native section), its `MIPFILTER`, and
+the value the bias replaced. A routed draw walks the bound-stage bit mask:
+an eligible stage not yet biased gets one `SetSamplerState` (after one
+`GetSamplerState` of the value to restore, the first time; the game's shadow
+means that value never changes behind the proxy's back), a biased stage that
+stopped qualifying (texture or filter changed) is restored, everything else
+is a few compares. Consecutive routed draws find the bias set. The restore
+runs at every restore point of the lazy RT mode (`restore_bindings`): before
+any draw that does not route, at `Clear`, `StretchRect`/scene end,
+`EndScene`, `Present`, before `Reset`, around the state block hooks and the
+getters the lazy mode hooks, and at the final `Release`; a state block
+`Apply` or a `Reset` resynchronizes the shadow (bindings re-read natively,
+filters and saved values forgotten). An application write of
+`MIPMAPLODBIAS` is counted, logged (`motion_output_mip_bias_game_write`) and
+becomes the restore value; the static analysis says it never happens. No
+`GetSamplerState` runs per draw; nothing allocates. Per-frame line:
+`mip_bias`, `mip_bias_sets`, `mip_bias_restores`, `mip_bias_draws`,
+`mip_bias_stages` (mask), `mip_bias_reads`, `mip_bias_game_writes[_total]`,
+`mip_bias_failures`, `mip_bias_biased_now`; session totals in
+`motion_output_mip_bias_summary`. Capture frames restore the bias before
+every draw's diagnostics (as the lazy mode does for RT1/RT2), so the
+capture's own `sampler … state=8 bias=` lines show the application's value,
+never the proxy's.
+
+**Interaction with 16× anisotropic minification and the fill-rate caveat.**
+The material stages run `MINFILTER = ANISOTROPIC` with `MAXANISOTROPY = 16`
+(section 4 of the study). Anisotropic filtering already picks a finer level
+along the major axis and takes up to 16 taps along it; a negative bias
+shifts that footprint's level by half a level, so the taps land on a finer
+level and each trilinear lookup touches more texels — a texture bandwidth
+cost proportional to the biased draws' coverage, not a shader cost. The
+fixture measures set/restore counts and the image effect, not throughput,
+so the performance pass must measure the routed draws' GPU time in the game
+with the bias on versus off before the value is promoted from diagnostic to
+default; if it shows, the levers are a smaller bias (−0.25) or biasing stage
+0 (diffuse) only. Restore cost: one `SetSamplerState` per biased stage at
+each transition from a routed to an unrouted draw (the scene interleaves
+`z_only`, particle and material draws, so up to ten sampler calls per
+material batch; D3D9 state changes with no GPU synchronization), counted
+per frame for the telemetry.
+
+**Not covered.** The value stays diagnostic until a gameplay run shows the
+resolved image sharper without new shimmer; `MAXMIPLEVEL` is now captured
+so a stage with a clamped top level (where the bias buys nothing) can be
+recognized; native Windows is cross-compiled only.
+## Post-resolve sharpen (2026-09-12)
+
+Run 2 of iteration 9 ([iteration-09-run2.md](../verification/iteration-09-run2.md)
+§4) put 87–93% of the stationary softness on the jitter supersampling itself
+(gradient-energy ratio 0.51–0.63, MTF50 0.69 → 0.35 c/px on burst 629) and
+found no knob inside the resolve. The remedy is therefore outside it: a
+robust contrast-adaptive sharpen of the **display image only**, behind
+`X3M_TAA_SHARPEN=<0..1>` (`tools/manage.py launch --taa-sharpen`, requires
+`--taa`). 0 or unset is the pass off and every route is bit-identical to
+before (the sharpen program is not even created); 1 is the strongest
+setting.
+
+**Algorithm** (`src/temporal/rcas.hlsl`, our HLSL reimplementation of the
+RCAS AMD published with FidelityFX Super Resolution 1.0, MIT): the five-tap
+cross around the pixel, a luma noise detector that halves the lobe on pure
+noise, a per-channel peak-range limiter derived from the ring's min/max
+(the least-permissive channel rules, so a ring touching 0 or 1 gets no
+sharpening in that channel), one negative lobe of at most −0.1875 applied to
+the ring and normalised. Sharpness is the published stops parameter:
+`stops = 2 · (1 − s)`, gain `exp2(−stops)` (`s = 1` → gain 1, `0.5` → 0.5,
+`0.25` → 0.354; `src/temporal/sharpen.h`, register `c23`, uploaded once per
+draw). Two additions of ours: every division is guarded (a black or white
+ring gives a zero lobe instead of `0 · ∞`) and the result is clamped to the
+five taps' own min/max, so the output can never ring past its
+neighbourhood — the fixtures check the 3×3 bound, which contains the cross.
+Every tap is saturated first, so a non-finite input becomes the backend's
+`saturate()` of it (0 for NaN and −∞, 1 for +∞ on the verified backend) and
+can neither propagate nor widen the limiter.
+
+**Placement, and why the history never sees it.** The sharpen is a display
+transform: feeding a sharpened image back as history would sharpen it again
+every frame (an unstable accumulation of the residual) and would also break
+the resolve's neighbourhood clip statistics. Both routes therefore sharpen
+*after* the history set is complete and only on the way to the game's 8-bit
+target:
+
+* *8-bit route* (`TemporalPass::run`, `FrameInputs::sharpen`): the resolve
+  writes its FP16 colour history as before; then, inside the same state
+  bracket and scene, RT0 becomes the caller's `color_surface` (the game's
+  RT0, whose contents the resolve already copied into the scratch), the fresh
+  history is bound as `s0` and `taa_sharpen_ps.hlsl` draws RCAS of it with
+  the centre alpha carried. `Output::display_written` tells `MotionOutput`
+  to skip the `StretchRect` copy-back (`taa_copy` stays `S_FALSE`,
+  `taa_sharpen=1` on the frame line). No second capture/apply, no extra
+  copy: the draw replaces the copy. The pass refuses `sharpen > 0` without
+  the program, on the FP16 input path (there is no 8-bit destination in the
+  pass on that path) and outside `[0, 1]`.
+* *HDR route* (`HdrPass::write_back`): the resolve publishes its FP16 history
+  by ping-pong as in stage 3; the write-back that samples it selects the
+  RCAS variant of its program when the source is a resolved TAA image
+  (`hdr_frame … sharpened=1`): `taa_sharpen_ps.hlsl` for the identity
+  write-back, `agx_sharpen_ps.hlsl` for the tonemap. The latter tonemaps
+  each of the five taps through the unchanged `agxTonemap()` of `agx.hlsl`
+  and combines the five display-encoded colours, i.e. the sharpen acts
+  **after AgX, before the 8-bit write**; the fixture tells this order from
+  `AgX(RCAS(resolved))` per pixel. An unresolved scene (failed or absent
+  resolve) is written back unsharpened; a failed sharpened draw with a
+  clean restoration is redrawn unsharpened and counted, three failures
+  disable the sharpen for the device (`sharpen_fallback`), and the
+  programs gate themselves at attach (`caps.sharpen_reason`). On the 8-bit
+  route (review 26) a failed sharpened draw that did not lose the device
+  keeps the resolve and its published history and falls back to the
+  `StretchRect` copy-back of that frame (`Output::sharpen_result`,
+  `motion_output_sharpen_failed`); three such failures stop requesting the
+  sharpen for the device. Before review 26 the failure failed the whole
+  run, dropping the resolve and the history for a display-only draw.
+
+**Spaces.** The game's 8-bit route is display-referred already (gamma
+encoded by the game, copied linearly into the FP16 history), so the taps are
+the game's own code values in `[0, 1]`; the HDR identity write-back sharpens
+the same values; the tonemapped write-back sharpens AgX's display-encoded
+output. No decode or encode happens around the sharpen on any route.
+
+**Cost.** `taa_sharpen` is 418 words (five point taps and ~50 ALU
+instructions); `hdr_tonemap_sharpen` is 1,691 words (five AgX evaluations
+plus RCAS; the AgX program is 414). Numbers per route and size are in
+[taa-sharpen.md](../verification/taa-sharpen.md). Not chosen: sharpening in
+scene-linear space before the tonemap (one AgX evaluation instead of five,
+but it sharpens radiance the sigmoid then compresses unevenly), a separate
+full-screen pass on the 8-bit route (an extra target and copy where the
+copy-back could simply become a draw), and a 3×3 kernel (the cross with the
+min/max clamp already cannot overshoot; the wider support would only cost).

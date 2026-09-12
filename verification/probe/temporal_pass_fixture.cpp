@@ -12,6 +12,7 @@
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -69,7 +70,13 @@ using x3m::renderer::MotionPolicy;
 constexpr UINT W=16,H=16;
 const float identity[16]={1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
 unsigned numeric_checks=0,state_checks=0;
-std::string file(const char* path){std::ifstream in(path);if(!in)throw std::runtime_error(path);return {std::istreambuf_iterator<char>(in),{}};}
+// Production shader source, with `#include "name"` lines expanded relative to
+// the including file (the generator does the same; D3DXCompileShader is given
+// no include handler), so the sharpen program compiles from the same files.
+std::string file(const char* path){std::ifstream in(path);if(!in)throw std::runtime_error(path);const std::string text{std::istreambuf_iterator<char>(in),{}};
+    const std::string dir=std::string(path).substr(0,std::string(path).find_last_of("/\\")+1);std::istringstream lines(text);std::string line,out;
+    while(std::getline(lines,line)){if(line.rfind("#include \"",0)==0){const auto end=line.find('"',10);if(end==std::string::npos)throw std::runtime_error("include");out+=file((dir+line.substr(10,end-10)).c_str());}else out+=line;out+='\n';}
+    return out;}
 struct Snapshot {
     std::vector<unsigned char> bytes;
     template<class T> void add(const T& value){auto* p=reinterpret_cast<const unsigned char*>(&value);bytes.insert(bytes.end(),p,p+sizeof value);}
@@ -1077,13 +1084,181 @@ void hdr_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const 
         std::printf("HDR_NEGATIVE k=%g worst_ulp=%u finite=%u centre=%.6f mixed=%.6f\n",double(k),worst,finite,double(halfFloat(at<unsigned short>(bytes,(4*W+4)*4))),double(halfFloat(at<unsigned short>(bytes,(11*W+11)*4))));
         ++numeric_checks;require(finite&&worst<=1,"negative-luma and mixed-sign pixels survive the weighting and its inverse within one ulp, every output finite");}
 }
+// Post-resolve sharpen (src/temporal/sharpen.h, rcas.hlsl; FrameInputs::
+// sharpen): the pass's optional RCAS draw of its fresh FP16 history into the
+// caller's 8-bit surface, in place of the caller's copy-back. The cases state
+// the contract: the switch validated like every constant; 0 drawing nothing
+// (main target untouched, history equal to a pass without the program, byte
+// for byte); on, the history byte-identical to the off run and the display
+// image inside the 3x3 min/max of the unsharpened one with alpha untouched;
+// the program itself defined on NaN/inf input.
+namespace sharpen {
+std::vector<unsigned char> surface(IDirect3DDevice9* d,IDirect3DSurface9* source,UINT w,UINT h,D3DFORMAT format,UINT pixel){
+    Com<IDirect3DSurface9> read;check("sharpen readback surface",d->CreateOffscreenPlainSurface(w,h,format,D3DPOOL_SYSTEMMEM,&read.p,nullptr));
+    check("sharpen validation-only readback",d->GetRenderTargetData(source,read.p));D3DLOCKED_RECT lock{};check("sharpen readback lock",read->LockRect(&lock,nullptr,D3DLOCK_READONLY));
+    std::vector<unsigned char> bytes(std::size_t(w)*h*pixel);for(UINT y=0;y<h;++y)std::memcpy(&bytes[std::size_t(y)*w*pixel],static_cast<char*>(lock.pBits)+y*lock.Pitch,w*pixel);
+    check("sharpen readback unlock",read->UnlockRect());return bytes;}
+// Per-pixel verdicts of a sharpened BGRA8 image against the unsharpened one:
+// channels outside the 3x3 (clamp-addressed) min/max of `base`, alpha
+// differences, pixels that changed at all. `nanCode`, when >= 0, replaces the
+// codes listed in `nan` (pixel indices) in the bounds.
+struct Verdict { unsigned outside=0,alpha=0,changed=0; };
+Verdict verdict(const std::vector<unsigned char>& sharp,const std::vector<unsigned char>& base,UINT w,UINT h){
+    Verdict v{};
+    for(UINT y=0;y<h;++y)for(UINT x=0;x<w;++x){const std::size_t i=(std::size_t(y)*w+x)*4;bool differs=false;
+        for(UINT c=0;c<3;++c){unsigned char mn=255,mx=0;
+            for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){const int sx=std::min(std::max(int(x)+dx,0),int(w)-1),sy=std::min(std::max(int(y)+dy,0),int(h)-1);
+                const unsigned char t=base[(std::size_t(sy)*w+sx)*4+c];mn=std::min(mn,t);mx=std::max(mx,t);}
+            const unsigned char value=sharp[i+c];if(value<mn||value>mx)++v.outside;if(value!=base[i+c])differs=true;}
+        if(sharp[i+3]!=base[i+3])++v.alpha;
+        if(differs)++v.changed;}
+    return v;}
+}
+void sharpen_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const DWORD* resolver,const DWORD* sharpener){
+    std::puts("SHARPEN_CASES");Fixture f(d,compiler);RouteScene s(f,compiler);s.depth([](UINT,UINT){return .5f;});
+    // (1) The switch is validated like every other constant, and the draw
+    // needs the 8-bit surface input and the program.
+    {TemporalPass p;check("initialize sharpen validation pass",p.initialize(d,decoder,resolver,nullptr,sharpener));Output failed;s.fill(1);
+        auto in=s.inputs();in.sharpen=-.5f;require(p.run(in,&failed)==E_INVALIDARG&&!failed.color,"negative sharpen refused");
+        in=s.inputs();in.sharpen=NAN;require(p.run(in,&failed)==E_INVALIDARG,"NaN sharpen refused");
+        in=s.inputs();in.sharpen=1.5f;require(p.run(in,&failed)==E_INVALIDARG,"sharpen above 1 refused");
+        auto fp16=f.inputs();fp16.depth_snapshot=nullptr;fp16.current_depth=s.depth32.p;fp16.sharpen=1.f;
+        require(p.run(fp16,&failed)==E_INVALIDARG,"sharpen on the FP16 input path refused (the HDR write-back sharpens)");
+        TemporalPass plain;check("initialize pass without the sharpen program",plain.initialize(d,decoder,resolver));
+        in=s.inputs();in.sharpen=1.f;require(plain.run(in,&failed)==E_INVALIDARG,"sharpen without the sharpen program refused");
+        require(readback(d,s.main8.p,D3DFMT_A8R8G8B8,4)==s.reference,"refused runs leave the main target untouched");}
+    // (2) Off is the pre-sharpen pass: sharpen 0 (the field's default) on a
+    // pass created with the program draws nothing, leaves the main target
+    // untouched and produces the history of a pass without the program.
+    {TemporalPass with,without;check("initialize sharpen-capable pass",with.initialize(d,decoder,resolver,nullptr,sharpener));check("initialize sharpen-free pass",without.initialize(d,decoder,resolver));
+        for(unsigned frame=0;frame<2;++frame){s.fill(7+frame);
+            auto a=s.run(without,s.inputs(),"sharpen-free pass");require(readback(d,s.main8.p,D3DFMT_A8R8G8B8,4)==s.reference&&!a.display_written,"a pass without the program leaves the main target untouched");
+            auto b=s.run(with,s.inputs(),"sharpen 0 pass");require(readback(d,s.main8.p,D3DFMT_A8R8G8B8,4)==s.reference&&!b.display_written,"sharpen 0 draws nothing");
+            ++numeric_checks;require(readback(d,a.color)==readback(d,b.color)&&a.used_history==b.used_history,"sharpen 0 history equals the sharpen-free history byte for byte");}}
+    // (3) On: the same two frames through an off and an on pass. History
+    // byte-identical (the sharpen never reaches it); the main target after the
+    // on run is the display image: every channel inside the 3x3 min/max of
+    // the unsharpened 8-bit image (the off run's copy-back), alpha untouched,
+    // and some pixels changed.
+    for(float sharpness:{1.f,.5f}){TemporalPass off,on;check("initialize off pass",off.initialize(d,decoder,resolver,nullptr,sharpener));check("initialize on pass",on.initialize(d,decoder,resolver,nullptr,sharpener));
+        sharpen::Verdict v{};
+        for(unsigned frame=0;frame<2;++frame){s.fill(11+frame);
+            auto a=s.run(off,s.inputs(),"sharpen off run");require(readback(d,s.main8.p,D3DFMT_A8R8G8B8,4)==s.reference,"off run leaves the main target for the copy-back");
+            check("copy-back",d->StretchRect(a.color_surface,nullptr,s.main8.p,nullptr,D3DTEXF_POINT));const auto unsharp=readback(d,s.main8.p,D3DFMT_A8R8G8B8,4);
+            s.fill(11+frame); // the same input again for the on pass
+            auto in=s.inputs();in.sharpen=sharpness;auto b=s.run(on,in,"sharpen on run");
+            require(b.display_written&&a.used_history==b.used_history,"on run wrote the display image");
+            ++numeric_checks;require(readback(d,a.color)==readback(d,b.color)&&readback(d,a.depth)==readback(d,b.depth),"history byte-identical between the off and the on run");
+            v=sharpen::verdict(readback(d,s.main8.p,D3DFMT_A8R8G8B8,4),unsharp,W,H);}
+        std::printf("SHARPEN sharpness=%g changed=%u outside=%u alpha_diff=%u pixels=%u\n",double(sharpness),v.changed,v.outside,v.alpha,W*H);
+        ++numeric_checks;require(v.outside==0&&v.alpha==0&&v.changed>0,"sharpened display image inside the 3x3 min/max of the unsharpened one, alpha untouched, some pixels changed");}
+    // (4) NaN/inf: the program alone (the pass cannot be handed a non-finite
+    // 8-bit input) on an FP16 image holding NaN, +inf and -inf among finite
+    // values, drawn into the 8-bit target through the pass's point/clamp
+    // sampling. First an all-NaN image measures the backend's saturate(NaN)
+    // code; then every output must lie inside the 3x3 min/max of the input
+    // with NaN read as that code, +inf as 255 and -inf as 0.
+    {Com<IDirect3DPixelShader9> ps;check("sharpen PS",d->CreatePixelShader(sharpener,&ps.p));
+        Com<IDirect3DTexture9> image;check("sharpen FP16 image",d->CreateTexture(W,H,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_MANAGED,&image.p,nullptr));
+        auto draw=[&](){s.plain(s.main8.p,nullptr,false);check("sharpen PS bind",d->SetPixelShader(ps.p));const float c23[4]={1.f,1.f/W,1.f/H,0.f};check("sharpen c23",d->SetPixelShaderConstantF(23,c23,1));
+            check("sharpen Begin",d->BeginScene());check("sharpen texture",d->SetTexture(0,image.p));s.quad({0,0,W,H},.5f);check("sharpen End",d->EndScene());check("sharpen unbind",d->SetTexture(0,nullptr));
+            return readback(d,s.main8.p,D3DFMT_A8R8G8B8,4);};
+        const unsigned short nanBits=0x7e00,posInf=0x7c00,negInf=0xfc00;
+        {D3DLOCKED_RECT lock{};check("lock NaN image",image->LockRect(0,&lock,nullptr,0));for(UINT y=0;y<H;++y)for(UINT x=0;x<W;++x){unsigned short px[4]={nanBits,nanBits,nanBits,toHalf(1)};std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*8,px,8);}check("unlock NaN image",image->UnlockRect(0));}
+        const auto allNan=draw();const unsigned char nanCode=allNan[0];bool uniform=true;for(UINT i=0;i<W*H;++i)for(UINT c=0;c<3;++c)if(allNan[i*4+c]!=nanCode)uniform=false;
+        std::printf("SHARPEN_NAN saturate_nan_code=%u uniform=%u\n",nanCode,uniform);
+        ++numeric_checks;require(uniform,"an all-NaN input gives one defined code everywhere (the backend's saturate(NaN))");
+        std::vector<unsigned char> base(W*H*4);
+        {D3DLOCKED_RECT lock{};check("lock mixed image",image->LockRect(0,&lock,nullptr,0));
+            for(UINT y=0;y<H;++y)for(UINT x=0;x<W;++x){float v[3]={(x+y)/30.f,(x+y)/32.f+.02f,x<8?.2f:.7f};unsigned short px[4];unsigned char code[3];
+                for(UINT c=0;c<3;++c){px[c]=toHalf(v[c]);code[c]=static_cast<unsigned char>(std::lround(std::min(std::max(halfFloat(px[c]),0.f),1.f)*255));}
+                if(x==5&&y==5){px[0]=px[1]=px[2]=nanBits;code[0]=code[1]=code[2]=nanCode;}
+                if(x==9&&y==9){px[0]=px[1]=px[2]=posInf;code[0]=code[1]=code[2]=255;}
+                if(x==12&&y==3){px[0]=px[1]=px[2]=negInf;code[0]=code[1]=code[2]=0;}
+                px[3]=toHalf(1);std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*8,px,8);
+                unsigned char* b=&base[(std::size_t(y)*W+x)*4];b[0]=code[2];b[1]=code[1];b[2]=code[0];b[3]=255;}
+            check("unlock mixed image",image->UnlockRect(0));}
+        const auto out=draw();const auto v=sharpen::verdict(out,base,W,H);
+        std::printf("SHARPEN_NONFINITE outside=%u alpha_diff=%u changed=%u nan_pixel=%u,%u,%u posinf_pixel=%u,%u,%u neginf_pixel=%u,%u,%u\n",v.outside,v.alpha,v.changed,
+            out[(5*W+5)*4+2],out[(5*W+5)*4+1],out[(5*W+5)*4],out[(9*W+9)*4+2],out[(9*W+9)*4+1],out[(9*W+9)*4],out[(3*W+12)*4+2],out[(3*W+12)*4+1],out[(3*W+12)*4]);
+        ++numeric_checks;require(v.outside==0&&v.alpha==0,"NaN, +inf and -inf taps stay inside the neighbourhood bound as their saturated values and poison nothing");}
+}
+// "sharpen-measure": a 128x128 synthetic resolved-looking image (soft-edged
+// slanted shapes at the blur the run-2 analysis measured, plus a ramp) through
+// the pass at sharpness 0 (the copy-back), 0.25, 0.5 and 1.0; the 8-bit
+// display images are written beside the executable for run_temporal_pass.py,
+// which computes the gradient-energy ratio and MTF50 with the iteration-9
+// run-2 analysis functions.
+void sharpen_measure(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const DWORD* resolver,const DWORD* sharpener){
+    constexpr UINT S=128;std::puts("SHARPEN_MEASURE");
+    Com<IDirect3DSurface9> main8;Com<IDirect3DTexture9> source,depth32;Com<IDirect3DPixelShader9> textured;
+    check("measure main target",d->CreateRenderTarget(S,S,D3DFMT_A8R8G8B8,D3DMULTISAMPLE_NONE,0,FALSE,&main8.p,nullptr));
+    check("measure source",d->CreateTexture(S,S,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&source.p,nullptr));
+    check("measure depth",d->CreateTexture(S,S,1,D3DUSAGE_RENDERTARGET,D3DFMT_R32F,D3DPOOL_DEFAULT,&depth32.p,nullptr));
+    {Com<ID3DXBuffer> a;compile(compiler,"sampler2D source:register(s0);float4 main(float2 uv:TEXCOORD0):COLOR0{return tex2D(source,uv);}","ps_3_0",&a.p);check("measure textured PS",d->CreatePixelShader(static_cast<DWORD*>(a->GetBufferPointer()),&textured.p));}
+    {Com<IDirect3DTexture9> staging;check("measure depth staging",d->CreateTexture(S,S,1,0,D3DFMT_R32F,D3DPOOL_SYSTEMMEM,&staging.p,nullptr));D3DLOCKED_RECT lock{};check("lock measure depth",staging->LockRect(0,&lock,nullptr,0));
+        for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){const float z=.5f;std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*4,&z,4);}
+        check("unlock measure depth",staging->UnlockRect(0));check("measure depth upload",d->UpdateTexture(staging.p,depth32.p));}
+    // The image: 4x4 supersampled shapes on a 0.35 grey (slanted bright and
+    // dark bars, a disc, a dark box; the slant spreads the edge phases), box
+    // filtered to 128x128, then a Gaussian blur of sigma 0.75 px (a 10-90%
+    // rise of about 1.7 px, the resolved edge of burst 629 in run 2), and a
+    // horizontal ramp band; a mild tint so every channel is exercised.
+    std::vector<float> luma(S*S,0.f);
+    {const UINT F=4,B=S*F;std::vector<float> fine(B*B);
+        for(UINT y=0;y<B;++y)for(UINT x=0;x<B;++x){const float px=(x+.5f)/F,py=(y+.5f)/F;float v=.35f;const float slant=py/12.f;
+            if(px>=20+slant&&px<44+slant)v=.85f;
+            if(px>=56-slant&&px<70-slant)v=.12f;
+            if(px>=84+slant&&px<108+slant&&py>=10&&py<50)v=.62f;
+            if((px-64)*(px-64)+(py-72)*(py-72)<196)v=.92f;
+            if(px>=14&&px<40&&py>=60&&py<90)v=.2f;
+            if(py>=100&&py<120)v=.2f+.6f*px/S;
+            fine[y*B+x]=v;}
+        std::vector<float> box(S*S);for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){float sum=0;for(UINT j=0;j<F;++j)for(UINT i=0;i<F;++i)sum+=fine[(y*F+j)*B+x*F+i];box[y*S+x]=sum/(F*F);}
+        const float sigma=.75f;float kernel[5],norm=0;for(int k=-2;k<=2;++k){kernel[k+2]=std::exp(-k*k/(2*sigma*sigma));norm+=kernel[k+2];}for(auto& k:kernel)k/=norm;
+        std::vector<float> row(S*S);for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){float sum=0;for(int k=-2;k<=2;++k)sum+=kernel[k+2]*box[y*S+std::min(std::max(int(x)+k,0),int(S)-1)];row[y*S+x]=sum;}
+        for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){float sum=0;for(int k=-2;k<=2;++k)sum+=kernel[k+2]*row[std::min(std::max(int(y)+k,0),int(S)-1)*S+x];luma[y*S+x]=sum;}}
+    std::vector<unsigned char> input(S*S*4);
+    {D3DLOCKED_RECT lock{};check("lock measure source",source->LockRect(0,&lock,nullptr,0));
+        for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){const float v=luma[y*S+x];unsigned char* p=&input[(std::size_t(y)*S+x)*4];
+            p[2]=static_cast<unsigned char>(std::lround(std::min(std::max(v,0.f),1.f)*255));p[1]=static_cast<unsigned char>(std::lround(std::min(std::max(v*.95f+.02f,0.f),1.f)*255));p[0]=static_cast<unsigned char>(std::lround(std::min(std::max(v*.9f+.05f,0.f),1.f)*255));p[3]=255;
+            std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*4,p,4);}
+        check("unlock measure source",source->UnlockRect(0));}
+    auto fill=[&](){for(UINT n=0;n<8;++n)check("measure unbind",d->SetTexture(n,nullptr));check("measure RT",d->SetRenderTarget(0,main8.p));check("measure RT1",d->SetRenderTarget(1,nullptr));check("measure DS",d->SetDepthStencilSurface(nullptr));
+        D3DVIEWPORT9 vp{0,0,S,S,0,1};check("measure VP",d->SetViewport(&vp));check("measure VS",d->SetVertexShader(nullptr));check("measure FVF",d->SetFVF(D3DFVF_XYZRHW|D3DFVF_TEX1));check("measure PS",d->SetPixelShader(textured.p));
+        for(auto state:{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_ALPHATESTENABLE,D3DRS_SCISSORTESTENABLE,D3DRS_SRGBWRITEENABLE})check("measure RS",d->SetRenderState(state,FALSE));
+        check("measure cull",d->SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE));check("measure write",d->SetRenderState(D3DRS_COLORWRITEENABLE,15));
+        for(auto p:{std::pair<D3DSAMPLERSTATETYPE,DWORD>{D3DSAMP_MINFILTER,D3DTEXF_POINT},{D3DSAMP_MAGFILTER,D3DTEXF_POINT},{D3DSAMP_MIPFILTER,D3DTEXF_NONE},{D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP},{D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP},{D3DSAMP_SRGBTEXTURE,FALSE}})check("measure sampler",d->SetSamplerState(0,p.first,p.second));
+        check("measure Begin",d->BeginScene());check("measure texture",d->SetTexture(0,source.p));
+        struct V{float x,y,z,rhw,u,v;};const V v[]={{-.5f,-.5f,.5f,1,0,0},{S-.5f,-.5f,.5f,1,1,0},{-.5f,S-.5f,.5f,1,0,1},{S-.5f,S-.5f,.5f,1,1,1}};
+        check("measure raster",d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,2,v,sizeof(V)));check("measure End",d->EndScene());check("measure unbind texture",d->SetTexture(0,nullptr));
+        require(sharpen::surface(d,main8.p,S,S,D3DFMT_A8R8G8B8,4)==input,"measure input holds the exact bytes");};
+    const float sharpnesses[]={0.f,.25f,.5f,1.f};
+    for(float sharpness:sharpnesses){fill();TemporalPass p;check("initialize measure pass",p.initialize(d,decoder,resolver,nullptr,sharpener));
+        FrameInputs in{};in.color_surface=main8.p;in.current_depth=depth32.p;in.width=S;in.height=S;in.epoch=1;std::copy(identity,identity+16,in.clip_to_previous);
+        in.motion_policy=MotionPolicy::KnownCameraOnly;in.reactive_policy=x3m::renderer::ReactivePolicy::KnownNonReactive;in.weight=.9f;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=false;in.sharpen=sharpness;
+        Output out;check("measure run",p.run(in,&out));
+        if(sharpness==0)check("measure copy-back",d->StretchRect(out.color_surface,nullptr,main8.p,nullptr,D3DTEXF_POINT));else require(out.display_written,"measure run wrote the display image");
+        const auto image=sharpen::surface(d,main8.p,S,S,D3DFMT_A8R8G8B8,4);
+        if(sharpness==0)require(image==input,"the current-only resolve of the first frame returns the input through the FP16 round trip");
+        else{const auto v=sharpen::verdict(image,input,S,S);++numeric_checks;require(v.outside==0&&v.alpha==0&&v.changed>0,"measure image inside the 3x3 bound of the input");}
+        char name[64];std::snprintf(name,sizeof name,"sharpen-measure-%g.bgra8",double(sharpness));FILE* file=std::fopen(name,"wb");require(file!=nullptr,"measure image written");
+        std::fwrite(image.data(),1,image.size(),file);std::fclose(file);
+        std::printf("MEASURE sharpness=%g file=%s width=%u height=%u\n",double(sharpness),name,S,S);}
+    for(UINT n=0;n<8;++n)d->SetTexture(n,nullptr);
+    d->SetPixelShader(nullptr);
+}
 int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=1;WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3TemporalPassFixture";RegisterClassA(&cls);HWND window=CreateWindowA(cls.lpszClassName,"X3 temporal production module",WS_OVERLAPPEDWINDOW,90,90,128,128,nullptr,nullptr,cls.hInstance,nullptr);
-    // Optional fifth argument "stationary-only": run just the stationary
+    // Optional sixth argument: "stationary-only" runs just the stationary
     // stability scene (one generation), used to record the negative proof
-    // against a resolve that applies the previous jitter.
-    const bool stationaryOnly=argc==5&&std::strcmp(argv[4],"stationary-only")==0;
-    try{if((argc!=4&&!stationaryOnly)||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> [stationary-only]");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);compile(compiler,file(argv[3]),"ps_3_0",&rc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
+    // against a resolve that applies the previous jitter; "sharpen-measure"
+    // writes the sharpen measurement images (one generation).
+    const bool stationaryOnly=argc==6&&std::strcmp(argv[5],"stationary-only")==0;
+    const bool measure=argc==6&&std::strcmp(argv[5],"sharpen-measure")==0;
+    try{if((argc!=5&&!stationaryOnly&&!measure)||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> <sharpen> [stationary-only|sharpen-measure]");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc,sc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);compile(compiler,file(argv[3]),"ps_3_0",&rc.p);compile(compiler,file(argv[4]),"ps_3_0",&sc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
+        auto* sharpener=static_cast<DWORD*>(sc->GetBufferPointer());
         if(stationaryOnly){stationary_cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("RESULT PASS numerical=%u stationary_only=1\n",numeric_checks);result=0;}
-        else for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);stationary_cases(d.p,compiler,decoder,resolver);edge_cases(d.p,compiler,decoder,resolver);camera_cases(d.p,compiler,decoder,resolver);hdr_cases(d.p,compiler,decoder,resolver);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
-        if(!stationaryOnly){std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);result=0;}
+        else if(measure){sharpen_measure(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()),sharpener);std::printf("RESULT PASS numerical=%u sharpen_measure=1\n",numeric_checks);result=0;}
+        else for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);stationary_cases(d.p,compiler,decoder,resolver);edge_cases(d.p,compiler,decoder,resolver);camera_cases(d.p,compiler,decoder,resolver);hdr_cases(d.p,compiler,decoder,resolver);sharpen_cases(d.p,compiler,decoder,resolver,sharpener);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
+        if(!stationaryOnly&&!measure){std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);result=0;}
     }catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());}if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);return result;}

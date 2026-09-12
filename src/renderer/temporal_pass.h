@@ -48,6 +48,17 @@ struct FrameInputs {
     // image, so the weighted domain is the display-relative luminance. Finite,
     // 0 <= k <= 65504; run refuses anything else.
     float luminance_k = 0.f;
+    // Post-resolve sharpen of the display image (sharpen.h, rcas.hlsl;
+    // docs/architecture/temporal-integration.md "Post-resolve sharpen"): 0
+    // (the default) draws nothing and the run is bit-identical to a run
+    // without the field; in (0, 1] the pass draws RCAS of its freshly written
+    // FP16 history INTO color_surface (the game's 8-bit target) after the
+    // resolve, replacing the caller's copy-back (Output::display_written).
+    // The history itself is never sharpened. Requires color_surface (the FP16
+    // input path has no 8-bit destination here: the HDR write-back sharpens)
+    // and a pass initialised with the sharpen program; anything else refuses
+    // the run. Finite, 0 <= sharpen <= 1.
+    float sharpen = 0.f;
     MotionPolicy motion_policy = MotionPolicy::Unavailable;
     // Unknown coverage produces current-only output and cannot establish usable
     // history. RequiredMask demands complete conservative visible RGB coverage,
@@ -76,6 +87,14 @@ struct Output {
     // main target. The caller owns state save/restore around the whole
     // copy / run / copy-back sequence; run restores only what it touched.
     IDirect3DSurface9* color_surface = nullptr;
+    // FrameInputs::sharpen > 0: the pass drew the sharpened display image into
+    // FrameInputs::color_surface itself; the caller must not copy back.
+    bool display_written = false;
+    // The sharpened draw's result: S_FALSE when not requested, S_OK when it
+    // drew (display_written), otherwise the failure that kept the resolve
+    // (the history set is published regardless) and left the display to the
+    // caller's copy-back; a lost device fails the run instead.
+    HRESULT sharpen_result = S_FALSE;
 };
 struct Diagnostics {
     HRESULT operation = S_OK, restoration = S_OK;
@@ -108,8 +127,10 @@ public:
     // never observes the pass's own calls. Without it the object's vtable is
     // read at every call. `decoder` may be null; the D24X8 snapshot input is
     // then refused (the route supplies R32F depth and needs no decoder).
+    // `sharpen` (ps_3_0 bytecode of src/temporal/taa_sharpen_ps.hlsl) may be
+    // null; FrameInputs::sharpen > 0 is then refused.
     HRESULT initialize(IDirect3DDevice9* native_device, const DWORD* decoder, const DWORD* resolve,
-                       void* const* native_vtable = nullptr) noexcept;
+                       void* const* native_vtable = nullptr, const DWORD* sharpen = nullptr) noexcept;
     HRESULT run(const FrameInputs&, Output*) noexcept;
     void invalidate() noexcept;
     // Reset protocol, mirroring MotionOutput: before_reset releases every
@@ -141,7 +162,7 @@ private:
     // after every run instead of being created per frame. Default-pool-like:
     // released before Reset and re-created lazily afterwards.
     IDirect3DStateBlock9* block_ = nullptr;
-    IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr;
+    IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *sharpen_ = nullptr;
     IDirect3DTexture9* colors_[2]{};
     IDirect3DTexture9* depths_[2]{};
     IDirect3DTexture9* reactive_[2]{};

@@ -10,6 +10,7 @@
 #include "../renderer/material_motion.h"
 #include "../renderer/temporal_pass.h"
 #include "../renderer/temporal_resolve_program.h"
+#include "../renderer/taa_sharpen_program.h"
 #include "../renderer/hdr_pass.h"
 #include <algorithm>
 #include <cmath>
@@ -69,6 +70,7 @@ enum Slot : unsigned {
     CreateOffscreenPlainSurface = 36, SetRenderTarget = 37, GetRenderTarget = 38,
     SetDepthStencilSurface = 39, GetDepthStencilSurface = 40, BeginScene = 41, EndScene = 42,
     SetViewport = 47, GetViewport = 48, SetRenderState = 57, GetRenderState = 58,
+    GetTexture = 64, SetTexture = 65, GetSamplerState = 68, SetSamplerState = 69,
     SetScissorRect = 75, GetScissorRect = 76, DrawPrimitiveUP = 83,
     SetVertexDeclaration = 87, GetVertexDeclaration = 88, SetFVF = 89, GetFVF = 90,
     CreateVertexShader = 91, SetVertexShader = 92, GetVertexShader = 93,
@@ -87,6 +89,9 @@ using SetViewportFn = HRESULT(WINAPI*)(D, const D3DVIEWPORT9*);
 using GetViewportFn = HRESULT(WINAPI*)(D, D3DVIEWPORT9*);
 using SetRenderStateFn = HRESULT(WINAPI*)(D, D3DRENDERSTATETYPE, DWORD);
 using GetRenderStateFn = HRESULT(WINAPI*)(D, D3DRENDERSTATETYPE, DWORD*);
+using GetTextureFn = HRESULT(WINAPI*)(D, DWORD, IDirect3DBaseTexture9**);
+using SetSamplerStateFn = HRESULT(WINAPI*)(D, DWORD, D3DSAMPLERSTATETYPE, DWORD);
+using GetSamplerStateFn = HRESULT(WINAPI*)(D, DWORD, D3DSAMPLERSTATETYPE, DWORD*);
 using SetScissorFn = HRESULT(WINAPI*)(D, const RECT*);
 using GetScissorFn = HRESULT(WINAPI*)(D, RECT*);
 using DrawUpFn = HRESULT(WINAPI*)(D, D3DPRIMITIVETYPE, UINT, const void*, UINT);
@@ -271,6 +276,16 @@ void MotionOutput::release_resources() noexcept {
     shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
     history_.invalidate();
     fill_pending_ = false;
+    if (mip_bias_bits_ && !mip_bias_summary_logged_) {
+        // Session summary of the bias path (the per-frame line carries the
+        // frame's counts); every biased stage was restored by the release hook.
+        // Once: the destructor reaches this function a second time.
+        mip_bias_summary_logged_ = true;
+        log("motion_output_mip_bias_summary device=%llu bias=%g sets=%lu restores=%lu reads=%lu game_writes=%lu failures=%lu biased_now=%04lx",
+            id_, double(mip_bias_), static_cast<unsigned long>(mip_bias_total_sets_), static_cast<unsigned long>(mip_bias_total_restores_),
+            static_cast<unsigned long>(mip_bias_total_reads_), static_cast<unsigned long>(mip_bias_total_game_writes_),
+            static_cast<unsigned long>(mip_bias_total_failures_), static_cast<unsigned long>(sampler_biased_mask_));
+    }
     releasing_ = false;
 }
 
@@ -357,6 +372,7 @@ HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
 // bound, so every hook may call it unconditionally before a native call.
 void MotionOutput::restore_bindings() noexcept {
     record_deferred();
+    if (sampler_biased_mask_) restore_mip_bias(); // The mip LOD bias shares every restore point.
     if (!lazy_rt1_ && !lazy_rt2_) return;
     const HRESULT first = flush_bindings<false>();
     if (FAILED(first) && logged_failures_ < failure_log_limit) {
@@ -405,6 +421,137 @@ void MotionOutput::record_deferred() noexcept {
             id_, frame_, counters_.draws, deferred_flush_result_, static_cast<unsigned long>(deferred_flushes_));
     }
     deferred_flushes_ = 0; deferred_flush_ticks_ = 0; deferred_flush_result_ = S_OK;
+}
+
+// ---- mip LOD bias (X3M_TAA_MIP_BIAS) ---------------------------------------
+//
+// docs/architecture/temporal-integration.md, "Mip LOD bias for routed
+// material draws". The game's ID3DXEffectStateManager shadows sampler state
+// per (stage, type) and never writes MIPMAPLODBIAS, so a value the route sets
+// stays on the device until the route itself puts the saved value back; the
+// restore therefore runs at every restore point of restore_bindings (every
+// draw that does not route, Clear, StretchRect, EndScene, Present, Reset, the
+// state block hooks, the getters the lazy mode hooks, the final Release).
+// Eligibility is decided from the shadow the light SetTexture/SetSamplerState
+// hooks feed: a bound texture with more than one level and a MIPFILTER other
+// than NONE. The application's texture pointer is compared, never used.
+
+void MotionOutput::configure_mip_bias(float bias) noexcept {
+    mip_bias_ = bias;
+    if (bias == 0.f || !std::isfinite(bias)) { mip_bias_ = 0.f; mip_bias_bits_ = 0; return; }
+    std::memcpy(&mip_bias_bits_, &mip_bias_, sizeof mip_bias_bits_);
+}
+bool MotionOutput::texture_levels_wanted(DWORD stage, IDirect3DBaseTexture9* texture) const noexcept {
+    return texture && stage < sampler_stage_count && samplers_[stage].texture != texture;
+}
+void MotionOutput::set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried) noexcept {
+    if (stage >= sampler_stage_count || shadow_.recording) return;
+    auto& s = samplers_[stage];
+    if (queried) s.levels = levels;      // a new pointer: the count the hook read from it
+    else if (!texture) s.levels = 0;     // unbound
+    s.texture = texture;                 // same pointer, still bound: the count stands
+    const std::uint32_t bit = 1u << stage;
+    sampler_bound_mask_ = texture ? sampler_bound_mask_ | bit : sampler_bound_mask_ & ~bit;
+}
+void MotionOutput::set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type, DWORD value) noexcept {
+    if (stage >= sampler_stage_count || shadow_.recording) return;
+    auto& s = samplers_[stage];
+    if (type == D3DSAMP_MIPFILTER) { s.mipfilter = value; s.mipfilter_known = true; return; }
+    if (type != D3DSAMP_MIPMAPLODBIAS) return;
+    // The application's own write replaced whatever the device held: it is
+    // the value to restore, and the route's bias is no longer on the device.
+    s.saved_bias = value; s.saved_known = true;
+    if (s.biased) { s.biased = false; sampler_biased_mask_ &= ~(1u << stage); }
+    ++counters_.mip_bias_game_writes; ++mip_bias_total_game_writes_;
+    mip_bias_game_write_stage_ = stage; mip_bias_game_write_value_ = value;
+}
+// Logged from the heavy path (the light hook has no formatter): the first
+// failure_log_limit application writes, one line per heavy call at most.
+void MotionOutput::log_mip_bias_game_write() noexcept {
+    if (mip_bias_logged_game_writes_ == mip_bias_total_game_writes_) return;
+    if (mip_bias_logged_game_writes_ < failure_log_limit) {
+        float value = 0.f; std::memcpy(&value, &mip_bias_game_write_value_, sizeof value);
+        log("motion_output_mip_bias_game_write device=%llu frame=%llu stage=%lu value=%08lx bias=%g writes=%lu",
+            id_, frame_, mip_bias_game_write_stage_, mip_bias_game_write_value_, double(value),
+            static_cast<unsigned long>(mip_bias_total_game_writes_));
+    }
+    mip_bias_logged_game_writes_ = mip_bias_total_game_writes_;
+}
+void MotionOutput::restore_mip_bias_stage(unsigned stage, HRESULT* first) noexcept {
+    auto& s = samplers_[stage];
+    const HRESULT hr = native<SetSamplerStateFn>(SetSamplerState)(device_, stage, D3DSAMP_MIPMAPLODBIAS, s.saved_bias);
+    // Cleared either way: a failed restore leaves the device unknown, and the
+    // next routed draw re-reads the value before it sets the bias again.
+    s.biased = false; sampler_biased_mask_ &= ~(1u << stage);
+    ++counters_.mip_bias_restores; ++mip_bias_total_restores_;
+    if (FAILED(hr)) { s.saved_known = false; if (SUCCEEDED(*first)) *first = hr; }
+}
+void MotionOutput::restore_mip_bias() noexcept {
+    HRESULT first = S_OK;
+    for (std::uint32_t mask = sampler_biased_mask_; mask; mask &= mask - 1) restore_mip_bias_stage(unsigned(__builtin_ctz(mask)), &first);
+    if (FAILED(first)) {
+        ++counters_.mip_bias_failures; ++mip_bias_total_failures_; ++counters_.restore_failures;
+        if (logged_failures_ < failure_log_limit) {
+            ++logged_failures_;
+            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=mip_bias", id_, frame_, counters_.draws, first);
+        }
+    }
+}
+// A routed draw: every bound stage that samples a mip chain gets the bias
+// (once; consecutive routed draws find it set), a biased stage whose texture
+// or filter no longer qualifies gets its value back.
+void MotionOutput::apply_mip_bias() noexcept {
+    HRESULT first = S_OK;
+    bool any = false;
+    for (std::uint32_t mask = sampler_bound_mask_ | sampler_biased_mask_; mask; mask &= mask - 1) {
+        const unsigned stage = unsigned(__builtin_ctz(mask));
+        auto& s = samplers_[stage];
+        bool eligible = s.texture && s.levels > 1;
+        if (eligible && !s.mipfilter_known) {
+            DWORD value = 0;
+            ++counters_.mip_bias_reads; ++mip_bias_total_reads_;
+            if (SUCCEEDED(native<GetSamplerStateFn>(GetSamplerState)(device_, stage, D3DSAMP_MIPFILTER, &value))) { s.mipfilter = value; s.mipfilter_known = true; }
+            else eligible = false;
+        }
+        if (eligible) eligible = s.mipfilter != D3DTEXF_NONE;
+        if (eligible == s.biased) { any = any || s.biased; continue; }
+        if (!eligible) { restore_mip_bias_stage(stage, &first); continue; }
+        if (!s.saved_known) {
+            DWORD value = 0;
+            ++counters_.mip_bias_reads; ++mip_bias_total_reads_;
+            if (FAILED(native<GetSamplerStateFn>(GetSamplerState)(device_, stage, D3DSAMP_MIPMAPLODBIAS, &value))) { if (SUCCEEDED(first)) first = E_FAIL; continue; }
+            s.saved_bias = value; s.saved_known = true;
+        }
+        const HRESULT hr = native<SetSamplerStateFn>(SetSamplerState)(device_, stage, D3DSAMP_MIPMAPLODBIAS, mip_bias_bits_);
+        ++counters_.mip_bias_sets; ++mip_bias_total_sets_;
+        if (FAILED(hr)) { if (SUCCEEDED(first)) first = hr; continue; }
+        s.biased = true; sampler_biased_mask_ |= 1u << stage; counters_.mip_bias_stages |= 1u << stage; any = true;
+    }
+    if (any) ++counters_.mip_bias_draws;
+    if (FAILED(first)) {
+        ++counters_.mip_bias_failures; ++mip_bias_total_failures_;
+        if (logged_failures_ < failure_log_limit) {
+            ++logged_failures_;
+            log("motion_output_apply_failed device=%llu frame=%llu index=%lu result=%08lx what=mip_bias", id_, frame_, counters_.draws, first);
+        }
+    }
+}
+// State block Apply and Reset can change bindings and sampler state behind
+// the hooks: the bias is already restored (both are restore points), the
+// shadow re-reads the bindings natively and forgets the filter and saved values.
+void MotionOutput::resync_samplers() noexcept {
+    sampler_bound_mask_ = sampler_biased_mask_ = 0;
+    for (unsigned stage = 0; stage < sampler_stage_count; ++stage) {
+        auto& s = samplers_[stage];
+        s = SamplerShadow{};
+        if (!mip_bias_bits_) continue;
+        IDirect3DBaseTexture9* texture = nullptr;
+        if (SUCCEEDED(native<GetTextureFn>(GetTexture)(device_, stage, &texture)) && texture) {
+            s.texture = texture; s.levels = texture->GetLevelCount();
+            sampler_bound_mask_ |= 1u << stage;
+            release(texture);
+        }
+    }
 }
 
 // ---- render-state shadow ---------------------------------------------------
@@ -474,9 +621,12 @@ bool MotionOutput::ensure_taa() noexcept {
     if (taa_failed_) return false;
     try { taa_ = std::make_unique<renderer::TemporalPass>(); } catch (...) { taa_failed_ = true; return false; }
     HRESULT hr = E_FAIL;
-    taa_call([&] { hr = taa_->initialize(device_, nullptr, reinterpret_cast<const DWORD*>(renderer::temporal_resolve_program()), native_); });
+    // The sharpen program is created only when the switch is on: with it off
+    // the pass is the pre-sharpen pass, shader for shader.
+    taa_call([&] { hr = taa_->initialize(device_, nullptr, reinterpret_cast<const DWORD*>(renderer::temporal_resolve_program()), native_,
+                                         taa_sharpen_ > 0.f ? reinterpret_cast<const DWORD*>(renderer::taa_sharpen_program()) : nullptr); });
     taa_failed_ = FAILED(hr);
-    log("motion_output_taa device=%llu initialize=%08lx references=%u", id_, hr, taa_references_);
+    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f", id_, hr, taa_references_, double(taa_sharpen_));
     return !taa_failed_;
 }
 // The whole resolve at the bloom copy: RT1/RT2 containers as inputs, the
@@ -505,6 +655,10 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 readback_surface(main_surface, static_cast<D3DFORMAT>(main_.format), 4, L"color", L"bgra8", "motion_output_color_readback", "bgra8_row_major", target_width_, target_height_);
             renderer::FrameInputs in{};
             if (hdr_scene) { in.color = hdr_scene; in.luminance_k = hdr_taa_k_; } else in.color_surface = main_surface;
+            // Post-resolve sharpen on the 8-bit route: the pass draws RCAS of
+            // its history into the main target in place of the copy-back
+            // below (the HDR route sharpens in the write-back instead).
+            in.sharpen = hdr_scene || taa_sharpen_failures_ >= sharpen_failure_limit ? 0.f : taa_sharpen_;
             in.current_depth = depth; in.motion = motion;
             in.width = main_.width; in.height = main_.height;
             in.epoch = generation_; // Dimension changes are compared by the pass itself.
@@ -562,7 +716,22 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                     // samples the resolved FP16 image (tonemap and meter), and
                     // the history already holds it.
                     hdr_resolved_ = out.color; t.copy = S_FALSE;
+                } else if (out.display_written) {
+                    // The pass drew the sharpened display image into the main
+                    // target itself: no copy-back (taa_copy stays S_FALSE).
+                    t.copy = S_FALSE; t.sharpened = true;
                 } else {
+                    if (in.sharpen > 0.f) {
+                        // The sharpened draw failed without losing the device: the
+                        // resolve stands, the copy-back presents it unsharpened;
+                        // repeated failures disable the sharpen for the device.
+                        ++taa_sharpen_failures_;
+                        if (logged_failures_ < failure_log_limit) {
+                            ++logged_failures_;
+                            log("motion_output_sharpen_failed device=%llu frame=%llu result=%08lx failures=%u disabled=%u",
+                                id_, frame_, out.sharpen_result, taa_sharpen_failures_, taa_sharpen_failures_ >= sharpen_failure_limit);
+                        }
+                    }
                     // Point-filtered full-rect copy of the resolved FP16 image back into
                     // the 8-bit main target; StretchRect changes no device state.
                     const std::uint64_t copy_begin = stamp();
@@ -915,13 +1084,14 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
             double(x.meter_floor), double(x.meter_clip), double(c.fixed_dt) * 1000., hdr_caps.tonemap_shader, hdr_caps.meter_shader, hdr_caps.r32f_target, hdr_caps.r32f_sampling);
         hdr_tonemap_disabled_logged_ = false; hdr_taa_k_ = 0.f;
     }
-    log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u taa=%u taa_reason=%s taa_format=%08lx taa_debug=%u rt_mode=%s camera=%s sentinel=%u camera_cut_deg=%.2f camera_log=%u state_shadow=%u scene_hook=%u hdr=%u",
+    log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u taa=%u taa_reason=%s taa_format=%08lx taa_debug=%u rt_mode=%s camera=%s sentinel=%u camera_cut_deg=%.2f camera_log=%u state_shadow=%u scene_hook=%u hdr=%u mip_bias=%g",
         id_, enabled_, reason, detail[0] ? detail : "-", caps.NumSimultaneousRTs, caps.MaxVertexShaderConst,
         caps.PrimitiveMiscCaps, caps.VertexShaderVersion, caps.PixelShaderVersion, format_result,
         history_available_, unsigned(history_.stats().capacity), depth_enabled_, depth_reason,
         depth_detail[0] ? depth_detail : "-", depth_format_result, jitter_requested_, jitter_samples_,
         taa_enabled_, taa_reason, taa_format_result, taa_debug_, lazy_mode_ ? "lazy" : "perdraw",
-        camera_state::status(), unsigned(sentinel_mode_), camera_cut_degrees_, camera_log_interval_, state_shadow_, scene_hook_installed_, hdr_enabled_);
+        camera_state::status(), unsigned(sentinel_mode_), camera_cut_degrees_, camera_log_interval_, state_shadow_, scene_hook_installed_, hdr_enabled_,
+        double(mip_bias_));
 }
 
 // One actual mixed-format MRT draw into a 4x4 A8R8G8B8 + A32B32G32R32F pair
@@ -1279,8 +1449,8 @@ void MotionOutput::set_viewport(const D3DVIEWPORT9* viewport) noexcept {
     shadow_.viewport = {true, viewport->X, viewport->Y, viewport->Width, viewport->Height, viewport->MinZ, viewport->MaxZ};
 }
 void MotionOutput::begin_stateblock() noexcept { if (enabled_) shadow_.recording = true; }
-void MotionOutput::end_stateblock() noexcept { if (enabled_) { shadow_.recording = false; resync_shadow(); } }
-void MotionOutput::stateblock_applied() noexcept { if (enabled_ && !shadow_.recording) resync_shadow(); }
+void MotionOutput::end_stateblock() noexcept { if (enabled_) { shadow_.recording = false; ++counters_.sb_resyncs; resync_shadow(); } }
+void MotionOutput::stateblock_applied() noexcept { if (enabled_ && !shadow_.recording) { ++counters_.sb_resyncs; resync_shadow(); } }
 
 void MotionOutput::describe_binding(DWORD index, IDirect3DSurface9* surface) noexcept {
     if (index == 0) {
@@ -1339,6 +1509,7 @@ void MotionOutput::resync_shadow() noexcept {
     D3DVIEWPORT9 viewport{};
     if (SUCCEEDED(native<GetViewportFn>(GetViewport)(device_, &viewport)))
         shadow_.viewport = {true, viewport.X, viewport.Y, viewport.Width, viewport.Height, viewport.MinZ, viewport.MaxZ};
+    resync_samplers();
 }
 
 // ---- scene selector --------------------------------------------------------
@@ -1615,6 +1786,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     ++counters_.draws;
     if (!enabled_) { route.gate = MotionGate::Feature; ++counters_.gates[1]; return route; }
     if (hdr_state_ == HdrState::Active) hdr_dirty_ = true; // every application draw lands in the FP16 target
+    if (mip_bias_total_game_writes_ != mip_bias_logged_game_writes_) log_mip_bias_game_write();
     const std::uint64_t begin = draw_stamp(), fill_before = counters_.fill_ticks, flush_before = counters_.lazy_flush_ticks;
     evaluate_draw(call, route);
     if (!route.routed) restore_bindings();
@@ -1763,6 +1935,9 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     }
     route.routed = true; route.matched = matched;
     ++counters_.routed; if (matched) ++counters_.matched; if (route.depth) ++counters_.depth_routed;
+    // The mip LOD bias of the routed material stages, while the jitter is on
+    // (a failed sampler call is counted and logged; the draw still routes).
+    if (mip_bias_bits_ && jitter_active_) apply_mip_bias();
 }
 
 void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
@@ -1927,6 +2102,8 @@ renderer::HdrWriteback MotionOutput::hdr_writeback(IDirect3DSurface9* final_rt0,
         ++h.writebacks; h.source = unsigned(r.source);
         h.writeback_ticks += ticks; h.writeback_draw_ticks += r.ticks_draw; h.writeback_stretch_ticks += r.ticks_stretch;
         h.tonemap = r.tonemap; h.fallback = h.fallback || r.fallback; h.tonemap_draw = r.tonemap_draw;
+        h.sharpened = r.sharpened; h.sharpen_fallback = h.sharpen_fallback || r.sharpen_fallback;
+        if (r.sharpened) counters_.taa.sharpened = true;
         if (r.meter != S_FALSE) { h.meter = r.meter; h.meter_ticks += r.ticks_meter; record(unsigned(telemetry::Metric::HdrMeter), r.ticks_meter, FAILED(r.meter)); }
         record(unsigned(telemetry::Metric::HdrWriteback), ticks, r.unwind);
         record(unsigned(telemetry::Metric::HdrWritebackDraw), r.ticks_draw, FAILED(r.draw) || FAILED(r.restore));
@@ -1990,7 +2167,7 @@ void MotionOutput::log_hdr_frame() noexcept {
     const bool tonemap = hdr_ && hdr_->tonemap_active();
     const auto& e = hdr_ ? hdr_->exposure() : renderer::ExposureState{};
     const auto& c = hdr_ ? hdr_->config() : renderer::HdrConfig{};
-    log("hdr_frame device=%llu frame=%llu hdr=%u redirected=%u end=%s writebacks=%lu flushes=%lu writeback_source=%s unwind=%u unwind_reason=%s unwind_draw=%08lx unwind_restore=%08lx unwind_stretch=%08lx unwind_bind=%08lx blocked=%u recheck=%s suspended=%lu resumed=%lu dirty_at_present=%u refused_msaa=%u target_create=%08lx latch_bind=%08lx target=%ux%u target_bytes=%llu caps=%s stretch_conversion=%08lx timing=%s redirect_us=%.1f writeback_us=%.1f writeback_draw_us=%.1f writeback_stretch_us=%.1f bind_us=%.1f recheck_us=%.1f tonemap=%s tonemapped=%u look=%s decode=%s clamp=%g exposure=%s ev=%.5f ev_adapted=%.5f ev_target=%.5f avg_log_l=%.5f luma_mean=%.6g dt_ms=%.3f stepped=%u steps=%u meter=%08lx readback=%08lx tonemap_draw=%08lx fallback=%u meter_us=%.1f readback_us=%.1f k=%.5f chain_bytes=%llu",
+    log("hdr_frame device=%llu frame=%llu hdr=%u redirected=%u end=%s writebacks=%lu flushes=%lu writeback_source=%s unwind=%u unwind_reason=%s unwind_draw=%08lx unwind_restore=%08lx unwind_stretch=%08lx unwind_bind=%08lx blocked=%u recheck=%s suspended=%lu resumed=%lu dirty_at_present=%u refused_msaa=%u target_create=%08lx latch_bind=%08lx target=%ux%u target_bytes=%llu caps=%s stretch_conversion=%08lx timing=%s redirect_us=%.1f writeback_us=%.1f writeback_draw_us=%.1f writeback_stretch_us=%.1f bind_us=%.1f recheck_us=%.1f tonemap=%s tonemapped=%u look=%s decode=%s clamp=%g exposure=%s ev=%.5f ev_adapted=%.5f ev_target=%.5f avg_log_l=%.5f luma_mean=%.6g dt_ms=%.3f stepped=%u steps=%u meter=%08lx readback=%08lx tonemap_draw=%08lx fallback=%u meter_us=%.1f readback_us=%.1f k=%.5f chain_bytes=%llu sharpen=%s sharpened=%u sharpen_fallback=%u",
         id_, frame_, hdr_enabled_, h.redirected, hdr_end_name(h.end), static_cast<unsigned long>(h.writebacks), static_cast<unsigned long>(h.flushes),
         hdr_source_name(h.source), h.unwind, h.unwind_reason, h.unwind_draw, h.unwind_restore, h.unwind_stretch, h.unwind_bind,
         h.blocked, h.recheck_ran ? (h.recheck_passed ? "pass" : "fail") : "none", static_cast<unsigned long>(h.suspended),
@@ -2001,7 +2178,8 @@ void MotionOutput::log_hdr_frame() noexcept {
         tonemap ? "agx" : "identity", h.tonemap, renderer::hdr_look_name(c.look), renderer::hdr_decode_name(c.decode), double(c.clamp_max),
         renderer::hdr_exposure_name(c.exposure), double(e.ev()), double(e.ev_adapted()), double(e.ev_target()), double(e.avg_log_l()),
         double(std::exp2(e.avg_log_l())), double(e.dt()) * 1000., h.stepped, e.steps(), h.meter, h.readback, h.tonemap_draw, h.fallback,
-        us(h.meter_ticks), us(h.readback_ticks), double(hdr_taa_k_), hdr_ ? hdr_->chain_bytes() : 0ull);
+        us(h.meter_ticks), us(h.readback_ticks), double(hdr_taa_k_), hdr_ ? hdr_->chain_bytes() : 0ull,
+        caps.sharpen_reason, h.sharpened, h.sharpen_fallback);
 }
 
 // ---- frame end -------------------------------------------------------------
@@ -2142,11 +2320,14 @@ void MotionOutput::before_present() noexcept {
         else if (hook) check = unsigned(SceneEndCheck::HookOnly);
         else if (copy) check = unsigned(SceneEndCheck::StretchOnly);
         c.scene_end_check = check;
-        if (check == unsigned(SceneEndCheck::Disagree) && logged_failures_ < failure_log_limit) {
-            ++logged_failures_;
-            log("motion_output_scene_hook_disagreement device=%llu frame=%llu installed=%u signals=%lu outside_scene=%lu selector_state=%lu draws_after_hook=%lu bloom_copy_seen=%u hook_scene_end=%u",
+        // Own log budget (iteration 10: a latch-only transition screen, nothing
+        // routed and nothing resolved by either boundary, produced 16 consecutive
+        // disagreements that would otherwise consume the failure log's limit).
+        if (check == unsigned(SceneEndCheck::Disagree) && hook_disagreements_logged_ < failure_log_limit) {
+            ++hook_disagreements_logged_;
+            log("motion_output_scene_hook_disagreement device=%llu frame=%llu installed=%u signals=%lu outside_scene=%lu selector_state=%lu draws_after_hook=%lu bloom_copy_seen=%u hook_scene_end=%u routed=%lu",
                 id_, frame_, scene_hook_installed_, static_cast<unsigned long>(c.hook_signals), static_cast<unsigned long>(c.hook_outside_scene),
-                static_cast<unsigned long>(c.hook_state), static_cast<unsigned long>(c.draws_after_hook), copy, hook);
+                static_cast<unsigned long>(c.hook_state), static_cast<unsigned long>(c.draws_after_hook), copy, hook, static_cast<unsigned long>(c.routed));
         }
     }
     // A frame that did not resolve (menu, rejected before the copy,
@@ -2171,10 +2352,11 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         // telemetry on (timing=cpu_qpc) and zero otherwise (timing=off).
         const auto& c = counters_;
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
-        log("motion_output_frame device=%llu frame=%llu latched=%u filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f scene_open=%u active_queries=%lu taa_references=%u"
+        log("motion_output_frame device=%llu frame=%llu latched=%u filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u scene_open=%u active_queries=%lu taa_references=%u"
             " camera_valid=%u camera_background_valid=%u camera_reads=%lu camera_policy=%lu camera_reason=%lu camera_cut=%u camera_rotation_deg=%.4f"
             " rt_mode=%s timing=%s set_rt=%lu lazy_flushes=%lu jitter_writes=%lu readbacks=%lu gate_us=%.1f route_draw_us=%.1f set_rt_us=%.1f lazy_flush_us=%.1f jitter_us=%.1f fill_us=%.1f taa_run_us=%.1f taa_capture_us=%.1f taa_copy_color_us=%.1f taa_copy_depth_us=%.1f taa_draw_us=%.1f taa_apply_us=%.1f taa_copy_back_us=%.1f readback_us=%.1f"
-            " state_shadow=%u rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u",
+            " state_shadow=%u rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu sb_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u"
+            " mip_bias=%g mip_bias_sets=%lu mip_bias_restores=%lu mip_bias_draws=%lu mip_bias_stages=%04lx mip_bias_reads=%lu mip_bias_game_writes=%lu mip_bias_game_writes_total=%lu mip_bias_failures=%lu mip_bias_biased_now=%04lx",
             id_, frame_, counters_.latched, counters_.filled, counters_.fill_result, counters_.fill_restore,
             static_cast<unsigned long>(counters_.draws), static_cast<unsigned long>(counters_.routed), static_cast<unsigned long>(counters_.matched),
             static_cast<unsigned long>(counters_.gates[1]), static_cast<unsigned long>(counters_.gates[2]), static_cast<unsigned long>(counters_.gates[3]),
@@ -2186,7 +2368,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             static_cast<unsigned long>(counters_.jittered), counters_.cut, counters_.cut_median_px, counters_.cut_missing_fraction,
             static_cast<unsigned long>(counters_.displacement_samples), taa_enabled_, counters_.taa.attempted, counters_.taa.resolved,
             counters_.taa.used_history, static_cast<unsigned long>(counters_.taa.skip), counters_.taa.result, counters_.taa.restore,
-            counters_.taa.copy, counters_.taa.hdr, counters_.taa.k, scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,
+            counters_.taa.copy, counters_.taa.hdr, counters_.taa.k, counters_.taa.sharpened, scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,
             counters_.camera_scene_valid, counters_.camera_background_valid, static_cast<unsigned long>(counters_.camera_reads),
             static_cast<unsigned long>(counters_.taa.camera_policy), static_cast<unsigned long>(counters_.taa.camera_reason),
             counters_.taa.camera_cut, counters_.taa.camera_rotation_deg,
@@ -2196,9 +2378,13 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             us(c.jitter_ticks), us(c.fill_ticks), us(c.taa_run_ticks), us(c.taa_capture_ticks), us(c.taa_copy_color_ticks),
             us(c.taa_copy_depth_ticks), us(c.taa_draw_ticks), us(c.taa_apply_ticks), us(c.taa_copy_back_ticks), us(c.readback_ticks),
             state_shadow_, static_cast<unsigned long>(c.rs_queries), static_cast<unsigned long>(c.rs_hits), static_cast<unsigned long>(c.rs_gets),
-            static_cast<unsigned long>(c.rs_resyncs), scene_hook_installed_, scene_end_source_name(c.taa.source), static_cast<unsigned long>(c.scene_end_check),
+            static_cast<unsigned long>(c.rs_resyncs), static_cast<unsigned long>(c.sb_resyncs), scene_hook_installed_, scene_end_source_name(c.taa.source), static_cast<unsigned long>(c.scene_end_check),
             static_cast<unsigned long>(c.hook_signals), static_cast<unsigned long>(c.hook_outside_scene), static_cast<unsigned long>(c.hook_state),
-            static_cast<unsigned long>(c.draws_after_hook), c.bloom_copy_seen);
+            static_cast<unsigned long>(c.draws_after_hook), c.bloom_copy_seen,
+            double(mip_bias_), static_cast<unsigned long>(c.mip_bias_sets), static_cast<unsigned long>(c.mip_bias_restores),
+            static_cast<unsigned long>(c.mip_bias_draws), static_cast<unsigned long>(c.mip_bias_stages), static_cast<unsigned long>(c.mip_bias_reads),
+            static_cast<unsigned long>(c.mip_bias_game_writes), static_cast<unsigned long>(mip_bias_total_game_writes_),
+            static_cast<unsigned long>(c.mip_bias_failures), static_cast<unsigned long>(sampler_biased_mask_));
     }
     if (taa_enabled_ && (capture_ || frame_ % camera_log_interval_ == 0)) log_camera_state();
     if (hdr_enabled_ && (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0))) log_hdr_frame();

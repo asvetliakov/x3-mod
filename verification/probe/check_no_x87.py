@@ -22,7 +22,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 OBJDUMP = 'i686-w64-mingw32-objdump'
-LIGHT_HOOKS = ['set_vs', 'set_ps', 'set_vs_constant_f', 'set_vs_constant_i', 'set_ps_constant_f', 'set_viewport', 'set_render_state']
+LIGHT_HOOKS = ['set_vs', 'set_ps', 'set_vs_constant_f', 'set_vs_constant_i', 'set_ps_constant_f', 'set_viewport', 'set_render_state',
+               'set_texture', 'set_sampler_state']  # the mip LOD bias's sampler shadow (X3M_TAA_MIP_BIAS)
 # The gz read-ahead buffer's import entry points (src/proxy/loading_trace.cpp ->
 # src/proxy/gz_buffer.cpp) run with no boundary at all on their fast path, so the
 # same rule applies to them; the real zlib calls are indirect and stop the walk.

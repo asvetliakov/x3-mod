@@ -97,9 +97,11 @@ float3 look(float3 v)
     return y + lookSlope.w * (graded - y);
 }
 
-float4 main(float2 uv : TEXCOORD0) : COLOR0
+// The whole transform of one engine-space sample: display-encoded RGB with
+// the alpha carried. main() applies it to the centre sample; agx_sharpen_ps.hlsl
+// (AGX_NO_MAIN defined before including this file) applies it to five taps.
+float4 agxTonemap(float4 scene)
 {
-    float4 scene = tex2Dlod(sceneColor, float4(uv, 0, 0));
     float3 v = decodeEngine(scene.rgb);
     v = min(v, exposure.y);              // X3M_HDR_CLAMP firefly guard (65504 = off)
     v *= exposure.x;                     // exp2(EV_adapted)
@@ -111,3 +113,10 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
     v = mul3(outset0, outset1, outset2, v); // outset: display encoded
     return float4(saturate(v), scene.a);
 }
+
+#ifndef AGX_NO_MAIN
+float4 main(float2 uv : TEXCOORD0) : COLOR0
+{
+    return agxTonemap(tex2Dlod(sceneColor, float4(uv, 0, 0)));
+}
+#endif

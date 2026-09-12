@@ -44,7 +44,8 @@
 // restored bytes, one signal per call before the compositor, ESI/EDI/EBX/EBP
 // across the trampoline, and that the resolve at the hook equals the reference
 // resolve (and the copy path's output) in glow-on frames and still runs in
-// glow-off frames; with X3M_SCENE_HOOK=0 the same script runs unpatched.
+// glow-off frames; with X3M_SCENE_HOOK=0 the same script runs unpatched, and
+// with the switch unset (the default: on with the route) it patches as with 1.
 // X3M_STATE_SHADOW=0 runs any script with the route's render-state shadow off.
 // X3M_HDR=1 (stage 1 of the FP16 HDR scene path) runs any script with the
 // route's FP16 redirect on: the presented frames must equal the run without it
@@ -155,7 +156,10 @@ constexpr D3DRENDERSTATETYPE watched_states[] = {
     D3DRS_MULTISAMPLEMASK, D3DRS_VERTEXBLEND, D3DRS_WRAP0, D3DRS_CLIPPING};
 constexpr unsigned watched_count = sizeof(watched_states) / sizeof(watched_states[0]);
 // Sampler states the resolve normalizes on s0-s6; compared on stages 0-7.
-constexpr D3DSAMPLERSTATETYPE watched_samplers[] = {D3DSAMP_MINFILTER, D3DSAMP_MAGFILTER, D3DSAMP_MIPFILTER, D3DSAMP_ADDRESSU, D3DSAMP_ADDRESSV, D3DSAMP_SRGBTEXTURE, D3DSAMP_MAXMIPLEVEL};
+// MIPMAPLODBIAS is watched too: with the mip bias on (X3M_TAA_MIP_BIAS) the
+// regular scripts bind no mip-mapped texture, so a bias left on a stage
+// across any restore point would fail the state comparisons.
+constexpr D3DSAMPLERSTATETYPE watched_samplers[] = {D3DSAMP_MINFILTER, D3DSAMP_MAGFILTER, D3DSAMP_MIPFILTER, D3DSAMP_ADDRESSU, D3DSAMP_ADDRESSV, D3DSAMP_SRGBTEXTURE, D3DSAMP_MAXMIPLEVEL, D3DSAMP_MIPMAPLODBIAS};
 constexpr unsigned sampler_stages = 8, sampler_count = sizeof(watched_samplers) / sizeof(watched_samplers[0]);
 
 // Every state the route or its fill may touch. Getters add references that
@@ -338,9 +342,15 @@ struct Fixture {
     HRESULT (*readback_depth)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*last_pixel_abi)(IDirect3DDevice9*, float*, unsigned) = nullptr;
     bool seam = false, enabled = false, jitter = false, taa = false, bench = false, burst = false, lazy = false, envmap = false;
+    float sharpen = 0.f;   // X3M_TAA_SHARPEN: the presented image is RCAS of the resolved one (the runner compares it against the Python reference)
     bool hook = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
     bool hdrramp = false, hdrexposure = false, hdrtonemapfault = false; // stage-2 scripts
     bool hdr_agx = false;           // X3M_HDR_TONEMAP=agx: the presented image is AgX (the runner holds the reference)
+    // Mip LOD bias script ("mipbias" mode) and the DLL's X3M_TAA_MIP_BIAS as
+    // the fixture read it (0: the DLL biases nothing, every stage must read 0).
+    bool mipbias = false; float mip_bias = 0;
+    unsigned capture_start = 1, capture_frames = 8; // X3M_CAPTURE_START/FRAMES: capture frames restore before every draw's diagnostics
+    Com<IDirect3DTexture9> ramp;    // 1024x1024 full mip chain, level i a constant grey 16 + 20 i (a LOD ramp)
     bool history_dropped = false;   // the route skipped or failed a resolve: its history is gone until the next resolve
     unsigned jitter_samples = 8;
     // HDR seam exports (X3M_HDR scripts).
@@ -437,6 +447,22 @@ struct Fixture {
             D3DLOCKED_RECT lock{}; api(textures[i]->LockRect(0, &lock, nullptr, 0), "LockRect");
             for (UINT y = 0; y < 2; ++y) std::memcpy(static_cast<char*>(lock.pBits) + y * lock.Pitch, &texels[i][y * 2], 8);
             api(textures[i]->UnlockRect(0), "UnlockRect");
+        }
+        // The LOD ramp: a full 1024 -> 1 chain (eleven levels), every level a
+        // constant grey that grows with the level, so a trilinear sample is
+        // linear in the LOD the hardware computes and a finer level is darker.
+        // Object A maps one texture repeat over 128 raster pixels (4 NDC units
+        // at 32 px each), so 1024 texels give 8 texels per pixel: LOD 3, where
+        // a negative bias moves the sample (at 128 texels it would be LOD 0,
+        // where the bias is clamped away and changes nothing).
+        api(d->CreateTexture(1024, 1024, 0, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &ramp.p, nullptr), "CreateTexture ramp");
+        if (ramp->GetLevelCount() != 11) throw std::runtime_error("the ramp texture does not hold the complete mip chain"); // not a counted check: every script creates it
+        for (UINT level = 0; level < 11; ++level) {
+            D3DLOCKED_RECT lock{}; api(ramp->LockRect(level, &lock, nullptr, 0), "LockRect ramp");
+            const DWORD grey = 16 + 20 * level, texel = 0xff000000u | (grey << 16) | (grey << 8) | grey;
+            const UINT size = 1024 >> level;
+            for (UINT y = 0; y < size; ++y) for (UINT x = 0; x < size; ++x) std::memcpy(static_cast<char*>(lock.pBits) + y * lock.Pitch + x * 4, &texel, 4);
+            api(ramp->UnlockRect(level), "UnlockRect ramp");
         }
         api(d->CreateCubeTexture(2, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &cube.p, nullptr), "CreateCubeTexture");
         for (UINT face = 0; face < 6; ++face) {
@@ -875,7 +901,7 @@ struct Fixture {
         const bool expect_history = live && resolve_expected && frames_since_reset > 0 && !expected_cut() && !history_dropped;
         require(history == expect_history, "history use follows the script (first frame, Reset, cut and post-skip frames run current-only)");
         history_dropped = !resolve_expected;
-        if (!history) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
+        if (!history && sharpen <= 0.f) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
         std::printf("TAA frame=%llu history=%u cut=%u changed=%u policy=%u skipped=%u\n", frame, history, expected_cut(), changed, decision.policy, !resolve_expected);
         ++taa_frames; taa_history_frames += history; taa_changed_pixels += changed;
         // The history now holds this frame's scene view (the route records it
@@ -1002,6 +1028,126 @@ struct Fixture {
             frame_end();
         }
         require(!(enabled && seam) || frames_verified == frames, "every live burst frame verified against the oracle");
+    }
+    // ---- mip LOD bias script ("mipbias" mode; X3M_TAA_MIP_BIAS, jitter on) ----
+    //
+    // Stages after bind_mip_stages: 0 ramp/LINEAR mip (eligible), 1 ramp/NONE
+    // (mip chain, filter off: untouched), 2 unmipped/LINEAR (untouched),
+    // 3 unmipped cube/NONE, 4 ramp/POINT (eligible), 5 unbound/LINEAR
+    // (untouched). The bias is observed through GetSamplerState, which the DLL
+    // does not hook (the game never reads sampler state back). The script's
+    // own model of the DLL's restore points (`model_*`) predicts the per-frame
+    // SetSamplerState counts the runner compares against the trace.
+    static DWORD float_bits(float value) { DWORD bits = 0; std::memcpy(&bits, &value, 4); return bits; }
+    bool bias_live() const { return enabled && mip_bias != 0; }
+    bool capturing() const { return frame >= capture_start && frame < capture_start + capture_frames; }
+    unsigned model_sets = 0, model_restores = 0, model_biased = 0, model_draws = 0; // per frame
+    unsigned model_reads = 0;                                                       // per frame: native GetSamplerState fills
+    bool model_saved_known[8]{};                                                    // the DLL knows the value to restore
+    void model_restore() { if (model_biased) { model_restores += __builtin_popcount(model_biased); model_biased = 0; } }
+    void model_routed(unsigned eligible) {
+        if (!bias_live()) return;
+        if (capturing()) model_restore(); // capture frames: the draw diagnostics restore first
+        const unsigned drop = model_biased & ~eligible, add = eligible & ~model_biased;
+        model_restores += __builtin_popcount(drop);
+        for (unsigned s = 0; s < 8; ++s) if ((add >> s) & 1 && !model_saved_known[s]) { ++model_reads; model_saved_known[s] = true; }
+        model_sets += __builtin_popcount(add);
+        model_biased = eligible;
+        if (model_biased) ++model_draws;
+    }
+    void model_unrouted() { if (bias_live()) model_restore(); }
+    void model_game_write(unsigned stage) { model_biased &= ~(1u << stage); model_saved_known[stage] = true; }
+    DWORD sampler_bias(UINT stage) { DWORD value = ~0ul; api(d->GetSamplerState(stage, D3DSAMP_MIPMAPLODBIAS, &value), "GetSamplerState MIPMAPLODBIAS"); return value; }
+    // Stages 0-7 holding exactly the DLL's bias (a bit mask) against the script's expectation.
+    void expect_bias(const char* label, unsigned expected) {
+        unsigned actual = 0, nonzero = 0;
+        for (UINT s = 0; s < 8; ++s) { const DWORD v = sampler_bias(s); if (v == float_bits(mip_bias) && mip_bias != 0) actual |= 1u << s; if (v) nonzero |= 1u << s; }
+        const unsigned want = bias_live() ? expected : 0;
+        std::printf("MIPBIAS frame=%llu label=%s expected=%02x actual=%02x nonzero=%02x ok=%u\n", frame, label, want, actual, nonzero, actual == want);
+        require(actual == want, "the DLL's mip bias sits on exactly the expected stages");
+    }
+    void bind_mip_stages() {
+        api(d->SetTexture(0, ramp.p), "SetTexture ramp 0"); api(d->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR), "mip 0 linear");
+        api(d->SetTexture(1, ramp.p), "SetTexture ramp 1"); api(d->SetSamplerState(1, D3DSAMP_MIPFILTER, D3DTEXF_NONE), "mip 1 none");
+        api(d->SetSamplerState(2, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR), "mip 2 linear (unmipped texture)");
+        api(d->SetTexture(4, ramp.p), "SetTexture ramp 4"); api(d->SetSamplerState(4, D3DSAMP_MIPFILTER, D3DTEXF_POINT), "mip 4 point");
+        api(d->SetTexture(5, nullptr), "SetTexture 5 null"); api(d->SetSamplerState(5, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR), "mip 5 linear (unbound)");
+    }
+    void routed_draw(Object& o, float t, float p, float zo, unsigned eligible) { draw(o, t, p, zo, false, true, false, Alter::None, false); model_routed(eligible); }
+    void unrouted_draw(Object& o, float t, float p, float zo, Alter alter = Alter::FlatPixel) { draw(o, t, p, zo, false, false, false, alter, false); model_unrouted(); }
+    // Mean of the RGB average over A's interior pixels at the jittered sample positions.
+    void object_stats(const std::vector<DWORD>& image, float t, float p, unsigned& pixels, double& mean, const std::vector<DWORD>* other, unsigned& differing) {
+        pixels = 0; differing = 0; double sum = 0;
+        for (UINT y = 0; y < H; ++y) for (UINT x = 0; x < W; ++x) {
+            double ox, oy, wc; object_point(x - jx, y - jy, t, p, ox, oy, wc);
+            if (!a.covers(ox, oy) || edge_distance(a, ox, oy) < 2e-2) continue;
+            const DWORD v = image[std::size_t(y) * W + x];
+            sum += (((v >> 16) & 255) + ((v >> 8) & 255) + (v & 255)) / 3.;
+            ++pixels;
+            if (other && (*other)[std::size_t(y) * W + x] != v) ++differing;
+        }
+        mean = pixels ? sum / pixels : 0;
+    }
+    void run_mipbias(unsigned frames) {
+        const DWORD app_bias = float_bits(.25f); // the "game's own" MIPMAPLODBIAS write
+        for (unsigned i = 0; i < frames; ++i) {
+            frame_begin();
+            model_sets = model_restores = model_draws = model_reads = 0; model_biased = 0;
+            bind_mip_stages();
+            expect_bias("before_routed", 0);
+            routed_draw(a, .75f, 0, 0, 0x11); expect_bias("routed", 0x11);
+            routed_draw(b, 0, 0, 0, 0x11); expect_bias("routed_again", 0x11);
+            unrouted_draw(a, .75f, 0, 0); expect_bias("unrouted", 0);
+            routed_draw(a, .75f, 0, 0, 0x11); expect_bias("rerouted", 0x11);
+            // Stage 4 rebound to an unmipped texture: the bias comes off that stage.
+            api(d->SetTexture(4, textures[1].p), "SetTexture unmipped 4");
+            routed_draw(b, 0, 0, 0, 0x01); expect_bias("stage4_unmipped", 0x01);
+            // Stage 0's mip filter off: nothing left to bias.
+            api(d->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE), "mip 0 none");
+            routed_draw(a, .75f, 0, 0, 0x00); expect_bias("stage0_mipfilter_none", 0x00);
+            api(d->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR), "mip 0 linear again");
+            api(d->SetTexture(4, ramp.p), "SetTexture ramp 4 again");
+            routed_draw(b, 0, 0, 0, 0x11); expect_bias("eligible_again", 0x11);
+            // An application write of the bias while the DLL's is on: the
+            // application's value stands, is re-biased by the next routed draw
+            // and is what the following restore puts back.
+            api(d->SetSamplerState(0, D3DSAMP_MIPMAPLODBIAS, app_bias), "application MIPMAPLODBIAS write"); model_game_write(0);
+            require(sampler_bias(0) == app_bias, "an application write of the bias reaches the device");
+            expect_bias("after_game_write", 0x10);
+            routed_draw(a, .75f, 0, 0, 0x11); expect_bias("reapplied_after_game_write", 0x11);
+            unrouted_draw(a, .75f, 0, 0);
+            require(sampler_bias(0) == app_bias && sampler_bias(4) == 0, "the restore puts the application's own value back");
+            expect_bias("restored_to_game_value", 0);
+            api(d->SetSamplerState(0, D3DSAMP_MIPMAPLODBIAS, 0), "application MIPMAPLODBIAS write back to 0"); model_game_write(0);
+            routed_draw(b, 0, 0, 0, 0x11); expect_bias("routed_after_second_write", 0x11);
+            if (i % 2 == 0) {
+                // Evidence: the same material draw of A, routed (biased) and
+                // unrouted (gate 4: blending on, ONE/ZERO so the colour is the
+                // unblended material), both at this frame's jitter. Off, the
+                // two images are identical; on, the routed one samples finer
+                // (darker) levels of the ramp.
+                routed_draw(a, .75f, 0, 0, 0x11);
+                const auto routed_image = color_image();
+                if (lazy) model_unrouted(); // lazy mode hooks GetRenderTargetData: a restore point
+                unrouted_draw(a, .75f, 0, 0, Alter::Blend);
+                const auto unrouted_image = color_image();
+                unsigned pixels = 0, differing = 0, unused_count = 0, unused = 0; double routed_mean = 0, unrouted_mean = 0;
+                object_stats(routed_image, .75f, 0, pixels, routed_mean, &unrouted_image, differing);
+                object_stats(unrouted_image, .75f, 0, unused_count, unrouted_mean, nullptr, unused);
+                std::printf("MIPBIAS_EVIDENCE frame=%llu bias=%g pixels=%u differing=%u routed_mean=%.4f unrouted_mean=%.4f delta=%.4f\n",
+                            frame, mip_bias, pixels, differing, routed_mean, unrouted_mean, unrouted_mean - routed_mean);
+                require(pixels > 500, "A covers enough interior pixels for the evidence");
+                if (bias_live()) require(differing > pixels / 2 && unrouted_mean - routed_mean > 1., "the biased routed draw samples finer, darker ramp levels");
+                else require(differing == 0, "without the bias the routed and unrouted material draws are identical");
+            }
+            routed_draw(a, .75f, 0, 0, 0x11); expect_bias("last_routed", 0x11);
+            std::printf("MIPBIAS_EXPECT frame=%llu sets=%u restores=%u draws=%u reads=%u capture=%u\n", frame, model_sets,
+                        model_restores + (bias_live() ? __builtin_popcount(model_biased) : 0), model_draws, model_reads, capturing()); // EndScene restores the rest
+            frame_end();
+            expect_bias("after_present", 0);
+            if (i == 3) { reset(); for (auto& known : model_saved_known) known = false; } // Reset: the shadow re-reads
+        }
+        require(!(enabled && seam) || frames_verified == frames, "every live mipbias frame verified against the oracle");
     }
     // Environment-map sequence of the frame routine (camera-state-and-frame-
     // routine.md section 7): mid-frame EndScene, six cube-face target changes
@@ -1168,7 +1314,7 @@ struct Fixture {
         }
         const bool expect_history = resolves && history_valid && !expected_cut();
         require(history == expect_history, "history use follows the script (the route drops history on a frame it cannot resolve)");
-        if (!history) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
+        if (!history && sharpen <= 0.f) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
         history_valid = resolves;
         camera_history = resolves ? camera_current : x3m::renderer::CameraState{};
         std::printf("TAA frame=%llu history=%u cut=%u changed=%u policy=%u skipped=%u source=%s glow=%u outside=%u\n", frame, history, expected_cut(), changed, decision.policy, !resolves,
@@ -1188,7 +1334,8 @@ struct Fixture {
     void run_hook() {
         require(enabled && seam && taa && hook_install && hook_shutdown && hook_signals && hook_status, "hook needs the seam, TAA and the scene-hook exports");
         hook_create();
-        char setting[8]{}; const bool want = GetEnvironmentVariableA("X3M_SCENE_HOOK", setting, sizeof setting) == 1 && setting[0] == '1';
+        // The DLL's rule (scene_hook::wanted): "0" off, "1" on, unset on with the route (this script runs with X3M_MOTION_OUTPUT=1).
+        char setting[8]{}; const bool want = !(GetEnvironmentVariableA("X3M_SCENE_HOOK", setting, sizeof setting) == 1 && setting[0] == '0');
         auto compositor = reinterpret_cast<void*>(&fixture_compositor);
         require(hook_install(hook_site_other, compositor) == 0 && !std::strcmp(hook_status(), "target_mismatch"), "install refused on a CALL to another target");
         require(hook_install(hook_site_plain, compositor) == 0 && !std::strcmp(hook_status(), "callsite_mismatch"), "install refused on a site that is not a CALL");
@@ -1244,19 +1391,25 @@ struct Fixture {
     // one code per channel is the tolerance (the conversions' rounding);
     // with the AgX write-back only the alpha carry is checked here and the
     // runner compares the colour against the Python AgX reference.
+    // With the post-resolve sharpen on (either route) only the alpha carry
+    // is checked here, like the AgX case: the runner compares the colour
+    // against the Python RCAS reference of the resolved (and, HDR, AgX
+    // tonemapped) image, and the FP16 history against the reference pass.
     unsigned presented_mismatches(const std::vector<DWORD>& actual, const std::vector<DWORD>& expected, float k) {
         unsigned mismatches = 0, worst = 0;
+        const bool colour = !hdr_agx && sharpen <= 0.f;
         for (std::size_t i = 0; i < expected.size(); ++i) {
-            if (!hdr) { if (expected[i] != actual[i] && ++mismatches <= 4) std::printf("TAA_DIFF frame=%llu index=%u actual=%08lx reference=%08lx\n", frame, unsigned(i), actual[i], expected[i]); continue; }
+            if (!hdr && colour) { if (expected[i] != actual[i] && ++mismatches <= 4) std::printf("TAA_DIFF frame=%llu index=%u actual=%08lx reference=%08lx\n", frame, unsigned(i), actual[i], expected[i]); continue; }
             unsigned difference = 0;
             for (unsigned c = 0; c < 4; ++c) {
                 const unsigned a = (actual[i] >> (8 * c)) & 255, e = (expected[i] >> (8 * c)) & 255;
-                if (c == 3 || !hdr_agx) difference = std::max(difference, a > e ? a - e : e - a);
+                if (c == 3 || colour) difference = std::max(difference, a > e ? a - e : e - a);
             }
             worst = std::max(worst, difference);
             if (difference > 1 && ++mismatches <= 4) std::printf("TAA_DIFF frame=%llu index=%u actual=%08lx reference=%08lx\n", frame, unsigned(i), actual[i], expected[i]);
         }
         if (hdr) std::printf("TAA_HDR frame=%llu k=%.5f agx=%u worst_code=%u mismatches=%u\n", frame, double(k), hdr_agx, worst, mismatches);
+        if (sharpen > 0.f) std::printf("TAA_SHARPEN frame=%llu sharpen=%g hdr=%u agx=%u worst_alpha=%u mismatches=%u\n", frame, double(sharpen), hdr, hdr_agx, worst, mismatches);
         return mismatches;
     }
     // ---- FP16 HDR scene path scripts (X3M_HDR=1, seam) ----
@@ -1679,12 +1832,13 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault [WxH]");
+        if ((argc != 4 && argc != 5) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault [WxH]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
         f.bench = mode == "bench";
         f.burst = mode == "burst";
+        f.mipbias = mode == "mipbias";
         f.envmap = mode == "envmap";
         f.hook = mode == "hook";
         f.hdrvalues = mode == "hdrvalues";
@@ -1709,7 +1863,7 @@ int main(int argc, char** argv) {
         f.hdr_readback = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_hdr_fixture_readback", false);
         f.hdr_exposure = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned)>(runtime, "x3m_hdr_fixture_exposure", false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
-        require(f.bench || f.burst || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.burst || f.mipbias || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.taa = f.enabled && GetEnvironmentVariableA("X3M_TAA", setting, sizeof setting) == 1 && setting[0] == '1';
         // The DLL implies the jitter with the resolve on.
@@ -1722,11 +1876,19 @@ int main(int argc, char** argv) {
         f.state_shadow = !(GetEnvironmentVariableA("X3M_STATE_SHADOW", setting, sizeof setting) == 1 && setting[0] == '0');
         f.hdr = f.enabled && GetEnvironmentVariableA("X3M_HDR", setting, sizeof setting) == 1 && setting[0] == '1';
         f.hdr_agx = f.hdr && GetEnvironmentVariableA("X3M_HDR_TONEMAP", setting, sizeof setting) > 0 && (!std::strcmp(setting, "agx") || !std::strcmp(setting, "1"));
+        if (f.taa && GetEnvironmentVariableA("X3M_TAA_SHARPEN", setting, sizeof setting) > 0) { const float v = float(std::atof(setting)); if (v > 0.f && v <= 1.f) f.sharpen = v; }
         // A caps/self-test fault must be queued before the device is created (attach).
         if (f.hdr_fault && GetEnvironmentVariableA("X3M_FIXTURE_HDR_FAULT", setting, sizeof setting) > 0) f.hdr_fault(nullptr, unsigned(std::atoi(setting)), 1);
         if (f.camera) { fake_camera_pose(0); f.camera_install(&fake_projection_slot, &fake_view_slot); }
+        // The DLL's mip bias (X3M_TAA_MIP_BIAS, parsed as the DLL does: whole
+        // string, |bias| <= 8, only with the jitter on) and its capture window.
+        char bias_text[32]{};
+        if (f.jitter && GetEnvironmentVariableA("X3M_TAA_MIP_BIAS", bias_text, sizeof bias_text) > 0) { char* end = nullptr; const float v = std::strtof(bias_text, &end); if (end != bias_text && *end == '\0' && v >= -8.f && v <= 8.f) f.mip_bias = v; }
+        char window_text[16]{};
+        if (GetEnvironmentVariableA("X3M_CAPTURE_START", window_text, sizeof window_text) > 0) f.capture_start = unsigned(std::atoi(window_text));
+        if (GetEnvironmentVariableA("X3M_CAPTURE_FRAMES", window_text, sizeof window_text) > 0) f.capture_frames = unsigned(std::atoi(window_text));
         char path[MAX_PATH]{}; GetModuleFileNameA(runtime, path, MAX_PATH);
-        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s camera=%u sentinel=%u envmap=%u hook=%u state_shadow=%u hdr=%u hdrvalues=%u hdrfault=%u hdrramp=%u hdrexposure=%u hdrtonemapfault=%u\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw", f.camera, f.sentinel, f.envmap, f.hook, f.state_shadow, f.hdr, f.hdrvalues, f.hdrfault, f.hdrramp, f.hdrexposure, f.hdrtonemapfault);
+        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s camera=%u sentinel=%u envmap=%u hook=%u state_shadow=%u hdr=%u hdrvalues=%u hdrfault=%u hdrramp=%u hdrexposure=%u hdrtonemapfault=%u mipbias=%u mip_bias=%g sharpen=%g\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw", f.camera, f.sentinel, f.envmap, f.hook, f.state_shadow, f.hdr, f.hdrvalues, f.hdrfault, f.hdrramp, f.hdrexposure, f.hdrtonemapfault, f.mipbias, f.mip_bias, double(f.sharpen));
         f.vs_words = load(argv[1]); f.ps_words = load(argv[2]);
         f.vs_hash = fnv(f.vs_words.data(), f.vs_words.size() * 4); f.ps_hash = fnv(f.ps_words.data(), f.ps_words.size() * 4);
         f.flat_hash = fnv(flat_program, sizeof flat_program);
@@ -1742,15 +1904,15 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if (f.taa && f.enabled && f.seam && !f.bench) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
+        if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }
         // Teardown: every fixture object released, then the device must reach zero.
         f.back.reset(); f.depth.reset(); f.bloom_surface.reset(); f.bloom.reset();
-        for (UINT i = 0; i < 4; ++i) api(f.d->SetTexture(i, nullptr), "SetTexture null");
+        for (UINT i = 0; i < 8; ++i) api(f.d->SetTexture(i, nullptr), "SetTexture null"); // the mipbias script binds stages 4 and 5 too
         api(f.d->SetVertexShader(nullptr), "unbind"); api(f.d->SetPixelShader(nullptr), "unbind"); api(f.d->SetStreamSource(0, nullptr, 0, 0), "unbind"); api(f.d->SetVertexDeclaration(nullptr), "unbind");
-        f.vs.reset(); f.ps.reset(); f.flat.reset(); f.hdr2.reset(); f.hdr8.reset(); f.hdrmid.reset(); f.hdrconst.reset(); f.declaration.reset(); f.vb_a.reset(); f.vb_b.reset(); f.cube.reset();
+        f.vs.reset(); f.ps.reset(); f.flat.reset(); f.hdr2.reset(); f.hdr8.reset(); f.hdrmid.reset(); f.hdrconst.reset(); f.declaration.reset(); f.vb_a.reset(); f.vb_b.reset(); f.cube.reset(); f.ramp.reset();
         for (auto& t : f.textures) t.reset();
         const ULONG device_refs = f.d.p->Release(); f.d.p = nullptr;
         require(device_refs == 0, "device final Release reaches zero with the route's objects released");
