@@ -4,6 +4,7 @@
 #include "loading_trace.h"
 #include "gz_buffer.h"
 #include "resource_reader.h"
+#include "engine_patch.h"
 #include "sampling_profiler.h"
 #include "scene_capture.h"
 #include "object_trace.h"
@@ -506,6 +507,10 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
         log("telemetry_present_window device=%llu frame=%llu override=%p device_window=%p result=%08lx",ctx.id,ctx.frame,w,ctx.stats.window,hr);
         ctx.stats.present_override_known=true;ctx.stats.present_override=w;
     }
+    // The first presented frame closes the trampoline install window: every
+    // engine_patch claim belongs to initialize_log (before the device existed);
+    // a later claim would write over code the loading threads may be executing.
+    if(engine_patch::install_window_open())engine_patch::close_install_window("first_present");
     if (ctx.capture || ctx.frame%300==0) {
         // One QPC per logged line (every 300 frames or a capture frame), in every
         // mode: elapsed_ms since DllMain and dt_ms since the previous frame_end

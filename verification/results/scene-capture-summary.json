@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T16:03:39.472239+00:00",
+  "started_utc": "2026-09-12T17:12:52.769240+00:00",
   "bottle": {
     "name": "Steam",
     "wine_arch": "win64",
@@ -31,7 +31,7 @@
     "src/proxy/scene_capture.h": "26f04fb5fe2de7636e547424d40b00e5edf95d395e32a468343dd65f00030183",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
-    "src/proxy/capture.h": "e573832e0771ad93c76d58dfc8ddc9b33aec5c7db5d4a6ca526797bb5736cf31",
+    "src/proxy/capture.h": "35a4350a1babdea3d61b7de88b6548669f9e7de19137e6cdebc2b018a591949b",
     "src/renderer/scene_boundary.h": "6d2504e4b568e6fc0d24d2bd6a0d9437a5ccd54fe9e003905dfb46535256303e",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5"
   },
@@ -45,12 +45,12 @@
     "Steam",
     "--no-update",
     "--workdir",
-    "/Users/asvetl/x3-mod/verification/probe/build",
-    "/Users/asvetl/x3-mod/verification/probe/build/scene_capture_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a68201431d638fe21/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a68201431d638fe21/verification/probe/build/scene_capture_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a68201431d638fe21/src/temporal/depth_decode.hlsl"
   ],
-  "executable_sha256": "dc07174865b45cd747149aa421f9857c40c7147e894d8ad579624cc3c802ea41",
+  "executable_sha256": "c55ac976d1632350fd9484c196f41040cb57678ccc781f2443dcd907504293a9",
   "exit_code": 0,
   "checks": 4908,
   "samples": 16,

@@ -93,8 +93,8 @@ bool install_all(const engine_patch::SiteSpec* specs,const unsigned* kinds,const
         // a site with no exit stub is still counted.
         install_site(i,specs[i],static_cast<ProbeKind>(kinds[i]),extras[i]);
         const auto& r=reports[i];
-        log("loading_probe_site index=%u name=%s va=0x%08lx length=%u timed=%u kind=%s status=%s x0=%s x1=%s x2=%s x3=%s",
-            i,r.name,static_cast<unsigned long>(r.address),r.length,unsigned(r.timed),kind_name(static_cast<ProbeKind>(kinds[i])),r.status,r.extra[0],r.extra[1],r.extra[2],r.extra[3]);
+        log("loading_probe_site index=%u name=%s va=0x%08lx length=%u timed=%u kind=%s status=%s x0=%s x1=%s x2=%s x3=%s atomic_write=%u",
+            i,r.name,static_cast<unsigned long>(r.address),r.length,unsigned(r.timed),kind_name(static_cast<ProbeKind>(kinds[i])),r.status,r.extra[0],r.extra[1],r.extra[2],r.extra[3],unsigned(sites[i].atomic_write));
     }
     return installed_!=0;
 }
@@ -111,6 +111,7 @@ bool initialize() {
     requested_=GetEnvironmentVariableW(L"X3M_LOADING_PROBES",setting,8)==1&&setting[0]==L'1';
     if(!requested_){SetLastError(error);return false;}
     if(!object_trace::executable_verified()){log("loading_probes requested=1 installed=0 status=executable_mismatch");SetLastError(error);return false;}
+    if(!engine_patch::install_window_open()){log("loading_probes requested=1 installed=0 status=late_claim window_closed_by=%s",engine_patch::install_window_reason());SetLastError(error);return false;}
     engine_patch::SiteSpec specs[site_count];unsigned kinds[site_count];
     static const char* extra_storage[site_count][4];
     for(unsigned i=0;i<site_count;++i){specs[i]=definitions[i].spec;kinds[i]=unsigned(definitions[i].kind);for(unsigned k=0;k<4;++k)extra_storage[i][k]=definitions[i].extra[k];}
@@ -144,6 +145,14 @@ void report() {
 }
 void shutdown() {
     for(unsigned i=0;i<site_count;++i)if(sites[i].patched_in){const bool okay=engine_patch::restore(sites[i]);log("loading_probe_site name=%s restored=%u status=%s",reports[i].name,unsigned(okay),sites[i].status);}
+    // No new return-address hijacks from here on; a thread already inside a
+    // stub still counts its entry. The per-thread shadow blocks, both TLS
+    // slots and the arena stay allocated: a frame hijacked before the restore
+    // returns into the exit stub later and reads its shadow (loading_probes.md,
+    // "Shutdown").
+    if(installed_)log("loading_probes shutdown retained_shadow_blocks=%u retained_bytes=%u reason=hijacked_frames_may_be_outstanding",
+        loading_trace::light::shadow_blocks(),loading_trace::light::shadow_blocks()*loading_trace::light::shadow_block_bytes());
+    probe_set_exit_stub(nullptr);
     installed_=0;
 }
 #ifdef X3M_LOADING_PROBES_FIXTURE

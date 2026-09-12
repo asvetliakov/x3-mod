@@ -292,6 +292,25 @@ const void* exit_stub=nullptr;
 const uint32_t* size_global=nullptr;
 DWORD shadow_slot=TLS_OUT_OF_INDEXES;
 volatile LONG shadow_slot_state=0; // 0 unallocated, 1 allocating, 2 ready, 3 failed
+volatile LONG shadow_block_count=0;
+// Readable-page cache for the file-object dereferences: page bases validated by
+// VirtualQuery (committed, readable, not guarded) with the tick of validation.
+// Entries are single aligned 32-bit words written racily; a torn pair only costs
+// a repeated query. A page is trusted for readable_page_ttl_ms, the bound
+// engine_memory.cpp uses when no frame advances (loading runs between frames).
+constexpr unsigned readable_pages=16;
+constexpr DWORD readable_page_ttl_ms=100;
+constexpr DWORD readable_protection=PAGE_READONLY|PAGE_READWRITE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_WRITECOPY|PAGE_EXECUTE_WRITECOPY;
+struct ReadablePage { uint32_t page; DWORD tick; };
+ReadablePage readable[readable_pages];
+volatile LONG readable_victim=0;
+bool page_readable(uint32_t address) noexcept {
+    MEMORY_BASIC_INFORMATION info{};
+    if(VirtualQuery(reinterpret_cast<const void*>(address),&info,sizeof info)!=sizeof info)return false;
+    if(info.State!=MEM_COMMIT||(info.Protect&(PAGE_NOACCESS|PAGE_GUARD))||!(info.Protect&readable_protection))return false;
+    const uint32_t begin=uint32_t(reinterpret_cast<uintptr_t>(info.BaseAddress));
+    return address>=begin&&address-begin<uint32_t(info.RegionSize);
+}
 Shadow* shadow() noexcept {
     if(shadow_slot_state!=2){
         if(InterlockedCompareExchange(&shadow_slot_state,1,0)==0){
@@ -305,14 +324,16 @@ Shadow* shadow() noexcept {
     if(!s){
         s=static_cast<Shadow*>(HeapAlloc(GetProcessHeap(),HEAP_ZERO_MEMORY,sizeof(Shadow)));
         if(!s||!TlsSetValue(shadow_slot,s)){if(s)HeapFree(GetProcessHeap(),0,s);return nullptr;}
+        InterlockedIncrement(&shadow_block_count);
     }
     return s;
 }
-inline uint32_t read32(uint32_t address) noexcept { return *reinterpret_cast<const uint32_t*>(address); }
 // A register that should hold the file object: only an aligned user-space
-// pointer above the first 64 KB is dereferenced (the game passes heap objects;
-// a fixture or a foreign caller may leave anything in the register).
+// pointer above the first 64 KB whose page is committed and readable is
+// dereferenced (the game passes heap objects; a fixture or a foreign caller may
+// leave anything in the register). The aligned dword never crosses a page.
 inline bool plausible(uint32_t pointer) noexcept { return pointer>=0x10000u&&pointer<0x7fff0000u&&(pointer&3)==0; }
+inline bool object_flags(uint32_t object,uint32_t& flags) noexcept { return plausible(object)&&probe_read32(object+4,flags); }
 void note_caller(ProbeRow& row,uint32_t address) noexcept {
     for(unsigned i=0;i<probe_caller_limit;++i){
         if(row.caller_address[i]==address){add64(&row.caller_calls[i],1);return;}
@@ -321,6 +342,25 @@ void note_caller(ProbeRow& row,uint32_t address) noexcept {
         }
     }
 }
+}
+unsigned shadow_blocks() noexcept { return unsigned(shadow_block_count); }
+unsigned shadow_block_bytes() noexcept { return unsigned(sizeof(Shadow)); }
+bool probe_read32(uint32_t address,uint32_t& out) noexcept {
+    if(address<0x10000u||address>0x7fff0000u-4||(address&3))return false;
+    const uint32_t page=address&~uint32_t(0xfff);
+    const DWORD now=GetTickCount();
+    bool trusted=false;
+    for(unsigned i=0;i<readable_pages&&!trusted;++i){
+        const uint32_t entry_page=readable[i].page;const DWORD entry_tick=readable[i].tick; // two 32-bit reads, no 64-bit copy
+        trusted=entry_page==page&&now-entry_tick<=readable_page_ttl_ms;
+    }
+    if(!trusted){
+        if(!page_readable(address))return false;
+        const unsigned slot=unsigned(InterlockedIncrement(&readable_victim)-1)%readable_pages;
+        readable[slot].tick=now;readable[slot].page=page; // page last: a reader that sees it also sees a tick no older than now
+    }
+    out=*reinterpret_cast<const volatile uint32_t*>(address);
+    return true;
 }
 void probe_configure(unsigned site,const ProbeConfig& config) noexcept { if(site<probe_site_limit)probe_configs[site]=config; }
 void probe_set_exit_stub(const void* stub) noexcept { exit_stub=stub; }
@@ -344,11 +384,13 @@ extern "C" void __cdecl x3m_probe_enter(unsigned site,uint32_t* regs) {
     case ProbeKind::ResourceOpen: ctx=regs[1]; break;               // ESI = file object
     case ProbeKind::ResourceRead: {                                  // EAX = file object; branch by its flags
         ctx=regs[7];
-        if(plausible(ctx)){const uint32_t flags=read32(ctx+4);add64(&row.extra[!(flags&1)?2:(flags&3)==3?1:(flags&5)==5?2:0],1);}
+        uint32_t flags=0;
+        if(object_flags(ctx,flags))add64(&row.extra[!(flags&1)?2:(flags&3)==3?1:(flags&5)==5?2:0],1);
         break; }
     case ProbeKind::ReadDispatch: {                                  // ECX = element size, EAX = count, ESI = object
         add64(&row.bytes,uint64_t(regs[6])*regs[7]);
-        if(plausible(regs[1])){const uint32_t flags=read32(regs[1]+4);add64(&row.extra[!(flags&1)?3:(flags&3)==3?1:(flags&5)==5?2:0],1);}
+        uint32_t flags=0;
+        if(object_flags(regs[1],flags))add64(&row.extra[!(flags&1)?3:(flags&3)==3?1:(flags&5)==5?2:0],1);
         break; }
     case ProbeKind::FindWrapper: note_caller(row,regs[9]); break;    // bucket by return address
     default: break;
@@ -390,7 +432,7 @@ extern "C" uint32_t __cdecl x3m_probe_exit(uint32_t* regs) {
         switch(probe_configs[e.site<probe_site_limit?e.site:0].kind){
         case ProbeKind::ResourceOpen: {                          // AL = success; +0x04 flags after return
             if(!(regs[7]&0xff))add64(&row.extra[2],1);
-            else if(plausible(e.ctx)){const uint32_t flags=read32(e.ctx+4);add64(&row.extra[(flags&3)==3?1:0],1);}
+            else {uint32_t flags=0;if(object_flags(e.ctx,flags))add64(&row.extra[(flags&3)==3?1:0],1);}
             break; }
         case ProbeKind::Resolve: add64(&row.extra[(regs[7]&0xff)?0:1],1); break; // AL = hit
         case ProbeKind::ResourceRead:                            // EAX = buffer or null; DAT_00596988 = size

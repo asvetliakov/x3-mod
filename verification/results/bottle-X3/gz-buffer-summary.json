@@ -23,7 +23,7 @@
     "verification/probe/run_gz_buffer.py": "65b8d18ac2e34f2b2aad537c3ad1aa6fc32b921e7921af75c2e19bf16844b956"
   },
   "zlib1_sha256_before": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
-  "executable_sha256": "9c60a918871c89657c5c67c7221fed854610a1d78eb97f6b0fdedc45d08a1ead",
+  "executable_sha256": "131400db38e8d4beb8dfcae6b2d666a0dd2656fd445e734ddd8416ce1a93e96c",
   "zlib1_sha256_copied": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
   "exit_code": 0,
   "report": {
@@ -156,37 +156,37 @@
       "unbuffered": {
         "calls": 10000000,
         "bytes": 30000000,
-        "seconds": 0.325,
-        "ns_per_call": 32.5,
-        "wall_ms": 321
+        "seconds": 0.346,
+        "ns_per_call": 34.6,
+        "wall_ms": 340
       },
       "qpc": {
         "calls": 10000000,
         "bytes": 30000000,
-        "seconds": 2.432,
-        "ns_per_call": 243.2,
-        "wall_ms": 2420
+        "seconds": 2.427,
+        "ns_per_call": 242.7,
+        "wall_ms": 2414
       },
       "light": {
         "calls": 10000000,
         "bytes": 30000000,
-        "seconds": 3.868,
-        "ns_per_call": 386.8,
-        "wall_ms": 3865
+        "seconds": 3.954,
+        "ns_per_call": 395.4,
+        "wall_ms": 3938
       },
       "hooked": {
         "calls": 10000000,
         "bytes": 30000000,
-        "seconds": 12.371,
-        "ns_per_call": 1237.1,
-        "wall_ms": 12355
+        "seconds": 12.255,
+        "ns_per_call": 1225.5,
+        "wall_ms": 12246
       },
       "buffered": {
         "calls": 10000000,
         "bytes": 30000000,
-        "seconds": 0.433,
-        "ns_per_call": 43.3,
-        "wall_ms": 424
+        "seconds": 0.43,
+        "ns_per_call": 43.0,
+        "wall_ms": 421
       }
     },
     "statistics": {
@@ -211,11 +211,11 @@
     "checks": 735876,
     "failures": 0,
     "fail_lines": [],
-    "hook_envelope_ratio": 38.06461538461539,
-    "speedup": 0.7505773672055428,
-    "light_envelope_ratio": 11.901538461538461,
-    "light_envelope_ns": 354.3,
-    "hooked_envelope_ns": 1204.6,
-    "qpc_envelope_ns": 210.7
+    "hook_envelope_ratio": 35.419075144508675,
+    "speedup": 0.8046511627906976,
+    "light_envelope_ratio": 11.427745664739886,
+    "light_envelope_ns": 360.79999999999995,
+    "hooked_envelope_ns": 1190.9,
+    "qpc_envelope_ns": 208.1
   }
 }

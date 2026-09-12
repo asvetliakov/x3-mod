@@ -62,6 +62,25 @@ Results: `verification/results/bottle-X3/resource-reader-summary.json` /
 recorded run). `verification/analysis/test_resource_reader.py` re-parses the
 recorded summary.
 
+## Review 27 notes
+
+* `statistics()` and `pool_statistics()` now snapshot with `load64` (a
+  `cmpxchg8b` of zero against zero) instead of `exchange64(p, *p)`: the old
+  form re-wrote a plain, possibly stale read over the counter and could drop an
+  `add64` racing from the loader thread. `held` is read under the pool lock,
+  where it is maintained (the reuse path decremented it after releasing the
+  lock).
+* The reader's site claim and the two pool call-site redirects obey the
+  `engine_patch` install window and atomic write described in
+  [loading-probes.md](../reverse-engineering/loading-probes.md) ("Install
+  window"); `resource_reader … status=late_claim` / `open_status=late_claim`
+  name a refused late install.
+* `x3m_resource_read_entry` dereferences EAX without a plausibility check: the
+  site has exactly two callers (`0x004e8ead`, `0x004f7a71`), both passing the
+  heap file object, and the handler is a functional replacement of the body
+  that dereferences the same object first thing; a probe-style guard would
+  only protect a caller that the original would crash on as well.
+
 ## Recorded numbers (bottle X3, 2026-09-12)
 
 `run_resource_reader.py` (X3M_FIXTURE_BOTTLE=X3, arm64 Wine + FEX, zlib 1.2.3):

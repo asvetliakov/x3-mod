@@ -10,7 +10,7 @@ namespace x3m::resource_reader {
 namespace {
 using loading_trace::light::add64;
 using loading_trace::light::max64;
-using loading_trace::light::exchange64;
+using loading_trace::light::load64;
 // zlib 1.2.3 z_stream, 32-bit layout (0x38 bytes, the size the game passes to inflateInit2_).
 struct ZStream {
     const unsigned char* next_in; uint32_t avail_in,total_in;
@@ -151,14 +151,16 @@ inline void* call_original(void* fn,FileObject* object) noexcept {
 void core_bind(const Environment& env,Mode mode,void** next_slot,void (*sink)(const VerifyEvent&)) noexcept {
     bound_env=env;bound_mode=mode;continuation=next_slot;verify_sink=sink;
 }
+// Cumulative snapshot: atomic 64-bit loads (cmpxchg8b of zero against zero),
+// never an exchange with a stale plain read, which would drop a concurrent add.
 Statistics statistics() {
     Statistics s;
-    s.calls=exchange64(&stats.calls,stats.calls);s.handled=exchange64(&stats.handled,stats.handled);s.fallbacks=exchange64(&stats.fallbacks,stats.fallbacks);
-    s.bytes_in=exchange64(&stats.bytes_in,stats.bytes_in);s.bytes_out=exchange64(&stats.bytes_out,stats.bytes_out);s.ticks=exchange64(&stats.ticks,stats.ticks);s.max_ticks=exchange64(&stats.max_ticks,stats.max_ticks);
-    s.verify_files=exchange64(&stats.verify_files,stats.verify_files);s.verify_equal=exchange64(&stats.verify_equal,stats.verify_equal);s.verify_mismatched=exchange64(&stats.verify_mismatched,stats.verify_mismatched);
-    s.verify_original_null=exchange64(&stats.verify_original_null,stats.verify_original_null);s.original_ticks=exchange64(&stats.original_ticks,stats.original_ticks);
-    s.catalogue=exchange64(&stats.catalogue,stats.catalogue);s.scrambled=exchange64(&stats.scrambled,stats.scrambled);
-    for(unsigned i=0;i<static_cast<unsigned>(Reason::Count);++i)s.reasons[i]=exchange64(&stats.reasons[i],stats.reasons[i]);
+    s.calls=load64(&stats.calls);s.handled=load64(&stats.handled);s.fallbacks=load64(&stats.fallbacks);
+    s.bytes_in=load64(&stats.bytes_in);s.bytes_out=load64(&stats.bytes_out);s.ticks=load64(&stats.ticks);s.max_ticks=load64(&stats.max_ticks);
+    s.verify_files=load64(&stats.verify_files);s.verify_equal=load64(&stats.verify_equal);s.verify_mismatched=load64(&stats.verify_mismatched);
+    s.verify_original_null=load64(&stats.verify_original_null);s.original_ticks=load64(&stats.original_ticks);
+    s.catalogue=load64(&stats.catalogue);s.scrambled=load64(&stats.scrambled);
+    for(unsigned i=0;i<static_cast<unsigned>(Reason::Count);++i)s.reasons[i]=load64(&stats.reasons[i]);
     return s;
 }
 extern "C" uint32_t __cdecl x3m_resource_read_entry(uint32_t* regs) {
@@ -236,7 +238,7 @@ extern "C" void* __cdecl x3m_pool_fopen(const char* path,const char* mode) {
     const bool read_binary=path&&mode&&mode[0]=='r'&&mode[1]=='b'&&mode[2]==0;
     if(read_binary){
         AcquireSRWLockExclusive(&pool_lock);
-        for(auto& e:pool)if(e.state==2&&same_path(e.path,path)){e.state=1;void* f=e.file;ReleaseSRWLockExclusive(&pool_lock);add64(&pool_stats.reused,1);--pool_stats.held;return f;}
+        for(auto& e:pool)if(e.state==2&&same_path(e.path,path)){e.state=1;void* f=e.file;--pool_stats.held;ReleaseSRWLockExclusive(&pool_lock);add64(&pool_stats.reused,1);return f;}
         ReleaseSRWLockExclusive(&pool_lock);
     }
     add64(&pool_stats.real_opens,1);
@@ -264,9 +266,10 @@ extern "C" int __cdecl x3m_pool_fclose(void* file) {
 }
 PoolStatistics pool_statistics() noexcept {
     PoolStatistics s;
-    s.opens=exchange64(&pool_stats.opens,pool_stats.opens);s.reused=exchange64(&pool_stats.reused,pool_stats.reused);s.real_opens=exchange64(&pool_stats.real_opens,pool_stats.real_opens);
-    s.closes=exchange64(&pool_stats.closes,pool_stats.closes);s.kept=exchange64(&pool_stats.kept,pool_stats.kept);s.real_closes=exchange64(&pool_stats.real_closes,pool_stats.real_closes);
-    s.errors=exchange64(&pool_stats.errors,pool_stats.errors);s.full=exchange64(&pool_stats.full,pool_stats.full);s.held=pool_stats.held;
+    s.opens=load64(&pool_stats.opens);s.reused=load64(&pool_stats.reused);s.real_opens=load64(&pool_stats.real_opens);
+    s.closes=load64(&pool_stats.closes);s.kept=load64(&pool_stats.kept);s.real_closes=load64(&pool_stats.real_closes);
+    s.errors=load64(&pool_stats.errors);s.full=load64(&pool_stats.full);
+    AcquireSRWLockExclusive(&pool_lock);s.held=pool_stats.held;ReleaseSRWLockExclusive(&pool_lock); // held is maintained under the lock
     return s;
 }
 void pool_drain() noexcept {

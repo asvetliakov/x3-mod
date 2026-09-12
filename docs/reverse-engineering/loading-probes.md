@@ -54,6 +54,51 @@ the jump back is a plain `jmp`, so the original branch still sees them.
 3. `restore(site)`: original bytes back; the arena and the tails stay valid for a
    thread that is still inside a stub.
 
+**Install window and the write itself (review 27).** Writing a jump over live
+code is safe only while no other thread can be executing the patched bytes. All
+production claims run on the backend-load path (`loader.cpp load_backend` →
+`capture.cpp initialize_log` → `loading_trace::initialize` →
+`loading_probes::initialize`, then `resource_reader::initialize`): the thread
+that calls `Direct3DCreate9`, before the device exists and before the loading
+it drives starts. `capture` closes the window at the first `Present`
+(`engine_patch::close_install_window("first_present")`); every later `claim()`
+or `claim_call()` is refused with status `late_claim` and the site log line
+names the reason (`loading_probes … status=late_claim window_closed_by=`). As
+defence in depth the five patch bytes are written with one `lock cmpxchg8b`
+whenever they lie inside a single 8-byte-aligned word (`engine_patch::write_code`;
+`loading_probe_site … atomic_write=1`): 11 of the 12 sites and the `_fclose`
+call site qualify; `crt_fgetc` (`0x0050fff5`) and the `_fopen` call site
+(`0x004e87ff`) straddle a qword boundary and take the plain copy, covered by the
+window alone. `restore()` writes the same five bytes back the same way (the
+displaced remainder was never modified). A failed post-write step rolls the
+bytes back (`patch_rolled_back`); when even the rollback's `VirtualProtect`
+fails the site stays registered as patched (`rollback_failed`,
+`patched_in=true`) so `restore()` still tries at shutdown.
+
+**Register dereferences in the handlers.** `resource_open` (ESI at entry,
+`+0x04` after return), `resource_read` (EAX) and `read_dispatch` (ESI) read
+the file object's flags word. A register value is dereferenced only when it is
+4-aligned, in `0x10000..0x7fff0000`, and its page is committed, readable and
+not a guard page: `light::probe_read32` asks `VirtualQuery` once per page and
+trusts the answer for 100 ms (16-entry cache of page bases, the same bound
+`engine_memory.cpp` uses when no frame advances). No SEH, no `IsBadReadPtr`;
+an implausible or unmapped value leaves the call counted but unclassified.
+
+## Shutdown
+
+`loading_probes::shutdown()` (from `loading_trace::shutdown`) restores the
+twelve sites and then sets the exit stub to null so no further return address
+is hijacked. Three things are deliberately **not** freed while the process
+lives: the arena, the per-thread `Shadow` blocks (one 1.5 KB `HeapAlloc` per
+thread that hit a timed probe) and the two `TlsAlloc` slots. A frame hijacked
+before the restore still returns into the exit stub later, and
+`x3m_probe_exit` reads that thread's shadow through its TLS slot; freeing
+either would turn a late return into a use-after-free, and a freed TLS index
+could be reused by another allocator. The retained amount is logged
+(`loading_probes shutdown retained_shadow_blocks=N retained_bytes=`); the OS
+reclaims it at process exit, which is the only time the DLL unloads in
+production.
+
 Probe entry stub (per site): `pushfd; pushad; mov eax,esp; push eax; push i;
 call x3m_probe_enter; add esp,8; popad; popfd; jmp [next]`. The handler sees the
 saved registers (`regs[7]` = EAX, `regs[1]` = ESI, `regs[6]` = ECX), the flags

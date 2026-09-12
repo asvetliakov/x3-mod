@@ -99,11 +99,58 @@ bytes. Numbers: see [resource-reader.md](resource-reader.md).
 as light rows (`CloseHandle` counted; 86 checks, was 85); the trampolines stay
 off because the executable gate answers false in a fixture.
 
+## Byte verification of the twelve sites (review 27, 2026-09-12)
+
+Read from the installed `~/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe`
+(SHA-256 `fdbf3418d8f0a897…`, 2,153,984 bytes, `.text` VA `0x401000` at file
+offset `0x400`, read only) through the PE section table, and against the Ghidra
+listings (`X3LoadingOrchestration.java decompile … -- listing …`, output under
+`/tmp/x3-review27`, untracked):
+
+* All twelve `expected` byte strings equal the executable's bytes at the site
+  VAs; the five CRT callees (`_fread 0x00512213`, `_fseek 0x00510343`, `_ftell
+  0x005128e6`, `_malloc 0x005112c4`, `_free 0x0050e1b0`) match their first five
+  bytes; the two pool call sites are `E8` calls whose displacements resolve to
+  `_fopen 0x00512a18` and `_fclose 0x0050f8d4`.
+* Every `length` ends on an instruction boundary (`push ebp | mov ebp,esp | and
+  esp,-8`; `push ebx | mov ebx,[esp+8]`; `push -1 | push imm32`; `sub esp,imm32`;
+  `test byte [esi+4],1 | push ebx`; `push imm8 | push imm32`; `push ebp | mov
+  ebp,esp | sub esp,imm8`; `push ×4 | mov ebp,imm32`; `sub esp,imm8 | push ebx |
+  mov ebx,[esp+0x34]`; `sub esp,imm8 | push ebx | push ebp`), none of the
+  displaced instructions is a relative branch or EIP-relative, and the byte
+  after each site is the start of the next instruction seen in the listing
+  (`6a ff`, `57`, `64 a1`, `53`, `8b 5c 24 08`, `e8`, `53`, `55`, `55`, `64
+  a1`, `64 a1`, `8b 6c 24 1c`).
+* Return forms in the listings: `resource_open` `RET 0x4` (×3), `name_resolve`
+  `RET 0xc` at `0x004e874a` (the decompile is `__thiscall` with three stack
+  arguments), `read_dispatch` `RET 0x4` (×3); every other site's function
+  returns with a plain `RET` (`resource_load` ×2, `resource_read` ×4,
+  `sopen_helper`, `find_wrapper`, `signature_check`, `texture_body`,
+  `texture_loader`, `mesh_body`, `crt_fgetc`) — matching the `ret_pop` column
+  the exit handler uses.
+* No overlap: the scene hook's call at `0x004721b1` and the object-trace call
+  site at `0x004c5228` are `E8` calls in other functions, more than 16 bytes
+  from every probe site and from the two pool call sites; the three patch
+  owners never touch the same instruction and all install in the same
+  `initialize_log` pass before the first `Present` (the install window).
+* Atomic write: eleven sites and the `_fclose` call site have their first five
+  bytes inside one aligned qword and are written with `lock cmpxchg8b`;
+  `crt_fgetc` (`0x0050fff5`) and the `_fopen` call site (`0x004e87ff`) take
+  the plain copy under the install window.
+* CPU-state contract: the stubs save and restore EFLAGS and all eight GPRs
+  (`pushfd/pushad … popad/popfd`); the handlers live in the no-SSE unit
+  (`check_no_x87.py`: PASS, 53 roots, 195 reachable functions, 0 violations on
+  the review build) and transport only the last error; callee EAX/EDX survive
+  the exit stub (`mov [esp+0x24],eax` writes the reserved slot, not the saved
+  EAX).
+
 ## Log lines and analysis
 
 * `loading_trace … light_rows=1 nesting=<0|1> probes=<0|1>` at install;
   `loading_probes requested=1 installed=<n> sites=12 …` and one
-  `loading_probe_site …` per site.
+  `loading_probe_site … atomic_write=<0|1>` per site (`status=late_claim` and
+  `window_closed_by=` when a claim arrives after the first `Present`);
+  `loading_probes shutdown retained_shadow_blocks= retained_bytes=` at restore.
 * Per report window: `loading_probe site= va= qpc= calls= exits=
   inclusive_ticks= max_ticks= total_us= max_us= overflow= desync= bytes= x0= x1=
   x2= x3=`, `loading_probe_caller site=find_wrapper caller=0x… calls=`,

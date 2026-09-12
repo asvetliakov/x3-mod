@@ -17,6 +17,19 @@
 // both fall through to the tail. The arena is never freed (a thread may sit in
 // a stub at shutdown); restore() puts the original bytes back and leaves the
 // tails callable.
+//
+// Install window. Writing a jump over live code is safe only while no other
+// thread can be executing the patched bytes. Every production claim happens on
+// the backend-load path (loader.cpp load_backend -> capture initialize_log, the
+// thread that calls Direct3DCreate9, before the device and the loading it
+// drives exist); capture closes the window at the first Present and every later
+// claim()/claim_call() is refused with status `late_claim` (the caller logs it).
+// As defence in depth the five patch bytes (and any restore of up to eight
+// bytes) are written with one `lock cmpxchg8b` when the span lies inside one
+// 8-byte-aligned word, so a reader on another core sees either the old or the
+// new instruction bytes, never a mix (Site::atomic_write records which path was
+// taken; only a site whose first five bytes straddle a qword boundary falls
+// back to a plain copy).
 namespace x3m::engine_patch {
 constexpr unsigned max_prologue=16;
 struct SiteSpec {
@@ -33,7 +46,7 @@ struct Site {
     void** entry=nullptr;           // the chain head (arena data)
     unsigned char original[max_prologue]{},patched[5]{};
     DWORD protection=0;
-    bool claimed=false,patched_in=false;
+    bool claimed=false,patched_in=false,atomic_write=false;
     const char* status="unclaimed";
 };
 // Small x86 byte emitter into the arena (executable memory; writable only while emitting).
@@ -51,7 +64,19 @@ public:
 private:
     unsigned char* start_=nullptr; unsigned char* cursor_=nullptr; unsigned reserve_=0;
 };
+// Closes the install window (idempotent; the first reason is kept). After this
+// claim() and claim_call() fail with status late_claim.
+void close_install_window(const char* reason);
+bool install_window_open();
+const char* install_window_reason(); // nullptr while open
+// Writes n code bytes at address: one lock cmpxchg8b when [address, address+n)
+// lies inside an aligned 8-byte word (n <= 8), else a plain copy. The caller
+// holds the page writable. Returns whether the atomic path was used.
+bool write_code(uintptr_t address,const unsigned char* bytes,unsigned n);
 // Claims and patches one site; false with site.status set on any mismatch.
+// A failed post-write step leaves the original bytes in place (patch_rolled_back)
+// or, when even that fails, keeps the site registered as patched
+// (rollback_failed, patched_in=true) so restore() still tries at shutdown.
 bool claim(Site& site,const SiteSpec& spec);
 // Installs stub in front of the chain; returns the previous head (the stub's continuation).
 void* push_front(Site& site,void* stub);
@@ -71,7 +96,7 @@ unsigned arena_capacity();
 // expected callee; fails closed.
 struct CallSite {
     uintptr_t address=0,expected_target=0; void* replacement=nullptr;
-    unsigned char original[5]{},patched[5]{}; DWORD protection=0; bool patched_in=false; const char* status="unclaimed";
+    unsigned char original[5]{},patched[5]{}; DWORD protection=0; bool patched_in=false,atomic_write=false; const char* status="unclaimed";
 };
 bool claim_call(CallSite& site,uintptr_t address,uintptr_t expected_target,void* replacement);
 bool restore_call(CallSite& site);

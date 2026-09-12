@@ -15,27 +15,28 @@ RR_FALLBACK case=empty reason=empty
 RR_FALLBACK case=header reason=header
 RR_FALLBACK case=alloc reason=alloc
 RR_CASE name=fallbacks
-loading_probe_site index=0 name=fixture va=0x004014d6 length=6 timed=1 kind=plain status=active x0=- x1=- x2=- x3=-
-loading_probe_site index=1 name=fixture va=0x004014e9 length=5 timed=1 kind=resource_open status=active x0=loose x1=catalogue x2=failed x3=-
-loading_probe_site index=2 name=fixture va=0x00000000 length=0 timed=1 kind=resolve status=invalid_spec x0=hit x1=miss x2=- x3=-
-loading_probe_site index=3 name=fixture va=0x004014c0 length=6 timed=1 kind=resource_read status=active x0=plain x1=catalogue x2=gzhandle_or_unopened x3=null_result
-loading_probe_site index=4 name=fixture va=0x004014fb length=5 timed=0 kind=read_dispatch status=active x0=plain x1=catalogue x2=gzhandle x3=unopened
-loading_probe_site index=5 name=fixture va=0x00000000 length=0 timed=0 kind=count_only status=invalid_spec x0=- x1=- x2=- x3=-
-loading_probe_site index=6 name=fixture va=0x00401516 length=6 timed=1 kind=plain status=bytes_mismatch x0=- x1=- x2=- x3=-
-loading_probe_site index=7 name=fixture va=0x00000000 length=0 timed=1 kind=find_wrapper status=invalid_spec x0=- x1=- x2=- x3=-
-loading_probe_site index=8 name=fixture va=0x00000000 length=0 timed=1 kind=plain status=invalid_spec x0=- x1=- x2=- x3=-
-loading_probe_site index=9 name=fixture va=0x00000000 length=0 timed=1 kind=plain status=invalid_spec x0=- x1=- x2=- x3=-
-loading_probe_site index=10 name=fixture va=0x00000000 length=0 timed=1 kind=plain status=invalid_spec x0=- x1=- x2=- x3=-
-loading_probe_site index=11 name=fixture va=0x00000000 length=0 timed=1 kind=plain status=invalid_spec x0=- x1=- x2=- x3=-
+loading_probe_site index=0 name=fixture va=0x004014d6 length=6 timed=1 kind=plain status=active x0=- x1=- x2=- x3=- atomic_write=0
+loading_probe_site index=1 name=fixture va=0x004014e9 length=5 timed=1 kind=resource_open status=active x0=loose x1=catalogue x2=failed x3=- atomic_write=1
+loading_probe_site index=2 name=fixture va=0x00000000 length=0 timed=1 kind=resolve status=invalid_spec x0=hit x1=miss x2=- x3=- atomic_write=0
+loading_probe_site index=3 name=fixture va=0x004014c0 length=6 timed=1 kind=resource_read status=active x0=plain x1=catalogue x2=gzhandle_or_unopened x3=null_result atomic_write=1
+loading_probe_site index=4 name=fixture va=0x004014fb length=5 timed=0 kind=read_dispatch status=active x0=plain x1=catalogue x2=gzhandle x3=unopened atomic_write=1
+loading_probe_site index=5 name=fixture va=0x00000000 length=0 timed=0 kind=count_only status=invalid_spec x0=- x1=- x2=- x3=- atomic_write=0
+loading_probe_site index=6 name=fixture va=0x00401516 length=6 timed=1 kind=plain status=bytes_mismatch x0=- x1=- x2=- x3=- atomic_write=0
+loading_probe_site index=7 name=fixture va=0x00000000 length=0 timed=1 kind=find_wrapper status=invalid_spec x0=- x1=- x2=- x3=- atomic_write=0
+loading_probe_site index=8 name=fixture va=0x00000000 length=0 timed=1 kind=plain status=invalid_spec x0=- x1=- x2=- x3=- atomic_write=0
+loading_probe_site index=9 name=fixture va=0x00000000 length=0 timed=1 kind=plain status=invalid_spec x0=- x1=- x2=- x3=- atomic_write=0
+loading_probe_site index=10 name=fixture va=0x00000000 length=0 timed=1 kind=plain status=invalid_spec x0=- x1=- x2=- x3=- atomic_write=0
+loading_probe_site index=11 name=fixture va=0x00000000 length=0 timed=1 kind=plain status=invalid_spec x0=- x1=- x2=- x3=- atomic_write=0
 RR_CASE name=probes installed=4
-RR_STATS mode=verify calls=22 handled=20 fallbacks=2 verify_files=20 verify_equal=20 verify_mismatched=0 bytes_in=4044806 bytes_out=6162400 our_us=60201.4 original_us=66179.2
-resource_reader verify equal=0 size=31000 original_size=31000 mismatches=1 first=0 original_null=0 globals_ok=1 counters_ok=1 cursor_ok=1 catalogue=1 scrambled=1 our_us=338.100 original_us=356.800
-RR_TIMING name=large bytes=3000000 rounds=5 fast_us=28949.6 reference_us=32091.7 ratio=1.11
-RR_TIMING name=medium bytes=31000 rounds=400 fast_us=327.9 reference_us=345.2 ratio=1.05
-resource_reader_metric cumulative=1 mode=fast calls=34 handled=31 fallbacks=3 bytes_in=6086863 bytes_out=9274600 fast_us=90531.900 fast_max_us=29171.900 original_us=66536.000 verify_files=21 verify_equal=20 verify_mismatched=1 verify_original_null=0 catalogue=11 scrambled=25 fallback_unopened=0 fallback_gz_handle=0 fallback_progress=0 fallback_tell=0 fallback_state=0 fallback_length=0 fallback_scratch=0 fallback_short_read=0 fallback_not_gzip=3 fallback_method=0 fallback_reserved=0 fallback_header=0 fallback_empty=0 fallback_alloc=0 fallback_init=0 fallback_inflate=0 fallback_size=0
+RR_STATS mode=verify calls=22 handled=20 fallbacks=2 verify_files=20 verify_equal=20 verify_mismatched=0 bytes_in=4044806 bytes_out=6162400 our_us=59993.4 original_us=66348.6
+resource_reader verify equal=0 size=31000 original_size=31000 mismatches=1 first=0 original_null=0 globals_ok=1 counters_ok=1 cursor_ok=1 catalogue=1 scrambled=1 our_us=336.600 original_us=355.900
+RR_TIMING name=large bytes=3000000 rounds=5 fast_us=29100.2 reference_us=32239.6 ratio=1.11
+RR_TIMING name=medium bytes=31000 rounds=400 fast_us=324.2 reference_us=340.7 ratio=1.05
+resource_reader_metric cumulative=1 mode=fast calls=34 handled=31 fallbacks=3 bytes_in=6086863 bytes_out=9274600 fast_us=90769.700 fast_max_us=29404.400 original_us=66704.500 verify_files=21 verify_equal=20 verify_mismatched=1 verify_original_null=0 catalogue=11 scrambled=25 fallback_unopened=0 fallback_gz_handle=0 fallback_progress=0 fallback_tell=0 fallback_state=0 fallback_length=0 fallback_scratch=0 fallback_short_read=0 fallback_not_gzip=3 fallback_method=0 fallback_reserved=0 fallback_header=0 fallback_empty=0 fallback_alloc=0 fallback_init=0 fallback_inflate=0 fallback_size=0
 loading_probe_site name=fixture restored=1 status=restored
 loading_probe_site name=fixture restored=1 status=restored
 loading_probe_site name=fixture restored=1 status=restored
 loading_probe_site name=fixture restored=1 status=restored
+loading_probes shutdown retained_shadow_blocks=2 retained_bytes=3088 reason=hijacked_frames_may_be_outstanding
 RR_CASE name=pool opens=7 reused=2 real_opens=5 kept=4 real_closes=2
 RESOURCE READER RESULT checks=405 failures=0

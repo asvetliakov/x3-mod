@@ -138,6 +138,15 @@ void probe_configure(unsigned site,const ProbeConfig& config) noexcept;
 void probe_set_exit_stub(const void* stub) noexcept;
 void probe_set_size_global(const uint32_t* address) noexcept; // DAT_00596988 for the resource_read bytes
 void probe_take(unsigned site,ProbeRow& out) noexcept;        // per-field exchange to zero (caller table kept)
+// Shadow blocks allocated so far (one per thread that hit a timed probe) and
+// their size: they are never freed while the process lives, see
+// loading_probes::shutdown().
+unsigned shadow_blocks() noexcept;
+unsigned shadow_block_bytes() noexcept;
+// Reads the dword at address when it lies in committed, readable, non-guard
+// memory (VirtualQuery-backed, page cache; no SEH, no IsBadReadPtr). Used by
+// the probe handlers before touching a file object a register may point at.
+bool probe_read32(uint32_t address,uint32_t& out) noexcept;
 extern "C" void __cdecl x3m_probe_enter(unsigned site,uint32_t* regs);
 extern "C" uint32_t __cdecl x3m_probe_exit(uint32_t* regs);
 }
