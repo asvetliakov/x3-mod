@@ -1,0 +1,2570 @@
+{
+ "tool": {
+  "name": "tools/analysis/analyze_iteration09.py",
+  "imports": "tools/analysis/analyze_iteration07_taa.py (record stream, window statistics)",
+  "companions": [
+   "tools/analysis/analyze_iteration08_taa.py",
+   "tools/analysis/analyze_camera_state.py",
+   "tools/analysis/analyze_motion_readback.py",
+   "tools/analysis/summarize_telemetry.py"
+  ]
+ },
+ "source": {
+  "log": "/tmp/x3-bottleX3-run10/session-20260912-201725-212.log",
+  "device": "1",
+  "width": 1280,
+  "height": 768
+ },
+ "witnesses": {
+  "motion_output_depth_readback": 24,
+  "motion_output_device": 1,
+  "motion_output_readback": 24,
+  "motion_output_taa": 1,
+  "motion_output_target": 1,
+  "motion_output_variant": 52,
+  "object_lifetime": 1,
+  "object_trace": 1,
+  "ownership_factory": 3
+ },
+ "health": {
+  "status": "evaluated",
+  "frame_records": 194,
+  "taa_attempted": 181,
+  "taa_resolved": 181,
+  "taa_history": 180,
+  "taa_skip": {
+   "0": 181,
+   "2": 13
+  },
+  "taa_result": {
+   "00000000": 181,
+   "00000001": 13
+  },
+  "resolved_without_history": [
+   7500
+  ],
+  "selector_state": {
+   "9": 194
+  },
+  "rt_mode": {
+   "perdraw": 194
+  },
+  "scene_end_source": {
+   "hook": 181,
+   "none": 13
+  },
+  "scene_end_check": {
+   "0": 13,
+   "1": 181
+  },
+  "camera_policy": {
+   "1": 13,
+   "2": 181
+  },
+  "camera_valid": {
+   "0": 13,
+   "1": 181
+  },
+  "cut_events": [
+   {
+    "frame": 7500,
+    "cut_median_px": 254.383,
+    "cut_missing": 0.0,
+    "cut_samples": 18,
+    "taa_history": 0,
+    "camera_rotation_deg": 1.0095
+   }
+  ],
+  "camera_cut_events": [],
+  "routed_frames_without_camera": [],
+  "apply_failures": 0,
+  "restore_failures": 0,
+  "state_shadow": {
+   "rs_queries": 316126,
+   "rs_hits": 316123,
+   "rs_gets": 2537,
+   "rs_resyncs": 2
+  },
+  "totals": {
+   "draws": 58507,
+   "routed": 34625,
+   "matched": 34563,
+   "gate1": 0,
+   "gate2": 12116,
+   "gate3": 1883,
+   "gate4": 9883,
+   "gate5": 0,
+   "gate6": 62,
+   "jitter_writes": 89016,
+   "set_rt": 138500,
+   "lazy_flushes": 0,
+   "readbacks": 96
+  },
+  "route_costs": {
+   "capture": {
+    "frames": 24,
+    "gate_us": {
+     "mean": 0.0,
+     "max": 0.0
+    },
+    "route_draw_us": {
+     "mean": 0.0,
+     "max": 0.0
+    },
+    "set_rt_us": {
+     "mean": 0.0,
+     "max": 0.0
+    },
+    "lazy_flush_us": {
+     "mean": 0.0,
+     "max": 0.0
+    },
+    "jitter_us": {
+     "mean": 0.0,
+     "max": 0.0
+    },
+    "fill_us": {
+     "mean": 53.958333333333336,
+     "max": 111.1
+    },
+    "taa_run_us": {
+     "mean": 484.4166666666667,
+     "max": 765.8
+    },
+    "readback_us": {
+     "mean": 34239.8125,
+     "max": 48569.5
+    },
+    "route_exclusive_us": {
+     "mean": 53.958333333333336,
+     "max": 111.1
+    }
+   },
+   "normal": {
+    "frames": 157,
+    "gate_us": {
+     "mean": 0.0,
+     "max": 0.0
+    },
+    "route_draw_us": {
+     "mean": 0.0,
+     "max": 0.0
+    },
+    "set_rt_us": {
+     "mean": 0.0,
+     "max": 0.0
+    },
+    "lazy_flush_us": {
+     "mean": 0.0,
+     "max": 0.0
+    },
+    "jitter_us": {
+     "mean": 0.0,
+     "max": 0.0
+    },
+    "fill_us": {
+     "mean": 52.714012738853505,
+     "max": 189.4
+    },
+    "taa_run_us": {
+     "mean": 431.3828025477707,
+     "max": 10429.6
+    },
+    "readback_us": {
+     "mean": 0.0,
+     "max": 0.0
+    },
+    "route_exclusive_us": {
+     "mean": 52.714012738853505,
+     "max": 189.4
+    }
+   }
+  }
+ },
+ "timing_regimes": {
+  "0:lock_wait": {
+   "windows": 161,
+   "stall_windows": 0,
+   "split_us": 45000.0,
+   "bins": {
+    "0-20ms": 161,
+    "20-30ms": 0,
+    "30-40ms": 0,
+    "40-50ms": 0,
+    "50-60ms": 0,
+    "60-70ms": 0,
+    "70-100ms": 0,
+    ">=100ms": 0
+   },
+   "fast": {
+    "windows": 161,
+    "median_us": 0.09362483798980675
+   },
+   "slow": {
+    "windows": 0,
+    "median_us": null
+   },
+   "distribution": {
+    "status": "evaluated",
+    "windows": 161,
+    "samples": 8565618,
+    "window_mean_us": {
+     "p10": 0.08830061270676554,
+     "median": 0.09362483798980675,
+     "p90": 0.11792579347340189,
+     "min": 0.08353103448275863,
+     "max": 3.2
+    },
+    "window_min_us": {
+     "p10": 0.0,
+     "median": 0.0,
+     "p90": 0.0,
+     "min": 0.0,
+     "max": 3.2
+    }
+   },
+   "by_regime": {
+    "all": {
+     "status": "evaluated",
+     "windows": 161,
+     "samples": 8565618,
+     "window_mean_us": {
+      "p10": 0.08830061270676554,
+      "median": 0.09362483798980675,
+      "p90": 0.11792579347340189,
+      "min": 0.08353103448275863,
+      "max": 3.2
+     },
+     "window_min_us": {
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 3.2
+     }
+    },
+    "scene": {
+     "status": "evaluated",
+     "windows": 128,
+     "samples": 7517020,
+     "window_mean_us": {
+      "p10": 0.08897515089701807,
+      "median": 0.09315423099153117,
+      "p90": 0.10457984510014118,
+      "min": 0.08353103448275863,
+      "max": 0.12690457097032878
+     },
+     "window_min_us": {
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     }
+    },
+    "other": {
+     "status": "evaluated",
+     "windows": 30,
+     "samples": 1048396,
+     "window_mean_us": {
+      "p10": 0.08673948748284015,
+      "median": 0.1115494450540018,
+      "p90": 0.13170226848953429,
+      "min": 0.08590125249591578,
+      "max": 0.31071428571428567
+     },
+     "window_min_us": {
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     }
+    }
+   },
+   "note": "the two regimes are different parts of the scene, not two configurations"
+  },
+  "1:frame_normal": {
+   "windows": 127,
+   "stall_windows": 1,
+   "split_us": 45000.0,
+   "bins": {
+    "0-20ms": 97,
+    "20-30ms": 22,
+    "30-40ms": 0,
+    "40-50ms": 0,
+    "50-60ms": 0,
+    "60-70ms": 0,
+    "70-100ms": 0,
+    ">=100ms": 7
+   },
+   "fast": {
+    "windows": 119,
+    "median_us": 10737.510752688173
+   },
+   "slow": {
+    "windows": 7,
+    "median_us": 295928.7
+   },
+   "distribution": {
+    "status": "evaluated",
+    "windows": 127,
+    "samples": 10129,
+    "window_mean_us": {
+     "p10": 8335.46182369146,
+     "median": 10810.11304347826,
+     "p90": 22748.99220779221,
+     "min": 8301.929411764706,
+     "max": 2627375.6533333333
+    },
+    "window_min_us": {
+     "p10": 4647.320000000001,
+     "median": 9689.1,
+     "p90": 20522.72,
+     "min": 3430.8,
+     "max": 413199.2
+    }
+   },
+   "by_regime": {
+    "all": {
+     "status": "evaluated",
+     "windows": 127,
+     "samples": 10129,
+     "window_mean_us": {
+      "p10": 8335.46182369146,
+      "median": 10810.11304347826,
+      "p90": 22748.99220779221,
+      "min": 8301.929411764706,
+      "max": 2627375.6533333333
+     },
+     "window_min_us": {
+      "p10": 4647.320000000001,
+      "median": 9689.1,
+      "p90": 20522.72,
+      "min": 3430.8,
+      "max": 413199.2
+     }
+    },
+    "scene": {
+     "status": "evaluated",
+     "windows": 114,
+     "samples": 9434,
+     "window_mean_us": {
+      "p10": 8332.34725,
+      "median": 10527.63869517544,
+      "p90": 22032.10377777778,
+      "min": 8301.929411764706,
+      "max": 413199.2
+     },
+     "window_min_us": {
+      "p10": 4516.14,
+      "median": 9416.05,
+      "p90": 20414.19,
+      "min": 3430.8,
+      "max": 413199.2
+     }
+    },
+    "other": {
+     "status": "evaluated",
+     "windows": 13,
+     "samples": 695,
+     "window_mean_us": {
+      "p10": 11496.295277108435,
+      "median": 12693.783749999999,
+      "p90": 591140.1057142859,
+      "min": 11260.562921348313,
+      "max": 2627375.6533333333
+     },
+     "window_min_us": {
+      "p10": 10349.68,
+      "median": 10494.0,
+      "p90": 158999.36000000004,
+      "min": 10188.0,
+      "max": 295928.7
+     }
+    }
+   },
+   "note": "the two regimes are different parts of the scene, not two configurations"
+  },
+  "1:present_normal": {
+   "windows": 127,
+   "stall_windows": 0,
+   "split_us": 45000.0,
+   "bins": {
+    "0-20ms": 127,
+    "20-30ms": 0,
+    "30-40ms": 0,
+    "40-50ms": 0,
+    "50-60ms": 0,
+    "60-70ms": 0,
+    "70-100ms": 0,
+    ">=100ms": 0
+   },
+   "fast": {
+    "windows": 127,
+    "median_us": 26.88695652173913
+   },
+   "slow": {
+    "windows": 0,
+    "median_us": null
+   },
+   "distribution": {
+    "status": "evaluated",
+    "windows": 127,
+    "samples": 10136,
+    "window_mean_us": {
+     "p10": 10.25855421686747,
+     "median": 26.88695652173913,
+     "p90": 61.56127659574469,
+     "min": 8.3,
+     "max": 211.1
+    },
+    "window_min_us": {
+     "p10": 5.36,
+     "median": 20.4,
+     "p90": 52.02,
+     "min": 4.0,
+     "max": 65.7
+    }
+   },
+   "by_regime": {
+    "all": {
+     "status": "evaluated",
+     "windows": 127,
+     "samples": 10136,
+     "window_mean_us": {
+      "p10": 10.25855421686747,
+      "median": 26.88695652173913,
+      "p90": 61.56127659574469,
+      "min": 8.3,
+      "max": 211.1
+     },
+     "window_min_us": {
+      "p10": 5.36,
+      "median": 20.4,
+      "p90": 52.02,
+      "min": 4.0,
+      "max": 65.7
+     }
+    },
+    "scene": {
+     "status": "evaluated",
+     "windows": 114,
+     "samples": 9440,
+     "window_mean_us": {
+      "p10": 12.796083333333334,
+      "median": 27.721811224489795,
+      "p90": 60.69275177304965,
+      "min": 8.789285714285715,
+      "max": 76.31052631578947
+     },
+     "window_min_us": {
+      "p10": 6.13,
+      "median": 21.35,
+      "p90": 52.99,
+      "min": 5.0,
+      "max": 65.7
+     }
+    },
+    "other": {
+     "status": "evaluated",
+     "windows": 13,
+     "samples": 696,
+     "window_mean_us": {
+      "p10": 8.453593073593074,
+      "median": 9.551685393258428,
+      "p90": 64.46627450980397,
+      "min": 8.3,
+      "max": 211.1
+     },
+     "window_min_us": {
+      "p10": 4.32,
+      "median": 5.2,
+      "p90": 17.080000000000005,
+      "min": 4.0,
+      "max": 26.4
+     }
+    }
+   },
+   "note": "the two regimes are different parts of the scene, not two configurations"
+  }
+ },
+ "camera": {
+  "status": "evaluated",
+  "records": 59,
+  "valid": 55,
+  "policy": {
+   "1": 4,
+   "2": 55
+  },
+  "reason": {
+   "camera_path": 55,
+   "switch_off": 4
+  },
+  "read_failures": {},
+  "camera_cuts": [],
+  "projections": [
+   {
+    "p00": 0.8,
+    "p11": 1.333333,
+    "records": 55,
+    "fov": {
+     "horizontal_deg": 102.68038349181982,
+     "vertical_deg": 73.73980904267732,
+     "aspect": 1.66666625
+    }
+   }
+  ],
+  "rotation_deg": {
+   "max": 2.7408,
+   "median": 1.069
+  },
+  "rotation_floor_deg": {
+   "min": 0.9222163161436358,
+   "median": 1.050502704663331,
+   "max": 1.6169246070105336
+  },
+  "row_norm_deviation_max": 0.00018104023557374838,
+  "invalid_frames": [
+   0,
+   300,
+   600,
+   10200
+  ],
+  "columns": [
+   "frame",
+   "valid",
+   "policy",
+   "reason",
+   "camera_cut",
+   "rotation_deg",
+   "rotation_floor_deg",
+   "row_norm_deviation",
+   "history_view_valid"
+  ],
+  "records_table": [
+   [
+    0,
+    false,
+    1,
+    "switch_off",
+    false,
+    0.0,
+    null,
+    null,
+    false
+   ],
+   [
+    300,
+    false,
+    1,
+    "switch_off",
+    false,
+    0.0,
+    null,
+    null,
+    false
+   ],
+   [
+    600,
+    false,
+    1,
+    "switch_off",
+    false,
+    0.0,
+    null,
+    null,
+    false
+   ],
+   [
+    900,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.6169,
+    1.6169246070105336,
+    0.00018104023557374838,
+    true
+   ],
+   [
+    1200,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.069,
+    1.069134716663208,
+    6.493817993313833e-05,
+    true
+   ],
+   [
+    1380,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.069,
+    1.069134716663208,
+    6.493817993313833e-05,
+    true
+   ],
+   [
+    1381,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.069,
+    1.069134716663208,
+    6.493817993313833e-05,
+    true
+   ],
+   [
+    1382,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.069,
+    1.069134716663208,
+    6.493817993313833e-05,
+    true
+   ],
+   [
+    1383,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.069,
+    1.069134716663208,
+    6.493817993313833e-05,
+    true
+   ],
+   [
+    1500,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0715,
+    1.0581086257326673,
+    6.034078528993625e-05,
+    true
+   ],
+   [
+    1746,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0898,
+    1.0522651453162795,
+    6.019820546210308e-05,
+    true
+   ],
+   [
+    1747,
+    true,
+    2,
+    "camera_path",
+    false,
+    2.7201,
+    1.0501515955623533,
+    6.334407206565196e-05,
+    true
+   ],
+   [
+    1748,
+    true,
+    2,
+    "camera_path",
+    false,
+    2.7237,
+    1.0710979594823988,
+    6.095210472545354e-05,
+    true
+   ],
+   [
+    1749,
+    true,
+    2,
+    "camera_path",
+    false,
+    2.7408,
+    1.1360882900506808,
+    7.005612658528282e-05,
+    true
+   ],
+   [
+    1800,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0178,
+    0.9812235815360595,
+    6.096836734093003e-05,
+    true
+   ],
+   [
+    2100,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0549,
+    1.0488602168530547,
+    6.657882634508727e-05,
+    true
+   ],
+   [
+    2400,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0807,
+    1.0808578133321063,
+    6.912896877708796e-05,
+    true
+   ],
+   [
+    2700,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.1006,
+    1.1006494383369103,
+    6.86575074717588e-05,
+    true
+   ],
+   [
+    2717,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.1006,
+    1.1006494383369103,
+    6.86575074717588e-05,
+    true
+   ],
+   [
+    2718,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.1006,
+    1.1006494383369103,
+    6.86575074717588e-05,
+    true
+   ],
+   [
+    2719,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.1006,
+    1.1006494383369103,
+    6.86575074717588e-05,
+    true
+   ],
+   [
+    2720,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.1006,
+    1.1006494383369103,
+    6.86575074717588e-05,
+    true
+   ],
+   [
+    3000,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.052,
+    1.033288087040053,
+    5.5867394652908686e-05,
+    true
+   ],
+   [
+    3300,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0975,
+    1.0655672353944232,
+    6.066822299166663e-05,
+    true
+   ],
+   [
+    3600,
+    true,
+    2,
+    "camera_path",
+    false,
+    0.9713,
+    0.9222163161436358,
+    4.564668756878998e-05,
+    true
+   ],
+   [
+    3856,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0204,
+    1.020557636791544,
+    5.621116542231519e-05,
+    true
+   ],
+   [
+    3857,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0204,
+    1.020557636791544,
+    5.621116542231519e-05,
+    true
+   ],
+   [
+    3858,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0204,
+    1.020557636791544,
+    5.621116542231519e-05,
+    true
+   ],
+   [
+    3859,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0204,
+    1.020557636791544,
+    5.621116542231519e-05,
+    true
+   ],
+   [
+    3900,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.016,
+    0.9750481478198565,
+    5.715363540892415e-05,
+    true
+   ],
+   [
+    4200,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0012,
+    1.0012709158411957,
+    5.462146469048523e-05,
+    true
+   ],
+   [
+    4500,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0012,
+    1.0012709158411957,
+    5.462146469048523e-05,
+    true
+   ],
+   [
+    4800,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0012,
+    1.0012709158411957,
+    5.462146469048523e-05,
+    true
+   ],
+   [
+    5100,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0012,
+    1.0012709158411957,
+    5.462146469048523e-05,
+    true
+   ],
+   [
+    5400,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0012,
+    1.0012709158411957,
+    5.462146469048523e-05,
+    true
+   ],
+   [
+    5700,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0012,
+    1.0012709158411957,
+    5.462146469048523e-05,
+    true
+   ],
+   [
+    6000,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0012,
+    1.0012709158411957,
+    5.462146469048523e-05,
+    true
+   ],
+   [
+    6300,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0074,
+    1.0198332227187061,
+    5.5368239872843894e-05,
+    true
+   ],
+   [
+    6600,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0095,
+    1.009603845575544,
+    5.575743553076773e-05,
+    true
+   ],
+   [
+    6900,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0095,
+    1.009603845575544,
+    5.575743553076773e-05,
+    true
+   ],
+   [
+    7200,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0095,
+    1.009603845575544,
+    5.575743553076773e-05,
+    true
+   ],
+   [
+    7500,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0095,
+    1.009603845575544,
+    5.575743553076773e-05,
+    true
+   ],
+   [
+    7800,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0135,
+    1.050502704663331,
+    6.806222847710597e-05,
+    true
+   ],
+   [
+    8100,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0841,
+    1.0894164285491235,
+    6.313432454541079e-05,
+    true
+   ],
+   [
+    8369,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0432,
+    1.0453678757142977,
+    6.546892970415996e-05,
+    true
+   ],
+   [
+    8370,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.7141,
+    1.0494849783477662,
+    6.72175156690713e-05,
+    true
+   ],
+   [
+    8371,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.703,
+    1.0142162021812566,
+    6.766260672419477e-05,
+    true
+   ],
+   [
+    8372,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.7006,
+    1.0346761915134048,
+    6.154607103947551e-05,
+    true
+   ],
+   [
+    8400,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.0549,
+    1.0646733053565065,
+    6.886288628349391e-05,
+    true
+   ],
+   [
+    8700,
+    true,
+    2,
+    "camera_path",
+    false,
+    0.9926,
+    1.0235677424183387,
+    6.861805848390468e-05,
+    true
+   ],
+   [
+    9000,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.44,
+    1.123175397691692,
+    6.899583419761601e-05,
+    true
+   ],
+   [
+    9300,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.126,
+    1.1003489109814748,
+    7.056573758668083e-05,
+    true
+   ],
+   [
+    9536,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.1005,
+    1.1007360197975853,
+    7.338143666757446e-05,
+    true
+   ],
+   [
+    9537,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.1005,
+    1.1007360197975853,
+    7.338143666757446e-05,
+    true
+   ],
+   [
+    9538,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.1005,
+    1.1007360197975853,
+    7.338143666757446e-05,
+    true
+   ],
+   [
+    9539,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.1005,
+    1.1007360197975853,
+    7.338143666757446e-05,
+    true
+   ],
+   [
+    9600,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.1005,
+    1.1007360197975853,
+    7.338143666757446e-05,
+    true
+   ],
+   [
+    9900,
+    true,
+    2,
+    "camera_path",
+    false,
+    1.1005,
+    1.1007360197975853,
+    7.338143666757446e-05,
+    true
+   ],
+   [
+    10200,
+    false,
+    1,
+    "switch_off",
+    false,
+    0.0,
+    null,
+    null,
+    false
+   ]
+  ],
+  "records_detail": null
+ },
+ "samplers": {
+  "draw_blocks": {
+   "no_route_record": 630,
+   "rejected_gate3": 302,
+   "rejected_gate4": 1448,
+   "routed_matched": 5804,
+   "routed_unmatched": 37
+  },
+  "states_recorded": {
+   "MAGFILTER": 131536,
+   "MAXANISOTROPY": 131536,
+   "MAXMIPLEVEL": 131536,
+   "MINFILTER": 131536,
+   "MIPFILTER": 131536,
+   "MIPMAPLODBIAS": 131536,
+   "SRGBTEXTURE": 131536
+  },
+  "states_not_recorded": [
+   "ADDRESSU",
+   "ADDRESSV",
+   "ADDRESSW",
+   "BORDERCOLOR",
+   "ELEMENTINDEX",
+   "DMAPOFFSET"
+  ],
+  "sharpness_states_missing": [],
+  "per_class": {
+   "no_route_record": {
+    "MAGFILTER": {
+     "POINT": 5934,
+     "LINEAR": 4146
+    },
+    "MAXANISOTROPY": {
+     "1": 5670,
+     "16": 4314,
+     "4": 96
+    },
+    "MAXMIPLEVEL": {
+     "0": 9530,
+     "3": 440,
+     "4": 110
+    },
+    "MINFILTER": {
+     "POINT": 5934,
+     "ANISOTROPIC": 2655,
+     "LINEAR": 1491
+    },
+    "MIPFILTER": {
+     "NONE": 7059,
+     "LINEAR": 2925,
+     "POINT": 96
+    },
+    "MIPMAPLODBIAS": {
+     "0": 10080
+    },
+    "SRGBTEXTURE": {
+     "0": 10080
+    }
+   },
+   "rejected_gate3": {
+    "MAGFILTER": {
+     "POINT": 2738,
+     "LINEAR": 2094
+    },
+    "MAXANISOTROPY": {
+     "1": 2718,
+     "16": 2046,
+     "4": 68
+    },
+    "MAXMIPLEVEL": {
+     "0": 4688,
+     "3": 82,
+     "4": 62
+    },
+    "MINFILTER": {
+     "POINT": 2738,
+     "ANISOTROPIC": 1370,
+     "LINEAR": 724
+    },
+    "MIPFILTER": {
+     "NONE": 3160,
+     "LINEAR": 1652,
+     "POINT": 20
+    },
+    "MIPMAPLODBIAS": {
+     "0": 4832
+    },
+    "SRGBTEXTURE": {
+     "0": 4832
+    }
+   },
+   "rejected_gate4": {
+    "MAGFILTER": {
+     "POINT": 13032,
+     "LINEAR": 10136
+    },
+    "MAXANISOTROPY": {
+     "1": 13032,
+     "16": 10136
+    },
+    "MAXMIPLEVEL": {
+     "0": 21716,
+     "3": 1428,
+     "4": 16,
+     "1": 8
+    },
+    "MINFILTER": {
+     "POINT": 13032,
+     "ANISOTROPIC": 8158,
+     "LINEAR": 1978
+    },
+    "MIPFILTER": {
+     "NONE": 15010,
+     "LINEAR": 8158
+    },
+    "MIPMAPLODBIAS": {
+     "0": 23168
+    },
+    "SRGBTEXTURE": {
+     "0": 23168
+    }
+   },
+   "routed_matched": {
+    "MAGFILTER": {
+     "POINT": 52236,
+     "LINEAR": 40628
+    },
+    "MAXANISOTROPY": {
+     "1": 52236,
+     "16": 40628
+    },
+    "MAXMIPLEVEL": {
+     "0": 87105,
+     "3": 5363,
+     "4": 304,
+     "1": 92
+    },
+    "MINFILTER": {
+     "POINT": 52236,
+     "ANISOTROPIC": 32225,
+     "LINEAR": 8403
+    },
+    "MIPFILTER": {
+     "NONE": 60639,
+     "LINEAR": 32225
+    },
+    "MIPMAPLODBIAS": {
+     "0": 92864
+    },
+    "SRGBTEXTURE": {
+     "0": 92864
+    }
+   },
+   "routed_unmatched": {
+    "MAGFILTER": {
+     "POINT": 333,
+     "LINEAR": 259
+    },
+    "MAXANISOTROPY": {
+     "1": 333,
+     "16": 259
+    },
+    "MAXMIPLEVEL": {
+     "0": 582,
+     "3": 10
+    },
+    "MINFILTER": {
+     "POINT": 333,
+     "ANISOTROPIC": 212,
+     "LINEAR": 47
+    },
+    "MIPFILTER": {
+     "NONE": 380,
+     "LINEAR": 212
+    },
+    "MIPMAPLODBIAS": {
+     "0": 592
+    },
+    "SRGBTEXTURE": {
+     "0": 592
+    }
+   }
+  },
+  "per_stage": {
+   "no_route_record": {
+    "0": {
+     "MAGFILTER": {
+      "LINEAR": 366,
+      "POINT": 264
+     },
+     "MAXANISOTROPY": {
+      "16": 534,
+      "4": 96
+     },
+     "MAXMIPLEVEL": {
+      "0": 630
+     },
+     "MINFILTER": {
+      "LINEAR": 366,
+      "POINT": 264
+     },
+     "MIPFILTER": {
+      "LINEAR": 270,
+      "NONE": 264,
+      "POINT": 96
+     },
+     "MIPMAPLODBIAS": {
+      "0": 630
+     },
+     "SRGBTEXTURE": {
+      "0": 630
+     }
+    },
+    "1": {
+     "MAGFILTER": {
+      "LINEAR": 630
+     },
+     "MAXANISOTROPY": {
+      "16": 630
+     },
+     "MAXMIPLEVEL": {
+      "0": 630
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 630
+     },
+     "MIPFILTER": {
+      "LINEAR": 630
+     },
+     "MIPMAPLODBIAS": {
+      "0": 630
+     },
+     "SRGBTEXTURE": {
+      "0": 630
+     }
+    },
+    "2": {
+     "MAGFILTER": {
+      "LINEAR": 630
+     },
+     "MAXANISOTROPY": {
+      "16": 630
+     },
+     "MAXMIPLEVEL": {
+      "0": 630
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 630
+     },
+     "MIPFILTER": {
+      "LINEAR": 630
+     },
+     "MIPMAPLODBIAS": {
+      "0": 630
+     },
+     "SRGBTEXTURE": {
+      "0": 630
+     }
+    },
+    "3": {
+     "MAGFILTER": {
+      "LINEAR": 630
+     },
+     "MAXANISOTROPY": {
+      "16": 630
+     },
+     "MAXMIPLEVEL": {
+      "0": 390,
+      "3": 240
+     },
+     "MINFILTER": {
+      "LINEAR": 630
+     },
+     "MIPFILTER": {
+      "NONE": 630
+     },
+     "MIPMAPLODBIAS": {
+      "0": 630
+     },
+     "SRGBTEXTURE": {
+      "0": 630
+     }
+    },
+    "4": {
+     "MAGFILTER": {
+      "LINEAR": 630
+     },
+     "MAXANISOTROPY": {
+      "16": 630
+     },
+     "MAXMIPLEVEL": {
+      "0": 320,
+      "3": 200,
+      "4": 110
+     },
+     "MINFILTER": {
+      "LINEAR": 495,
+      "ANISOTROPIC": 135
+     },
+     "MIPFILTER": {
+      "NONE": 495,
+      "LINEAR": 135
+     },
+     "MIPMAPLODBIAS": {
+      "0": 630
+     },
+     "SRGBTEXTURE": {
+      "0": 630
+     }
+    },
+    "5": {
+     "MAGFILTER": {
+      "LINEAR": 630
+     },
+     "MAXANISOTROPY": {
+      "16": 630
+     },
+     "MAXMIPLEVEL": {
+      "0": 630
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 630
+     },
+     "MIPFILTER": {
+      "LINEAR": 630
+     },
+     "MIPMAPLODBIAS": {
+      "0": 630
+     },
+     "SRGBTEXTURE": {
+      "0": 630
+     }
+    },
+    "6": {
+     "MAGFILTER": {
+      "LINEAR": 630
+     },
+     "MAXANISOTROPY": {
+      "16": 630
+     },
+     "MAXMIPLEVEL": {
+      "0": 630
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 630
+     },
+     "MIPFILTER": {
+      "LINEAR": 630
+     },
+     "MIPMAPLODBIAS": {
+      "0": 630
+     },
+     "SRGBTEXTURE": {
+      "0": 630
+     }
+    }
+   },
+   "rejected_gate3": {
+    "0": {
+     "MAGFILTER": {
+      "LINEAR": 282,
+      "POINT": 20
+     },
+     "MAXANISOTROPY": {
+      "16": 234,
+      "4": 68
+     },
+     "MAXMIPLEVEL": {
+      "0": 302
+     },
+     "MINFILTER": {
+      "LINEAR": 282,
+      "POINT": 20
+     },
+     "MIPFILTER": {
+      "LINEAR": 282,
+      "POINT": 20
+     },
+     "MIPMAPLODBIAS": {
+      "0": 302
+     },
+     "SRGBTEXTURE": {
+      "0": 302
+     }
+    },
+    "1": {
+     "MAGFILTER": {
+      "LINEAR": 302
+     },
+     "MAXANISOTROPY": {
+      "16": 302
+     },
+     "MAXMIPLEVEL": {
+      "0": 302
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 302
+     },
+     "MIPFILTER": {
+      "LINEAR": 302
+     },
+     "MIPMAPLODBIAS": {
+      "0": 302
+     },
+     "SRGBTEXTURE": {
+      "0": 302
+     }
+    },
+    "2": {
+     "MAGFILTER": {
+      "LINEAR": 302
+     },
+     "MAXANISOTROPY": {
+      "16": 302
+     },
+     "MAXMIPLEVEL": {
+      "0": 302
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 268,
+      "LINEAR": 34
+     },
+     "MIPFILTER": {
+      "LINEAR": 268,
+      "NONE": 34
+     },
+     "MIPMAPLODBIAS": {
+      "0": 302
+     },
+     "SRGBTEXTURE": {
+      "0": 302
+     }
+    },
+    "3": {
+     "MAGFILTER": {
+      "LINEAR": 302
+     },
+     "MAXANISOTROPY": {
+      "16": 302
+     },
+     "MAXMIPLEVEL": {
+      "0": 248,
+      "3": 54
+     },
+     "MINFILTER": {
+      "LINEAR": 302
+     },
+     "MIPFILTER": {
+      "NONE": 302
+     },
+     "MIPMAPLODBIAS": {
+      "0": 302
+     },
+     "SRGBTEXTURE": {
+      "0": 302
+     }
+    },
+    "4": {
+     "MAGFILTER": {
+      "LINEAR": 302
+     },
+     "MAXANISOTROPY": {
+      "16": 302
+     },
+     "MAXMIPLEVEL": {
+      "0": 212,
+      "4": 62,
+      "3": 28
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 196,
+      "LINEAR": 106
+     },
+     "MIPFILTER": {
+      "LINEAR": 196,
+      "NONE": 106
+     },
+     "MIPMAPLODBIAS": {
+      "0": 302
+     },
+     "SRGBTEXTURE": {
+      "0": 302
+     }
+    },
+    "5": {
+     "MAGFILTER": {
+      "LINEAR": 302
+     },
+     "MAXANISOTROPY": {
+      "16": 302
+     },
+     "MAXMIPLEVEL": {
+      "0": 302
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 302
+     },
+     "MIPFILTER": {
+      "LINEAR": 302
+     },
+     "MIPMAPLODBIAS": {
+      "0": 302
+     },
+     "SRGBTEXTURE": {
+      "0": 302
+     }
+    },
+    "6": {
+     "MAGFILTER": {
+      "LINEAR": 302
+     },
+     "MAXANISOTROPY": {
+      "16": 302
+     },
+     "MAXMIPLEVEL": {
+      "0": 302
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 302
+     },
+     "MIPFILTER": {
+      "LINEAR": 302
+     },
+     "MIPMAPLODBIAS": {
+      "0": 302
+     },
+     "SRGBTEXTURE": {
+      "0": 302
+     }
+    }
+   },
+   "rejected_gate4": {
+    "0": {
+     "MAGFILTER": {
+      "LINEAR": 1448
+     },
+     "MAXANISOTROPY": {
+      "16": 1448
+     },
+     "MAXMIPLEVEL": {
+      "0": 1448
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 1448
+     },
+     "MIPFILTER": {
+      "LINEAR": 1448
+     },
+     "MIPMAPLODBIAS": {
+      "0": 1448
+     },
+     "SRGBTEXTURE": {
+      "0": 1448
+     }
+    },
+    "1": {
+     "MAGFILTER": {
+      "LINEAR": 1448
+     },
+     "MAXANISOTROPY": {
+      "16": 1448
+     },
+     "MAXMIPLEVEL": {
+      "0": 1448
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 1448
+     },
+     "MIPFILTER": {
+      "LINEAR": 1448
+     },
+     "MIPMAPLODBIAS": {
+      "0": 1448
+     },
+     "SRGBTEXTURE": {
+      "0": 1448
+     }
+    },
+    "2": {
+     "MAGFILTER": {
+      "LINEAR": 1448
+     },
+     "MAXANISOTROPY": {
+      "16": 1448
+     },
+     "MAXMIPLEVEL": {
+      "0": 1448
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 1448
+     },
+     "MIPFILTER": {
+      "LINEAR": 1448
+     },
+     "MIPMAPLODBIAS": {
+      "0": 1448
+     },
+     "SRGBTEXTURE": {
+      "0": 1448
+     }
+    },
+    "3": {
+     "MAGFILTER": {
+      "LINEAR": 1448
+     },
+     "MAXANISOTROPY": {
+      "16": 1448
+     },
+     "MAXMIPLEVEL": {
+      "0": 880,
+      "3": 560,
+      "1": 8
+     },
+     "MINFILTER": {
+      "LINEAR": 790,
+      "ANISOTROPIC": 658
+     },
+     "MIPFILTER": {
+      "NONE": 790,
+      "LINEAR": 658
+     },
+     "MIPMAPLODBIAS": {
+      "0": 1448
+     },
+     "SRGBTEXTURE": {
+      "0": 1448
+     }
+    },
+    "4": {
+     "MAGFILTER": {
+      "LINEAR": 1448
+     },
+     "MAXANISOTROPY": {
+      "16": 1448
+     },
+     "MAXMIPLEVEL": {
+      "3": 868,
+      "0": 564,
+      "4": 16
+     },
+     "MINFILTER": {
+      "LINEAR": 1188,
+      "ANISOTROPIC": 260
+     },
+     "MIPFILTER": {
+      "NONE": 1188,
+      "LINEAR": 260
+     },
+     "MIPMAPLODBIAS": {
+      "0": 1448
+     },
+     "SRGBTEXTURE": {
+      "0": 1448
+     }
+    },
+    "5": {
+     "MAGFILTER": {
+      "LINEAR": 1448
+     },
+     "MAXANISOTROPY": {
+      "16": 1448
+     },
+     "MAXMIPLEVEL": {
+      "0": 1448
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 1448
+     },
+     "MIPFILTER": {
+      "LINEAR": 1448
+     },
+     "MIPMAPLODBIAS": {
+      "0": 1448
+     },
+     "SRGBTEXTURE": {
+      "0": 1448
+     }
+    },
+    "6": {
+     "MAGFILTER": {
+      "LINEAR": 1448
+     },
+     "MAXANISOTROPY": {
+      "16": 1448
+     },
+     "MAXMIPLEVEL": {
+      "0": 1448
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 1448
+     },
+     "MIPFILTER": {
+      "LINEAR": 1448
+     },
+     "MIPMAPLODBIAS": {
+      "0": 1448
+     },
+     "SRGBTEXTURE": {
+      "0": 1448
+     }
+    }
+   },
+   "routed_matched": {
+    "0": {
+     "MAGFILTER": {
+      "LINEAR": 5804
+     },
+     "MAXANISOTROPY": {
+      "16": 5804
+     },
+     "MAXMIPLEVEL": {
+      "0": 5804
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 5804
+     },
+     "MIPFILTER": {
+      "LINEAR": 5804
+     },
+     "MIPMAPLODBIAS": {
+      "0": 5804
+     },
+     "SRGBTEXTURE": {
+      "0": 5804
+     }
+    },
+    "1": {
+     "MAGFILTER": {
+      "LINEAR": 5804
+     },
+     "MAXANISOTROPY": {
+      "16": 5804
+     },
+     "MAXMIPLEVEL": {
+      "0": 5804
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 5804
+     },
+     "MIPFILTER": {
+      "LINEAR": 5804
+     },
+     "MIPMAPLODBIAS": {
+      "0": 5804
+     },
+     "SRGBTEXTURE": {
+      "0": 5804
+     }
+    },
+    "2": {
+     "MAGFILTER": {
+      "LINEAR": 5804
+     },
+     "MAXANISOTROPY": {
+      "16": 5804
+     },
+     "MAXMIPLEVEL": {
+      "0": 5804
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 5701,
+      "LINEAR": 103
+     },
+     "MIPFILTER": {
+      "LINEAR": 5701,
+      "NONE": 103
+     },
+     "MIPMAPLODBIAS": {
+      "0": 5804
+     },
+     "SRGBTEXTURE": {
+      "0": 5804
+     }
+    },
+    "3": {
+     "MAGFILTER": {
+      "LINEAR": 5804
+     },
+     "MAXANISOTROPY": {
+      "16": 5804
+     },
+     "MAXMIPLEVEL": {
+      "0": 2997,
+      "3": 2679,
+      "1": 88,
+      "4": 40
+     },
+     "MINFILTER": {
+      "LINEAR": 3470,
+      "ANISOTROPIC": 2334
+     },
+     "MIPFILTER": {
+      "NONE": 3470,
+      "LINEAR": 2334
+     },
+     "MIPMAPLODBIAS": {
+      "0": 5804
+     },
+     "SRGBTEXTURE": {
+      "0": 5804
+     }
+    },
+    "4": {
+     "MAGFILTER": {
+      "LINEAR": 5804
+     },
+     "MAXANISOTROPY": {
+      "16": 5804
+     },
+     "MAXMIPLEVEL": {
+      "0": 2852,
+      "3": 2684,
+      "4": 264,
+      "1": 4
+     },
+     "MINFILTER": {
+      "LINEAR": 4830,
+      "ANISOTROPIC": 974
+     },
+     "MIPFILTER": {
+      "NONE": 4830,
+      "LINEAR": 974
+     },
+     "MIPMAPLODBIAS": {
+      "0": 5804
+     },
+     "SRGBTEXTURE": {
+      "0": 5804
+     }
+    },
+    "5": {
+     "MAGFILTER": {
+      "LINEAR": 5804
+     },
+     "MAXANISOTROPY": {
+      "16": 5804
+     },
+     "MAXMIPLEVEL": {
+      "0": 5804
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 5804
+     },
+     "MIPFILTER": {
+      "LINEAR": 5804
+     },
+     "MIPMAPLODBIAS": {
+      "0": 5804
+     },
+     "SRGBTEXTURE": {
+      "0": 5804
+     }
+    },
+    "6": {
+     "MAGFILTER": {
+      "LINEAR": 5804
+     },
+     "MAXANISOTROPY": {
+      "16": 5804
+     },
+     "MAXMIPLEVEL": {
+      "0": 5804
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 5804
+     },
+     "MIPFILTER": {
+      "LINEAR": 5804
+     },
+     "MIPMAPLODBIAS": {
+      "0": 5804
+     },
+     "SRGBTEXTURE": {
+      "0": 5804
+     }
+    }
+   },
+   "routed_unmatched": {
+    "0": {
+     "MAGFILTER": {
+      "LINEAR": 37
+     },
+     "MAXANISOTROPY": {
+      "16": 37
+     },
+     "MAXMIPLEVEL": {
+      "0": 37
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 37
+     },
+     "MIPFILTER": {
+      "LINEAR": 37
+     },
+     "MIPMAPLODBIAS": {
+      "0": 37
+     },
+     "SRGBTEXTURE": {
+      "0": 37
+     }
+    },
+    "1": {
+     "MAGFILTER": {
+      "LINEAR": 37
+     },
+     "MAXANISOTROPY": {
+      "16": 37
+     },
+     "MAXMIPLEVEL": {
+      "0": 37
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 37
+     },
+     "MIPFILTER": {
+      "LINEAR": 37
+     },
+     "MIPMAPLODBIAS": {
+      "0": 37
+     },
+     "SRGBTEXTURE": {
+      "0": 37
+     }
+    },
+    "2": {
+     "MAGFILTER": {
+      "LINEAR": 37
+     },
+     "MAXANISOTROPY": {
+      "16": 37
+     },
+     "MAXMIPLEVEL": {
+      "0": 37
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 37
+     },
+     "MIPFILTER": {
+      "LINEAR": 37
+     },
+     "MIPMAPLODBIAS": {
+      "0": 37
+     },
+     "SRGBTEXTURE": {
+      "0": 37
+     }
+    },
+    "3": {
+     "MAGFILTER": {
+      "LINEAR": 37
+     },
+     "MAXANISOTROPY": {
+      "16": 37
+     },
+     "MAXMIPLEVEL": {
+      "0": 27,
+      "3": 10
+     },
+     "MINFILTER": {
+      "LINEAR": 37
+     },
+     "MIPFILTER": {
+      "NONE": 37
+     },
+     "MIPMAPLODBIAS": {
+      "0": 37
+     },
+     "SRGBTEXTURE": {
+      "0": 37
+     }
+    },
+    "4": {
+     "MAGFILTER": {
+      "LINEAR": 37
+     },
+     "MAXANISOTROPY": {
+      "16": 37
+     },
+     "MAXMIPLEVEL": {
+      "0": 37
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 27,
+      "LINEAR": 10
+     },
+     "MIPFILTER": {
+      "LINEAR": 27,
+      "NONE": 10
+     },
+     "MIPMAPLODBIAS": {
+      "0": 37
+     },
+     "SRGBTEXTURE": {
+      "0": 37
+     }
+    },
+    "5": {
+     "MAGFILTER": {
+      "LINEAR": 37
+     },
+     "MAXANISOTROPY": {
+      "16": 37
+     },
+     "MAXMIPLEVEL": {
+      "0": 37
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 37
+     },
+     "MIPFILTER": {
+      "LINEAR": 37
+     },
+     "MIPMAPLODBIAS": {
+      "0": 37
+     },
+     "SRGBTEXTURE": {
+      "0": 37
+     }
+    },
+    "6": {
+     "MAGFILTER": {
+      "LINEAR": 37
+     },
+     "MAXANISOTROPY": {
+      "16": 37
+     },
+     "MAXMIPLEVEL": {
+      "0": 37
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 37
+     },
+     "MIPFILTER": {
+      "LINEAR": 37
+     },
+     "MIPMAPLODBIAS": {
+      "0": 37
+     },
+     "SRGBTEXTURE": {
+      "0": 37
+     }
+    }
+   }
+  },
+  "default_stages": {
+   "no_route_record": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "rejected_gate3": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "rejected_gate4": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "routed_matched": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "routed_unmatched": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ]
+  },
+  "stage0_signatures": [
+   {
+    "class": "routed_matched",
+    "min": "ANISOTROPIC",
+    "mag": "LINEAR",
+    "mip": "LINEAR",
+    "aniso": 16,
+    "srgb": 0,
+    "draws": 5804
+   },
+   {
+    "class": "rejected_gate4",
+    "min": "ANISOTROPIC",
+    "mag": "LINEAR",
+    "mip": "LINEAR",
+    "aniso": 16,
+    "srgb": 0,
+    "draws": 1448
+   },
+   {
+    "class": "no_route_record",
+    "min": "LINEAR",
+    "mag": "LINEAR",
+    "mip": "LINEAR",
+    "aniso": 16,
+    "srgb": 0,
+    "draws": 270
+   },
+   {
+    "class": "no_route_record",
+    "min": "POINT",
+    "mag": "POINT",
+    "mip": "NONE",
+    "aniso": 16,
+    "srgb": 0,
+    "draws": 264
+   },
+   {
+    "class": "rejected_gate3",
+    "min": "LINEAR",
+    "mag": "LINEAR",
+    "mip": "LINEAR",
+    "aniso": 16,
+    "srgb": 0,
+    "draws": 234
+   },
+   {
+    "class": "no_route_record",
+    "min": "LINEAR",
+    "mag": "LINEAR",
+    "mip": "POINT",
+    "aniso": 4,
+    "srgb": 0,
+    "draws": 96
+   },
+   {
+    "class": "rejected_gate3",
+    "min": "LINEAR",
+    "mag": "LINEAR",
+    "mip": "LINEAR",
+    "aniso": 4,
+    "srgb": 0,
+    "draws": 48
+   },
+   {
+    "class": "routed_unmatched",
+    "min": "ANISOTROPIC",
+    "mag": "LINEAR",
+    "mip": "LINEAR",
+    "aniso": 16,
+    "srgb": 0,
+    "draws": 37
+   },
+   {
+    "class": "rejected_gate3",
+    "min": "POINT",
+    "mag": "POINT",
+    "mip": "POINT",
+    "aniso": 4,
+    "srgb": 0,
+    "draws": 20
+   }
+  ],
+  "note": "capture.cpp records the sampler states it enumerates; MIPMAPLODBIAS and MAXMIPLEVEL are among them since the mip-bias work (logged raw and as bias=<float>)"
+ },
+ "resolve_lowpass": {
+  "history_weight": 0.9,
+  "reference": {
+   "period_px": 8,
+   "offset": 0.75,
+   "history_weight": 0.9,
+   "fixture_catmull_rom_amplitude": 0.93,
+   "fixture_bilinear_amplitude": 0.712,
+   "fixture_stationary_ramp_gradient_energy": 0.9947,
+   "model_catmull_rom_amplitude": 0.959411960181893,
+   "model_catmull_rom_error": 0.02941196018189296,
+   "model_bilinear_amplitude": 0.6628531556365865,
+   "model_bilinear_error": 0.04914684436341343
+  },
+  "table": [
+   {
+    "offset": 0.25,
+    "period_px": 2,
+    "catmull_rom_tap": 0.6875,
+    "catmull_rom_steady": 0.2622950819672131,
+    "bilinear_tap": 0.5,
+    "bilinear_steady": 0.18181818181818177
+   },
+   {
+    "offset": 0.25,
+    "period_px": 3,
+    "catmull_rom_tap": 0.8474672168253766,
+    "catmull_rom_steady": 0.4214439003494997,
+    "bilinear_tap": 0.6614378277661477,
+    "bilinear_steady": 0.24709297889479698
+   },
+   {
+    "offset": 0.25,
+    "period_px": 4,
+    "catmull_rom_tap": 0.9388011803624876,
+    "catmull_rom_steady": 0.6448328928482185,
+    "bilinear_tap": 0.7905694150420949,
+    "bilinear_steady": 0.34663543767855903
+   },
+   {
+    "offset": 0.25,
+    "period_px": 6,
+    "catmull_rom_tap": 0.9858929268846846,
+    "catmull_rom_steady": 0.8873400600522509,
+    "bilinear_tap": 0.9013878188659973,
+    "bilinear_steady": 0.5297986214199333
+   },
+   {
+    "offset": 0.25,
+    "period_px": 8,
+    "catmull_rom_tap": 0.9952994309127052,
+    "catmull_rom_steady": 0.959411960181893,
+    "bilinear_tap": 0.9434855817366555,
+    "bilinear_steady": 0.662853155636586
+   },
+   {
+    "offset": 0.25,
+    "period_px": 16,
+    "catmull_rom_tap": 0.9996914848491191,
+    "catmull_rom_steady": 0.9972310520037512,
+    "bilinear_tap": 0.9856240787905562,
+    "bilinear_steady": 0.8854389896422076
+   },
+   {
+    "offset": 0.25,
+    "period_px": 32,
+    "catmull_rom_tap": 0.9999804832275505,
+    "catmull_rom_steady": 0.9998243798957929,
+    "bilinear_tap": 0.9963907266485429,
+    "bilinear_steady": 0.968538517645617
+   },
+   {
+    "offset": 0.5,
+    "period_px": 2,
+    "catmull_rom_tap": 9.18485099360515e-17,
+    "catmull_rom_steady": 0.09999999999999999,
+    "bilinear_tap": 6.123233995736766e-17,
+    "bilinear_steady": 0.09999999999999998
+   },
+   {
+    "offset": 0.5,
+    "period_px": 3,
+    "catmull_rom_tap": 0.6875000000000001,
+    "catmull_rom_steady": 0.26229508196721313,
+    "bilinear_tap": 0.5000000000000001,
+    "bilinear_steady": 0.18181818181818182
+   },
+   {
+    "offset": 0.5,
+    "period_px": 4,
+    "catmull_rom_tap": 0.8838834764831844,
+    "catmull_rom_steady": 0.48898590742736786,
+    "bilinear_tap": 0.7071067811865476,
+    "bilinear_steady": 0.275024555137461
+   },
+   {
+    "offset": 0.5,
+    "period_px": 6,
+    "catmull_rom_tap": 0.9742785792574935,
+    "catmull_rom_steady": 0.8120226206877241,
+    "bilinear_tap": 0.8660254037844386,
+    "bilinear_steady": 0.45335614354292847
+   },
+   {
+    "offset": 0.5,
+    "period_px": 8,
+    "catmull_rom_tap": 0.9915290450295614,
+    "catmull_rom_steady": 0.9291619952053533,
+    "bilinear_tap": 0.9238795325112867,
+    "bilinear_steady": 0.5934421529852726
+   },
+   {
+    "offset": 0.5,
+    "period_px": 16,
+    "catmull_rom_tap": 0.9994497389158161,
+    "catmull_rom_steady": 0.995072055148834,
+    "bilinear_tap": 0.9807852804032304,
+    "bilinear_steady": 0.8525639967732991
+   },
+   {
+    "offset": 0.5,
+    "period_px": 32,
+    "catmull_rom_tap": 0.9999652755396954,
+    "catmull_rom_steady": 0.9996875774955845,
+    "bilinear_tap": 0.9951847266721969,
+    "bilinear_steady": 0.9584626627397282
+   },
+   {
+    "offset": 0.75,
+    "period_px": 2,
+    "catmull_rom_tap": 0.6875,
+    "catmull_rom_steady": 0.2622950819672131,
+    "bilinear_tap": 0.5,
+    "bilinear_steady": 0.18181818181818177
+   },
+   {
+    "offset": 0.75,
+    "period_px": 3,
+    "catmull_rom_tap": 0.8474672168253766,
+    "catmull_rom_steady": 0.4214439003494997,
+    "bilinear_tap": 0.6614378277661477,
+    "bilinear_steady": 0.24709297889479698
+   },
+   {
+    "offset": 0.75,
+    "period_px": 4,
+    "catmull_rom_tap": 0.9388011803624876,
+    "catmull_rom_steady": 0.6448328928482185,
+    "bilinear_tap": 0.7905694150420949,
+    "bilinear_steady": 0.34663543767855903
+   },
+   {
+    "offset": 0.75,
+    "period_px": 6,
+    "catmull_rom_tap": 0.9858929268846846,
+    "catmull_rom_steady": 0.8873400600522509,
+    "bilinear_tap": 0.9013878188659974,
+    "bilinear_steady": 0.5297986214199335
+   },
+   {
+    "offset": 0.75,
+    "period_px": 8,
+    "catmull_rom_tap": 0.9952994309127052,
+    "catmull_rom_steady": 0.959411960181893,
+    "bilinear_tap": 0.9434855817366556,
+    "bilinear_steady": 0.6628531556365865
+   },
+   {
+    "offset": 0.75,
+    "period_px": 16,
+    "catmull_rom_tap": 0.9996914848491193,
+    "catmull_rom_steady": 0.9972310520037534,
+    "bilinear_tap": 0.9856240787905561,
+    "bilinear_steady": 0.8854389896422067
+   },
+   {
+    "offset": 0.75,
+    "period_px": 32,
+    "catmull_rom_tap": 0.9999804832275504,
+    "catmull_rom_steady": 0.9998243798957918,
+    "bilinear_tap": 0.9963907266485429,
+    "bilinear_steady": 0.968538517645617
+   }
+  ],
+  "note": "a model of the resolve, not a measurement of this run: no colour or resolved image was read back without --taa-debug. It bounds the loss that the history resample alone causes under sustained fractional motion; the variance clip, the dilation and the hard depth rejection are separate and act on top."
+ }
+}

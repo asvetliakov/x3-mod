@@ -1,0 +1,32 @@
+health: 194 frame records, attempted 181, resolved 181, history 180, failures 0/0
+  taa_skip {'0': 181, '2': 13}; scene_end_source {'hook': 181, 'none': 13}; rt_mode {'perdraw': 194}; selector_state {'9': 194}
+  totals {'draws': 58507, 'routed': 34625, 'matched': 34563, 'gate1': 0, 'gate2': 12116, 'gate3': 1883, 'gate4': 9883, 'gate5': 0, 'gate6': 62, 'jitter_writes': 89016, 'set_rt': 138500, 'lazy_flushes': 0, 'readbacks': 96}
+  state shadow {'rs_queries': 316126, 'rs_hits': 316123, 'rs_gets': 2537, 'rs_resyncs': 2}
+  cut events [(7500, 254.383)]
+  routed frames without a camera read: []
+  route cost capture frames=24 exclusive mean 54.0us taa_run mean 484.4us
+  route cost normal frames=157 exclusive mean 52.7us taa_run mean 431.4us
+timing 1:frame_normal: 127 windows (1 stalls), fast 119 median 10.74ms, slow 7 median 295.93ms
+  bins OrderedDict([('0-20ms', 97), ('20-30ms', 22), ('30-40ms', 0), ('40-50ms', 0), ('50-60ms', 0), ('60-70ms', 0), ('70-100ms', 0), ('>=100ms', 7)])
+camera: 59 records, 55 valid, policy {1: 4, 2: 55}, reasons {'camera_path': 55, 'switch_off': 4}, cuts []
+  p00=0.8 p11=1.333333 on 55 records: {'horizontal_deg': 102.68038349181982, 'vertical_deg': 73.73980904267732, 'aspect': 1.66666625}
+  rotation_deg max 2.7408; self-rotation floor 0.9222-1.6169 deg (row norm deviation 1.81e-04)
+samplers: draw blocks {'no_route_record': 630, 'rejected_gate3': 302, 'rejected_gate4': 1448, 'routed_matched': 5804, 'routed_unmatched': 37}
+  recorded ['MAGFILTER', 'MAXANISOTROPY', 'MAXMIPLEVEL', 'MINFILTER', 'MIPFILTER', 'MIPMAPLODBIAS', 'SRGBTEXTURE']
+  NOT recorded ['ADDRESSU', 'ADDRESSV', 'ADDRESSW', 'BORDERCOLOR', 'ELEMENTINDEX', 'DMAPOFFSET'] (sharpness-relevant: [])
+  stage0 routed_matched: min=ANISOTROPIC mag=LINEAR mip=LINEAR aniso=16 srgb=0 -> 5804 draws
+  stage0 rejected_gate4: min=ANISOTROPIC mag=LINEAR mip=LINEAR aniso=16 srgb=0 -> 1448 draws
+  stage0 no_route_record: min=LINEAR mag=LINEAR mip=LINEAR aniso=16 srgb=0 -> 270 draws
+  stage0 no_route_record: min=POINT mag=POINT mip=NONE aniso=16 srgb=0 -> 264 draws
+  stage0 rejected_gate3: min=LINEAR mag=LINEAR mip=LINEAR aniso=16 srgb=0 -> 234 draws
+  stage0 no_route_record: min=LINEAR mag=LINEAR mip=POINT aniso=4 srgb=0 -> 96 draws
+  stage0 rejected_gate3: min=LINEAR mag=LINEAR mip=LINEAR aniso=4 srgb=0 -> 48 draws
+  stage0 routed_unmatched: min=ANISOTROPIC mag=LINEAR mip=LINEAR aniso=16 srgb=0 -> 37 draws
+resolve low-pass model (w=0.90): period 8 at 0.75 texel, model 0.959 vs fixture 0.930 (Catmull-Rom), model 0.663 vs fixture 0.712 (bilinear)
+  period  2 px: tap 0.0000, steady 0.1000
+  period  3 px: tap 0.6875, steady 0.2623
+  period  4 px: tap 0.8839, steady 0.4890
+  period  6 px: tap 0.9743, steady 0.8120
+  period  8 px: tap 0.9915, steady 0.9292
+  period 16 px: tap 0.9994, steady 0.9951
+  period 32 px: tap 1.0000, steady 0.9997

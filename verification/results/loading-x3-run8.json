@@ -1,0 +1,2206 @@
+{
+ "source": {
+  "path": "/tmp/x3-bottleX3-run8/session-20260912-194314-212.log",
+  "bytes": 43439473,
+  "lines": 858806,
+  "sha256": "5234ba73e78a4dd062da7f9f9431cb5f2ddc074c6a2a21b8cc1877477734afce"
+ },
+ "run": {
+  "label": "x3 bottle run 8 (run 2 of session 20260912-1943)",
+  "args": "launch --direct --telemetry --mesh-adjacency verify --gz-buffer",
+  "bottle": "X3",
+  "wine_arch": "arm64",
+  "emulation": [
+   "FEX_X87REDUCEDPRECISION=1",
+   "WINEMSYNC=1"
+  ],
+  "path": "start -> main menu -> load usual save -> fly -> sector change -> exit",
+  "profiler": false,
+  "route": false,
+  "config_lines": {
+   "gz_buffer": "requested=1 enabled=1 capacity_kb=256 telemetry=1 imports=1 rewind=1 slots=32",
+   "mesh_adjacency": "mode=verify scope=hook_service equivalence=exact_position_equality native_fallback=1",
+   "loading_trace": "hooks=23 module=main inclusive=1"
+  }
+ },
+ "clock": {
+  "frequency_hz": 10000000,
+  "frequency_derivation": "inclusive_ticks/total_us: 65627 ticks / 6562.700 us = 1.0e7 Hz; matches telemetry_start qpc_frequency=10000000",
+  "anchor": "proxy_initialize",
+  "start_qpc": 9572349545924,
+  "last_present_s": 154.9673,
+  "metric_semantics": "loading_metric rows are PER-WINDOW DELTAS (take_snapshot() exchanges each counter to 0), not cumulative; emitted from telemetry_summary (1 s interval, device 0). mesh_adjacency_metric carries cumulative=1 and IS cumulative."
+ },
+ "tooling": {
+  "analyze_loading_profile_accepts_telemetry_only_log": true,
+  "note": "ran clean on this log: 4 gaps, profile blocks 0, 0 RVAs (no --profile sampling lines present). Per-gap hooked tables and gap labels are its output; whole-run totals and the stall/adjacency tables below were summed by a short script."
+ },
+ "phases": [
+  {
+   "index": 1,
+   "label": "menu load",
+   "start_s": 3.5287,
+   "end_s": 12.0053,
+   "gap_s": 8.1587,
+   "hooked_exclusive_s": 4.7806,
+   "unexplained_s": 3.3781,
+   "evidence": "1017 GenerateAdjacency calls and 299,196,640 B of 2D texture-helper input match the main-menu work vector",
+   "operations": {
+    "CreateFileA": {
+     "count": 1176,
+     "exclusive_s": 0.0708,
+     "mean_us": 60.16,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00022
+    },
+    "D3DXCleanMesh": {
+     "count": 1023,
+     "exclusive_s": 0.1075,
+     "mean_us": 105.11,
+     "failures": 12,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00214
+    },
+    "D3DXCreateCubeTextureFromFileInMemoryEx": {
+     "count": 11,
+     "exclusive_s": 0.0156,
+     "mean_us": 1417.72,
+     "failures": 0,
+     "bytes": 2557840,
+     "wrapper_tail_s": 0.0
+    },
+    "D3DXCreateEffect": {
+     "count": 10,
+     "exclusive_s": 0.0431,
+     "mean_us": 4310.84,
+     "failures": 0,
+     "bytes": 309928,
+     "wrapper_tail_s": 1e-05
+    },
+    "D3DXCreateMesh": {
+     "count": 1017,
+     "exclusive_s": 0.2419,
+     "mean_us": 237.82,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00225
+    },
+    "D3DXCreateTextureFromFileInMemoryEx": {
+     "count": 467,
+     "exclusive_s": 0.487,
+     "mean_us": 1042.88,
+     "failures": 0,
+     "bytes": 299196640,
+     "wrapper_tail_s": 0.00017
+    },
+    "D3DXLoadSurfaceFromFileInMemory": {
+     "count": 4,
+     "exclusive_s": 0.0965,
+     "mean_us": 24115.72,
+     "failures": 0,
+     "bytes": 4918784,
+     "wrapper_tail_s": 0.0
+    },
+    "FindClose": {
+     "count": 4,
+     "exclusive_s": 0.0,
+     "mean_us": 3.1,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.0
+    },
+    "FindFirstFileA": {
+     "count": 1287,
+     "exclusive_s": 0.0308,
+     "mean_us": 23.91,
+     "failures": 1282,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00021
+    },
+    "FindNextFileA": {
+     "count": 1,
+     "exclusive_s": 0.0001,
+     "mean_us": 61.0,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.0
+    },
+    "ID3DXMesh::GenerateAdjacency": {
+     "count": 1017,
+     "exclusive_s": 0.5075,
+     "mean_us": 498.97,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00021
+    },
+    "ID3DXMesh::OptimizeInplace": {
+     "count": 1017,
+     "exclusive_s": 0.1996,
+     "mean_us": 196.3,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.0002
+    },
+    "ReadFile": {
+     "count": 45855,
+     "exclusive_s": 0.4334,
+     "mean_us": 9.45,
+     "failures": 0,
+     "bytes": 193204112,
+     "wrapper_tail_s": 0.0047
+    },
+    "SetFilePointer": {
+     "count": 3523,
+     "exclusive_s": 0.0045,
+     "mean_us": 1.29,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00045
+    },
+    "inflate": {
+     "count": 167720,
+     "exclusive_s": 2.5202,
+     "mean_us": 15.03,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.01589
+    },
+    "xmlReadMemory": {
+     "count": 2,
+     "exclusive_s": 0.0222,
+     "mean_us": 11080.1,
+     "failures": 0,
+     "bytes": 3688819,
+     "wrapper_tail_s": 0.0
+    }
+   },
+   "run5": {
+    "gap_s": 9.7261,
+    "hooked_exclusive_s": 5.1778
+   }
+  },
+  {
+   "index": 2,
+   "label": "save load",
+   "start_s": 24.0435,
+   "end_s": 57.5448,
+   "gap_s": 33.3629,
+   "hooked_exclusive_s": 12.8251,
+   "unexplained_s": 20.5378,
+   "evidence": "175 gzread calls and 1 successful gzopen inside the gap (gzip save stream)",
+   "operations": {
+    "CreateFileA": {
+     "count": 2269,
+     "exclusive_s": 0.3159,
+     "mean_us": 139.23,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00048
+    },
+    "D3DXCleanMesh": {
+     "count": 3343,
+     "exclusive_s": 0.5239,
+     "mean_us": 156.71,
+     "failures": 2,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00573
+    },
+    "D3DXCreateCubeTextureFromFileInMemoryEx": {
+     "count": 13,
+     "exclusive_s": 0.0173,
+     "mean_us": 1329.58,
+     "failures": 0,
+     "bytes": 3606656,
+     "wrapper_tail_s": 1e-05
+    },
+    "D3DXCreateEffect": {
+     "count": 4,
+     "exclusive_s": 0.0332,
+     "mean_us": 8308.47,
+     "failures": 0,
+     "bytes": 151624,
+     "wrapper_tail_s": 0.0
+    },
+    "D3DXCreateMesh": {
+     "count": 3342,
+     "exclusive_s": 0.6802,
+     "mean_us": 203.53,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00548
+    },
+    "D3DXCreateTextureFromFileInMemoryEx": {
+     "count": 660,
+     "exclusive_s": 0.8285,
+     "mean_us": 1255.28,
+     "failures": 0,
+     "bytes": 646944232,
+     "wrapper_tail_s": 0.00012
+    },
+    "D3DXLoadSurfaceFromFileInMemory": {
+     "count": 3,
+     "exclusive_s": 0.0302,
+     "mean_us": 10072.3,
+     "failures": 0,
+     "bytes": 1077573,
+     "wrapper_tail_s": 0.0
+    },
+    "FindClose": {
+     "count": 711,
+     "exclusive_s": 0.0012,
+     "mean_us": 1.69,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00019
+    },
+    "FindFirstFileA": {
+     "count": 2371,
+     "exclusive_s": 0.6377,
+     "mean_us": 268.98,
+     "failures": 1654,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00049
+    },
+    "FindNextFileA": {
+     "count": 2199,
+     "exclusive_s": 0.0433,
+     "mean_us": 19.71,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00036
+    },
+    "ID3DXMesh::GenerateAdjacency": {
+     "count": 3342,
+     "exclusive_s": 1.9805,
+     "mean_us": 592.62,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00051
+    },
+    "ID3DXMesh::OptimizeInplace": {
+     "count": 3342,
+     "exclusive_s": 0.7812,
+     "mean_us": 233.75,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.0005
+    },
+    "ReadFile": {
+     "count": 98189,
+     "exclusive_s": 0.7253,
+     "mean_us": 7.39,
+     "failures": 0,
+     "bytes": 389895114,
+     "wrapper_tail_s": 0.01031
+    },
+    "SetFilePointer": {
+     "count": 6106,
+     "exclusive_s": 0.0124,
+     "mean_us": 2.03,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00088
+    },
+    "gzclose": {
+     "count": 1,
+     "exclusive_s": 0.0,
+     "mean_us": 37.5,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.0
+    },
+    "gzopen": {
+     "count": 1,
+     "exclusive_s": 0.0002,
+     "mean_us": 174.9,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.0
+    },
+    "gzread": {
+     "count": 175,
+     "exclusive_s": 0.1864,
+     "mean_us": 1065.03,
+     "failures": 0,
+     "bytes": 45754974,
+     "wrapper_tail_s": 3e-05
+    },
+    "gztell": {
+     "count": 175,
+     "exclusive_s": 0.0001,
+     "mean_us": 0.77,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 3e-05
+    },
+    "inflate": {
+     "count": 359874,
+     "exclusive_s": 5.8115,
+     "mean_us": 16.15,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.03519
+    },
+    "xmlReadMemory": {
+     "count": 790,
+     "exclusive_s": 0.216,
+     "mean_us": 273.47,
+     "failures": 0,
+     "bytes": 22531669,
+     "wrapper_tail_s": 0.00027
+    }
+   },
+   "run5": {
+    "gap_s": 65.4595,
+    "hooked_exclusive_s": 25.9423
+   }
+  },
+  {
+   "index": 3,
+   "label": "sector change",
+   "start_s": 126.3293,
+   "end_s": 131.8727,
+   "gap_s": 5.411,
+   "hooked_exclusive_s": 3.5031,
+   "unexplained_s": 1.908,
+   "evidence": "2228 GenerateAdjacency calls with 34,169,149 B of texture input after an earlier labelled phase",
+   "operations": {
+    "CreateFileA": {
+     "count": 100,
+     "exclusive_s": 0.0069,
+     "mean_us": 68.57,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 2e-05
+    },
+    "D3DXCleanMesh": {
+     "count": 2229,
+     "exclusive_s": 0.2839,
+     "mean_us": 127.35,
+     "failures": 2,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00503
+    },
+    "D3DXCreateEffect": {
+     "count": 2,
+     "exclusive_s": 0.0036,
+     "mean_us": 1795.45,
+     "failures": 0,
+     "bytes": 28932,
+     "wrapper_tail_s": 0.0
+    },
+    "D3DXCreateMesh": {
+     "count": 2228,
+     "exclusive_s": 0.4836,
+     "mean_us": 217.06,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00384
+    },
+    "D3DXCreateTextureFromFileInMemoryEx": {
+     "count": 57,
+     "exclusive_s": 0.044,
+     "mean_us": 772.25,
+     "failures": 0,
+     "bytes": 34169149,
+     "wrapper_tail_s": 1e-05
+    },
+    "FindClose": {
+     "count": 1,
+     "exclusive_s": 0.0,
+     "mean_us": 2.4,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.0
+    },
+    "FindFirstFileA": {
+     "count": 107,
+     "exclusive_s": 0.0081,
+     "mean_us": 75.38,
+     "failures": 106,
+     "bytes": 0,
+     "wrapper_tail_s": 2e-05
+    },
+    "ID3DXMesh::GenerateAdjacency": {
+     "count": 2228,
+     "exclusive_s": 1.0233,
+     "mean_us": 459.31,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00047
+    },
+    "ID3DXMesh::OptimizeInplace": {
+     "count": 2228,
+     "exclusive_s": 0.4181,
+     "mean_us": 187.65,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00042
+    },
+    "ReadFile": {
+     "count": 17294,
+     "exclusive_s": 0.1319,
+     "mean_us": 7.63,
+     "failures": 0,
+     "bytes": 70653952,
+     "wrapper_tail_s": 0.00181
+    },
+    "SetFilePointer": {
+     "count": 300,
+     "exclusive_s": 0.0005,
+     "mean_us": 1.5,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 4e-05
+    },
+    "inflate": {
+     "count": 67876,
+     "exclusive_s": 1.0993,
+     "mean_us": 16.2,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00652
+    }
+   },
+   "run5": {
+    "gap_s": 7.976,
+    "hooked_exclusive_s": 4.7428
+   }
+  },
+  {
+   "index": 4,
+   "label": "menu load",
+   "start_s": 145.4623,
+   "end_s": 153.1653,
+   "gap_s": 7.4477,
+   "hooked_exclusive_s": 4.4677,
+   "unexplained_s": 2.98,
+   "evidence": "1017 GenerateAdjacency calls and 298,138,122 B of 2D texture-helper input match the main-menu work vector",
+   "operations": {
+    "CreateFileA": {
+     "count": 585,
+     "exclusive_s": 0.0379,
+     "mean_us": 64.84,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.0001
+    },
+    "D3DXCleanMesh": {
+     "count": 1023,
+     "exclusive_s": 0.0987,
+     "mean_us": 96.47,
+     "failures": 12,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00195
+    },
+    "D3DXCreateCubeTextureFromFileInMemoryEx": {
+     "count": 9,
+     "exclusive_s": 0.0119,
+     "mean_us": 1322.18,
+     "failures": 0,
+     "bytes": 1509024,
+     "wrapper_tail_s": 0.0
+    },
+    "D3DXCreateMesh": {
+     "count": 1017,
+     "exclusive_s": 0.2253,
+     "mean_us": 221.54,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00176
+    },
+    "D3DXCreateTextureFromFileInMemoryEx": {
+     "count": 459,
+     "exclusive_s": 0.4455,
+     "mean_us": 970.64,
+     "failures": 0,
+     "bytes": 298138122,
+     "wrapper_tail_s": 9e-05
+    },
+    "D3DXLoadSurfaceFromFileInMemory": {
+     "count": 3,
+     "exclusive_s": 0.048,
+     "mean_us": 16002.57,
+     "failures": 0,
+     "bytes": 2480817,
+     "wrapper_tail_s": 0.0
+    },
+    "FindClose": {
+     "count": 5,
+     "exclusive_s": 0.0,
+     "mean_us": 2.06,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.0
+    },
+    "FindFirstFileA": {
+     "count": 689,
+     "exclusive_s": 0.0218,
+     "mean_us": 31.66,
+     "failures": 682,
+     "bytes": 0,
+     "wrapper_tail_s": 0.0001
+    },
+    "FindNextFileA": {
+     "count": 1,
+     "exclusive_s": 0.0001,
+     "mean_us": 68.0,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.0
+    },
+    "ID3DXMesh::GenerateAdjacency": {
+     "count": 1017,
+     "exclusive_s": 0.4722,
+     "mean_us": 464.35,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00016
+    },
+    "ID3DXMesh::OptimizeInplace": {
+     "count": 1017,
+     "exclusive_s": 0.1874,
+     "mean_us": 184.27,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00016
+    },
+    "ReadFile": {
+     "count": 43383,
+     "exclusive_s": 0.3524,
+     "mean_us": 8.12,
+     "failures": 0,
+     "bytes": 183559305,
+     "wrapper_tail_s": 0.00451
+    },
+    "SetFilePointer": {
+     "count": 1754,
+     "exclusive_s": 0.0023,
+     "mean_us": 1.3,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.00022
+    },
+    "inflate": {
+     "count": 166017,
+     "exclusive_s": 2.5448,
+     "mean_us": 15.33,
+     "failures": 0,
+     "bytes": 0,
+     "wrapper_tail_s": 0.01606
+    },
+    "xmlReadMemory": {
+     "count": 2,
+     "exclusive_s": 0.0194,
+     "mean_us": 9693.3,
+     "failures": 0,
+     "bytes": 3688819,
+     "wrapper_tail_s": 0.0
+    }
+   }
+  }
+ ],
+ "report_stalls": [
+  {
+   "begin_s": 23.6982,
+   "end_s": 29.1744,
+   "interval_s": 5.4762,
+   "hooked_exclusive_s": 3.1403,
+   "closing_window_s": 29.1745,
+   "top_ops_count_excl": {
+    "inflate": [
+     153159,
+     2.63
+    ],
+    "ReadFile": [
+     38931,
+     0.234
+    ],
+    "gzread": [
+     173,
+     0.1848
+    ],
+    "CreateFileA": [
+     193,
+     0.0444
+    ],
+    "D3DXLoadSurfaceFromFileInMemory": [
+     3,
+     0.0302
+    ],
+    "FindFirstFileA": [
+     206,
+     0.0079
+    ]
+   },
+   "note": "hooked = the exclusive total of the single report window that closes the stall",
+   "run5_counterpart": {
+    "begin_s": 23.5488,
+    "end_s": 48.8553,
+    "interval_s": 25.3065,
+    "hooked_exclusive_s": 11.97,
+    "label": "savegame decode (stall A)"
+   },
+   "label": "savegame decode"
+  },
+  {
+   "begin_s": 39.2016,
+   "end_s": 56.1144,
+   "interval_s": 16.9128,
+   "hooked_exclusive_s": 1.6423,
+   "closing_window_s": 56.1171,
+   "top_ops_count_excl": {
+    "FindFirstFileA": [
+     1396,
+     0.6104
+    ],
+    "inflate": [
+     15619,
+     0.2459
+    ],
+    "CreateFileA": [
+     1374,
+     0.2307
+    ],
+    "xmlReadMemory": [
+     790,
+     0.216
+    ],
+    "ReadFile": [
+     9252,
+     0.1385
+    ],
+    "ID3DXMesh::GenerateAdjacency": [
+     182,
+     0.044
+    ]
+   },
+   "note": "hooked = the exclusive total of the single report window that closes the stall",
+   "run5_counterpart": {
+    "begin_s": 62.8688,
+    "end_s": 87.8454,
+    "interval_s": 24.9766,
+    "hooked_exclusive_s": 3.556,
+    "label": "script/XML (stall B)"
+   },
+   "label": "script/XML file storm"
+  }
+ ],
+ "totals_whole_run": {
+  "CreateFileA": {
+   "count": 4250,
+   "failures": 2,
+   "exclusive_s": 0.4452,
+   "mean_us": 104.745,
+   "max_s": 0.01933,
+   "wrapper_tail_s": 0.00085,
+   "bytes": 0,
+   "run5": {
+    "count": 4288,
+    "exclusive_s": 2.5371,
+    "mean_us": 591.667,
+    "wrapper_tail_s": 0.00113,
+    "bytes": 0
+   }
+  },
+  "ReadFile": {
+   "count": 208263,
+   "failures": 0,
+   "exclusive_s": 1.714,
+   "mean_us": 8.23,
+   "max_s": 0.00993,
+   "wrapper_tail_s": 0.02172,
+   "bytes": 852409026,
+   "run5": {
+    "count": 209790,
+    "exclusive_s": 1.6946,
+    "mean_us": 8.078,
+    "wrapper_tail_s": 0.02139,
+    "bytes": 859020735
+   }
+  },
+  "SetFilePointer": {
+   "count": 11935,
+   "failures": 0,
+   "exclusive_s": 0.0201,
+   "mean_us": 1.682,
+   "max_s": 6e-05,
+   "wrapper_tail_s": 0.00165,
+   "bytes": 0,
+   "run5": {
+    "count": 12049,
+    "exclusive_s": 0.0222,
+    "mean_us": 1.845,
+    "wrapper_tail_s": 0.0017,
+    "bytes": 0
+   }
+  },
+  "FindFirstFileA": {
+   "count": 4571,
+   "failures": 3809,
+   "exclusive_s": 0.7178,
+   "mean_us": 157.038,
+   "max_s": 0.00602,
+   "wrapper_tail_s": 0.00087,
+   "bytes": 0,
+   "run5": {
+    "count": 4611,
+    "exclusive_s": 2.5594,
+    "mean_us": 555.065,
+    "wrapper_tail_s": 0.00097,
+    "bytes": 0
+   }
+  },
+  "FindNextFileA": {
+   "count": 2202,
+   "failures": 0,
+   "exclusive_s": 0.0436,
+   "mean_us": 19.778,
+   "max_s": 0.00158,
+   "wrapper_tail_s": 0.00036,
+   "bytes": 0,
+   "run5": {
+    "count": 2202,
+    "exclusive_s": 0.0722,
+    "mean_us": 32.807,
+    "wrapper_tail_s": 0.00034,
+    "bytes": 0
+   }
+  },
+  "FindClose": {
+   "count": 750,
+   "failures": 0,
+   "exclusive_s": 0.0013,
+   "mean_us": 1.703,
+   "max_s": 4e-05,
+   "wrapper_tail_s": 0.0002,
+   "bytes": 0,
+   "run5": {
+    "count": 748,
+    "exclusive_s": 0.0012,
+    "mean_us": 1.648,
+    "wrapper_tail_s": 0.00019,
+    "bytes": 0
+   }
+  },
+  "D3DXCreateEffect": {
+   "count": 24,
+   "failures": 0,
+   "exclusive_s": 0.0925,
+   "mean_us": 3855.333,
+   "max_s": 0.01518,
+   "wrapper_tail_s": 1e-05,
+   "bytes": 753172,
+   "run5": {
+    "count": 25,
+    "exclusive_s": 0.2442,
+    "mean_us": 9767.388,
+    "wrapper_tail_s": 1e-05,
+    "bytes": 793624
+   }
+  },
+  "D3DXCreateTextureFromFileInMemoryEx": {
+   "count": 1692,
+   "failures": 0,
+   "exclusive_s": 1.8453,
+   "mean_us": 1090.59,
+   "max_s": 0.14514,
+   "wrapper_tail_s": 0.00041,
+   "bytes": 1304200607,
+   "run5": {
+    "count": 1712,
+    "exclusive_s": 3.1815,
+    "mean_us": 1858.382,
+    "wrapper_tail_s": 0.00043,
+    "bytes": 1312504086
+   }
+  },
+  "D3DXCreateCubeTextureFromFileInMemoryEx": {
+   "count": 33,
+   "failures": 0,
+   "exclusive_s": 0.0448,
+   "mean_us": 1356.942,
+   "max_s": 0.00198,
+   "wrapper_tail_s": 1e-05,
+   "bytes": 7673520,
+   "run5": {
+    "count": 33,
+    "exclusive_s": 0.081,
+    "mean_us": 2455.945,
+    "wrapper_tail_s": 2e-05,
+    "bytes": 7673520
+   }
+  },
+  "D3DXLoadSurfaceFromFileInMemory": {
+   "count": 10,
+   "failures": 0,
+   "exclusive_s": 0.1747,
+   "mean_us": 17468.75,
+   "max_s": 0.04869,
+   "wrapper_tail_s": 0.0,
+   "bytes": 8477174,
+   "run5": {
+    "count": 10,
+    "exclusive_s": 0.178,
+    "mean_us": 17803.75,
+    "wrapper_tail_s": 1e-05,
+    "bytes": 8681715
+   }
+  },
+  "inflate": {
+   "count": 774489,
+   "failures": 0,
+   "exclusive_s": 12.1801,
+   "mean_us": 15.727,
+   "max_s": 0.00087,
+   "wrapper_tail_s": 0.07496,
+   "bytes": 0,
+   "run5": {
+    "count": 780091,
+    "exclusive_s": 12.1828,
+    "mean_us": 15.617,
+    "wrapper_tail_s": 0.07458,
+    "bytes": 0
+   }
+  },
+  "xmlReadMemory": {
+   "count": 794,
+   "failures": 0,
+   "exclusive_s": 0.2576,
+   "mean_us": 324.415,
+   "max_s": 0.01714,
+   "wrapper_tail_s": 0.00027,
+   "bytes": 29909307,
+   "run5": {
+    "count": 794,
+    "exclusive_s": 0.2505,
+    "mean_us": 315.469,
+    "wrapper_tail_s": 0.00024,
+    "bytes": 29909307
+   }
+  },
+  "D3DXCreateMesh": {
+   "count": 7715,
+   "failures": 0,
+   "exclusive_s": 1.6575,
+   "mean_us": 214.835,
+   "max_s": 0.01241,
+   "wrapper_tail_s": 0.01366,
+   "bytes": 0,
+   "run5": {
+    "count": 8813,
+    "exclusive_s": 5.0956,
+    "mean_us": 578.188,
+    "wrapper_tail_s": 0.01771,
+    "bytes": 0
+   }
+  },
+  "D3DXCleanMesh": {
+   "count": 7729,
+   "failures": 28,
+   "exclusive_s": 1.0222,
+   "mean_us": 132.249,
+   "max_s": 0.01425,
+   "wrapper_tail_s": 0.01511,
+   "bytes": 0,
+   "run5": {
+    "count": 8832,
+    "exclusive_s": 1.7407,
+    "mean_us": 197.093,
+    "wrapper_tail_s": 0.01957,
+    "bytes": 0
+   }
+  },
+  "ID3DXMesh::GenerateAdjacency": {
+   "count": 7715,
+   "failures": 0,
+   "exclusive_s": 4.0147,
+   "mean_us": 520.372,
+   "max_s": 0.05906,
+   "wrapper_tail_s": 0.00138,
+   "bytes": 0,
+   "run5": {
+    "count": 8813,
+    "exclusive_s": 3.1329,
+    "mean_us": 355.491,
+    "wrapper_tail_s": 0.00177,
+    "bytes": 0
+   }
+  },
+  "ID3DXMesh::OptimizeInplace": {
+   "count": 7715,
+   "failures": 0,
+   "exclusive_s": 1.5988,
+   "mean_us": 207.234,
+   "max_s": 0.01895,
+   "wrapper_tail_s": 0.00132,
+   "bytes": 0,
+   "run5": {
+    "count": 8813,
+    "exclusive_s": 1.6979,
+    "mean_us": 192.659,
+    "wrapper_tail_s": 0.00167,
+    "bytes": 0
+   }
+  },
+  "gzopen": {
+   "count": 27,
+   "failures": 22,
+   "exclusive_s": 0.0083,
+   "mean_us": 308.041,
+   "max_s": 0.00411,
+   "wrapper_tail_s": 0.0,
+   "bytes": 0,
+   "run5": {
+    "count": 27,
+    "exclusive_s": 0.0364,
+    "mean_us": 1347.385,
+    "wrapper_tail_s": 1e-05,
+    "bytes": 0
+   }
+  },
+  "gzread": {
+   "count": 179,
+   "failures": 0,
+   "exclusive_s": 0.1955,
+   "mean_us": 1092.042,
+   "max_s": 0.00368,
+   "wrapper_tail_s": 4e-05,
+   "bytes": 46803550,
+   "run5": {
+    "count": 13970478,
+    "exclusive_s": 9.1621,
+    "mean_us": 0.656,
+    "wrapper_tail_s": 1.2823,
+    "bytes": 43542947
+   }
+  },
+  "gztell": {
+   "count": 179,
+   "failures": 0,
+   "exclusive_s": 0.0002,
+   "mean_us": 1.383,
+   "max_s": 6e-05,
+   "wrapper_tail_s": 3e-05,
+   "bytes": 0
+  },
+  "gzclose": {
+   "count": 5,
+   "failures": 0,
+   "exclusive_s": 0.0004,
+   "mean_us": 85.8,
+   "max_s": 0.00018,
+   "wrapper_tail_s": 0.0,
+   "bytes": 0
+  },
+  "gzgetc": {
+   "count": 0,
+   "note": "hook installed, never called"
+  },
+  "gzseek": {
+   "count": 0,
+   "note": "hook installed, never called"
+  },
+  "gzwrite": {
+   "count": 0,
+   "note": "hook installed, never called"
+  }
+ },
+ "totals_whole_run_exclusive_s": 26.0344,
+ "totals_whole_run_wrapper_tail_s": 0.13287,
+ "run5_whole_run_exclusive_s": 43.8705,
+ "run5_whole_run_wrapper_tail_s": 1.42402,
+ "gz_buffer": {
+  "lines": 5,
+  "emitted": "once per gzclose of a buffered handle (gz_buffer.cpp close()), not per report window",
+  "handles": [
+   {
+    "slot": 0,
+    "capacity": 262144,
+    "calls": 9,
+    "small_calls": 8,
+    "served_bytes": 92,
+    "real_reads": 1,
+    "real_bytes": 262144,
+    "direct_reads": 0,
+    "getcs": 0,
+    "tells": 0,
+    "seeks": 0,
+    "seeks_served": 0,
+    "seeks_real": 0,
+    "error": 0,
+    "end": 0,
+    "close": 0
+   },
+   {
+    "slot": 0,
+    "capacity": 262144,
+    "calls": 9,
+    "small_calls": 7,
+    "served_bytes": 113,
+    "real_reads": 1,
+    "real_bytes": 262144,
+    "direct_reads": 0,
+    "getcs": 0,
+    "tells": 0,
+    "seeks": 0,
+    "seeks_served": 0,
+    "seeks_real": 0,
+    "error": 0,
+    "end": 0,
+    "close": 0
+   },
+   {
+    "slot": 0,
+    "capacity": 262144,
+    "calls": 14461803,
+    "small_calls": 14354293,
+    "served_bytes": 45754974,
+    "real_reads": 175,
+    "real_bytes": 45754974,
+    "direct_reads": 0,
+    "getcs": 0,
+    "tells": 0,
+    "seeks": 0,
+    "seeks_served": 0,
+    "seeks_real": 0,
+    "error": 0,
+    "end": 0,
+    "close": 0
+   },
+   {
+    "slot": 0,
+    "capacity": 262144,
+    "calls": 9,
+    "small_calls": 8,
+    "served_bytes": 92,
+    "real_reads": 1,
+    "real_bytes": 262144,
+    "direct_reads": 0,
+    "getcs": 0,
+    "tells": 0,
+    "seeks": 0,
+    "seeks_served": 0,
+    "seeks_real": 0,
+    "error": 0,
+    "end": 0,
+    "close": 0
+   },
+   {
+    "slot": 0,
+    "capacity": 262144,
+    "calls": 9,
+    "small_calls": 7,
+    "served_bytes": 113,
+    "real_reads": 1,
+    "real_bytes": 262144,
+    "direct_reads": 0,
+    "getcs": 0,
+    "tells": 0,
+    "seeks": 0,
+    "seeks_served": 0,
+    "seeks_real": 0,
+    "error": 0,
+    "end": 0,
+    "close": 0
+   }
+  ],
+  "savegame_handle_index": 2,
+  "savegame_close_report_window_s": 39.202,
+  "gzread_metric_meaning": "with the buffer on the GzRead hook counts only the real 256 KiB chunk reads it issues; the engine-side served calls are in gz_buffer_file"
+ },
+ "adjacency": {
+  "cumulative": {
+   "faulted": 0,
+   "calls": 7715,
+   "computed": 7715,
+   "fallbacks": 0,
+   "faults": 0,
+   "faces": 6652007,
+   "vertices": 10585424,
+   "fast_ticks": 8038440,
+   "fast_max_ticks": 246228,
+   "fast_us": 803844.0,
+   "fast_max_us": 24622.8,
+   "native_ticks": 29711379,
+   "native_max_ticks": 337533,
+   "native_us": 2971137.9,
+   "native_max_us": 33753.3,
+   "verify_meshes": 7715,
+   "verify_equal": 7548,
+   "verify_mismatched": 167,
+   "verify_entries": 19956021,
+   "verify_mismatch_entries": 26217,
+   "verify_native_failures": 0,
+   "quantized": 7715,
+   "unquantized": 0,
+   "welded_vertices": 5186561,
+   "multi_candidate_meshes": 1165,
+   "normal_selected": 10114,
+   "degenerate_faces": 194,
+   "fallback_input": 0,
+   "fallback_gate": 0,
+   "fallback_declaration": 0,
+   "fallback_size": 0,
+   "fallback_lock": 0,
+   "fallback_module": 0,
+   "module_input": 0,
+   "module_index_range": 0,
+   "module_non_finite": 0,
+   "module_magnitude": 0,
+   "module_epsilon_neighbour": 0,
+   "module_allocation": 0
+  },
+  "per_phase": [
+   {
+    "label": "menu load",
+    "index": 1,
+    "calls": 989,
+    "fast_s": 0.0912,
+    "native_s": 0.3692,
+    "equal": 972,
+    "mismatched": 17,
+    "mismatch_entries": 2936,
+    "multi_candidate_meshes": 92,
+    "degenerate_faces": 93,
+    "native_over_fast": 4.048
+   },
+   {
+    "label": "save load",
+    "index": 2,
+    "calls": 3341,
+    "fast_s": 0.4178,
+    "native_s": 1.4677,
+    "equal": 3254,
+    "mismatched": 87,
+    "mismatch_entries": 10512,
+    "multi_candidate_meshes": 617,
+    "degenerate_faces": 4,
+    "native_over_fast": 3.513
+   },
+   {
+    "label": "sector change",
+    "index": 3,
+    "calls": 2198,
+    "fast_s": 0.1951,
+    "native_s": 0.7359,
+    "equal": 2153,
+    "mismatched": 45,
+    "mismatch_entries": 9829,
+    "multi_candidate_meshes": 339,
+    "degenerate_faces": 4,
+    "native_over_fast": 3.772
+   },
+   {
+    "label": "menu load",
+    "index": 4,
+    "calls": 995,
+    "fast_s": 0.0855,
+    "native_s": 0.3511,
+    "equal": 978,
+    "mismatched": 17,
+    "mismatch_entries": 2936,
+    "multi_candidate_meshes": 94,
+    "degenerate_faces": 93,
+    "native_over_fast": 4.106
+   }
+  ],
+  "mismatch_lines": {
+   "logged": 64,
+   "total_mismatched_meshes": 167,
+   "line_limit": 64,
+   "columns": [
+    "faces",
+    "vertices",
+    "mismatches",
+    "first",
+    "native",
+    "fast",
+    "native_us",
+    "fast_us",
+    "welded",
+    "multi_candidates",
+    "normal_selected",
+    "degenerate_faces"
+   ],
+   "rows": [
+    [
+     5404,
+     11070,
+     54,
+     102,
+     102,
+     4294967295,
+     2727.2,
+     792.7,
+     7246,
+     24,
+     16,
+     0
+    ],
+    [
+     2344,
+     3758,
+     72,
+     372,
+     158,
+     4294967295,
+     779.4,
+     282.5,
+     860,
+     18,
+     18,
+     0
+    ],
+    [
+     4550,
+     8021,
+     100,
+     954,
+     354,
+     4294967295,
+     1798.9,
+     528.6,
+     4318,
+     24,
+     22,
+     3
+    ],
+    [
+     2406,
+     3551,
+     90,
+     173,
+     74,
+     91,
+     747.9,
+     272.8,
+     629,
+     16,
+     7,
+     36
+    ],
+    [
+     2826,
+     5539,
+     8,
+     437,
+     156,
+     194,
+     1156.8,
+     258.7,
+     3317,
+     2,
+     0,
+     1
+    ],
+    [
+     4203,
+     7028,
+     98,
+     203,
+     86,
+     103,
+     1465.3,
+     468.5,
+     3182,
+     18,
+     5,
+     40
+    ],
+    [
+     5392,
+     11055,
+     64,
+     4698,
+     1634,
+     4294967295,
+     2572.6,
+     692.2,
+     7253,
+     24,
+     16,
+     1
+    ],
+    [
+     1089,
+     2126,
+     6,
+     1251,
+     418,
+     594,
+     424.3,
+     157.0,
+     1136,
+     1,
+     0,
+     0
+    ],
+    [
+     5577,
+     12856,
+     1586,
+     4218,
+     2937,
+     3247,
+     13125.2,
+     969.1,
+     10225,
+     1920,
+     524,
+     0
+    ],
+    [
+     4727,
+     9207,
+     2,
+     8027,
+     2676,
+     4294967295,
+     1841.4,
+     524.9,
+     6395,
+     0,
+     0,
+     0
+    ],
+    [
+     12919,
+     24267,
+     805,
+     2386,
+     4294967295,
+     2726,
+     14557.7,
+     1714.4,
+     16589,
+     992,
+     222,
+     0
+    ],
+    [
+     394,
+     731,
+     2,
+     1178,
+     4294967295,
+     393,
+     168.3,
+     55.3,
+     236,
+     3,
+     0,
+     0
+    ],
+    [
+     7066,
+     8524,
+     8,
+     9550,
+     6716,
+     6954,
+     2685.5,
+     696.9,
+     4877,
+     16,
+     10,
+     0
+    ],
+    [
+     284,
+     539,
+     2,
+     646,
+     4294967295,
+     216,
+     152.6,
+     49.5,
+     263,
+     19,
+     9,
+     0
+    ],
+    [
+     2206,
+     2758,
+     24,
+     384,
+     295,
+     481,
+     800.1,
+     273.0,
+     1520,
+     34,
+     10,
+     0
+    ],
+    [
+     1698,
+     1975,
+     11,
+     306,
+     476,
+     791,
+     543.8,
+     204.5,
+     1082,
+     62,
+     26,
+     0
+    ],
+    [
+     838,
+     1047,
+     4,
+     315,
+     357,
+     788,
+     269.5,
+     91.5,
+     590,
+     15,
+     9,
+     0
+    ],
+    [
+     8397,
+     12570,
+     9,
+     2877,
+     8360,
+     7629,
+     3368.0,
+     966.8,
+     6814,
+     4,
+     3,
+     0
+    ],
+    [
+     12636,
+     19426,
+     12,
+     36591,
+     12200,
+     12201,
+     4979.3,
+     1409.9,
+     9752,
+     2,
+     0,
+     0
+    ],
+    [
+     350,
+     850,
+     17,
+     281,
+     274,
+     275,
+     185.6,
+     48.5,
+     611,
+     4,
+     1,
+     0
+    ],
+    [
+     7740,
+     8164,
+     2,
+     7260,
+     4294967295,
+     2432,
+     2069.4,
+     875.1,
+     1562,
+     2,
+     0,
+     0
+    ],
+    [
+     1780,
+     2022,
+     147,
+     603,
+     202,
+     1225,
+     483.9,
+     231.8,
+     316,
+     31,
+     18,
+     0
+    ],
+    [
+     1644,
+     3146,
+     11,
+     397,
+     280,
+     4294967295,
+     683.8,
+     195.5,
+     1766,
+     0,
+     0,
+     0
+    ],
+    [
+     4315,
+     10344,
+     17,
+     3765,
+     4294967295,
+     3672,
+     2654.2,
+     546.9,
+     7337,
+     9,
+     4,
+     0
+    ],
+    [
+     1616,
+     3114,
+     30,
+     1920,
+     4294967295,
+     1038,
+     741.6,
+     186.3,
+     1918,
+     5,
+     2,
+     0
+    ],
+    [
+     5655,
+     7830,
+     161,
+     2742,
+     5094,
+     4294967295,
+     1901.5,
+     637.1,
+     4077,
+     33,
+     15,
+     0
+    ],
+    [
+     17212,
+     35210,
+     9,
+     19374,
+     4294967295,
+     6460,
+     11260.1,
+     2276.6,
+     23105,
+     1,
+     1,
+     0
+    ],
+    [
+     3200,
+     3823,
+     163,
+     351,
+     4294967295,
+     2428,
+     931.9,
+     340.1,
+     1383,
+     50,
+     15,
+     0
+    ],
+    [
+     1685,
+     2243,
+     66,
+     1715,
+     4294967295,
+     969,
+     483.3,
+     183.6,
+     596,
+     13,
+     8,
+     0
+    ],
+    [
+     2360,
+     2613,
+     64,
+     60,
+     4294967295,
+     1724,
+     601.8,
+     299.4,
+     693,
+     25,
+     13,
+     0
+    ],
+    [
+     2171,
+     3974,
+     62,
+     261,
+     88,
+     116,
+     825.3,
+     278.7,
+     2337,
+     12,
+     6,
+     0
+    ],
+    [
+     1864,
+     3378,
+     8,
+     5004,
+     4294967295,
+     1725,
+     687.4,
+     206.0,
+     1941,
+     3,
+     2,
+     0
+    ],
+    [
+     74,
+     74,
+     22,
+     89,
+     47,
+     63,
+     73.0,
+     10.5,
+     8,
+     2,
+     0,
+     0
+    ],
+    [
+     3874,
+     3209,
+     29,
+     6498,
+     4294967295,
+     2167,
+     872.9,
+     386.1,
+     335,
+     9,
+     1,
+     0
+    ],
+    [
+     152,
+     202,
+     6,
+     397,
+     4294967295,
+     151,
+     83.7,
+     21.7,
+     10,
+     2,
+     2,
+     0
+    ],
+    [
+     8716,
+     18025,
+     28,
+     818,
+     4294967295,
+     1001,
+     4605.1,
+     1124.4,
+     11225,
+     5,
+     3,
+     0
+    ],
+    [
+     2721,
+     4558,
+     16,
+     458,
+     914,
+     362,
+     975.7,
+     376.7,
+     2580,
+     14,
+     1,
+     0
+    ],
+    [
+     17615,
+     43115,
+     81,
+     5961,
+     15364,
+     17131,
+     9686.1,
+     2415.0,
+     33378,
+     21,
+     6,
+     0
+    ],
+    [
+     59029,
+     78232,
+     8519,
+     1613,
+     43763,
+     24110,
+     33753.3,
+     24622.8,
+     48502,
+     1269,
+     549,
+     0
+    ],
+    [
+     3646,
+     5493,
+     8,
+     8361,
+     3572,
+     4294967295,
+     1278.6,
+     384.7,
+     3611,
+     65,
+     0,
+     0
+    ],
+    [
+     5446,
+     10731,
+     68,
+     13416,
+     4965,
+     4966,
+     2091.5,
+     710.3,
+     7883,
+     16,
+     12,
+     0
+    ],
+    [
+     14695,
+     36224,
+     10,
+     7774,
+     14450,
+     13302,
+     7576.4,
+     1779.8,
+     27944,
+     9,
+     2,
+     0
+    ],
+    [
+     18765,
+     35653,
+     49,
+     253,
+     16190,
+     1326,
+     8736.2,
+     2712.2,
+     23022,
+     353,
+     263,
+     0
+    ],
+    [
+     4912,
+     10058,
+     3,
+     13413,
+     4294967295,
+     4476,
+     1909.9,
+     571.8,
+     7485,
+     7,
+     7,
+     0
+    ],
+    [
+     4806,
+     9432,
+     16,
+     1919,
+     4436,
+     4733,
+     2255.1,
+     632.1,
+     5455,
+     4,
+     2,
+     0
+    ],
+    [
+     3471,
+     6660,
+     10,
+     3982,
+     2419,
+     1328,
+     1618.5,
+     466.0,
+     3581,
+     25,
+     3,
+     0
+    ],
+    [
+     8247,
+     13248,
+     22,
+     1323,
+     7894,
+     7806,
+     4727.9,
+     1024.7,
+     6668,
+     0,
+     0,
+     0
+    ],
+    [
+     3892,
+     6583,
+     8,
+     8386,
+     3011,
+     3012,
+     1482.4,
+     490.8,
+     3067,
+     1,
+     1,
+     0
+    ],
+    [
+     10867,
+     17725,
+     4,
+     21709,
+     7240,
+     4294967295,
+     3994.9,
+     1447.1,
+     7895,
+     0,
+     0,
+     0
+    ],
+    [
+     878,
+     1702,
+     3,
+     822,
+     4294967295,
+     276,
+     344.5,
+     104.2,
+     725,
+     3,
+     0,
+     0
+    ],
+    [
+     9124,
+     17766,
+     36,
+     2231,
+     793,
+     794,
+     3718.6,
+     1112.4,
+     9134,
+     3,
+     0,
+     0
+    ],
+    [
+     1750,
+     4250,
+     39,
+     402,
+     4294967295,
+     136,
+     869.0,
+     189.7,
+     3029,
+     13,
+     0,
+     0
+    ],
+    [
+     386,
+     892,
+     3,
+     510,
+     4294967295,
+     172,
+     196.9,
+     45.2,
+     608,
+     1,
+     0,
+     0
+    ],
+    [
+     7764,
+     12882,
+     6,
+     7586,
+     2578,
+     2577,
+     3475.4,
+     886.2,
+     5751,
+     0,
+     0,
+     0
+    ],
+    [
+     8912,
+     13443,
+     2,
+     12974,
+     4294967295,
+     4328,
+     3733.3,
+     1111.8,
+     5121,
+     12,
+     12,
+     0
+    ],
+    [
+     5359,
+     8385,
+     8,
+     7318,
+     2443,
+     4294967295,
+     1925.9,
+     700.1,
+     3554,
+     0,
+     0,
+     0
+    ],
+    [
+     7918,
+     12581,
+     2,
+     4787,
+     4294967295,
+     1599,
+     2943.4,
+     934.3,
+     5321,
+     0,
+     0,
+     0
+    ],
+    [
+     642,
+     1276,
+     3,
+     1290,
+     4294967295,
+     432,
+     281.7,
+     82.5,
+     607,
+     0,
+     0,
+     0
+    ],
+    [
+     24268,
+     37652,
+     23,
+     36906,
+     23783,
+     4294967295,
+     11527.8,
+     2867.6,
+     19318,
+     26,
+     21,
+     0
+    ],
+    [
+     17800,
+     33916,
+     61,
+     18482,
+     14724,
+     14723,
+     9867.4,
+     2370.5,
+     19364,
+     5,
+     3,
+     0
+    ],
+    [
+     14884,
+     23510,
+     18,
+     14896,
+     10036,
+     10035,
+     5877.4,
+     1735.1,
+     10514,
+     2,
+     2,
+     0
+    ],
+    [
+     35195,
+     54085,
+     28,
+     14810,
+     4294967295,
+     32701,
+     17229.2,
+     4772.3,
+     25947,
+     82,
+     78,
+     0
+    ],
+    [
+     1668,
+     3812,
+     6,
+     2748,
+     4294967295,
+     918,
+     856.4,
+     201.7,
+     2404,
+     2,
+     0,
+     0
+    ],
+    [
+     4715,
+     4549,
+     20,
+     1521,
+     508,
+     509,
+     1282.3,
+     514.8,
+     1220,
+     1,
+     0,
+     0
+    ]
+   ],
+   "stats": {
+    "first_mismatch_categories": {
+     "native_valid_fast_minus1": 11,
+     "both_valid": 30,
+     "native_minus1_fast_valid": 23,
+     "both_minus1": 0
+    },
+    "both_valid_with_abs_delta_1": 9,
+    "meshes_with_degenerate_faces_gt0": 5,
+    "meshes_with_multi_candidates_gt0": 56,
+    "meshes_with_normal_selected_gt0": 43,
+    "sum_faces": 448739,
+    "sum_mismatches": 12871,
+    "top2_share_of_logged_mismatch_entries": 78.5
+   }
+  }
+ },
+ "limits": [
+  "loading_metric rows are per-window deltas; a window only closes when the engine thread reaches the 1 s telemetry poll, so a stall is reported as one long window and cannot be subdivided.",
+  "Run 8's savegame is not byte-identical to run 5's: 14,461,803 engine gz calls / 45,754,974 B vs 13,970,460 / 43,542,721 B (+3.5 % calls, +5.1 % bytes), and 3,342 vs 3,584 adjacency calls in the save gap.",
+  "Wine file-API latency is 4-6x lower in run 8 than run 5 for the same call counts (CreateFileA 0.105 vs 0.592 ms) with no configuration difference that explains it; that, not the gz buffer, is what shortens the script/XML stall. Not isolated by this run.",
+  "The gz buffer fast path is not instrumented: its per-call cost for the 14,354,293 served small calls is bounded only by the decode stall residue (<= 2.34 s / 14.46 M = <= 0.16 us per call).",
+  "mesh_adjacency mode=verify runs both implementations and returns the native result, so every GenerateAdjacency figure here includes the fast pass; the shippable cost is the fast column alone.",
+  "Gap labels come from analyze_loading_profile.py heuristics; the log writes no phase marker (telemetry_phase_marker: 0 lines, Ctrl+Shift+F7 never pressed)."
+ ],
+ "save_load_decomposition": {
+  "gap_s": 33.3629,
+  "segments": [
+   {
+    "name": "savegame decode stall",
+    "begin_s": 24.0435,
+    "end_s": 29.1745,
+    "seconds": 5.131,
+    "hooked_exclusive_s": 3.1403,
+    "content": "inflate 153,159/2.630 s; ReadFile 38,931/0.234 s; gzread 173/0.185 s; CreateFileA 193/0.044 s",
+    "run5": {
+     "seconds": 25.306,
+     "hooked_exclusive_s": 11.97,
+     "content": "gzread 13,882,714/9.103 s; inflate 150,279/2.549 s; ReadFile 38,199/0.219 s"
+    }
+   },
+   {
+    "name": "object/mesh/texture construction",
+    "begin_s": 29.1745,
+    "end_s": 39.2016,
+    "seconds": 10.027,
+    "hooked_exclusive_s": 7.171,
+    "content": "GenerateAdjacency+CreateMesh+CleanMesh+OptimizeInplace 3,342 meshes, inflate, D3DXCreateTextureFromFileInMemoryEx 647 MB",
+    "run5": {
+     "seconds": 15.2,
+     "hooked_exclusive_s": 10.4
+    }
+   },
+   {
+    "name": "script/XML file storm stall",
+    "begin_s": 39.2016,
+    "end_s": 56.1144,
+    "seconds": 16.913,
+    "hooked_exclusive_s": 1.6423,
+    "content": "FindFirstFileA 1,396/0.610 s; CreateFileA 1,374/0.231 s; xmlReadMemory 790/0.216 s; inflate 15,619/0.246 s; ReadFile 9,252/0.139 s",
+    "run5": {
+     "seconds": 24.977,
+     "hooked_exclusive_s": 3.556,
+     "content": "CreateFileA 1,376/1.968 s at 1.43 ms; FindFirstFileA 1,398/0.679 s; xmlReadMemory 790/0.208 s"
+    }
+   },
+   {
+    "name": "tail (last textures/effects before first present)",
+    "begin_s": 56.1144,
+    "end_s": 57.5448,
+    "seconds": 1.43,
+    "hooked_exclusive_s": 0.872
+   }
+  ],
+  "stopwatch_reference": {
+   "plain_no_telemetry_save_load_s": 40.0,
+   "source": "user stopwatch",
+   "run8_s": 33.363,
+   "run5_s": 65.46
+  }
+ }
+}

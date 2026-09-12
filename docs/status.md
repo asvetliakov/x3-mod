@@ -31,10 +31,14 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   adjacency); 111–447× faster in the Wine fixture; MXCSR pinned to 0x1f80 and
   the caller's state restored; NaN/near-neighbour inputs fall back to native
   behind a 2·ε gate. The cache's FP gate now keys precision/FTZ instead of
-  refusing them (`mesh_adjacency_cache` 767 checks, hook survey 13,271). Open:
-  near-tie normal selection SSE vs x87 (acceptance = verify mode with
-  `verify_mismatched=0`); the thread-local arena retains ≤16 MB per loader
-  thread for the process lifetime.
+  refusing them (`mesh_adjacency_cache` 767 checks, hook survey 13,271).
+  **Blocked (2026-09-12 night, bottle X3 run 8): verify mode reported
+  `verify_mismatched=167` of 7,715 meshes; the D3DX rules were decompiled and
+  the module rewritten to them, Wine suites and the game verify run are still
+  pending — `fast` stays off until a verify run shows `verify_mismatched=0`
+  ([handoff-adjacency-parity.md](verification/handoff-adjacency-parity.md),
+  [d3dx-generate-adjacency.md](reverse-engineering/d3dx-generate-adjacency.md)).**
+  The thread-local arena retains ≤16 MB per loader thread for the process lifetime.
 - **Direct engine reads** (`X3M_ENGINE_READS=rpm` restores ReadProcessMemory;
   [route-cost-run1.md](verification/route-cost-run1.md)). Reads are validated
   against a 32-entry VirtualQuery region cache (trusted per frame or 100 ms),
@@ -528,6 +532,49 @@ runs on the new bottle: `--mesh-adjacency verify` (parity), then `fast`
 plus the sharpen/mip-bias pass: post-resolve contrast-adaptive sharpen (target
 MTF50 0.35 → 0.6 c/px) and MIPMAPLODBIAS instrumentation then −0.5 on routed
 mip-mapped stages; make `--scene-hook` the default resolve point.
+
+## Session handoff (2026-09-12 night, second account switch pause)
+
+State: main at the commit recorded in git log ("WIP checkpoint before second
+account switch"); installed in bottle X3 = review-26 build `8864bff0…`
+(commit c782a5a: sharpen, mip bias, scene hook default on with the route).
+
+Game runs today on X3 (snapshots under /tmp only): run 7 `/tmp/x3-bottleX3-run7/`
+(plain `--direct`, no stamps; user stopwatch ≈40 s save load), run 8
+`/tmp/x3-bottleX3-run8/` (`--telemetry --mesh-adjacency verify --gz-buffer`;
+[loading-x3-run8.md](verification/loading-x3-run8.md): save 65 → 33 s, gz
+buffer covers the whole savegame, `inflate` 774k calls/12 s is now the largest
+hooked item; adjacency verify **167/7,715 meshes mismatch**, tie-break
+related — fast mode blocked), run 9 `/tmp/x3-bottleX3-run9/` (route + TAA +
+hook + gz buffer; [iteration-11.md](verification/iteration-11.md): route-on
+frame 16.9 → 12.1 ms with direct engine reads, hook 162/162 agree, 0
+resyncs, TAA 99.83% history match, loads menu 8.4 / save 35.7 / sector 5.9 s),
+run 10 `/tmp/x3-bottleX3-run10/` (review-26 build, `--taa-sharpen 0.5
+--taa-mip-bias -0.5 --taa-debug`, 3 bursts × 4 frames: both features active on
+all 181 routed frames, mip bias applied on 34,625 draws with matching
+restores, the game's effects write bias 0 on cube stages 3/4 and the override
+handles it; analysis in flight → iteration-12.md).
+
+Branches (committed, not merged): `worktree-agent-a68201431d638fe21`
+(loading: light no-SSE hooks, probe batch 2 with 12 byte-verified
+trampolines, gated fast resource reader + catalogue handle pool, frame_end
+`elapsed_ms`; review 27 in progress in that worktree, see review-27.md),
+`worktree-agent-a0100a8066b313223` (native-Windows fixes D1/D2/D3/W1/W3 +
+engine_memory summary line + FEX NaN-bits fixture printing; see
+handoff-windows-fixes.md). Main-tree uncommitted-at-pause work: adjacency
+parity fix from the D3DX disassembly (mesh_adjacency_fast.*, reference,
+tests, tools/analysis/replay_mesh_adjacency.py, `--mesh-adjacency-dump`; see
+handoff-adjacency-parity.md and docs/reverse-engineering/d3dx-generate-adjacency.md).
+
+Resume order: (1) finish review 27 in its worktree, merge into main, review
+fixes, install; (2) finish the Windows-fixes branch, review 28, merge,
+install; (3) finish adjacency parity (fixture parity against real D3DX on the
+reproduced cases), then a user `--mesh-adjacency verify` run must show
+`verify_mismatched=0` before `fast`; (4) read iteration-12.md for the sharpen /
+mip-bias verdict and give the user the A/B screenshot pair; (5) next user
+runs: `--telemetry --loading-probes` (stall decomposition), `--resource-read
+verify --dat-handles` then `fast`, `--hdr --hdr-tonemap` (first tonemapped
+look), and a `--vanilla` launch to A/B the double cursor on this bottle.
 
 ## Session handoff (2026-09-12 late evening, account switch pause)
 

@@ -1,0 +1,590 @@
+{
+ "tool": "iteration-12 (partial, hand-off)",
+ "log": "/tmp/x3-bottleX3-run10/session-20260912-201725-212.log",
+ "log_sha256": "589f236bb850fc0a7c68158eee9fe80161c7e5e7e2a9c46204630da48a4d6c02",
+ "build": {
+  "commit": "c782a5a",
+  "dll_sha256_prefix": "8864bff0",
+  "bottle": "X3"
+ },
+ "features": {
+  "taa_sharpen": 0.5,
+  "mip_bias": -0.5,
+  "taa_debug": 1,
+  "capture_frames": 4,
+  "per_draw": 0
+ },
+ "sharpen": {
+  "sharpened_frames": 181,
+  "resolves": 181,
+  "taa_copy_S_FALSE_records": 194,
+  "sharpen_failed_lines": 0,
+  "taa_copy_back_us_median": 0.0,
+  "taa_copy_back_us_median_run9": 0.9
+ },
+ "mip_bias": {
+  "records": 194,
+  "sets": 43326,
+  "restores": 43319,
+  "biased_draws": 34625,
+  "failures": 0,
+  "biased_now_nonzero_records": 0,
+  "game_writes_total": 715,
+  "game_write_lines": 16,
+  "game_write_stages": [
+   3,
+   4
+  ],
+  "game_write_values": [
+   0
+  ],
+  "summary_line_present": false,
+  "stage_mask_histogram": {
+   "0000": 13,
+   "000f": 37,
+   "001f": 5,
+   "002f": 21,
+   "003f": 13,
+   "006f": 50,
+   "007f": 55
+  },
+  "capture_sampler_state8_records": 131536,
+  "capture_sampler_state8_nonzero_bias": 0,
+  "ordinary_frames": {
+   "records": 157,
+   "sets": 18256,
+   "restores": 18250,
+   "biased_draws": 28784,
+   "draws": 42451,
+   "sets_per_biased_draw": 0.6342412451361867,
+   "sets_plus_restores_per_biased_draw": 1.2682740411339632,
+   "set_calls_per_frame": 232.52229299363057
+  },
+  "capture_frames": {
+   "records": 24,
+   "sets": 25070,
+   "restores": 25069,
+   "biased_draws": 5841,
+   "draws": 8221,
+   "sets_per_biased_draw": 4.292073275124123,
+   "sets_plus_restores_per_biased_draw": 8.583975346687211,
+   "set_calls_per_frame": 2089.125
+  },
+  "interleave": {
+   "source": "motion_route lines of the 24 capture frames",
+   "draws": 7591,
+   "routed": 5841,
+   "runs_of_consecutive_routed": 624,
+   "mean_routed_per_run": 9.360576923076923,
+   "runs_per_frame": 26.0
+  }
+ },
+ "blur": {
+  "run10": [
+   {
+    "frames": [
+     1380,
+     1383
+    ],
+    "status": "evaluated",
+    "motion": "stationary",
+    "routed_interior_px": 71519,
+    "gradient_energy_ratio_interior": {
+     "min": 0.5166599943722742,
+     "max": 0.5370429933374807,
+     "mean": 0.5230045563173242
+    },
+    "gradient_energy_ratio_all_mean": 0.6832827362477201,
+    "raw_rise_10_90_px": [
+     0.8018069980244436,
+     0.8275537863533626
+    ],
+    "resolved_rise_10_90_px": [
+     0.973044052110597,
+     1.00468159407952
+    ],
+    "raw_mtf50_cycles_per_px": [
+     1.3363350140732997,
+     1.393414391987784
+    ],
+    "resolved_mtf50_cycles_per_px": [
+     0.42429416056528096,
+     0.4407661666334468
+    ],
+    "raw_phase_spread": {
+     "all": 0.01521488049554727,
+     "routed_interior": 0.005716015849605164
+    },
+    "ideal": {
+     "four_phase_ratio": 0.6406089610487397,
+     "scale_to_resolve_kernel": 0.9962430122683884
+    }
+   },
+   {
+    "frames": [
+     1746,
+     1749
+    ],
+    "status": "evaluated",
+    "motion": "turning",
+    "routed_interior_px": 3576,
+    "gradient_energy_ratio_interior": {
+     "min": 0.5191896873544081,
+     "max": 0.6766134430767732,
+     "mean": 0.6103124622583487
+    },
+    "gradient_energy_ratio_all_mean": 0.5742319826823685,
+    "raw_rise_10_90_px": [
+     1.362699522193747,
+     1.7077593165352434
+    ],
+    "resolved_rise_10_90_px": [
+     1.601518697461875,
+     4.5023726228883545
+    ],
+    "raw_mtf50_cycles_per_px": [
+     0.44084572866459143,
+     1.3134317460003009
+    ],
+    "resolved_mtf50_cycles_per_px": [
+     0.1808121136503128,
+     0.24904928908470436
+    ],
+    "raw_phase_spread": {
+     "all": 0.1637878492298875,
+     "routed_interior": 0.4816286280469522
+    },
+    "ideal": {
+     "four_phase_ratio": 0.5867861210297024,
+     "scale_to_resolve_kernel": 0.9486843980895738
+    }
+   },
+   {
+    "frames": [
+     2717,
+     2720
+    ],
+    "status": "evaluated",
+    "motion": "stationary",
+    "routed_interior_px": 66811,
+    "gradient_energy_ratio_interior": {
+     "min": 0.4257527547771401,
+     "max": 0.49998903933588634,
+     "mean": 0.4590458537502913
+    },
+    "gradient_energy_ratio_all_mean": 0.6088157892933839,
+    "raw_rise_10_90_px": [
+     0.7868981168458622,
+     0.8740827200006434
+    ],
+    "resolved_rise_10_90_px": [
+     1.073680269840233,
+     1.3664642030504606
+    ],
+    "raw_mtf50_cycles_per_px": [
+     1.3535692358887523,
+     1.3920049218722577
+    ],
+    "resolved_mtf50_cycles_per_px": [
+     0.309283475776495,
+     0.35795757173846954
+    ],
+    "raw_phase_spread": {
+     "all": 0.022656013591684045,
+     "routed_interior": 0.23616247412257774
+    },
+    "ideal": {
+     "four_phase_ratio": 0.3879374840251883,
+     "scale_to_resolve_kernel": 0.9558407654603661
+    }
+   },
+   {
+    "frames": [
+     3856,
+     3859
+    ],
+    "status": "evaluated",
+    "motion": "stationary",
+    "routed_interior_px": 63447,
+    "gradient_energy_ratio_interior": {
+     "min": 0.38096570587617606,
+     "max": 0.45486704279074364,
+     "mean": 0.4101925120152544
+    },
+    "gradient_energy_ratio_all_mean": 0.4777120316540133,
+    "raw_rise_10_90_px": [
+     0.835769774793313,
+     0.8622638443921489
+    ],
+    "resolved_rise_10_90_px": [
+     1.303792634909601,
+     1.5776052213551595
+    ],
+    "raw_mtf50_cycles_per_px": [
+     0.6863704285623895,
+     1.241929083017635
+    ],
+    "resolved_mtf50_cycles_per_px": [
+     0.28487480851055513,
+     0.314645826973194
+    ],
+    "raw_phase_spread": {
+     "all": 0.009470798255512518,
+     "routed_interior": 0.04177727984276548
+    },
+    "ideal": {
+     "four_phase_ratio": 0.36486067442706893,
+     "scale_to_resolve_kernel": 1.036605776514493
+    }
+   },
+   {
+    "frames": [
+     8369,
+     8372
+    ],
+    "status": "evaluated",
+    "motion": "turning",
+    "routed_interior_px": 3539,
+    "gradient_energy_ratio_interior": {
+     "min": 0.6179177345496557,
+     "max": 0.7910582714995255,
+     "mean": 0.727739361270973
+    },
+    "gradient_energy_ratio_all_mean": 0.5401575526825351,
+    "raw_rise_10_90_px": [
+     0.9836028453463876,
+     5.250857227933793
+    ],
+    "resolved_rise_10_90_px": [
+     1.3811586496866732,
+     2.005434858649722
+    ],
+    "raw_mtf50_cycles_per_px": [
+     0.3147679311632025,
+     0.5158632945947162
+    ],
+    "resolved_mtf50_cycles_per_px": [
+     0.21805279482047427,
+     0.30934498562725354
+    ],
+    "raw_phase_spread": {
+     "all": 0.05077817300469203,
+     "routed_interior": 0.2952431515631734
+    },
+    "ideal": {
+     "four_phase_ratio": 0.7928991721716351,
+     "scale_to_resolve_kernel": 1.036605776514493
+    }
+   },
+   {
+    "frames": [
+     9536,
+     9537,
+     9538,
+     9539,
+     9540
+    ],
+    "status": "missing_readbacks"
+   }
+  ],
+  "iteration09_run2": [
+   {
+    "frames": [
+     629,
+     632
+    ],
+    "status": "evaluated",
+    "motion": "stationary",
+    "routed_interior_px": 34361,
+    "gradient_energy_ratio_interior": {
+     "min": 0.4878064490474542,
+     "max": 0.5209832358943883,
+     "mean": 0.5050184642639978
+    },
+    "gradient_energy_ratio_all_mean": 0.686170101655769,
+    "raw_rise_10_90_px": [
+     0.8598737271492097,
+     0.9026931582468729
+    ],
+    "resolved_rise_10_90_px": [
+     1.0663171828644198,
+     1.6717097858351915
+    ],
+    "raw_mtf50_cycles_per_px": [
+     0.6786786937011967,
+     0.6943912975981995
+    ],
+    "resolved_mtf50_cycles_per_px": [
+     0.346315400063006,
+     0.4587208591515898
+    ],
+    "raw_phase_spread": {
+     "all": 0.01747974071868988,
+     "routed_interior": 0.0703382298930109
+    },
+    "ideal": {
+     "four_phase_ratio": 0.6497106077326898,
+     "scale_to_resolve_kernel": 0.8734746666646379
+    }
+   },
+   {
+    "frames": [
+     903,
+     906
+    ],
+    "status": "evaluated",
+    "motion": "turning",
+    "routed_interior_px": 4428,
+    "gradient_energy_ratio_interior": {
+     "min": 0.4804675926135023,
+     "max": 0.999376090957733,
+     "mean": 0.6185485743163937
+    },
+    "gradient_energy_ratio_all_mean": 0.6181448989741263,
+    "raw_rise_10_90_px": [
+     0.7481993654345483,
+     5.294710329762525
+    ],
+    "resolved_rise_10_90_px": [
+     0.8618969380429828,
+     2.195877489508083
+    ],
+    "raw_mtf50_cycles_per_px": [
+     0.35259875165226995,
+     1.794123167162509
+    ],
+    "resolved_mtf50_cycles_per_px": [
+     0.18144513183912064,
+     1.502500701741944
+    ],
+    "raw_phase_spread": {
+     "all": 0.08206180544280392,
+     "routed_interior": 0.317873311164942
+    },
+    "ideal": {
+     "four_phase_ratio": 0.3966553178065578,
+     "scale_to_resolve_kernel": 0.9558407654603661
+    }
+   },
+   {
+    "frames": [
+     1427,
+     1430
+    ],
+    "status": "evaluated",
+    "motion": "stationary",
+    "routed_interior_px": 167472,
+    "gradient_energy_ratio_interior": {
+     "min": 0.6213666537845575,
+     "max": 0.6422136698311774,
+     "mean": 0.6277485505751378
+    },
+    "gradient_energy_ratio_all_mean": 0.655286797594202,
+    "raw_rise_10_90_px": [
+     1.8076737086828127,
+     1.833946275680423
+    ],
+    "resolved_rise_10_90_px": [
+     1.9323418191998478,
+     2.0294842177171737
+    ],
+    "raw_mtf50_cycles_per_px": [
+     0.3403890334210644,
+     0.743756123279802
+    ],
+    "resolved_mtf50_cycles_per_px": [
+     0.26964985673116637,
+     0.2886584472804202
+    ],
+    "raw_phase_spread": {
+     "all": 0.00955073625799658,
+     "routed_interior": 0.015986628319681916
+    },
+    "ideal": {
+     "four_phase_ratio": 0.6723390894109625,
+     "scale_to_resolve_kernel": 0.9751080584248017
+    }
+   },
+   {
+    "frames": [
+     1584,
+     1587
+    ],
+    "status": "evaluated",
+    "motion": "turning",
+    "routed_interior_px": 2180,
+    "gradient_energy_ratio_interior": {
+     "min": 0.6474182921984504,
+     "max": 0.7765406056525764,
+     "mean": 0.7134429188622688
+    },
+    "gradient_energy_ratio_all_mean": 0.5240696873302116,
+    "raw_rise_10_90_px": null,
+    "resolved_rise_10_90_px": null,
+    "raw_mtf50_cycles_per_px": null,
+    "resolved_mtf50_cycles_per_px": null,
+    "raw_phase_spread": {
+     "all": 0.10060545800047281,
+     "routed_interior": 0.30558353078818395
+    },
+    "ideal": {
+     "four_phase_ratio": 0.7365563828239589,
+     "scale_to_resolve_kernel": 0.9504971328883198
+    }
+   },
+   {
+    "frames": [
+     1950,
+     1953
+    ],
+    "status": "evaluated",
+    "motion": "turning",
+    "routed_interior_px": 4591,
+    "gradient_energy_ratio_interior": {
+     "min": 0.5423251845041042,
+     "max": 0.9995530938541525,
+     "mean": 0.8851615983040741
+    },
+    "gradient_energy_ratio_all_mean": 0.8916894278037215,
+    "raw_rise_10_90_px": [
+     0.6514398330647608,
+     1.5908407510960199
+    ],
+    "resolved_rise_10_90_px": [
+     0.7968039563169675,
+     1.591021272817783
+    ],
+    "raw_mtf50_cycles_per_px": [
+     0.5166318591087747,
+     1.6172128186784074
+    ],
+    "resolved_mtf50_cycles_per_px": [
+     0.31819556411340155,
+     0.6903049126095444
+    ],
+    "raw_phase_spread": {
+     "all": 0.4591622749023613,
+     "routed_interior": 0.644216074819601
+    },
+    "ideal": {
+     "four_phase_ratio": 0.3794225201484761,
+     "scale_to_resolve_kernel": 0.9962430122683884
+    }
+   },
+   {
+    "frames": [
+     3685,
+     3688
+    ],
+    "status": "evaluated",
+    "motion": "slow",
+    "routed_interior_px": 5815,
+    "gradient_energy_ratio_interior": {
+     "min": 0.6304766250868475,
+     "max": 0.8039660621982067,
+     "mean": 0.7308870357672851
+    },
+    "gradient_energy_ratio_all_mean": 0.5891492995751793,
+    "raw_rise_10_90_px": [
+     0.9888074975825324,
+     1.6358345812265445
+    ],
+    "resolved_rise_10_90_px": [
+     1.3091432049304306,
+     1.5252675582807744
+    ],
+    "raw_mtf50_cycles_per_px": [
+     0.32117159849249793,
+     0.4190663803605079
+    ],
+    "resolved_mtf50_cycles_per_px": [
+     0.2444450570737003,
+     0.29417448185851336
+    ],
+    "raw_phase_spread": {
+     "all": 0.020759690351590008,
+     "routed_interior": 0.21900495698436215
+    },
+    "ideal": {
+     "four_phase_ratio": 0.745072502528911,
+     "scale_to_resolve_kernel": 0.9486843980895738
+    }
+   }
+  ]
+ },
+ "readback_checks": {
+  "readback_integrity": {
+   "status": "pass",
+   "frames": 24,
+   "clean_frames": 24
+  },
+  "counter_consistency": {
+   "status": "pass",
+   "frames": 24
+  },
+  "history_pairing": {
+   "status": "pass",
+   "predictable_draws": 4386,
+   "disagreements": 0,
+   "note": "compares the log-reconstructed previous-frame table with the DLL matched flag; needs consecutive captured frames"
+  },
+  "static_consistency": {
+   "status": "unavailable",
+   "tolerance_px": 0.01,
+   "max_error_px": null,
+   "violations": 0
+  },
+  "displacement": {
+   "status": "pass",
+   "bound_px": 64.0,
+   "valid_pixels": 3071517,
+   "suspicious_pixels": 0,
+   "suspicious_fraction": 0.0,
+   "max_displacement_px": 50.92715835571289
+  },
+  "row_consistency": {
+   "status": "pass",
+   "tolerance_px": 0.5,
+   "sampled_pixels": 756468,
+   "unexplained_pixels": 0,
+   "unexplained_fraction": 0.0,
+   "max_error_px": 0.054694786936579476
+  },
+  "temporal_coverage": {
+   "status": "pass",
+   "minimum_fraction": 0.9,
+   "criterion_min_matched_ratio": 0.99,
+   "worst_covered_fraction": 0.9809236716754492
+  },
+  "depth_image_integrity": {
+   "status": "pass",
+   "valid_motion_without_depth": 0,
+   "note": "R32F device depth in [0,1] where a routed depth row covered the pixel, -1 elsewhere; nonfinite or out-of-range values fail"
+  },
+  "depth": {
+   "status": "fail",
+   "sampling": "nearest",
+   "worst_within_fraction": 0.3403628699963524,
+   "compared_pixels": 2254165,
+   "previous_sentinel": 23843,
+   "max_error": 0.15310335159301758,
+   "tolerance": 0.0001,
+   "minimum_within_fraction": 0.99
+  },
+  "taa_image": {
+   "status": "pass",
+   "threshold": 0.00784313725490196,
+   "note": "sanity signal: the resolved FP16 image is finite; the fraction of pixels whose RGB moved away from the pre-resolve color by more than the threshold is reported, not judged"
+  }
+ },
+ "readback_status": "FAIL",
+ "readback_failed_checks": [
+  "depth"
+ ],
+ "todo": [
+  "RCAS-modelled presented image: over-sharpening (3x3 min/max escapes, halo ratio)",
+  "frame-to-frame flicker on the stationary bursts vs iteration-10-run2-flicker-baseline.json",
+  "burst 9536-9539 (re-run with --burst 9536)",
+  "tools/analysis/analyze_iteration12.py and verification/analysis/test_iteration12.py"
+ ]
+}

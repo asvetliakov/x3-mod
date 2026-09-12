@@ -1,0 +1,91 @@
+iteration 11: review-25 build, direct engine reads, per-draw stamps off
+==========================================================================
+-- run9 /tmp/x3-bottleX3-run9/session-20260912-194757-212.log
+   route=1 taa=1 scene_hook=1 per_draw=0 kinds=83
+   draws surrogate injected: 125 windows injected, 0 measured
+   scene fast: 108 windows, 12.10 ms at 275.0 draws/frame, route metrics 64.5 us
+   frame records n=155: draws 262.0 routed 188.0, route exclusive 63.5 us/frame, fill 63.5 taa_run 377.3
+-- run6 /tmp/x3-bottleX3-run6/session-20260912-171241-212.log
+   route=1 taa=1 scene_hook=1 per_draw=absent kinds=92
+   draws surrogate not_needed: 0 windows injected, 265 measured
+   scene fast: 201 windows, 16.91 ms at 358.4 draws/frame, route metrics 5255.1 us
+   frame records n=178: draws 198.5 routed 120.0, route exclusive 3259.0 us/frame, fill 56.0 taa_run 303.6
+-- run5 /tmp/x3-bottleX3-run5/session-20260912-170743-352.log
+   route=0 taa=0 scene_hook=0 per_draw=absent kinds=62
+   draws surrogate unavailable: 0 windows injected, None measured
+   scene fast: 83 windows, 8.42 ms at 320.1 draws/frame, route metrics 0.0 us
+
+-- route cost availability (per_draw=0)
+   per-draw metrics absent: draw_backend, route_gate, route_draw, route_set_rt, route_jitter, route_lazy_flush
+   per-draw frame fields unmeasured: True (max {'gate_us': 0.0, 'route_draw_us': 0.0, 'set_rt_us': 0.0, 'lazy_flush_us': 0.0, 'jitter_us': 0.0})
+   fill_us              median 63.6 us/frame
+   readback_us          median 0.0 us/frame
+   taa_apply_us         median 16.0 us/frame
+   taa_capture_us       median 8.7 us/frame
+   taa_copy_back_us     median 0.9 us/frame
+   taa_copy_color_us    median 3.5 us/frame
+   taa_copy_depth_us    median 2.5 us/frame
+   taa_draw_us          median 338.1 us/frame
+   taa_run_us           median 379.1 us/frame
+
+-- line kinds: 83 in the primary run, 92 in the baselines
+   new: ['gz_buffer', 'gz_buffer_file', 'mesh_adjacency']
+   missing: ['motion_output_color_readback', 'motion_output_scene_hook_disagreement', 'motion_output_taa_readback', 'profile_frame', 'profile_leaf', 'profile_module', 'profile_pair', 'profile_report', 'profile_report_end', 'profile_start', 'profile_thread', 'profile_thread_seen']
+
+-- run9:run6 (path and configuration noise)
+   scene 13 bins over [76.5, 819.4] draws: -22.211 us/draw (origin -18.936), fixed 1.35 ms, sign p=0.00342
+
+-- run9:run5 (route cost)
+   scene 10 bins over [73.2, 774.2] draws: 14.554 us/draw (origin 12.074), fixed -0.99 ms, sign p=0.00195
+
+-- run6:run5 (route cost)
+   scene 10 bins over [63.5, 775.6] draws: 37.771 us/draw (origin 31.285), fixed -2.41 ms, sign p=0.00195
+
+-- route recovery (paired-bin slopes against the route-off run)
+   new: run9 vs run5 14.554 us/draw over 10 bins
+   old: run6 vs run5 37.771 us/draw over 10 bins
+   attributed us/draw {'new': 11.887, 'old': 34.44}
+   new diagnostics: profiler 0.000 ms/frame (fixed term), stamps 0.002 ms/frame = 0.007 us/draw at 275.0 draws
+   old diagnostics: profiler 0.546 ms/frame (fixed term), stamps 0.343 ms/frame = 0.957 us/draw at 358.4 draws
+   net {'old': 33.483, 'new': 11.88} us/draw -> recovered 21.603 us/draw (0.6452 of the old net)
+   share run9: frame 12.10 ms at 275.0 draws, route 4.00 ms = 0.3308 (metrics 0.0053)
+   share run6: frame 16.91 ms at 358.4 draws, route 13.54 ms = 0.8005 (metrics 0.3108)
+
+-- scene hook: 180 records, 163 latched, 162 resolves
+   check {'None': 18, 'Agree': 162}; source {'none': 18, 'hook': 162}; resolved_by_source {'hook': 162}
+   rs_resyncs {'0': 180}; draws_after_hook {'0': 180}; hit rate 1.000000
+   failures {'apply_failures': 0, 'restore_failures': 0}; disagreement records 0; latched without verdict [0]
+
+-- engine reads: absent 
+
+-- gz buffer: 5 files, savegame calls 14461803 (0.9926 small), served 45.76 MB in 175 real reads (82638.9 calls/read, 3.164 bytes/call)
+   gzclose    count 5 failures 0 bytes 0 total 527.7 us max 229.5 us over 3 windows
+   gzopen     count 27 failures 22 bytes 0 total 7785.9 us max 3780.7 us over 3 windows
+   gzread     count 179 failures 0 bytes 46803550 total 195684.0 us max 2776.2 us over 4 windows
+   gztell     count 179 failures 0 bytes 0 total 275.1 us max 70.0 us over 4 windows
+   inflate    count 773054 failures 0 bytes 0 total 12602166.7 us max 2763.2 us over 43 windows
+   in load 0:startup_to_menu [5.1, 13.5]: inflate 166021 calls 2.579 s
+   in load 1:save_load [24.9, 60.6]: gzclose 1 calls 0.000 s, gzopen 1 calls 0.000 s, gzread 175 calls 0.186 s, gztell 175 calls 0.000 s, inflate 359874 calls 5.984 s
+   in load 2:sector_change [169.2, 175.1]: inflate 79420 calls 1.302 s
+   in load 3:return_to_menu [186.4, 194.4]: inflate 166017 calls 2.708 s
+
+-- taa: attempted 162 resolved 162 history 162, skip {'0': 162, '2': 18}, failures 0/0
+   history match 33747/33805 = 0.998284
+   camera 43 records, 38 valid, cuts [], rotation max 1.6258 deg, floor {'min': 0.7219022428305165, 'median': 1.0748121928822507, 'max': 1.6258188075228213}
+   readback FAIL failed=['readback_integrity'] frames 7/8
+     readback_integrity       fail clean_frames=7 frames=8
+     counter_consistency      pass frames=8
+     history_pairing          unavailable 
+     static_consistency       unavailable max_error_px=-
+     displacement             pass max_displacement_px=4.8028 suspicious_fraction=0.0000
+     row_consistency          unavailable max_error_px=- unexplained_fraction=-
+     temporal_coverage        unavailable 
+     depth_image_integrity    pass valid_motion_without_depth=0 frames=[1711, 2227, 3235, 4386, 5295, 9645, 9878]
+     depth                    unavailable 
+     taa_image                unavailable 
+
+-- loads: 57.98 s over 4 gaps
+   startup_to_menu  8.386 s ends frame 28 at 13.5 s (unknown -> menu)
+   save_load        35.707 s ends frame 872 at 60.6 s (menu -> scene)
+   sector_change    5.944 s ends frame 9439 at 175.1 s (scene -> scene)
+   return_to_menu   7.947 s ends frame 10228 at 194.4 s (scene -> menu)

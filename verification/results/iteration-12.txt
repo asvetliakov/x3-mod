@@ -1,0 +1,50 @@
+iteration 12 (PARTIAL): sharpen 0.5 + mip bias -0.5 in flight, review-26 build
+==============================================================================
+log /tmp/x3-bottleX3-run10/session-20260912-201725-212.log
+  sha256 589f236bb850fc0a7c68158eee9fe80161c7e5e7e2a9c46204630da48a4d6c02  build c782a5a dll 8864bff0 bottle X3
+features {'taa_sharpen': 0.5, 'mip_bias': -0.5, 'taa_debug': 1, 'capture_frames': 4, 'per_draw': 0}
+
+-- sharpen: 181/181 resolves sharpened, taa_copy=S_FALSE on 194/194 records,
+   sharpen_failed lines 0, taa_copy_back 0.0 us/frame (run9 0.9)
+
+-- mip bias -0.5: sets 43326 restores 43319 biased draws 34625 failures 0
+   biased_now nonzero records 0; game writes 715 total, stages [3, 4] values [0]
+   stage mask histogram {'0000': 13, '000f': 37, '001f': 5, '002f': 21, '003f': 13, '006f': 50, '007f': 55}
+   teardown summary line present: False
+   capture sampler state=8 records 131536, nonzero bias 0 (documented limit)
+   ordinary_frames  n= 157 sets= 18256 restores= 18250 biased_draws= 28784 sets/draw=0.634 (sets+rest)/draw=1.268 calls/frame=232.5
+   capture_frames   n=  24 sets= 25070 restores= 25069 biased_draws=  5841 sets/draw=4.292 (sets+rest)/draw=8.584 calls/frame=2089.1
+   interleave (motion_route lines of the 24 capture frames): draws 7591 routed 5841 runs 624 mean routed/run 9.361 runs/frame 26.0
+
+-- blur (analyze_iteration09_run2, identical code both runs; routed_interior)
+   run/burst              class         int px ratio mean     raw rise    raw mtf50     res rise    res mtf50
+   run10 1380             stationary     71519     0.5230    0.80-0.83    1.34-1.39    0.97-1.00    0.42-0.44
+   run10 1746             turning         3576     0.6103    1.36-1.71    0.44-1.31    1.60-4.50    0.18-0.25
+   run10 2717             stationary     66811     0.4590    0.79-0.87    1.35-1.39    1.07-1.37    0.31-0.36
+   run10 3856             stationary     63447     0.4102    0.84-0.86    0.69-1.24    1.30-1.58    0.28-0.31
+   run10 8369             turning         3539     0.7277    0.98-5.25    0.31-0.52    1.38-2.01    0.22-0.31
+   run10 9536             missing_readbacks
+   iteration09_run2 629   stationary     34361     0.5050    0.86-0.90    0.68-0.69    1.07-1.67    0.35-0.46
+   iteration09_run2 903   turning         4428     0.6185    0.75-5.29    0.35-1.79    0.86-2.20    0.18-1.50
+   iteration09_run2 1427  stationary    167472     0.6277    1.81-1.83    0.34-0.74    1.93-2.03    0.27-0.29
+   iteration09_run2 1584  turning         2180     0.7134          n/a          n/a          n/a          n/a
+   iteration09_run2 1950  turning         4591     0.8852    0.65-1.59    0.52-1.62    0.80-1.59    0.32-0.69
+   iteration09_run2 3685  slow            5815     0.7309    0.99-1.64    0.32-0.42    1.31-1.53    0.24-0.29
+
+-- readback checks: status FAIL, failed ['depth']
+   readback_integrity     pass         frames=24 clean_frames=24
+   counter_consistency    pass         frames=24
+   history_pairing        pass         predictable_draws=4386 disagreements=0
+   static_consistency     unavailable  tolerance_px=0.01 max_error_px=None violations=0
+   displacement           pass         bound_px=64.0 valid_pixels=3071517 suspicious_pixels=0 suspicious_fraction=0.0 max_displacement_px=50.92715835571289
+   row_consistency        pass         tolerance_px=0.5 sampled_pixels=756468 unexplained_pixels=0 unexplained_fraction=0.0 max_error_px=0.054694786936579476
+   temporal_coverage      pass         minimum_fraction=0.9 criterion_min_matched_ratio=0.99 worst_covered_fraction=0.9809236716754492
+   depth_image_integrity  pass         valid_motion_without_depth=0
+   depth                  fail         sampling=nearest worst_within_fraction=0.3403628699963524 compared_pixels=2254165 previous_sentinel=23843 max_error=0.15310335159301758 tolerance=0.0001 minimum_within_fraction=0.99
+   taa_image              pass         threshold=0.00784313725490196
+
+-- TODO (hand-off)
+   * RCAS-modelled presented image: over-sharpening (3x3 min/max escapes, halo ratio)
+   * frame-to-frame flicker on the stationary bursts vs iteration-10-run2-flicker-baseline.json
+   * burst 9536-9539 (re-run with --burst 9536)
+   * tools/analysis/analyze_iteration12.py and verification/analysis/test_iteration12.py

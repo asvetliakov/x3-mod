@@ -1,0 +1,76 @@
+iteration 11: review-25 build, direct engine reads, per-draw stamps off
+==========================================================================
+-- run10 /tmp/x3-bottleX3-run10/session-20260912-201725-212.log
+   route=1 taa=1 scene_hook=1 per_draw=0 kinds=86
+   draws surrogate injected: 115 windows injected, 0 measured
+   scene fast: 101 windows, 10.44 ms at 275.5 draws/frame, route metrics 49.4 us
+   frame records n=157: draws 263.0 routed 187.0, route exclusive 45.1 us/frame, fill 45.1 taa_run 362.1
+-- run9 /tmp/x3-bottleX3-run9/session-20260912-194757-212.log
+   route=1 taa=1 scene_hook=1 per_draw=0 kinds=83
+   draws surrogate injected: 125 windows injected, 0 measured
+   scene fast: 108 windows, 12.10 ms at 275.0 draws/frame, route metrics 64.5 us
+   frame records n=155: draws 262.0 routed 188.0, route exclusive 63.5 us/frame, fill 63.5 taa_run 377.3
+-- run5 /tmp/x3-bottleX3-run5/session-20260912-170743-352.log
+   route=0 taa=0 scene_hook=0 per_draw=absent kinds=62
+   draws surrogate unavailable: 0 windows injected, None measured
+   scene fast: 83 windows, 8.42 ms at 320.1 draws/frame, route metrics 0.0 us
+
+-- route cost availability (per_draw=0)
+   per-draw metrics absent: draw_backend, route_gate, route_draw, route_set_rt, route_jitter, route_lazy_flush
+   per-draw frame fields unmeasured: True (max {'gate_us': 0.0, 'route_draw_us': 0.0, 'set_rt_us': 0.0, 'lazy_flush_us': 0.0, 'jitter_us': 0.0})
+   fill_us              median 45.5 us/frame
+   readback_us          median 0.0 us/frame
+   taa_apply_us         median 15.0 us/frame
+   taa_capture_us       median 6.7 us/frame
+   taa_copy_back_us     median 0.0 us/frame
+   taa_copy_color_us    median 2.8 us/frame
+   taa_copy_depth_us    median 1.9 us/frame
+   taa_draw_us          median 337.9 us/frame
+   taa_run_us           median 372.6 us/frame
+
+-- line kinds: 86 in the primary run, 83 in the baselines
+   new: ['motion_output_color_readback', 'motion_output_mip_bias_game_write', 'motion_output_taa_readback']
+   missing: none
+
+-- run10:run9 (path and configuration noise)
+   scene 11 bins over [80.6, 931.2] draws: 1.599 us/draw (origin -0.081), fixed -1.22 ms, sign p=1.00000
+
+-- run10:run5 (route cost)
+   scene 8 bins over [67.6, 759.2] draws: 14.540 us/draw (origin 7.613), fixed -1.55 ms, sign p=0.00781
+
+-- run9:run5 (route cost)
+   scene 10 bins over [73.2, 774.2] draws: 14.554 us/draw (origin 12.074), fixed -0.99 ms, sign p=0.00195
+
+-- route recovery (paired-bin slopes against the route-off run)
+   new: run10 vs run5 14.540 us/draw over 8 bins
+   old: run9 vs run5 14.554 us/draw over 10 bins
+   attributed us/draw {'new': 11.453, 'old': 11.887}
+   new diagnostics: profiler 0.000 ms/frame (fixed term), stamps 0.002 ms/frame = 0.007 us/draw at 275.5 draws
+   old diagnostics: profiler 0.000 ms/frame (fixed term), stamps 0.002 ms/frame = 0.007 us/draw at 275.0 draws
+   net {'old': 11.88, 'new': 11.446} us/draw -> recovered 0.434 us/draw (0.0365 of the old net)
+   share run10: frame 10.44 ms at 275.5 draws, route 4.01 ms = 0.3835 (metrics 0.0047)
+   share run9: frame 12.10 ms at 275.0 draws, route 4.00 ms = 0.3308 (metrics 0.0053)
+
+-- scene hook: 194 records, 182 latched, 181 resolves
+   check {'None': 13, 'Agree': 181}; source {'none': 13, 'hook': 181}; resolved_by_source {'hook': 181}
+   rs_resyncs {'0': 192, '1': 2}; draws_after_hook {'0': 194}; hit rate 0.999991
+   failures {'apply_failures': 0, 'restore_failures': 0}; disagreement records 0; latched without verdict [0]
+
+-- engine reads: absent 
+
+-- gz buffer: 5 files, savegame calls 14461803 (0.9926 small), served 45.76 MB in 175 real reads (82638.9 calls/read, 3.164 bytes/call)
+   gzclose    count 5 failures 0 bytes 0 total 471.7 us max 197.3 us over 3 windows
+   gzopen     count 27 failures 22 bytes 0 total 13692.1 us max 6080.3 us over 3 windows
+   gzread     count 179 failures 0 bytes 46803550 total 196966.0 us max 3724.1 us over 4 windows
+   gztell     count 179 failures 0 bytes 0 total 258.2 us max 58.1 us over 4 windows
+   inflate    count 773833 failures 0 bytes 0 total 12302761.7 us max 751.5 us over 40 windows
+   in load 0:startup_to_menu [5.7, 14.3]: inflate 166021 calls 2.573 s
+   in load 1:save_load [21.6, 60.8]: gzclose 1 calls 0.000 s, gzopen 1 calls 0.000 s, gzread 175 calls 0.188 s, gztell 175 calls 0.000 s, inflate 359874 calls 5.844 s
+   in load 2:sector_change [153.0, 158.8]: inflate 80072 calls 1.298 s
+   in load 3:exit [185.1, 192.0]: inflate 166017 calls 2.556 s
+
+-- loads: 60.40 s over 4 gaps
+   startup_to_menu  8.584 s ends frame 25 at 14.3 s (unknown -> menu)
+   save_load        39.167 s ends frame 620 at 60.8 s (menu -> scene)
+   sector_change    5.725 s ends frame 7658 at 158.8 s (scene -> scene)
+   exit             6.920 s ends frame 10160 at 192.0 s (scene -> None)

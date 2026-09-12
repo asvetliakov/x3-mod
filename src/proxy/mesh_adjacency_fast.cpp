@@ -3,6 +3,17 @@
 #include <cstdlib>
 #include <cstring>
 #include <initializer_list>
+#if defined(__SSE__)
+#include <xmmintrin.h>
+#endif
+// The normal arithmetic below reproduces D3DX operation by operation (products
+// and differences rounded exactly where D3DX stores a float); a fused
+// multiply-add would change the rounding, so contraction must be off in this
+// unit: GCC's ISO modes (-std=c++17, every build script) disable it, clang
+// needs the pragma (the host test also passes -ffp-contract=off).
+#if defined(__clang__)
+#pragma STDC FP_CONTRACT OFF
+#endif
 
 namespace x3m::mesh_adjacency_fast {
 namespace {
@@ -50,17 +61,61 @@ inline double power_of_two(int exponent) noexcept { // |exponent| < 1023
 inline int32_t floor_to_int(double q) noexcept { // |q| < 2^30 guaranteed by the caller
     int32_t i=int32_t(q);if(double(i)>q)--i;return i;
 }
+inline bool finite_bits(uint32_t c) noexcept { return (c&0x7f800000u)!=0x7f800000u; }
 struct Vec { float x,y,z; };
-inline Vec sub(const Vec& a,const Vec& b) noexcept { return {a.x-b.x,a.y-b.y,a.z-b.z}; }
-inline Vec cross(const Vec& a,const Vec& b) noexcept { return {a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x}; }
-inline float dot(const Vec& a,const Vec& b) noexcept { return a.x*b.x+a.y*b.y+a.z*b.z; }
-inline Vec normalize(const Vec& v) noexcept {
-    const float length=std::sqrt(dot(v,v));
-    if(length>0.f)return {v.x/length,v.y/length,v.z/length};
-    return {0.f,0.f,0.f};
+// D3DXVec3Normalize of the SSE dispatch table (d3dx9_37 FUN_00756732): the squared
+// length in single precision, vectors below 2^-46 become zero, one Newton step
+// on rsqrtss: r = ((3 - (r*len2)*r) * r) * 0.5, then the components times r.
+inline float rsqrt(float x) noexcept {
+#if defined(__SSE__)
+    return _mm_cvtss_f32(_mm_rsqrt_ss(_mm_set_ss(x)));
+#else
+    return float(1.0/std::sqrt(double(x)));
+#endif
 }
+inline Vec normalize_d3dx(const Vec& v) noexcept {
+    const float len2=(v.x*v.x+v.y*v.y)+v.z*v.z;
+    const uint32_t threshold_bits=0x28800000u;float threshold;std::memcpy(&threshold,&threshold_bits,sizeof threshold);
+    if(!(threshold<=len2))return {0.f,0.f,0.f};
+    float r=rsqrt(len2);
+    r=((3.f-((r*len2)*r))*r)*0.5f;
+    return {v.x*r,v.y*r,v.z*r};
+}
+// D3DX's face normal for the corner order (p1, p2, p3): the edge vectors p1-p2
+// and p1-p3 stored as floats, the cross product formed in extended precision
+// and stored as floats (exact in double for products of 24-bit values), normalized.
 inline Vec face_normal(const Vec* p,uint32_t v1,uint32_t v2,uint32_t v3) noexcept {
-    return normalize(cross(sub(p[v1],p[v2]),sub(p[v1],p[v3])));
+    const Vec& a=p[v1];const Vec& b=p[v2];const Vec& c=p[v3];
+    const float e1x=float(double(a.x)-double(b.x)),e1y=float(double(a.y)-double(b.y)),e1z=float(double(a.z)-double(b.z));
+    const float e2x=float(double(a.x)-double(c.x)),e2y=float(double(a.y)-double(c.y)),e2z=float(double(a.z)-double(c.z));
+    const Vec n={float(double(e1y)*double(e2z)-double(e1z)*double(e2y)),
+                 float(double(e1z)*double(e2x)-double(e1x)*double(e2z)),
+                 float(double(e1x)*double(e2y)-double(e1y)*double(e2x))};
+    return normalize_d3dx(n);
+}
+// The x87 dot product of two normals (z, x, y order) rounded to float for the comparison.
+inline float score(const Vec& n,const Vec& m) noexcept {
+    return float((double(n.z)*double(m.z)+double(n.x)*double(m.x))+double(n.y)*double(m.y));
+}
+// D3DX's vertex sort (FUN_0058c02c): a binary min-heap over the index array with
+// the comparisons `key[right] <= key[left]` (choose the right child) and
+// `key[element] < key[child]` (stop), then repeated extraction to the end, so
+// the array ends in descending key order with the heap's permutation among
+// equal keys. Le/Lt are those two comparisons.
+template<class Le,class Lt> void heapsort(uint32_t* a,uint32_t n,Le le,Lt lt) noexcept {
+    for(uint32_t i=0;i<n;++i)a[i]=i;
+    if(n<2)return;
+    auto sift=[&](uint32_t element,uint32_t pos,uint32_t child,uint32_t size) noexcept {
+        while(child<size){
+            uint32_t chosen=child;
+            if(child+1<size&&le(a[child+1],a[child]))chosen=child+1;
+            if(lt(element,a[chosen]))break;
+            a[pos]=a[chosen];pos=chosen;child=chosen*2+1;
+        }
+        a[pos]=element;
+    };
+    for(uint32_t i=(n>>1);i-->0;)sift(a[i],i,2*i+1,n);
+    for(uint32_t m=n;m-->0;){const uint32_t element=a[m];a[m]=a[0];sift(element,0,1,m);}
 }
 // A directed edge is identified by its id = face * 3 + point; its corners are
 // corners[face*3 + point], corners[face*3 + (point+1)%3] and the third corner,
@@ -77,18 +132,25 @@ const char* status_name(unsigned status) noexcept {
     static constexpr const char* names[]={"ok","input","index_range","non_finite","magnitude","epsilon_neighbour","allocation"};
     return status<status_count?names[status]:"unknown";
 }
+const char* rsqrt_implementation() noexcept {
+#if defined(__SSE__)
+    return "rsqrtss";
+#else
+    return "portable";
+#endif
+}
 void release_scratch() noexcept { std::free(arena.base);arena.base=nullptr;arena.capacity=0; }
 Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexcept {
     Report report;
     const uint32_t V=in.vertex_count,F=in.face_count;
-    if(!in.vertices||!in.indices||!adjacency||!V||!F||in.stride<12||in.position_offset>in.stride-12||
-       F>unused/3||!(in.epsilon>=0.f)||std::isinf(in.epsilon))return report; // Status::Input
+    if(!in.vertices||!in.indices||!adjacency||V<3||!F||in.stride<12||in.position_offset>in.stride-12||
+       F>unused/3||!(in.epsilon>=0.f)||std::isinf(in.epsilon))return report; // Status::Input (D3DX needs V/3 edge buckets)
     // The 4x squared-distance margin of the gate needs a normal float epsilon^2.
     if(in.epsilon>0.f&&!std::isnormal(in.epsilon*in.epsilon))return report;
     // Arena layout (bytes): persistent arrays, then the larger of the two phase
     // scratches (representative table; unquantized-gate cell hash).
     const uint64_t E=uint64_t(F)*3,vertex_slots=table_size(V),edge_slots=table_size(E);
-    const uint64_t persistent=padded(uint64_t(V)*sizeof(Vec))+padded(uint64_t(V)*4)+padded(E*4)+padded(F)+padded(E)+padded(E)+padded(E*4)+padded(edge_slots*sizeof(Slot));
+    const uint64_t persistent=padded(uint64_t(V)*sizeof(Vec))*(in.position_offset?2:1)+padded(uint64_t(V)*4)*5+padded(E*4)*4+padded(F)+padded(edge_slots*sizeof(Slot));
     const uint64_t phase_rep=padded(vertex_slots*4);
     const uint64_t phase_gate=padded(table_size(V)*4)+padded(uint64_t(V)*4)+padded(uint64_t(V)*12);
     const uint64_t total=persistent+(phase_rep>phase_gate?phase_rep:phase_gate);
@@ -99,36 +161,39 @@ Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexce
     }
     struct Retain { ~Retain(){if(arena.capacity>retained_scratch_limit)release_scratch();} } retain;
     Bump scratch{arena.base,arena.capacity};
-    auto* positions=scratch.array<Vec>(V);auto* rep=scratch.array<uint32_t>(V);
-    auto* corners=scratch.array<uint32_t>(size_t(E));auto* active=scratch.array<unsigned char>(F);auto* valid=scratch.array<unsigned char>(size_t(E));
-    auto* retired=scratch.array<unsigned char>(size_t(E));auto* next=scratch.array<uint32_t>(size_t(E));auto* slots=scratch.array<Slot>(size_t(edge_slots));
+    // D3DX reads the sweep key and the vertices of the normal score at byte 0 of
+    // each vertex, whatever element lives there; with the position first (the
+    // engine's layout) that is the position itself and the two arrays are one.
+    auto* positions=scratch.array<Vec>(V);auto* head=in.position_offset?scratch.array<Vec>(V):positions;auto* cls=scratch.array<uint32_t>(V);auto* rep=scratch.array<uint32_t>(V);
+    auto* order=scratch.array<uint32_t>(V);auto* class_next=scratch.array<uint32_t>(V);auto* corner_head=scratch.array<uint32_t>(V);
+    auto* raw=scratch.array<uint32_t>(size_t(E));auto* corner_next=scratch.array<uint32_t>(size_t(E));auto* corners=scratch.array<uint32_t>(size_t(E));auto* next=scratch.array<uint32_t>(size_t(E));
+    auto* active=scratch.array<unsigned char>(F);auto* slots=scratch.array<Slot>(size_t(edge_slots));
     const size_t persistent_mark=scratch.mark();
     if(scratch.overflow()){report.status=Status::Allocation;return report;}
     const auto* bytes=static_cast<const unsigned char*>(in.vertices);
     for(uint32_t v=0;v<V;++v){
         Key k;std::memcpy(&k,bytes+size_t(v)*in.stride+in.position_offset,sizeof k);
-        for(uint32_t c:{k.x,k.y,k.z})if((c&0x7f800000u)==0x7f800000u){report.status=Status::NonFinite;return report;}
-        k={normalize_zero(k.x),normalize_zero(k.y),normalize_zero(k.z)};
-        std::memcpy(&positions[v],&k,sizeof k); // the normalised bit patterns double as the hash key
+        Key h;std::memcpy(&h,bytes+size_t(v)*in.stride,sizeof h);
+        if(!finite_bits(k.x)||!finite_bits(k.y)||!finite_bits(k.z)||!finite_bits(h.x)||!finite_bits(h.y)||!finite_bits(h.z)){report.status=Status::NonFinite;return report;}
+        std::memcpy(&positions[v],&k,sizeof k);if(head!=positions)std::memcpy(&head[v],&h,sizeof h);
     }
-    auto key_of=[&](uint32_t v) noexcept { Key k;std::memcpy(&k,&positions[v],sizeof k);return k; };
-    // Exact-equality representatives: the first vertex with the same three bit patterns.
+    auto key_of=[&](uint32_t v) noexcept { Key k;std::memcpy(&k,&positions[v],sizeof k);return Key{normalize_zero(k.x),normalize_zero(k.y),normalize_zero(k.z)}; };
+    // Exact-equality classes: cls[v] is the first vertex with the same three bit patterns.
+    uint32_t classes=0;
     {
         auto* table=scratch.array<uint32_t>(size_t(vertex_slots));
         if(scratch.overflow()){report.status=Status::Allocation;return report;}
         std::memset(table,0xff,size_t(vertex_slots)*sizeof(uint32_t));
-        uint32_t representatives=0;
         for(uint32_t v=0;v<V;++v){
             const Key k=key_of(v);size_t slot=size_t(hash_key(k))&size_t(vertex_slots-1);
             for(;;){
                 const uint32_t occupant=table[slot];
-                if(occupant==unused){table[slot]=v;rep[v]=v;++representatives;break;}
+                if(occupant==unused){table[slot]=v;cls[v]=v;++classes;break;}
                 const Key o=key_of(occupant);
-                if(o.x==k.x&&o.y==k.y&&o.z==k.z){rep[v]=occupant;break;}
+                if(o.x==k.x&&o.y==k.y&&o.z==k.z){cls[v]=occupant;break;}
                 slot=(slot+1)&size_t(vertex_slots-1);
             }
         }
-        report.representatives=representatives;report.welded=V-representatives;
         scratch.rewind(persistent_mark);
     }
     // Equivalence gate: distinct positions must be further apart than 2*epsilon.
@@ -139,19 +204,19 @@ Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexce
         const double grid_inverse=power_of_two(-exponent); // exact scaling
         bool quantized=true;
         for(uint32_t v=0;v<V&&quantized;++v){
-            if(rep[v]!=v)continue;
+            if(cls[v]!=v)continue;
             for(float c:{positions[v].x,positions[v].y,positions[v].z})if(!is_integer(double(c)*grid_inverse)){quantized=false;break;}
         }
         report.quantized=quantized;
         if(!quantized){
             const double cell=4.0*double(in.epsilon),threshold=4.0*double(in.epsilon)*double(in.epsilon);
-            const size_t cells=size_t(table_size(report.representatives));
+            const size_t cells=size_t(table_size(classes));
             auto* heads=scratch.array<uint32_t>(cells);auto* chain=scratch.array<uint32_t>(V);auto* coords=scratch.array<int32_t>(size_t(V)*3);
             if(scratch.overflow()){report.status=Status::Allocation;return report;}
             std::memset(heads,0xff,cells*sizeof(uint32_t));
             constexpr double limit=1073741824.0; // 2^30: int32 cell coordinates with neighbour headroom
             for(uint32_t v=0;v<V;++v){
-                if(rep[v]!=v)continue;
+                if(cls[v]!=v)continue;
                 const double q[3]={double(positions[v].x)/cell,double(positions[v].y)/cell,double(positions[v].z)/cell};
                 for(double value:q)if(!(value>-limit&&value<limit)){report.status=Status::Magnitude;return report;}
                 for(unsigned i=0;i<3;++i)coords[size_t(v)*3+i]=floor_to_int(q[i]);
@@ -165,7 +230,7 @@ Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexce
                 }
             }
             for(uint32_t v=0;v<V;++v){
-                if(rep[v]!=v)continue;
+                if(cls[v]!=v)continue;
                 const int32_t cx=coords[size_t(v)*3],cy=coords[size_t(v)*3+1],cz=coords[size_t(v)*3+2];
                 for(int dx=-1;dx<=1;++dx)for(int dy=-1;dy<=1;++dy)for(int dz=-1;dz<=1;++dz){
                     const int32_t qx=cx+dx,qy=cy+dy,qz=cz+dz;
@@ -187,33 +252,77 @@ Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexce
             scratch.rewind(persistent_mark);
         }
     }
-    // Face corners as representatives; raw-index degeneracy is recorded first.
-    for(uint32_t f=0;f<F;++f){
-        uint32_t raw[3];
-        for(unsigned k=0;k<3;++k){
-            const size_t i=size_t(f)*3+k;uint32_t index;
-            if(in.indices_32bit)std::memcpy(&index,static_cast<const unsigned char*>(in.indices)+i*4,4);
-            else{uint16_t narrow;std::memcpy(&narrow,static_cast<const unsigned char*>(in.indices)+i*2,2);index=narrow;}
-            if(index>=V){report.status=Status::IndexRange;return report;}
-            raw[k]=index;corners[i]=rep[index];
+    // Raw indices and D3DX's per-vertex corner chains (head insertion), which the
+    // weld refusal walks: a vertex never welds to a representative when some
+    // face references both raw indices.
+    std::memset(corner_head,0xff,size_t(V)*sizeof(uint32_t));
+    for(uint32_t f=0;f<F;++f)for(unsigned k=0;k<3;++k){
+        const size_t i=size_t(f)*3+k;uint32_t index;
+        if(in.indices_32bit)std::memcpy(&index,static_cast<const unsigned char*>(in.indices)+i*4,4);
+        else{uint16_t narrow;std::memcpy(&narrow,static_cast<const unsigned char*>(in.indices)+i*2,2);index=narrow;}
+        if(index>=V){report.status=Status::IndexRange;return report;}
+        raw[i]=index;corner_next[i]=corner_head[index];corner_head[index]=uint32_t(i);
+    }
+    auto shares_face=[&](uint32_t v,uint32_t w) noexcept {
+        for(uint32_t c=corner_head[v];c!=unused;c=corner_next[c]){const uint32_t* face=raw+size_t(c/3)*3;if(face[0]==w||face[1]==w||face[2]==w)return true;}
+        return false;
+    };
+    // Point representatives.
+    std::memset(rep,0xff,size_t(V)*sizeof(uint32_t));
+    if(in.epsilon==0.f){
+        // D3DX hashes the exact position; among equal positions the bucket lists
+        // the representatives most recent first, and a vertex takes the first one
+        // that shares no face with it or becomes a new representative.
+        auto* chain_head=order;auto* chain_next=class_next; // reused: no sweep on this path
+        std::memset(chain_head,0xff,size_t(V)*sizeof(uint32_t));
+        for(uint32_t v=0;v<V;++v){
+            uint32_t r=chain_head[cls[v]];
+            for(;r!=unused;r=chain_next[r])if(!policy.weld_refusal||!shares_face(v,r))break;
+            if(r!=unused){rep[v]=r;continue;}
+            chain_next[v]=chain_head[cls[v]];chain_head[cls[v]]=v;rep[v]=v;
         }
-        const bool raw_degenerate=raw[0]==raw[1]||raw[1]==raw[2]||raw[0]==raw[2];
-        const uint32_t* c=corners+size_t(f)*3;
-        const bool rep_degenerate=!raw_degenerate&&(c[0]==c[1]||c[1]==c[2]||c[0]==c[2]);
-        report.degenerate_faces+=raw_degenerate;report.welded_degenerate_faces+=rep_degenerate;
-        active[f]=!(policy.skip_raw_degenerate&&raw_degenerate)&&!(policy.skip_rep_degenerate&&rep_degenerate);
-        // D3DX evidence (fixture cases degenerate-welded-*): of two corners
-        // sharing a representative, the one with the larger raw index is invalid
-        // (the representative itself, the smallest index of its class, stays valid).
-        for(unsigned k=0;k<3;++k){bool ok=true;
-            for(unsigned j=0;j<3;++j)if(j!=k&&c[j]==c[k]&&raw[j]<raw[k])ok=false;
-            valid[size_t(f)*3+k]=!policy.drop_welded_corners||ok;}
+    }else{
+        // D3DX sweeps the vertices in descending order of the byte-0 float with a
+        // window of keys within epsilon below the current one; under the gate the
+        // vertices that pass its distance test are exactly the class members, so
+        // each class is threaded in sweep order and walked from the representative.
+        if(policy.heap_order)heapsort(order,V,[&](uint32_t a,uint32_t b) noexcept {return head[a].x<=head[b].x;},[&](uint32_t a,uint32_t b) noexcept {return head[a].x<head[b].x;});
+        else heapsort(order,V,[&](uint32_t a,uint32_t b) noexcept {return head[a].x<head[b].x||(head[a].x==head[b].x&&a>=b);},[&](uint32_t a,uint32_t b) noexcept {return head[a].x<head[b].x||(head[a].x==head[b].x&&a>b);});
+        // Thread each class in sweep order: walking the order backwards and
+        // prepending makes class_next[v] the member that follows v; rep[] holds
+        // the class heads meanwhile and is reset afterwards.
+        std::memset(class_next,0xff,size_t(V)*sizeof(uint32_t));
+        for(uint32_t i=V;i-->0;){const uint32_t v=order[i],c=cls[v];class_next[v]=rep[c];rep[c]=v;}
+        std::memset(rep,0xff,size_t(V)*sizeof(uint32_t));
+        const double eps=double(in.epsilon);
+        for(uint32_t i=0;i<V;++i){
+            const uint32_t v=order[i];
+            if(rep[v]!=unused)continue;
+            rep[v]=v;
+            for(uint32_t w=class_next[v];w!=unused;w=class_next[w]){
+                if(eps<double(head[v].x)-double(head[w].x))break; // outside D3DX's key window (only possible when the key is not the position)
+                if(rep[w]!=unused)continue;
+                if(policy.weld_refusal&&shares_face(v,w)){++report.refused_welds;continue;}
+                rep[w]=v;
+            }
+        }
+    }
+    for(uint32_t v=0;v<V;++v)report.representatives+=rep[v]==v;
+    report.welded=V-report.representatives;
+    // Face corners as representatives; a face whose representatives repeat
+    // contributes no edge and receives no neighbour (raw repeats are counted too).
+    for(uint32_t f=0;f<F;++f){
+        const uint32_t* r=raw+size_t(f)*3;uint32_t* c=corners+size_t(f)*3;
+        for(unsigned k=0;k<3;++k)c[k]=rep[r[k]];
+        const bool raw_degenerate=r[0]==r[1]||r[1]==r[2]||r[0]==r[2];
+        const bool degenerate=c[0]==c[1]||c[1]==c[2]||c[0]==c[2];
+        report.degenerate_faces+=raw_degenerate;report.welded_degenerate_faces+=degenerate&&!raw_degenerate;
+        active[f]=!degenerate;
     }
     // Directed-edge table keyed by the exact (v1,v2) pair, one chain per key
     // (open addressing; a chain that empties keeps its anchor as a tombstone).
-    // The relative order inside a chain is what D3DX's hash chains expose; keying
-    // by the pair keeps a vertex shared by thousands of faces from a quadratic
-    // scan. Entries are never unlinked: a retired flag hides them from scans.
+    // D3DX chains by v1 modulo V/3 and filters on the pair, so the relative order
+    // of the matching entries is the same: most recent insertion first.
     std::memset(slots,0xff,size_t(edge_slots)*sizeof(Slot));
     const size_t edge_mask=size_t(edge_slots-1);
     auto edge_v1=[&](uint32_t id) noexcept { return corners[id]; };
@@ -228,62 +337,68 @@ Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexce
         if(policy.head_insertion||slots[s].head==unused){next[id]=slots[s].head;slots[s].head=id;}
         else{uint32_t tail=slots[s].head;while(next[tail]!=unused)tail=next[tail];next[tail]=id;next[id]=unused;}
     };
-    auto head_of=[&](uint32_t a,uint32_t b) noexcept { const size_t s=slot_of(a,b);return slots[s].anchor==unused?unused:slots[s].head; };
-    std::memset(retired,0,size_t(E));
-    // A face with a repeated raw index contributes no edge and pairs with
-    // nothing; both edges touching an invalid corner are skipped, so (0,1,4) with
-    // 4 welded to 0 keeps 0->1 only, (0,4,1) keeps 1->0 only, (4,5,1) keeps 1->4.
-    for(uint32_t f=0;f<F;++f){
-        if(!active[f])continue;
-        const unsigned char* v=valid+size_t(f)*3;
-        for(uint32_t k=0;k<3;++k){
-            if(!(v[k]&&v[(k+1)%3])){retired[size_t(f)*3+k]=1;++report.dropped_edges;continue;}
-            insert(f*3+k);
-        }
-    }
+    auto unlink=[&](size_t s,uint32_t pred,uint32_t id) noexcept { if(pred==unused)slots[s].head=next[id];else next[pred]=next[id]; };
+    auto relink=[&](size_t s,uint32_t pred,uint32_t id) noexcept { if(pred==unused){next[id]=slots[s].head;slots[s].head=id;}else{next[id]=next[pred];next[pred]=id;} };
+    auto remove=[&](uint32_t a,uint32_t b,uint32_t id) noexcept { // D3DX FUN_0058a8ff: the entry (a, b, face) leaves its chain
+        const size_t s=slot_of(a,b);if(slots[s].anchor==unused)return;
+        uint32_t pred=unused;for(uint32_t cur=slots[s].head;cur!=unused;pred=cur,cur=next[cur])if(cur==id){unlink(s,pred,cur);return;}
+    };
+    for(uint32_t f=0;f<F;++f){if(!active[f])continue;for(uint32_t k=0;k<3;++k)insert(f*3+k);}
     for(size_t i=0;i<size_t(E);++i)adjacency[i]=unused;
     // Face normals are needed only where a chain offers several candidates; they
     // are then computed once per edge (from the edge's own corner order, as D3DX).
     NormalCache cache;
     auto normal_of=[&](uint32_t id) noexcept -> const Vec& {
-        if(!cache.ready[id]){cache.normals[id]=face_normal(positions,edge_v1(id),edge_v2(id),edge_other(id));cache.ready[id]=1;}
+        if(!cache.ready[id]){cache.normals[id]=face_normal(head,edge_v1(id),edge_v2(id),edge_other(id));cache.ready[id]=1;}
         return cache.normals[id];
     };
-    for(uint32_t f=0;f<F;++f)for(uint32_t k=0;k<3;++k){
-        const uint32_t own=f*3+k;
-        if(adjacency[own]!=unused)continue;
-        if(!active[f]||retired[own]){++report.unmatched;continue;}
-        const uint32_t vb=corners[own],va=edge_v2(own);
-        if(va==vb){++report.unmatched;continue;}
-        uint32_t found=unused;unsigned candidates=0;float best=-2.f;
-        for(uint32_t cur=head_of(va,vb);cur!=unused;cur=next[cur]){
-            if(retired[cur])continue;
-            ++candidates;
-            if(found==unused){found=cur;continue;}
-            if(!policy.normal_selection)continue;
-            if(!cache.normals){
-                cache.normals=static_cast<Vec*>(std::malloc(size_t(E)*sizeof(Vec)));cache.ready=static_cast<unsigned char*>(std::malloc(size_t(E)));
-                if(!cache.normals||!cache.ready){report.status=Status::Allocation;return report;}
-                std::memset(cache.ready,0,size_t(E));
+    for(uint32_t f=0;f<F;++f){
+        if(!active[f])continue;
+        uint32_t* row=adjacency+size_t(f)*3;
+        for(uint32_t k=0;k<3;++k){
+            const uint32_t own=f*3+k;
+            if(row[k]!=unused)continue;
+            const uint32_t vb=corners[own],va=edge_v2(own); // the reverse edge (va, vb) is looked up
+            const size_t s=slot_of(va,vb);
+            uint32_t found=unused,found_pred=unused;
+            if(slots[s].anchor!=unused){
+                unsigned candidates=0;float best=0.f;bool scored=false;uint32_t pred=unused;
+                for(uint32_t cur=slots[s].head;cur!=unused;pred=cur,cur=next[cur]){
+                    ++candidates;
+                    if(found==unused){found=cur;found_pred=pred;continue;}
+                    if(!policy.normal_selection)continue;
+                    if(!cache.normals){
+                        cache.normals=static_cast<Vec*>(std::malloc(size_t(E)*sizeof(Vec)));cache.ready=static_cast<unsigned char*>(std::malloc(size_t(E)));
+                        if(!cache.normals||!cache.ready){report.status=Status::Allocation;return report;}
+                        std::memset(cache.ready,0,size_t(E));
+                    }
+                    if(!scored){best=score(normal_of(found),normal_of(own));scored=true;}
+                    const float candidate=score(normal_of(cur),normal_of(own));
+                    if(best<candidate){best=candidate;found=cur;found_pred=pred;++report.normal_selected;}
+                }
+                if(candidates>1)++report.multi_candidates;
             }
-            if(candidates==2)best=dot(normal_of(found),normal_of(own));
-            const float diff=dot(normal_of(cur),normal_of(own));
-            if(diff>best){best=diff;found=cur;++report.normal_selected;}
+            if(found==unused){
+                if(policy.retire_own_entry)remove(vb,va,own);
+                continue;
+            }
+            // D3DX: the selected entry is unlinked inside the lookup and the querying
+            // edge's own entry is removed after a successful lookup; the
+            // single-adjacency check then compares the earlier slots of this face.
+            unlink(s,found_pred,found);
+            remove(vb,va,own);
+            const uint32_t g=found/3;bool repeated=false;
+            for(uint32_t j=0;j<(policy.later_slot_check?3u:k);++j)if(j!=k&&row[j]==g)repeated=true;
+            if(repeated){
+                ++report.repeated_neighbours;
+                if(!policy.unlink_refused)relink(s,found_pred,found);
+                continue;
+            }
+            row[k]=g;
+            adjacency[found]=f; // the found face's slot is its corner whose representative starts the reverse edge: the entry's own point
         }
-        if(candidates>1)++report.multi_candidates;
-        // The querying face's own entry is retired once its point is processed:
-        // every later face's reverse edge was already in the table and searched.
-        retired[own]=1;
-        if(found==unused){++report.unmatched;continue;}
-        // D3DX evidence (fixture cases duplicate-faces, double-adjacency-order):
-        // two faces never become adjacent across a second edge; the selected
-        // candidate is refused after selection, and its entry stays for others.
-        const uint32_t* row=adjacency+size_t(f)*3;const uint32_t g=found/3;
-        if(policy.single_adjacency&&(row[0]==g||row[1]==g||row[2]==g)){++report.repeated_neighbours;++report.unmatched;continue;}
-        retired[found]=1;
-        adjacency[own]=g;
-        adjacency[found]=f;
     }
+    for(size_t i=0;i<size_t(E);++i)report.unmatched+=adjacency[i]==unused;
     report.status=Status::Ok;return report;
 }
 }
