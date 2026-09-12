@@ -45,6 +45,20 @@ void report();
 // cleanup fault requires stopping application mesh work/restarting; teardown is
 // not repair, and restored/unobserved native methods are outside fault coverage.
 void shutdown();
+// X3M_MESH_ADJACENCY_DUMP=1 (verify mode): every mismatching mesh, up to a bound,
+// is written as <capture directory>\mesh-adjacency-<n>.bin for offline replay
+// (tools/analysis/replay_mesh_adjacency.py; fixture `replay` mode). Layout, all
+// little-endian: AdjacencyDumpHeader, then declaration_count D3DVERTEXELEMENT9
+// (8 bytes each, without the end marker), the vertex bytes (vertices * stride),
+// the index bytes (faces * 3 * 2 or 4), the native adjacency and the module
+// adjacency (faces * 3 DWORDs each). Game data: the files stay untracked.
+struct AdjacencyDumpHeader {
+    char magic[8];                                 // "X3MADJ01"
+    uint32_t header_size,faces,vertices,stride,position_offset,options,declaration_count,epsilon_bits;
+    uint32_t x87_control,mxcsr,mismatches,first,reserved[2];
+};
+static_assert(sizeof(AdjacencyDumpHeader)==64);
+bool adjacency_write_dump(const wchar_t* path,ID3DXMesh* mesh,FLOAT epsilon,const DWORD* native,const DWORD* module,uint64_t mismatches,DWORD first,DWORD x87_control,DWORD mxcsr);
 #ifdef X3M_LOADING_TRACE_FIXTURE
 // Compile-only fixture seam: these symbols do not exist in the production DLL.
 bool fixture_initialize(HMODULE target);

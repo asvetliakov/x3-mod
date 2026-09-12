@@ -41,6 +41,7 @@ def main():
     parser.add_argument('--object-lifetime', action='store_true', help='Observe verified render-registry lifetimes (requires --object-trace --ownership)')
     parser.add_argument('--mesh-cache', action='store_true', help='Enable experimental verified native adjacency reuse (requires --telemetry)')
     parser.add_argument('--mesh-adjacency', choices=['native', 'verify', 'fast'], default='native', help='ID3DXMesh::GenerateAdjacency service (X3M_MESH_ADJACENCY; requires --telemetry): native forwards; verify runs D3DX, recomputes by exact position equality and logs any difference; fast answers from the exact-equality computation and falls through to D3DX on any qualification failure (docs/verification/mesh-adjacency-fast.md)')
+    parser.add_argument('--mesh-adjacency-dump', action='store_true', help='With --mesh-adjacency verify: write every mismatching mesh (bounded) as x3-modern-captures/mesh-adjacency-<n>.bin for tools/analysis/replay_mesh_adjacency.py (X3M_MESH_ADJACENCY_DUMP=1; game data, never committed)')
     parser.add_argument('--gz-buffer', action='store_true', help='Read-ahead buffer in front of the zlib gz imports of the savegame decoder (X3M_GZ_BUFFER=1; no --telemetry needed): the ~14 M three-byte gzread calls of a load are served from 256 KB chunks with zlib 1.2.3 semantics kept; one gz_buffer_file line per file in the session log (docs/verification/gz-buffer.md)')
     parser.add_argument('--gz-buffer-kb', type=int, default=256, help='Chunk size in KB of --gz-buffer (X3M_GZ_BUFFER_KB; 1..65536, default 256)')
     parser.add_argument('--profile', action='store_true', help='Run the in-process sampling profiler (X3M_PROFILE=1): one sampler thread, periodic profile_* reports in the session log; see docs/verification/sampling-profiler.md')
@@ -81,6 +82,8 @@ def main():
         parser.error('--mesh-cache requires --telemetry.')
     if args.mesh_adjacency != 'native' and not args.telemetry:
         parser.error('--mesh-adjacency verify|fast requires --telemetry.')
+    if args.mesh_adjacency_dump and args.mesh_adjacency != 'verify':
+        parser.error('--mesh-adjacency-dump requires --mesh-adjacency verify.')
     if args.finite_positions and not (args.ownership and args.telemetry):
         parser.error('--finite-positions requires --ownership and --telemetry.')
     if args.motion_capture and not (args.scene_depth_capture and args.finite_positions and args.object_lifetime):
@@ -183,6 +186,7 @@ def main():
         env['X3M_OBJECT_LIFETIME'] = '1' if args.object_lifetime else '0'
         env['X3M_MESH_CACHE'] = '1' if args.mesh_cache else '0'
         env['X3M_MESH_ADJACENCY'] = args.mesh_adjacency
+        env['X3M_MESH_ADJACENCY_DUMP'] = '1' if args.mesh_adjacency_dump else '0'
         env['X3M_FINITE_POSITIONS'] = '1' if args.finite_positions else '0'
         env['X3M_MOTION_CAPTURE'] = '1' if args.motion_capture else '0'
         env['X3M_MOTION_OUTPUT'] = '1' if args.motion_output else '0'

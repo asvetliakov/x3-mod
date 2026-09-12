@@ -189,6 +189,11 @@ void adjacency_note_fp(const ComputationalState& state){
     unsigned empty=0;if(adjacency_counters.fp_publication.compare_exchange_strong(empty,1,std::memory_order_acquire)){adjacency_counters.first_fp=state;adjacency_counters.fp_publication.store(2,std::memory_order_release);}
 }
 constexpr uint64_t adjacency_mismatch_line_limit=64;
+// X3M_MESH_ADJACENCY_DUMP=1: verify mode writes each mismatching mesh (bounded)
+// into the capture folder for offline replay (loading_trace.h, format).
+std::atomic<bool> adjacency_dump_requested{false};
+std::atomic<uint64_t> adjacency_dump_index{0};
+constexpr uint64_t adjacency_dump_limit=256;
 thread_local AdjacencyFn adjacency_thread_original=nullptr;
 struct AdjacencyCompute {
     bool computed=false,fault=false;HRESULT fault_hr=S_OK;AdjacencyFallback fallback=AdjacencyFallback::Input;
@@ -210,9 +215,21 @@ AdjacencyCompute adjacency_compute(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output) 
     DWORD position_offset=0;bool position_found=false;
     for(unsigned i=0;i<MAX_FVF_DECL_SIZE&&declaration[i].Stream!=0xff;++i){
         const auto& e=declaration[i];
-        if(e.Stream==0&&e.Usage==D3DDECLUSAGE_POSITION&&e.UsageIndex==0&&e.Type==D3DDECLTYPE_FLOAT3&&!position_found){position_offset=e.Offset;position_found=true;}
+        if(e.Stream==0&&e.Usage==D3DDECLUSAGE_POSITION&&e.UsageIndex==0&&e.Type==D3DDECLTYPE_FLOAT3){position_offset=e.Offset;position_found=true;} // D3DX keeps the last such element
     }
     if(!position_found||position_offset>stride-12)return fall(AdjacencyFallback::Declaration);
+    // D3DX walks the faces of the attribute table's ranges when a table exists;
+    // the module walks all faces in order, which is the same only for a table
+    // covering the faces contiguously in order (none on the engine's fresh meshes).
+    DWORD attribute_count=0;
+    if(FAILED(mesh->GetAttributeTable(nullptr,&attribute_count)))return fall(AdjacencyFallback::Declaration);
+    if(attribute_count){
+        D3DXATTRIBUTERANGE ranges[16]{};
+        if(attribute_count>16||FAILED(mesh->GetAttributeTable(ranges,&attribute_count)))return fall(AdjacencyFallback::Declaration);
+        DWORD next_face=0;
+        for(DWORD i=0;i<attribute_count;++i){if(ranges[i].FaceStart!=next_face)return fall(AdjacencyFallback::Declaration);next_face+=ranges[i].FaceCount;}
+        if(next_face!=faces)return fall(AdjacencyFallback::Declaration);
+    }
     const uint64_t vb_bytes=uint64_t(vertices)*stride,ib_bytes=uint64_t(faces)*3*((options&D3DXMESH_32BIT)?4:2),value_bytes=uint64_t(faces)*3*sizeof(DWORD);
     if(vb_bytes>0x7fffffffu||ib_bytes>0x7fffffffu||value_bytes>0x7fffffffu||uint64_t(reinterpret_cast<uintptr_t>(output))+value_bytes>(uint64_t(1)<<32))return fall(AdjacencyFallback::Size);
     void* vertex_data=nullptr;void* index_data=nullptr;
@@ -268,6 +285,56 @@ HRESULT WINAPI adjacency_fast_service(ID3DXMesh* mesh,FLOAT epsilon,DWORD* adjac
     if(r.computed)return S_OK;
     return original?original(mesh,epsilon,adjacency):E_POINTER;
 }
+}
+// The dump folder is the capture folder next to this module (capture.cpp's
+// initialize_log creates the same directory); resolved here so that the
+// fixtures, which do not link capture.cpp, share the writer.
+static bool adjacency_dump_path(wchar_t* path,size_t capacity,uint64_t index){
+    HMODULE self=nullptr;
+    if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCWSTR>(&adjacency_dump_path),&self))return false;
+    wchar_t module[32768]{};const DWORD length=GetModuleFileNameW(self,module,32768);
+    if(!length||length>=32768)return false;
+    size_t cut=length;while(cut&&module[cut-1]!=L'\\'&&module[cut-1]!=L'/')--cut;
+    module[cut]=0;
+    const int written=_snwprintf(path,capacity,L"%sx3-modern-captures",module);
+    if(written<=0||size_t(written)>=capacity)return false;
+    CreateDirectoryW(path,nullptr);
+    const int full=_snwprintf(path,capacity,L"%sx3-modern-captures\\mesh-adjacency-%llu.bin",module,index);
+    return full>0&&size_t(full)<capacity;
+}
+bool adjacency_write_dump(const wchar_t* path,ID3DXMesh* mesh,FLOAT epsilon,const DWORD* native,const DWORD* module,uint64_t mismatches,DWORD first,DWORD x87_control,DWORD mxcsr){
+    if(!path||!mesh||!native||!module)return false;
+    const DWORD options=mesh->GetOptions(),vertices=mesh->GetNumVertices(),faces=mesh->GetNumFaces(),stride=mesh->GetNumBytesPerVertex();
+    if(!vertices||!faces||stride<12)return false;
+    D3DVERTEXELEMENT9 declaration[MAX_FVF_DECL_SIZE]{};
+    if(FAILED(mesh->GetDeclaration(declaration)))return false;
+    AdjacencyDumpHeader header{};std::memcpy(header.magic,"X3MADJ01",8);
+    header.header_size=sizeof header;header.faces=faces;header.vertices=vertices;header.stride=stride;header.options=options;
+    bool position_found=false;
+    for(unsigned i=0;i<MAX_FVF_DECL_SIZE&&declaration[i].Stream!=0xff;++i){
+        const auto& e=declaration[i];++header.declaration_count;
+        if(e.Stream==0&&e.Usage==D3DDECLUSAGE_POSITION&&e.UsageIndex==0&&e.Type==D3DDECLTYPE_FLOAT3){header.position_offset=e.Offset;position_found=true;} // D3DX keeps the last such element
+    }
+    if(!position_found)return false;
+    static_assert(sizeof(D3DVERTEXELEMENT9)==8);
+    std::memcpy(&header.epsilon_bits,&epsilon,sizeof header.epsilon_bits);header.x87_control=x87_control;header.mxcsr=mxcsr;
+    header.mismatches=mismatches>0xffffffffu?0xffffffffu:DWORD(mismatches);header.first=first;
+    const uint64_t vb_bytes=uint64_t(vertices)*stride,ib_bytes=uint64_t(faces)*3*((options&D3DXMESH_32BIT)?4:2),adjacency_bytes=uint64_t(faces)*3*sizeof(DWORD);
+    if(vb_bytes>0x7fffffffu||ib_bytes>0x7fffffffu||adjacency_bytes>0x7fffffffu)return false;
+    void* vertex_data=nullptr;void* index_data=nullptr;
+    if(FAILED(mesh->LockVertexBuffer(D3DLOCK_READONLY,&vertex_data))||!vertex_data)return false;
+    if(FAILED(mesh->LockIndexBuffer(D3DLOCK_READONLY,&index_data))||!index_data){mesh->UnlockVertexBuffer();return false;}
+    bool written=false;
+    HANDLE file=CreateFileW(path,GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+    if(file!=INVALID_HANDLE_VALUE){
+        auto put=[&](const void* data,uint64_t bytes){DWORD done=0;return WriteFile(file,data,DWORD(bytes),&done,nullptr)&&done==DWORD(bytes);};
+        written=put(&header,sizeof header)&&put(declaration,uint64_t(header.declaration_count)*sizeof(D3DVERTEXELEMENT9))&&put(vertex_data,vb_bytes)&&put(index_data,ib_bytes)&&put(native,adjacency_bytes)&&put(module,adjacency_bytes);
+        CloseHandle(file);
+    }
+    mesh->UnlockIndexBuffer();mesh->UnlockVertexBuffer();
+    return written;
+}
+namespace {
 HRESULT WINAPI adjacency_verify_service(ID3DXMesh* mesh,FLOAT epsilon,DWORD* adjacency){
     const AdjacencyFn original=adjacency_thread_original;
     if(!original)return E_POINTER;
@@ -291,8 +358,16 @@ HRESULT WINAPI adjacency_verify_service(ID3DXMesh* mesh,FLOAT epsilon,DWORD* adj
                 adjacency_counters.verify_mismatched.fetch_add(1,std::memory_order_relaxed);
                 adjacency_counters.verify_mismatch_entries.fetch_add(mismatches,std::memory_order_relaxed);
                 if(adjacency_counters.mismatch_lines.fetch_add(1,std::memory_order_relaxed)<adjacency_mismatch_line_limit)
-                    log("mesh_adjacency verify faces=%lu vertices=%lu equal=0 mismatches=%llu first=%lu native=%08lx fast=%08lx native_us=%.3f fast_us=%.3f quantized=%u welded=%lu multi_candidates=%lu normal_selected=%lu degenerate_faces=%lu",
-                        faces,r.vertices,mismatches,DWORD(first),adjacency[first],scratch[first],double(native_ticks)*1e6/clock_frequency,double(r.ticks)*1e6/clock_frequency,unsigned(r.report.quantized),DWORD(r.report.welded),DWORD(r.report.multi_candidates),DWORD(r.report.normal_selected),DWORD(r.report.degenerate_faces));
+                    log("mesh_adjacency verify faces=%lu vertices=%lu equal=0 mismatches=%llu first=%lu native=%08lx fast=%08lx native_us=%.3f fast_us=%.3f quantized=%u welded=%lu multi_candidates=%lu normal_selected=%lu degenerate_faces=%lu welded_degenerate_faces=%lu refused_welds=%lu repeated_neighbours=%lu",
+                        faces,r.vertices,mismatches,DWORD(first),adjacency[first],scratch[first],double(native_ticks)*1e6/clock_frequency,double(r.ticks)*1e6/clock_frequency,unsigned(r.report.quantized),DWORD(r.report.welded),DWORD(r.report.multi_candidates),DWORD(r.report.normal_selected),DWORD(r.report.degenerate_faces),DWORD(r.report.welded_degenerate_faces),DWORD(r.report.refused_welds),DWORD(r.report.repeated_neighbours));
+                if(adjacency_dump_requested.load(std::memory_order_relaxed)){
+                    const uint64_t index=adjacency_dump_index.fetch_add(1,std::memory_order_relaxed);
+                    if(index<adjacency_dump_limit){
+                        wchar_t path[32768+64]{};
+                        const bool written=adjacency_dump_path(path,32768+64,index)&&adjacency_write_dump(path,mesh,epsilon,adjacency,scratch,mismatches,DWORD(first),fp.x87.control,fp.mxcsr);
+                        log("mesh_adjacency_dump index=%llu faces=%lu vertices=%lu written=%u path=mesh-adjacency-%llu.bin",index,faces,r.vertices,unsigned(written),index);
+                    }
+                }
             }
         }
         HeapFree(GetProcessHeap(),0,scratch);
@@ -1018,7 +1093,8 @@ bool install(HMODULE target) {
     AdjacencyMode requested_mode=AdjacencyMode::Native;
     if(adjacency_length&&adjacency_length<16){if(!lstrcmpiW(adjacency_setting,L"fast"))requested_mode=AdjacencyMode::Fast;else if(!lstrcmpiW(adjacency_setting,L"verify"))requested_mode=AdjacencyMode::Verify;}
     adjacency_mode.store(requested_mode,std::memory_order_release);
-    log("mesh_adjacency mode=%s scope=hook_service equivalence=exact_position_equality gate=public_systemmem_readonly+declaration_float3 order=cache_lookup,compute,cache_store native_fallback=1",adjacency_mode_name(requested_mode));
+    wchar_t dump_setting[8]{};adjacency_dump_requested.store(GetEnvironmentVariableW(L"X3M_MESH_ADJACENCY_DUMP",dump_setting,8)==1&&dump_setting[0]==L'1',std::memory_order_relaxed);
+    log("mesh_adjacency mode=%s scope=hook_service equivalence=d3dx_rules+exact_position_equality gate=public_systemmem_readonly+declaration_float3+no_attribute_table order=cache_lookup,compute,cache_store native_fallback=1 dump=%u rsqrt=%s",adjacency_mode_name(requested_mode),unsigned(adjacency_dump_requested.load(std::memory_order_relaxed)),adjacency_fast::rsqrt_implementation());
     clock_frequency=frequency.QuadPart;
     mesh_observation_enabled.store(true,std::memory_order_release);
     for(auto& hook:hooks) {

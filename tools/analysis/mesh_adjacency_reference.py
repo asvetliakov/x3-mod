@@ -3,13 +3,18 @@
 
 Pure Python, float32 arithmetic emulated per operation, so the host driver of the
 C++ module can be cross-checked on random meshes (verification/analysis/
-test_mesh_adjacency_fast.py). The algorithm and its D3DX-equivalence argument are
-documented in docs/verification/mesh-adjacency-fast.md.
+test_mesh_adjacency_fast.py). The rules are those of d3dx9_37's
+ID3DXMesh::GenerateAdjacency as decompiled in
+docs/reverse-engineering/d3dx-generate-adjacency.md; the module's equivalence
+argument is in docs/verification/mesh-adjacency-fast.md. This port keeps the
+literal D3DX sweep (window over the sorted keys) rather than the module's
+equal-position classes, so the two are independent implementations of the rule.
 """
 import math
 import struct
 
 UNUSED = 0xFFFFFFFF
+NORMALIZE_THRESHOLD = 2.0 ** -46  # D3DXVec3Normalize (SSE table): shorter vectors become zero
 
 
 def f32(x):
@@ -28,71 +33,116 @@ def normalize_zero(bits):
     return 0 if bits == 0x80000000 else bits
 
 
-def _sub(a, b):
-    return tuple(f32(a[i] - b[i]) for i in range(3))
+def heapsort_order(keys):
+    """D3DX's vertex sort: an in-place binary min-heap sort over vertex indices keyed
+    by the float at byte 0 of every vertex; the output is in descending key order and
+    the order among equal keys is the heap's permutation, not the index order."""
+    n = len(keys)
+    a = list(range(n))
+    if n <= 1:
+        return a
+
+    def sift(element, pos, child, size):
+        while child < size:
+            chosen = child
+            if child + 1 < size and keys[a[child + 1]] <= keys[a[child]]:
+                chosen = child + 1
+            if keys[element] < keys[a[chosen]]:
+                break
+            a[pos] = a[chosen]
+            pos = chosen
+            child = chosen * 2 + 1
+        a[pos] = element
+
+    for i in range((n >> 1) - 1, -1, -1):
+        sift(a[i], i, 2 * i + 1, n)
+    for m in range(n - 1, -1, -1):
+        element = a[m]
+        a[m] = a[0]
+        sift(element, 0, 1, m)
+    return a
 
 
-def _cross(a, b):
-    return (f32(f32(a[1] * b[2]) - f32(a[2] * b[1])),
-            f32(f32(a[2] * b[0]) - f32(a[0] * b[2])),
-            f32(f32(a[0] * b[1]) - f32(a[1] * b[0])))
+def rsqrt_portable(x):
+    """Stands in for rsqrtss on the host: the correctly rounded float 1/sqrt(x).
+    The x86 production build uses the instruction itself; both feed the same
+    Newton step, so the results agree to about one ulp of the normal."""
+    return f32(1.0 / math.sqrt(x))
 
 
-def _dot(a, b):
-    return f32(f32(f32(a[0] * b[0]) + f32(a[1] * b[1])) + f32(a[2] * b[2]))
+def _normalize(v, rsqrt=rsqrt_portable):
+    x, y, z = v
+    length2 = f32(f32(f32(x * x) + f32(y * y)) + f32(z * z))
+    if length2 < NORMALIZE_THRESHOLD:
+        return (0.0, 0.0, 0.0)
+    r = rsqrt(length2)
+    r = f32(f32(f32(3.0 - f32(f32(r * length2) * r)) * r) * 0.5)
+    return (f32(x * r), f32(y * r), f32(z * r))
 
 
-def _normalize(v):
-    length = f32(math.sqrt(_dot(v, v)))
-    if length > 0.0:
-        return tuple(f32(c / length) for c in v)
-    return (0.0, 0.0, 0.0)
+def _face_normal(p, v1, v2, v3, rsqrt=rsqrt_portable):
+    """D3DX's face normal for the corner order (v1, v2, v3): cross(p1 - p2, p1 - p3),
+    edge vectors rounded to float, the cross product formed in extended precision
+    and rounded to float per component, then D3DXVec3Normalize."""
+    e1 = tuple(f32(p[v1][i] - p[v2][i]) for i in range(3))
+    e2 = tuple(f32(p[v1][i] - p[v3][i]) for i in range(3))
+    n = (f32(e1[1] * e2[2] - e1[2] * e2[1]), f32(e1[2] * e2[0] - e1[0] * e2[2]), f32(e1[0] * e2[1] - e1[1] * e2[0]))
+    return _normalize(n, rsqrt)
 
 
-def _face_normal(p, v1, v2, v3):
-    return _normalize(_cross(_sub(p[v1], p[v2]), _sub(p[v1], p[v3])))
+def _score(n, m):
+    """The x87 dot product (z, x, y order) rounded to float before the comparison."""
+    return f32((n[2] * m[2] + n[0] * m[0]) + n[1] * m[1])
 
 
-def generate(position_bits, faces, epsilon, head_insertion=True, normal_selection=True,
-             skip_raw_degenerate=True, skip_rep_degenerate=False, drop_welded_corners=True, single_adjacency=True):
-    """position_bits: list of (xbits, ybits, zbits); faces: list of (i0, i1, i2).
+def generate(position_bits, faces, epsilon, head_bits=None, head_insertion=True, normal_selection=True,
+             weld_refusal=True, heap_order=True, retire_own_entry=False, unlink_refused=True, later_slot_check=False,
+             rsqrt=rsqrt_portable):
+    """position_bits: list of (xbits, ybits, zbits); faces: list of (i0, i1, i2);
+    head_bits: the three float bit patterns at byte 0 of every vertex, which D3DX
+    reads for the sweep key (the first) and for the normals of the candidate
+    selection (all three); the position itself when it is the first element,
+    which is the default.
 
     Returns (status, report, adjacency); adjacency is None unless status == 'ok'.
+    The keyword policies exist for the fixture and the tests: the defaults are
+    d3dx9_37's rules, the alternatives are distinguishable and wrong.
     """
-    report = dict(representatives=0, welded=0, quantized=False, degenerate_faces=0, welded_degenerate_faces=0, dropped_edges=0,
+    report = dict(representatives=0, welded=0, quantized=False, degenerate_faces=0, welded_degenerate_faces=0, refused_welds=0,
                   multi_candidates=0, normal_selected=0, repeated_neighbours=0, unmatched=0)
     V, F = len(position_bits), len(faces)
     if not V or not F or not (epsilon >= 0.0) or math.isinf(epsilon):
         return 'input', report, None
+    epsilon = f32(epsilon)  # D3DX receives a FLOAT
+    if V < 3:
+        return 'input', report, None  # D3DX sizes its edge table V/3
     if epsilon > 0.0:
         sq = f32(epsilon * epsilon)
         if sq == 0.0 or sq < 1.1754943508222875e-38:
             return 'input', report, None
-    keys, positions = [], []
-    for k in position_bits:
-        for c in k:
+    heads_bits = list(head_bits) if head_bits is not None else position_bits
+    positions, heads = [], []
+    for k, h in zip(position_bits, heads_bits):
+        for c in (k[0], k[1], k[2], h[0], h[1], h[2]):
             if (c & 0x7F800000) == 0x7F800000:
                 return 'non_finite', report, None
-        key = tuple(normalize_zero(c) for c in k)
-        keys.append(key)
-        positions.append(tuple(bits_to_float(c) for c in key))
-    first = {}
-    rep = []
-    for v, key in enumerate(keys):
-        rep.append(first.setdefault(key, v))
-    reps = sorted(set(rep))
-    report['representatives'] = len(reps)
-    report['welded'] = V - len(reps)
+        positions.append(tuple(bits_to_float(c) for c in k))
+        heads.append(tuple(bits_to_float(c) for c in h))
+    keys = [h[0] for h in heads]
+    exact = {}
+    for v, k in enumerate(position_bits):
+        exact.setdefault(tuple(normalize_zero(c) for c in k), []).append(v)
     if epsilon > 0.0:
         _, exponent = math.frexp(2.0 * epsilon)
         grid_inverse = math.ldexp(1.0, -exponent)
-        quantized = all(float(c) * grid_inverse == math.floor(float(c) * grid_inverse) for r in reps for c in positions[r])
+        quantized = all(float(c) * grid_inverse == math.floor(float(c) * grid_inverse) for members in exact.values() for c in positions[members[0]])
         report['quantized'] = quantized
         if not quantized:
             cell = 4.0 * epsilon
             threshold = 4.0 * epsilon * epsilon
             cells = {}
-            for r in reps:
+            for members in exact.values():
+                r = members[0]
                 coords = tuple(math.floor(positions[r][i] / cell) for i in range(3))
                 if any(abs(c) >= 1073741824.0 for c in coords):
                     return 'magnitude', report, None
@@ -108,84 +158,116 @@ def generate(position_bits, faces, epsilon, head_insertion=True, normal_selectio
                                     d = sum((positions[o][i] - positions[r][i]) ** 2 for i in range(3))
                                     if d <= threshold:
                                         return 'epsilon_neighbour', report, None
-    corners = []
     for face in faces:
         for index in face:
             if index >= V:
                 return 'index_range', report, None
-            corners.append(rep[index])
-    active, dropped = [], [False] * (F * 3)
+    faces_of = [[] for _ in range(V)]  # D3DX's per-vertex corner chains, reduced to the face sets they expose
     for f, face in enumerate(faces):
-        raw_degenerate = len(set(face)) < 3
-        rep_degenerate = not raw_degenerate and len({corners[f * 3], corners[f * 3 + 1], corners[f * 3 + 2]}) < 3
-        report['degenerate_faces'] += raw_degenerate
-        report['welded_degenerate_faces'] += rep_degenerate
-        active.append(not (skip_raw_degenerate and raw_degenerate) and not (skip_rep_degenerate and rep_degenerate))
-    edges = []  # v1, v2, other, face, point
-    buckets = {}
-    for f in range(F):
-        c, raw = corners[f * 3:f * 3 + 3], faces[f]
-        valid = [not drop_welded_corners or all(not (j != k and c[j] == c[k] and raw[j] < raw[k]) for j in range(3)) for k in range(3)]
-        for k in range(3):
-            va, vb, other = c[k], c[(k + 1) % 3], c[(k + 2) % 3]
-            edges.append((va, vb, other, f, k))
-            if not active[f]:
-                continue
-            if not (valid[k] and valid[(k + 1) % 3]):
-                dropped[f * 3 + k] = True
-                report['dropped_edges'] += 1
-                continue
-            bucket = buckets.setdefault(va, [])
-            if head_insertion:
-                bucket.insert(0, f * 3 + k)
+        for index in face:
+            faces_of[index].append(f)
+
+    def shares_face(v, w):
+        return weld_refusal and any(w in faces[f] for f in faces_of[v])
+
+    rep = [-1] * V
+    if epsilon == 0.0:
+        chains = {}  # exact position -> representatives, most recent first (the hash bucket order among equal positions)
+        for v in range(V):
+            chain = chains.setdefault(positions[v], [])
+            for r in chain:
+                if not shares_face(v, r):
+                    rep[v] = r
+                    break
             else:
-                bucket.append(f * 3 + k)
+                chain.insert(0, v)
+                rep[v] = v
+    else:
+        order = heapsort_order(keys) if heap_order else sorted(range(V), key=lambda v: -keys[v])
+        eps2 = epsilon * epsilon
+        j = 0
+        for i in range(V):
+            vi = order[i]
+            while j < V and not (epsilon < keys[vi] - keys[order[j]]):
+                j += 1
+            if rep[vi] != -1:
+                continue
+            rep[vi] = vi
+            for m in range(i + 1, j):
+                w = order[m]
+                if rep[w] != -1:
+                    continue
+                d = sum((positions[w][c] - positions[vi][c]) ** 2 for c in (2, 1, 0))
+                if not d < eps2:
+                    continue
+                if shares_face(vi, w):
+                    report['refused_welds'] += 1
+                    continue
+                rep[w] = vi
+    report['representatives'] = sum(1 for v in range(V) if rep[v] == v)
+    report['welded'] = V - report['representatives']
+    corners = [rep[index] for face in faces for index in face]
+    table = {}  # (v1, v2) -> chain of (face, corner) with the most recent insertion first
+    active = []
+    for f, face in enumerate(faces):
+        c = corners[f * 3:f * 3 + 3]
+        report['degenerate_faces'] += len(set(face)) < 3
+        degenerate = len(set(c)) < 3
+        report['welded_degenerate_faces'] += degenerate and len(set(face)) == 3
+        active.append(not degenerate)
+        if degenerate:
+            continue
+        for k in range(3):
+            chain = table.setdefault((c[k], c[(k + 1) % 3]), [])
+            if head_insertion:
+                chain.insert(0, (f, k))
+            else:
+                chain.append((f, k))
     adjacency = [UNUSED] * (F * 3)
     for f in range(F):
-        for k in range(3):
-            if adjacency[f * 3 + k] != UNUSED:
+        if not active[f]:
+            continue
+        c = corners[f * 3:f * 3 + 3]
+        for s in range(3):
+            if adjacency[f * 3 + s] != UNUSED:
                 continue
-            if not active[f] or dropped[f * 3 + k]:
-                report['unmatched'] += 1
-                continue
-            vb, va, other = corners[f * 3 + k], corners[f * 3 + (k + 1) % 3], corners[f * 3 + (k + 2) % 3]
-            if va == vb:
-                report['unmatched'] += 1
-                continue
-            found, candidates, best, own = None, 0, -2.0, None
-            for cur in buckets.get(va, []):
-                e = edges[cur]
-                if e[0] != va or e[1] != vb:
+            v2, v1, other = c[s], c[(s + 1) % 3], c[(s + 2) % 3]  # the reverse edge v1 -> v2 is looked up
+            chain = table.get((v1, v2))
+            if chain:
+                best = 0
+                if len(chain) > 1:
+                    report['multi_candidates'] += 1
+                    if normal_selection:
+                        query = _face_normal(heads, v2, v1, other, rsqrt)
+                        best_score = None
+                        for i in range(1, len(chain)):
+                            if best_score is None:
+                                g, k = chain[best]
+                                best_score = _score(_face_normal(heads, corners[g * 3 + k], corners[g * 3 + (k + 1) % 3], corners[g * 3 + (k + 2) % 3], rsqrt), query)
+                            g, k = chain[i]
+                            score = _score(_face_normal(heads, corners[g * 3 + k], corners[g * 3 + (k + 1) % 3], corners[g * 3 + (k + 2) % 3], rsqrt), query)
+                            if best_score < score:
+                                best, best_score = i, score
+                                report['normal_selected'] += 1
+                found_face, found_corner = chain[best]
+                del chain[best]  # D3DX unlinks the selected entry inside the lookup
+                own = table.get((v2, v1))
+                if own and (f, s) in own:
+                    own.remove((f, s))  # the querying edge is removed only after a successful lookup
+                slots = adjacency[f * 3:f * 3 + (3 if later_slot_check else s)]
+                if found_face in slots:
+                    report['repeated_neighbours'] += 1
+                    if not unlink_refused:
+                        chain.insert(best, (found_face, found_corner))
                     continue
-                candidates += 1
-                if found is None:
-                    found = cur
-                    continue
-                if not normal_selection:
-                    continue
-                if own is None:
-                    own = _face_normal(positions, vb, va, other)
-                    fe = edges[found]
-                    best = _dot(_face_normal(positions, fe[0], fe[1], fe[2]), own)
-                diff = _dot(_face_normal(positions, e[0], e[1], e[2]), own)
-                if diff > best:
-                    best, found = diff, cur
-                    report['normal_selected'] += 1
-            if candidates > 1:
-                report['multi_candidates'] += 1
-            if (f * 3 + k) in buckets.get(vb, []):
-                buckets[vb].remove(f * 3 + k)
-            if found is None:
-                report['unmatched'] += 1
-                continue
-            g = edges[found][3]
-            if single_adjacency and g in adjacency[f * 3:f * 3 + 3]:
-                report['repeated_neighbours'] += 1
-                report['unmatched'] += 1
-                continue
-            buckets[va].remove(found)
-            adjacency[f * 3 + k] = g
-            adjacency[g * 3 + edges[found][4]] = f
+                adjacency[f * 3 + s] = found_face
+                adjacency[found_face * 3 + found_corner] = f
+            else:
+                if retire_own_entry:
+                    own = table.get((v2, v1))
+                    if own and (f, s) in own:
+                        own.remove((f, s))
+    report['unmatched'] = adjacency.count(UNUSED)
     return 'ok', report, adjacency
 
 
