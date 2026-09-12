@@ -1,17 +1,32 @@
 # Project status
 
-Updated 2026-09-12. **Direction change: per-pixel motion now comes from the
+Updated 2026-09-13. **Per-pixel motion comes from the
 game's own material draws through transformed shader variants writing a second
 render target, not from deferred geometry replay.** The replay, admission,
 execution-scope and geometry-lease modules stay in the tree as a numerical
 reference and are no longer a prerequisite for any visual feature. See the
 [live motion route](architecture/live-motion-route.md).
-The overall renderer modernization objective is not complete: no HDR, TAA, AgX,
-material or clustered-lighting enhancement is visible in the game yet. See the
+**TAA is done and verified in game**, including sharpen/mip-bias testing.
+AgX is implemented, was seen at fixed exposure, and is retained. FP16 scene
+redirection exists, but the lighting is still the game's gamma-space output
+decoded into FP16: scene-referred HDR and HDR display output are not complete.
+The whole-scene auto-exposure meter is wrong for space; its replacement is
+pending branch review and game validation. Loading is down from 87 s to about
+34–38 s in the recorded X3 runs. See the reconciled [goal checklist](goals.md),
 [full user objective](user-objective.md) and [roadmap](architecture/roadmap.md).
 Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
+
+Current work: finish review 30 and install, review/fix and merge crypto and
+exposure branches, finish adjacency/reader reviews, then install and request
+the [handoff section 5 runs](handoff-2026-09-13.md#5-run-plan-for-the-user-each-needs-the-matching-build-installed).
+The agent never launches the game. Installed at resumption: review-29 build
+`a34c389`, SHA-256 `4abd56b3a77682594756c8805f6f1661c35f8f7b611a297f312bfec2d00855a8`.
+Main resumed at `f4d2384`; fixes called “uncommitted” in the historical notes
+were captured in WIP commit `1c8322e`. Review findings and later installs will
+be recorded below. Older run lists and completion claims below are historical;
+the current checklist and September 13 handoff supersede them.
 
 ## Handoff (2026-09-13 early morning): read docs/handoff-2026-09-13.md first
 
@@ -22,7 +37,7 @@ is [handoff-2026-09-13.md](handoff-2026-09-13.md). Unmerged branches:
 `worktree-agent-a157d2e7bd47eab9d` (crypto cache) and
 `worktree-agent-aea55d854948bd6a0` (space-aware exposure meter).
 
-## Latest checkpoint: review 29 — loading branch, adjacency parity and present readback merged (2026-09-12 night)
+## Review 29 record — loading branch, adjacency parity and present readback merged (2026-09-12 night)
 
 Reviews: [review-25.md](verification/review-25.md) (fast adjacency, engine
 reads, gz buffer; three low findings fixed), [review-27.md](verification/review-27.md)
@@ -774,7 +789,7 @@ then post-resolve sharpen (RCAS-style, never fed to history, applied after
 tonemap on the HDR path), mip-bias instrumentation, and the scene hook as the
 default resolve point.
 
-## Next user-managed runs (2026-09-12 night, bottle X3)
+## Historical user-run plan (2026-09-12 night; superseded by September 13 handoff section 5)
 
 All runs on the X3 bottle with the installed build (see "Installed" below;
 the currently installed review-26 build `8864bff0…` predates the loading

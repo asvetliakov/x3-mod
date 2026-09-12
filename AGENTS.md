@@ -1,9 +1,10 @@
 # Project instructions and session continuity
 
 Read `docs/status.md`, `docs/user-objective.md`, and the architecture/reverse-engineering
-notes before continuing. This is X3: Albion Prelude, x86, in the Steam bottle of
+notes before continuing. This is X3: Albion Prelude, x86, in the X3 bottle of
 **CrossOver Preview.app**, not CrossOver.app. The game executable is
-`~/Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/X3AP.exe`.
+`~/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe`.
+The Steam bottle remains the default for fixtures, not gameplay.
 
 User preferences recorded 2026-09-10:
 
@@ -51,10 +52,11 @@ User preferences recorded 2026-09-10:
   enable fast-math globally.
 - Subagents may be used when helpful for independent research/context management.
 - Close unused launcher menus promptly: they sit above other windows.
-- For future game tests beyond menus, tell the user what is needed and let them
-  launch/load the scene. Do not autonomously repeat gameplay launches. Menu-only
-  work may be performed directly. Desktop automation did not reliably deliver
-  input to the game's DirectInput menus; the user supplied the flight captures.
+- Never launch the game, including menu-only tests (user clarification,
+  2026-09-13). Tell the user what is needed and let them launch/load the scene.
+  Launch-command validation with `--dry-run` is allowed. Desktop automation did
+  not reliably deliver input to the game's DirectInput menus; the user supplied
+  the flight captures.
 
 Use reversible app-local installs and process-local DLL overrides. Preserve the
 EXE/CAT/DAT files and unrelated bottle settings. Do not claim HDR/TAA/lighting are
@@ -95,4 +97,5 @@ Test coordination (added 2026-09-12):
 - One Wine runner at a time, across all agents and the user's game: before a
   suite, confirm `game_guard.game_running()` prints `[]` and no other
   `verification/probe/run_*.py`, fixture `.exe` or `wine ... fixture` process
-  exists; wait with foreground `sleep 90` loops rather than ending the turn.
+  exists; use bounded waits of at most 60 seconds and keep the user informed
+  while waiting rather than ending the turn.
