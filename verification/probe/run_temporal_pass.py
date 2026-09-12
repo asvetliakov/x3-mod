@@ -32,10 +32,16 @@ try:
     report['state_restorations']=int(match[2]) if match else 0
     report['generations']=int(match[3]) if match else 0
     report['camera']={m.group(1):dict(drift_px=float(m.group(2)),error=float(m.group(3))) for m in re.finditer(r'CAMERA label=(\S+) frames=\d+ from=\d+ drift_px=([0-9.]+) error=([0-9.]+)',text)}
-    # 468 / 228: the post-resolve sharpen cases added 10 numerical and 12 state
-    # checks per generation to stage 3's 448 / 204 (review 23: 416 / 164);
-    # the 386 samples are unchanged.
-    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(468,228,2) and report['samples']==386 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    # 508 / 278: the quad vertex program and copy mode twins (pre-review 28,
+    # D1/D2 of the native-Windows audit) added 20 numerical and 25 state
+    # checks per generation to the sharpen cases' 468 / 228 (review 23: 416 /
+    # 164; stage 3: 448 / 204); the 386 samples are unchanged.
+    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(508,278,2) and report['samples']==386 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    # The quad twins and the copy modes: byte-identical on this backend.
+    report['quad_twins']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('QUAD_TWIN ')]
+    report['copy_modes']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('COPY_MODE ')]
+    assert len(report['quad_twins'])==6 and all(t['identical']=='1' for t in report['quad_twins']),report['quad_twins']
+    assert len(report['copy_modes'])==2 and all(c['history_identical']=='1' and c['display_max_code_difference']=='0' for c in report['copy_modes']),report['copy_modes']
     # The sharpen cases' verdict lines (docs/verification/taa-sharpen.md).
     report['sharpen']={'verdicts':[dict((k,float(v)) for k,v in re.findall(r'(\w+)=([-0-9.e]+)',line)) for line in text.splitlines() if line.startswith('SHARPEN sharpness=')],
                        'nan':[dict((k,int(v)) for k,v in re.findall(r'(\w+)=(\d+)',line)) for line in text.splitlines() if line.startswith('SHARPEN_NAN ')],

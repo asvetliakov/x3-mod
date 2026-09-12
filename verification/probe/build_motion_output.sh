@@ -10,20 +10,25 @@ mkdir -p build/motion-output-seam
 FLAGS="-std=c++17 -O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2"
 # The fixture links the production TemporalPass as its reference resolve (TAA
 # environments) with the same embedded resolve bytecode the DLL carries.
-i686-w64-mingw32-g++ $FLAGS -static -static-libgcc -static-libstdc++ motion_output_fixture.cpp ../../src/renderer/temporal_pass.cpp -o build/motion_output_fixture.exe -ldxguid -luser32
+# X3M_QUAD_FVF_SWITCH (fixture and seam only): X3M_FIXTURE_QUAD_FVF=1 selects
+# the previous XYZRHW quads so the seam-taa-quad-fvf twin proves the vs_3_0
+# quads byte-identical; production never compiles the switch.
+i686-w64-mingw32-g++ $FLAGS -DX3M_QUAD_FVF_SWITCH -static -static-libgcc -static-libstdc++ motion_output_fixture.cpp ../../src/renderer/temporal_pass.cpp -o build/motion_output_fixture.exe -ldxguid -luser32
 
 OBJECTS=../../build/CMakeFiles/d3d9.dir/src
 test -f "$OBJECTS/proxy/capture.cpp.obj" || { echo "build/ objects missing; run the CMake build first" >&2; exit 1; }
-DEFINES="-DWIN32_LEAN_AND_MEAN -DNOMINMAX -DX3M_MOTION_OUTPUT_FIXTURE"
+DEFINES="-DWIN32_LEAN_AND_MEAN -DNOMINMAX -DX3M_MOTION_OUTPUT_FIXTURE -DX3M_QUAD_FVF_SWITCH"
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/capture.cpp -o build/motion-output-seam/capture.o
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/motion_output.cpp -o build/motion-output-seam/motion_output.o
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/camera_state.cpp -o build/motion-output-seam/camera_state.o
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/scene_hook.cpp -o build/motion-output-seam/scene_hook.o
-# The HDR pass carries the fault-injection seam of the design's case 4.
+# The HDR pass carries the fault-injection seam of the design's case 4; the
+# temporal pass carries the quad twin switch.
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/renderer/hdr_pass.cpp -o build/motion-output-seam/hdr_pass.o
-SHARED=$(find "$OBJECTS" -name '*.obj' ! -name 'capture.cpp.obj' ! -name 'motion_output.cpp.obj' ! -name 'camera_state.cpp.obj' ! -name 'scene_hook.cpp.obj' ! -name 'hdr_pass.cpp.obj' | sort)
+i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/renderer/temporal_pass.cpp -o build/motion-output-seam/temporal_pass.o
+SHARED=$(find "$OBJECTS" -name '*.obj' ! -name 'capture.cpp.obj' ! -name 'motion_output.cpp.obj' ! -name 'camera_state.cpp.obj' ! -name 'scene_hook.cpp.obj' ! -name 'hdr_pass.cpp.obj' ! -name 'temporal_pass.cpp.obj' | sort)
 i686-w64-mingw32-g++ -shared -static -static-libgcc -static-libstdc++ -Wl,--kill-at -Wl,--enable-stdcall-fixup \
-  -o build/motion-output-seam/d3d9.dll build/motion-output-seam/capture.o build/motion-output-seam/motion_output.o build/motion-output-seam/camera_state.o build/motion-output-seam/scene_hook.o build/motion-output-seam/hdr_pass.o $SHARED \
+  -o build/motion-output-seam/d3d9.dll build/motion-output-seam/capture.o build/motion-output-seam/motion_output.o build/motion-output-seam/camera_state.o build/motion-output-seam/scene_hook.o build/motion-output-seam/hdr_pass.o build/motion-output-seam/temporal_pass.o $SHARED \
   ../../src/proxy/d3d9.def -ldxguid -ladvapi32
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_motion_output_fixture_configure
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_camera_state_fixture_install

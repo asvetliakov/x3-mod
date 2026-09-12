@@ -1,4 +1,5 @@
 #include "temporal_pass.h"
+#include "quad_vertex_program.h"
 #include "../temporal/sharpen.h"
 #include <algorithm>
 #include <cstring>
@@ -15,8 +16,9 @@ enum Slot : unsigned {
     GetDeviceCaps = 7, CreateTexture = 23, StretchRect = 34, SetRenderTarget = 37, GetRenderTarget = 38,
     SetDepthStencilSurface = 39, GetDepthStencilSurface = 40, BeginScene = 41, EndScene = 42,
     SetViewport = 47, GetViewport = 48, SetRenderState = 57, CreateStateBlock = 59, SetTexture = 65,
-    SetTextureStageState = 67, SetSamplerState = 69, SetScissorRect = 75, GetScissorRect = 76, DrawPrimitiveUP = 83, SetFVF = 89,
-    SetVertexShader = 92, SetStreamSourceFreq = 102, SetIndices = 104, CreatePixelShader = 106,
+    SetTextureStageState = 67, SetSamplerState = 69, SetScissorRect = 75, GetScissorRect = 76, DrawPrimitiveUP = 83,
+    CreateVertexDeclaration = 86, SetVertexDeclaration = 87, SetFVF = 89,
+    CreateVertexShader = 91, SetVertexShader = 92, SetStreamSourceFreq = 102, SetIndices = 104, CreatePixelShader = 106,
     SetPixelShader = 107, SetPixelShaderConstantF = 109
 };
 using D = IDirect3DDevice9*;
@@ -39,6 +41,9 @@ using SetScissorFn = HRESULT(WINAPI*)(D, const RECT*);
 using GetScissorFn = HRESULT(WINAPI*)(D, RECT*);
 using DrawUpFn = HRESULT(WINAPI*)(D, D3DPRIMITIVETYPE, UINT, const void*, UINT);
 using SetFvfFn = HRESULT(WINAPI*)(D, DWORD);
+using CreateDeclarationFn = HRESULT(WINAPI*)(D, const D3DVERTEXELEMENT9*, IDirect3DVertexDeclaration9**);
+using SetDeclarationFn = HRESULT(WINAPI*)(D, IDirect3DVertexDeclaration9*);
+using CreateVsFn = HRESULT(WINAPI*)(D, const DWORD*, IDirect3DVertexShader9**);
 using SetVsFn = HRESULT(WINAPI*)(D, IDirect3DVertexShader9*);
 using SetFreqFn = HRESULT(WINAPI*)(D, UINT, UINT);
 using SetIndicesFn = HRESULT(WINAPI*)(D, IDirect3DIndexBuffer9*);
@@ -59,16 +64,17 @@ HRESULT texture_input(IDirect3DDevice9* device,IDirect3DTexture9* texture,UINT w
     return same_device(device,texture);
 }
 // The 8-bit main target: a default-pool, non-multisampled 32-bit surface that
-// StretchRect can read. It need not be a texture level.
-HRESULT surface_input(IDirect3DDevice9* device,IDirect3DSurface9* surface,UINT w,UINT h) noexcept {
+// StretchRect can read. It need not be a texture level. `format` receives its
+// format (the draw mode's staging texture matches it).
+HRESULT surface_input(IDirect3DDevice9* device,IDirect3DSurface9* surface,UINT w,UINT h,D3DFORMAT* format) noexcept {
     if(!surface)return E_INVALIDARG;
     D3DSURFACE_DESC desc{};
     HRESULT hr=surface->GetDesc(&desc);if(FAILED(hr))return hr;
     if(desc.Width!=w||desc.Height!=h||(desc.Format!=D3DFMT_A8R8G8B8&&desc.Format!=D3DFMT_X8R8G8B8)||
        desc.Pool!=D3DPOOL_DEFAULT||desc.MultiSampleType!=D3DMULTISAMPLE_NONE)return E_INVALIDARG;
+    *format=desc.Format;
     return same_device(device,surface);
 }
-struct Vertex { float x,y,z,rhw,u,v; };
 }
 // Everything a run touches beyond the state block: the render-target and depth
 // bindings, viewport and scissor (SetRenderTarget resets the latter two). The
@@ -109,10 +115,13 @@ struct TemporalPass::SavedState {
         return first;
     }
 };
+// The full-target strip through the vs_3_0 pass-through bound by normalize
+// (clip space with the -0.5 pixel shift; quad_vertex_program.h), or the
+// pre-transformed twin in fixture builds that selected it.
 HRESULT TemporalPass::quad(UINT w,UINT h) noexcept {
-    const Vertex vertices[]={{-.5f,-.5f,0,1,0,0},{float(w)-.5f,-.5f,0,1,1,0},
-        {-.5f,float(h)-.5f,0,1,0,1},{float(w)-.5f,float(h)-.5f,0,1,1,1}};
-    return call<DrawUpFn>(DrawPrimitiveUP)(device_,D3DPT_TRIANGLESTRIP,2,vertices,sizeof(Vertex));
+    QuadVertex vertices[4];
+    if(quad_fvf_)quad_vertices_xyzrhw(w,h,vertices);else quad_vertices(w,h,vertices);
+    return call<DrawUpFn>(DrawPrimitiveUP)(device_,D3DPT_TRIANGLESTRIP,2,vertices,sizeof(QuadVertex));
 }
 HRESULT TemporalPass::normalize(UINT w,UINT h) noexcept {
     D d=device_;
@@ -121,8 +130,11 @@ HRESULT TemporalPass::normalize(UINT w,UINT h) noexcept {
     for(UINT i=0;i<4;++i)STEP(call<SetTextureFn>(SetTexture)(d,D3DVERTEXTEXTURESAMPLER0+i,nullptr));
     STEP(call<SetDepthFn>(SetDepthStencilSurface)(d,nullptr));
     for(UINT i=1;i<render_targets_;++i)STEP(call<SetRtFn>(SetRenderTarget)(d,i,nullptr));
-    STEP(call<SetVsFn>(SetVertexShader)(d,nullptr));
-    STEP(call<SetFvfFn>(SetFVF)(d,D3DFVF_XYZRHW|D3DFVF_TEX1));
+    // Every quad draws through the embedded vs_3_0 pass-through and its
+    // declaration (D3D9 pairs ps_3_0 with vs_3_0); the fixture twin keeps the
+    // pre-transformed fixed-function path to prove the two byte-identical.
+    if(quad_fvf_){STEP(call<SetVsFn>(SetVertexShader)(d,nullptr));STEP(call<SetFvfFn>(SetFVF)(d,quad_fvf));}
+    else{STEP(call<SetDeclarationFn>(SetVertexDeclaration)(d,quad_declaration_));STEP(call<SetVsFn>(SetVertexShader)(d,quad_vs_));}
     STEP(call<SetIndicesFn>(SetIndices)(d,nullptr));
     for(UINT i=0;i<streams_;++i)STEP(call<SetFreqFn>(SetStreamSourceFreq)(d,i,1));
     for(auto state:{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_STENCILENABLE,D3DRS_ALPHATESTENABLE,
@@ -136,10 +148,10 @@ HRESULT TemporalPass::normalize(UINT w,UINT h) noexcept {
     STEP(call<SetRsFn>(SetRenderState)(d,D3DRS_CULLMODE,D3DCULL_NONE));
     STEP(call<SetRsFn>(SetRenderState)(d,D3DRS_COLORWRITEENABLE,15));
     STEP(call<SetRsFn>(SetRenderState)(d,D3DRS_MULTISAMPLEMASK,0xffffffff));
-    // The quad is pre-transformed with no vertex shader, so stage 0's
-    // fixed-function coordinate index and texture transform still shape the
-    // TEXCOORD0 the resolve reads (verified on the Preview backend by the
-    // fixture's hostile state); both go back through the state block.
+    // Stage 0's fixed-function coordinate index and texture transform shaped
+    // the TEXCOORD0 of the pre-transformed quad on the Preview backend (found
+    // by the fixture's hostile state); with the vertex program bound they are
+    // inert, and the twin path still needs them. Both go back through the block.
     STEP(call<SetStageFn>(SetTextureStageState)(d,0,D3DTSS_TEXCOORDINDEX,0));
     STEP(call<SetStageFn>(SetTextureStageState)(d,0,D3DTSS_TEXTURETRANSFORMFLAGS,D3DTTFF_DISABLE));
     for(UINT i=0;i<7;++i){
@@ -160,29 +172,33 @@ void TemporalPass::invalidate() noexcept {history_.invalidate();diagnostics_.his
 void TemporalPass::release_history() noexcept {
     invalidate();for(auto& p:color_surfaces_)drop(p);for(auto& p:depth_surfaces_)drop(p);
     for(auto& p:reactive_surfaces_)drop(p);
-    drop(scratch_surface_);
+    drop(scratch_surface_);drop(staging_surface_);
     for(auto& p:colors_)drop(p);
     for(auto& p:depths_)drop(p);
     for(auto& p:reactive_)drop(p);
-    drop(scratch_);
+    drop(scratch_);drop(staging_);staging_format_=D3DFMT_UNKNOWN;
     reactive_policy_=ReactivePolicy::Unavailable;
     width_=height_=current_=0;
 }
-void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(sharpen_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
+void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
 // Every owned texture and the state block must not exist across Reset; the
 // compiled shaders survive it. Runs are refused until after_reset succeeds.
 void TemporalPass::before_reset() noexcept {release_history();drop(block_);diagnostics_.reset_pending=device_!=nullptr;}
 void TemporalPass::after_reset(HRESULT result) noexcept {invalidate();if(SUCCEEDED(result))diagnostics_.reset_pending=false;}
-HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const DWORD* resolve,void* const* native_vtable,const DWORD* sharpen) noexcept {
+HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const DWORD* resolve,void* const* native_vtable,const DWORD* sharpen,const DWORD* copy) noexcept {
     shutdown();diagnostics_={};if(!d||!resolve)return E_INVALIDARG;
-    device_=d;vtable_=native_vtable;
+    device_=d;vtable_=native_vtable;quad_fvf_=quad_fvf_requested();
     D3DCAPS9 caps{};HRESULT hr=call<CapsFn>(GetDeviceCaps)(d,&caps);
-    if(SUCCEEDED(hr)&&(caps.PixelShaderVersion<D3DPS_VERSION(3,0)||!caps.NumSimultaneousRTs||caps.NumSimultaneousRTs>4||!caps.MaxStreams))hr=D3DERR_NOTAVAILABLE;
+    if(SUCCEEDED(hr)&&(caps.PixelShaderVersion<D3DPS_VERSION(3,0)||caps.VertexShaderVersion<D3DVS_VERSION(3,0)||!caps.NumSimultaneousRTs||caps.NumSimultaneousRTs>4||!caps.MaxStreams))hr=D3DERR_NOTAVAILABLE;
     if(FAILED(hr)){device_=nullptr;vtable_=nullptr;return hr;}
     render_targets_=caps.NumSimultaneousRTs;streams_=caps.MaxStreams;
-    if(decoder)hr=call<CreatePsFn>(CreatePixelShader)(d,decoder,&decoder_);
+    // The quad's vertex program and declaration survive Reset like the pixel programs.
+    hr=call<CreateVsFn>(CreateVertexShader)(d,reinterpret_cast<const DWORD*>(quad_vertex_program()),&quad_vs_);
+    if(SUCCEEDED(hr))hr=call<CreateDeclarationFn>(CreateVertexDeclaration)(d,quad_declaration,&quad_declaration_);
+    if(SUCCEEDED(hr)&&decoder)hr=call<CreatePsFn>(CreatePixelShader)(d,decoder,&decoder_);
     if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(d,resolve,&resolve_);
     if(SUCCEEDED(hr)&&sharpen)hr=call<CreatePsFn>(CreatePixelShader)(d,sharpen,&sharpen_);
+    if(SUCCEEDED(hr)&&copy)hr=call<CreatePsFn>(CreatePixelShader)(d,copy,&copy_);
     if(FAILED(hr))shutdown();
     return hr;
 }
@@ -206,6 +222,18 @@ HRESULT TemporalPass::ensure_scratch() noexcept {
     if(FAILED(hr)){drop(scratch_surface_);drop(scratch_);}
     return hr;
 }
+// Draw mode: the same-format render-target texture the 8-bit input is copied
+// into (a same-format RT-to-RT StretchRect, what the game's own bloom copy
+// does) and the identity draw samples into the FP16 scratch. Re-created when
+// the input's format changes; default pool, released with the histories.
+HRESULT TemporalPass::ensure_staging(D3DFORMAT format) noexcept {
+    if(staging_&&staging_format_==format)return S_OK;
+    drop(staging_surface_);drop(staging_);staging_format_=D3DFMT_UNKNOWN;
+    HRESULT hr=call<CreateTextureFn>(CreateTexture)(device_,width_,height_,1,D3DUSAGE_RENDERTARGET,format,D3DPOOL_DEFAULT,&staging_,nullptr);
+    if(SUCCEEDED(hr))hr=staging_->GetSurfaceLevel(0,&staging_surface_);
+    if(FAILED(hr)){drop(staging_surface_);drop(staging_);}else staging_format_=format;
+    return hr;
+}
 HRESULT TemporalPass::ensure_block() noexcept {
     if(block_)return S_OK;
     const HRESULT hr=call<CreateBlockFn>(CreateStateBlock)(device_,D3DSBT_ALL,&block_);
@@ -220,7 +248,8 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     diagnostics_.ticks_capture=diagnostics_.ticks_copy_color=diagnostics_.ticks_copy_depth=diagnostics_.ticks_draw=diagnostics_.ticks_apply=0;
     auto fail=[&](HRESULT hr){invalidate();diagnostics_.operation=hr;return hr;};
     const bool sentinel=in.reactive_policy==ReactivePolicy::DerivedFromDepthSentinel;
-    if(!out||!device_||!resolve_||diagnostics_.reset_pending||!in.width||!in.height||in.caller_stateblock_recording||!in.caller_queries_idle||
+    const bool draw_copy=in.color_surface&&copy_by_draw_;
+    if(!out||!device_||!resolve_||!quad_vs_||!quad_declaration_||diagnostics_.reset_pending||!in.width||!in.height||in.caller_stateblock_recording||!in.caller_queries_idle||(draw_copy&&!copy_)||
         (in.motion_policy!=MotionPolicy::KnownCameraOnly&&in.motion_policy!=MotionPolicy::PerPixel)||
         (in.reactive_policy!=ReactivePolicy::Unavailable&&in.reactive_policy!=ReactivePolicy::KnownNonReactive&&
          in.reactive_policy!=ReactivePolicy::RequiredMask&&!sentinel)||
@@ -229,11 +258,12 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         (in.depth_snapshot&&!decoder_)||(sentinel&&!in.current_depth)||
         !x3::temporal::valid_sharpen(in.sharpen)||(in.sharpen>0&&(!in.color_surface||!sharpen_)))return fail(E_INVALIDARG);
     for(UINT i=0;i<2;++i){
-        for(auto* owned:{colors_[i],depths_[i],reactive_[i],scratch_})
+        for(auto* owned:{colors_[i],depths_[i],reactive_[i],scratch_,staging_})
             if(owned&&(in.color==owned||in.depth_snapshot==owned||in.current_depth==owned||in.motion==owned||in.reactive==owned))return fail(E_INVALIDARG);
-        if(in.color_surface&&(in.color_surface==color_surfaces_[i]||in.color_surface==scratch_surface_))return fail(E_INVALIDARG);
+        if(in.color_surface&&(in.color_surface==color_surfaces_[i]||in.color_surface==scratch_surface_||in.color_surface==staging_surface_))return fail(E_INVALIDARG);
     }
-    HRESULT hr=in.color?texture_input(device_,in.color,in.width,in.height,D3DFMT_A16B16G16R16F):surface_input(device_,in.color_surface,in.width,in.height);
+    D3DFORMAT surface_format=D3DFMT_UNKNOWN;
+    HRESULT hr=in.color?texture_input(device_,in.color,in.width,in.height,D3DFMT_A16B16G16R16F):surface_input(device_,in.color_surface,in.width,in.height,&surface_format);
     if(SUCCEEDED(hr))hr=in.current_depth?texture_input(device_,in.current_depth,in.width,in.height,D3DFMT_R32F):texture_input(device_,in.depth_snapshot,in.width,in.height,D3DFMT_D24X8);
     if(SUCCEEDED(hr)&&in.motion_policy==MotionPolicy::PerPixel)hr=texture_input(device_,in.motion,in.width,in.height,D3DFMT_A32B32G32R32F);
     if(SUCCEEDED(hr)&&in.reactive_policy==ReactivePolicy::RequiredMask)hr=texture_input(device_,in.reactive,in.width,in.height,D3DFMT_R32F);
@@ -264,9 +294,15 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     // the next depth history are bound nowhere. StretchRect is legal inside or
     // outside a scene. No sRGB flag is set on any sampler or target, so the
     // 8-bit copy is a plain UNORM-to-FP16 conversion of the linear-encoded data.
-    // An FP16 texture input (in.color) takes neither copy nor scratch.
+    // Draw mode (configure_copy(true)): the format conversion is not asked of
+    // StretchRect; the input is copied same-format into the staging texture
+    // and the identity draw inside the scene bracket below converts it. An
+    // FP16 texture input (in.color) takes neither copy nor scratch.
     mark=stamp();
-    if(SUCCEEDED(hr)&&in.color_surface&&step(ensure_scratch()))hr=call<StretchFn>(StretchRect)(d,in.color_surface,nullptr,scratch_surface_,nullptr,D3DTEXF_POINT);
+    if(SUCCEEDED(hr)&&in.color_surface&&step(ensure_scratch())){
+        if(draw_copy){if(step(ensure_staging(surface_format)))hr=call<StretchFn>(StretchRect)(d,in.color_surface,nullptr,staging_surface_,nullptr,D3DTEXF_POINT);}
+        else hr=call<StretchFn>(StretchRect)(d,in.color_surface,nullptr,scratch_surface_,nullptr,D3DTEXF_POINT);
+    }
     diagnostics_.ticks_copy_color=stamp()-mark;
     mark=stamp();
     if(SUCCEEDED(hr)&&in.current_depth){
@@ -277,6 +313,9 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     diagnostics_.ticks_copy_depth=stamp()-mark;
     mark=stamp();
     if(SUCCEEDED(hr)&&!in.caller_scene_open){hr=call<SceneFn>(BeginScene)(d);own_scene=SUCCEEDED(hr);}
+    // Draw mode: the identity program converts the staged 8-bit copy into the FP16 scratch.
+    if(SUCCEEDED(hr)&&draw_copy&&step(call<SetRtFn>(SetRenderTarget)(d,0,scratch_surface_))&&
+        step(call<SetPsFn>(SetPixelShader)(d,copy_))&&step(call<SetTextureFn>(SetTexture)(d,0,staging_)))hr=quad(in.width,in.height);
     if(SUCCEEDED(hr)&&in.depth_snapshot&&step(call<SetRtFn>(SetRenderTarget)(d,0,depth_surfaces_[next]))&&
         step(call<SetPsFn>(SetPixelShader)(d,decoder_))&&step(call<SetTextureFn>(SetTexture)(d,0,in.depth_snapshot)))hr=quad(in.width,in.height);
     if(SUCCEEDED(hr)&&step(call<SetTextureFn>(SetTexture)(d,0,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,color_surfaces_[next]))&&
@@ -315,6 +354,18 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         display_written=SUCCEEDED(sharpen_result);
         if(lost(sharpen_result))hr=sharpen_result;
     }
+    // Draw mode without a sharpened display: the identity draw of the new
+    // history into the caller's 8-bit surface replaces the caller's
+    // format-converting copy-back. Same failure policy as the sharpen draw:
+    // the resolve stands, the display falls to the caller's copy-back.
+    HRESULT copy_result=S_FALSE;
+    if(SUCCEEDED(hr)&&draw_copy&&!display_written){
+        auto sub=[&](HRESULT value){copy_result=value;return SUCCEEDED(value);};
+        if(sub(call<SetRtFn>(SetRenderTarget)(d,0,in.color_surface))&&sub(call<SetPsFn>(SetPixelShader)(d,copy_))&&
+           sub(call<SetTextureFn>(SetTexture)(d,0,colors_[next])))sub(quad(in.width,in.height));
+        display_written=SUCCEEDED(copy_result);
+        if(lost(copy_result))hr=copy_result;
+    }
     if(own_scene&&!lost(hr)){const HRESULT end=call<SceneFn>(EndScene)(d);if(SUCCEEDED(hr)||lost(end))hr=end;}
     diagnostics_.ticks_draw+=stamp()-mark;
     diagnostics_.operation=hr;
@@ -329,6 +380,6 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     current_=next;reactive_policy_=in.reactive_policy;
     if(reactive_policy_!=ReactivePolicy::Unavailable)history_.completed();
     diagnostics_.history_valid=history_.valid;++diagnostics_.completed_frames;++generation_;
-    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_],color_surfaces_[current_],display_written,sharpen_result};return S_OK;
+    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_],color_surfaces_[current_],display_written,sharpen_result,copy_result};return S_OK;
 }
 } // namespace x3m::renderer

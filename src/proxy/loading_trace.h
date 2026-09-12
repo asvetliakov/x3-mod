@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <array>
 #include <cstdint>
+struct ID3DXMesh; // d3dx9mesh.h interface; declared here so translation units without D3DX headers can include this file
 #ifdef X3M_LOADING_TRACE_FIXTURE
 #include "mesh_adjacency_cache.h"
 #endif

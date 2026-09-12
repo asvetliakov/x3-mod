@@ -364,14 +364,25 @@ to scene.
 
 The pass calls the device only through the route's native slots (it is
 handed the original vtable at initialization), so neither the shadow nor the
-selector observes its calls; its `normalize` also resets stage 0's
-fixed-function coordinate index and texture transform flags, which the
-backend applies to the pre-transformed resolve quad. The attach gate
-additionally asks `CheckDeviceFormatConversion` for the 8-bit-to-FP16 copies
-(`taa_reason=format_conversion`). Its default-pool objects (two FP16 histories,
-two R32F depth histories, the FP16 scratch, the cached `D3DSBT_ALL` state
+selector observes its calls; every quad it draws binds the embedded vs_3_0
+pass-through and its declaration (`quad_vertex_program.h`, clip space with
+the −0.5 pixel shift; the route's own sentinel fill and self test draw the
+same way, with ps_3_0 versions of their tiny programs), and its `normalize`
+still resets stage 0's fixed-function coordinate index and texture transform
+flags (inert with the vertex program, needed by the fixture's XYZRHW twin).
+The attach gate asks `CheckDeviceFormatConversion` for the 8-bit-to-FP16
+copies and runs a 4×4 round trip per 8-bit format; both passing selects the
+`StretchRect` copies (`taa_copy=stretch`), anything else the same-format
+staging copy plus identity draws (`taa_copy=draw`), never a refusal. A
+multisampled main target is refused at the latch (`main_msaa_`:
+`motion_output_msaa_refused`, gate 1 for every draw, no jitter, `taa_skip=11`,
+`msaa=` in the frame line) because RT1/RT2 textures cannot share its sample
+count. Its default-pool objects (two FP16 histories,
+two R32F depth histories, the FP16 scratch, the draw mode's staging texture,
+the cached `D3DSBT_ALL` state
 block) are released after RT1/RT2 in `before_reset` and re-created lazily
-after `after_reset(S_OK)`; the resolve shader survives Reset and is released
+after `after_reset(S_OK)`; the resolve, copy and quad vertex shaders and the
+declaration survive Reset and are released
 with the route's objects at the final device Release. The device references
 those objects hold are counted by probing the device count before and after
 every pass call (`taa_call`), which is exact in the native model and through

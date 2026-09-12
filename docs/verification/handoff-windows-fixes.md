@@ -12,7 +12,38 @@ Baseline built here from the unmodified sources (`cmake -S . -B build
 (untracked; a copy at the session scratchpad `d3d9-baseline.dll`). Note the
 review-26 runner rebuilds with `RelWithDebInfo --clean-first`, so its hash differs.
 
-## Status per item
+## Status per item (second pause, 2026-09-12 ~21:20; commit "Native-Windows fixes in progress (paused)")
+
+Every source, fixture, runner and doc edit of the design below is in the
+tree and the tree builds (`build/d3d9.dll` SHA-256
+`4253b2022f14a39a0163f66ea4c03a494e13a95494b4d187807e2d62d7238d38` after the
+first full build; rebuilt incrementally after the D3 rework, 17 exports).
+Merge note: main's `b10d129` did not compile (`loading_trace.h:61` used
+`ID3DXMesh` undeclared); `struct ID3DXMesh;` forward declaration added.
+
+| Item | Status | Evidence / exact next step |
+| --- | --- | --- |
+| D2 vs_3_0 pass-through | **done** | `src/temporal/quad_vs.hlsl` → `quad_vertex_program_inc.h` (43 words, provenance `verification/results/quad-vertex-program.json`; generator `target` per shader, compile tool 4th arg, `validate()` accepts `0xfffe0300`; all nine existing bytecodes unchanged, only their `tool_sources` hashes moved), `quad_vertex_program.h`; TemporalPass/HdrPass/MotionOutput create one VS + declaration, bind them in `normalize`/`bind_quad_program`; sentinel + self-test programs are ps_3_0 now; `abi_check.cpp` slot 86. Twin `X3M_QUAD_FVF_SWITCH`/`X3M_FIXTURE_QUAD_FVF=1` in `build_temporal_pass.sh` and the seam set (temporal_pass.cpp recompiled into the seam). Temporal fixture: `QUAD_TWIN variant=stretch|sharpen|draw_copy identical=1` in both generations; motion partial: `seam-taa-quad-fvf` 164 checks (= `seam-taa-on`). |
+| D1 copy mode | **done** | `MotionOutput::stretch_round_trip` (16 ColorFills, StretchRect to FP16 and back, exact bytes / FP16 ≤ 1/1024), `taa_copy=stretch|draw taa_stretch_query= taa_stretch_test=` on the device line, `motion_output_taa ... copy=`; `TemporalPass::initialize(..., sharpen, copy)`, `configure_copy`, `ensure_staging`, identity draws both ways, `Output::copy_result`; `format_conversion` refusal removed. Temporal fixture: `COPY_MODE draw_vs_stretch history_identical=1 display_max_code_difference=0`; motion partial: `seam-taa-copy-draw` 164 checks (`X3M_FIXTURE_STRETCH_FAULT=1`; the fixture's reference pass follows the same switch). Twin comparisons of the full suite not yet run. |
+| D3 MSAA refusal | **done, unverified after rework** | The selector never latches a multisampled RT0 (`scene_boundary.h` `color()` requires `!msaa`), so the design's latch site never fires; the refusal now lives in `after_clear` on the AwaitInitialClear→Rejected transition (`main_msaa_`, `main_msaa_samples_`, `motion_output_msaa_refused device= frame= msaa= width= height=` once, gate 1, no jitter, `TaaSkip::Msaa=11` at frame end, `msaa=` frame field; cleared by a single-sampled latch or Reset). Fixture mode `msaa` (`X3M_FIXTURE_MSAA`, `CheckDeviceMultiSampleType`), runner case `seam-msaa` + `validate_msaa` (expects `latched=0 selector_state=9 taa_attempted=0 taa_skip=11`). The first partial run (before the rework) found no refusal line; the reworked DLL and seam are built but **the `seam-msaa` partial has not been rerun**. |
+| W1 export table | **done (Wine run passed, runner fix unverified)** | `d3d9.def` 17 names; `loader.cpp` naked `jmp` forwarders (`X3M_FORWARDED_EXPORT`, resolver `x3m_resolve_export` logs `d3d9_export name= forwarded=` once via CAS on the slot) with `ret`/`ret $12`/`ret $20`/`ret $4` fallbacks; C++ `Direct3DCreate9On12[Ex]` with admission veto, `unproxied=` log, `Direct3DCreate9Ex` logs too. Host: `tools/analysis/pe_exports.py`, `verification/analysis/test_d3d9_exports.py` (3 tests pass). Wine: `d3d9_exports_fixture.cpp` + `build_d3d9_exports.sh` + `run_d3d9_exports.py`: the writable case's fixture passed **8/8 checks** (On12 forwarded a live factory, shim fallback result 0 popped 4, On12Ex `8876086a`), then the runner failed on its own `windows_to_bottle` (assumed `C:`; the worktree is on `Y:`): mapping through `dosdevices/<letter>:` fixed, **rerun pending** (also the read-only case). |
+| W3 log directory fallback | **done (rerun pending)** | `initialize_log`: `%LOCALAPPDATA%\x3-modern-renderer\captures` (else `%USERPROFILE%\AppData\Local`), first line `capture_dir=<path> source=game|localappdata` (seen in every run since); README, `manage.py status` `log_directories`. The read-only runner case did not run yet (the runner aborted before it). |
+| `engine_memory` summary line | **done** | `capture.cpp::engine_memory_line(phase, device, frame)` after `attach` (`phase=create`) and from `telemetry::summary` (`phase=summary`); `capture.h` declares it. Line format per the design; integers only. |
+| FEX NaN bits | **done (X3 rerun pending)** | `EXPOSURE_BLOCKS` prints non-finite values as `0x%08x`; `parse_float` decodes `0x…`; bottles.md limitation 2 annotated. The `X3M_FIXTURE_BOTTLE=X3` motion rerun has not run. |
+| Docs | **done, numbers pending** | platform-portability.md, audit status table, hdr-scene-path.md §5, temporal-integration.md, live-motion-route.md, motion-output.md section, README, bottles.md, status.md section. Suite counts in status.md are partly placeholders ("see the commit message"). |
+| Suites | **partial** | Run: `run_temporal_pass.py` (fixture PASS 508/278/2, 386 samples; runner assertion updated from 468/228 afterwards — **rerun pending**), motion partial `seam-taa-on seam-taa-copy-draw seam-taa-quad-fvf` (164 checks each, pass; `seam-msaa` failed before the rework), `run_d3d9_exports.py` (fixture pass, runner mapping fixed), `check_no_x87.py` (no violations, 147 reachable functions), unittest discover (759 OK, 1 skipped), generator full regeneration (all bytecodes unchanged; `--check` **not yet run**). Not run: full `run_motion_output.py`, `temporal_run.py`, `run_ownership_integration.py`, `run_scene_capture.py`, `run_loading_trace.py`, `run_object_lifetime.py`, `run_object_trace.py`, the X3-bottle motion rerun. Interim result files under `verification/results/` (temporal-pass.*, motion-output-partial.*, d3d9-exports-*) were **not committed**; the next runs write them. |
+
+Next step, in order, each `python3 verification/probe/wine_lock.py <cmd>` with
+the game down: `run_motion_output.py seam-msaa` (partial; expect the refusal
+line), `run_d3d9_exports.py`, `run_temporal_pass.py`, then the full chain
+(`run_motion_output.py`, `temporal_run.py`, `run_ownership_integration.py`,
+`run_scene_capture.py`, `run_loading_trace.py`, `run_object_lifetime.py`,
+`run_object_trace.py`), generator `--check`, then `X3M_FIXTURE_BOTTLE=X3
+run_motion_output.py`; fill the counts into status.md / motion-output.md, commit
+"Native-Windows fixes D1–D3, W1, W3; engine_memory summary; FEX NaN bits
+(pre-review 28)".
+
+## Original status per item (first pause)
 
 | Item | Status | Exact next step |
 | --- | --- | --- |

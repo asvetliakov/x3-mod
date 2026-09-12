@@ -9,7 +9,9 @@
 #include <string>
 
 int main(int argc, char** argv) {
-    if (argc != 4) return 2; // exact native compiler DLL, HLSL input, binary output
+    if (argc != 4 && argc != 5) return 2; // exact native compiler DLL, HLSL input, binary output [, profile (default ps_3_0)]
+    const char* profile = argc == 5 ? argv[4] : "ps_3_0";
+    if (std::strcmp(profile, "ps_3_0") && std::strcmp(profile, "vs_3_0")) return 2;
     std::ifstream input(argv[2], std::ios::binary);
     if (!input) return 3;
     const std::string source{std::istreambuf_iterator<char>(input), {}};
@@ -23,7 +25,7 @@ int main(int argc, char** argv) {
     if (!compile) { FreeLibrary(module); return 6; }
     ID3DXBuffer *code = nullptr, *errors = nullptr;
     const HRESULT result = compile(source.data(), static_cast<UINT>(source.size()),
-        nullptr, nullptr, "main", "ps_3_0", D3DXSHADER_OPTIMIZATION_LEVEL3,
+        nullptr, nullptr, "main", profile, D3DXSHADER_OPTIMIZATION_LEVEL3,
         &code, &errors, nullptr);
     if (errors) {
         std::fwrite(errors->GetBufferPointer(), 1, errors->GetBufferSize(), stderr);

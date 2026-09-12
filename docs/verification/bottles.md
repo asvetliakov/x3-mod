@@ -91,7 +91,11 @@ rebuilt `build/d3d9.dll` concurrently.
    (+-inf) happen to parse as +-inf again and pass, the NaN poison parses as
    `inf` and fails; `%.9f` output loses the 9th significant digit
    (`temporal-pass.txt`). Fix belongs in the fixtures (print the IEEE bits of
-   hazard/poison values), not in the runners' parsers.
+   hazard/poison values), not in the runners' parsers. **Fixed (pre-review
+   28):** `EXPOSURE_BLOCKS` prints every non-finite value as its IEEE bits
+   (`0x%08x`; finite values keep `%.9g`) and `run_motion_output.py`'s
+   `parse_float` decodes that form, so the three `hdrexposure` cases no longer
+   depend on the CRT's text channel; production is untouched.
 3. **Per-call cost of tiny cross-DLL hooks is 3-4x higher** (loading trace
    1.364 vs 0.378 us per hooked call; consistent with the 3.2x `gzread` finding
    in the game). GPU-bound boundaries (motion-output benches) are within +-25 %

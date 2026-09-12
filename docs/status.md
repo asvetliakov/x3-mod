@@ -13,6 +13,52 @@ Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
 
+## Pre-review 28: native-Windows fixes D1–D3, W1, W3 (2026-09-12 evening, worktree branch)
+
+Implements every item of the paused
+[handoff](verification/handoff-windows-fixes.md) against the
+[native-Windows audit](architecture/native-windows-audit-2026-09-12.md);
+status per item in that document's new table, gaps in
+[platform-portability.md](architecture/platform-portability.md). Nothing here
+is a native-Windows run: it is Windows-compatible source verified on
+CrossOver Preview (Steam bottle, plus one X3/FEX rerun of the motion suite).
+
+- **D2 vs_3_0 quad program.** `src/temporal/quad_vs.hlsl` (compiled by the
+  generator's new per-shader `target`, 43 words) and
+  `src/renderer/quad_vertex_program.h`: every proxy quad (resolve, sharpen,
+  copy, HDR write-back/tonemap/meter, self tests, sentinel fill) now binds one
+  VS + declaration per pass instead of XYZRHW + null VS; the sentinel and
+  self-test programs became ps_3_0. Fixture twin `X3M_QUAD_FVF_SWITCH` /
+  `X3M_FIXTURE_QUAD_FVF=1`: byte-identical (temporal `QUAD_TWIN identical=1`
+  ×6, motion `seam-taa-quad-fvf` = `seam-taa-on`).
+- **D1 copy mode.** Attach runs a 4×4 StretchRect round trip per 8-bit format;
+  `taa_copy=stretch` only when the adapter query and the round trip both pass,
+  else `taa_copy=draw` (same-format staging copy + identity draws both ways,
+  `TemporalPass::configure_copy`); `taa_reason=format_conversion` is gone.
+  Temporal `COPY_MODE history_identical=1 display_max_code_difference=0`;
+  motion `seam-taa-copy-draw` (`X3M_FIXTURE_STRETCH_FAULT=1`).
+- **D3 MSAA refusal.** `motion_output_msaa_refused device= frame= msaa=`
+  once, gate 1 for every draw, no jitter, `taa_skip=11`, `msaa=` frame field;
+  fixture mode `msaa` (`seam-msaa`).
+- **W1 exports.** 17 names in `d3d9.def`; naked `jmp` forwarders with `ret N`
+  fallbacks, C++ `Direct3DCreate9On12[Ex]` with admission veto and
+  `unproxied=` log; `test_d3d9_exports.py` (host, PE parser
+  `tools/analysis/pe_exports.py`) and `run_d3d9_exports.py` (Wine).
+- **W3 log directory.** `%LOCALAPPDATA%\x3-modern-renderer\captures`
+  fallback, first log line `capture_dir= source=`; read-only-directory runner
+  case; README and `manage.py status` name both.
+- **Diagnostics.** `engine_memory phase=create|summary ...` line (integers);
+  the exposure fixture prints non-finite values as IEEE bits and the runner
+  decodes them, so the `hdrexposure` cases pass on the X3/FEX bottle
+  ([bottles.md](verification/bottles.md) limitation 2 closed for the fixtures).
+- Merge note: main's `b10d129` did not compile (`loading_trace.h` used
+  `ID3DXMesh` without a declaration); a forward declaration fixes it.
+- Suites (Steam bottle, clean rebuild; see the commit message for the
+  counts): temporal pass 508/278/2 with 386 samples, motion output full
+  suite, temporal_run, ownership integration, scene capture, loading trace,
+  object lifetime, object trace, the export runner, generator `--check`,
+  `check_no_x87.py`, 759 host unit tests.
+
 ## Latest checkpoint: review 25 — fast adjacency, direct engine reads, gz buffer, bottle X3 (2026-09-12 night)
 
 Review: [review-25.md](verification/review-25.md) (three low findings fixed;

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compile our original ps_3_0 fragments with a local native D3DX compiler.
 
-Nine authored programs are embedded: the motion fragment
+Ten authored programs are embedded: the motion fragment
 (src/temporal/rigid_motion_ps.hlsl -> src/renderer/rigid_motion_pixel_program_inc.h),
 the current-depth fragment
 (src/temporal/current_depth_ps.hlsl -> src/renderer/current_depth_pixel_program_inc.h),
@@ -17,7 +17,9 @@ identity write-back (src/temporal/taa_sharpen_ps.hlsl -> src/renderer/
 taa_sharpen_program_inc.h) and the AgX-then-RCAS write-back
 (src/temporal/agx_sharpen_ps.hlsl -> src/renderer/hdr_tonemap_sharpen_program_inc.h);
 both include src/temporal/rcas.hlsl, which this tool expands textually (the
-provenance lists every include's hash). `--shader` selects one (default: all). --check recompiles and compares the
+provenance lists every include's hash), and the vs_3_0 pass-through of every
+proxy quad (src/temporal/quad_vs.hlsl -> src/renderer/quad_vertex_program_inc.h;
+the only entry with a `target` other than ps_3_0). `--shader` selects one (default: all). --check recompiles and compares the
 checked-in artifacts without changing them. The compiler DLL is an external
 local prerequisite, never redistributed. Only our authored shaders' compiled
 programs and deterministic provenance are retained. No D3D device is created;
@@ -68,7 +70,15 @@ SHADERS = {
     'hdr_tonemap_sharpen': dict(source=ROOT / 'src/temporal/agx_sharpen_ps.hlsl',
                                 header=ROOT / 'src/renderer/hdr_tonemap_sharpen_program_inc.h',
                                 provenance=ROOT / 'verification/results/hdr-tonemap-sharpen-program.json'),
+    # The vs_3_0 pass-through bound for every proxy full-screen quad (native
+    # D3D9 pairs ps_3_0 with vs_3_0; the XYZRHW fixed-function path is not a
+    # documented partner). Per-shader `target`; every other entry is ps_3_0.
+    'quad_vertex': dict(source=ROOT / 'src/temporal/quad_vs.hlsl',
+                        header=ROOT / 'src/renderer/quad_vertex_program_inc.h',
+                        provenance=ROOT / 'verification/results/quad-vertex-program.json',
+                        target='vs_3_0'),
 }
+VERSION_TOKENS = {'ps_3_0': 0xffff0300, 'vs_3_0': 0xfffe0300}
 INCLUDE = re.compile(r'^#include "([^"]+)"\s*$')
 
 
@@ -99,14 +109,14 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def validate(data):
+def validate(data, target='ps_3_0'):
     # Sanity bound only (ps_3_0 has no bytecode limit): the resolve with the
     # luminance weighting of HDR stage 3 is about 4,300 words.
     if len(data) % 4 or not 8 <= len(data) <= 32768:
         raise ValueError('Unexpected compiled program extent')
     words = struct.unpack('<' + 'I' * (len(data) // 4), data)
-    if words[0] != 0xffff0300 or words[-1] != 0x0000ffff:
-        raise ValueError('Expected complete ps_3_0 program')
+    if words[0] != VERSION_TOKENS[target] or words[-1] != 0x0000ffff:
+        raise ValueError('Expected complete %s program' % target)
     offset = 1
     while offset < len(words) - 1:
         token = words[offset]
@@ -122,6 +132,7 @@ def validate(data):
 def compile_one(name, args):
     shader = SHADERS[name]
     source, header, provenance = shader['source'], shader['header'], shader['provenance']
+    target = shader.get('target', 'ps_3_0')
     expanded, included = expand_includes(source)
     inputs = (source, COMPILER_SOURCE, Path(__file__).resolve(), args.d3dx.resolve()) + tuple(included)
     before = {path: sha(path.read_bytes()) for path in inputs}
@@ -139,19 +150,19 @@ def compile_one(name, args):
                         '-static', str(COMPILER_SOURCE), '-o', str(exe)], check=True)
         subprocess.run(['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
                         '--bottle', 'Steam', '--no-update', '--dll', 'd3dx9_37=n',
-                        str(exe), 'Z:' + str(inputs[3]), 'Z:' + str(compiled), 'Z:' + str(binary)],
+                        str(exe), 'Z:' + str(inputs[3]), 'Z:' + str(compiled), 'Z:' + str(binary), target],
                        check=True, timeout=60, env=dict(os.environ, WINEDLLOVERRIDES='d3dx9_37=n'))
         data = binary.read_bytes()
     if before != {path: sha(path.read_bytes()) for path in inputs}:
         raise RuntimeError('Compilation inputs changed')
-    words = validate(data)
+    words = validate(data, target)
     text = '// Generated from our original %s. Do not edit.\n' % source.relative_to(ROOT)
     text += '// Reproduce: python3 tools/shaders/generate_rigid_motion_pixel.py --check\n'
     text += ''.join('    ' + ', '.join(f'0x{v:08x}u' for v in words[i:i+6]) + ',\n'
                     for i in range(0, len(words), 6))
     record = dict(schema=1, source=str(source.relative_to(ROOT)), source_sha256=before[source],
                   compiler='native d3dx9_37.dll D3DXCompileShader', compiler_sha256=before[inputs[-1]],
-                  entry='main', target='ps_3_0', flags=32768, flags_name='D3DXSHADER_OPTIMIZATION_LEVEL3',
+                  entry='main', target=target, flags=32768, flags_name='D3DXSHADER_OPTIMIZATION_LEVEL3',
                   defines=None, includes={str(path.relative_to(ROOT)): before[path] for path in included} or None,
                   word_count=len(words), bytecode_sha256=sha(data),
                   header_sha256=sha(text.encode()),

@@ -82,6 +82,21 @@ profiler's `wine` module class (W9) is a label only.
 | FP16 HDR stack unverified on native drivers | Still open; gates are complete (D5), the vertex-path question (D2) applies to its write-back and meter draws too. |
 | No native Windows run | Still open. |
 
+## Status (pre-review 28, 2026-09-12 evening)
+
+| ID | Status | Where / evidence |
+| --- | --- | --- |
+| D1 | **Fixed** | `MotionOutput::stretch_round_trip` (attach, per 8-bit format) decides `taa_copy=stretch|draw`; `TemporalPass::configure_copy(true)` copies same-format into a staging texture and converts with identity draws both ways (`Output::display_written`, `copy_result`). No refusal remains (`format_conversion` gone). Fixture: temporal `COPY_MODE ... history_identical=1 display_max_code_difference=0`, motion `seam-taa-copy-draw` twin (`X3M_FIXTURE_STRETCH_FAULT=1`). HDR emergency rung unchanged (already self-tested). |
+| D2 | **Fixed** | `src/temporal/quad_vs.hlsl` → `quad_vertex_program_inc.h` (vs_3_0, 43 words), `quad_vertex_program.h` (clip-space quad with the −0.5 shift, declaration); one VS + declaration per pass (TemporalPass, HdrPass, MotionOutput), bound in place of `SetFVF`+null VS; sentinel/self-test programs now ps_3_0. `abi_check.cpp` asserts slot 86. Fixture twin `X3M_QUAD_FVF_SWITCH`/`X3M_FIXTURE_QUAD_FVF=1`: temporal `QUAD_TWIN ... identical=1` ×6, motion `seam-taa-quad-fvf` byte-identical to `seam-taa-on`. |
+| D3 | **Fixed** | The selector already refused a multisampled RT0 silently; `MotionOutput::after_clear` now names it: `motion_output_msaa_refused device= frame= msaa= width= height=` once, `main_msaa_` gates every draw, no jitter, `TaaSkip::Msaa` (11), `msaa=` in the frame line; cleared by a single-sampled latch or Reset. Fixture mode `msaa` (`X3M_FIXTURE_MSAA=2`, `CheckDeviceMultiSampleType` required), runner case `seam-msaa`. |
+| D4 | Open | RESZ/D24X8 adapter unchanged (experimental path). |
+| D5–D8 | Unchanged | Cosmetic / documentation items; D8 (adjacency `verify` on Windows) remains. |
+| W1 | **Fixed** | `d3d9.def` 17 names; `loader.cpp`: naked `jmp` forwarders with `ret N` fallbacks (`DebugSetLevel` 0, `PSGPError` 12, `PSGPSampleTexture` 20, shim 4), C++ `Direct3DCreate9On12[Ex]` with admission veto and `unproxied=` log, `Direct3DCreate9Ex` logs the same line. Host test `verification/analysis/test_d3d9_exports.py` (`tools/analysis/pe_exports.py`), Wine fixture `d3d9_exports_fixture.cpp` + `run_d3d9_exports.py`. |
+| W2 / W6 / W11 | Open (documentation) | Windows install notes still to be written. |
+| W3 | **Fixed** | `capture.cpp::initialize_log`: `%LOCALAPPDATA%\x3-modern-renderer\captures` (else `%USERPROFILE%\AppData\Local`) when the game directory refuses; first line `capture_dir=<path> source=game|localappdata`; `capture_directory()` follows. Runner case `readonly` of `run_d3d9_exports.py`; README and `manage.py status` name both locations. |
+| W4, W5, W7–W10, W12, C1–C4 | Unchanged | Verified-by-reading or cosmetic. |
+| — | Added | `engine_memory phase=create|summary device= path=direct|rpm reads= queries= hits= rejected= rpm_calls= frame=` (integers only) at device creation and in every telemetry summary; the exposure fixture prints non-finite values as IEEE bits (FEX limitation 2 of bottles.md). |
+
 ## Prioritised fix list (no source edits made here)
 
 1. **D1** — replace the two format-converting `StretchRect` copies of the non-HDR TAA path with point-sampled draws (reuse the HDR identity write-back), or add a live 4×4 round-trip self test that fails the route closed.

@@ -49,6 +49,7 @@ SLOT(IDirect3DDevice9Vtbl, BeginStateBlock, 60);
 SLOT(IDirect3DDevice9Vtbl, EndStateBlock, 61);
 SLOT(IDirect3DDevice9Vtbl, SetScissorRect, 75);
 SLOT(IDirect3DDevice9Vtbl, GetScissorRect, 76);
+SLOT(IDirect3DDevice9Vtbl, CreateVertexDeclaration, 86); // the quad's declaration (renderer/quad_vertex_program.h)
 SLOT(IDirect3DDevice9Vtbl, SetVertexDeclaration, 87);
 SLOT(IDirect3DDevice9Vtbl, GetVertexDeclaration, 88);
 SLOT(IDirect3DDevice9Vtbl, SetFVF, 89);
