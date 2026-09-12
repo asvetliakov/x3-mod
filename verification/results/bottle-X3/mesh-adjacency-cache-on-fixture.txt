@@ -1,9 +1,10 @@
-ADJACENCY_CASE name=quad-16 faces=2 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=511.100 fast_us=948.100 speedup=0.54 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4
-ADJACENCY_CASE name=quad-32 faces=2 vertices=4 bits=32 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=326.200 fast_us=1.700 speedup=191.88 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4
-ADJACENCY_CASE name=exact-duplicates faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=53.200 fast_us=1.800 speedup=29.56 quantized=1 representatives=4 welded=2 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4
-ADJACENCY_CASE name=grid-neighbours-6.1e-5 faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=18.100 fast_us=0.900 speedup=20.11 quantized=1 representatives=6 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=6
-ADJACENCY_CASE name=signed-zero faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=9.400 fast_us=1.200 speedup=7.83 quantized=1 representatives=4 welded=2 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4
-ADJACENCY_CASE name=nan-position faces=2 vertices=4 bits=16 epsilon=1e-06 status=non_finite native_hr=00000000 native_error=00001357 equal=0 mismatches=0 first=0 native_us=63.400 fast_us=0.500 speedup=126.80 quantized=0 representatives=0 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=0
+MESH ADJACENCY MATH_TABLE table=generic normalize=generic rsqrt=rsqrtss
+ADJACENCY_CASE name=quad-16 faces=2 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=534.900 fast_us=755.300 speedup=0.71 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4 normalize=generic
+ADJACENCY_CASE name=quad-32 faces=2 vertices=4 bits=32 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=364.300 fast_us=1.300 speedup=280.23 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4 normalize=generic
+ADJACENCY_CASE name=exact-duplicates faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=68.300 fast_us=1.400 speedup=48.79 quantized=1 representatives=4 welded=2 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4 normalize=generic
+ADJACENCY_CASE name=grid-neighbours-6.1e-5 faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=35.500 fast_us=1.200 speedup=29.58 quantized=1 representatives=6 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=6 normalize=generic
+ADJACENCY_CASE name=signed-zero faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=29.700 fast_us=0.900 speedup=33.00 quantized=1 representatives=4 welded=2 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4 normalize=generic
+ADJACENCY_CASE name=nan-position faces=2 vertices=4 bits=16 epsilon=1e-06 status=non_finite native_hr=00000000 native_error=00001357 equal=0 mismatches=0 first=0 native_us=17.000 fast_us=0.500 speedup=34.00 quantized=0 representatives=0 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=0 normalize=generic
 NATIVE_ADJACENCY -1 -1 1 0 -1 -1
 ADJACENCY_POLICY name=nan-position variant=default equal=0 mismatches=6
 POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
@@ -21,10 +22,12 @@ ADJACENCY_POLICY name=nan-position variant=keep_refused_entry equal=0 mismatches
 POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
 ADJACENCY_POLICY name=nan-position variant=later_slot_check equal=0 mismatches=6
 POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
-ADJACENCY_CASE name=position-offset-8 faces=2 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=59.500 fast_us=2.500 speedup=23.80 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4
-ADJACENCY_CASE name=epsilon-zero faces=2 vertices=4 bits=16 epsilon=0 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=84.400 fast_us=1.300 speedup=64.92 quantized=0 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4
-ADJACENCY_CASE name=unquantized-far faces=2 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=5.600 fast_us=30.300 speedup=0.18 quantized=0 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4
-ADJACENCY_CASE name=unquantized-near-1.5e-6 faces=2 vertices=4 bits=16 epsilon=1e-06 status=epsilon_neighbour native_hr=00000000 native_error=00001357 equal=0 mismatches=0 first=0 native_us=43.800 fast_us=0.900 speedup=48.67 quantized=0 representatives=0 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=0
+ADJACENCY_POLICY name=nan-position variant=other_normalize equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_CASE name=position-offset-8 faces=2 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=29.600 fast_us=2.900 speedup=10.21 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4 normalize=generic
+ADJACENCY_CASE name=epsilon-zero faces=2 vertices=4 bits=16 epsilon=0 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=71.700 fast_us=4.800 speedup=14.94 quantized=0 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4 normalize=generic
+ADJACENCY_CASE name=unquantized-far faces=2 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=32.000 fast_us=30.800 speedup=1.04 quantized=0 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4 normalize=generic
+ADJACENCY_CASE name=unquantized-near-1.5e-6 faces=2 vertices=4 bits=16 epsilon=1e-06 status=epsilon_neighbour native_hr=00000000 native_error=00001357 equal=0 mismatches=0 first=0 native_us=41.700 fast_us=1.200 speedup=34.75 quantized=0 representatives=0 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=0 normalize=generic
 NATIVE_ADJACENCY -1 -1 1 0 -1 -1
 ADJACENCY_POLICY name=unquantized-near-1.5e-6 variant=default equal=0 mismatches=6
 POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
@@ -42,7 +45,9 @@ ADJACENCY_POLICY name=unquantized-near-1.5e-6 variant=keep_refused_entry equal=0
 POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
 ADJACENCY_POLICY name=unquantized-near-1.5e-6 variant=later_slot_check equal=0 mismatches=6
 POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
-ADJACENCY_CASE name=fan-tilted-abc faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=324.900 fast_us=58.000 speedup=5.60 quantized=1 representatives=5 welded=0 multi_candidates=1 normal_selected=1 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=7
+ADJACENCY_POLICY name=unquantized-near-1.5e-6 variant=other_normalize equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_CASE name=fan-tilted-abc faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=339.800 fast_us=106.700 speedup=3.18 quantized=1 representatives=5 welded=0 multi_candidates=1 normal_selected=1 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=7 normalize=generic
 NATIVE_ADJACENCY 1 -1 -1 0 -1 -1 -1 -1 -1
 ADJACENCY_POLICY name=fan-tilted-abc variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-tilted-abc variant=tail_insertion equal=1 mismatches=0
@@ -53,8 +58,9 @@ ADJACENCY_POLICY name=fan-tilted-abc variant=index_order_sweep equal=1 mismatche
 ADJACENCY_POLICY name=fan-tilted-abc variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-tilted-abc variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-tilted-abc variant=later_slot_check equal=1 mismatches=0
-REPLAY_CASE file=mesh-adjacency-selftest.bin faces=3 vertices=5 bits=16 stride=20 position_offset=0 epsilon=1e-06 options=00000110 x87_control=027f mxcsr=00009fc0 dump_mismatches=0 dump_first=0 native_equal_dump=1 native_dump_diff=0 status=ok module_equal_native=1 mismatches=0 first=9 module_equal_dump_module=1 native_us=34.000 fast_us=1.500 representatives=5 welded=0 refused_welds=0 multi_candidates=1 normal_selected=1 degenerate_faces=0 welded_degenerate_faces=0 repeated_neighbours=0 rsqrt=rsqrtss
-ADJACENCY_CASE name=fan-tilted-bac faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=11.400 fast_us=1.000 speedup=11.40 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=7
+ADJACENCY_POLICY name=fan-tilted-abc variant=other_normalize equal=1 mismatches=0
+REPLAY_CASE file=mesh-adjacency-selftest.bin faces=3 vertices=5 bits=16 stride=20 position_offset=0 epsilon=1e-06 options=00000110 x87_control=027f mxcsr=00009fc0 dump_mismatches=0 dump_first=0 native_equal_dump=1 native_dump_diff=0 status=ok module_equal_native=1 mismatches=0 first=9 module_equal_dump_module=1 native_us=76.900 fast_us=1.700 representatives=5 welded=0 refused_welds=0 multi_candidates=1 normal_selected=1 degenerate_faces=0 welded_degenerate_faces=0 repeated_neighbours=0 rsqrt=rsqrtss normalize=generic
+ADJACENCY_CASE name=fan-tilted-bac faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=30.800 fast_us=0.800 speedup=38.50 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=7 normalize=generic
 NATIVE_ADJACENCY 1 -1 -1 0 -1 -1 -1 -1 -1
 ADJACENCY_POLICY name=fan-tilted-bac variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-tilted-bac variant=tail_insertion equal=1 mismatches=0
@@ -64,7 +70,8 @@ ADJACENCY_POLICY name=fan-tilted-bac variant=index_order_sweep equal=1 mismatche
 ADJACENCY_POLICY name=fan-tilted-bac variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-tilted-bac variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-tilted-bac variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=fan-tilted-cba faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=44.500 fast_us=0.700 speedup=63.57 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=7
+ADJACENCY_POLICY name=fan-tilted-bac variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=fan-tilted-cba faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=26.600 fast_us=0.800 speedup=33.25 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=7 normalize=generic
 NATIVE_ADJACENCY 2 -1 -1 -1 -1 -1 0 -1 -1
 ADJACENCY_POLICY name=fan-tilted-cba variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-tilted-cba variant=tail_insertion equal=1 mismatches=0
@@ -74,7 +81,8 @@ ADJACENCY_POLICY name=fan-tilted-cba variant=index_order_sweep equal=1 mismatche
 ADJACENCY_POLICY name=fan-tilted-cba variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-tilted-cba variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-tilted-cba variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=fan-coplanar-abc faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=17.300 fast_us=1.100 speedup=15.73 quantized=1 representatives=4 welded=1 multi_candidates=1 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=7
+ADJACENCY_POLICY name=fan-tilted-cba variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=fan-coplanar-abc faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=33.100 fast_us=1.100 speedup=30.09 quantized=1 representatives=4 welded=1 multi_candidates=1 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=7 normalize=generic
 NATIVE_ADJACENCY 2 -1 -1 -1 -1 -1 0 -1 -1
 ADJACENCY_POLICY name=fan-coplanar-abc variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-coplanar-abc variant=tail_insertion equal=0 mismatches=3
@@ -85,7 +93,8 @@ ADJACENCY_POLICY name=fan-coplanar-abc variant=index_order_sweep equal=1 mismatc
 ADJACENCY_POLICY name=fan-coplanar-abc variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-coplanar-abc variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-coplanar-abc variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=fan-coplanar-cba faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=16.300 fast_us=0.700 speedup=23.29 quantized=1 representatives=4 welded=1 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=7
+ADJACENCY_POLICY name=fan-coplanar-abc variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=fan-coplanar-cba faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=28.800 fast_us=0.700 speedup=41.14 quantized=1 representatives=4 welded=1 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=7 normalize=generic
 NATIVE_ADJACENCY 2 -1 -1 -1 -1 -1 0 -1 -1
 ADJACENCY_POLICY name=fan-coplanar-cba variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-coplanar-cba variant=tail_insertion equal=1 mismatches=0
@@ -95,7 +104,21 @@ ADJACENCY_POLICY name=fan-coplanar-cba variant=index_order_sweep equal=1 mismatc
 ADJACENCY_POLICY name=fan-coplanar-cba variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-coplanar-cba variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-coplanar-cba variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=fan-four faces=5 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=15 native_us=61.800 fast_us=2.400 speedup=25.75 quantized=1 representatives=6 welded=0 multi_candidates=1 normal_selected=1 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=11
+ADJACENCY_POLICY name=fan-coplanar-cba variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=near-unit-normals faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=7.600 fast_us=1.200 speedup=6.33 quantized=1 representatives=5 welded=0 multi_candidates=1 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=7 normalize=generic
+NATIVE_ADJACENCY 2 -1 -1 -1 -1 -1 0 -1 -1
+ADJACENCY_POLICY name=near-unit-normals variant=default equal=1 mismatches=0
+ADJACENCY_POLICY name=near-unit-normals variant=tail_insertion equal=0 mismatches=3
+POLICY_ADJACENCY 1 -1 -1 0 -1 -1 -1 -1 -1
+ADJACENCY_POLICY name=near-unit-normals variant=no_normal_selection equal=1 mismatches=0
+ADJACENCY_POLICY name=near-unit-normals variant=no_weld_refusal equal=1 mismatches=0
+ADJACENCY_POLICY name=near-unit-normals variant=index_order_sweep equal=1 mismatches=0
+ADJACENCY_POLICY name=near-unit-normals variant=retire_own_entry equal=1 mismatches=0
+ADJACENCY_POLICY name=near-unit-normals variant=keep_refused_entry equal=1 mismatches=0
+ADJACENCY_POLICY name=near-unit-normals variant=later_slot_check equal=1 mismatches=0
+ADJACENCY_POLICY name=near-unit-normals variant=other_normalize equal=0 mismatches=3
+POLICY_ADJACENCY 1 -1 -1 0 -1 -1 -1 -1 -1
+ADJACENCY_CASE name=fan-four faces=5 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=15 native_us=20.900 fast_us=2.200 speedup=9.50 quantized=1 representatives=6 welded=0 multi_candidates=1 normal_selected=1 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=11 normalize=generic
 NATIVE_ADJACENCY 1 -1 -1 0 -1 -1 4 -1 -1 -1 -1 -1 2 -1 -1
 ADJACENCY_POLICY name=fan-four variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-four variant=tail_insertion equal=1 mismatches=0
@@ -106,7 +129,8 @@ ADJACENCY_POLICY name=fan-four variant=index_order_sweep equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-four variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-four variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-four variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=degenerate-aba-aaa faces=3 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=5.600 fast_us=0.600 speedup=9.33 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=2 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=9
+ADJACENCY_POLICY name=fan-four variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-aba-aaa faces=3 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=44.900 fast_us=0.600 speedup=74.83 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=2 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=9 normalize=generic
 NATIVE_ADJACENCY -1 -1 -1 -1 -1 -1 -1 -1 -1
 ADJACENCY_POLICY name=degenerate-aba-aaa variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-aba-aaa variant=tail_insertion equal=1 mismatches=0
@@ -116,7 +140,8 @@ ADJACENCY_POLICY name=degenerate-aba-aaa variant=index_order_sweep equal=1 misma
 ADJACENCY_POLICY name=degenerate-aba-aaa variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-aba-aaa variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-aba-aaa variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=degenerate-lookup faces=2 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=12.700 fast_us=0.600 speedup=21.17 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=1 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=6
+ADJACENCY_POLICY name=degenerate-aba-aaa variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-lookup faces=2 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=6.800 fast_us=0.500 speedup=13.60 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=1 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=6 normalize=generic
 NATIVE_ADJACENCY -1 -1 -1 -1 -1 -1
 ADJACENCY_POLICY name=degenerate-lookup variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-lookup variant=tail_insertion equal=1 mismatches=0
@@ -126,7 +151,8 @@ ADJACENCY_POLICY name=degenerate-lookup variant=index_order_sweep equal=1 mismat
 ADJACENCY_POLICY name=degenerate-lookup variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-lookup variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-lookup variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=degenerate-welded faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=32.700 fast_us=1.200 speedup=27.25 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=7
+ADJACENCY_POLICY name=degenerate-lookup variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-welded faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=7.900 fast_us=1.200 speedup=6.58 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=7 normalize=generic
 NATIVE_ADJACENCY 1 -1 -1 0 -1 -1 -1 -1 -1
 ADJACENCY_POLICY name=degenerate-welded variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded variant=tail_insertion equal=1 mismatches=0
@@ -137,7 +163,8 @@ ADJACENCY_POLICY name=degenerate-welded variant=index_order_sweep equal=1 mismat
 ADJACENCY_POLICY name=degenerate-welded variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=degenerate-welded-041 faces=2 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=16.300 fast_us=0.800 speedup=20.38 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=6
+ADJACENCY_POLICY name=degenerate-welded variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-welded-041 faces=2 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=29.000 fast_us=0.800 speedup=36.25 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=6 normalize=generic
 NATIVE_ADJACENCY -1 -1 -1 -1 -1 -1
 ADJACENCY_POLICY name=degenerate-welded-041 variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-041 variant=tail_insertion equal=1 mismatches=0
@@ -147,7 +174,8 @@ ADJACENCY_POLICY name=degenerate-welded-041 variant=index_order_sweep equal=1 mi
 ADJACENCY_POLICY name=degenerate-welded-041 variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-041 variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-041 variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=degenerate-welded-041b faces=2 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=26.200 fast_us=0.900 speedup=29.11 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=4
+ADJACENCY_POLICY name=degenerate-welded-041 variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-welded-041b faces=2 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=28.600 fast_us=0.700 speedup=40.86 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=4 normalize=generic
 NATIVE_ADJACENCY -1 -1 1 0 -1 -1
 ADJACENCY_POLICY name=degenerate-welded-041b variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-041b variant=tail_insertion equal=1 mismatches=0
@@ -158,7 +186,8 @@ ADJACENCY_POLICY name=degenerate-welded-041b variant=index_order_sweep equal=1 m
 ADJACENCY_POLICY name=degenerate-welded-041b variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-041b variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-041b variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=degenerate-welded-104 faces=2 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=16.100 fast_us=0.600 speedup=26.83 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=4
+ADJACENCY_POLICY name=degenerate-welded-041b variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-welded-104 faces=2 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=39.900 fast_us=0.700 speedup=57.00 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=4 normalize=generic
 NATIVE_ADJACENCY 1 -1 -1 0 -1 -1
 ADJACENCY_POLICY name=degenerate-welded-104 variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-104 variant=tail_insertion equal=1 mismatches=0
@@ -169,7 +198,8 @@ ADJACENCY_POLICY name=degenerate-welded-104 variant=index_order_sweep equal=1 mi
 ADJACENCY_POLICY name=degenerate-welded-104 variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-104 variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-104 variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=degenerate-welded-104b faces=2 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=16.600 fast_us=0.700 speedup=23.71 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=6
+ADJACENCY_POLICY name=degenerate-welded-104 variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-welded-104b faces=2 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=6.200 fast_us=0.600 speedup=10.33 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=6 normalize=generic
 NATIVE_ADJACENCY -1 -1 -1 -1 -1 -1
 ADJACENCY_POLICY name=degenerate-welded-104b variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-104b variant=tail_insertion equal=1 mismatches=0
@@ -179,7 +209,8 @@ ADJACENCY_POLICY name=degenerate-welded-104b variant=index_order_sweep equal=1 m
 ADJACENCY_POLICY name=degenerate-welded-104b variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-104b variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-104b variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=degenerate-welded-401 faces=2 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=16.300 fast_us=0.700 speedup=23.29 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=6
+ADJACENCY_POLICY name=degenerate-welded-104b variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-welded-401 faces=2 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=6.400 fast_us=0.700 speedup=9.14 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=6 normalize=generic
 NATIVE_ADJACENCY -1 -1 -1 -1 -1 -1
 ADJACENCY_POLICY name=degenerate-welded-401 variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-401 variant=tail_insertion equal=1 mismatches=0
@@ -189,7 +220,8 @@ ADJACENCY_POLICY name=degenerate-welded-401 variant=index_order_sweep equal=1 mi
 ADJACENCY_POLICY name=degenerate-welded-401 variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-401 variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-401 variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=degenerate-welded-410 faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=16.300 fast_us=0.900 speedup=18.11 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=7
+ADJACENCY_POLICY name=degenerate-welded-401 variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-welded-410 faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=16.800 fast_us=0.900 speedup=18.67 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=7 normalize=generic
 NATIVE_ADJACENCY -1 2 -1 -1 -1 -1 0 -1 -1
 ADJACENCY_POLICY name=degenerate-welded-410 variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-410 variant=tail_insertion equal=1 mismatches=0
@@ -200,7 +232,8 @@ ADJACENCY_POLICY name=degenerate-welded-410 variant=index_order_sweep equal=1 mi
 ADJACENCY_POLICY name=degenerate-welded-410 variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-410 variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-410 variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=degenerate-welded-451 faces=3 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=16.500 fast_us=1.200 speedup=13.75 quantized=1 representatives=5 welded=1 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=7
+ADJACENCY_POLICY name=degenerate-welded-410 variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-welded-451 faces=3 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=30.000 fast_us=1.100 speedup=27.27 quantized=1 representatives=5 welded=1 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=7 normalize=generic
 NATIVE_ADJACENCY -1 -1 2 -1 -1 -1 0 -1 -1
 ADJACENCY_POLICY name=degenerate-welded-451 variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-451 variant=tail_insertion equal=1 mismatches=0
@@ -212,7 +245,8 @@ POLICY_ADJACENCY -1 -1 -1 2 -1 -1 1 -1 -1
 ADJACENCY_POLICY name=degenerate-welded-451 variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-451 variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-451 variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=degenerate-welded-541a faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=16.400 fast_us=0.700 speedup=23.43 quantized=1 representatives=5 welded=1 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=4
+ADJACENCY_POLICY name=degenerate-welded-451 variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-welded-541a faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=30.000 fast_us=0.800 speedup=37.50 quantized=1 representatives=5 welded=1 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=4 normalize=generic
 NATIVE_ADJACENCY -1 1 -1 0 -1 -1
 ADJACENCY_POLICY name=degenerate-welded-541a variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-541a variant=tail_insertion equal=1 mismatches=0
@@ -224,7 +258,8 @@ POLICY_ADJACENCY -1 -1 -1 -1 -1 -1
 ADJACENCY_POLICY name=degenerate-welded-541a variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-541a variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-541a variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=degenerate-welded-541b faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=16.500 fast_us=1.000 speedup=16.50 quantized=1 representatives=5 welded=1 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=6
+ADJACENCY_POLICY name=degenerate-welded-541a variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-welded-541b faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=32.900 fast_us=0.700 speedup=47.00 quantized=1 representatives=5 welded=1 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=6 normalize=generic
 NATIVE_ADJACENCY -1 -1 -1 -1 -1 -1
 ADJACENCY_POLICY name=degenerate-welded-541b variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-541b variant=tail_insertion equal=1 mismatches=0
@@ -234,7 +269,8 @@ ADJACENCY_POLICY name=degenerate-welded-541b variant=index_order_sweep equal=1 m
 ADJACENCY_POLICY name=degenerate-welded-541b variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-541b variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-541b variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=degenerate-welded-abb faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=223.800 fast_us=4.800 speedup=46.62 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=7
+ADJACENCY_POLICY name=degenerate-welded-541b variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-welded-abb faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=31.300 fast_us=0.900 speedup=34.78 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=7 normalize=generic
 NATIVE_ADJACENCY 1 -1 -1 0 -1 -1 -1 -1 -1
 ADJACENCY_POLICY name=degenerate-welded-abb variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-abb variant=tail_insertion equal=1 mismatches=0
@@ -245,7 +281,8 @@ ADJACENCY_POLICY name=degenerate-welded-abb variant=index_order_sweep equal=1 mi
 ADJACENCY_POLICY name=degenerate-welded-abb variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-abb variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-abb variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=degenerate-welded-second faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=12.800 fast_us=1.100 speedup=11.64 quantized=1 representatives=5 welded=0 multi_candidates=1 normal_selected=1 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=7
+ADJACENCY_POLICY name=degenerate-welded-abb variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-welded-second faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=7.100 fast_us=1.300 speedup=5.46 quantized=1 representatives=5 welded=0 multi_candidates=1 normal_selected=1 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=7 normalize=generic
 NATIVE_ADJACENCY 1 -1 -1 0 -1 -1 -1 -1 -1
 ADJACENCY_POLICY name=degenerate-welded-second variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-second variant=tail_insertion equal=1 mismatches=0
@@ -257,7 +294,8 @@ ADJACENCY_POLICY name=degenerate-welded-second variant=index_order_sweep equal=1
 ADJACENCY_POLICY name=degenerate-welded-second variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-second variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=degenerate-welded-second variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=duplicate-faces faces=3 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=294.700 fast_us=1.400 speedup=210.50 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=3 unmatched=5
+ADJACENCY_POLICY name=degenerate-welded-second variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=duplicate-faces faces=3 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=24.200 fast_us=0.900 speedup=26.89 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=3 unmatched=5 normalize=generic
 NATIVE_ADJACENCY 2 -1 -1 -1 2 -1 1 0 -1
 ADJACENCY_POLICY name=duplicate-faces variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=duplicate-faces variant=tail_insertion equal=1 mismatches=0
@@ -268,7 +306,8 @@ ADJACENCY_POLICY name=duplicate-faces variant=retire_own_entry equal=0 mismatche
 POLICY_ADJACENCY 2 -1 -1 -1 -1 -1 -1 0 -1
 ADJACENCY_POLICY name=duplicate-faces variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=duplicate-faces variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=double-adjacency-order faces=3 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=147.200 fast_us=2.200 speedup=66.91 quantized=1 representatives=4 welded=0 multi_candidates=1 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=2 unmatched=7
+ADJACENCY_POLICY name=duplicate-faces variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=double-adjacency-order faces=3 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=6.400 fast_us=1.100 speedup=5.82 quantized=1 representatives=4 welded=0 multi_candidates=1 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=2 unmatched=7 normalize=generic
 NATIVE_ADJACENCY 2 -1 -1 -1 -1 -1 -1 0 -1
 ADJACENCY_POLICY name=double-adjacency-order variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=double-adjacency-order variant=tail_insertion equal=0 mismatches=2
@@ -279,8 +318,9 @@ ADJACENCY_POLICY name=double-adjacency-order variant=index_order_sweep equal=1 m
 ADJACENCY_POLICY name=double-adjacency-order variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=double-adjacency-order variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=double-adjacency-order variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=unreferenced-vertices faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=135.400 fast_us=1.700 speedup=79.65 quantized=1 representatives=5 welded=1 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4
-ADJACENCY_CASE name=refusal-chain faces=4 vertices=7 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=12 native_us=117.000 fast_us=4.200 speedup=27.86 quantized=1 representatives=5 welded=2 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=2 repeated_neighbours=0 unmatched=12
+ADJACENCY_POLICY name=double-adjacency-order variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=unreferenced-vertices faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=16.100 fast_us=0.700 speedup=23.00 quantized=1 representatives=5 welded=1 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4 normalize=generic
+ADJACENCY_CASE name=refusal-chain faces=4 vertices=7 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=12 native_us=7.300 fast_us=1.600 speedup=4.56 quantized=1 representatives=5 welded=2 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=2 repeated_neighbours=0 unmatched=12 normalize=generic
 NATIVE_ADJACENCY -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 ADJACENCY_POLICY name=refusal-chain variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=refusal-chain variant=tail_insertion equal=1 mismatches=0
@@ -292,7 +332,8 @@ POLICY_ADJACENCY 1 -1 -1 2 -1 0 -1 -1 1 -1 -1 -1
 ADJACENCY_POLICY name=refusal-chain variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=refusal-chain variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=refusal-chain variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=refusal-pair-face faces=4 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=12 native_us=91.000 fast_us=2.400 speedup=37.92 quantized=1 representatives=5 welded=1 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=8
+ADJACENCY_POLICY name=refusal-chain variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=refusal-pair-face faces=4 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=12 native_us=17.100 fast_us=1.200 speedup=14.25 quantized=1 representatives=5 welded=1 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=8 normalize=generic
 NATIVE_ADJACENCY -1 -1 -1 3 -1 -1 -1 -1 3 1 -1 2
 ADJACENCY_POLICY name=refusal-pair-face variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=refusal-pair-face variant=tail_insertion equal=1 mismatches=0
@@ -302,7 +343,8 @@ ADJACENCY_POLICY name=refusal-pair-face variant=index_order_sweep equal=1 mismat
 ADJACENCY_POLICY name=refusal-pair-face variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=refusal-pair-face variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=refusal-pair-face variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=heap-order-0 faces=6 vertices=9 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=18 native_us=142.200 fast_us=12.900 speedup=11.02 quantized=1 representatives=6 welded=3 multi_candidates=1 normal_selected=1 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=1 unmatched=10
+ADJACENCY_POLICY name=refusal-pair-face variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=heap-order-0 faces=6 vertices=9 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=18 native_us=8.100 fast_us=2.500 speedup=3.24 quantized=1 representatives=6 welded=3 multi_candidates=1 normal_selected=1 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=1 unmatched=10 normalize=generic
 NATIVE_ADJACENCY 4 -1 2 3 -1 -1 0 -1 -1 5 -1 1 -1 0 -1 -1 3 -1
 ADJACENCY_POLICY name=heap-order-0 variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-0 variant=tail_insertion equal=1 mismatches=0
@@ -314,7 +356,8 @@ ADJACENCY_POLICY name=heap-order-0 variant=index_order_sweep equal=1 mismatches=
 ADJACENCY_POLICY name=heap-order-0 variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-0 variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-0 variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=heap-order-1 faces=6 vertices=9 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=18 native_us=175.200 fast_us=2.400 speedup=73.00 quantized=1 representatives=6 welded=3 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=10
+ADJACENCY_POLICY name=heap-order-0 variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=heap-order-1 faces=6 vertices=9 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=18 native_us=20.800 fast_us=1.700 speedup=12.24 quantized=1 representatives=6 welded=3 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=10 normalize=generic
 NATIVE_ADJACENCY -1 4 3 -1 4 -1 -1 -1 -1 5 -1 0 0 1 -1 -1 3 -1
 ADJACENCY_POLICY name=heap-order-1 variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-1 variant=tail_insertion equal=1 mismatches=0
@@ -325,7 +368,8 @@ ADJACENCY_POLICY name=heap-order-1 variant=index_order_sweep equal=1 mismatches=
 ADJACENCY_POLICY name=heap-order-1 variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-1 variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-1 variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=heap-order-2 faces=6 vertices=9 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=18 native_us=130.300 fast_us=12.600 speedup=10.34 quantized=1 representatives=5 welded=4 multi_candidates=1 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=1 refused_welds=0 repeated_neighbours=2 unmatched=14
+ADJACENCY_POLICY name=heap-order-1 variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=heap-order-2 faces=6 vertices=9 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=18 native_us=30.000 fast_us=1.700 speedup=17.65 quantized=1 representatives=5 welded=4 multi_candidates=1 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=1 refused_welds=0 repeated_neighbours=2 unmatched=14 normalize=generic
 NATIVE_ADJACENCY -1 4 -1 5 -1 -1 -1 -1 -1 -1 -1 -1 0 -1 -1 -1 1 -1
 ADJACENCY_POLICY name=heap-order-2 variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-2 variant=tail_insertion equal=0 mismatches=2
@@ -336,7 +380,8 @@ ADJACENCY_POLICY name=heap-order-2 variant=index_order_sweep equal=1 mismatches=
 ADJACENCY_POLICY name=heap-order-2 variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-2 variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-2 variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=heap-order-3 faces=6 vertices=9 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=18 native_us=155.800 fast_us=3.600 speedup=43.28 quantized=1 representatives=6 welded=3 multi_candidates=1 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=2 unmatched=14
+ADJACENCY_POLICY name=heap-order-2 variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=heap-order-3 faces=6 vertices=9 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=18 native_us=23.100 fast_us=2.000 speedup=11.55 quantized=1 representatives=6 welded=3 multi_candidates=1 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=2 unmatched=14 normalize=generic
 NATIVE_ADJACENCY 4 -1 -1 -1 -1 -1 -1 -1 -1 5 -1 -1 -1 0 -1 -1 3 -1
 ADJACENCY_POLICY name=heap-order-3 variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-3 variant=tail_insertion equal=0 mismatches=2
@@ -348,7 +393,8 @@ ADJACENCY_POLICY name=heap-order-3 variant=index_order_sweep equal=1 mismatches=
 ADJACENCY_POLICY name=heap-order-3 variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-3 variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-3 variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=heap-order-4 faces=6 vertices=9 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=18 native_us=149.400 fast_us=3.500 speedup=42.69 quantized=1 representatives=6 welded=3 multi_candidates=2 normal_selected=2 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=10
+ADJACENCY_POLICY name=heap-order-3 variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=heap-order-4 faces=6 vertices=9 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=18 native_us=46.900 fast_us=2.400 speedup=19.54 quantized=1 representatives=6 welded=3 multi_candidates=2 normal_selected=2 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=1 repeated_neighbours=0 unmatched=10 normalize=generic
 NATIVE_ADJACENCY -1 4 2 -1 4 -1 0 -1 -1 4 -1 -1 0 1 3 -1 -1 -1
 ADJACENCY_POLICY name=heap-order-4 variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-4 variant=tail_insertion equal=1 mismatches=0
@@ -360,7 +406,8 @@ ADJACENCY_POLICY name=heap-order-4 variant=index_order_sweep equal=1 mismatches=
 ADJACENCY_POLICY name=heap-order-4 variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-4 variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-4 variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=heap-order-5 faces=6 vertices=9 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=18 native_us=160.700 fast_us=3.900 speedup=41.21 quantized=1 representatives=5 welded=4 multi_candidates=2 normal_selected=1 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=1 unmatched=8
+ADJACENCY_POLICY name=heap-order-4 variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=heap-order-5 faces=6 vertices=9 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=18 native_us=43.400 fast_us=1.900 speedup=22.84 quantized=1 representatives=5 welded=4 multi_candidates=2 normal_selected=1 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=1 unmatched=8 normalize=generic
 NATIVE_ADJACENCY 4 -1 3 4 -1 -1 4 -1 -1 5 -1 0 2 0 1 -1 3 -1
 ADJACENCY_POLICY name=heap-order-5 variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-5 variant=tail_insertion equal=1 mismatches=0
@@ -372,7 +419,8 @@ ADJACENCY_POLICY name=heap-order-5 variant=retire_own_entry equal=0 mismatches=2
 POLICY_ADJACENCY 4 -1 3 4 -1 -1 -1 -1 -1 5 -1 0 -1 0 1 -1 3 -1
 ADJACENCY_POLICY name=heap-order-5 variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=heap-order-5 variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=own-entry-survives faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=147.700 fast_us=1.300 speedup=113.62 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=2 unmatched=5
+ADJACENCY_POLICY name=heap-order-5 variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=own-entry-survives faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=33.500 fast_us=1.100 speedup=30.45 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=2 unmatched=5 normalize=generic
 NATIVE_ADJACENCY 2 -1 -1 2 -1 -1 1 0 -1
 ADJACENCY_POLICY name=own-entry-survives variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=own-entry-survives variant=tail_insertion equal=1 mismatches=0
@@ -383,7 +431,8 @@ ADJACENCY_POLICY name=own-entry-survives variant=retire_own_entry equal=0 mismat
 POLICY_ADJACENCY 2 -1 -1 -1 -1 -1 -1 0 -1
 ADJACENCY_POLICY name=own-entry-survives variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=own-entry-survives variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=refused-consumed faces=4 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=12 native_us=15.600 fast_us=1.300 speedup=12.00 quantized=1 representatives=5 welded=0 multi_candidates=1 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=2 unmatched=8
+ADJACENCY_POLICY name=own-entry-survives variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=refused-consumed faces=4 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=12 native_us=32.200 fast_us=1.700 speedup=18.94 quantized=1 representatives=5 welded=0 multi_candidates=1 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=2 unmatched=8 normalize=generic
 NATIVE_ADJACENCY 2 -1 -1 3 -1 -1 -1 0 -1 1 -1 -1
 ADJACENCY_POLICY name=refused-consumed variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=refused-consumed variant=tail_insertion equal=0 mismatches=4
@@ -394,7 +443,8 @@ ADJACENCY_POLICY name=refused-consumed variant=index_order_sweep equal=1 mismatc
 ADJACENCY_POLICY name=refused-consumed variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=refused-consumed variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=refused-consumed variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=later-slot-prefilled faces=4 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=12 native_us=108.500 fast_us=1.300 speedup=83.46 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=3 unmatched=8
+ADJACENCY_POLICY name=refused-consumed variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=later-slot-prefilled faces=4 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=12 native_us=100.500 fast_us=0.900 speedup=111.67 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=3 unmatched=8 normalize=generic
 NATIVE_ADJACENCY 2 -1 -1 2 -1 -1 1 0 -1 -1 -1 -1
 ADJACENCY_POLICY name=later-slot-prefilled variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=later-slot-prefilled variant=tail_insertion equal=1 mismatches=0
@@ -405,7 +455,8 @@ ADJACENCY_POLICY name=later-slot-prefilled variant=retire_own_entry equal=0 mism
 POLICY_ADJACENCY 2 -1 -1 -1 -1 -1 -1 0 -1 -1 -1 -1
 ADJACENCY_POLICY name=later-slot-prefilled variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=later-slot-prefilled variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=key-window-offset-8-apart faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=91.200 fast_us=1.200 speedup=76.00 quantized=1 representatives=6 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=6
+ADJACENCY_POLICY name=later-slot-prefilled variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=key-window-offset-8-apart faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=6.800 fast_us=1.100 speedup=6.18 quantized=1 representatives=6 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=6 normalize=generic
 NATIVE_ADJACENCY -1 -1 -1 -1 -1 -1
 ADJACENCY_POLICY name=key-window-offset-8-apart variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=key-window-offset-8-apart variant=tail_insertion equal=1 mismatches=0
@@ -415,7 +466,8 @@ ADJACENCY_POLICY name=key-window-offset-8-apart variant=index_order_sweep equal=
 ADJACENCY_POLICY name=key-window-offset-8-apart variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=key-window-offset-8-apart variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=key-window-offset-8-apart variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=key-window-offset-8-equal faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=58.800 fast_us=1.000 speedup=58.80 quantized=1 representatives=4 welded=2 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4
+ADJACENCY_POLICY name=key-window-offset-8-apart variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=key-window-offset-8-equal faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=14.500 fast_us=0.900 speedup=16.11 quantized=1 representatives=4 welded=2 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4 normalize=generic
 NATIVE_ADJACENCY -1 -1 1 0 -1 -1
 ADJACENCY_POLICY name=key-window-offset-8-equal variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=key-window-offset-8-equal variant=tail_insertion equal=1 mismatches=0
@@ -425,7 +477,8 @@ ADJACENCY_POLICY name=key-window-offset-8-equal variant=index_order_sweep equal=
 ADJACENCY_POLICY name=key-window-offset-8-equal variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=key-window-offset-8-equal variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=key-window-offset-8-equal variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=key-window-offset-8-within-eps faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=50.400 fast_us=0.900 speedup=56.00 quantized=1 representatives=4 welded=2 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4
+ADJACENCY_POLICY name=key-window-offset-8-equal variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=key-window-offset-8-within-eps faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=16.200 fast_us=1.100 speedup=14.73 quantized=1 representatives=4 welded=2 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=4 normalize=generic
 NATIVE_ADJACENCY -1 -1 1 0 -1 -1
 ADJACENCY_POLICY name=key-window-offset-8-within-eps variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=key-window-offset-8-within-eps variant=tail_insertion equal=1 mismatches=0
@@ -435,7 +488,8 @@ ADJACENCY_POLICY name=key-window-offset-8-within-eps variant=index_order_sweep e
 ADJACENCY_POLICY name=key-window-offset-8-within-eps variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=key-window-offset-8-within-eps variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=key-window-offset-8-within-eps variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=epsilon-zero-refusal faces=3 vertices=7 bits=16 epsilon=0 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=33.200 fast_us=1.000 speedup=33.20 quantized=0 representatives=5 welded=2 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=5
+ADJACENCY_POLICY name=key-window-offset-8-within-eps variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=epsilon-zero-refusal faces=3 vertices=7 bits=16 epsilon=0 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=152.300 fast_us=1.100 speedup=138.45 quantized=0 representatives=5 welded=2 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=5 normalize=generic
 NATIVE_ADJACENCY 2 1 -1 0 -1 -1 0 -1 -1
 ADJACENCY_POLICY name=epsilon-zero-refusal variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=epsilon-zero-refusal variant=tail_insertion equal=1 mismatches=0
@@ -446,7 +500,8 @@ ADJACENCY_POLICY name=epsilon-zero-refusal variant=index_order_sweep equal=1 mis
 ADJACENCY_POLICY name=epsilon-zero-refusal variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=epsilon-zero-refusal variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=epsilon-zero-refusal variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=fan-eight faces=10 vertices=11 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=30 native_us=50.100 fast_us=4.100 speedup=12.22 quantized=1 representatives=11 welded=0 multi_candidates=1 normal_selected=3 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=26
+ADJACENCY_POLICY name=epsilon-zero-refusal variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=fan-eight faces=10 vertices=11 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=30 native_us=60.600 fast_us=3.700 speedup=16.38 quantized=1 representatives=11 welded=0 multi_candidates=1 normal_selected=3 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=26 normalize=generic
 NATIVE_ADJACENCY 5 -1 -1 9 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 1 -1 -1
 ADJACENCY_POLICY name=fan-eight variant=default equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-eight variant=tail_insertion equal=0 mismatches=3
@@ -458,10 +513,11 @@ ADJACENCY_POLICY name=fan-eight variant=index_order_sweep equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-eight variant=retire_own_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-eight variant=keep_refused_entry equal=1 mismatches=0
 ADJACENCY_POLICY name=fan-eight variant=later_slot_check equal=1 mismatches=0
-ADJACENCY_CASE name=grid-224x224-32 faces=99458 vertices=50176 bits=32 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=298374 native_us=47544.900 fast_us=16559.500 speedup=2.87 quantized=1 representatives=50176 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=892
-ADJACENCY_CASE name=split-150x150-32 faces=44402 vertices=133206 bits=32 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=133206 native_us=92061.200 fast_us=5396.100 speedup=17.06 quantized=1 representatives=22500 welded=110706 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=596
-ADJACENCY_CASE name=star-20000-32 faces=20000 vertices=40000 bits=32 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=60000 native_us=240579.600 fast_us=2430.700 speedup=98.98 quantized=1 representatives=20001 welded=19999 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=20000
-ADJACENCY_CASE name=split-16 faces=19602 vertices=58806 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=58806 native_us=28793.000 fast_us=2155.600 speedup=13.36 quantized=1 representatives=10000 welded=48806 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=396
+ADJACENCY_POLICY name=fan-eight variant=other_normalize equal=1 mismatches=0
+ADJACENCY_CASE name=grid-224x224-32 faces=99458 vertices=50176 bits=32 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=298374 native_us=46690.800 fast_us=15739.800 speedup=2.97 quantized=1 representatives=50176 welded=0 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=892 normalize=generic
+ADJACENCY_CASE name=split-150x150-32 faces=44402 vertices=133206 bits=32 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=133206 native_us=89603.500 fast_us=4944.500 speedup=18.12 quantized=1 representatives=22500 welded=110706 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=596 normalize=generic
+ADJACENCY_CASE name=star-20000-32 faces=20000 vertices=40000 bits=32 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=60000 native_us=248266.900 fast_us=2413.400 speedup=102.87 quantized=1 representatives=20001 welded=19999 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=20000 normalize=generic
+ADJACENCY_CASE name=split-16 faces=19602 vertices=58806 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=58806 native_us=30020.300 fast_us=2116.800 speedup=14.18 quantized=1 representatives=10000 welded=48806 multi_candidates=0 normal_selected=0 degenerate_faces=0 welded_degenerate_faces=0 refused_welds=0 repeated_neighbours=0 unmatched=396 normalize=generic
 ADJACENCY_RANDOM trials=2000 equal=2000 mismatched=0 multi_candidate_meshes=117 refused_weld_meshes=460
 FP_STATE_NATIVE name=quad-16 cw=027f mxcsr=00001f80 after_cw=027f after_mxcsr=00001f80 faces=2 equal_module=1 mismatches=0 first=6 unused=4 deterministic=1
 FP_STATE_NATIVE name=quad-16 cw=007f mxcsr=00001f80 after_cw=007f after_mxcsr=00001f80 faces=2 equal_module=1 mismatches=0 first=6 unused=4 deterministic=1
@@ -506,7 +562,7 @@ FP_STATE_NATIVE name=star-20000-32 cw=027f mxcsr=00009f80 after_cw=027f after_mx
 FP_STATE_NATIVE name=star-20000-32 cw=027f mxcsr=00001fc0 after_cw=027f after_mxcsr=00001fc0 faces=20000 equal_module=1 mismatches=0 first=60000 unused=20000 deterministic=1
 FP_STATE_NATIVE name=star-20000-32 cw=037f mxcsr=00001f80 after_cw=037f after_mxcsr=00001f80 faces=20000 equal_module=1 mismatches=0 first=60000 unused=20000 deterministic=1
 mesh_cache requested=1 enabled=0 activation=await_public_mesh_and_buffer_contract adjacency_metric_scope=hook_service restart_on_cleanup_failure=1
-mesh_adjacency mode=verify scope=hook_service equivalence=d3dx_rules+exact_position_equality gate=public_systemmem_readonly+declaration_float3+no_attribute_table order=cache_lookup,compute,cache_store native_fallback=1 dump=0 rsqrt=rsqrtss
+mesh_adjacency mode=verify scope=hook_service equivalence=d3dx_rules+exact_position_equality gate=public_systemmem_readonly+declaration_float3+no_attribute_table order=cache_lookup,compute,cache_store native_fallback=1 dump=0 rsqrt=rsqrtss math_table=generic normalize=generic
 loading_hook name=CreateFileA installed=0
 loading_hook name=ReadFile installed=0
 loading_hook name=SetFilePointer installed=0
@@ -530,14 +586,14 @@ loading_hook name=gzgetc installed=0
 loading_hook name=gztell installed=0
 loading_hook name=gzclose installed=0
 loading_hook name=gzwrite installed=0
-loading_trace coverage_begin=9708131651468 frequency=10000000 hooks=1 module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=1 probes=0
+loading_trace coverage_begin=9756358819169 frequency=10000000 hooks=1 module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=1 probes=0
 mesh_cache ready=1 buffer_contract_required=1 identity=process_local generation=1 retained_budget=16777216 scratch_budget=4194304 entries=512 buffer_contract=public_systemmem_readonly file_fingerprint_required=0 serialized_application_calls=1 dynamic_systemmem_contract=1 dynamic_options=990,991,18990,18991
 mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=8 objects_retained=0
 mesh_hook table=0 installed=1 owned_slots=3 scope=shared_native_vtable
 mesh_hook table=1 installed=1 owned_slots=3 scope=shared_native_vtable
-VERIFY_STATS calls=53 computed=51 fallbacks=2 verify_meshes=51 verify_equal=51 verify_mismatched=0 mismatch_entries=0 quantized=48 unquantized=3 module_non_finite=1 module_epsilon_neighbour=1
-FAST_STATS cache=1 calls=106 computed=102 fallbacks=4 faults=0 fast_ticks=344930 cache_hits=0 cache_misses=53
-FAST_CACHE second_pass_hits=53 computed=102
+VERIFY_STATS calls=54 computed=52 fallbacks=2 verify_meshes=52 verify_equal=52 verify_mismatched=0 mismatch_entries=0 quantized=49 unquantized=3 module_non_finite=1 module_epsilon_neighbour=1
+FAST_STATS cache=1 calls=108 computed=104 fallbacks=4 faults=0 fast_ticks=373294 cache_hits=0 cache_misses=54
+FAST_CACHE second_pass_hits=54 computed=104
 GAME_FP_CALL mode=verify name=quad-16 incoming_cw=027f incoming_mxcsr=9fc0 native_cw=027f native_sw=0100 native_mxcsr=00009fc0 after_cw=027f after_sw=0100 after_tag=ffff after_mxcsr=00009fc0 restored=1
 GAME_FP_CALL mode=verify name=exact-duplicates incoming_cw=027f incoming_mxcsr=9fc0 native_cw=027f native_sw=0100 native_mxcsr=00009fc0 after_cw=027f after_sw=0100 after_tag=ffff after_mxcsr=00009fc0 restored=1
 GAME_FP_CALL mode=verify name=fan-tilted-abc incoming_cw=027f incoming_mxcsr=9fc0 native_cw=027f native_sw=0100 native_mxcsr=00009fc0 after_cw=027f after_sw=0100 after_tag=ffff after_mxcsr=00009fc0 restored=1
@@ -550,15 +606,15 @@ GAME_FP_CALL mode=fast name=fan-tilted-abc incoming_cw=027f incoming_mxcsr=9fc0 
 GAME_FP_CALL mode=fast name=degenerate-welded incoming_cw=027f incoming_mxcsr=9fc0 native_cw=027f native_sw=0100 native_mxcsr=00009fc0 after_cw=027f after_sw=0000 after_tag=ffff after_mxcsr=00009fc0 restored=1
 GAME_FP_CALL mode=fast name=grid-224x224-32 incoming_cw=027f incoming_mxcsr=9fc0 native_cw=027f native_sw=0100 native_mxcsr=00009fc0 after_cw=027f after_sw=0000 after_tag=ffff after_mxcsr=00009fc0 restored=1
 GAME_FP_CALL mode=fast name=split-150x150-32 incoming_cw=027f incoming_mxcsr=9fc0 native_cw=027f native_sw=0000 native_mxcsr=00009fc0 after_cw=027f after_sw=0000 after_tag=ffff after_mxcsr=00009fc0 restored=1
-GAME_FP_STATE control=027f mxcsr=9fc0 meshes=12 verify_equal=6 fast_equal=6 restored=12 cache_fp_bypasses=0 cache_hits=54 cache_misses=119
-loading_metric op=D3DXCreateMesh qpc=9708142278397 count=67 failures=0 pending=0 ambiguous=0 bytes=0 inclusive_ticks=169715 exclusive_ticks=169715 max_ticks=13200 wrapper_tail_ticks=81 total_us=16971.500 exclusive_us=16971.500 max_us=1320.000 wrapper_tail_us=8.100
-loading_metric op=ID3DXMesh::GenerateAdjacency qpc=9708142278397 count=175 failures=0 pending=0 ambiguous=0 bytes=0 inclusive_ticks=7534644 exclusive_ticks=7534644 max_ticks=2418305 wrapper_tail_ticks=286 total_us=753464.400 exclusive_us=753464.400 max_us=241830.500 wrapper_tail_us=28.600
+GAME_FP_STATE control=027f mxcsr=9fc0 meshes=12 verify_equal=6 fast_equal=6 restored=12 cache_fp_bypasses=0 cache_hits=55 cache_misses=121
+loading_metric op=D3DXCreateMesh qpc=9756370050011 count=68 failures=0 pending=0 ambiguous=0 bytes=0 inclusive_ticks=168767 exclusive_ticks=168767 max_ticks=13598 wrapper_tail_ticks=109 total_us=16876.700 exclusive_us=16876.700 max_us=1359.800 wrapper_tail_us=10.900
+loading_metric op=ID3DXMesh::GenerateAdjacency qpc=9756370050011 count=178 failures=0 pending=0 ambiguous=0 bytes=0 inclusive_ticks=8028218 exclusive_ticks=8028218 max_ticks=2609853 wrapper_tail_ticks=338 total_us=802821.800 exclusive_us=802821.800 max_us=260985.300 wrapper_tail_us=33.800
 mesh_cache_gate cumulative=1 reason=mesh_pool count=2
 mesh_cache_gate_first reason=mesh_pool scope=0 options=00000220 slot=18 actual_entry=7b51c1ee expected_entry=7b51c1ee status=00000000 pool=0 usage=00000000 format=0 required_bytes=0 size_bytes=0 known=0 pending=0
 mesh_cache_fp_incoming control=0000007f status=00000000 tag=0000ffff mxcsr=00001f80 supported=1 keyed=1 normalized=0
-mesh_cache_metric cumulative=1 qpc=9708142292177 dispatch_enabled=1 buffer_contract=public_systemmem_readonly faulted=0 calls=174 hits=54 misses=120 bypasses=0 contention=0 admissions=120 evictions=105 allocation_failures=0 acquisition_failures=0 unrecoverable_unlocks=0 native_calls=120 native_failures=0 retained_bytes=15793108 retained_entries=15 acquired_bytes=33991836 copied_bytes=10063200 evicted_bytes=18355596 acquisition_ticks=122305 lookup_ticks=1388775 copy_ticks=15759 native_ticks=5975610 total_ticks=7518867 gate_rejections=1 gate_ticks=9158 native_outcomes=121 hit_outcomes=54 cleanup_outcomes=0 blocked=0 cleanup_hr=00000000 rejected_result=0 rejected_last_error=0 rejected_fp=0
+mesh_cache_metric cumulative=1 qpc=9756370065125 dispatch_enabled=1 buffer_contract=public_systemmem_readonly faulted=0 calls=177 hits=55 misses=122 bypasses=0 contention=0 admissions=122 evictions=107 allocation_failures=0 acquisition_failures=0 unrecoverable_unlocks=0 native_calls=122 native_failures=0 retained_bytes=15793108 retained_entries=15 acquired_bytes=33992190 copied_bytes=10063308 evicted_bytes=18356080 acquisition_ticks=123360 lookup_ticks=1494857 copy_ticks=15959 native_ticks=6353080 total_ticks=8006924 gate_rejections=1 gate_ticks=12483 native_outcomes=123 hit_outcomes=55 cleanup_outcomes=0 blocked=0 cleanup_hr=00000000 rejected_result=0 rejected_last_error=0 rejected_fp=0
 mesh_hook table=0 restored_slots=3 foreign_slots=0 remaining_owned_slots=0
 mesh_hook table=1 restored_slots=3 foreign_slots=0 remaining_owned_slots=0
 loading_hook name=D3DXCreateMesh restored=1 owned=1
 ADMISSION_WITNESS requested=0 enabled=0 active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 valid=1
-MESH ADJACENCY RESULT cache=1 checks=33328 failures=0
+MESH ADJACENCY RESULT cache=1 checks=36041 failures=0

@@ -1,0 +1,56 @@
+{
+  "result": "PASS",
+  "check": true,
+  "shaders": [
+    {
+      "shader": "current_depth",
+      "word_count": 35,
+      "bytecode_sha256": "d097c156f9fc71faf2d554037092b86aefb399434575239c91d12ca46ce54c4c"
+    },
+    {
+      "shader": "hdr_meter_level0",
+      "word_count": 1929,
+      "bytecode_sha256": "4a59a0d12e581144bee358cc0a74fb1439e0537246693652cd2b05623a6dbc3e"
+    },
+    {
+      "shader": "hdr_meter_reduce",
+      "word_count": 392,
+      "bytecode_sha256": "3de611fbae10fe85f5483527d90e8d8b02b975fafa745a5263559d85d18bed02"
+    },
+    {
+      "shader": "hdr_tonemap",
+      "word_count": 414,
+      "bytecode_sha256": "f5e78954aff3d3ceb9535c67873b8695e4a0b3524cf39b3648c78c2a0a6572aa"
+    },
+    {
+      "shader": "hdr_tonemap_sharpen",
+      "word_count": 1691,
+      "bytecode_sha256": "4b36956c71cd3a75eed5280fd18735669de3d692ba1dedf6a31ec74d5b0177e0"
+    },
+    {
+      "shader": "hdr_writeback",
+      "word_count": 46,
+      "bytecode_sha256": "9cbb62f677f53401c91b61c026639f7bf25d85d6f581bf1952ba3ef4d640009a"
+    },
+    {
+      "shader": "quad_vertex",
+      "word_count": 43,
+      "bytecode_sha256": "09d4c72bab123c0d1127e0fcf0736011526941aca7efe43b055a443b296d32d0"
+    },
+    {
+      "shader": "rigid_motion",
+      "word_count": 176,
+      "bytecode_sha256": "a604ce8c772ac472dca8612c8cafcb353cb648f89aaffd7a089b7c9f0ae1e107"
+    },
+    {
+      "shader": "taa_sharpen",
+      "word_count": 418,
+      "bytecode_sha256": "af5cdb6f63d39989b4162f9d72563e242e4612f7e75a505858aa40781e1e8399"
+    },
+    {
+      "shader": "temporal_resolve",
+      "word_count": 4487,
+      "bytecode_sha256": "4cd8ad52d674c8abb9fde779e3c913d9dbba513fdadfec00f21b7d7c21959f48"
+    }
+  ]
+}

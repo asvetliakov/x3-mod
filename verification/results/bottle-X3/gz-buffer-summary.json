@@ -17,13 +17,13 @@
     "src/proxy/gz_buffer.h": "bacec1b06195c83f7007fe5ed4a9d18cd9ad79503d9cfbc8e6dbaa1390f2ec2d",
     "src/proxy/gz_buffer.cpp": "1ec0c3b421e3505671040f18fc00e402bed23c1621d02c46863819cc8e592da3",
     "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
-    "src/proxy/capture.h": "35a4350a1babdea3d61b7de88b6548669f9e7de19137e6cdebc2b018a591949b",
+    "src/proxy/capture.h": "c9029e5297939f57e165626033a785eada38c5932850b3f8d8ca9dbfbe4747db",
     "verification/probe/gz_buffer_fixture.cpp": "1d55b2be0c705d8c18ba423c364868761c6dfabbe41ade8be466308960dd152a",
     "verification/probe/build_gz_buffer.sh": "2a48c44e7e66b00fd7a88eeaa72dcee6a549c33f850706140858518d7e1aa765",
     "verification/probe/run_gz_buffer.py": "65b8d18ac2e34f2b2aad537c3ad1aa6fc32b921e7921af75c2e19bf16844b956"
   },
   "zlib1_sha256_before": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
-  "executable_sha256": "fb5c8220d96c75cf72db7c84a4fb9ac28dd98c2caacd83d40bc6fbcf3a507434",
+  "executable_sha256": "51f0be51d2dddb011edd5a96182592d302bdc3d0eab983c206a4839d6030519b",
   "zlib1_sha256_copied": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
   "exit_code": 0,
   "report": {
@@ -156,36 +156,36 @@
       "unbuffered": {
         "calls": 10000000,
         "bytes": 30000000,
-        "seconds": 0.326,
-        "ns_per_call": 32.6,
-        "wall_ms": 320
+        "seconds": 0.33,
+        "ns_per_call": 33.0,
+        "wall_ms": 321
       },
       "qpc": {
         "calls": 10000000,
         "bytes": 30000000,
-        "seconds": 2.401,
-        "ns_per_call": 240.1,
-        "wall_ms": 2384
+        "seconds": 2.409,
+        "ns_per_call": 240.9,
+        "wall_ms": 2396
       },
       "light": {
         "calls": 10000000,
         "bytes": 30000000,
-        "seconds": 3.837,
-        "ns_per_call": 383.7,
-        "wall_ms": 3834
+        "seconds": 3.864,
+        "ns_per_call": 386.4,
+        "wall_ms": 3848
       },
       "hooked": {
         "calls": 10000000,
         "bytes": 30000000,
-        "seconds": 12.142,
-        "ns_per_call": 1214.2,
-        "wall_ms": 12136
+        "seconds": 12.372,
+        "ns_per_call": 1237.2,
+        "wall_ms": 12367
       },
       "buffered": {
         "calls": 10000000,
         "bytes": 30000000,
-        "seconds": 0.42,
-        "ns_per_call": 42.0,
+        "seconds": 0.417,
+        "ns_per_call": 41.7,
         "wall_ms": 405
       }
     },
@@ -211,11 +211,11 @@
     "checks": 735876,
     "failures": 0,
     "fail_lines": [],
-    "hook_envelope_ratio": 37.24539877300613,
-    "speedup": 0.7761904761904762,
-    "light_envelope_ratio": 11.769938650306749,
-    "light_envelope_ns": 351.09999999999997,
-    "hooked_envelope_ns": 1181.6000000000001,
-    "qpc_envelope_ns": 207.5
+    "hook_envelope_ratio": 37.49090909090909,
+    "speedup": 0.7913669064748202,
+    "light_envelope_ratio": 11.709090909090909,
+    "light_envelope_ns": 353.4,
+    "hooked_envelope_ns": 1204.2,
+    "qpc_envelope_ns": 207.9
   }
 }

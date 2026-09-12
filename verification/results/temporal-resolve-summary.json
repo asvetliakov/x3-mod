@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T20:32:48.288001+00:00",
+  "started_utc": "2026-09-12T20:57:52.986707+00:00",
   "bottle": {
     "name": "Steam",
     "wine_arch": "win64",
@@ -20,24 +20,25 @@
     "Z:/Users/asvetl/x3-mod/src/temporal/resolve.hlsl"
   ],
   "process_local_override": "d3d9=b",
-  "timeout_seconds": 60,
+  "timeout_seconds": 180,
   "source_sha256": {
-    "verification/probe/temporal_resolve.cpp": "4261d032d311720b88bf833343278c3ffc17ef89057b652ae2fa162523a710d0",
+    "verification/probe/temporal_resolve.cpp": "169658bea9476ff6464b8832cef75815cccbb6984cc335f4c94e70b748d47640",
     "verification/probe/temporal_build.sh": "46d38add5f799bc5ba039988306bc97988a11a9d054c18e8419846af433e5259",
-    "verification/probe/temporal_run.py": "0f82ea30e5a21940cbfdd6ee14b74be77e79b2729a309f7a63f3c2521112a1f9",
+    "verification/probe/temporal_run.py": "849f3401a0eb52f534bc772e21a89787afe1df595a0ff0881826e31eeec49168",
     "src/temporal/resolve.h": "68f4b7a9e727c617cf76b75e1a669d90d8254e991f9d833cb12353f6432cec02",
     "src/temporal/resolve.hlsl": "6dc25ca6186191436c77eb5ecdc5fc033dbc71f39f415abd576c66c27c3d7a16"
   },
   "freshly_built": true,
   "build_exit_code": 0,
-  "executable_sha256": "e00b9a117d2105da9a11265cf61b47ec1914a6703814a62c761be4f2ee1da830",
-  "exit_code": null,
-  "timed_out": true,
-  "sample_checks": 39,
-  "passed_sample_checks": 39,
+  "executable_sha256": "d1fb37ad97c8201e3beed7d5e2356ffd40f9baa07ebee25d3352b5f571b85af7",
+  "exit_code": 0,
+  "report_sha256": "17e00547f5c4cae6d013b588cd66e2bf6a40523f541fa9eb9c14cbdd4e560a6a",
+  "wine_log_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+  "sample_checks": 78,
+  "passed_sample_checks": 78,
   "reset_passed": true,
-  "device_generations": 1,
+  "device_generations": 2,
   "sources_unchanged_after_run": true,
   "executable_unchanged_after_run": true,
-  "passed": false
+  "passed": true
 }

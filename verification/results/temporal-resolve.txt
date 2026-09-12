@@ -1,7 +1,18 @@
 MODULE C:\X3\d3dx9_37.dll
 MODULE C:\windows\system32\d3d9.dll
 ADAPTER NVIDIA GeForce 8800 GTX driver=nvd3dum.dll
+FIXTURE_BEGIN
+COMPILE_BEGIN target=ps_3_0 bytes=17853
+COMPILE_END target=ps_3_0 hr=00000000
+COMPILE_BEGIN target=vs_3_0 bytes=125
+COMPILE_END target=vs_3_0 hr=00000000
+FIXTURE_CREATE_SHADERS
+COMPILE_BEGIN target=ps_3_0 bytes=65
+COMPILE_END target=ps_3_0 hr=00000000
+FIXTURE_CREATE_TEXTURES
+FIXTURE_INITIAL_UPLOAD
 CHECK prepare constants PASS
+FIXTURE_READY
 GENERATION 0
 CHECK half rounding exponent carry 2 PASS
 CHECK half rounding exponent carry 8 PASS
@@ -103,7 +114,18 @@ CHECK resize invalidates PASS
 CHECK device reset invalidates PASS
 CHECK invalid CPU weight rejected PASS
 RESET PASS
+FIXTURE_BEGIN
+COMPILE_BEGIN target=ps_3_0 bytes=17853
+COMPILE_END target=ps_3_0 hr=00000000
+COMPILE_BEGIN target=vs_3_0 bytes=125
+COMPILE_END target=vs_3_0 hr=00000000
+FIXTURE_CREATE_SHADERS
+COMPILE_BEGIN target=ps_3_0 bytes=65
+COMPILE_END target=ps_3_0 hr=00000000
+FIXTURE_CREATE_TEXTURES
+FIXTURE_INITIAL_UPLOAD
 CHECK prepare constants PASS
+FIXTURE_READY
 GENERATION 1
 CHECK half rounding exponent carry 2 PASS
 CHECK half rounding exponent carry 8 PASS

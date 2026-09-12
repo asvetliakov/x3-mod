@@ -1,0 +1,147 @@
+{
+  "path": "build/d3d9.dll",
+  "machine": "0x014c",
+  "image_base": "0x6fb40000",
+  "dll_name": "d3d9.dll",
+  "ordinal_base": 1,
+  "exports": [
+    {
+      "name": "D3DPERF_BeginEvent",
+      "ordinal": 1,
+      "hint": 0,
+      "rva": "0x37a0",
+      "forwarder": null
+    },
+    {
+      "name": "D3DPERF_EndEvent",
+      "ordinal": 2,
+      "hint": 1,
+      "rva": "0x3b00",
+      "forwarder": null
+    },
+    {
+      "name": "D3DPERF_GetStatus",
+      "ordinal": 3,
+      "hint": 2,
+      "rva": "0x3e30",
+      "forwarder": null
+    },
+    {
+      "name": "D3DPERF_QueryRepeatFrame",
+      "ordinal": 4,
+      "hint": 3,
+      "rva": "0x4160",
+      "forwarder": null
+    },
+    {
+      "name": "D3DPERF_SetMarker",
+      "ordinal": 5,
+      "hint": 4,
+      "rva": "0x4490",
+      "forwarder": null
+    },
+    {
+      "name": "D3DPERF_SetOptions",
+      "ordinal": 6,
+      "hint": 5,
+      "rva": "0x4b10",
+      "forwarder": null
+    },
+    {
+      "name": "D3DPERF_SetRegion",
+      "ordinal": 7,
+      "hint": 6,
+      "rva": "0x47d0",
+      "forwarder": null
+    },
+    {
+      "name": "DebugSetLevel",
+      "ordinal": 8,
+      "hint": 7,
+      "rva": "0x13d0",
+      "forwarder": null
+    },
+    {
+      "name": "DebugSetMute",
+      "ordinal": 9,
+      "hint": 8,
+      "rva": "0x4e40",
+      "forwarder": null
+    },
+    {
+      "name": "Direct3D9EnableMaximizedWindowedModeShim",
+      "ordinal": 10,
+      "hint": 9,
+      "rva": "0x1463",
+      "forwarder": null
+    },
+    {
+      "name": "Direct3DCreate9",
+      "ordinal": 11,
+      "hint": 10,
+      "rva": "0x2510",
+      "forwarder": null
+    },
+    {
+      "name": "Direct3DCreate9Ex",
+      "ordinal": 12,
+      "hint": 11,
+      "rva": "0x2aa0",
+      "forwarder": null
+    },
+    {
+      "name": "Direct3DCreate9On12",
+      "ordinal": 13,
+      "hint": 12,
+      "rva": "0x2f10",
+      "forwarder": null
+    },
+    {
+      "name": "Direct3DCreate9On12Ex",
+      "ordinal": 14,
+      "hint": 13,
+      "rva": "0x3310",
+      "forwarder": null
+    },
+    {
+      "name": "Direct3DShaderValidatorCreate9",
+      "ordinal": 15,
+      "hint": 14,
+      "rva": "0x5160",
+      "forwarder": null
+    },
+    {
+      "name": "PSGPError",
+      "ordinal": 16,
+      "hint": 15,
+      "rva": "0x1401",
+      "forwarder": null
+    },
+    {
+      "name": "PSGPSampleTexture",
+      "ordinal": 17,
+      "hint": 16,
+      "rva": "0x1432",
+      "forwarder": null
+    }
+  ],
+  "names": [
+    "D3DPERF_BeginEvent",
+    "D3DPERF_EndEvent",
+    "D3DPERF_GetStatus",
+    "D3DPERF_QueryRepeatFrame",
+    "D3DPERF_SetMarker",
+    "D3DPERF_SetOptions",
+    "D3DPERF_SetRegion",
+    "DebugSetLevel",
+    "DebugSetMute",
+    "Direct3D9EnableMaximizedWindowedModeShim",
+    "Direct3DCreate9",
+    "Direct3DCreate9Ex",
+    "Direct3DCreate9On12",
+    "Direct3DCreate9On12Ex",
+    "Direct3DShaderValidatorCreate9",
+    "PSGPError",
+    "PSGPSampleTexture"
+  ]
+}

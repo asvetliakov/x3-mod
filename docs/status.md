@@ -18,9 +18,11 @@ Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
 
-Current work: finish review 30 and install, review/fix and merge crypto and
-exposure branches, finish adjacency/reader reviews, then install and request
-the [handoff section 5 runs](handoff-2026-09-13.md#5-run-plan-for-the-user-each-needs-the-matching-build-installed).
+Current work: review 30 is complete and ready for its first install; review/fix
+and merge crypto and exposure branches, finish adjacency/reader reviews, then
+install the integrated build and request
+the [controlled run groups](verification/next-runs-2026-09-13.md) from handoff
+section 5.
 The agent never launches the game. Installed at resumption: review-29 build
 `a34c389`, SHA-256 `4abd56b3a77682594756c8805f6f1661c35f8f7b611a297f312bfec2d00855a8`.
 Main resumed at `f4d2384`; fixes called “uncommitted” in the historical notes
@@ -218,7 +220,7 @@ SHA-256 `4abd56b3a77682594756c8805f6f1661c35f8f7b611a297f312bfec2d00855a8`,
 through `tools/manage.py install`. The native-Windows fixes (`20683cc`) are
 merged but not installed until review 30 passes.
 
-## Pending review 30: native-Windows fixes D1–D3, W1, W3 (branch merged 2026-09-12 night, not yet installed)
+## Checkpoint: review 30 complete — native-Windows fixes D1–D3, W1, W3 (2026-09-13; ready to install)
 
 Implements every item of the paused
 [handoff](verification/handoff-windows-fixes.md) against the
@@ -258,21 +260,28 @@ CrossOver Preview (Steam bottle, plus one X3/FEX rerun of the motion suite).
   ([bottles.md](verification/bottles.md) limitation 2 closed for the fixtures).
 - Merge note: main's `b10d129` did not compile (`loading_trace.h` used
   `ID3DXMesh` without a declaration); a forward declaration fixes it.
-- Suites (Steam bottle, clean RelWithDebInfo rebuild by the motion runner):
-  motion output PASS, 97 cases + 26 benches (`seam-taa-quad-fvf` and
-  `seam-taa-copy-draw` byte-identical to `seam-taa-on`: 49,152/49,152
-  presented pixels exact, 8 history and 16 readback files equal; `seam-msaa`
-  refusal at frame 0); temporal pass 508/278/2 with 386 samples;
-  temporal_run 78 samples / 2 generations; ownership integration 26 cases;
-  scene capture 4,908 checks / 36 scenarios; object lifetime 574; object
-  trace 166; export runner 8/8 + 8/8; generator `--check` PASS;
-  `check_no_x87.py` clean; 759 host unit tests OK. X3/FEX bottle: motion
-  output PASS, 97 cases + 26 benches, the three `hdrexposure` cases 85
-  checks each (previously blocked by limitation 2). **Not green:**
-  `run_loading_trace.py` fails on the `mesh-adjacency-cache-off` case
-  (`checks=33272 failures=0` against the runner's `MESH_ADJACENCY_CHECKS`
-  2179) — main's `b10d129` adjacency rewrite, untouched here; its
-  `loading-trace` 85/85 and `loading-mesh` 123/123 cases pass.
+- **Completed verification:** [review 30](verification/review-30.md) binds
+  reused current-source evidence and fresh runs separately. Steam and X3 motion
+  both pass 97 cases and 26 benches, with identical quad/copy twins and MSAA
+  refusal. Temporal pass: 508 numerical / 278 state checks; temporal resolve:
+  78 samples, two generations and Reset. Loading: 72,234 checks on each bottle;
+  exports: 8 + 8; X3 gzip: 735,876; adjacency cache: 767; hook: 13,271. Existing
+  ownership, scene capture, object lifetime/trace and bounded reader evidence
+  were revalidated against their recorded sources and artifacts.
+- The temporal fixture's old 60-second total budget expired during its two
+  full shader compilations. The reviewed 180-second budget passes in about
+  65 seconds without changing its numerical/reset contract. Scoped timeout
+  child cleanup and five host controls keep the Wine lock until the child exits.
+- Final host checks: **836 tests**, no-x87 **196 functions / zero violations**,
+  17 PE exports, ten exact shader regenerations. The final reviewed DLL is
+  SHA-256 `d648594bf346f8ccc8d5e476bcc26345d16741974f76c5b3769017075712e825`.
+  It is ready for the first install; this is still CrossOver evidence, not a
+  native-Windows runtime result.
+- **Separate review 31 remains open:** known SSE2 competing-normal adjacency
+  differences, registry type and FP-domain admission; reader diagnostic format,
+  failed final rewind and LastError transport. See [review 31](verification/review-31-adjacency-reader.md).
+  These optional paths are not approved for fast gameplay by review 30. The
+  final run plan requires their fixes and meaningful verify coverage first.
 
 ## Checkpoint: TAA tremble fixed, resolve quality pass, loading attribution (2026-09-12, superseded by the section above)
 

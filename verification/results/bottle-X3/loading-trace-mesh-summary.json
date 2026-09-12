@@ -27,13 +27,13 @@
       "checks": 86,
       "wine_log_sha256": "06bb0bf4cb250155ea8c208eb08f13662e526c8f474265eac9a41e565eafaf31",
       "exit_code": 0,
-      "executable_sha256": "ebf1e8c4438ad68a508b54a60dec0b3ca985a320f91a534f66f7da8fb3c851ab",
+      "executable_sha256": "e1fdcbbbe1083c5ce5370bcbd0225880f4b476b742a83c7d338cbbc6efd150c5",
       "dll_sha256": {
-        "d3dx9_37.dll": "f53503612398a1f4a27378846e60008842c1b216dea2e4c6605b8e7de799eb4f",
-        "zlib1.dll": "506738ac4c4d7204e6a90038ff236727004fefe4474eec65260440d32a785bcd",
-        "libxml2.dll": "48fe60c429e996248d6a8c522abfd5549d3445c99c1346bf88cb5eab3175a70f"
+        "d3dx9_37.dll": "fd28bd61850121e718ea6f8a0375f91a6faf690d8321c130f21f4fd1b342af42",
+        "zlib1.dll": "20571345d3cab2ed97fc7ab93982d963e2a2c44c2be24874b1b48d5a30324f4d",
+        "libxml2.dll": "48a76500dc0bdad39b3732a7de6cabd1bbae37d3d18f113c380f535cbc9c16be"
       },
-      "report_sha256": "59f0974cb65028ad7aa1b70730bc24518f7029091ae2946466eb050fabdbba2f"
+      "report_sha256": "3e14406ddc2d0e450440eec0de92dcd4e54502fd20386dcdc50b3a9fdbcc79a0"
     },
     "loading-mesh": {
       "admission_witness": [
@@ -49,11 +49,11 @@
       "checks": 123,
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "exit_code": 0,
-      "executable_sha256": "cd52673dcfaf4349636e72990892581ad44cdc3c2960e194a36ffc6b666d81fd",
+      "executable_sha256": "00a4a19c744e067d8e26b65ef1ac0f2d80d70fc416b260ce1fb5347616f2c676",
       "dll_sha256": {
         "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
       },
-      "report_sha256": "99043a69bf1efbe4cb2cd4b9e5f2beec691e149bf3cf74cf9dc4078ff97f5c25"
+      "report_sha256": "49240dc9891a2873b98fda90b4144c74f4a7bb666675b06c883dd9250ee9153e"
     },
     "mesh-adjacency-cache-off": {
       "admission_witness": [
@@ -66,14 +66,14 @@
         "0",
         "1"
       ],
-      "checks": 33272,
+      "checks": 35984,
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "exit_code": 0,
-      "executable_sha256": "90bfa1b0754a0f8841e1fa441de75a595cd9258499574eecb4700447a4b12e6e",
+      "executable_sha256": "8f1d5897f4c938c93da1393cd04cf88b552c02e14f8c42f70d7311f18d6df409",
       "dll_sha256": {
         "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
       },
-      "report_sha256": "06f47a008261878c428889d7fca2f51d3bad2ae9ec7b8b2d2135941a6eaf73eb",
+      "report_sha256": "6e9def0bce4db9ec1a6417bd10dfee4fae2252dd276521673a119d4e316596e8",
       "adjacency_cases": [
         {
           "name": "quad-16",
@@ -87,9 +87,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "560.500",
-          "fast_us": "998.400",
-          "speedup": "0.56",
+          "native_us": "531.300",
+          "fast_us": "791.300",
+          "speedup": "0.67",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -99,7 +99,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "quad-32",
@@ -113,9 +114,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "968.200",
-          "fast_us": "4.500",
-          "speedup": "215.16",
+          "native_us": "351.700",
+          "fast_us": "2.000",
+          "speedup": "175.85",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -125,7 +126,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "exact-duplicates",
@@ -139,9 +141,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "286.700",
-          "fast_us": "4.300",
-          "speedup": "66.67",
+          "native_us": "78.800",
+          "fast_us": "2.300",
+          "speedup": "34.26",
           "quantized": "1",
           "representatives": "4",
           "welded": "2",
@@ -151,7 +153,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "grid-neighbours-6.1e-5",
@@ -165,9 +168,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "184.900",
-          "fast_us": "2.400",
-          "speedup": "77.04",
+          "native_us": "31.700",
+          "fast_us": "1.300",
+          "speedup": "24.38",
           "quantized": "1",
           "representatives": "6",
           "welded": "0",
@@ -177,7 +180,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "6"
+          "unmatched": "6",
+          "normalize": "generic"
         },
         {
           "name": "signed-zero",
@@ -191,9 +195,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "137.800",
-          "fast_us": "12.700",
-          "speedup": "10.85",
+          "native_us": "122.700",
+          "fast_us": "2.100",
+          "speedup": "58.43",
           "quantized": "1",
           "representatives": "4",
           "welded": "2",
@@ -203,7 +207,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "nan-position",
@@ -217,9 +222,9 @@
           "equal": "0",
           "mismatches": "0",
           "first": "0",
-          "native_us": "177.600",
-          "fast_us": "1.300",
-          "speedup": "136.62",
+          "native_us": "9.500",
+          "fast_us": "0.400",
+          "speedup": "23.75",
           "quantized": "0",
           "representatives": "0",
           "welded": "0",
@@ -229,7 +234,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "0"
+          "unmatched": "0",
+          "normalize": "generic"
         },
         {
           "name": "position-offset-8",
@@ -243,9 +249,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "334.200",
-          "fast_us": "7.200",
-          "speedup": "46.42",
+          "native_us": "9.100",
+          "fast_us": "2.800",
+          "speedup": "3.25",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -255,7 +261,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "epsilon-zero",
@@ -269,9 +276,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "343.700",
-          "fast_us": "6.000",
-          "speedup": "57.28",
+          "native_us": "190.000",
+          "fast_us": "2.100",
+          "speedup": "90.48",
           "quantized": "0",
           "representatives": "4",
           "welded": "0",
@@ -281,7 +288,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "unquantized-far",
@@ -295,9 +303,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "194.000",
-          "fast_us": "61.200",
-          "speedup": "3.17",
+          "native_us": "52.000",
+          "fast_us": "36.800",
+          "speedup": "1.41",
           "quantized": "0",
           "representatives": "4",
           "welded": "0",
@@ -307,7 +315,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "unquantized-near-1.5e-6",
@@ -321,9 +330,9 @@
           "equal": "0",
           "mismatches": "0",
           "first": "0",
-          "native_us": "179.300",
-          "fast_us": "2.800",
-          "speedup": "64.04",
+          "native_us": "51.600",
+          "fast_us": "1.500",
+          "speedup": "34.40",
           "quantized": "0",
           "representatives": "0",
           "welded": "0",
@@ -333,7 +342,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "0"
+          "unmatched": "0",
+          "normalize": "generic"
         },
         {
           "name": "fan-tilted-abc",
@@ -347,9 +357,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "469.000",
-          "fast_us": "106.500",
-          "speedup": "4.40",
+          "native_us": "371.200",
+          "fast_us": "116.300",
+          "speedup": "3.19",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -359,7 +369,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "fan-tilted-bac",
@@ -373,9 +384,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "17.500",
-          "fast_us": "1.600",
-          "speedup": "10.94",
+          "native_us": "6.700",
+          "fast_us": "1.000",
+          "speedup": "6.70",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -385,7 +396,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "fan-tilted-cba",
@@ -399,9 +411,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "31.100",
-          "fast_us": "1.500",
-          "speedup": "20.73",
+          "native_us": "16.500",
+          "fast_us": "0.800",
+          "speedup": "20.62",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -411,7 +423,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "fan-coplanar-abc",
@@ -425,9 +438,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "7.200",
-          "fast_us": "1.400",
-          "speedup": "5.14",
+          "native_us": "29.800",
+          "fast_us": "1.200",
+          "speedup": "24.83",
           "quantized": "1",
           "representatives": "4",
           "welded": "1",
@@ -437,7 +450,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "fan-coplanar-cba",
@@ -451,9 +465,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "16.400",
-          "fast_us": "0.700",
-          "speedup": "23.43",
+          "native_us": "34.100",
+          "fast_us": "0.900",
+          "speedup": "37.89",
           "quantized": "1",
           "representatives": "4",
           "welded": "1",
@@ -463,7 +477,35 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
+        },
+        {
+          "name": "near-unit-normals",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "30.700",
+          "fast_us": "1.000",
+          "speedup": "30.70",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "fan-four",
@@ -477,9 +519,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "15",
-          "native_us": "8.800",
-          "fast_us": "2.200",
-          "speedup": "4.00",
+          "native_us": "19.900",
+          "fast_us": "2.000",
+          "speedup": "9.95",
           "quantized": "1",
           "representatives": "6",
           "welded": "0",
@@ -489,7 +531,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "11"
+          "unmatched": "11",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-aba-aaa",
@@ -503,9 +546,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "5.900",
-          "fast_us": "0.700",
-          "speedup": "8.43",
+          "native_us": "28.800",
+          "fast_us": "0.600",
+          "speedup": "48.00",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -515,7 +558,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "9"
+          "unmatched": "9",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-lookup",
@@ -529,9 +573,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "10.400",
+          "native_us": "16.200",
           "fast_us": "0.500",
-          "speedup": "20.80",
+          "speedup": "32.40",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -541,7 +585,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "6"
+          "unmatched": "6",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded",
@@ -555,9 +600,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "5.900",
+          "native_us": "42.400",
           "fast_us": "1.300",
-          "speedup": "4.54",
+          "speedup": "32.62",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -567,7 +612,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-041",
@@ -581,9 +627,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "6.400",
+          "native_us": "16.100",
           "fast_us": "0.700",
-          "speedup": "9.14",
+          "speedup": "23.00",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -593,7 +639,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "6"
+          "unmatched": "6",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-041b",
@@ -607,9 +654,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "28.400",
-          "fast_us": "0.700",
-          "speedup": "40.57",
+          "native_us": "17.500",
+          "fast_us": "0.800",
+          "speedup": "21.88",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -619,7 +666,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-104",
@@ -633,9 +681,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "29.600",
+          "native_us": "16.200",
           "fast_us": "0.700",
-          "speedup": "42.29",
+          "speedup": "23.14",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -645,7 +693,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-104b",
@@ -659,9 +708,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "29.400",
-          "fast_us": "0.600",
-          "speedup": "49.00",
+          "native_us": "28.800",
+          "fast_us": "0.700",
+          "speedup": "41.14",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -671,7 +720,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "6"
+          "unmatched": "6",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-401",
@@ -685,9 +735,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "16.300",
+          "native_us": "58.200",
           "fast_us": "0.600",
-          "speedup": "27.17",
+          "speedup": "97.00",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -697,7 +747,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "6"
+          "unmatched": "6",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-410",
@@ -711,9 +762,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "98.600",
-          "fast_us": "0.900",
-          "speedup": "109.56",
+          "native_us": "32.500",
+          "fast_us": "1.000",
+          "speedup": "32.50",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -723,7 +774,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-451",
@@ -737,9 +789,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "18.200",
+          "native_us": "16.600",
           "fast_us": "1.100",
-          "speedup": "16.55",
+          "speedup": "15.09",
           "quantized": "1",
           "representatives": "5",
           "welded": "1",
@@ -749,7 +801,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-541a",
@@ -763,9 +816,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "32.800",
-          "fast_us": "0.900",
-          "speedup": "36.44",
+          "native_us": "16.400",
+          "fast_us": "0.700",
+          "speedup": "23.43",
           "quantized": "1",
           "representatives": "5",
           "welded": "1",
@@ -775,7 +828,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-541b",
@@ -789,9 +843,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "29.600",
+          "native_us": "29.400",
           "fast_us": "0.800",
-          "speedup": "37.00",
+          "speedup": "36.75",
           "quantized": "1",
           "representatives": "5",
           "welded": "1",
@@ -801,7 +855,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "6"
+          "unmatched": "6",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-abb",
@@ -815,9 +870,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "32.300",
+          "native_us": "6.500",
           "fast_us": "0.800",
-          "speedup": "40.38",
+          "speedup": "8.12",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -827,7 +882,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-second",
@@ -841,9 +897,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "20.500",
-          "fast_us": "1.300",
-          "speedup": "15.77",
+          "native_us": "12.300",
+          "fast_us": "2.000",
+          "speedup": "6.15",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -853,7 +909,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "duplicate-faces",
@@ -867,9 +924,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "16.600",
+          "native_us": "6.100",
           "fast_us": "0.900",
-          "speedup": "18.44",
+          "speedup": "6.78",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -879,7 +936,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "3",
-          "unmatched": "5"
+          "unmatched": "5",
+          "normalize": "generic"
         },
         {
           "name": "double-adjacency-order",
@@ -893,9 +951,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "24.000",
-          "fast_us": "1.200",
-          "speedup": "20.00",
+          "native_us": "31.800",
+          "fast_us": "1.000",
+          "speedup": "31.80",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -905,7 +963,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "2",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "unreferenced-vertices",
@@ -919,9 +978,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "35.000",
+          "native_us": "29.200",
           "fast_us": "0.700",
-          "speedup": "50.00",
+          "speedup": "41.71",
           "quantized": "1",
           "representatives": "5",
           "welded": "1",
@@ -931,7 +990,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "refusal-chain",
@@ -945,9 +1005,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "12",
-          "native_us": "65.900",
-          "fast_us": "2.000",
-          "speedup": "32.95",
+          "native_us": "17.300",
+          "fast_us": "1.800",
+          "speedup": "9.61",
           "quantized": "1",
           "representatives": "5",
           "welded": "2",
@@ -957,7 +1017,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "2",
           "repeated_neighbours": "0",
-          "unmatched": "12"
+          "unmatched": "12",
+          "normalize": "generic"
         },
         {
           "name": "refusal-pair-face",
@@ -971,9 +1032,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "12",
-          "native_us": "6.200",
-          "fast_us": "0.900",
-          "speedup": "6.89",
+          "native_us": "9.700",
+          "fast_us": "1.000",
+          "speedup": "9.70",
           "quantized": "1",
           "representatives": "5",
           "welded": "1",
@@ -983,7 +1044,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "8"
+          "unmatched": "8",
+          "normalize": "generic"
         },
         {
           "name": "heap-order-0",
@@ -997,9 +1059,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "18",
-          "native_us": "48.500",
-          "fast_us": "3.600",
-          "speedup": "13.47",
+          "native_us": "20.600",
+          "fast_us": "3.000",
+          "speedup": "6.87",
           "quantized": "1",
           "representatives": "6",
           "welded": "3",
@@ -1009,7 +1071,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "1",
-          "unmatched": "10"
+          "unmatched": "10",
+          "normalize": "generic"
         },
         {
           "name": "heap-order-1",
@@ -1023,9 +1086,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "18",
-          "native_us": "44.800",
-          "fast_us": "1.700",
-          "speedup": "26.35",
+          "native_us": "34.400",
+          "fast_us": "1.600",
+          "speedup": "21.50",
           "quantized": "1",
           "representatives": "6",
           "welded": "3",
@@ -1035,7 +1098,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "10"
+          "unmatched": "10",
+          "normalize": "generic"
         },
         {
           "name": "heap-order-2",
@@ -1049,9 +1113,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "18",
-          "native_us": "11.200",
-          "fast_us": "1.700",
-          "speedup": "6.59",
+          "native_us": "38.300",
+          "fast_us": "1.800",
+          "speedup": "21.28",
           "quantized": "1",
           "representatives": "5",
           "welded": "4",
@@ -1061,7 +1125,8 @@
           "welded_degenerate_faces": "1",
           "refused_welds": "0",
           "repeated_neighbours": "2",
-          "unmatched": "14"
+          "unmatched": "14",
+          "normalize": "generic"
         },
         {
           "name": "heap-order-3",
@@ -1075,9 +1140,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "18",
-          "native_us": "18.200",
+          "native_us": "17.700",
           "fast_us": "1.900",
-          "speedup": "9.58",
+          "speedup": "9.32",
           "quantized": "1",
           "representatives": "6",
           "welded": "3",
@@ -1087,7 +1152,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "2",
-          "unmatched": "14"
+          "unmatched": "14",
+          "normalize": "generic"
         },
         {
           "name": "heap-order-4",
@@ -1101,9 +1167,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "18",
-          "native_us": "18.300",
-          "fast_us": "1.900",
-          "speedup": "9.63",
+          "native_us": "24.900",
+          "fast_us": "2.400",
+          "speedup": "10.38",
           "quantized": "1",
           "representatives": "6",
           "welded": "3",
@@ -1113,7 +1179,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "10"
+          "unmatched": "10",
+          "normalize": "generic"
         },
         {
           "name": "heap-order-5",
@@ -1127,9 +1194,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "18",
-          "native_us": "18.000",
-          "fast_us": "1.900",
-          "speedup": "9.47",
+          "native_us": "6.900",
+          "fast_us": "2.000",
+          "speedup": "3.45",
           "quantized": "1",
           "representatives": "5",
           "welded": "4",
@@ -1139,7 +1206,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "1",
-          "unmatched": "8"
+          "unmatched": "8",
+          "normalize": "generic"
         },
         {
           "name": "own-entry-survives",
@@ -1153,9 +1221,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "16.400",
-          "fast_us": "0.900",
-          "speedup": "18.22",
+          "native_us": "29.000",
+          "fast_us": "0.800",
+          "speedup": "36.25",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -1165,7 +1233,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "2",
-          "unmatched": "5"
+          "unmatched": "5",
+          "normalize": "generic"
         },
         {
           "name": "refused-consumed",
@@ -1179,9 +1248,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "12",
-          "native_us": "6.600",
-          "fast_us": "1.300",
-          "speedup": "5.08",
+          "native_us": "17.000",
+          "fast_us": "1.400",
+          "speedup": "12.14",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -1191,7 +1260,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "2",
-          "unmatched": "8"
+          "unmatched": "8",
+          "normalize": "generic"
         },
         {
           "name": "later-slot-prefilled",
@@ -1205,9 +1275,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "12",
-          "native_us": "40.500",
-          "fast_us": "1.100",
-          "speedup": "36.82",
+          "native_us": "6.100",
+          "fast_us": "0.900",
+          "speedup": "6.78",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -1217,7 +1287,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "3",
-          "unmatched": "8"
+          "unmatched": "8",
+          "normalize": "generic"
         },
         {
           "name": "key-window-offset-8-apart",
@@ -1231,9 +1302,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "16.400",
-          "fast_us": "1.000",
-          "speedup": "16.40",
+          "native_us": "16.000",
+          "fast_us": "0.800",
+          "speedup": "20.00",
           "quantized": "1",
           "representatives": "6",
           "welded": "0",
@@ -1243,7 +1314,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "6"
+          "unmatched": "6",
+          "normalize": "generic"
         },
         {
           "name": "key-window-offset-8-equal",
@@ -1257,9 +1329,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "16.500",
+          "native_us": "32.700",
           "fast_us": "0.900",
-          "speedup": "18.33",
+          "speedup": "36.33",
           "quantized": "1",
           "representatives": "4",
           "welded": "2",
@@ -1269,7 +1341,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "key-window-offset-8-within-eps",
@@ -1283,9 +1356,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "16.200",
-          "fast_us": "0.700",
-          "speedup": "23.14",
+          "native_us": "16.700",
+          "fast_us": "1.200",
+          "speedup": "13.92",
           "quantized": "1",
           "representatives": "4",
           "welded": "2",
@@ -1295,7 +1368,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "epsilon-zero-refusal",
@@ -1309,9 +1383,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "42.200",
-          "fast_us": "1.000",
-          "speedup": "42.20",
+          "native_us": "43.400",
+          "fast_us": "0.900",
+          "speedup": "48.22",
           "quantized": "0",
           "representatives": "5",
           "welded": "2",
@@ -1321,7 +1395,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "5"
+          "unmatched": "5",
+          "normalize": "generic"
         },
         {
           "name": "fan-eight",
@@ -1335,9 +1410,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "30",
-          "native_us": "62.900",
-          "fast_us": "3.700",
-          "speedup": "17.00",
+          "native_us": "81.000",
+          "fast_us": "6.300",
+          "speedup": "12.86",
           "quantized": "1",
           "representatives": "11",
           "welded": "0",
@@ -1347,7 +1422,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "26"
+          "unmatched": "26",
+          "normalize": "generic"
         },
         {
           "name": "grid-224x224-32",
@@ -1361,9 +1437,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "298374",
-          "native_us": "45394.800",
-          "fast_us": "13644.000",
-          "speedup": "3.33",
+          "native_us": "46264.600",
+          "fast_us": "11340.100",
+          "speedup": "4.08",
           "quantized": "1",
           "representatives": "50176",
           "welded": "0",
@@ -1373,7 +1449,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "892"
+          "unmatched": "892",
+          "normalize": "generic"
         },
         {
           "name": "split-150x150-32",
@@ -1387,9 +1464,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "133206",
-          "native_us": "88059.900",
-          "fast_us": "4537.700",
-          "speedup": "19.41",
+          "native_us": "89151.600",
+          "fast_us": "5128.300",
+          "speedup": "17.38",
           "quantized": "1",
           "representatives": "22500",
           "welded": "110706",
@@ -1399,7 +1476,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "596"
+          "unmatched": "596",
+          "normalize": "generic"
         },
         {
           "name": "star-20000-32",
@@ -1413,9 +1491,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "60000",
-          "native_us": "235250.200",
-          "fast_us": "2425.800",
-          "speedup": "96.98",
+          "native_us": "249283.800",
+          "fast_us": "2422.900",
+          "speedup": "102.89",
           "quantized": "1",
           "representatives": "20001",
           "welded": "19999",
@@ -1425,7 +1503,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "20000"
+          "unmatched": "20000",
+          "normalize": "generic"
         },
         {
           "name": "split-16",
@@ -1439,9 +1518,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "58806",
-          "native_us": "28813.100",
-          "fast_us": "2263.600",
-          "speedup": "12.73",
+          "native_us": "30075.800",
+          "fast_us": "2155.700",
+          "speedup": "13.95",
           "quantized": "1",
           "representatives": "10000",
           "welded": "48806",
@@ -1451,7 +1530,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "396"
+          "unmatched": "396",
+          "normalize": "generic"
         }
       ],
       "policies": [
@@ -1504,6 +1584,12 @@
           "mismatches": "6"
         },
         {
+          "name": "nan-position",
+          "variant": "other_normalize",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
           "name": "unquantized-near-1.5e-6",
           "variant": "default",
           "equal": "0",
@@ -1548,6 +1634,12 @@
         {
           "name": "unquantized-near-1.5e-6",
           "variant": "later_slot_check",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "other_normalize",
           "equal": "0",
           "mismatches": "6"
         },
@@ -1600,6 +1692,12 @@
           "mismatches": "0"
         },
         {
+          "name": "fan-tilted-abc",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "fan-tilted-bac",
           "variant": "default",
           "equal": "1",
@@ -1648,6 +1746,12 @@
           "mismatches": "0"
         },
         {
+          "name": "fan-tilted-bac",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "fan-tilted-cba",
           "variant": "default",
           "equal": "1",
@@ -1692,6 +1796,12 @@
         {
           "name": "fan-tilted-cba",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1744,6 +1854,12 @@
           "mismatches": "0"
         },
         {
+          "name": "fan-coplanar-abc",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "fan-coplanar-cba",
           "variant": "default",
           "equal": "1",
@@ -1790,6 +1906,66 @@
           "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "other_normalize",
+          "equal": "0",
+          "mismatches": "3"
         },
         {
           "name": "fan-four",
@@ -1840,6 +2016,12 @@
           "mismatches": "0"
         },
         {
+          "name": "fan-four",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-aba-aaa",
           "variant": "default",
           "equal": "1",
@@ -1888,6 +2070,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-aba-aaa",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-lookup",
           "variant": "default",
           "equal": "1",
@@ -1932,6 +2120,12 @@
         {
           "name": "degenerate-lookup",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1984,6 +2178,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-041",
           "variant": "default",
           "equal": "1",
@@ -2028,6 +2228,12 @@
         {
           "name": "degenerate-welded-041",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -2080,6 +2286,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded-041b",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-104",
           "variant": "default",
           "equal": "1",
@@ -2128,6 +2340,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded-104",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-104b",
           "variant": "default",
           "equal": "1",
@@ -2176,6 +2394,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded-104b",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-401",
           "variant": "default",
           "equal": "1",
@@ -2224,6 +2448,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded-401",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-410",
           "variant": "default",
           "equal": "1",
@@ -2243,59 +2473,65 @@
         },
         {
           "name": "degenerate-welded-410",
-          "variant": "no_weld_refusal",
-          "equal": "0",
-          "mismatches": "3"
-        },
-        {
-          "name": "degenerate-welded-410",
-          "variant": "index_order_sweep",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-410",
-          "variant": "retire_own_entry",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-410",
-          "variant": "keep_refused_entry",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-410",
-          "variant": "later_slot_check",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-451",
-          "variant": "default",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-451",
-          "variant": "tail_insertion",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-451",
-          "variant": "no_normal_selection",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-451",
           "variant": "no_weld_refusal",
           "equal": "0",
           "mismatches": "3"
         },
         {
+          "name": "degenerate-welded-410",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
           "name": "degenerate-welded-451",
           "variant": "index_order_sweep",
           "equal": "0",
@@ -2316,6 +2552,12 @@
         {
           "name": "degenerate-welded-451",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -2368,6 +2610,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded-541a",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-541b",
           "variant": "default",
           "equal": "1",
@@ -2416,6 +2664,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded-541b",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-abb",
           "variant": "default",
           "equal": "1",
@@ -2464,6 +2718,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded-abb",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-second",
           "variant": "default",
           "equal": "1",
@@ -2508,6 +2768,12 @@
         {
           "name": "degenerate-welded-second",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -2560,6 +2826,12 @@
           "mismatches": "0"
         },
         {
+          "name": "duplicate-faces",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "double-adjacency-order",
           "variant": "default",
           "equal": "1",
@@ -2604,6 +2876,12 @@
         {
           "name": "double-adjacency-order",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -2656,6 +2934,12 @@
           "mismatches": "0"
         },
         {
+          "name": "refusal-chain",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "refusal-pair-face",
           "variant": "default",
           "equal": "1",
@@ -2704,6 +2988,12 @@
           "mismatches": "0"
         },
         {
+          "name": "refusal-pair-face",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "heap-order-0",
           "variant": "default",
           "equal": "1",
@@ -2748,6 +3038,12 @@
         {
           "name": "heap-order-0",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -2800,6 +3096,12 @@
           "mismatches": "0"
         },
         {
+          "name": "heap-order-1",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "heap-order-2",
           "variant": "default",
           "equal": "1",
@@ -2848,6 +3150,12 @@
           "mismatches": "0"
         },
         {
+          "name": "heap-order-2",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "heap-order-3",
           "variant": "default",
           "equal": "1",
@@ -2892,6 +3200,12 @@
         {
           "name": "heap-order-3",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -2944,6 +3258,12 @@
           "mismatches": "0"
         },
         {
+          "name": "heap-order-4",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "heap-order-5",
           "variant": "default",
           "equal": "1",
@@ -2992,6 +3312,12 @@
           "mismatches": "0"
         },
         {
+          "name": "heap-order-5",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "own-entry-survives",
           "variant": "default",
           "equal": "1",
@@ -3036,6 +3362,12 @@
         {
           "name": "own-entry-survives",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -3088,6 +3420,12 @@
           "mismatches": "0"
         },
         {
+          "name": "refused-consumed",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "later-slot-prefilled",
           "variant": "default",
           "equal": "1",
@@ -3136,6 +3474,12 @@
           "mismatches": "0"
         },
         {
+          "name": "later-slot-prefilled",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "key-window-offset-8-apart",
           "variant": "default",
           "equal": "1",
@@ -3184,6 +3528,12 @@
           "mismatches": "0"
         },
         {
+          "name": "key-window-offset-8-apart",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "key-window-offset-8-equal",
           "variant": "default",
           "equal": "1",
@@ -3232,6 +3582,12 @@
           "mismatches": "0"
         },
         {
+          "name": "key-window-offset-8-equal",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "key-window-offset-8-within-eps",
           "variant": "default",
           "equal": "1",
@@ -3276,6 +3632,12 @@
         {
           "name": "key-window-offset-8-within-eps",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -3324,6 +3686,12 @@
         {
           "name": "epsilon-zero-refusal",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -3372,20 +3740,26 @@
         {
           "name": "fan-eight",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         }
       ],
       "verify_stats": [
         {
-          "calls": "53",
-          "computed": "51",
+          "calls": "54",
+          "computed": "52",
           "fallbacks": "2",
-          "verify_meshes": "51",
-          "verify_equal": "51",
+          "verify_meshes": "52",
+          "verify_equal": "52",
           "verify_mismatched": "0",
           "mismatch_entries": "0",
-          "quantized": "48",
+          "quantized": "49",
           "unquantized": "3",
           "module_non_finite": "1",
           "module_epsilon_neighbour": "1"
@@ -3394,11 +3768,11 @@
       "fast_stats": [
         {
           "cache": "0",
-          "calls": "106",
-          "computed": "102",
+          "calls": "108",
+          "computed": "104",
           "fallbacks": "4",
           "faults": "0",
-          "fast_ticks": "351941",
+          "fast_ticks": "366240",
           "cache_hits": "0",
           "cache_misses": "0"
         }
@@ -3424,14 +3798,14 @@
         "0",
         "1"
       ],
-      "checks": 33328,
+      "checks": 36041,
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "exit_code": 0,
-      "executable_sha256": "90bfa1b0754a0f8841e1fa441de75a595cd9258499574eecb4700447a4b12e6e",
+      "executable_sha256": "8f1d5897f4c938c93da1393cd04cf88b552c02e14f8c42f70d7311f18d6df409",
       "dll_sha256": {
         "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
       },
-      "report_sha256": "ac350dd3c63b808c14f73210634476b314a0e4159a8d7c0e8504e2e93c2a59d8",
+      "report_sha256": "8b027fa4748f76bddcc588ae6f10243423b17cfd82dfe84b8e7be31a4c61bf52",
       "adjacency_cases": [
         {
           "name": "quad-16",
@@ -3445,9 +3819,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "511.100",
-          "fast_us": "948.100",
-          "speedup": "0.54",
+          "native_us": "534.900",
+          "fast_us": "755.300",
+          "speedup": "0.71",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -3457,7 +3831,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "quad-32",
@@ -3471,9 +3846,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "326.200",
-          "fast_us": "1.700",
-          "speedup": "191.88",
+          "native_us": "364.300",
+          "fast_us": "1.300",
+          "speedup": "280.23",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -3483,7 +3858,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "exact-duplicates",
@@ -3497,9 +3873,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "53.200",
-          "fast_us": "1.800",
-          "speedup": "29.56",
+          "native_us": "68.300",
+          "fast_us": "1.400",
+          "speedup": "48.79",
           "quantized": "1",
           "representatives": "4",
           "welded": "2",
@@ -3509,7 +3885,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "grid-neighbours-6.1e-5",
@@ -3523,9 +3900,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "18.100",
-          "fast_us": "0.900",
-          "speedup": "20.11",
+          "native_us": "35.500",
+          "fast_us": "1.200",
+          "speedup": "29.58",
           "quantized": "1",
           "representatives": "6",
           "welded": "0",
@@ -3535,7 +3912,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "6"
+          "unmatched": "6",
+          "normalize": "generic"
         },
         {
           "name": "signed-zero",
@@ -3549,9 +3927,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "9.400",
-          "fast_us": "1.200",
-          "speedup": "7.83",
+          "native_us": "29.700",
+          "fast_us": "0.900",
+          "speedup": "33.00",
           "quantized": "1",
           "representatives": "4",
           "welded": "2",
@@ -3561,7 +3939,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "nan-position",
@@ -3575,9 +3954,9 @@
           "equal": "0",
           "mismatches": "0",
           "first": "0",
-          "native_us": "63.400",
+          "native_us": "17.000",
           "fast_us": "0.500",
-          "speedup": "126.80",
+          "speedup": "34.00",
           "quantized": "0",
           "representatives": "0",
           "welded": "0",
@@ -3587,7 +3966,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "0"
+          "unmatched": "0",
+          "normalize": "generic"
         },
         {
           "name": "position-offset-8",
@@ -3601,9 +3981,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "59.500",
-          "fast_us": "2.500",
-          "speedup": "23.80",
+          "native_us": "29.600",
+          "fast_us": "2.900",
+          "speedup": "10.21",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -3613,7 +3993,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "epsilon-zero",
@@ -3627,9 +4008,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "84.400",
-          "fast_us": "1.300",
-          "speedup": "64.92",
+          "native_us": "71.700",
+          "fast_us": "4.800",
+          "speedup": "14.94",
           "quantized": "0",
           "representatives": "4",
           "welded": "0",
@@ -3639,7 +4020,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "unquantized-far",
@@ -3653,9 +4035,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "5.600",
-          "fast_us": "30.300",
-          "speedup": "0.18",
+          "native_us": "32.000",
+          "fast_us": "30.800",
+          "speedup": "1.04",
           "quantized": "0",
           "representatives": "4",
           "welded": "0",
@@ -3665,7 +4047,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "unquantized-near-1.5e-6",
@@ -3679,9 +4062,9 @@
           "equal": "0",
           "mismatches": "0",
           "first": "0",
-          "native_us": "43.800",
-          "fast_us": "0.900",
-          "speedup": "48.67",
+          "native_us": "41.700",
+          "fast_us": "1.200",
+          "speedup": "34.75",
           "quantized": "0",
           "representatives": "0",
           "welded": "0",
@@ -3691,7 +4074,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "0"
+          "unmatched": "0",
+          "normalize": "generic"
         },
         {
           "name": "fan-tilted-abc",
@@ -3705,9 +4089,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "324.900",
-          "fast_us": "58.000",
-          "speedup": "5.60",
+          "native_us": "339.800",
+          "fast_us": "106.700",
+          "speedup": "3.18",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -3717,7 +4101,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "fan-tilted-bac",
@@ -3731,9 +4116,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "11.400",
-          "fast_us": "1.000",
-          "speedup": "11.40",
+          "native_us": "30.800",
+          "fast_us": "0.800",
+          "speedup": "38.50",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -3743,7 +4128,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "fan-tilted-cba",
@@ -3757,9 +4143,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "44.500",
-          "fast_us": "0.700",
-          "speedup": "63.57",
+          "native_us": "26.600",
+          "fast_us": "0.800",
+          "speedup": "33.25",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -3769,7 +4155,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "fan-coplanar-abc",
@@ -3783,9 +4170,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "17.300",
+          "native_us": "33.100",
           "fast_us": "1.100",
-          "speedup": "15.73",
+          "speedup": "30.09",
           "quantized": "1",
           "representatives": "4",
           "welded": "1",
@@ -3795,7 +4182,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "fan-coplanar-cba",
@@ -3809,9 +4197,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "16.300",
+          "native_us": "28.800",
           "fast_us": "0.700",
-          "speedup": "23.29",
+          "speedup": "41.14",
           "quantized": "1",
           "representatives": "4",
           "welded": "1",
@@ -3821,7 +4209,35 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
+        },
+        {
+          "name": "near-unit-normals",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "7.600",
+          "fast_us": "1.200",
+          "speedup": "6.33",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "fan-four",
@@ -3835,9 +4251,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "15",
-          "native_us": "61.800",
-          "fast_us": "2.400",
-          "speedup": "25.75",
+          "native_us": "20.900",
+          "fast_us": "2.200",
+          "speedup": "9.50",
           "quantized": "1",
           "representatives": "6",
           "welded": "0",
@@ -3847,7 +4263,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "11"
+          "unmatched": "11",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-aba-aaa",
@@ -3861,9 +4278,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "5.600",
+          "native_us": "44.900",
           "fast_us": "0.600",
-          "speedup": "9.33",
+          "speedup": "74.83",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -3873,7 +4290,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "9"
+          "unmatched": "9",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-lookup",
@@ -3887,9 +4305,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "12.700",
-          "fast_us": "0.600",
-          "speedup": "21.17",
+          "native_us": "6.800",
+          "fast_us": "0.500",
+          "speedup": "13.60",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -3899,7 +4317,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "6"
+          "unmatched": "6",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded",
@@ -3913,9 +4332,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "32.700",
+          "native_us": "7.900",
           "fast_us": "1.200",
-          "speedup": "27.25",
+          "speedup": "6.58",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -3925,7 +4344,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-041",
@@ -3939,9 +4359,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "16.300",
+          "native_us": "29.000",
           "fast_us": "0.800",
-          "speedup": "20.38",
+          "speedup": "36.25",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -3951,7 +4371,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "6"
+          "unmatched": "6",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-041b",
@@ -3965,9 +4386,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "26.200",
-          "fast_us": "0.900",
-          "speedup": "29.11",
+          "native_us": "28.600",
+          "fast_us": "0.700",
+          "speedup": "40.86",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -3977,7 +4398,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-104",
@@ -3991,9 +4413,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "16.100",
-          "fast_us": "0.600",
-          "speedup": "26.83",
+          "native_us": "39.900",
+          "fast_us": "0.700",
+          "speedup": "57.00",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -4003,7 +4425,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-104b",
@@ -4017,9 +4440,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "16.600",
-          "fast_us": "0.700",
-          "speedup": "23.71",
+          "native_us": "6.200",
+          "fast_us": "0.600",
+          "speedup": "10.33",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -4029,7 +4452,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "6"
+          "unmatched": "6",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-401",
@@ -4043,9 +4467,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "16.300",
+          "native_us": "6.400",
           "fast_us": "0.700",
-          "speedup": "23.29",
+          "speedup": "9.14",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -4055,7 +4479,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "6"
+          "unmatched": "6",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-410",
@@ -4069,9 +4494,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "16.300",
+          "native_us": "16.800",
           "fast_us": "0.900",
-          "speedup": "18.11",
+          "speedup": "18.67",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -4081,7 +4506,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-451",
@@ -4095,9 +4521,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "16.500",
-          "fast_us": "1.200",
-          "speedup": "13.75",
+          "native_us": "30.000",
+          "fast_us": "1.100",
+          "speedup": "27.27",
           "quantized": "1",
           "representatives": "5",
           "welded": "1",
@@ -4107,7 +4533,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-541a",
@@ -4121,9 +4548,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "16.400",
-          "fast_us": "0.700",
-          "speedup": "23.43",
+          "native_us": "30.000",
+          "fast_us": "0.800",
+          "speedup": "37.50",
           "quantized": "1",
           "representatives": "5",
           "welded": "1",
@@ -4133,7 +4560,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-541b",
@@ -4147,9 +4575,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "16.500",
-          "fast_us": "1.000",
-          "speedup": "16.50",
+          "native_us": "32.900",
+          "fast_us": "0.700",
+          "speedup": "47.00",
           "quantized": "1",
           "representatives": "5",
           "welded": "1",
@@ -4159,7 +4587,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "6"
+          "unmatched": "6",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-abb",
@@ -4173,9 +4602,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "223.800",
-          "fast_us": "4.800",
-          "speedup": "46.62",
+          "native_us": "31.300",
+          "fast_us": "0.900",
+          "speedup": "34.78",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -4185,7 +4614,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "degenerate-welded-second",
@@ -4199,9 +4629,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "12.800",
-          "fast_us": "1.100",
-          "speedup": "11.64",
+          "native_us": "7.100",
+          "fast_us": "1.300",
+          "speedup": "5.46",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -4211,7 +4641,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "duplicate-faces",
@@ -4225,9 +4656,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "294.700",
-          "fast_us": "1.400",
-          "speedup": "210.50",
+          "native_us": "24.200",
+          "fast_us": "0.900",
+          "speedup": "26.89",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -4237,7 +4668,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "3",
-          "unmatched": "5"
+          "unmatched": "5",
+          "normalize": "generic"
         },
         {
           "name": "double-adjacency-order",
@@ -4251,9 +4683,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "147.200",
-          "fast_us": "2.200",
-          "speedup": "66.91",
+          "native_us": "6.400",
+          "fast_us": "1.100",
+          "speedup": "5.82",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -4263,7 +4695,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "2",
-          "unmatched": "7"
+          "unmatched": "7",
+          "normalize": "generic"
         },
         {
           "name": "unreferenced-vertices",
@@ -4277,9 +4710,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "135.400",
-          "fast_us": "1.700",
-          "speedup": "79.65",
+          "native_us": "16.100",
+          "fast_us": "0.700",
+          "speedup": "23.00",
           "quantized": "1",
           "representatives": "5",
           "welded": "1",
@@ -4289,7 +4722,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "refusal-chain",
@@ -4303,9 +4737,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "12",
-          "native_us": "117.000",
-          "fast_us": "4.200",
-          "speedup": "27.86",
+          "native_us": "7.300",
+          "fast_us": "1.600",
+          "speedup": "4.56",
           "quantized": "1",
           "representatives": "5",
           "welded": "2",
@@ -4315,7 +4749,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "2",
           "repeated_neighbours": "0",
-          "unmatched": "12"
+          "unmatched": "12",
+          "normalize": "generic"
         },
         {
           "name": "refusal-pair-face",
@@ -4329,9 +4764,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "12",
-          "native_us": "91.000",
-          "fast_us": "2.400",
-          "speedup": "37.92",
+          "native_us": "17.100",
+          "fast_us": "1.200",
+          "speedup": "14.25",
           "quantized": "1",
           "representatives": "5",
           "welded": "1",
@@ -4341,7 +4776,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "8"
+          "unmatched": "8",
+          "normalize": "generic"
         },
         {
           "name": "heap-order-0",
@@ -4355,9 +4791,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "18",
-          "native_us": "142.200",
-          "fast_us": "12.900",
-          "speedup": "11.02",
+          "native_us": "8.100",
+          "fast_us": "2.500",
+          "speedup": "3.24",
           "quantized": "1",
           "representatives": "6",
           "welded": "3",
@@ -4367,7 +4803,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "1",
-          "unmatched": "10"
+          "unmatched": "10",
+          "normalize": "generic"
         },
         {
           "name": "heap-order-1",
@@ -4381,9 +4818,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "18",
-          "native_us": "175.200",
-          "fast_us": "2.400",
-          "speedup": "73.00",
+          "native_us": "20.800",
+          "fast_us": "1.700",
+          "speedup": "12.24",
           "quantized": "1",
           "representatives": "6",
           "welded": "3",
@@ -4393,7 +4830,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "10"
+          "unmatched": "10",
+          "normalize": "generic"
         },
         {
           "name": "heap-order-2",
@@ -4407,9 +4845,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "18",
-          "native_us": "130.300",
-          "fast_us": "12.600",
-          "speedup": "10.34",
+          "native_us": "30.000",
+          "fast_us": "1.700",
+          "speedup": "17.65",
           "quantized": "1",
           "representatives": "5",
           "welded": "4",
@@ -4419,7 +4857,8 @@
           "welded_degenerate_faces": "1",
           "refused_welds": "0",
           "repeated_neighbours": "2",
-          "unmatched": "14"
+          "unmatched": "14",
+          "normalize": "generic"
         },
         {
           "name": "heap-order-3",
@@ -4433,9 +4872,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "18",
-          "native_us": "155.800",
-          "fast_us": "3.600",
-          "speedup": "43.28",
+          "native_us": "23.100",
+          "fast_us": "2.000",
+          "speedup": "11.55",
           "quantized": "1",
           "representatives": "6",
           "welded": "3",
@@ -4445,7 +4884,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "2",
-          "unmatched": "14"
+          "unmatched": "14",
+          "normalize": "generic"
         },
         {
           "name": "heap-order-4",
@@ -4459,9 +4899,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "18",
-          "native_us": "149.400",
-          "fast_us": "3.500",
-          "speedup": "42.69",
+          "native_us": "46.900",
+          "fast_us": "2.400",
+          "speedup": "19.54",
           "quantized": "1",
           "representatives": "6",
           "welded": "3",
@@ -4471,7 +4911,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "1",
           "repeated_neighbours": "0",
-          "unmatched": "10"
+          "unmatched": "10",
+          "normalize": "generic"
         },
         {
           "name": "heap-order-5",
@@ -4485,9 +4926,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "18",
-          "native_us": "160.700",
-          "fast_us": "3.900",
-          "speedup": "41.21",
+          "native_us": "43.400",
+          "fast_us": "1.900",
+          "speedup": "22.84",
           "quantized": "1",
           "representatives": "5",
           "welded": "4",
@@ -4497,7 +4938,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "1",
-          "unmatched": "8"
+          "unmatched": "8",
+          "normalize": "generic"
         },
         {
           "name": "own-entry-survives",
@@ -4511,9 +4953,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "147.700",
-          "fast_us": "1.300",
-          "speedup": "113.62",
+          "native_us": "33.500",
+          "fast_us": "1.100",
+          "speedup": "30.45",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -4523,7 +4965,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "2",
-          "unmatched": "5"
+          "unmatched": "5",
+          "normalize": "generic"
         },
         {
           "name": "refused-consumed",
@@ -4537,9 +4980,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "12",
-          "native_us": "15.600",
-          "fast_us": "1.300",
-          "speedup": "12.00",
+          "native_us": "32.200",
+          "fast_us": "1.700",
+          "speedup": "18.94",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -4549,7 +4992,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "2",
-          "unmatched": "8"
+          "unmatched": "8",
+          "normalize": "generic"
         },
         {
           "name": "later-slot-prefilled",
@@ -4563,9 +5007,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "12",
-          "native_us": "108.500",
-          "fast_us": "1.300",
-          "speedup": "83.46",
+          "native_us": "100.500",
+          "fast_us": "0.900",
+          "speedup": "111.67",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -4575,7 +5019,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "3",
-          "unmatched": "8"
+          "unmatched": "8",
+          "normalize": "generic"
         },
         {
           "name": "key-window-offset-8-apart",
@@ -4589,9 +5034,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "91.200",
-          "fast_us": "1.200",
-          "speedup": "76.00",
+          "native_us": "6.800",
+          "fast_us": "1.100",
+          "speedup": "6.18",
           "quantized": "1",
           "representatives": "6",
           "welded": "0",
@@ -4601,7 +5046,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "6"
+          "unmatched": "6",
+          "normalize": "generic"
         },
         {
           "name": "key-window-offset-8-equal",
@@ -4615,9 +5061,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "58.800",
-          "fast_us": "1.000",
-          "speedup": "58.80",
+          "native_us": "14.500",
+          "fast_us": "0.900",
+          "speedup": "16.11",
           "quantized": "1",
           "representatives": "4",
           "welded": "2",
@@ -4627,7 +5073,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "key-window-offset-8-within-eps",
@@ -4641,9 +5088,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "50.400",
-          "fast_us": "0.900",
-          "speedup": "56.00",
+          "native_us": "16.200",
+          "fast_us": "1.100",
+          "speedup": "14.73",
           "quantized": "1",
           "representatives": "4",
           "welded": "2",
@@ -4653,7 +5100,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "4"
+          "unmatched": "4",
+          "normalize": "generic"
         },
         {
           "name": "epsilon-zero-refusal",
@@ -4667,9 +5115,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "33.200",
-          "fast_us": "1.000",
-          "speedup": "33.20",
+          "native_us": "152.300",
+          "fast_us": "1.100",
+          "speedup": "138.45",
           "quantized": "0",
           "representatives": "5",
           "welded": "2",
@@ -4679,7 +5127,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "5"
+          "unmatched": "5",
+          "normalize": "generic"
         },
         {
           "name": "fan-eight",
@@ -4693,9 +5142,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "30",
-          "native_us": "50.100",
-          "fast_us": "4.100",
-          "speedup": "12.22",
+          "native_us": "60.600",
+          "fast_us": "3.700",
+          "speedup": "16.38",
           "quantized": "1",
           "representatives": "11",
           "welded": "0",
@@ -4705,7 +5154,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "26"
+          "unmatched": "26",
+          "normalize": "generic"
         },
         {
           "name": "grid-224x224-32",
@@ -4719,9 +5169,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "298374",
-          "native_us": "47544.900",
-          "fast_us": "16559.500",
-          "speedup": "2.87",
+          "native_us": "46690.800",
+          "fast_us": "15739.800",
+          "speedup": "2.97",
           "quantized": "1",
           "representatives": "50176",
           "welded": "0",
@@ -4731,7 +5181,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "892"
+          "unmatched": "892",
+          "normalize": "generic"
         },
         {
           "name": "split-150x150-32",
@@ -4745,9 +5196,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "133206",
-          "native_us": "92061.200",
-          "fast_us": "5396.100",
-          "speedup": "17.06",
+          "native_us": "89603.500",
+          "fast_us": "4944.500",
+          "speedup": "18.12",
           "quantized": "1",
           "representatives": "22500",
           "welded": "110706",
@@ -4757,7 +5208,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "596"
+          "unmatched": "596",
+          "normalize": "generic"
         },
         {
           "name": "star-20000-32",
@@ -4771,9 +5223,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "60000",
-          "native_us": "240579.600",
-          "fast_us": "2430.700",
-          "speedup": "98.98",
+          "native_us": "248266.900",
+          "fast_us": "2413.400",
+          "speedup": "102.87",
           "quantized": "1",
           "representatives": "20001",
           "welded": "19999",
@@ -4783,7 +5235,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "20000"
+          "unmatched": "20000",
+          "normalize": "generic"
         },
         {
           "name": "split-16",
@@ -4797,9 +5250,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "58806",
-          "native_us": "28793.000",
-          "fast_us": "2155.600",
-          "speedup": "13.36",
+          "native_us": "30020.300",
+          "fast_us": "2116.800",
+          "speedup": "14.18",
           "quantized": "1",
           "representatives": "10000",
           "welded": "48806",
@@ -4809,7 +5262,8 @@
           "welded_degenerate_faces": "0",
           "refused_welds": "0",
           "repeated_neighbours": "0",
-          "unmatched": "396"
+          "unmatched": "396",
+          "normalize": "generic"
         }
       ],
       "policies": [
@@ -4862,6 +5316,12 @@
           "mismatches": "6"
         },
         {
+          "name": "nan-position",
+          "variant": "other_normalize",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
           "name": "unquantized-near-1.5e-6",
           "variant": "default",
           "equal": "0",
@@ -4906,6 +5366,12 @@
         {
           "name": "unquantized-near-1.5e-6",
           "variant": "later_slot_check",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "other_normalize",
           "equal": "0",
           "mismatches": "6"
         },
@@ -4958,6 +5424,12 @@
           "mismatches": "0"
         },
         {
+          "name": "fan-tilted-abc",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "fan-tilted-bac",
           "variant": "default",
           "equal": "1",
@@ -5006,6 +5478,12 @@
           "mismatches": "0"
         },
         {
+          "name": "fan-tilted-bac",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "fan-tilted-cba",
           "variant": "default",
           "equal": "1",
@@ -5050,6 +5528,12 @@
         {
           "name": "fan-tilted-cba",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -5102,6 +5586,12 @@
           "mismatches": "0"
         },
         {
+          "name": "fan-coplanar-abc",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "fan-coplanar-cba",
           "variant": "default",
           "equal": "1",
@@ -5148,6 +5638,66 @@
           "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "near-unit-normals",
+          "variant": "other_normalize",
+          "equal": "0",
+          "mismatches": "3"
         },
         {
           "name": "fan-four",
@@ -5198,6 +5748,12 @@
           "mismatches": "0"
         },
         {
+          "name": "fan-four",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-aba-aaa",
           "variant": "default",
           "equal": "1",
@@ -5246,6 +5802,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-aba-aaa",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-lookup",
           "variant": "default",
           "equal": "1",
@@ -5290,6 +5852,12 @@
         {
           "name": "degenerate-lookup",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -5342,6 +5910,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-041",
           "variant": "default",
           "equal": "1",
@@ -5386,6 +5960,12 @@
         {
           "name": "degenerate-welded-041",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -5438,6 +6018,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded-041b",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-104",
           "variant": "default",
           "equal": "1",
@@ -5486,6 +6072,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded-104",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-104b",
           "variant": "default",
           "equal": "1",
@@ -5534,6 +6126,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded-104b",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-401",
           "variant": "default",
           "equal": "1",
@@ -5582,6 +6180,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded-401",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-410",
           "variant": "default",
           "equal": "1",
@@ -5601,59 +6205,65 @@
         },
         {
           "name": "degenerate-welded-410",
-          "variant": "no_weld_refusal",
-          "equal": "0",
-          "mismatches": "3"
-        },
-        {
-          "name": "degenerate-welded-410",
-          "variant": "index_order_sweep",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-410",
-          "variant": "retire_own_entry",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-410",
-          "variant": "keep_refused_entry",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-410",
-          "variant": "later_slot_check",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-451",
-          "variant": "default",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-451",
-          "variant": "tail_insertion",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-451",
-          "variant": "no_normal_selection",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-451",
           "variant": "no_weld_refusal",
           "equal": "0",
           "mismatches": "3"
         },
         {
+          "name": "degenerate-welded-410",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
           "name": "degenerate-welded-451",
           "variant": "index_order_sweep",
           "equal": "0",
@@ -5674,6 +6284,12 @@
         {
           "name": "degenerate-welded-451",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -5726,6 +6342,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded-541a",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-541b",
           "variant": "default",
           "equal": "1",
@@ -5774,6 +6396,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded-541b",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-abb",
           "variant": "default",
           "equal": "1",
@@ -5822,6 +6450,12 @@
           "mismatches": "0"
         },
         {
+          "name": "degenerate-welded-abb",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "degenerate-welded-second",
           "variant": "default",
           "equal": "1",
@@ -5866,6 +6500,12 @@
         {
           "name": "degenerate-welded-second",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -5918,6 +6558,12 @@
           "mismatches": "0"
         },
         {
+          "name": "duplicate-faces",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "double-adjacency-order",
           "variant": "default",
           "equal": "1",
@@ -5962,6 +6608,12 @@
         {
           "name": "double-adjacency-order",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -6014,6 +6666,12 @@
           "mismatches": "0"
         },
         {
+          "name": "refusal-chain",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "refusal-pair-face",
           "variant": "default",
           "equal": "1",
@@ -6062,6 +6720,12 @@
           "mismatches": "0"
         },
         {
+          "name": "refusal-pair-face",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "heap-order-0",
           "variant": "default",
           "equal": "1",
@@ -6106,6 +6770,12 @@
         {
           "name": "heap-order-0",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -6158,6 +6828,12 @@
           "mismatches": "0"
         },
         {
+          "name": "heap-order-1",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "heap-order-2",
           "variant": "default",
           "equal": "1",
@@ -6206,6 +6882,12 @@
           "mismatches": "0"
         },
         {
+          "name": "heap-order-2",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "heap-order-3",
           "variant": "default",
           "equal": "1",
@@ -6250,6 +6932,12 @@
         {
           "name": "heap-order-3",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -6302,6 +6990,12 @@
           "mismatches": "0"
         },
         {
+          "name": "heap-order-4",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "heap-order-5",
           "variant": "default",
           "equal": "1",
@@ -6350,6 +7044,12 @@
           "mismatches": "0"
         },
         {
+          "name": "heap-order-5",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "own-entry-survives",
           "variant": "default",
           "equal": "1",
@@ -6394,6 +7094,12 @@
         {
           "name": "own-entry-survives",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -6446,6 +7152,12 @@
           "mismatches": "0"
         },
         {
+          "name": "refused-consumed",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "later-slot-prefilled",
           "variant": "default",
           "equal": "1",
@@ -6494,6 +7206,12 @@
           "mismatches": "0"
         },
         {
+          "name": "later-slot-prefilled",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "key-window-offset-8-apart",
           "variant": "default",
           "equal": "1",
@@ -6542,6 +7260,12 @@
           "mismatches": "0"
         },
         {
+          "name": "key-window-offset-8-apart",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "key-window-offset-8-equal",
           "variant": "default",
           "equal": "1",
@@ -6590,6 +7314,12 @@
           "mismatches": "0"
         },
         {
+          "name": "key-window-offset-8-equal",
+          "variant": "other_normalize",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
           "name": "key-window-offset-8-within-eps",
           "variant": "default",
           "equal": "1",
@@ -6634,6 +7364,12 @@
         {
           "name": "key-window-offset-8-within-eps",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -6682,6 +7418,12 @@
         {
           "name": "epsilon-zero-refusal",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         },
@@ -6730,20 +7472,26 @@
         {
           "name": "fan-eight",
           "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "other_normalize",
           "equal": "1",
           "mismatches": "0"
         }
       ],
       "verify_stats": [
         {
-          "calls": "53",
-          "computed": "51",
+          "calls": "54",
+          "computed": "52",
           "fallbacks": "2",
-          "verify_meshes": "51",
-          "verify_equal": "51",
+          "verify_meshes": "52",
+          "verify_equal": "52",
           "verify_mismatched": "0",
           "mismatch_entries": "0",
-          "quantized": "48",
+          "quantized": "49",
           "unquantized": "3",
           "module_non_finite": "1",
           "module_epsilon_neighbour": "1"
@@ -6752,13 +7500,13 @@
       "fast_stats": [
         {
           "cache": "1",
-          "calls": "106",
-          "computed": "102",
+          "calls": "108",
+          "computed": "104",
           "fallbacks": "4",
           "faults": "0",
-          "fast_ticks": "344930",
+          "fast_ticks": "373294",
           "cache_hits": "0",
-          "cache_misses": "53"
+          "cache_misses": "54"
         }
       ],
       "metrics": [],
@@ -6772,24 +7520,24 @@
     }
   },
   "sources_before_build": {
-    "src/proxy/capture.h": "35a4350a1babdea3d61b7de88b6548669f9e7de19137e6cdebc2b018a591949b",
+    "src/proxy/capture.h": "c9029e5297939f57e165626033a785eada38c5932850b3f8d8ca9dbfbe4747db",
     "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
-    "src/proxy/loading_trace.h": "0459716f86040b872ae2bf4ec40d072188b2732bbafafb31a18f7a946d84a565",
-    "src/proxy/loading_trace.cpp": "5113b33c92fbf5041731b0723dd36ee879b23e3850b03d87775e04d906341634",
+    "src/proxy/loading_trace.h": "445f1336e7014aadbf5ab526450069ce46a08b626463f969d644fea37ce7beab",
+    "src/proxy/loading_trace.cpp": "2647a35804140affaeaf98f503d61fb8fa3b7a13e382b3c88546f0d0aa9a51df",
     "src/proxy/loading_trace_light.h": "d233da9be49a47953ce82fe330e0e863c4ab5464c08d8b066602a690d7115aed",
     "src/proxy/loading_trace_light.cpp": "074a26fc2c6772082c38c28902c44247ea4a5b8b3a71e2460de10c5501ef8241",
     "src/proxy/engine_patch.h": "163b0a0789adc75ddca115389a1f7426cbeadf158f092626aa4976238e95fab1",
     "src/proxy/engine_patch.cpp": "5a0f59ccb0d47c6be6ccab62e3bcfc873ff1a61633e1cc3c875fddef21962d67",
     "src/proxy/loading_probes.h": "92a4bf1383c6752e5d8a888231bd9b1873224603704b7354e0878d982ac2b482",
     "src/proxy/loading_probes.cpp": "49630c0bd9f4706b7ec7c6836d4e6963fa7ae0fae8df81131988d44b606818db",
-    "src/proxy/resource_reader.h": "598179e85a01ce46b74412387ddbf3b75316e2349d59cfafb87aba1e6d012d2a",
-    "src/proxy/resource_reader.cpp": "4039c57ccf8fbf28d05f21233c6f787184ec894a470b3d6d70b707570d718ae7",
-    "src/proxy/resource_reader_core.cpp": "8fc400c368d0799956d6fe9595a7c14b200da1d829f96b9e956e66ca7475cb09",
+    "src/proxy/resource_reader.h": "873a3899269496d39cac43be32d376b3ea897a86dcc103d955545e9a85db6cb6",
+    "src/proxy/resource_reader.cpp": "a0ba9c82792563fbf23bc2b7cdeecde2ce8d92c61b41cd55e8094a6b6f7686e2",
+    "src/proxy/resource_reader_core.cpp": "39e876e8dd6ac329ccdb85d81be18d2397c27ddf5503c96de88abb64285969ff",
     "verification/probe/build_loading_light.sh": "9530d12e65cdb3bff4345ba806b74d9620a91fee45a33231b4f67fbe8a76d251",
     "src/proxy/mesh_adjacency_cache.h": "9ec016ca7b35df32e0316d4cc83c096cb70ec2c7e5c9e039724e22fd9415003e",
     "src/proxy/mesh_adjacency_cache.cpp": "9e76ef433c8915a25a77a04e7a45c3487465fe720ba2f18cd089781a6f060d83",
-    "src/proxy/mesh_adjacency_fast.h": "25ee144e3f76ad26b64f75f98d5d2e2376aa5c934bef17522cfd61e6df56c266",
-    "src/proxy/mesh_adjacency_fast.cpp": "e9893ce07dc21bb69300e76cd4c492d5f6585514da0c9012d0af4898cfdb6f9b",
+    "src/proxy/mesh_adjacency_fast.h": "3dc326c9d28ed55fe4f483d4eec8c4f4b1f701fa2d6676bc3ff029ebf0d52106",
+    "src/proxy/mesh_adjacency_fast.cpp": "b96b0ad2a870bb304454aed6fd6a2b5220364f427664add99f4b83b3e9a8c78f",
     "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
     "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
@@ -6810,31 +7558,31 @@
     "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
     "verification/probe/loading_codec_stub.cpp": "688dae30bb88f07cd79cab193dd9480b34e45e34544742df75255f254908a5ab",
     "verification/probe/loading_mesh_fixture.cpp": "e6949c1c5b66af9c5e702fa4434974bb84b59f0894a85598a78ad0894bc26067",
-    "verification/probe/mesh_adjacency_fast_fixture.cpp": "2da9dcc2f83662b210fa456ae674c44d7884a3fdabb6b871711b02a92c583adf",
+    "verification/probe/mesh_adjacency_fast_fixture.cpp": "248ab24d91ec073c619de67b6e2e0f49f3f0b68e04dcc22a6e3c161ccce3c2f6",
     "verification/probe/build_loading_trace.sh": "09e6368502ce5ef61f2386a4eed52f64e4288d578ce21812e0c986bd81c89677",
     "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
-    "verification/probe/run_loading_trace.py": "a30e1cd88976b1d8d815f7b70822d8e6ada12c1963888e71a9afd4a8cd5127d7"
+    "verification/probe/run_loading_trace.py": "6b0f8c3ccf90977bccb7cb9f0bafbdfbeb62df3275f5ce273c0cf56b043c4710"
   },
   "native_before": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "sources_after_run": {
-    "src/proxy/capture.h": "35a4350a1babdea3d61b7de88b6548669f9e7de19137e6cdebc2b018a591949b",
+    "src/proxy/capture.h": "c9029e5297939f57e165626033a785eada38c5932850b3f8d8ca9dbfbe4747db",
     "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
-    "src/proxy/loading_trace.h": "0459716f86040b872ae2bf4ec40d072188b2732bbafafb31a18f7a946d84a565",
-    "src/proxy/loading_trace.cpp": "5113b33c92fbf5041731b0723dd36ee879b23e3850b03d87775e04d906341634",
+    "src/proxy/loading_trace.h": "445f1336e7014aadbf5ab526450069ce46a08b626463f969d644fea37ce7beab",
+    "src/proxy/loading_trace.cpp": "2647a35804140affaeaf98f503d61fb8fa3b7a13e382b3c88546f0d0aa9a51df",
     "src/proxy/loading_trace_light.h": "d233da9be49a47953ce82fe330e0e863c4ab5464c08d8b066602a690d7115aed",
     "src/proxy/loading_trace_light.cpp": "074a26fc2c6772082c38c28902c44247ea4a5b8b3a71e2460de10c5501ef8241",
     "src/proxy/engine_patch.h": "163b0a0789adc75ddca115389a1f7426cbeadf158f092626aa4976238e95fab1",
     "src/proxy/engine_patch.cpp": "5a0f59ccb0d47c6be6ccab62e3bcfc873ff1a61633e1cc3c875fddef21962d67",
     "src/proxy/loading_probes.h": "92a4bf1383c6752e5d8a888231bd9b1873224603704b7354e0878d982ac2b482",
     "src/proxy/loading_probes.cpp": "49630c0bd9f4706b7ec7c6836d4e6963fa7ae0fae8df81131988d44b606818db",
-    "src/proxy/resource_reader.h": "598179e85a01ce46b74412387ddbf3b75316e2349d59cfafb87aba1e6d012d2a",
-    "src/proxy/resource_reader.cpp": "4039c57ccf8fbf28d05f21233c6f787184ec894a470b3d6d70b707570d718ae7",
-    "src/proxy/resource_reader_core.cpp": "8fc400c368d0799956d6fe9595a7c14b200da1d829f96b9e956e66ca7475cb09",
+    "src/proxy/resource_reader.h": "873a3899269496d39cac43be32d376b3ea897a86dcc103d955545e9a85db6cb6",
+    "src/proxy/resource_reader.cpp": "a0ba9c82792563fbf23bc2b7cdeecde2ce8d92c61b41cd55e8094a6b6f7686e2",
+    "src/proxy/resource_reader_core.cpp": "39e876e8dd6ac329ccdb85d81be18d2397c27ddf5503c96de88abb64285969ff",
     "verification/probe/build_loading_light.sh": "9530d12e65cdb3bff4345ba806b74d9620a91fee45a33231b4f67fbe8a76d251",
     "src/proxy/mesh_adjacency_cache.h": "9ec016ca7b35df32e0316d4cc83c096cb70ec2c7e5c9e039724e22fd9415003e",
     "src/proxy/mesh_adjacency_cache.cpp": "9e76ef433c8915a25a77a04e7a45c3487465fe720ba2f18cd089781a6f060d83",
-    "src/proxy/mesh_adjacency_fast.h": "25ee144e3f76ad26b64f75f98d5d2e2376aa5c934bef17522cfd61e6df56c266",
-    "src/proxy/mesh_adjacency_fast.cpp": "e9893ce07dc21bb69300e76cd4c492d5f6585514da0c9012d0af4898cfdb6f9b",
+    "src/proxy/mesh_adjacency_fast.h": "3dc326c9d28ed55fe4f483d4eec8c4f4b1f701fa2d6676bc3ff029ebf0d52106",
+    "src/proxy/mesh_adjacency_fast.cpp": "b96b0ad2a870bb304454aed6fd6a2b5220364f427664add99f4b83b3e9a8c78f",
     "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
     "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
@@ -6855,10 +7603,10 @@
     "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
     "verification/probe/loading_codec_stub.cpp": "688dae30bb88f07cd79cab193dd9480b34e45e34544742df75255f254908a5ab",
     "verification/probe/loading_mesh_fixture.cpp": "e6949c1c5b66af9c5e702fa4434974bb84b59f0894a85598a78ad0894bc26067",
-    "verification/probe/mesh_adjacency_fast_fixture.cpp": "2da9dcc2f83662b210fa456ae674c44d7884a3fdabb6b871711b02a92c583adf",
+    "verification/probe/mesh_adjacency_fast_fixture.cpp": "248ab24d91ec073c619de67b6e2e0f49f3f0b68e04dcc22a6e3c161ccce3c2f6",
     "verification/probe/build_loading_trace.sh": "09e6368502ce5ef61f2386a4eed52f64e4288d578ce21812e0c986bd81c89677",
     "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
-    "verification/probe/run_loading_trace.py": "a30e1cd88976b1d8d815f7b70822d8e6ada12c1963888e71a9afd4a8cd5127d7"
+    "verification/probe/run_loading_trace.py": "6b0f8c3ccf90977bccb7cb9f0bafbdfbeb62df3275f5ce273c0cf56b043c4710"
   },
   "native_after": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "sources_and_binaries_unchanged": true

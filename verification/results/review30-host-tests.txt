@@ -1,0 +1,81 @@
+....................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 836 tests in 34.547s
+
+OK
+camera_state lines: 3; motion_output_frame lines: 1
+device 1: states=3 valid=2 policy2=1 camera_cuts=1 max_rotation_deg=25.000 reasons={'camera_path': 1, 'rotation_cut': 1, 'current_invalid': 1} read_failures={'4:5': 1} background_rotation_max_deg=0.000 background_fov_mismatch=0
+frame 1:7 valid=1 policy=2 reason=camera_path rotation_deg=1.000 draws=1/1 rotation_dev=4.6858552149586785e-08 translation_dev=8.83990770215218e-08 projection_dev=3.7306976308215667e-07 object_views=1/1
+check draw_constants_agree: pass draws=1 agreeing=1 max_rotation_deviation=4.6858552149586785e-08 max_projection_deviation=3.7306976308215667e-07
+check object_trace_view_agrees: pass views=1 agreeing=1
+check camera_read_valid:1: fail states=3 valid=2 read_failures={'4:5': 1}
+iteration-07 TAA analysis of session.log (12095 bytes, sha256 0dbbaf17ebda03fe…)
+TAA: 5 motion_output_frame records, attempted 4, resolved 4, failed 0, history valid 4
+  skip histogram {'0': 4, '2': 1} ; results {'00000001': 1, '00000000': 4}
+  every captured frame resolved with history: True
+route totals: draws 33 routed 16 matched 16 gates {'gate1': 0, 'gate2': 9, 'gate3': 0, 'gate4': 8, 'gate5': 0, 'gate6': 0}
+  per-draw gate histogram {'0': 16, '4': 8}; counter consistency True
+burst 0 frames 10-13: cut median [0.0, 0.0, 0.0, 0.0] px, missing [0.0, 0.0, 0.0, 0.0], verdicts [0, 0, 0, 0], stationary=True
+diagnostics: 0 failure records, 0 resets, 0 shutdown records, 0 nonzero readback results
+  telemetry 1:frame_normal: n=120 mean=1015.0us max=1230.0us buckets=[0, 0, 0, 0, 120, 0]
+  telemetry 1:present_normal: n=120 mean=10.0us max=40.0us buckets=[0, 120, 0, 0, 0, 0]
+  window run/1:frame_normal/all: 4 windows, per-window mean median 1015.0us, per-window min median 915.0us
+  window run/1:frame_normal/scene: 4 windows, per-window mean median 1015.0us, per-window min median 915.0us
+  window run/1:present_normal/all: 4 windows, per-window mean median 10.0us, per-window min median 5.0us
+  window run/1:present_normal/scene: 4 windows, per-window mean median 10.0us, per-window min median 5.0us
+  boundary StretchRect bracket [run]: n=4 median=250.0us max=250.0us
+summary: /var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/tmpdfgjf7ld/summary.json
+iteration-07 TAA analysis of session.log (12095 bytes, sha256 0dbbaf17ebda03fe…)
+TAA: 5 motion_output_frame records, attempted 4, resolved 4, failed 0, history valid 4
+  skip histogram {'0': 4, '2': 1} ; results {'00000001': 1, '00000000': 4}
+  every captured frame resolved with history: True
+route totals: draws 33 routed 16 matched 16 gates {'gate1': 0, 'gate2': 9, 'gate3': 0, 'gate4': 8, 'gate5': 0, 'gate6': 0}
+  per-draw gate histogram {'0': 16, '4': 8}; counter consistency True
+burst 0 frames 10-13: cut median [0.0, 0.0, 0.0, 0.0] px, missing [0.0, 0.0, 0.0, 0.0], verdicts [0, 0, 0, 0], stationary=True
+diagnostics: 0 failure records, 0 resets, 0 shutdown records, 0 nonzero readback results
+  telemetry 1:frame_normal: n=120 mean=1015.0us max=1230.0us buckets=[0, 0, 0, 0, 120, 0]
+  telemetry 1:present_normal: n=120 mean=10.0us max=40.0us buckets=[0, 120, 0, 0, 0, 0]
+  window run/1:frame_normal/all: 4 windows, per-window mean median 1015.0us, per-window min median 915.0us
+  window run/1:frame_normal/scene: 4 windows, per-window mean median 1015.0us, per-window min median 915.0us
+  window run/1:present_normal/all: 4 windows, per-window mean median 10.0us, per-window min median 5.0us
+  window run/1:present_normal/scene: 4 windows, per-window mean median 10.0us, per-window min median 5.0us
+  boundary StretchRect bracket [run]: n=4 median=250.0us max=250.0us
+image 10->11: jitter step (+0.5000,+0.3333) colour (+0.5037,+0.3428) resolved (+0.5034,+0.3416) resolved/colour (0.999,0.996)
+image 11->12: jitter step (-0.2500,-0.5556) colour (-0.2573,-0.5595) resolved (-0.2566,-0.5595) resolved/colour (0.997,1.000)
+image 12->13: jitter step (+0.5000,+0.3333) colour (+0.5042,+0.3406) resolved (+0.5035,+0.3418) resolved/colour (0.999,1.003)
+blur frame 10: gradient energy ratio 0.9980, high-frequency fraction ratio 0.0096
+blur frame 11: gradient energy ratio 0.9985, high-frequency fraction ratio 0.0101
+blur frame 12: gradient energy ratio 0.9977, high-frequency fraction ratio 0.0106
+blur frame 13: gradient energy ratio 0.9969, high-frequency fraction ratio 0.0101
+summary: /var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/tmpl_3lubjl/summary.json
+iteration-08 TAA analysis of session.log (10772 bytes, sha256 9a7de9e91944f3a8…)
+TAA: 4 motion_output_frame records, attempted 4, resolved 4, failed 0, history valid 4
+  skip histogram {'0': 4}; results {'00000000': 4}; every captured frame resolved with history: True
+route totals: draws 28 routed 16 matched 16 gates {'gate1': 0, 'gate2': 4, 'gate3': 0, 'gate4': 8, 'gate5': 0, 'gate6': 0}
+  per-draw gate histogram {'0': 16, '4': 8}; counter consistency True
+burst 0 frames 40-43: cut median [0.0, 0.0, 0.0, 0.0] px, verdicts [0, 0, 0, 0], stationary=True
+diagnostics: 0 failure records, 0 resets, 0 shutdown records, 0 nonzero readback results
+  window run/1:frame_normal/all: 4 windows, per-window mean median 2015.0us, per-window min median 1900.0us
+  window run/1:frame_normal/scene: 4 windows, per-window mean median 2015.0us, per-window min median 1900.0us
+  session run_a (session.log): mode {'taa': '1', 'taa_debug': '1', 'jitter': '1', 'jitter_samples': '8', 'temporal_consumer': '1', 'scope': 'live_same_draw_diagnostic'}, routed 16/28 draws, matched 16, jittered draws 16, resolved 4
+  session taa_off (session.log): mode {'taa': '1', 'taa_debug': '1', 'jitter': '1', 'jitter_samples': '8', 'temporal_consumer': '1', 'scope': 'live_same_draw_diagnostic'}, routed 16/28 draws, matched 16, jittered draws 16, resolved 4
+  timing 1:frame_normal/scene: mean ratio 1.985, min ratio 2.111
+  timing 1:frame_normal/all: mean ratio 1.985, min ratio 2.111
+summary: /var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/tmpky0k_a2d/summary.json
+iteration-08 TAA analysis of session.log (10768 bytes, sha256 1cb6a3bfb24e40b1…)
+TAA: 4 motion_output_frame records, attempted 4, resolved 4, failed 0, history valid 4
+  skip histogram {'0': 4}; results {'00000000': 4}; every captured frame resolved with history: True
+route totals: draws 28 routed 16 matched 16 gates {'gate1': 0, 'gate2': 4, 'gate3': 0, 'gate4': 8, 'gate5': 0, 'gate6': 0}
+  per-draw gate histogram {'0': 16, '4': 8}; counter consistency True
+burst 0 frames 40-43: cut median [0.0, 0.0, 0.0, 0.0] px, verdicts [0, 0, 0, 0], stationary=True
+diagnostics: 0 failure records, 0 resets, 0 shutdown records, 0 nonzero readback results
+  window run/1:frame_normal/all: 4 windows, per-window mean median 1015.0us, per-window min median 900.0us
+  window run/1:frame_normal/scene: 4 windows, per-window mean median 1015.0us, per-window min median 900.0us
+  timing comparison: pending - no --run-b-log: this report has one session with TAA on throughout, so the timing is not a controlled comparison. Re-run with the TAA-off capture of the same scene to populate this section.
+flicker burst 40-43:
+  sentinel: 1536 px (25.0%), raw rms 8.00 levels, resolved rms 8.00, aggregate ratio 1.000, ratio p25/p50/p75 1.000/1.000/1.000, flicker energy share 0.246
+  routed_interior: 1536 px (25.0%), raw rms 8.00 levels, resolved rms 0.00, aggregate ratio 0.000, ratio p25/p50/p75 0.000/0.000/0.000, flicker energy share 0.000
+  routed_edge: 3072 px (50.0%), raw rms 9.91 levels, resolved rms 9.91, aggregate ratio 1.000, ratio p25/p50/p75 1.000/1.000/1.000, flicker energy share 0.754
+  thin_feature: 128 px (2.1%), raw rms 29.77 levels, resolved rms 29.22, aggregate ratio 0.963, ratio p25/p50/p75 0.000/0.498/0.997, flicker energy share 0.273
+  yellow guide lines: 64 px union, 32 in every frame (coverage flip 0.50), classes {'routed_edge': 64}, 64 with RT2 depth in all frames, raw rms 41.34 levels, resolved rms 41.32, aggregate ratio 0.999
+summary: /var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/tmp7o5lrrj9/summary.json

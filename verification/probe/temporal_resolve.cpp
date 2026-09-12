@@ -57,7 +57,9 @@ unsigned short toHalf(float f){ // IEEE binary32 -> binary16, round to nearest/e
 }
 using Compiler=decltype(&D3DXCompileShader);
 void compile(Compiler c,const std::string& source,const char* target,ID3DXBuffer** code){Com<ID3DXBuffer> errors;
+    std::printf("COMPILE_BEGIN target=%s bytes=%u\n",target,unsigned(source.size()));
     HRESULT hr=c(source.c_str(),UINT(source.size()),nullptr,nullptr,"main",target,D3DXSHADER_OPTIMIZATION_LEVEL3,code,&errors.p,nullptr);
+    std::printf("COMPILE_END target=%s hr=%08lx\n",target,static_cast<unsigned long>(hr));
     if(errors.p)std::printf("COMPILER %s\n",static_cast<char*>(errors->GetBufferPointer()));
     check(target,hr);}
 constexpr unsigned W=16,H=16;using Pixel=std::array<float,4>;using Image=std::vector<Pixel>;
@@ -73,9 +75,11 @@ struct Fixture {
     x3::temporal::HistoryState state;
     x3::temporal::ResolveConstants constants;
     Fixture(IDirect3DDevice9* device,Compiler compiler,const std::string& source):d(device){
+        std::puts("FIXTURE_BEGIN");
         Com<ID3DXBuffer> pc,vc;
         compile(compiler,source,"ps_3_0",&pc.p);
         compile(compiler,"struct O{float4 p:POSITION0;float2 uv:TEXCOORD0;};O main(float4 p:POSITION0,float2 uv:TEXCOORD0){O o;o.p=p;o.uv=uv;return o;}","vs_3_0",&vc.p);
+        std::puts("FIXTURE_CREATE_SHADERS");
         check("CreatePixelShader",d->CreatePixelShader(static_cast<DWORD*>(pc->GetBufferPointer()),&ps.p));
         Com<ID3DXBuffer> referenceCode;
         compile(compiler,"float4 main(float2 uv:TEXCOORD0):COLOR0{return float4(uv.xxx,1);}","ps_3_0",&referenceCode.p);
@@ -84,6 +88,7 @@ struct Fixture {
         const D3DVERTEXELEMENT9 elements[]={{0,0,D3DDECLTYPE_FLOAT4,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},
             {0,16,D3DDECLTYPE_FLOAT2,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TEXCOORD,0},D3DDECL_END()};
         check("CreateVertexDeclaration",d->CreateVertexDeclaration(elements,&declaration.p));
+        std::puts("FIXTURE_CREATE_TEXTURES");
         for(auto* texture:{&current,&old})check("Create input FP16",d->CreateTexture(W,H,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_MANAGED,&texture->p,nullptr));
         check("Create motion RGBA32F",d->CreateTexture(W,H,1,0,D3DFMT_A32B32G32R32F,D3DPOOL_MANAGED,&motion.p,nullptr));
         for(auto* texture:{&depth,&oldDepth})check("Create input R32F",d->CreateTexture(W,H,1,0,D3DFMT_R32F,D3DPOOL_MANAGED,&texture->p,nullptr));
@@ -91,9 +96,11 @@ struct Fixture {
             check("GetSurfaceLevel",output[i]->GetSurfaceLevel(0,&target[i].p));}
         check("GetBackBuffer",d->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&back.p));
         check("CreateReadback",d->CreateOffscreenPlainSurface(W,H,D3DFMT_A16B16G16R16F,D3DPOOL_SYSTEMMEM,&readback.p,nullptr));
+        std::puts("FIXTURE_INITIAL_UPLOAD");
         state.begin(W,H,1);state.completed();prepare();
         upload(current.p,image(.5f));upload(old.p,image(.75f));upload(motion.p,Image(W*H,Pixel{0,0,0,0}));
         uploadDepth(depth.p,.5f);uploadDepth(oldDepth.p,.5f);
+        std::puts("FIXTURE_READY");
     }
     ~Fixture(){for(unsigned i=0;i<5;++i)d->SetTexture(i,nullptr);d->SetRenderTarget(0,back.p);d->SetVertexShader(nullptr);d->SetPixelShader(nullptr);d->SetVertexDeclaration(nullptr);}
     void prepare(float weight=.5f,float cx=0,float cy=0,float px=0,float py=0,bool useMotion=false,const float* matrix=identity,bool sentinelPolicy=false,bool sentinelCamera=false){

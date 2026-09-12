@@ -19,8 +19,9 @@ stays untested; every statement about it is documented-D3D9 reasoning, and
 the fixture evidence is CrossOver Preview (Steam and X3 bottles). No game was
 launched; every Wine command ran under `wine_lock.py --holder review30`, one
 at a time, after the user's own game runs had ended (the chain waited for
-`game_guard`). The review was paused by the orchestrator before the chain
-completed; the suite table records exactly what ran.
+`game_guard`). The initial session paused before the chain completed. The remaining chain
+and independent artifact audit finished on 2026-09-13; the table distinguishes
+fresh runs from unchanged-source evidence reused after verification.
 
 ## Checklist
 
@@ -225,86 +226,121 @@ completed; the suite table records exactly what ran.
    `temporal-integration.md`, `live-motion-route.md`, `hdr-scene-path.md`
    §5 and `bottles.md` limitation 2 match the code. The one number the
    documents disagreed on (`DebugSetLevel` 0 vs 4) is fixed above.
-   `docs/status.md`'s "Pending review 30" section is still to be converted
-   into a checkpoint bullet of the latest-checkpoint section (structure kept)
-   once the chain below is complete — TODO for the continuing agent.
+   Root converted `docs/status.md`'s pending section into the completed review-30
+   checkpoint after the suite chain below passed.
 
-## Suite results
+## Suite results — completed 2026-09-13
 
-**Paused (2026-09-13 ~00:36, orchestrator's session end): the chain ran
-five suites and was stopped; the rest is TODO for the continuing agent.**
-Host-only steps ran on the reviewer's clean rebuild of the merged tree plus
-the fixes above (`cmake --build build --clean-first -j4`, 0 warnings,
-`build/d3d9.dll` SHA-256 `5a5bb1d6028c78999290a2f919e5798f8beb4bfc2dae5c63f571a76613564f82`).
-The Wine suites ran under `wine_lock.py --holder review30`, one at a time,
-bottle Steam, each started only after `game_guard` reported no game and no
-source had changed for five minutes; the motion runner's own
-`RelWithDebInfo --clean-first` relink produced `ef190bcbf84b8088378872e05bbfa77be437636a57b9c77a4db0e21377fd903f`,
-which is what `build/d3d9.dll` holds now. Caveat: two other agents were
-editing the same checkout during the chain (uncommitted
-`src/proxy/resource_reader*`, `mesh_adjacency_fast*`, `loading_trace.cpp`,
-their fixtures, tests and docs), so every runner build from about 23:55 on
-includes their in-progress sources; one motion run was aborted by its own
-"sources changed during run" guard for that reason and was rerun once the
-tree was quiet. The user launched the game three times during the review;
-the runners refused as designed and the chain waited.
+The continuation started from documentation-only HEAD `f4d2384`, whose production
+sources are the WIP checkpoint `1c8322e`; the earlier low fixes above were already
+included. Production remained frozen. The only new code changes in this review
+are temporal **fixture/runner** progress markers, a larger total runtime budget,
+and timeout child cleanup with five host controls. Root independently reviewed
+those changes. Root's concurrent goal/status documentation commit `8ec83d0`
+changes no compiled source.
 
-| Suite | Bottle | Result |
+Every fresh Wine command ran through `wine_lock.py --holder review30`, one at a
+time, with no game or other fixture at admission. No game was launched. Native
+Windows remains untested. Existing green evidence was reused only after checking
+its current source map, retained executable and raw report/trace hashes; it was
+not relabelled as a fresh run. Rebuilt shared fixture paths can replace older
+executables, so Steam loading/motion binaries were retained under the untracked
+`verification/probe/build/review30-retained/` directory and per-case directories.
+
+| Suite | Bottle | Final result |
 | --- | --- | --- |
-| `run_motion_output.py` | Steam | PASS (`{"passed": true}`): 97 cases, 97 `exit=0`, 26 bench cases; `seam-taa-quad-fvf` identical to `seam-taa-on` (16 readback files, 8 history files, 164 checks each, `quad=xyzrhw_fixed_function`); `seam-taa-copy-draw` `history_identical=true`, presented `identical=true max_code_difference=0 exact_fraction=1.0`, 164 checks; `seam-msaa` `motion_output_msaa_refused device=1 frame=0 msaa=2 width=64 height=64`, 5 checks; 6.8 min wall |
-| `run_temporal_pass.py` | Steam | PASS: `RESULT PASS numerical=508 state_restorations=278 generations=2`, 386 samples; `QUAD_TWIN` stretch/sharpen/draw_copy `identical=1` in both generations (6 lines); `COPY_MODE` ×2 `history_identical=1 display_max_code_difference=0 display_differing_bytes=0` |
-| `temporal_run.py` | Steam | **timed out twice** (`timed_out=true exit_code=null timeout_seconds=60`, 39/39 sample checks of the first generation passed, `reset_passed=true`, one generation read) while another agent's builds and fixture loaded the machine — the same symptom the handoff recorded; the fixture is unchanged by this branch. TODO: rerun on a quiet machine (or raise the runner's 60 s budget, an orchestrator call) |
-| `run_ownership_integration.py` | Steam | PASS: 26 cases, all `exit=0` |
-| `run_scene_capture.py` | Steam | PASS: 4,908 checks, 16 samples, 36 scenarios |
-| `run_loading_trace.py` | Steam | TODO (not reached; the fixture build `build_loading_trace.sh` compiles on the current tree, see below) |
-| `run_d3d9_exports.py` | Steam | TODO (not reached; the branch's own record `verification/results/d3d9-exports-summary.json` says 8/8 + 8/8 on the pre-review tree, before the `DebugSetLevel` and `capture_dir` fixes — rerun required) |
-| `run_object_lifetime.py`, `run_object_trace.py` | Steam | TODO |
-| `run_gz_buffer.py`, `run_resource_reader.py` | X3 | TODO (another agent was running `run_resource_reader.py` on X3 under the lock with holder `reader` during this review) |
-| `run_mesh_adjacency_cache.py`, `run_mesh_cache_hook.py` | Steam | TODO |
-| `generate_rigid_motion_pixel.py --check` | Steam (fxc under Wine, locked) | TODO |
-| `X3M_FIXTURE_BOTTLE=X3 run_motion_output.py` | X3 | TODO |
-| `check_no_x87.py build/d3d9.dll` | host | PASS on `5a5bb1d6…`: 195 reachable functions, 0 violations |
-| `unittest discover -s verification/analysis` (`PYTHONPATH=verification/probe`) | host | 800 tests OK (32.8 s; the three `test_d3d9_exports.py` tests included, with the `ret $4` expectation) |
-| `pe_exports.py build/d3d9.dll` | host | 17 names, ordinals 1–17, no forwarders, `0x014c`; fallbacks disassembled `ret $0x4 / $0xc / $0x14 / $0x4` |
-| `cmake --build build` and `verification/probe/build_loading_trace.sh` | host | both compile on the tree as left (00:36), including the other agents' uncommitted `loading_trace.cpp` `<cpuid.h>`/`__get_cpuid` edit (the fixture build the orchestrator saw failing was a mid-edit snapshot; this GCC 16.2 `cpuid.h` defines `__get_cpuid`) |
+| `run_motion_output.py` | Steam | Reused current-source PASS: 97 cases, all exit 0, 26 benchmark cases. All 97 traces and 194 case binaries rehashed. |
+| `run_temporal_pass.py` | Steam | Reused current-source PASS: 508 numerical checks, 278 state restorations, two generations, 386 samples. Six `QUAD_TWIN` results identical; both `COPY_MODE` results history-identical with zero differing display bytes. |
+| `temporal_run.py` | Steam | Fresh PASS: 78/78 samples, two generations and Reset, exit 0, 180-second budget; approximately 65.2 seconds from runtime start to final report write. Source/executable unchanged; report and stderr hashes recorded after closure. |
+| `run_ownership_integration.py` | Steam | Reused current-source PASS: 26 cases, all exit 0; 145-source initial map and all 52 raw report/trace hashes verified. |
+| `run_scene_capture.py` | Steam | Reused current-source PASS: 4,908 checks, 16 samples, 36 scenarios. |
+| `run_loading_trace.py` | Steam | Fresh PASS: 86 ABI/IAT + 123 mesh + 35,984 adjacency cache-off + 36,041 cache-on = 72,234 checks. Both 2,000-mesh random sweeps equal, zero mismatches. |
+| `run_loading_trace.py` | X3 | Fresh PASS: the same four inventories and 72,234 checks; both 2,000-mesh sweeps equal, zero mismatches. |
+| `run_d3d9_exports.py` | Steam | Fresh PASS: writable and read-only cases, 8 checks each; 17 exports, game/profile capture-directory paths. The profile log was copied into results before the runner removed its bottle-local original. |
+| `run_object_lifetime.py` | Steam | Reused current-source PASS: 574 checks, 80 backend calls. Seven source hashes, executable and raw report match. |
+| `run_object_trace.py` | Steam | Reused current-source PASS: 166 checks, 120,017 backend calls. Seven source hashes, executable and raw report match. |
+| `run_gz_buffer.py` | X3 | Fresh full PASS: 735,876 checks, default 10-million-call timing workload, zero failures. |
+| `run_resource_reader.py` | X3 | Reused full, non-quick PASS: 4,707 checks including 20 cursor sources; 14 current source hashes and executable match, retained raw output reparses to the stored report. This is bounded fixture evidence, subject to the open review-31 limitations below. |
+| `run_mesh_adjacency_cache.py` | Steam | Fresh PASS: 767 checks, source/native/executable stability verified. |
+| `run_mesh_cache_hook.py` | Steam | Fresh PASS: six cases, 1,714 / 2,003 / 2,011 / 2,189 / 2,673 / 2,681 checks, total 13,271. |
+| `generate_rigid_motion_pixel.py --check` | Steam | Fresh PASS: all ten shaders reproduce exact bytecode, including the 43-word quad VS. |
+| `run_motion_output.py` | X3 | Fresh PASS: 97 cases, all exit 0, 26 benchmark cases; 234 seconds wall time. Quad twin, draw-copy twin and MSAA refusal all pass. |
+| `check_no_x87.py build/d3d9.dll` | host | Fresh PASS on the final DLL: 196 reachable functions, zero violations. |
+| `unittest discover -s verification/analysis` with `PYTHONPATH=verification/probe` | host | Fresh PASS: 836 tests in 34.547 seconds, including the five new timeout-cleanup controls. |
+| `pe_exports.py build/d3d9.dll` | host | Fresh audit: 17 names, ordinals 1–17, no forwarders, machine `0x014c`. |
 
-The chain script (`review30-chain.sh` in the reviewer's session scratchpad)
-ran the suites in the order of the task; the continuing agent should restart
-from `temporal_run.py` and finish the list above, then fill this table.
+On **both bottles**, the motion quad twin retains identical RT1/RT2 readbacks
+(16 files) and histories (8 files). The draw-copy twin retains identical histories
+and 49,152/49,152 identical presented pixels across twelve frames, maximum code
+difference zero. The final audit also compares the retained history/present files
+and the quad twin's motion/depth files directly. The MSAA case refuses before
+routing, with `msaa=2`, no motion target and the named skip reason.
 
-## Open / for the orchestrator
+### Temporal timeout diagnosis and correction
 
-- Native Windows remains unverified: D1's round trip, D2's clip-space quad
-  and W1's forwarders are documented-D3D9 reasoning plus Preview evidence.
-  The first Windows run should confirm `taa_copy=` on the device line, one
-  `d3d9_export` line per forwarder actually called and `capture_dir=`
-  `source=game` from the Steam directory.
-- The `D3DRS_CLIPPING` note of item 1 and the format-21-only refusal of
-  item 3 are design choices, unchanged here.
-- Installing this review's build into bottle X3 is the orchestrator's call
-  (not done here; the installed build is the review-29 `4abd56b3…`).
+The quiet 60-second retry reproduced the inherited timeout after 39 passing
+samples and `RESET PASS`. Instrumentation then localized substantial CPU work to
+`D3DXCompileShader` on the 17,853-byte production shader. The fixture compiles it
+once per generation; this is not a failing numerical assertion or proof of a
+Reset deadlock. A second diagnostic attempt timed out at 60 seconds while its
+Wine child continued and eventually appended all 78 samples **after** the runner
+had already recorded timeout. That late raw PASS was not accepted: the summary
+and growing output were not a valid finished evidence pair.
 
-**Verdict (interim, review paused):** the five items read as designed —
-the clip-space quad reproduces the XYZRHW half-pixel convention exactly
-under the full-target viewport every bracket sets, the round trip fails
-closed to the draw copy, the MSAA refusal precedes any RT1/RT2 allocation,
-the export table and every `ret N` match the documented signatures after
-one fix, and the log fallback is Unicode-clean after one fix. Two low
-findings (`DebugSetLevel` fallback popping 0 instead of 4 bytes; the
-`capture_dir` line dropped on a non-ASCII path) and two cosmetic ones (a
-64 KB stack buffer, a stale fixture comment) are fixed in the tree,
-uncommitted. Five suites are green on the merged tree with the fixes
-(motion output with the three native-Windows twins, temporal pass with the
-quad twins and copy modes, ownership integration, scene capture) plus the
-host checks; `temporal_run.py` timed out twice under machine load and the
-remaining eleven runs are TODO. **Not yet ready for the checkpoint commit:**
-finish the chain, then convert `docs/status.md`'s "Pending review 30"
-section into a bullet of the latest-checkpoint section (structure kept,
-counts from the table above), and commit only the review-30 files
-(`docs/verification/review-30.md`, `docs/architecture/platform-portability.md`,
-`docs/architecture/native-windows-audit-2026-09-12.md`, `src/proxy/loader.cpp`,
-`src/proxy/capture.cpp`, `verification/analysis/test_d3d9_exports.py`,
-`verification/probe/motion_output_fixture.cpp`, `docs/status.md`'s review-30
-part, and the regenerated `verification/results/` records of the suites
-above) — the other agents' uncommitted files in the same checkout are not
-part of this review.
+The reviewed correction raises only the total runtime budget to 180 seconds;
+all 78 samples, both generations, Reset and exit-zero checks remain required.
+The runner also retains its Wine lock while a timed-out child drains. It selects
+only `temporal_resolve.exe` with the exact final shader argument, refuses a
+pre-existing matching fixture, allows 15 seconds to exit, then rechecks PID and
+command before TERM and, after a further ten seconds, KILL. It never targets a
+Wine server, launcher or game and does not release the lock while a matching
+child remains. Report/stderr hashes are computed after closure. Host controls
+cover unrelated processes, path-prefix collisions, natural completion, PID reuse
+and both signal stages. The final 180-second run exited normally; timeout cleanup
+was not needed. Failed diagnostic attempts remain superseded evidence, not passes.
+
+## Final artifact binding and limits
+
+The final full proxy DLL rebuilt by the **new X3 motion run** is:
+
+`d648594bf346f8ccc8d5e476bcc26345d16741974f76c5b3769017075712e825`
+
+The earlier Steam motion DLL `ef190bcb…` is retained as its own run's binary;
+identical current production source maps bind the two builds. PE build identity
+and differing fixture rebuild timestamps must not be mistaken for source drift.
+The independent [artifact audit](../../verification/results/review30-artifact-audit.json)
+records source/report/native/binary hashes, both motion case inventories and raw
+twin comparisons. Separate retained host records cover
+[836 tests](../../verification/results/review30-host-tests.txt),
+[no-x87](../../verification/results/review30-no-x87.json),
+[exports](../../verification/results/review30-exports.json), and
+[ten shader regenerations](../../verification/results/review30-shader-check.json).
+
+Root also extended `.gitattributes`' existing exact-byte report rule to nested
+`verification/results/**/*.txt` and `**/*.log`. Independent review confirmed
+that otherwise `core.autocrlf=input` would normalize the X3 reports and break
+their recorded raw hashes. `git check-attr` confirms `text` is unset for both
+top-level and bottle-specific reports; this metadata change requires no runtime
+rerun.
+
+The [independent adjacency/reader review](review-31-adjacency-reader.md) remains
+open and belongs to the next checkpoint. The passing bounded loading suite does
+**not** erase the known Steam SSE2 competing-normal adjacency discrepancy,
+registry-type mismatch or unqualified arithmetic domain. Likewise, the retained
+reader fixture does not establish correctness of its ignored final cursor-seek
+failure, original LastError input, shifted diagnostic format, or permissive parser
+cases. No such fix is included here and this review does not authorize a general
+fast-mode parity claim. Keep those optimization paths opt-in and require their
+separate fixes/review and user-managed verification before fast-mode acceptance.
+
+Native Windows still needs a real run. The half-pixel guard-band note and the
+format-21-only named MSAA refusal in the source review remain unchanged design
+limits. D1/D2/D3/W1/W3 have documented-API reasoning plus the named Preview
+fixtures, not native-Windows runtime certification. The fixture timings measure
+synthetic work; they are not game FPS or a new loading-time claim.
+
+**Verdict:** review 30's frozen native-Windows fixes and regression checkpoint are
+accepted with the explicit review-31 opt-in-path limitations above. The previously
+paused suite chain is complete. No commit or install was performed by this
+reviewer; root owns the checkpoint commit, installation, status update and later
+user-managed game tests.
