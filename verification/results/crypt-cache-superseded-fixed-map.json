@@ -1,0 +1,6 @@
+{
+  "accepted": false,
+  "reason": "Synthetic fixed-address allocation failed before any hook; replaced by fixture-only relocation seam. Failed hook binary was subsequently rebuilt; this is a diagnostic failure record, not current executable evidence.",
+  "report_sha256": "302bfa713576604339e18c93de32e0e7cde4f893a1b341d150eb5829d261862b",
+  "prior_runner_error": "AssertionError('complete: exit 2')"
+}

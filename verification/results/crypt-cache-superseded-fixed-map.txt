@@ -1,0 +1,1 @@
+CHECK synthetic address allocation FAIL

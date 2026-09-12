@@ -8,7 +8,7 @@ mkdir -p build/loading_trace
 # The light rows, probe machinery and resource reader that loading_trace.cpp now reports through.
 light_objects_dir=build/loading_light
 sh build_loading_light.sh "$light_objects_dir" -DX3M_LOADING_TRACE_FIXTURE
-light_objects="$light_objects_dir/loading_trace_light.o $light_objects_dir/resource_reader_core.o $light_objects_dir/engine_patch.o $light_objects_dir/loading_probes.o $light_objects_dir/resource_reader.o"
+light_objects="$light_objects_dir/loading_trace_light.o $light_objects_dir/resource_reader_core.o $light_objects_dir/crypt_cache.o $light_objects_dir/engine_patch.o $light_objects_dir/loading_probes.o $light_objects_dir/resource_reader.o"
 cxx=i686-w64-mingw32-g++
 abi="-msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2"
 "$cxx" $abi -std=c++17 -O2 -Wall -Wextra -shared -static -static-libgcc -static-libstdc++ \

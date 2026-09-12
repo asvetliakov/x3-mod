@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "scope": "Static built production-DLL no-x87 call graph, plus cache-object no SIMD/x87 scan; not native-CSP volatile-FP equivalence",
+  "dll_sha256": "1f06ebcf7adc78ba207144e4ff741f73ccec07f46afd033651290e706f68312f",
+  "reachable_functions": 210,
+  "audit_sha256": "b7e826a984eaf737922aed1681af7516cadfedeb5f63d0916b8e6c1bb9f852c1",
+  "source_hashes": {
+    "src/proxy/crypt_cache.cpp": "e4e77b93081d6430b4a9c0ba0589fba7c63f7ceeb557d8633ef88321d3495af7",
+    "src/proxy/crypt_cache.h": "9d01b9be3c7639a68a516301e29036ec4b23fabd34b9cd150e02404c279ad08a",
+    "src/proxy/loading_trace.cpp": "6cf56a4c2880dac3d7011a6170cfd96ac5662c9333efa9063f3536c1c1f6b45a",
+    "src/proxy/loading_trace.h": "b3551396c0131c16903e68ee0887a669976f594035edbd5d260ce81807617ca5",
+    "src/proxy/loader.cpp": "5edacf387c49aaba8aeaada51ec08e252bcb6472321517b3e0c64911e0584c55",
+    "src/proxy/capture.cpp": "2230ca57119545a5f175954d21079bf37210c0030fe137f4c7106c6ec7bbaa26",
+    "CMakeLists.txt": "6dab7cb8fadfd67d716668376270d5c002c00f27ea3b1e1d289fa0a9800d482d",
+    "verification/probe/check_no_x87.py": "273982279312ca2e01627df615800b548580d47026923884df8a7be83baee210"
+  }
+}

@@ -28,6 +28,13 @@ LIGHT_HOOKS = ['set_vs', 'set_ps', 'set_vs_constant_f', 'set_vs_constant_i', 'se
 # src/proxy/gz_buffer.cpp) run with no boundary at all on their fast path, so the
 # same rule applies to them; the real zlib calls are indirect and stop the walk.
 GZ_HOOKS = ['gz_read', 'gz_getc', 'gz_tell', 'gz_seek']
+# The CryptoAPI context/key cache's import entry points (loading_trace.cpp ->
+# src/proxy/crypt_cache.cpp, X3M_CRYPT_CACHE=1) and the cache functions they
+# reach: no boundary on the cached path either; the real ADVAPI32 calls are
+# indirect through the bound originals and stop the walk.
+CRYPT_HOOKS = ['crypt_acquire', 'crypt_release', 'crypt_import', 'crypt_key_destroy']
+CRYPT_NAMESPACE = '__ZN3x3m11crypt_cache'   # x3m::crypt_cache::<name>
+CRYPT_FUNCTIONS = ['acquire', 'release', 'import_key', 'destroy_key', 'shutdown', 'statistics']
 # Light loading-trace rows (src/proxy/loading_trace_light.cpp, no CpuCallBoundary),
 # the engine probe handlers and the resource reader's entry handler and .dat
 # pool (src/proxy/resource_reader_core.cpp): the same rule, walked from their
@@ -104,7 +111,7 @@ def main():
     dll = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'build/d3d9.dll'
     functions = disassemble(dll)
     roots = {}
-    for hook in LIGHT_HOOKS + GZ_HOOKS:
+    for hook in LIGHT_HOOKS + GZ_HOOKS + CRYPT_HOOKS:
         symbols = hook_symbol(functions, hook)
         if len(symbols) != 1:
             print(json.dumps({'result': 'FAIL', 'error': f'{hook}: {len(symbols)} symbols {symbols}'}))
@@ -117,6 +124,13 @@ def main():
             print(json.dumps({'result': 'FAIL', 'error': f'light::{row}: {len(symbols)} symbols {symbols}'}))
             return 1
         roots['light::' + row] = symbols[0]
+    for name in CRYPT_FUNCTIONS:
+        prefix = f'{CRYPT_NAMESPACE}{len(name)}{name}E'
+        symbols = [n for n in functions if n.startswith(prefix)]
+        if len(symbols) != 1:
+            print(json.dumps({'result': 'FAIL', 'error': f'crypt_cache::{name}: {len(symbols)} symbols {symbols}'}))
+            return 1
+        roots['crypt_cache::' + name] = symbols[0]
     for symbol in EXTERN_ROOTS:
         if symbol not in functions:
             print(json.dumps({'result': 'FAIL', 'error': f'{symbol}: not found'}))

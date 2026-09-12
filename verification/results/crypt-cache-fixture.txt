@@ -1,0 +1,10 @@
+CRYPT_KEY bits=2048 blob_bytes=276 signature_bytes=256 expected_verified=150 provider="Microsoft Base Cryptographic Provider v1.0" container=X3mCryptCacheFixture
+CRYPT_MODE mode=off iterations=200 verified=150 rejected=50 real_acquires=600 real_acquire_ok=200 real_deletes=400 real_delete_ok=200 real_releases=200 real_imports=200 real_destroys=200 total_ms=105.642 mean_us=528.208 median_us=528.900 min_us=375.700 max_us=1397.900 context_mean_us=378.034
+CRYPT_MODE mode=on iterations=200 verified=150 rejected=50 real_acquires=2 real_acquire_ok=1 real_deletes=1 real_delete_ok=0 real_releases=0 real_imports=1 real_destroys=0 total_ms=26.442 mean_us=132.208 median_us=137.400 min_us=4.500 max_us=631.000 context_mean_us=2.388
+CRYPT_COMPARE iterations=200 steps=12 mismatches=0 verified_off=150 verified_on=150 expected_verified=150
+CRYPT_STATS acquires=600 hits=199 misses=1 failed_passthrough=1 releases_suppressed=200 imports=200 import_hits=199 deletes_emulated=399 deletes_passthrough=1 busy_passthrough=0 evictions=0 releases=200 import_passthrough=0 destroys=200 destroys_suppressed=200 providers_cached=1 keys_cached=1 probe_error=0x80090016
+CRYPT_SHUTDOWN released=1 real_acquires=1 real_releases=1 real_destroys=1 container_absent=1
+CRYPT_LEAK live_providers=0 live_keys=0
+CRYPT_MODULE name=advapi32.dll path=C:\windows\system32\ADVAPI32.dll
+CRYPT_MODULE name=rsaenh.dll path=C:\windows\system32\rsaenh.dll
+CRYPT CACHE RESULT checks=237 failures=0

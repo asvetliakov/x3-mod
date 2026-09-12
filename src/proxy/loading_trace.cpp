@@ -6,6 +6,7 @@
 #include "../ownership/application_admission_abi.h"
 #include "cpu_state.h"
 #include "gz_buffer.h"
+#include "crypt_cache.h"
 #include "loading_trace_light.h"
 #include "loading_probes.h"
 #include "resource_reader.h"
@@ -498,6 +499,29 @@ int __cdecl gz_close(void*);
 // X3M_GZ_BUFFER=1: the gz hooks route through gz_buffer (set before patching, never
 // cleared); its real functions are the traced wrappers with telemetry, else the originals.
 bool gz_buffer_active=false;
+// X3M_CRYPT_CACHE=1: the four CryptoAPI rows the context/key cache needs route
+// through crypt_cache only after all four routes and the cache are initialized.
+std::atomic<bool> crypt_cache_active{false};
+// Only the six reviewed call returns inside the signature verifier qualify.
+// The gate is established before patching; no backend DLL identity is assumed.
+struct CryptSite {uintptr_t result;Operation operation;};
+#ifdef X3M_LOADING_TRACE_FIXTURE
+uintptr_t crypt_image_base=0x400000; // relocated synthetic PE only; setter absent in production
+#else
+constexpr uintptr_t crypt_image_base=0x400000;
+#endif
+constexpr CryptSite crypt_sites[]={{0x4cac3e,Operation::CryptAcquire},{0x4cac57,Operation::CryptAcquire},
+    {0x4cac85,Operation::CryptImport},{0x4cae4d,Operation::CryptKeyDestroy},
+    {0x4cae5a,Operation::CryptRelease},{0x4cae73,Operation::CryptAcquire}};
+bool crypt_site(const void* caller,Operation operation){
+    if(!crypt_cache_active.load(std::memory_order_acquire))return false;
+    for(const auto& site:crypt_sites)if(crypt_image_base+site.result-0x400000==reinterpret_cast<uintptr_t>(caller)&&site.operation==operation)return true;
+    return false;
+}
+__attribute__((noinline)) BOOL WINAPI crypt_acquire(HCRYPTPROV*,LPCSTR,LPCSTR,DWORD,DWORD);
+__attribute__((noinline)) BOOL WINAPI crypt_release(HCRYPTPROV,DWORD);
+__attribute__((noinline)) BOOL WINAPI crypt_import(HCRYPTPROV,const BYTE*,DWORD,HCRYPTKEY,DWORD,HCRYPTKEY*);
+__attribute__((noinline)) BOOL WINAPI crypt_key_destroy(HCRYPTKEY);
 Hook hooks[]={
     {"KERNEL32.dll","CreateFileA",reinterpret_cast<PVOID>(light::file_open)},
     {"KERNEL32.dll","ReadFile",reinterpret_cast<PVOID>(light::file_read)},
@@ -525,15 +549,15 @@ Hook hooks[]={
     // Probe batch 2 rows (patched only with X3M_LOADING_PROBES=1).
     {"zlib1.dll","inflateInit2_",reinterpret_cast<PVOID>(light::inflate_init2)},
     {"zlib1.dll","inflateEnd",reinterpret_cast<PVOID>(light::inflate_end)},
-    {"ADVAPI32.dll","CryptAcquireContextA",reinterpret_cast<PVOID>(light::crypt_acquire_context)},
-    {"ADVAPI32.dll","CryptReleaseContext",reinterpret_cast<PVOID>(light::crypt_release_context)},
-    {"ADVAPI32.dll","CryptImportKey",reinterpret_cast<PVOID>(light::crypt_import_key)},
+    {"ADVAPI32.dll","CryptAcquireContextA",reinterpret_cast<PVOID>(crypt_acquire)},
+    {"ADVAPI32.dll","CryptReleaseContext",reinterpret_cast<PVOID>(crypt_release)},
+    {"ADVAPI32.dll","CryptImportKey",reinterpret_cast<PVOID>(crypt_import)},
     {"ADVAPI32.dll","CryptCreateHash",reinterpret_cast<PVOID>(light::crypt_create_hash)},
     {"ADVAPI32.dll","CryptHashData",reinterpret_cast<PVOID>(light::crypt_hash_data)},
     {"ADVAPI32.dll","CryptVerifySignatureA",reinterpret_cast<PVOID>(light::crypt_verify_signature)},
     {"ADVAPI32.dll","CryptGetHashParam",reinterpret_cast<PVOID>(light::crypt_get_hash_param)},
     {"ADVAPI32.dll","CryptDestroyHash",reinterpret_cast<PVOID>(light::crypt_destroy_hash)},
-    {"ADVAPI32.dll","CryptDestroyKey",reinterpret_cast<PVOID>(light::crypt_destroy_key)},
+    {"ADVAPI32.dll","CryptDestroyKey",reinterpret_cast<PVOID>(crypt_key_destroy)},
     {"KERNEL32.dll","CreateDirectoryA",reinterpret_cast<PVOID>(light::create_directory)},
     {"KERNEL32.dll","DeleteFileA",reinterpret_cast<PVOID>(light::delete_file)},
     {"KERNEL32.dll","MoveFileA",reinterpret_cast<PVOID>(light::move_file)},
@@ -546,6 +570,12 @@ bool probe_row(unsigned index){return index>=probe_row_begin&&index<probe_row_en
 // Rows the read-ahead buffer needs; patched alone when telemetry is off.
 bool gz_buffer_row(const Hook& hook){
     return !std::strcmp(hook.dll,"zlib1.dll")&&std::strcmp(hook.name,"inflate")&&std::strcmp(hook.name,"gzwrite");
+}
+// Rows the CryptoAPI context/key cache needs; patched alone when telemetry is off
+// and together with the probe batch 2 rows when it is on.
+bool crypt_cache_row(const Hook& hook){
+    return !std::strcmp(hook.dll,"ADVAPI32.dll")&&(!std::strcmp(hook.name,"CryptAcquireContextA")||!std::strcmp(hook.name,"CryptReleaseContext")||
+        !std::strcmp(hook.name,"CryptImportKey")||!std::strcmp(hook.name,"CryptDestroyKey"));
 }
 constexpr unsigned import_count=sizeof hooks/sizeof *hooks;
 static_assert(import_count==static_cast<unsigned>(Operation::MeshPointReps));
@@ -566,6 +596,10 @@ static_assert(std::is_same_v<decltype(&light::find_first),decltype(&FindFirstFil
 static_assert(std::is_same_v<decltype(&light::find_next),decltype(&FindNextFileA)>);
 static_assert(std::is_same_v<decltype(&light::find_close),decltype(&FindClose)>);
 static_assert(std::is_same_v<decltype(&light::crypt_acquire_context),decltype(&CryptAcquireContextA)>);
+static_assert(std::is_same_v<decltype(&crypt_acquire),decltype(&CryptAcquireContextA)>);
+static_assert(std::is_same_v<decltype(&crypt_release),decltype(&CryptReleaseContext)>);
+static_assert(std::is_same_v<decltype(&crypt_import),decltype(&CryptImportKey)>);
+static_assert(std::is_same_v<decltype(&crypt_key_destroy),decltype(&CryptDestroyKey)>);
 static_assert(std::is_same_v<decltype(&light::crypt_verify_signature),decltype(&CryptVerifySignatureA)>);
 static_assert(std::is_same_v<decltype(&light::create_directory),decltype(&CreateDirectoryA)>);
 static_assert(std::is_same_v<decltype(&light::move_file_ex),decltype(&MoveFileExA)>);
@@ -638,6 +672,12 @@ LONG __cdecl gz_seek(void* file,LONG offset,int whence){return gz_buffer_active?
 int __cdecl gz_getc(void* file){return gz_buffer_active?gz_buffer::getc(file):light::gz_getc_traced(file);}
 LONG __cdecl gz_tell(void* file){return gz_buffer_active?gz_buffer::tell(file):light::gz_tell_traced(file);}
 int __cdecl gz_close(void* file){return gz_buffer_active?gz_buffer::close(file):light::gz_close_traced(file);}
+// CryptoAPI slots: with the cache off the light traced wrappers, with it on the
+// cache (whose real calls are those wrappers when telemetry is on, else the originals).
+__attribute__((noinline)) BOOL WINAPI crypt_acquire(HCRYPTPROV* out,LPCSTR container,LPCSTR provider,DWORD type,DWORD flags){return crypt_site(__builtin_return_address(0),Operation::CryptAcquire)?crypt_cache::acquire(out,container,provider,type,flags):light::crypt_acquire_context(out,container,provider,type,flags);}
+__attribute__((noinline)) BOOL WINAPI crypt_release(HCRYPTPROV provider,DWORD flags){return crypt_site(__builtin_return_address(0),Operation::CryptRelease)?crypt_cache::release(provider,flags):light::crypt_release_context(provider,flags);}
+__attribute__((noinline)) BOOL WINAPI crypt_import(HCRYPTPROV provider,const BYTE* data,DWORD length,HCRYPTKEY key,DWORD flags,HCRYPTKEY* out){return crypt_site(__builtin_return_address(0),Operation::CryptImport)?crypt_cache::import_key(provider,data,length,key,flags,out):light::crypt_import_key(provider,data,length,key,flags,out);}
+__attribute__((noinline)) BOOL WINAPI crypt_key_destroy(HCRYPTKEY key){return crypt_site(__builtin_return_address(0),Operation::CryptKeyDestroy)?crypt_cache::destroy_key(key):light::crypt_destroy_key(key);}
 
 bool requested() { wchar_t setting[8]{};return GetEnvironmentVariableW(L"X3M_TELEMETRY",setting,8)==1&&setting[0]==L'1'; }
 }
@@ -906,11 +946,63 @@ void restore_mesh_hooks() {
     // to our trampoline after teardown. The native module remains pinned.
     ReleaseSRWLockExclusive(&mesh_lock);
 }
+bool crypt_game_contract(HMODULE target){
+    if(reinterpret_cast<uintptr_t>(target)!=crypt_image_base)return false;
+    // Short hook-site/argument sequences derived from the reviewed executable.
+    struct Bytes {uintptr_t address;const unsigned char* bytes;size_t size;};
+    static const unsigned char create_args[]={0x6a,0x08,0x6a,0x01,0x68,0x88,0x38,0x56,0x00,0x68,0xb4,0x38,0x56,0x00,0x8d,0x4c,0x24,0x28,0x51};
+    static const unsigned char release_args[]={0x8b,0x54,0x24,0x18,0x6a,0x00,0x52};
+    const Bytes signatures[]={{0x4cac3e,create_args,sizeof create_args},{0x4cae4d,release_args,sizeof release_args}};
+    for(const auto& sig:signatures){
+        const auto address=crypt_image_base+sig.address-0x400000;
+        if(!readable(reinterpret_cast<void*>(address),sig.size,target,true)||
+           std::memcmp(reinterpret_cast<void*>(address),sig.bytes,sig.size))return false;
+    }
+    for(const auto& site:crypt_sites){
+        const auto* instruction=reinterpret_cast<const unsigned char*>(crypt_image_base+site.result-0x400000-6);
+        if(!readable(instruction,6,target,true)||instruction[0]!=0xff||instruction[1]!=0x15)return false;
+        uint32_t slot=0;std::memcpy(&slot,instruction+2,4);
+        const auto& hook=hooks[unsigned(site.operation)];
+        if(slot!=reinterpret_cast<uintptr_t>(hook.slot)||!hook.original)return false;
+    }
+    return true;
+}
+// All four lifetime routes must be owned before any request can reach the cache.
+// Failed rollback may leave a forwarding shim, but never an active cache.
+#ifdef X3M_LOADING_TRACE_FIXTURE
+unsigned fail_crypt_patch_step=0;
+void (*crypt_patch_observer)()=nullptr;
+#endif
+bool install_crypt_group(const crypt_cache::Originals& real,HMODULE target){
+    if(!crypt_game_contract(target))return false;
+    bool complete=true;
+#ifdef X3M_LOADING_TRACE_FIXTURE
+    unsigned step=0;
+#endif
+    for(auto& hook:hooks)if(crypt_cache_row(hook)){
+#ifdef X3M_LOADING_TRACE_FIXTURE
+        if(++step==fail_crypt_patch_step){complete=false;break;}
+#endif
+        if(!hook.slot||!patch(hook,false)){complete=false;break;}
+#ifdef X3M_LOADING_TRACE_FIXTURE
+        if(crypt_patch_observer)crypt_patch_observer();
+#endif
+    }
+    if(complete)for(const auto& hook:hooks)if(crypt_cache_row(hook))
+        complete=complete&&hook.slot&&*hook.slot==hook.replacement&&!has_protection_debt(hook.slot);
+    if(complete)complete=crypt_cache::initialize(real);
+    if(!complete){
+        for(auto& hook:hooks)if(crypt_cache_row(hook)&&hook.slot&&*hook.slot==hook.replacement)patch(hook,true);
+        return false;
+    }
+    crypt_cache_active.store(true,std::memory_order_release);
+    return true;
+}
 bool install(HMODULE target) {
     if(installed.load())return true;
     if(installation_started){log("loading_trace disabled=reinitialization_not_supported");return false;}
-    const bool trace=requested(),buffer=gz_buffer::requested();
-    if(!trace&&!buffer)return false;
+    const bool trace=requested(),buffer=gz_buffer::requested(),crypt=crypt_cache::requested();
+    if(!trace&&!buffer&&!crypt)return false;
     auto base=reinterpret_cast<unsigned char*>(target);
     auto dos=reinterpret_cast<IMAGE_DOS_HEADER*>(base);
     if(!readable(dos,sizeof *dos,target)||dos->e_magic!=IMAGE_DOS_SIGNATURE||
@@ -969,18 +1061,35 @@ bool install(HMODULE target) {
             gz_buffer_active=gz_buffer::initialize(real,gz_buffer::requested_capacity());
         }
         log("gz_buffer requested=1 enabled=%u capacity_kb=%u telemetry=%u imports=%u rewind=%u slots=%u",gz_buffer_active,gz_buffer::requested_capacity()/1024,trace,imports,real.rewind!=nullptr,gz_buffer::slot_count);
-        if(!gz_buffer_active&&!trace)return false;
     }
+    if(crypt) {
+        crypt_cache::Originals real;
+        real.acquire=trace?light::crypt_acquire_context:original<crypt_cache::AcquireFn>(Operation::CryptAcquire);
+        real.release=trace?light::crypt_release_context:original<crypt_cache::ReleaseFn>(Operation::CryptRelease);
+        real.import_key=trace?light::crypt_import_key:original<crypt_cache::ImportFn>(Operation::CryptImport);
+        real.destroy_key=trace?light::crypt_destroy_key:original<crypt_cache::DestroyKeyFn>(Operation::CryptKeyDestroy);
+        bool imports=true;
+        for(const auto& hook:hooks)if(crypt_cache_row(hook)&&!hook.slot)imports=false;
+        if(imports)install_crypt_group(real,target);
+        log("crypt_cache requested=1 enabled=%u telemetry=%u imports=%u provider_slots=%u key_slots=%u blob_limit=%u",unsigned(crypt_cache_active.load()),trace,imports,crypt_cache::provider_slots,crypt_cache::key_slots,crypt_cache::blob_limit);
+    }
+    if(!trace&&!gz_buffer_active&&!crypt_cache_active)return false;
     installation_started=true;
-    if(!trace) { // buffer only: no mesh observation, no cache/adjacency services
+    if(!trace) { // buffer and/or crypt cache only: no mesh observation, no cache/adjacency services
         LARGE_INTEGER buffer_frequency{};QueryPerformanceFrequency(&buffer_frequency);clock_frequency=buffer_frequency.QuadPart;
         for(auto& hook:hooks) {
-            if(!gz_buffer_row(hook)){hook.slot=nullptr;continue;}
+            if(crypt&&crypt_cache_row(hook)){
+                if(hook.slot&&*hook.slot==hook.replacement)++hook_count;
+                log("loading_hook name=%s installed=%u cache_active=%u",hook.name,unsigned(hook.slot&&*hook.slot==hook.replacement),unsigned(crypt_cache_active.load()));
+                continue;
+            }
+            if(!((gz_buffer_active&&gz_buffer_row(hook))||(crypt_cache_active&&crypt_cache_row(hook)))){hook.slot=nullptr;continue;}
             if(hook.slot&&patch(hook,false)){++hook_count;log("loading_hook name=%s installed=1",hook.name);}
             else {log("loading_hook name=%s installed=0",hook.name);if(hook.slot&&!has_protection_debt(hook.slot))hook.slot=nullptr;}
         }
         coverage_start=tick();installed.store(hook_count!=0);
-        log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=0 paths=0 qualification=named_pe32_imports scope=gz_buffer",coverage_start,clock_frequency,hook_count);
+        log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=0 paths=0 qualification=named_pe32_imports scope=%s",coverage_start,clock_frequency,hook_count,
+            gz_buffer_active&&crypt_cache_active?"gz_buffer+crypt_cache":gz_buffer_active?"gz_buffer":"crypt_cache");
         return installed.load();
     }
     wchar_t cache_setting[8]{};cache_requested=GetEnvironmentVariableW(L"X3M_MESH_CACHE",cache_setting,8)==1&&cache_setting[0]==L'1';
@@ -996,12 +1105,17 @@ bool install(HMODULE target) {
     mesh_observation_enabled.store(true,std::memory_order_release);
     const bool probes=probes_requested();
     for(auto& hook:hooks) {
-        if(probe_row(unsigned(&hook-hooks))&&!probes){hook.slot=nullptr;continue;}
+        if(crypt&&crypt_cache_row(hook)){
+            if(hook.slot&&*hook.slot==hook.replacement)++hook_count;
+            log("loading_hook name=%s installed=%u cache_active=%u",hook.name,unsigned(hook.slot&&*hook.slot==hook.replacement),unsigned(crypt_cache_active.load()));
+            continue;
+        }
+        if(probe_row(unsigned(&hook-hooks))&&!probes&&!(crypt_cache_active&&crypt_cache_row(hook))){hook.slot=nullptr;continue;}
         if(hook.slot&&patch(hook,false)){++hook_count;log("loading_hook name=%s installed=1",hook.name);}
         else {log("loading_hook name=%s installed=0",hook.name);if(hook.slot&&!has_protection_debt(hook.slot))hook.slot=nullptr;}
     }
     coverage_start=tick();installed.store(hook_count!=0);
-    log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=%u probes=%u",coverage_start,clock_frequency,hook_count,unsigned(nesting),unsigned(probes));
+    log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=%u probes=%u crypt_cache=%u",coverage_start,clock_frequency,hook_count,unsigned(nesting),unsigned(probes),unsigned(crypt_cache_active));
     if(probes)loading_probes::initialize();
     return installed.load();
 }
@@ -1021,10 +1135,36 @@ void report() {
         log("loading_metric op=%s qpc=%llu count=%llu failures=%llu pending=%llu ambiguous=%llu bytes=%llu inclusive_ticks=%llu exclusive_ticks=%llu max_ticks=%llu wrapper_tail_ticks=%llu total_us=%.3f exclusive_us=%.3f max_us=%.3f wrapper_tail_us=%.3f",
             operation_name(i),end,s.count,s.failures,s.pending,s.ambiguous,s.bytes,s.inclusive_ticks,s.exclusive_ticks,s.maximum_ticks,s.overhead_ticks,
             double(s.inclusive_ticks)*1e6/clock_frequency,double(s.exclusive_ticks)*1e6/clock_frequency,double(s.maximum_ticks)*1e6/clock_frequency,double(s.overhead_ticks)*1e6/clock_frequency);
-    }cache_report();adjacency_report();loading_probes::report();resource_reader::report();restore_computational_state(fp);SetLastError(error);
+    }cache_report();adjacency_report();loading_probes::report();resource_reader::report();crypt_cache_report("window");restore_computational_state(fp);SetLastError(error);
 }
+namespace {
+crypt_cache::Statistics crypt_reported; // the cumulative totals at the last window line
+}
+// crypt_cache scope=window: the counters since the previous window line (nothing
+// logged when idle); scope=session: the cumulative totals (last device destroyed,
+// no telemetry needed). Integer fields only; called under the reporter's CPU
+// state save or from the device teardown path.
+void crypt_cache_report(const char* scope) {
+    if(!crypt_cache_active)return;
+    const DWORD error=GetLastError();
+    const auto s=crypt_cache::statistics();
+    const bool window=scope&&scope[0]=='w';
+    const crypt_cache::Statistics zero{};
+    const auto& base=window?crypt_reported:zero;
+    const bool idle=window&&s.acquires==base.acquires&&s.releases==base.releases&&s.imports==base.imports&&s.destroys==base.destroys;
+    if(!idle)log("crypt_cache scope=%s acquires=%llu hits=%llu misses=%llu failed_passthrough=%llu releases_suppressed=%llu imports=%llu import_hits=%llu deletes_emulated=%llu deletes_passthrough=%llu busy_passthrough=%llu evictions=%llu releases=%llu import_passthrough=%llu destroys=%llu destroys_suppressed=%llu providers_cached=%u keys_cached=%u probe_error=0x%08x",
+        scope,(unsigned long long)(s.acquires-base.acquires),(unsigned long long)(s.hits-base.hits),(unsigned long long)(s.misses-base.misses),(unsigned long long)(s.failed_passthrough-base.failed_passthrough),
+        (unsigned long long)(s.releases_suppressed-base.releases_suppressed),(unsigned long long)(s.imports-base.imports),(unsigned long long)(s.import_hits-base.import_hits),
+        (unsigned long long)(s.deletes_emulated-base.deletes_emulated),(unsigned long long)(s.deletes_passthrough-base.deletes_passthrough),(unsigned long long)(s.busy_passthrough-base.busy_passthrough),
+        (unsigned long long)(s.evictions-base.evictions),(unsigned long long)(s.releases-base.releases),(unsigned long long)(s.import_passthrough-base.import_passthrough),
+        (unsigned long long)(s.destroys-base.destroys),(unsigned long long)(s.destroys_suppressed-base.destroys_suppressed),s.providers_cached,s.keys_cached,unsigned(s.probe_error));
+    if(window)crypt_reported=s;
+    SetLastError(error);
+}
+bool crypt_cache_enabled(){return crypt_cache_active;}
 void shutdown() {
     const DWORD error=GetLastError();
+    if(crypt_cache_active){crypt_cache_report("session");log("crypt_cache_shutdown released=%u",unsigned(crypt_cache::shutdown()));}
     loading_probes::shutdown();
     cache_enabled.store(false,std::memory_order_release);
     if(auto* instance=cache_instance.load(std::memory_order_acquire))instance->clear();
@@ -1043,6 +1183,9 @@ void shutdown() {
 }
 #ifdef X3M_LOADING_TRACE_FIXTURE
 bool fixture_initialize(HMODULE target){return install(target);}
+void fixture_crypt_image_base(HMODULE base){crypt_image_base=reinterpret_cast<uintptr_t>(base);}
+void fixture_crypt_patch_control(unsigned step,void(*observer)()){fail_crypt_patch_step=step;crypt_patch_observer=observer;}
+bool fixture_crypt_site(const void* caller,Operation operation){return crypt_site(caller,operation);}
 void fixture_fail_mesh_patch(unsigned step){fail_mesh_patch=step;}
 void fixture_fail_protection_restores(unsigned calls){fail_protection_restore=calls;}
 unsigned fixture_protection_debts(){return protection_debts.load();}

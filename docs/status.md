@@ -18,8 +18,9 @@ Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
 
-Current work: review 30 is committed and installed; review/fix
-and merge crypto and exposure branches, finish adjacency/reader reviews, then
+Current work: review 30 is committed and installed; crypto is reviewed and
+merged, exposure fixture validation is in progress, and adjacency/reader fixes
+remain to be completed and verified. Then
 install the integrated build and request
 the [controlled run groups](verification/next-runs-2026-09-13.md) from handoff
 section 5. **Current install:** review-30 checkpoint `3124e0b`, SHA-256
@@ -39,6 +40,23 @@ state, installed build, in-flight items with their notes, run plan, lessons —
 is [handoff-2026-09-13.md](handoff-2026-09-13.md). Unmerged branches:
 `worktree-agent-a157d2e7bd47eab9d` (crypto cache) and
 `worktree-agent-aea55d854948bd6a0` (space-aware exposure meter).
+
+## Crypto cache checkpoint (2026-09-13; merged, not installed)
+
+Reviewed branch `8794a5d` passed **572 checks on each bottle**, six host tests
+and its 210-function no-x87 audit. [Review 33](verification/review-33-crypt-cache.md)
+closes partial hook installation, call-site/lifetime/concurrency and loader-lock
+cleanup findings. The cache is opt-in; hashing and signature verification still
+run through CryptoAPI. Its bounded retained handles and named scratch-container
+lifetime are documented in [crypt-cache.md](verification/crypt-cache.md).
+
+Root's merge review preserved the newer normalizer, reader initialization and
+review-30 log/ABI fixes. Older branch loading reports were not substituted for
+main's newer evidence. Two loading/hook source manifests now include the linked
+crypto module. Merged loading/capture sources pass the production-flag syntax
+check; CLI dry-run and six crypto host controls pass. Full integrated fixture
+qualification follows the adjacency/reader work before installation. The
+approximately 4× signature-fixture speedup is not a measured game load saving.
 
 ## Review 29 record — loading branch, adjacency parity and present readback merged (2026-09-12 night)
 
@@ -882,6 +900,23 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
    [design](architecture/hdr-scene-path.md); re-measure the 5120×1440 stage-2
    cost; continue the roadmap.
 6. Loading-time gap and alt-tab cursor remain tracked.
+7. **Crypt cache (2026-09-13, merged, not yet installed):** run B's stall-B
+   decomposition put 12.835 of 16.758 s in the script signature check
+   `0x004cabc0`, 10.346 s of it in the three `CryptAcquireContextA` container
+   delete/create/delete calls per script (4.086 ms each). Decompiled in
+   [script-signature-check.md](reverse-engineering/script-signature-check.md);
+   `X3M_CRYPT_CACHE=1` / `launch --crypt-cache` (`src/proxy/crypt_cache.cpp`,
+   no-SSE unit, no telemetry needed) caches the provider handle and the
+   imported RSA-2048 key, emulates the two ignored deletes with the recorded
+   `NTE_BAD_KEYSET` and leaves hash/verify to the CSP. Review corrections qualify
+   six game call returns and all four lifecycle imports, reject overlapping key
+   reuse/stale native publication, and remove unsafe detach-time CSP cleanup.
+   The bounded provider/key cache lasts until process exit; its named scratch
+   container can persist until the next startup delete. Corrected-source tests
+   pass 572 checks on each bottle; the 200-sequence real-CSP differential measures
+   approximately 4.0× (Steam) / 4.14× (X3) per check, excluding the probe envelope
+   ([crypt-cache.md](verification/crypt-cache.md)). The 11–13 s loading estimate
+   remains a hypothesis for the user's reviewed `--crypt-cache` run.
 
 ## Replay/admission line (reference only, superseded 2026-09-12)
 

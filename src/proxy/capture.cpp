@@ -3,6 +3,7 @@
 #include "telemetry.h"
 #include "loading_trace.h"
 #include "gz_buffer.h"
+#include "crypt_cache.h"
 #include "resource_reader.h"
 #include "engine_patch.h"
 #include "sampling_profiler.h"
@@ -457,6 +458,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         // callsite restore (the object-trace patch keeps its own lifetime).
         if(scene_hook::installed()){const bool restored=scene_hook::shutdown();log("scene_hook_shutdown restored=%u status=%s",restored,scene_hook::status());}
         resource_reader::report(); // final summary without telemetry; the reader itself stays installed (loading continues without a device)
+        loading_trace::crypt_cache_report("session"); // cumulative totals; bounded native cache retained until process exit
     }
     if(!refs){
         // A nested final factory Release can report this device root still
@@ -1431,7 +1433,7 @@ void initialize_log(HMODULE module) {
         taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames,motion_state_shadow,scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen);
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
-    if(telemetry::enabled()||gz_buffer::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 patches the gz rows alone
+    if(telemetry::enabled()||gz_buffer::requested()||crypt_cache::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 patch their rows alone
     resource_reader::initialize(); // X3M_RESOURCE_READ=verify|fast, X3M_DAT_HANDLES=1; after the probes so its stub chains behind theirs
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists
 }

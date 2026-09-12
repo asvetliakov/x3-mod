@@ -239,6 +239,24 @@ profile's 0.656 µs per hooked call is mostly the hook envelope under FEX, not
 zlib) and the expected in-game bound are in
 [docs/verification/gz-buffer.md](../verification/gz-buffer.md).
 
+## Script signature check: CryptoAPI context/key cache
+
+Run B on the X3/FEX bottle put 76.6 % of the save-load script/XML stall
+(12.835 of 16.758 s) inside the signature check `0x004cabc0`, 61.7 % of it in
+`CryptAcquireContextA` alone: three calls per check — delete the
+`X2EgosoftCSPContainer` container (fails, ignored), create it, and delete it
+again after the verify — at 4.086 ms each under Wine
+([script-signature-check.md](script-signature-check.md)). `X3M_CRYPT_CACHE=1`
+(`tools/manage.py launch --crypt-cache`, no `--telemetry` needed) keeps the
+provider handle and the imported RSA-2048 public key across checks in
+`src/proxy/crypt_cache.cpp` behind the same import hooks, emulates the two
+ignored deletes with the recorded `NTE_BAD_KEYSET`, and leaves hash and verify
+to the CSP. Review fixes narrow the game call-site/lifetime gate and retain
+bounded native objects until process exit, with an explicit persistent scratch-
+container side effect. Historical fixture results and the still-unverified
+11–13 s in-game saving hypothesis are in
+[docs/verification/crypt-cache.md](../verification/crypt-cache.md).
+
 ## Light hooks, probe batch 2, fast resource reader
 
 The counting/timing import rows now run without `CpuCallBoundary` from a

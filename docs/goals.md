@@ -37,7 +37,9 @@ its raw log/readbacks remain local in `/tmp/x3-bottleX3-run16/`.
 1. **Completed:** review 30 passed on the frozen merged tree, was committed as
    `3124e0b` and installed in bottle X3. Its scoped fixture/runtime evidence does
    not close review 31 or establish native-Windows runtime behavior.
-2. Review/fix and merge the crypto cache and space-aware exposure branches.
+2. Crypto cache reviewed/fixed and merged from `8794a5d` (572 checks per bottle);
+   review/fix and merge the space-aware exposure branch. Crypto is not yet
+   installed or accepted by a game loading run.
 3. Finish adjacency parity and resource reader reviews/fixes, run affected
    verification, commit and install the integrated build.
 4. Ask the user for the handoff's six controlled run groups: crypto, reader verify
