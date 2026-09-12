@@ -7,6 +7,9 @@ import os
 import re
 import subprocess
 import tempfile
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 root = Path(__file__).resolve().parents[2]
 results = root / 'verification/results'
@@ -56,8 +59,7 @@ try:
     report['profile_result'] = profile.stdout.strip()
     report['local_archive_inputs'] = {p.name: expected for p, expected in raw.items()}
     # Respect a concurrently started user game; never share synthetic GPU work.
-    active = subprocess.run(['pgrep', '-if', '[X]3AP.exe'], capture_output=True, text=True)
-    assert active.returncode == 1, 'X3AP running; postpone synthetic GPU verification'
+    assert not game_running(), 'X3AP running; postpone synthetic GPU verification'
     d3dx = Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll'
     report['d3dx9_37_sha256'] = sha(d3dx)
     command = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',

@@ -39,12 +39,15 @@ def main():
     parser.add_argument('--object-trace', action='store_true', help='Capture verified engine submission identity (exact executable only)')
     parser.add_argument('--object-lifetime', action='store_true', help='Observe verified render-registry lifetimes (requires --object-trace --ownership)')
     parser.add_argument('--mesh-cache', action='store_true', help='Enable experimental verified native adjacency reuse (requires --telemetry)')
+    parser.add_argument('--profile', action='store_true', help='Run the in-process sampling profiler (X3M_PROFILE=1): one sampler thread, periodic profile_* reports in the session log; see docs/verification/sampling-profiler.md')
+    parser.add_argument('--profile-interval-us', type=int, default=2000, help='Sampling interval in microseconds for --profile (100..1000000, default 2000)')
     parser.add_argument('--finite-positions', action='store_true', help='Validate positions from verified existing buffer uploads (requires --ownership --telemetry)')
     parser.add_argument('--motion-capture', action='store_true', help='Produce private rigid-motion diagnostics during capture (requires scene depth, finite positions and object lifetime)')
     parser.add_argument('--motion-output', action='store_true', help='Route the reviewed material pair through motion-output variants into a private RT1 (history needs --object-trace --object-lifetime; otherwise sentinel-only)')
     parser.add_argument('--motion-jitter', action='store_true', help='Per-draw sub-pixel jitter of every scene draw with a table VS (requires --motion-output; Halton 2,3 sequence, temporal step 1)')
     parser.add_argument('--taa', action='store_true', help='Run the temporal resolve at the bloom copy and present the resolved image (requires --motion-output; implies --motion-jitter; temporal step 3)')
     parser.add_argument('--taa-debug', action='store_true', help='Write the resolved FP16 image and the pre-resolve color in capture frames (requires --taa)')
+    parser.add_argument('--motion-rt-mode', choices=['perdraw', 'lazy'], default='perdraw', help='RT1/RT2 binding policy of the route: perdraw (default) rebinds around every routed draw; lazy keeps the bindings across consecutive routed draws (A/B experiment, requires --motion-output)')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
     if args.dry_run and args.action != 'launch':
@@ -71,6 +74,10 @@ def main():
         parser.error('--taa requires --object-trace and --object-lifetime: without history every routed draw carries the sentinel, the resolve stays current-only and the jitter only moves the image.')
     if args.taa_debug and not args.taa:
         parser.error('--taa-debug requires --taa.')
+    if args.motion_rt_mode != 'perdraw' and not args.motion_output:
+        parser.error('--motion-rt-mode requires --motion-output.')
+    if not 100 <= args.profile_interval_us <= 1000000:
+        parser.error('--profile-interval-us must be between 100 and 1000000.')
     if args.taa:
         args.motion_jitter = True
     if args.motion_capture and args.capture_frames < 2:
@@ -128,6 +135,9 @@ def main():
         env['X3M_MOTION_JITTER'] = '1' if args.motion_jitter else '0'
         env['X3M_TAA'] = '1' if args.taa else '0'
         env['X3M_TAA_DEBUG'] = '1' if args.taa_debug else '0'
+        env['X3M_MOTION_RT_MODE'] = args.motion_rt_mode
+        env['X3M_PROFILE'] = '1' if args.profile else '0'
+        env['X3M_PROFILE_INTERVAL_US'] = str(args.profile_interval_us)
         # --dll applies to this child only, preserving the user's other overrides.
         command = [str(WINE), '--bottle', args.bottle, '--no-update',
                    '--dll', 'd3d9=b' if args.vanilla else 'd3d9=n,b',

@@ -2,6 +2,7 @@
 #include "capture_state.h"
 #include "telemetry.h"
 #include "loading_trace.h"
+#include "sampling_profiler.h"
 #include "scene_capture.h"
 #include "object_trace.h"
 #include "object_lifetime.h"
@@ -36,6 +37,11 @@ bool motion_capture_requested = false;
 bool motion_output_requested = false;
 bool motion_jitter_requested = false;
 bool taa_requested = false, taa_debug_requested = false;
+// X3M_MOTION_RT_MODE=lazy keeps the route's RT1/RT2 bindings across routed
+// draws (experiment; default perdraw); X3M_MOTION_FRAME_LOG=<n> sets the
+// periodic motion_output_frame cadence with telemetry on (default 60).
+bool motion_rt_lazy = false;
+unsigned motion_frame_log = 60;
 unsigned motion_jitter_samples = 8;
 float motion_cut_median_px = 48.f, motion_cut_missing = .25f;
 // Component fixtures serialize every write and replay. The live capture mutex
@@ -366,7 +372,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
     CpuCallBoundary cpu;
     auto* monitor=ownership::process_admission_monitor();
     ownership::ApplicationAdmissionAbi admission(monitor);
-    ULONG refs;
+    ULONG refs;bool last_device_destroyed=false;
     {
         HookGuard lock;
         auto& ctx=*devices.at(d);
@@ -376,6 +382,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         // count through the native slots; when only the caller's reference and
         // ours remain, release ours first so the original semantics hold.
         if(const unsigned held=ctx.motion_output.device_references()){
+            ctx.motion_output.restore_bindings(); // A kept binding would hold RT1/RT2 through the final Release.
             const ULONG count=ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);
             const ULONG after=fn(d);
             // Child destruction re-enters this hook through the public vtable;
@@ -385,7 +392,11 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         cpu.before_original();
         refs=fn(d);cpu.after_original();
         if(!refs){telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame);telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame);log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id);devices.erase(d);}
+        last_device_destroyed=!refs&&devices.empty();
     }
+    // The profiler's quiescent stop: the last device is gone and the capture
+    // mutex is released, so its final report cannot wait on a lock we hold.
+    if(last_device_destroyed)sampling_profiler::shutdown();
     if(!refs){
         // A nested final factory Release can report this device root still
         // active. Finish the outer device root only after its own cleanup.
@@ -493,6 +504,7 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
     auto input=read_draw_input(ctx,d,{DrawMethod::Primitive,t,c,s});
     ctx.scene_depth.before_draw(d,t,c);
     snapshot(d,"primitive",t,c);
@@ -513,6 +525,7 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
     auto input=read_draw_input(ctx,d,{DrawMethod::Indexed,t,c,s,b,m,n});
     ctx.scene_depth.before_draw(d,t,c);
     snapshot(d,"indexed",t,c);
@@ -533,6 +546,7 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT c,const void*
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
     auto input=read_draw_input(ctx,d,{DrawMethod::UserMemory,t,c});
     ctx.scene_depth.before_draw(d,t,c);
     snapshot(d,"up",t,c,true);
@@ -553,6 +567,7 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT m,UIN
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
     auto input=read_draw_input(ctx,d,{DrawMethod::IndexedUserMemory,t,c,0,0,m,n});
     ctx.scene_depth.before_draw(d,t,c);
     snapshot(d,"indexed_up",t,c,true);
@@ -612,7 +627,8 @@ HRESULT WINAPI clear(IDirect3DDevice9* d,DWORD n,const D3DRECT* r,DWORD f,D3DCOL
 HRESULT WINAPI set_rt(IDirect3DDevice9* d,DWORD index,IDirect3DSurface9* rt) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);CallTimer timer(ctx);timer.begin();
+    HookGuard lock;auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    ctx.motion_output.restore_bindings();timer.begin();
     cpu.before_original();
     const HRESULT result=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,DWORD,IDirect3DSurface9*)>(37)(d,index,rt);cpu.after_original();timer.end();
     ctx.scene_depth.after_set_rt(d,index,result);
@@ -641,6 +657,8 @@ HRESULT WINAPI stretch_rect(IDirect3DDevice9* d,IDirect3DSurface9* source,const 
     timer.begin();
     cpu.before_original();
     const HRESULT result=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*,const RECT*,IDirect3DSurface9*,const RECT*,D3DTEXTUREFILTERTYPE)>(34)(d,source,source_rect,dest,dest_rect,filter);cpu.after_original();timer.end();
+    // The application's own copy (the resolve above is excluded: it runs before timer.begin).
+    telemetry::record(ctx.stats,telemetry::Metric::StretchBackend,timer.backend_ticks,FAILED(result));
     ctx.scene_depth.after_stretch(d,source,source_rect,dest,dest_rect,result);
     ctx.motion_output.after_stretch(source,source_rect,dest,dest_rect,result);
     if(ctx.capture){
@@ -666,6 +684,7 @@ HRESULT WINAPI end_scene(IDirect3DDevice9* d){
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;auto& ctx=*devices.at(d);
+    ctx.motion_output.restore_bindings();
     cpu.before_original();
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(42)(d);cpu.after_original();
     ctx.motion_output.after_end_scene(hr);
@@ -692,9 +711,11 @@ HRESULT WINAPI query_issue(IDirect3DQuery9* query,DWORD flags){
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
     auto& hooks=*queries.at(query);
+    const auto device=devices.find(hooks.device);
+    // A query bracket must cover the application's bindings only.
+    if(device!=devices.end())device->second->motion_output.restore_bindings();
     cpu.before_original();
     const HRESULT hr=hooks.get<HRESULT(WINAPI*)(IDirect3DQuery9*,DWORD)>(6)(query,flags);cpu.after_original();
-    const auto device=devices.find(hooks.device);
     if(SUCCEEDED(hr)&&device!=devices.end()){
         const bool begin=(flags&D3DISSUE_BEGIN)!=0, end=(flags&D3DISSUE_END)!=0;
         if(begin&&!end&&!hooks.active){hooks.active=true;device->second->motion_output.query_active(true);}
@@ -723,6 +744,7 @@ HRESULT WINAPI update_surface(IDirect3DDevice9* d,IDirect3DSurface9* source,cons
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;auto& ctx=*devices.at(d);
+    ctx.motion_output.restore_bindings();
     cpu.before_original();
     const auto hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*,const RECT*,IDirect3DSurface9*,const POINT*)>(30)(d,source,rect,dest,point);cpu.after_original();
     ctx.scene_depth.unsupported("UpdateSurface",hr);ctx.motion_output.unsupported(hr);return hr;
@@ -731,6 +753,7 @@ HRESULT WINAPI update_texture(IDirect3DDevice9* d,IDirect3DBaseTexture9* source,
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;auto& ctx=*devices.at(d);
+    ctx.motion_output.restore_bindings();
     cpu.before_original();
     const auto hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,IDirect3DBaseTexture9*,IDirect3DBaseTexture9*)>(31)(d,source,dest);cpu.after_original();
     ctx.scene_depth.unsupported("UpdateTexture",hr);ctx.motion_output.unsupported(hr);return hr;
@@ -739,6 +762,7 @@ HRESULT WINAPI color_fill(IDirect3DDevice9* d,IDirect3DSurface9* surface,const R
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;auto& ctx=*devices.at(d);
+    ctx.motion_output.restore_bindings();
     cpu.before_original();
     const auto hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*,const RECT*,D3DCOLOR)>(35)(d,surface,rect,color);cpu.after_original();
     ctx.scene_depth.after_color_fill(d,surface,rect,hr);
@@ -759,6 +783,7 @@ HRESULT WINAPI draw_rect_patch(IDirect3DDevice9* d,UINT handle,const float* segm
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;auto& ctx=*devices.at(d);
+    ctx.motion_output.restore_bindings();
     cpu.before_original();
     const auto hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,const float*,const D3DRECTPATCH_INFO*)>(115)(d,handle,segments,info);cpu.after_original();
     ctx.scene_depth.unsupported("DrawRectPatch",hr);ctx.motion_output.unsupported(hr);return hr;
@@ -767,6 +792,7 @@ HRESULT WINAPI draw_tri_patch(IDirect3DDevice9* d,UINT handle,const float* segme
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;auto& ctx=*devices.at(d);
+    ctx.motion_output.restore_bindings();
     cpu.before_original();
     const auto hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,const float*,const D3DTRIPATCH_INFO*)>(116)(d,handle,segments,info);cpu.after_original();
     ctx.scene_depth.unsupported("DrawTriPatch",hr);ctx.motion_output.unsupported(hr);return hr;
@@ -933,8 +959,37 @@ X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,set_indices,104,(IDirect3DDevice9* d,I
 X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_viewport,47,(IDirect3DDevice9* d,const D3DVIEWPORT9* viewport),(d,viewport),set_viewport(viewport))
 X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,set_declaration,87,(IDirect3DDevice9* d,IDirect3DVertexDeclaration9* declaration),(d,declaration),set_vertex_declaration(declaration))
 X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,set_fvf,89,(IDirect3DDevice9* d,DWORD fvf),(d,fvf),set_fvf(fvf))
-X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,begin_stateblock,60,(IDirect3DDevice9* d),(d),begin_stateblock())
 #undef X3M_SHADOW_HOOK
+HRESULT WINAPI begin_stateblock(IDirect3DDevice9* d){
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;auto& ctx=*devices.at(d);
+    ctx.motion_output.restore_bindings(); // Recording starts from the application's bindings.
+    cpu.before_original();
+    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(60)(d);cpu.after_original();
+    if(SUCCEEDED(hr))ctx.motion_output.begin_stateblock();
+    return hr;
+}
+// Lazy-mode hooks (X3M_MOTION_RT_MODE=lazy only): the application's target
+// getters must report its own bindings, so a kept RT1/RT2 is released first.
+HRESULT WINAPI get_rt(IDirect3DDevice9* d,DWORD index,IDirect3DSurface9** out){
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;auto& ctx=*devices.at(d);
+    ctx.motion_output.restore_bindings();
+    cpu.before_original();
+    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,IDirect3DSurface9**)>(38)(d,index,out);cpu.after_original();
+    return hr;
+}
+HRESULT WINAPI get_rt_data(IDirect3DDevice9* d,IDirect3DSurface9* source,IDirect3DSurface9* dest){
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;auto& ctx=*devices.at(d);
+    ctx.motion_output.restore_bindings();
+    cpu.before_original();
+    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*,IDirect3DSurface9*)>(32)(d,source,dest);cpu.after_original();
+    return hr;
+}
 ULONG WINAPI stateblock_release(IDirect3DStateBlock9* block){
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
@@ -950,9 +1005,10 @@ HRESULT WINAPI stateblock_apply(IDirect3DStateBlock9* block){
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
     auto& hooks=*stateblocks.at(block);
+    const auto device=devices.find(hooks.device);
+    if(device!=devices.end())device->second->motion_output.restore_bindings(); // Apply must land on the application's bindings.
     cpu.before_original();
     const HRESULT hr=hooks.get<HRESULT(WINAPI*)(IDirect3DStateBlock9*)>(5)(block);cpu.after_original();
-    const auto device=devices.find(hooks.device);
     if(SUCCEEDED(hr)&&device!=devices.end())device->second->motion_output.stateblock_applied();
     return hr;
 }
@@ -967,6 +1023,7 @@ HRESULT WINAPI create_stateblock(IDirect3DDevice9* d,D3DSTATEBLOCKTYPE type,IDir
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;auto& ctx=*devices.at(d);
+    ctx.motion_output.restore_bindings(); // The block captures the application's bindings.
     cpu.before_original();
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DSTATEBLOCKTYPE,IDirect3DStateBlock9**)>(59)(d,type,out);cpu.after_original();
     if(SUCCEEDED(hr)&&out)hook_stateblock(d,*out);
@@ -976,6 +1033,7 @@ HRESULT WINAPI end_stateblock(IDirect3DDevice9* d,IDirect3DStateBlock9** out){
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;auto& ctx=*devices.at(d);
+    ctx.motion_output.restore_bindings();
     cpu.before_original();
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,IDirect3DStateBlock9**)>(61)(d,out);cpu.after_original();
     // Recording ends whether or not the block was produced; the shadow resyncs.
@@ -1022,7 +1080,9 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_jitter(motion_jitter_requested,motion_jitter_samples);
     hooked.motion_output.configure_cut_bounds(motion_cut_median_px,motion_cut_missing);
     hooked.motion_output.configure_taa(taa_requested,taa_debug_requested);
-    hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested);
+    hooked.motion_output.configure_rt_mode(motion_rt_lazy);
+    hooked.motion_output.configure_frame_log(motion_frame_log);
+    hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
     if(hooked.motion_output.enabled()){
         // The route needs the complete selector event stream plus setter
         // shadows. Installed only after the capability gate passed, so a device
@@ -1037,6 +1097,8 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         hooked.set(59,create_stateblock);hooked.set(60,begin_stateblock);hooked.set(61,end_stateblock);
         // Scene and query tracking for the resolve's caller contract.
         hooked.set(41,begin_scene);hooked.set(42,end_scene);hooked.set(118,create_query);
+        // Lazy binding: the application's target getters restore first.
+        if(hooked.motion_output.lazy_rt_mode()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);}
     }
     ownership_depth_info(d,devices.at(d)->id,devices.at(d)->frame,"create_after");
 }
@@ -1109,11 +1171,14 @@ void initialize_log(HMODULE module) {
     taa_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_TAA",setting,32)==1 && setting[0]==L'1';
     if(taa_requested)motion_jitter_requested=true;
     taa_debug_requested=taa_requested && GetEnvironmentVariableW(L"X3M_TAA_DEBUG",setting,32)>0 && wcstoul(setting,nullptr,10)>0;
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f",
-        motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing);
+    motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
+    if(GetEnvironmentVariableW(L"X3M_MOTION_FRAME_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=100000)motion_frame_log=unsigned(n);}
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u",
+        motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log);
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     if(telemetry::enabled())loading_trace::initialize();
+    sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists
 }
 const wchar_t* capture_directory() { return directory.c_str(); }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE

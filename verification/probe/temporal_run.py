@@ -63,12 +63,12 @@ def main():
     metadata['sources_unchanged_after_run'] = source_hashes() == before
     metadata['executable_unchanged_after_run'] = (
         hashlib.sha256(executable.read_bytes()).hexdigest() == metadata['executable_sha256'])
-    metadata['passed'] = (metadata['exit_code'] == 0 and len(samples) == 58
+    metadata['passed'] = (metadata['exit_code'] == 0 and len(samples) == 78
                           and metadata['sources_unchanged_after_run']
                           and metadata['executable_unchanged_after_run']
-                          and metadata['passed_sample_checks'] == 58
+                          and metadata['passed_sample_checks'] == 78
                           and metadata['reset_passed'] and metadata['device_generations'] == 2
-                          and 'RESULT PASS samples=58 generations=2' in text)
+                          and 'RESULT PASS samples=78 generations=2' in text)
     (results / 'temporal-resolve-summary.json').write_text(json.dumps(metadata, indent=2) + '\n')
     print(json.dumps(metadata, indent=2))
     return 0 if metadata['passed'] else 1

@@ -194,7 +194,7 @@ TAA run is user-managed.
 | `src/renderer/material_motion.{h,cpp}` | Table-driven transformer, `material_motion_vertex_variant` / `material_motion_pixel_variant` (each stage is created separately by the game); the pair function remains for the detached fixtures; `material_motion_reviewed_pairs` is the profile table |
 | `src/renderer/motion_output_profiles.h` + `motion_output_profiles_inc.h` | Row struct, class enum and the generated 169-row archive-wide table (classes A, B and C, each row with its current-depth registers) with compile-time consistency checks; see [material-motion-prototype.md](material-motion-prototype.md) |
 | `src/temporal/current_depth_ps.hlsl` + `src/renderer/current_depth_pixel_program{,_inc}.h` | Authored depth fragment (`oC2 = z/w`), compiled by `tools/shaders/generate_rigid_motion_pixel.py` like the motion fragment |
-| `src/proxy/capture.cpp` | Hook installation, state block and query wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT`, `X3M_MOTION_JITTER[_SAMPLES]`, `X3M_MOTION_CUT_*`, `X3M_TAA` and `X3M_TAA_DEBUG` parsing |
+| `src/proxy/capture.cpp` | Hook installation, state block and query wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT`, `X3M_MOTION_JITTER[_SAMPLES]`, `X3M_MOTION_CUT_*`, `X3M_TAA`, `X3M_TAA_DEBUG`, `X3M_MOTION_RT_MODE` and `X3M_MOTION_FRAME_LOG` parsing; the lazy mode's restore points and `GetRenderTarget`/`GetRenderTargetData` hooks |
 | `src/renderer/temporal_pass.{h,cpp}` + `temporal_resolve_program{,_inc}.h` | The resolve the route runs (native-slot calls, cached state block) and its embedded `ps_3_0` bytecode |
 | `src/proxy/scene_capture.{h,cpp}` | `describe_surface` shared with the route |
 | `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug` |
@@ -209,7 +209,16 @@ centred Halton(2,3) sequence of `X3M_MOTION_JITTER_SAMPLES` entries (default
 detector bounds. `X3M_TAA=1` (default off; requires `X3M_MOTION_OUTPUT=1`
 and implies `X3M_MOTION_JITTER=1`) runs the temporal resolve at the bloom
 copy; `X3M_TAA_DEBUG=<n>` (n > 0) writes the resolved FP16 image and the
-pre-resolve color in capture frames.
+pre-resolve color in capture frames. `X3M_MOTION_RT_MODE=lazy` (default
+`perdraw`) keeps RT1/RT2 and `COLORWRITEENABLE1/2` bound across consecutive
+routed draws and restores them before any application call that could
+observe them (an A/B experiment; equivalence and the restore points are in
+[motion-output.md](../verification/motion-output.md#lazy-rt-binding-equivalence-x3m_motion_rt_mode)
+and [telemetry.md](../verification/telemetry.md#route-and-boundary-cost)).
+`X3M_MOTION_FRAME_LOG=<n>` sets the periodic `motion_output_frame` cadence
+with telemetry on (default 60). With `X3M_TELEMETRY=1` the route reports
+its CPU cost per call and per frame (gate, apply/undo, `SetRenderTarget`
+count, jitter writes, fill, the resolve's phases, copy-back, readbacks).
 
 ### Current depth target (temporal step 1)
 

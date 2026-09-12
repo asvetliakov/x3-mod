@@ -9,6 +9,9 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 ROOT=Path(__file__).resolve().parents[2]
 RESULTS=ROOT/'verification/results'
 BUILD=ROOT/'verification/probe/build/mesh_cache_hook'
@@ -22,8 +25,7 @@ def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 def inputs():return {p:sha(ROOT/p) for p in SOURCES}|{'native/'+n:sha(p) for n,p in NATIVE.items()}
 def binaries():return {p.name:sha(p) for p in [BUILD/'mesh_cache_hook_fixture.exe',BUILD/'d3dx9_37.dll']}
 def refuse_game():
-    processes=subprocess.run(['ps','-axo','pid=,comm='],capture_output=True,text=True,check=True).stdout
-    if any(re.search(r'(^|[\\/])X3AP\.exe(?:\s|$)',line,re.I) for line in processes.splitlines()):
+    if game_running():
         raise RuntimeError('Refusing synthetic runtime while X3AP.exe is running')
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--admission',choices=('0','1'));args=parser.parse_args()

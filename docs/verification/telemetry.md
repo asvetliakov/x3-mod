@@ -56,6 +56,80 @@ observed imports, nested spans and coverage exclusions are described in
 standalone fixture correctly fails the real game's fingerprint gate; its device
 telemetry still runs. Loading import behavior has a separate synthetic fixture.
 
+## Route and boundary cost
+
+Added for the iteration-7 timing question (scene frames 38.5 ms with TAA
+against 16.1 ms with the route alone, unexplained by any metric of that
+run): the live motion route and the temporal boundary report their own
+CPU-side cost. Every value is a QPC wall-clock span around the proxy's own
+Direct3D calls on the render thread, **CPU-inclusive and never GPU time**: a
+`SetRenderTarget` or `StretchRect` span is the cost of submitting the call
+through the backend (Wine's wined3d command stream on CrossOver, the runtime
+and driver natively), including any blocking the backend chooses to do
+there, not the time the GPU spends on it. The counters exist only with
+`X3M_TELEMETRY=1`; without it the counts below are still kept but every
+tick total is zero and the frame line says `timing=off`. Each timed span
+costs one QPC pair (two `QueryPerformanceCounter` calls) plus the
+bucketing of `record`; the metrics never change a device call.
+
+Per-call metrics (`telemetry_metric name=...`, one `count` per call):
+
+| metric | one sample is | not included |
+| --- | --- | --- |
+| `stretch_backend` | the application's own `StretchRect` backend call (the hook's `timer.begin`/`end` span) | the resolve, which runs before `timer.begin` in the same hook |
+| `route_gate` | `before_draw` for one draw the route is enabled on: selector event, gate evaluation, history lookup | the sentinel fill, the apply and a lazy flush run inside the same call and are subtracted |
+| `route_draw` | one routed draw's apply (variant pair, reserved constants, RT1/RT2 and write masks) plus its undo in `after_draw` | the native draw between them; the jitter writes |
+| `route_set_rt` | one route-issued `SetRenderTarget` of the per-draw apply/undo path or of a lazy flush | the fill's and the resolve's own target binds (inside `route_fill` and the `taa_*` phases) |
+| `route_jitter` | one jitter constant write: the jittered clip rows before a scene draw, or their bit-exact restoration after it | the jitter arithmetic (SSE, a few ns) |
+| `route_fill` | the per-frame sentinel fill: state save, fullscreen quad, state restore | – |
+| `route_lazy_flush` | one restoration of RT1/RT2 and `COLORWRITEENABLE1/2` in `X3M_MOTION_RT_MODE=lazy` | – |
+| `route_readback` | one capture-frame readback to disk (RT1, RT2, the pre-resolve color, the resolved FP16 image); `bytes` is what was written | – |
+| `taa_run` | `TemporalPass::run` inclusive; nests the five phases below | the copy-back and the readbacks |
+| `taa_state_capture` | the cached `D3DSBT_ALL` block's `Capture` plus the target/depth/viewport/scissor getters | – |
+| `taa_copy_color` | the 8-bit main target to FP16 scratch `StretchRect` (and the scratch allocation the first time) | – |
+| `taa_copy_depth` | the R32F current-depth to depth-history `StretchRect` | – |
+| `taa_resolve_draw` | the state normalization, the scene bracket when the pass owns it, and the resolve quad(s) | – |
+| `taa_state_apply` | the target/depth unbind and rebind plus the block's `Apply`, viewport and scissor | – |
+| `taa_copy_back` | the resolved FP16 image to the 8-bit main target `StretchRect` | – |
+
+`route_gate`, `route_draw`, `route_fill`, `route_jitter` and
+`route_lazy_flush` are exclusive of each other and may be added into "route
+CPU per frame"; `route_set_rt` is inside `route_draw`/`route_lazy_flush`;
+`taa_run` contains the `taa_*` phases; `route_readback` occurs only in
+capture frames and must be kept out of ordinary-frame estimates.
+`capture_cpu`, `draw_backend` and `snapshot` overlap with all of them.
+
+Per-frame totals are appended to `motion_output_frame` (fields after
+`taa_references`; earlier fields are unchanged): `rt_mode=perdraw|lazy`,
+`timing=cpu_qpc|off`, the counts `set_rt`, `lazy_flushes`, `jitter_writes`,
+`readbacks`, and the microsecond totals `gate_us`, `route_draw_us`,
+`set_rt_us`, `lazy_flush_us`, `jitter_us`, `fill_us`, `taa_run_us`,
+`taa_capture_us`, `taa_copy_color_us`, `taa_copy_depth_us`, `taa_draw_us`,
+`taa_apply_us`, `taa_copy_back_us`, `readback_us`. The line is written in
+every capture frame and, with telemetry on, every `X3M_MOTION_FRAME_LOG`
+frames (default 60). `readbacks > 0` identifies a capture frame:
+`tools/analysis/summarize_telemetry.py` aggregates the lines per device,
+RT mode and capture/normal class (`route_costs.frames`) and prints the
+route metrics and the per-frame means and maxima as a table.
+
+`X3M_MOTION_RT_MODE=lazy` (`tools/manage.py launch --motion-rt-mode lazy`)
+is an A/B experiment, not a default: RT1/RT2 and their write masks stay
+bound across consecutive routed draws and are restored before the first
+application call that could observe or depend on them (a draw that does
+not route, `SetRenderTarget`, `GetRenderTarget`, `Clear`, `StretchRect`,
+`ColorFill`, `UpdateSurface/Texture`, patch draws, state block
+create/begin/end/apply, query `Issue`, `EndScene`, `Present`, `Reset`,
+`GetRenderTargetData`, the final device Release) and when the selector
+leaves the scene phase. Capture frames additionally restore before each
+draw's diagnostics (they read the application's bindings), so the
+`set_rt` count of a capture frame equals the per-draw mode's; compare
+periodic frame lines. Not intercepted: an application write or read of
+`COLORWRITEENABLE1/2` between two routed draws of one scene phase
+(`SetRenderState`/`GetRenderState` are not hooked); the route reads the
+masks when it binds and restores those values. The mode is proven
+equivalent by the motion-output fixture's burst cases
+([motion-output.md](motion-output.md#fixture)).
+
 ## Ordered capture boundaries
 
 With telemetry enabled, capture logs include SetDepthStencilSurface and

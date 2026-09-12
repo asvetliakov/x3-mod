@@ -36,6 +36,19 @@ and t=.8/p=.125, b between the origin and t=-.05/zo=.1), so no frame is
 stationary with respect to the previous one, and the cut schedule leaves at
 most two consecutive history frames (1-2, 10-11), far short of the ~48 frames
 the weight-0.9 accumulation needs to converge.
+Lazy RT binding (X3M_MOTION_RT_MODE=lazy, an experiment that keeps RT1/RT2
+bound across consecutive routed draws): four regular-script runs repeat with
+the mode on (production and seam, plain, seam under the wrapper and seam with
+TAA) and must be indistinguishable from the per-draw runs (colour hashes,
+readback files, checks, restorations), and four "burst" runs (both DLLs, both
+modes) run consecutive routed draws with no application getter between them,
+interleaved with gate-3/gate-4 draws and an application SetRenderTarget or
+depth Clear inside the scene: colour, the fixture's state signature, the
+seam's RT1/RT2 hashes and the DLL's readback files must be identical between
+the modes, the final state must equal the pre-burst state, and the DLL's
+per-frame SetRenderTarget count must drop from 20 to 12 in the lazy
+frames without capture diagnostics (capture frames restore before every
+draw's diagnostics and count 20 in both modes).
 Reviewed shader bytes are read from local files and never enter the repository
 or the reports.
 """
@@ -55,6 +68,8 @@ sys.path.insert(0, str(ROOT / 'verification/probe'))
 from verify_ownership_integration import verify_admission  # noqa: E402
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 import analyze_motion_readback as readback_analysis  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 PROBE = ROOT / 'verification/probe'
 BUILD = PROBE / 'build'
 RESULTS = ROOT / 'verification/results'
@@ -77,8 +92,8 @@ VARIANTS = {
     'ownership': dict(X3M_OWNERSHIP='1'),
     'depth': dict(X3M_OWNERSHIP='1', X3M_DEPTH_COPY='1', X3M_SCENE_DEPTH_CAPTURE='1'),
     'admission': dict(X3M_OWNERSHIP='1', X3M_ADMISSION='1')}
-def case(name, mode, variant='plain', enabled='1', jitter=False, taa=False, bench=None):
-    return dict(name=name, mode=mode, variant=variant, enabled=enabled, jitter=jitter, taa=taa, bench=bench)
+def case(name, mode, variant='plain', enabled='1', jitter=False, taa=False, bench=None, lazy=False, burst=False):
+    return dict(name=name, mode=mode, variant=variant, enabled=enabled, jitter=jitter, taa=taa, bench=bench, lazy=lazy, burst=burst)
 
 
 CASES = [case(f'{dll}-{state}' if variant == 'plain' else f'{dll}-{variant}-{state}', dll, variant, enabled)
@@ -90,6 +105,18 @@ CASES += [case(f'{dll}-taa-on', dll, jitter=True, taa=True) for dll in ('product
 CASES += [case(f'{dll}-ownership-taa-on', dll, 'ownership', jitter=True, taa=True) for dll in ('production', 'seam')]
 BENCH_SIZES = ('1280x768', '5120x1440')
 CASES += [case(f'bench-{size}-taa-{state}', 'bench', jitter=True, taa=state == 'on', bench=size) for size in BENCH_SIZES for state in ('off', 'on')]
+# Lazy RT binding: the regular script (equivalent by construction, every
+# getter restores) and the burst script (consecutive routed draws).
+CASES += [case(f'{dll}-lazy-on', dll, lazy=True) for dll in ('production', 'seam')]
+CASES += [case('seam-ownership-lazy-on', 'seam', 'ownership', lazy=True), case('seam-taa-lazy-on', 'seam', jitter=True, taa=True, lazy=True)]
+CASES += [case(f'{dll}-burst-{rt}', dll, lazy=rt == 'lazy', burst=True) for dll in ('production', 'seam') for rt in ('perdraw', 'lazy')]
+# Burst script: nine frames, capture in frames 7-8 only (capture diagnostics
+# restore the lazy binding before every draw), the frame line every frame.
+BURST_FRAMES = 9
+BURST_CAPTURE = (7, 8)
+BURST_EXPECT = dict(draws=9, routed=5, matched=0, gate2=2, gate3=1, gate4=1, gate5=5, gate6=0, depth_routed=5)
+BURST_SET_RT = {'perdraw': 20, 'lazy': 12}   # 5 routed draws x 4 versus 3 bind/flush pairs x 4
+BURST_FLUSHES = {'perdraw': 0, 'lazy': 3}
 # Seam script: frames whose keyed draws miss (cut) and frames the resolve blends
 # with history (a previous resolved frame since Reset and no cut).
 SEAM_TAA_CUTS = {0, 3, 5, 6, 8, 9}
@@ -149,8 +176,7 @@ def sources():
 
 
 def no_game():
-    p = subprocess.run(['pgrep', '-ifl', '[X]3AP[.]exe'], capture_output=True, text=True)
-    assert p.returncode == 1 and not p.stdout.strip(), 'X3AP running; no synthetic GPU run'
+    assert not game_running(), 'X3AP running; no synthetic GPU run'
 
 
 def read_motion(path, width=64, height=64):
@@ -256,17 +282,18 @@ def validate_bench(name, taa, size, text, trace):
             'samples_ms': samples, 'timing': summary['timing']}
 
 
-def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory):
+def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False):
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
     assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
     terminal = fields(lines[-1])
     seam = mode == 'seam'
     live = seam and enabled
+    rt_mode = 'lazy' if lazy else 'perdraw'
     mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
     assert mode_line == {'seam': str(int(seam)), 'enabled': str(int(enabled)), 'jitter': str(int(jitter)),
                          'jitter_samples': str(JITTER_SAMPLES), 'taa': str(int(taa)), 'bench': '0', 'width': '64', 'height': '64',
-                         'dll': mode_line['dll']}, (name, mode_line)
+                         'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode}, (name, mode_line)
     # Per frame: the coverage oracle's background sample and verdict (every
     # case) plus, live, motion/depth dimensions, the pixel-ABI upload, the
     # motion oracle and the depth oracle. TAA: per frame the bloom copy, the
@@ -286,7 +313,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     assert sorted(colors) == list(range(12)), f'{name}: color inventory'
     motion = [fields(l) for l in lines if l.startswith('MOTION ')]
     coverage = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('COVERAGE ')}
-    result = {'mode': mode, 'enabled': enabled, 'jitter': jitter, 'taa': taa, 'checks': int(terminal['checks']), 'restorations': restorations, 'frames': 12,
+    result = {'mode': mode, 'enabled': enabled, 'jitter': jitter, 'taa': taa, 'lazy': lazy, 'checks': int(terminal['checks']), 'restorations': restorations, 'frames': 12,
               'color_hashes': colors, 'motion_pixels': int(terminal['motion_pixels']),
               'matched_pixels': int(terminal['matched_pixels']), 'max_uv_error_pixels': float(terminal['max_uv_pixels']),
               'max_previous_depth_error': float(terminal['max_depth_error']),
@@ -348,6 +375,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     routes = [fields(l) for l in tl if l.startswith('motion_route ')]
     modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
     assert modes[0]['jitter'] == str(int(jitter)) and modes[0]['jitter_samples'] == str(JITTER_SAMPLES), (name, modes)
+    assert modes[0]['rt_mode'] == rt_mode and modes[0]['frame_log'] == '60', (name, modes)
     taa_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_taa_readback ')}
     color_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_color_readback ')}
     taa_lines_log = [fields(l) for l in tl if l.startswith('motion_output_taa ')]
@@ -357,6 +385,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         assert not taa_readbacks and not color_readbacks and not taa_lines_log
         return result
     assert len(devices) == 1 and devices[0]['enabled'] == '1' and devices[0]['reason'] == 'ok', (name, devices)
+    assert devices[0]['rt_mode'] == rt_mode, (name, devices)
     assert devices[0]['history_available'] == '0', 'synthetic process must not claim game observers'
     # Three-format self test (A8R8G8B8 + A32B32G32R32F + R32F) on this backend.
     assert devices[0]['depth'] == '1' and devices[0]['depth_reason'] == 'ok' and devices[0]['r32f'] == '00000000', (name, devices)
@@ -384,6 +413,22 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         assert summary['apply_failures'] == summary['restore_failures'] == '0' and summary['committed'] == '1'
         assert summary['present'] == '00000000'
         assert summary['depth'] == '1' and summary['depth_routed'] == summary['routed'], (name, frame, summary)
+        # Cost fields: every routed draw of this script binds and releases RT1
+        # and RT2 (four SetRenderTarget calls) in both modes, because the
+        # fixture's state snapshot after each draw (a getter) restores a lazy
+        # binding: one flush per routed draw. Timing is CPU QPC (telemetry on).
+        assert summary['rt_mode'] == rt_mode and summary['timing'] == 'cpu_qpc', (name, frame, summary)
+        assert int(summary['set_rt']) == 4 * int(summary['routed']), (name, frame, summary)
+        assert int(summary['lazy_flushes']) == (int(summary['routed']) if lazy else 0), (name, frame, summary)
+        assert int(summary['jitter_writes']) == 2 * int(summary['jittered']), (name, frame, summary)
+        assert int(summary['readbacks']) == (0 if frame == 0 else 4 if taa else 2), (name, frame, summary)
+        cost_fields = ('gate_us', 'route_draw_us', 'set_rt_us', 'lazy_flush_us', 'jitter_us', 'fill_us', 'taa_run_us', 'taa_capture_us',
+                       'taa_copy_color_us', 'taa_copy_depth_us', 'taa_draw_us', 'taa_apply_us', 'taa_copy_back_us', 'readback_us')
+        costs = {k: float(summary[k]) for k in cost_fields}
+        assert all(v >= 0 for v in costs.values()) and costs['fill_us'] > 0 and costs['route_draw_us'] > 0, (name, frame, costs)
+        # The five phases nest inside the run (0.1 us rounding per field).
+        assert (costs['taa_run_us'] > 0) == taa and costs['taa_run_us'] + 0.5 >= costs['taa_capture_us'] + costs['taa_copy_color_us'] + costs['taa_copy_depth_us'] + costs['taa_draw_us'] + costs['taa_apply_us'], (name, frame, costs)
+        assert (costs['readback_us'] > 0) == (frame > 0), (name, frame, costs)
         # The resolve ran at the boundary of every TAA frame (frame 0 included)
         # with the history use the fixture expects; the fixture's depth rebind
         # then rejects the selector (9), which must not drop the history.
@@ -501,11 +546,91 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     return result
 
 
-def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory):
-    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory)
+def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False):
+    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy)
     result['variant'] = variant
     result['ownership'] = validate_ownership(name, variant, enabled, trace)
     return result
+
+
+def validate_burst(name, mode, lazy, text, trace, directory):
+    """Burst script (see the module docstring): per-frame counters of the DLL,
+    the fixture's own restoration and oracle verdicts, and the signatures the
+    cross-mode comparison in main() uses."""
+    lines = text.splitlines()
+    assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
+    assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
+    terminal = fields(lines[-1])
+    seam = mode == 'seam'
+    rt_mode = 'lazy' if lazy else 'perdraw'
+    mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
+    assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '0', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
+                         'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '1', 'rt_mode': rt_mode}, (name, mode_line)
+    # Per frame: the fill and the burst restoration comparisons, the coverage
+    # oracle (both DLLs) and, seam, the motion/depth oracle.
+    assert int(terminal['frames']) == BURST_FRAMES and int(terminal['restorations']) == 2 * BURST_FRAMES, (name, terminal)
+    assert int(terminal['checks']) == (68 if seam else 23), (name, terminal)
+    restores = [fields(l) for l in lines if l.startswith('RESTORE ')]
+    assert len(restores) == 2 * BURST_FRAMES and all(r['differences'] == '0' for r in restores), f'{name}: restoration differences'
+    assert [r['label'] for r in restores] == ['fill', 'burst'] * BURST_FRAMES, (name, [r['label'] for r in restores])
+    colors = {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}
+    states = {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('STATE ')}
+    motion_hashes = {int(fields(l)['frame']): (fields(l)['motion'], fields(l)['depth']) for l in lines if l.startswith('MOTION_HASH ')}
+    coverage = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('COVERAGE ')}
+    motion = [fields(l) for l in lines if l.startswith('MOTION ')]
+    assert sorted(colors) == sorted(states) == sorted(coverage) == list(range(BURST_FRAMES)), (name, sorted(colors), sorted(states), sorted(coverage))
+    assert all(c['mismatches'] == '0' and int(c['checked']) > 3000 for c in coverage.values()), (name, coverage)
+    if seam:
+        assert sorted(motion_hashes) == list(range(BURST_FRAMES)) and len(motion) == BURST_FRAMES, (name, sorted(motion_hashes), len(motion))
+        assert all(m['mismatches'] == '0' and m['depth_mismatches'] == '0' and m['matched'] == '0' and int(m['depth_written']) > 1000 for m in motion), (name, motion)
+        assert int(terminal['matched_pixels']) == 0 and int(terminal['depth_written']) > 10000, (name, terminal)
+    else:
+        assert not motion_hashes and not motion
+    expects = [fields(l) for l in lines if l.startswith('EXPECT ')]
+    assert len(expects) == 8 * BURST_FRAMES and all(e['matched'] == '0' and e['jittered'] == '0' for e in expects), (name, len(expects))
+    tl = trace.splitlines()
+    modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
+    assert len(modes) == 1 and modes[0]['rt_mode'] == rt_mode and modes[0]['frame_log'] == '1', (name, modes)
+    devices = [fields(l) for l in tl if l.startswith('motion_output_device ')]
+    assert len(devices) == 1 and devices[0]['enabled'] == '1' and devices[0]['rt_mode'] == rt_mode and devices[0]['depth'] == '1', (name, devices)
+    assert not any(l.startswith(('motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed', 'motion_output_taa_failed')) for l in tl), name
+    frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
+    assert sorted(frames) == list(range(BURST_FRAMES)), (name, sorted(frames))  # X3M_MOTION_FRAME_LOG=1
+    set_rt, flushes, costs = {}, {}, {}
+    for frame, summary in frames.items():
+        got = {k: int(summary[k]) for k in BURST_EXPECT}
+        assert got == BURST_EXPECT, (name, frame, got)
+        # The application SetRenderTarget (even frames) or depth Clear (odd)
+        # inside the scene rejects the selector; the draw after it stops at gate 2.
+        assert summary['selector_state'] == '9' and summary['latched'] == summary['filled'] == '1', (name, frame, summary)
+        assert summary['apply_failures'] == summary['restore_failures'] == '0' and summary['present'] == '00000000', (name, frame, summary)
+        assert summary['rt_mode'] == rt_mode and summary['timing'] == 'cpu_qpc' and summary['jitter_writes'] == '0', (name, frame, summary)
+        captured = frame in BURST_CAPTURE
+        expected_set_rt = BURST_SET_RT['perdraw'] if captured else BURST_SET_RT[rt_mode]
+        expected_flushes = (5 if captured else BURST_FLUSHES['lazy']) if lazy else 0
+        assert int(summary['set_rt']) == expected_set_rt and int(summary['lazy_flushes']) == expected_flushes, (name, frame, summary)
+        assert int(summary['readbacks']) == (2 if captured else 0) and (float(summary['readback_us']) > 0) == captured, (name, frame, summary)
+        set_rt[frame] = int(summary['set_rt']); flushes[frame] = int(summary['lazy_flushes'])
+        costs[frame] = {k: float(summary[k]) for k in ('gate_us', 'route_draw_us', 'set_rt_us', 'lazy_flush_us', 'fill_us', 'readback_us')}
+        assert all(v >= 0 for v in costs[frame].values()) and costs[frame]['set_rt_us'] > 0 and costs[frame]['fill_us'] > 0, (name, frame, costs[frame])
+        assert (costs[frame]['lazy_flush_us'] > 0) == lazy, (name, frame, costs[frame])
+    routes = [fields(l) for l in tl if l.startswith('motion_route ')]
+    # Capture frames log the seven scene draws that reach gate 2 (the draw
+    # after the rejection is not a scene draw); five route sentinel-only.
+    assert len(routes) == 7 * len(BURST_CAPTURE) and sum(r['routed'] == '1' for r in routes) == 5 * len(BURST_CAPTURE), (name, len(routes))
+    assert all(r['matched'] == '0' and r['result'] == '00000000' and r['depth'] == r['routed'] for r in routes), name
+    readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_readback ')}
+    depth_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_depth_readback ')}
+    assert sorted(readbacks) == sorted(depth_readbacks) == list(BURST_CAPTURE), (name, sorted(readbacks), sorted(depth_readbacks))
+    files = {}
+    for frame in BURST_CAPTURE:
+        assert readbacks[frame]['result'] == depth_readbacks[frame]['result'] == '00000000', (name, frame)
+        files[frame] = {kind: sha(directory / 'x3-modern-captures' / r[frame]['file']) for kind, r in (('motion', readbacks), ('depth', depth_readbacks))}
+    assert sum(l.startswith('motion_output_release ') for l in tl) == 1, name
+    return {'mode': mode, 'burst': True, 'lazy': lazy, 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
+            'frames': BURST_FRAMES, 'color_hashes': colors, 'state_hashes': states, 'motion_hashes': motion_hashes,
+            'readback_sha256': files, 'set_rt_per_frame': set_rt, 'lazy_flushes_per_frame': flushes, 'costs_us_per_frame': costs,
+            'coverage_pixels': int(terminal['coverage_pixels']), 'depth_written_pixels': int(terminal['depth_written'])}
 
 
 def main():
@@ -540,19 +665,21 @@ def main():
         wine_log = (RESULTS / 'motion-output-wine.log').open('w')
         result['bench'] = {}
         for entry in CASES:
-            name, mode, variant, enabled, jitter, taa, bench = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench'))
+            name, mode, variant, enabled, jitter, taa, bench, lazy, burst = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst'))
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(EXE, directory)
             shutil.copy(SEAM if mode == 'seam' else DLL, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
-                       X3M_CAPTURE_START='1000' if bench else '1', X3M_CAPTURE_FRAMES='1' if bench else '8', X3M_TELEMETRY='1',
+                       X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
+                       X3M_CAPTURE_FRAMES='1' if bench else str(len(BURST_CAPTURE)) if burst else '8', X3M_TELEMETRY='1',
+                       X3M_MOTION_RT_MODE='lazy' if lazy else 'perdraw', X3M_MOTION_FRAME_LOG='1' if burst else '60',
                        X3M_OWNERSHIP='0', X3M_DEPTH_COPY='0', X3M_SCENE_DEPTH_CAPTURE='0', X3M_OBJECT_TRACE='0', X3M_OBJECT_LIFETIME='0',
                        X3M_MESH_CACHE='0', X3M_ADMISSION='0', X3M_FINITE_POSITIONS='0', X3M_MOTION_CAPTURE='0')
             env.update(VARIANTS[variant])
             command = [str(WINE), '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=n,b', '--workdir', str(directory),
-                       str(directory / EXE.name)] + ['Z:' + str(p) for p in RAW] + [mode] + ([bench] if bench else [])
+                       str(directory / EXE.name)] + ['Z:' + str(p) for p in RAW] + ['burst' if burst else mode] + ([bench] if bench else [])
             no_game()
             wine_log.write(f'==== {name}\n'); wine_log.flush()
             completed = subprocess.run(command, env=env, stdout=subprocess.PIPE, stderr=wine_log, text=True, timeout=360)
@@ -568,7 +695,16 @@ def main():
                 save()
                 print(f'{name}: exit={completed.returncode} boundary_ms={case["boundary_ms"]}', flush=True)
                 continue
-            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory)
+            if burst:
+                case = validate_burst(name, mode, lazy, text, trace, directory)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} set_rt={case["set_rt_per_frame"]}', flush=True)
+                continue
+            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy)
             case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                         dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
             if enabled == '1':
@@ -598,6 +734,39 @@ def main():
             assert len(differing) >= 6, f'{mode}-jitter-on: jitter changed the colour of only {len(differing)} of 12 frames'
             result['cases'][mode + '-jitter-on']['frames_differing_from_unjittered'] = differing
         assert result['cases']['production-jitter-on']['color_hashes'] == result['cases']['seam-jitter-on']['color_hashes'], 'jitter colour differs between the production and the seam DLL'
+        # Lazy RT binding equivalence. Regular script: the lazy runs equal their
+        # per-draw twins in colour, readback files, checks and restorations.
+        # Burst script: colour, state signature, seam RT1/RT2 hashes and the
+        # DLL's readback files agree between the modes; the SetRenderTarget
+        # count per frame drops from 20 to 12 outside the capture frames.
+        def readback_files(case_name):
+            directory = ROOT / result['cases'][case_name]['directory'] / 'x3-modern-captures'
+            return {p.name: sha(p) for p in sorted(directory.glob('*.rgba32f')) + sorted(directory.glob('*.r32f'))}
+        equivalence = {'regular': {}, 'burst': {}}
+        for lazy_name, twin in (('production-lazy-on', 'production-on'), ('seam-lazy-on', 'seam-on'),
+                                ('seam-ownership-lazy-on', 'seam-ownership-on'), ('seam-taa-lazy-on', 'seam-taa-on')):
+            a, b = result['cases'][lazy_name], result['cases'][twin]
+            assert a['color_hashes'] == b['color_hashes'], f'{lazy_name}: colour differs from {twin}'
+            assert (a['checks'], a['restorations'], a['motion_pixels'], a['matched_pixels'], a['depth_written_pixels']) == \
+                   (b['checks'], b['restorations'], b['motion_pixels'], b['matched_pixels'], b['depth_written_pixels']), (lazy_name, twin)
+            files_a, files_b = readback_files(lazy_name), readback_files(twin)
+            assert files_a and files_a == files_b, f'{lazy_name}: readback files differ from {twin}'
+            if 'color_hashes_before_boundary' in b:
+                assert a['color_hashes_before_boundary'] == b['color_hashes_before_boundary'], (lazy_name, twin)
+            equivalence['regular'][lazy_name] = {'twin': twin, 'readback_files': len(files_a), 'identical': True}
+        for dll in ('production', 'seam'):
+            per, lz = result['cases'][f'{dll}-burst-perdraw'], result['cases'][f'{dll}-burst-lazy']
+            assert per['color_hashes'] == lz['color_hashes'], f'{dll}-burst: colour differs between the modes'
+            assert per['state_hashes'] == lz['state_hashes'], f'{dll}-burst: final state differs between the modes'
+            assert per['motion_hashes'] == lz['motion_hashes'], f'{dll}-burst: RT1/RT2 differ between the modes'
+            assert per['readback_sha256'] == lz['readback_sha256'], f'{dll}-burst: readback files differ between the modes'
+            assert all(per['set_rt_per_frame'][f] == BURST_SET_RT['perdraw'] for f in range(BURST_FRAMES)), per['set_rt_per_frame']
+            assert all(lz['set_rt_per_frame'][f] == (BURST_SET_RT['perdraw'] if f in BURST_CAPTURE else BURST_SET_RT['lazy']) for f in range(BURST_FRAMES)), lz['set_rt_per_frame']
+            equivalence['burst'][dll] = {'frames': BURST_FRAMES, 'capture_frames': list(BURST_CAPTURE), 'identical_color': True, 'identical_state': True,
+                                         'identical_motion_depth': bool(per['motion_hashes']) or dll == 'production', 'identical_readback_files': True,
+                                         'set_rt_per_frame': {'perdraw': per['set_rt_per_frame'], 'lazy': lz['set_rt_per_frame']},
+                                         'lazy_flushes_per_frame': lz['lazy_flushes_per_frame']}
+        result['lazy_equivalence'] = equivalence
         # TAA: the production DLL resolves current-only (sentinel routes), so
         # its presented image is bit-identical to the jittered run without the
         # resolve, plain and through the wrapper; the seam's frames without

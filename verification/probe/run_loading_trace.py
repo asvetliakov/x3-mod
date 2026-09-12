@@ -2,6 +2,7 @@
 """Fresh-build ABI stubs plus exact native mesh timing/lifetime verification."""
 from pathlib import Path
 import argparse,hashlib,json,os,re,shutil,subprocess
+from game_guard import game_running  # real game processes only (review 18)
 parser=argparse.ArgumentParser();parser.add_argument('--admission',choices=('0','1'));args=parser.parse_args()
 admission=args.admission or '0';suffix=('-admission-on' if admission=='1' else '-admission-off') if args.admission is not None else ''
 root=Path(__file__).resolve().parents[2];results=root/'verification/results';build=root/'verification/probe/build'
@@ -12,8 +13,8 @@ hashes=lambda:{str(p.relative_to(root)):sha(p) for p in paths}
 report={'passed':False,'phase':'building','admission':int(admission),'game_launched':False,'cases':{}}
 (results/('loading-trace-mesh'+suffix+'-summary.json')).write_text(json.dumps(report,indent=2)+'\n')
 def refuse_game():
-    text=subprocess.run(['ps','-axo','pid=,comm='],capture_output=True,text=True,check=True).stdout
-    assert not any(re.search(r'(^|[\\/])X3AP\.exe(?:\s|$)',line,re.I) for line in text.splitlines()),'X3AP is running'
+    running=game_running()
+    assert not running,'X3AP is running: '+'; '.join(running)
 try:
     refuse_game();report['sources_before_build']=hashes();report['native_before']=sha(native)
     subprocess.run(['sh',str(root/'verification/probe/build_loading_trace.sh')],cwd=root,check=True)
@@ -31,9 +32,9 @@ try:
         witnesses=re.findall(r'^ADMISSION_WITNESS requested=(\d+) enabled=(\d+) active_roots=(\d+) waiting_roots=(\d+) admitted_roots=(\d+) promotions=(\d+) vetoes=(\d+) valid=(\d+)\r?$',text,re.M)
         assert len(witnesses)==1 and witnesses[0][0:2]==(admission,admission) and witnesses[0][2:4]==('0','0') and witnesses[0][5]=='0' and witnesses[0][7]=='1','Admission mode/root witness failed'
         assert int(witnesses[0][4])>0 if admission=='1' else int(witnesses[0][4])==0,'Admission root count'
-        terminal=('loading_fixture checks=75 failures=0' if case=='loading-trace' else 'LOADING MESH RESULT checks=123 failures=0')
+        terminal=('loading_fixture checks=85 failures=0' if case=='loading-trace' else 'LOADING MESH RESULT checks=123 failures=0')
         assert text.rstrip().endswith(terminal) and text.count(terminal)==1,'Incomplete exact case inventory'
-        report['cases'][case]={'admission_witness':witnesses[0],'checks':75 if case=='loading-trace' else 123,'wine_log_sha256':sha(results/(case+suffix+'-fixture-wine.log')),'exit_code' :run.returncode,'executable_sha256':before,'dll_sha256':dlls,'report_sha256':sha(results/(case+suffix+'-fixture.txt'))}
+        report['cases'][case]={'admission_witness':witnesses[0],'checks':85 if case=='loading-trace' else 123,'wine_log_sha256':sha(results/(case+suffix+'-fixture-wine.log')),'exit_code' :run.returncode,'executable_sha256':before,'dll_sha256':dlls,'report_sha256':sha(results/(case+suffix+'-fixture.txt'))}
         assert run.returncode==0 and 'failures=0' in text and 'FAIL' not in text,text[-4000:]
         assert before==sha(binary) and dlls=={p.name:sha(p) for p in directory.glob('*.dll')},'Binaries changed during run'
     assert hashes()==report['sources_before_build'] and sha(native)==report['native_before'],'Sources changed during run'

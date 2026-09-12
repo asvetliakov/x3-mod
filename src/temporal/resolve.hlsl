@@ -20,29 +20,54 @@ float4 sizeJitter : register(c4); // 1/W, 1/H, current jitter UV xy
 // ("pixel center minus velocity"). For a static scene that is p exactly (f = 0),
 // so the output is stable across phases. Adding the previous jitter instead
 // moved the taps by the jitter difference every frame: oscillation plus blur.
+// c5.z is the history weight: the fraction of the accepted history kept per
+// frame. 0.9 (the route default) converges an edge to its jitter-averaged
+// coverage in about 20 frames with a per-frame ripple of (1-w) times the
+// contrast at a toggling sample; 0.85-0.95 is the sensible range (lower is
+// faster and noisier, higher smears clamp-bounded ghosting for longer).
 float4 history : register(c5); // (previous jitter UV xy, unused), weight, valid
+// Depth tolerance is max(absolute, relative * |expected|) in device-depth units.
 float4 rejection : register(c6); // absolute device-depth tolerance, relative tolerance, HDR limit, minimum W
-float4 options : register(c7); // motion enabled, reactive enabled, mask snapshot mode, depth-sentinel reactive
+// options.w selects the depth-sentinel policy: 0 off; 1 a current pixel whose
+// depth is the -1 sentinel (no routed opaque draw wrote it) is current-only;
+// 2 such a pixel is reprojected through the camera path with depth = far (1),
+// for a route that supplies a valid clip_to_previous for the background.
+float4 options : register(c7); // motion enabled, reactive enabled, mask snapshot mode, depth-sentinel policy
 
+// Variance-clip width in standard deviations of the current 3x3 neighborhood.
+// 1.25 keeps a history that is one full neighborhood extreme away from an
+// 8:1 mixed neighborhood (the min/max box still bounds it) and dims a
+// nearly-aligned one-pixel line by at most about 5%; 1.0 would dim thin lines
+// visibly, larger values readmit more clamp-bounded ghosting.
+static const float clipGamma = 1.25;
+// Sub-texel offsets below this (float rounding of the jitter round trip, about
+// 1e-6 texel) snap to the texel grid so a static scene reads exactly one texel.
+static const float snapEpsilon = 1e-4;
+
+// Every input is a single-level texture with point sampling; an explicit LOD
+// keeps the fetches free of gradients so they may sit under real branches.
+float4 fetch(sampler2D s, float2 uv) { return tex2Dlod(s, float4(uv, 0, 0)); }
 bool finiteColor(float3 v) { return all(v == v) && all(abs(v) <= rejection.z); }
 bool validDepth(float v) { return v == v && v >= 0 && v <= 1; }
 float3 cleanColor(float3 v) { return finiteColor(v) ? v : float3(0, 0, 0); }
 // Exactly zero is safe. Positive, negative and nonfinite mask values reject.
-// Bounds comparisons avoid depending on a NaN self-comparison surviving compile.
+// Only >= and <= comparisons are NaN-safe (false) after compilation on the
+// verified backend: v == v folds to true, and < or > compile to negated
+// forms a NaN passes. Every test whose false branch must catch a NaN is
+// written with >= and <= for that reason.
 bool maskSafe(float v) { return v >= 0 && v <= 0; }
-
-// Filtering depth across geometry edges is prohibited. Each bilinear color tap
-// carries its own point-sampled depth test; rejected taps contribute no energy.
-void historyTap(float2 uv, float weight, float expected, inout float3 sum, inout float total,
-                inout bool reactive) {
-    if (weight > 0 && all(uv >= 0) && all(uv <= 1)) {
-        // A contaminated contributor invalidates the entire footprint; do not
-        // renormalize around it and blend in a neighboring particle history.
-        if (options.y > 0.5 && !maskSafe(tex2D(previousReactive, uv).r)) reactive = true;
-        float depth = tex2D(previousDepth, uv).r;
-        float3 color = tex2D(previousColor, uv).rgb;
-        float tolerance = rejection.x + rejection.y * abs(expected);
-        if (validDepth(depth) && abs(depth - expected) <= tolerance && finiteColor(color)) {
+float snapFraction(inout float base, float f) {
+    if (f > 1 - snapEpsilon) { base += 1; return 0; }
+    return f < snapEpsilon ? 0 : f;
+}
+// One Catmull-Rom history tap. Nonfinite taps contribute no energy and the
+// remaining weights renormalize; a nonzero-weight tap with reactive previous
+// coverage (mask policy) rejects the whole lookup.
+void historyTap(float2 uv, float weight, inout float3 sum, inout float total, inout bool reactive) {
+    if (weight != 0) {
+        if (options.y > 0.5 && !maskSafe(fetch(previousReactive, uv).r)) reactive = true;
+        float3 color = fetch(previousColor, uv).rgb;
+        if (finiteColor(color)) {
             sum += color * weight;
             total += weight;
         }
@@ -52,24 +77,56 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // Explicit GPU snapshot mode, used by TemporalPass only after validating s5.
     // Canonicalize coverage into owned R32F history; never infer it from alpha.
     if (options.z > 0.5)
-        return float4(maskSafe(tex2D(currentReactive, uv).r) ? 0 : 1, 0, 0, 1);
-    float4 current = tex2D(currentColor, uv);
+        return float4(maskSafe(fetch(currentReactive, uv).r) ? 0 : 1, 0, 0, 1);
+    float4 current = fetch(currentColor, uv);
     float3 raw = current.rgb;
     float3 color = cleanColor(raw);
     // The output alpha is the current alpha (the 8-bit main target keeps
     // whatever the game wrote there); history alpha is never blended.
     float alpha = current.a == current.a ? current.a : 1;
-    float depth = tex2D(currentDepth, uv).r;
-    // Depth-sentinel reactive mode (options.w): a negative current depth marks a
-    // pixel no routed opaque draw wrote (background, particles, unknown
-    // programs); it is current-only. Sentinel history taps are rejected one by
-    // one inside historyTap by validDepth, so a silhouette footprint keeps its
-    // surviving opaque taps. No mask texture or snapshot draw is involved.
-    if (options.w > 0.5 && depth < 0) return float4(color, alpha);
+    float depth = fetch(currentDepth, uv).r;
+    // Depth-sentinel policy (options.w): a negative current depth marks a pixel
+    // no routed opaque draw wrote (background, particles, unknown programs).
+    // Policy 1 keeps it current-only: with the identity matrix the route
+    // uploads today, camera reprojection would accumulate a moving
+    // background in place. Policy 2 reprojects it through the camera path at
+    // the far plane, for a route that supplies clip_to_previous and marks such
+    // pixels with motion alpha 0 (the fill's -1 still rejects on the motion
+    // path). Sentinel HISTORY taps are never a rejection reason: they are the
+    // background behind a silhouette (see the disocclusion test below).
+    // (<= -0.5 rather than < 0: a NaN depth must fail this test and reach
+    // validDepth below, never become a far-plane pixel under policy 2.)
+    if (options.w > 0.5 && depth <= -0.5) {
+        if (options.w < 1.5) return float4(color, alpha);
+        depth = 1;
+    }
     if (history.w < 0.5 || history.z <= 0 || !finiteColor(raw) || !validDepth(depth))
         return float4(color, alpha);
-    if (options.y > 0.5 && !maskSafe(tex2D(currentReactive, uv).r))
+    if (options.y > 0.5 && !maskSafe(fetch(currentReactive, uv).r))
         return float4(color, alpha);
+
+    // Closest-depth dilation: the correspondence (camera reprojection or the
+    // producer's motion) is taken from the closest valid pixel of the 3x3
+    // around this one, the center winning ties, and its VELOCITY is applied
+    // here. A pixel on the far side of a silhouette then follows the
+    // foreground object it borders instead of the background's motion, and
+    // the closest depth is also the disocclusion threshold below. The full
+    // 3x3 rather than the cross is required: on the jitter phases that
+    // uncover a silhouette's corner pixel on both axes its only foreground
+    // neighbor is the diagonal one, and with the cross the corner rejected
+    // its own foreground history and lost half of its coverage (fixture
+    // "silhouette", corner pixels).
+    float2 dilate = 0;
+    float nearest = depth;
+    [unroll] for (int ky = -1; ky <= 1; ++ky) {
+        [unroll] for (int kx = -1; kx <= 1; ++kx) {
+            if (kx != 0 || ky != 0) {
+                float neighbor = fetch(currentDepth, uv + float2(kx, ky) * sizeJitter.xy).r;
+                if (validDepth(neighbor) && neighbor < nearest) { nearest = neighbor; dilate = float2(kx, ky); }
+            }
+        }
+    }
+    float2 dilatedUV = uv + dilate * sizeJitter.xy;
 
     // Texture centers use (pixel + .5)/size, but the raw D3D9 viewport maps
     // unadjusted projection NDC zero to raster pixel size/2. Remove the texture
@@ -78,8 +135,8 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // this pixel. The camera reconstruction removes the current jitter to get
     // the content's unjittered position, reprojects it, and restores the same
     // jitter below so a static camera lands on this pixel's own texel center.
-    float2 unjittered = uv - 0.5 * sizeJitter.xy - sizeJitter.zw;
-    float4 currentClip = float4(unjittered.x * 2 - 1, 1 - unjittered.y * 2, depth, 1);
+    float2 unjittered = dilatedUV - 0.5 * sizeJitter.xy - sizeJitter.zw;
+    float4 currentClip = float4(unjittered.x * 2 - 1, 1 - unjittered.y * 2, nearest, 1);
     float4 previousClip = float4(dot(reprojection0, currentClip), dot(reprojection1, currentClip),
                                  dot(reprojection2, currentClip), dot(reprojection3, currentClip));
     float2 previousUV;
@@ -92,7 +149,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     previousUV += 0.5 * sizeJitter.xy + sizeJitter.zw;
     expectedDepth = previousClip.z / max(previousClip.w, rejection.w);
     if (options.x > 0.5) {
-        float4 motion = tex2D(motionOverride, uv);
+        float4 motion = fetch(motionOverride, dilatedUV);
         if (motion.w == 1) {
             // RG is the producer's previous unjittered texture-center UV of the
             // content at this jittered sample; add the current jitter only.
@@ -101,30 +158,97 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
             valid = all(motion == motion) && all(abs(motion) <= 1e20);
         } else if (motion.w != 0) valid = false;
     }
+    // The dilated pixel's velocity, applied to this pixel.
+    previousUV -= dilate * sizeJitter.xy;
     if (!valid || !validDepth(expectedDepth) || any(previousUV < 0) || any(previousUV > 1))
         return float4(color, alpha);
 
     float2 position = previousUV / sizeJitter.xy - 0.5;
     float2 base = floor(position);
     float2 f = position - base;
+    f.x = snapFraction(base.x, f.x);
+    f.y = snapFraction(base.y, f.y);
     float2 tap = (base + 0.5) * sizeJitter.xy;
+
+    // Disocclusion test, the only use of depth for rejection. Every
+    // contributing tap of the bilinear footprint must be proven either BEHIND
+    // (or at) the expected previous depth of the (dilated) surface or the -1
+    // sentinel; equivalently, the footprint's closest valid depth must not be
+    // in front. History clearly in front was an occluder that has moved away,
+    // so the lookup is rejected. History behind the surface or the sentinel
+    // is the background this surface's silhouette moved over as the jitter
+    // flipped its coverage; it is accepted and bounded by the neighborhood
+    // clip below, which is what lets edges and thin features accumulate
+    // their supersampled coverage instead of staying current-only. Because
+    // the threshold is the closest depth of the cross, a background pixel
+    // beside a silhouette accepts the foreground history it held on covered
+    // phases. Nonfinite or above-range history depth is corrupt input, not
+    // the sentinel: the proof is accumulated from >= and <= comparisons only,
+    // which a NaN fails (the compiler folds v == v to true and emits < and >
+    // as negated forms that a NaN passes), so it fails closed.
+    float tolerance = max(rejection.x, rejection.y * abs(expectedDepth));
+    float considered = 0, proven = 0;
+    [unroll] for (int ty = 0; ty < 2; ++ty) {
+        [unroll] for (int tx = 0; tx < 2; ++tx) {
+            float weight = (tx ? f.x : 1 - f.x) * (ty ? f.y : 1 - f.y);
+            // Taps of negligible weight cannot reject: they carry no visible energy.
+            if (weight > 0.01) {
+                considered += weight;
+                float previous = fetch(previousDepth, tap + float2(tx, ty) * sizeJitter.xy).r;
+                if (validDepth(previous) && previous >= expectedDepth - tolerance) proven += weight;
+                if (previous <= -0.5 && previous >= -1e30) proven += weight;
+            }
+        }
+    }
+    if (proven < considered - 0.001) return float4(color, alpha);
+
+    // History color: Catmull-Rom over the 4x4 texel neighborhood (16 point
+    // taps; the samplers are point-filtered by contract, so the 9-tap form that
+    // relies on hardware bilinear filtering is unavailable). Its negative lobes
+    // keep detail that repeated bilinear resampling would blur away at
+    // fractional velocities; the neighborhood clip bounds the overshoot. A
+    // lookup on the texel grid (static content) reads that texel only.
     float3 accumulated = 0;
     float total = 0;
     bool reactive = false;
-    historyTap(tap, (1-f.x)*(1-f.y), expectedDepth, accumulated, total, reactive);
-    historyTap(tap + float2(sizeJitter.x,0), f.x*(1-f.y), expectedDepth, accumulated, total, reactive);
-    historyTap(tap + float2(0,sizeJitter.y), (1-f.x)*f.y, expectedDepth, accumulated, total, reactive);
-    historyTap(tap + sizeJitter.xy, f.x*f.y, expectedDepth, accumulated, total, reactive);
-    if (reactive || total < 0.001) return float4(color, alpha);
-
-    float3 low = color, high = color;
-    // Invalid neighboring values cannot poison the clipping box.
-    [unroll] for (int y=-1; y<=1; ++y) {
-        [unroll] for (int x=-1; x<=1; ++x) {
-            float3 neighbor = tex2D(currentColor, uv + float2(x,y)*sizeJitter.xy).rgb;
-            if (finiteColor(neighbor)) { low = min(low, neighbor); high = max(high, neighbor); }
+    [branch] if (all(f == 0)) {
+        historyTap(tap, 1, accumulated, total, reactive);
+    } else {
+        float2 f2 = f * f, f3 = f2 * f;
+        float2 w0 = -0.5 * f + f2 - 0.5 * f3;
+        float2 w1 = 1 - 2.5 * f2 + 1.5 * f3;
+        float2 w2 = 0.5 * f + 2 * f2 - 1.5 * f3;
+        float2 w3 = -0.5 * f2 + 0.5 * f3;
+        float4 wx = float4(w0.x, w1.x, w2.x, w3.x), wy = float4(w0.y, w1.y, w2.y, w3.y);
+        [unroll] for (int j = 0; j < 4; ++j) {
+            [unroll] for (int i = 0; i < 4; ++i)
+                historyTap(tap + float2(i - 1, j - 1) * sizeJitter.xy, wx[i] * wy[j], accumulated, total, reactive);
         }
     }
-    float3 old = clamp(accumulated / total, low, high);
+    if (reactive || total < 0.5) return float4(color, alpha);
+    float3 old = accumulated / total;
+
+    // Neighborhood clip: the history is clamped per channel to mean +/- gamma
+    // sigma of the finite current 3x3, intersected with the 3x3 min/max box as
+    // the fallback bound. A silhouette or thin-line pixel keeps accumulating
+    // its coverage because its neighborhood contains both sides; a stale
+    // history that no longer matches the neighborhood is pulled into it.
+    // Invalid neighboring values cannot poison the statistics.
+    float3 low = color, high = color, mean = 0, square = 0;
+    float count = 0;
+    [unroll] for (int ny = -1; ny <= 1; ++ny) {
+        [unroll] for (int nx = -1; nx <= 1; ++nx) {
+            float3 neighbor = fetch(currentColor, uv + float2(nx, ny) * sizeJitter.xy).rgb;
+            if (finiteColor(neighbor)) {
+                low = min(low, neighbor); high = max(high, neighbor);
+                mean += neighbor; square += neighbor * neighbor; count += 1;
+            }
+        }
+    }
+    mean /= count;
+    float3 sigma = sqrt(max(square / count - mean * mean, 0));
+    low = max(low, mean - clipGamma * sigma);
+    high = min(high, mean + clipGamma * sigma);
+    old = clamp(old, low, high);
     return float4(lerp(color, old, history.z), alpha);
 }

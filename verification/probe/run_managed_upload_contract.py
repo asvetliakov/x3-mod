@@ -7,6 +7,9 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 FILES = ['verification/probe/managed_upload_contract.h', 'verification/probe/managed_upload_contract.cpp',
@@ -37,9 +40,9 @@ def main():
     summary = RESULTS / 'managed-upload-contract-summary.json'
     summary.write_text(json.dumps(metadata, indent=2) + '\n')
     try:
-        processes = subprocess.run(['pgrep', '-ifl', 'X3AP.exe'], capture_output=True, text=True)
-        if processes.returncode not in (0, 1) or processes.stdout.strip():
-            raise RuntimeError('Game process present or process inventory failed: ' + processes.stdout)
+        processes = game_running()
+        if processes:
+            raise RuntimeError('Game process present or process inventory failed: ' + '\n'.join(processes))
         before = hashes()
         metadata['sources_before'] = before
         if any(before['native/' + name] != expected for name, expected in EXPECTED_NATIVE.items()):

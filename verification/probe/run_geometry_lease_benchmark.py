@@ -11,6 +11,9 @@ import re
 import shutil
 import statistics
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 FILES = ['src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp', 'src/ownership/application_admission.h', 'src/ownership/application_admission.cpp', 'src/ownership/application_admission_abi.h', 'src/ownership/application_admission_abi.cpp',
          'src/ownership/d3d9_classes_inc.h', 'src/ownership/d3d9_forwarders_inc.h',
@@ -32,9 +35,9 @@ def hashes():
     return {name: digest(ROOT / name) for name in FILES} | {'native/' + name: digest(NATIVE_ROOT / name) for name in NATIVE}
 
 def no_game():
-    run = subprocess.run(['pgrep', '-ifl', 'X3AP.exe'], capture_output=True, text=True)
-    if run.returncode not in (0, 1) or run.stdout.strip():
-        raise RuntimeError('Game present or inventory failed: ' + run.stdout)
+    run = game_running()
+    if run:
+        raise RuntimeError('Game present or inventory failed: ' + '\n'.join(run))
 
 def main():
     parser = argparse.ArgumentParser()

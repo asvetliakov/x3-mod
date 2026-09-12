@@ -19,6 +19,11 @@
 // reference FP16 output written beside the DLL's X3M_TAA_DEBUG files.
 // "bench WxH" times the boundary StretchRect (EVENT-synchronized, QPC) with
 // the resolve on or off at a game-like size; CPU-inclusive timing.
+// "burst" (either DLL; X3M_MOTION_RT_MODE=perdraw|lazy) runs nine frames of
+// consecutive routed draws without application getters between them,
+// interleaved with non-routed draws and an application SetRenderTarget or
+// depth Clear, and prints per-frame colour, state-signature and (seam)
+// RT1/RT2 hashes so the runner can prove the lazy binding mode equivalent.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <d3d9.h>
@@ -122,6 +127,8 @@ bool covers_a(double ox, double oy) { return ox >= -1 && oy <= 1 && ox - oy <= 2
 bool covers_b(double ox, double oy) { return ox >= -.9 && oy <= .9 && ox - oy <= -1.2; }
 // `flat`: drawn with the flat pixel program (never routed, flat colour);
 // `jittered`: the route jitters this draw's rows (scene draw with a table VS).
+// A record with a null object marks an application depth-only Clear between
+// draws (burst script): the oracles restart the depth test there.
 struct DrawRecord { Object* object; float t, p, zo; bool routed, matched; float pt, pp, pzo; bool flat = false; bool jittered = false; bool keyed = false; };
 enum class Alter { None, Blend, FlatPixel };
 
@@ -213,7 +220,7 @@ struct Fixture {
     HRESULT (*readback)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*readback_depth)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*last_pixel_abi)(IDirect3DDevice9*, float*, unsigned) = nullptr;
-    bool seam = false, enabled = false, jitter = false, taa = false, bench = false;
+    bool seam = false, enabled = false, jitter = false, taa = false, bench = false, burst = false, lazy = false;
     unsigned jitter_samples = 8;
     Reference reference; bool reference_ready = false;
     std::uint64_t frames_since_reset = 0;
@@ -399,6 +406,23 @@ struct Fixture {
         std::printf("RESTORE frame=%llu label=%s differences=%u\n", frame, label, differences);
         if (differences) throw std::runtime_error(label);
     }
+    // Process-independent signature of a snapshot (values plus the identity
+    // class of each bound object), so two runs can be compared for an
+    // identical final state without comparing pointers.
+    std::uint64_t state_hash(const Snapshot& x) const {
+        std::uint64_t h = 14695981039346656037ull;
+        auto mix = [&](const void* data, std::size_t size) { auto b = static_cast<const unsigned char*>(data); for (std::size_t i = 0; i < size; ++i) { h ^= b[i]; h *= 1099511628211ull; } };
+        auto tag = [&](unsigned value) { mix(&value, sizeof value); };
+        tag(x.rt[0] == back.p ? 1 : x.rt[0] ? 2 : 0); tag(x.rt[1] ? 2 : 0); tag(x.rt[2] ? 2 : 0); tag(x.depth == depth.p ? 1 : x.depth ? 2 : 0);
+        mix(&x.viewport, sizeof x.viewport); mix(&x.scissor, sizeof x.scissor); mix(&x.fvf, sizeof x.fvf);
+        tag(x.declaration == declaration.p ? 1 : x.declaration ? 2 : 0); tag(x.vs == vs.p ? 1 : x.vs ? 2 : 0);
+        tag(x.ps == ps.p ? 1 : x.ps == flat.p ? 3 : x.ps ? 2 : 0); tag(x.stream == vb_a.p ? 1 : x.stream == vb_b.p ? 3 : x.stream ? 2 : 0);
+        mix(&x.offset, sizeof x.offset); mix(&x.stride, sizeof x.stride); mix(x.states, sizeof x.states);
+        mix(x.rows, sizeof x.rows); mix(x.reserved, sizeof x.reserved); mix(x.pixel, sizeof x.pixel); mix(x.integer0, sizeof x.integer0);
+        for (unsigned i = 0; i < sampler_stages; ++i) { tag(x.textures[i] ? 1 : 0); mix(x.samplers[i], sizeof x.samplers[i]); }
+        mix(x.ps_low, sizeof x.ps_low); mix(&x.frequency0, sizeof x.frequency0); tag(x.indices ? 1 : 0);
+        return h;
+    }
     void frame_begin() {
         records.clear(); draw_index = 0;
         // The route advances its Halton sequence at every latching Clear; every
@@ -423,16 +447,24 @@ struct Fixture {
     }
     // One scene draw. `routed`/`matched` are the fixture's expectations from the
     // script; the DLL's own per-draw log is cross-checked by the runner.
-    void draw(Object& o, float t, float p, float zo, bool known, bool routed, bool matched, Alter alter = Alter::None) {
+    // `verify`: snapshot the state around the draw (every getter is a
+    // restore point of the lazy RT mode, so the burst script passes false to
+    // keep consecutive routed draws free of application getters).
+    void draw(Object& o, float t, float p, float zo, bool known, bool routed, bool matched, Alter alter = Alter::None, bool verify = true) {
         scope(known ? &o : nullptr);
         api(d->SetStreamSource(0, o.vb, 0, 24), "SetStreamSource object");
         api(d->SetVertexShader(vs.p), "SetVertexShader"); api(d->SetPixelShader(alter == Alter::FlatPixel ? flat.p : ps.p), "SetPixelShader");
         if (alter == Alter::Blend) api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE), "blend on");
         rows(t, p, zo);
-        const Snapshot before = snapshot();
-        api(d->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1), "DrawPrimitive object");
-        ++draw_index;
-        compare(before, snapshot(), "draw");
+        if (verify) {
+            const Snapshot before = snapshot();
+            api(d->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1), "DrawPrimitive object");
+            ++draw_index;
+            compare(before, snapshot(), "draw");
+        } else {
+            api(d->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1), "DrawPrimitive object");
+            ++draw_index;
+        }
         if (alter == Alter::Blend) api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE), "blend off");
         const bool live = enabled && seam;
         records.push_back({&o, t, p, zo, live && routed, live && matched, o.rt, o.rp, o.rzo, alter == Alter::FlatPixel, enabled && jitter, live && routed && known});
@@ -497,6 +529,7 @@ struct Fixture {
         for (UINT y = 0; y < H; ++y) for (UINT x = 0; x < W; ++x) {
             double depth_value = 1; unsigned kind = 0; bool edge = false;
             for (const auto& r : records) {
+                if (!r.object) { depth_value = 1; continue; } // application depth-only Clear
                 double ox, oy, wc;
                 object_point(x - (r.jittered ? jx : 0), y - (r.jittered ? jy : 0), r.t, r.p, ox, oy, wc);
                 if (edge_distance(*r.object, ox, oy) < eps) edge = true;
@@ -533,6 +566,8 @@ struct Fixture {
         require(w == W && h == H, "motion target matches the main dimensions");
         api(readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h), "fixture depth readback");
         require(w == W && h == H, "depth target matches the main dimensions");
+        std::printf("MOTION_HASH frame=%llu motion=%016llx depth=%016llx\n", frame,
+                    static_cast<unsigned long long>(fnv(data.data(), data.size() * 4)), static_cast<unsigned long long>(fnv(depth_data.data(), depth_data.size() * 4)));
         // The route must upload zero prior jitter in c216.zw: history rows are
         // unjittered, so the fragment's UV is already the previous unjittered UV.
         if (records.size() && std::any_of(records.begin(), records.end(), [](const DrawRecord& r) { return r.routed; })) {
@@ -543,6 +578,7 @@ struct Fixture {
         for (UINT y = 0; y < H; ++y) for (UINT x = 0; x < W; ++x) {
             double depth_value = 1, expected_depth = -1; double expected[4] = {0, 0, 0, -1}; bool ambiguous = false, is_match = false;
             for (const auto& r : records) {
+                if (!r.object) { depth_value = 1; continue; } // application depth-only Clear: RT1/RT2 keep their values
                 // D3D9 raster samples sit at integer window coordinates (pixel i is
                 // NDC 2i/W-1); a jittered draw's geometry is displaced by (jx, jy)
                 // pixels, so its sample is taken at (x - jx, y - jy). Coverage must
@@ -704,6 +740,48 @@ struct Fixture {
         std::printf("BENCH_SUMMARY width=%u height=%u frames=%u min_ms=%.4f median_ms=%.4f max_ms=%.4f timing=cpu_inclusive_event_synchronized\n",
                     W, H, unsigned(bench_ms.size()), bench_ms.front(), bench_ms[bench_ms.size() / 2], bench_ms.back());
     }
+    // Lazy RT mode equivalence script (both modes run it; the runner compares
+    // the colour, the STATE signature, the seam's RT1/RT2 hashes, the DLL's
+    // readback files and the per-frame SetRenderTarget counts). Consecutive
+    // routed draws have no application getter between them, interleaved with
+    // a flat-PS draw (gate 3), a blend draw (gate 4) and, alternating per
+    // frame, an application SetRenderTarget(0) or a depth-only Clear inside
+    // the scene (both reject the selector: the last draw stops at gate 2).
+    // Scope is withheld so every routed draw is sentinel-only (gate 5) on
+    // both DLLs. The final state must equal the pre-burst snapshot.
+    void burst_draw(Object& o, float t, float p, float zo, Alter alter = Alter::None, bool routed = true) {
+        draw(o, t, p, zo, false, routed, false, alter, false);
+    }
+    void run_burst(unsigned frames) {
+        for (unsigned i = 0; i < frames; ++i) {
+            frame_begin();
+            // The pre-burst snapshot carries the bindings the last draw of the
+            // burst leaves behind (object A, reviewed PS, its rows), so the
+            // final comparison isolates what the route did.
+            api(d->SetStreamSource(0, a.vb, 0, 24), "SetStreamSource A"); api(d->SetPixelShader(ps.p), "SetPixelShader reviewed"); rows(.75f, 0, 0);
+            const Snapshot before = snapshot();
+            burst_draw(a, .75f, 0, 0); burst_draw(b, 0, 0, 0);
+            burst_draw(a, .75f, 0, 0, Alter::FlatPixel, false);
+            burst_draw(a, .8f, .125f, 0); burst_draw(b, -.05f, 0, .1f);
+            burst_draw(a, .8f, .125f, 0, Alter::Blend, false);
+            burst_draw(b, -.05f, 0, .1f);
+            if (i % 2 == 0) {
+                // Same target rebound: the viewport and scissor rectangle reset with it.
+                api(d->SetRenderTarget(0, back.p), "SetRenderTarget 0 (application)");
+                const D3DVIEWPORT9 vp{0, 0, W, H, 0, 1}; api(d->SetViewport(&vp), "SetViewport (application)");
+                const RECT scissor{8, 8, 40, 40}; api(d->SetScissorRect(&scissor), "SetScissorRect (application)");
+            } else {
+                api(d->Clear(0, nullptr, D3DCLEAR_ZBUFFER, 0, 1, 0), "Clear depth (application, inside the scene)");
+                records.push_back({nullptr, 0, 0, 0, false, false, 0, 0, 0});
+            }
+            burst_draw(a, .75f, 0, 0, Alter::None, false);
+            const Snapshot after = snapshot();
+            compare(before, after, "burst");
+            std::printf("STATE frame=%llu label=burst hash=%016llx\n", frame, static_cast<unsigned long long>(state_hash(after)));
+            frame_end();
+        }
+        require(!(enabled && seam) || frames_verified == frames, "every live burst frame verified against the oracle");
+    }
     void stateblock_case() {
         // A state block Apply rebinding the flat PS must be seen by the route:
         // the draw is not routed and the flat PS is still bound afterwards.
@@ -774,6 +852,7 @@ int main(int argc, char** argv) {
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
         f.bench = mode == "bench";
+        f.burst = mode == "burst";
         if (f.bench) {
             unsigned w = 0, h = 0;
             if (argc != 5 || std::sscanf(argv[4], "%ux%u", &w, &h) != 2 || !w || !h || w > 8192 || h > 8192) throw std::runtime_error("bench needs WxH");
@@ -784,15 +863,16 @@ int main(int argc, char** argv) {
         f.readback_depth = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_motion_output_fixture_readback_depth", false);
         f.last_pixel_abi = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned)>(runtime, "x3m_motion_output_fixture_last_pixel_abi", false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi;
-        require(f.bench || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.burst || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.taa = f.enabled && GetEnvironmentVariableA("X3M_TAA", setting, sizeof setting) == 1 && setting[0] == '1';
         // The DLL implies the jitter with the resolve on.
         f.jitter = f.enabled && (f.taa || (GetEnvironmentVariableA("X3M_MOTION_JITTER", setting, sizeof setting) == 1 && setting[0] == '1'));
         if (f.bench) f.taa = true; // The bench always runs the game-like boundary; the resolve follows X3M_TAA.
         if (GetEnvironmentVariableA("X3M_MOTION_JITTER_SAMPLES", setting, sizeof setting) > 0) { const unsigned n = unsigned(std::atoi(setting)); if (n >= 2 && n <= 64) f.jitter_samples = n; }
+        char rt_mode[8]{}; f.lazy = GetEnvironmentVariableA("X3M_MOTION_RT_MODE", rt_mode, sizeof rt_mode) == 4 && !std::strcmp(rt_mode, "lazy");
         char path[MAX_PATH]{}; GetModuleFileNameA(runtime, path, MAX_PATH);
-        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path);
+        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw");
         f.vs_words = load(argv[1]); f.ps_words = load(argv[2]);
         f.vs_hash = fnv(f.vs_words.data(), f.vs_words.size() * 4); f.ps_hash = fnv(f.ps_words.data(), f.ps_words.size() * 4);
         f.flat_hash = fnv(flat_program, sizeof flat_program);
@@ -808,7 +888,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if (f.taa && f.enabled && f.seam && !f.bench) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.bench) f.run_bench(24); else f.run();
+        if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }
         // Teardown: every fixture object released, then the device must reach zero.
         f.back.reset(); f.depth.reset(); f.bloom_surface.reset(); f.bloom.reset();

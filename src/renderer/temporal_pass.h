@@ -35,7 +35,7 @@ struct FrameInputs {
     // the previous unjittered UV).
     float current_jitter[2]{}, previous_jitter[2]{};
     float weight = .9f;
-    float rejection[4]{.0001f, 0.f, 65000.f, .000001f};
+    float rejection[4]{.0001f, .02f, 65000.f, .000001f}; // max(absolute, relative*depth) depth tolerance, HDR limit, minimum W
     MotionPolicy motion_policy = MotionPolicy::Unavailable;
     // Unknown coverage produces current-only output and cannot establish usable
     // history. RequiredMask demands complete conservative visible RGB coverage,
@@ -43,6 +43,11 @@ struct FrameInputs {
     ReactivePolicy reactive_policy = ReactivePolicy::Unavailable;
     bool history_allowed = false, camera_cut = false;
     bool cut = false; // route cut detector verdict for this frame; rejects history like camera_cut
+    // With DerivedFromDepthSentinel: reproject sentinel pixels through
+    // clip_to_previous at the far plane instead of resolving them current-only.
+    // Only correct when clip_to_previous is a real camera reprojection (the
+    // route uploads identity today, so it leaves this false).
+    bool sentinel_camera = false;
     bool caller_scene_open = true;
     bool caller_stateblock_recording = false;
     bool caller_queries_idle = false; // positive knowledge: no active occlusion/statistics query
@@ -65,6 +70,16 @@ struct Diagnostics {
     bool history_valid = false;
     bool reset_pending = false; // before_reset seen, after_reset(SUCCEEDED) not yet
     std::uint64_t completed_frames = 0;
+    // CPU-side QueryPerformanceCounter ticks of the last run's phases, taken
+    // only with configure_timing(true); zero otherwise. Wall clock around the
+    // device calls (submission cost, driver work, any blocking), never GPU
+    // execution time. The five phases nest inside run and do not overlap.
+    bool timed = false;
+    std::uint64_t ticks_capture = 0;    // state block Capture plus the binding getters
+    std::uint64_t ticks_copy_color = 0; // 8-bit color to FP16 scratch StretchRect (scratch allocation included)
+    std::uint64_t ticks_copy_depth = 0; // R32F depth to depth history StretchRect
+    std::uint64_t ticks_draw = 0;       // normalize, scene bracket, decoder/resolve/mask quads
+    std::uint64_t ticks_apply = 0;      // binding restoration plus state block Apply
 };
 class TemporalPass {
 public:
@@ -94,6 +109,9 @@ public:
     void after_reset(HRESULT result) noexcept;
     void shutdown() noexcept; // full teardown, including shaders
     Diagnostics diagnostics() const noexcept { return diagnostics_; }
+    // Phase timing of run (Diagnostics::ticks_*): off by default; costs five
+    // QPC pairs per run when on and changes no device call.
+    void configure_timing(bool enabled) noexcept { timing_ = enabled; }
 private:
     struct SavedState;
     template<class Fn> Fn call(unsigned slot) const noexcept {
@@ -125,5 +143,6 @@ private:
     x3::temporal::HistoryState history_{};
     ReactivePolicy reactive_policy_ = ReactivePolicy::Unavailable;
     Diagnostics diagnostics_{};
+    bool timing_ = false;
 };
 } // namespace x3m::renderer

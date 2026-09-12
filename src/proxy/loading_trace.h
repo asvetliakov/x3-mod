@@ -19,7 +19,9 @@
 namespace x3m::loading_trace {
 enum class Operation : unsigned {
     FileOpen, FileRead, FileSeek, Effect, Texture, CubeTexture, Surface,
-    CursorSet, CursorPosition, GzOpen, GzRead, GzSeek, Inflate, XmlRead, MeshCreate, MeshClean, MeshPointReps, MeshAdjacency, MeshOptimize, Count
+    CursorSet, CursorPosition, GzOpen, GzRead, GzSeek, Inflate, XmlRead, MeshCreate, MeshClean,
+    FindFirst, FindNext, FindClose, // resource resolver directory enumeration (loading-orchestration.md, section 2)
+    MeshPointReps, MeshAdjacency, MeshOptimize, Count
 };
 struct Sample {
     uint64_t count=0, failures=0, pending=0, ambiguous=0, bytes=0;

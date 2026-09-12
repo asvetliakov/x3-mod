@@ -7,6 +7,9 @@ from pathlib import Path
 import re
 import statistics
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 ROOT=Path(__file__).resolve().parents[2]
 OUT=ROOT/'verification/results'
@@ -28,8 +31,7 @@ EXPECTED={'disabled':14,'enabled':33,**{f'private{i}':12 for i in range(7)},'sha
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 def sources():return {p:sha(ROOT/p) for p in INPUTS}
 def no_game():
- result=subprocess.run(['pgrep','-ifl','[X]3AP[.]exe'],capture_output=True,text=True,timeout=10)
- if result.returncode!=1 or result.stdout.strip():raise RuntimeError('game running or inventory unavailable')
+ if game_running():raise RuntimeError('game running or inventory unavailable')
 def parse(mode,text):
  lines=text.splitlines();checks=EXPECTED[mode]
  if not lines or lines[-1]!=f'RESULT PASS mode={mode} checks={checks} failures=0' or sum(x.startswith('RESULT') for x in lines)!=1:raise ValueError(f'{mode}: terminal inventory')

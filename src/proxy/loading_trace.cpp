@@ -216,6 +216,9 @@ HRESULT WINAPI mesh_create(DWORD,DWORD,DWORD,const D3DVERTEXELEMENT9*,IDirect3DD
 HRESULT WINAPI mesh_clean(D3DXCLEANTYPE,ID3DXMesh*,const DWORD*,ID3DXMesh**,DWORD*,ID3DXBuffer**);
 HCURSOR WINAPI cursor_set(HCURSOR);
 BOOL WINAPI cursor_position(int,int);
+HANDLE WINAPI find_first(LPCSTR,LPWIN32_FIND_DATAA);
+BOOL WINAPI find_next(HANDLE,LPWIN32_FIND_DATAA);
+BOOL WINAPI find_close(HANDLE);
 // cdecl and argument widths corroborated by target callsites; local zlib/libxml
 // SDK prototypes supply semantics. Opaque pointers avoid importing struct layouts.
 using GzOpenFn=void* (__cdecl*)(const char*,const char*);
@@ -245,7 +248,10 @@ Hook hooks[]={
     {"zlib1.dll","inflate",reinterpret_cast<PVOID>(inflate_stream)},
     {"libxml2.dll","xmlReadMemory",reinterpret_cast<PVOID>(xml_read)},
     {"d3dx9_37.dll","D3DXCreateMesh",reinterpret_cast<PVOID>(mesh_create)},
-    {"d3dx9_37.dll","D3DXCleanMesh",reinterpret_cast<PVOID>(mesh_clean)}
+    {"d3dx9_37.dll","D3DXCleanMesh",reinterpret_cast<PVOID>(mesh_clean)},
+    {"KERNEL32.dll","FindFirstFileA",reinterpret_cast<PVOID>(find_first)},
+    {"KERNEL32.dll","FindNextFileA",reinterpret_cast<PVOID>(find_next)},
+    {"KERNEL32.dll","FindClose",reinterpret_cast<PVOID>(find_close)}
 };
 constexpr unsigned import_count=sizeof hooks/sizeof *hooks;
 static_assert(import_count==static_cast<unsigned>(Operation::MeshPointReps));
@@ -262,6 +268,9 @@ static_assert(std::is_same_v<decltype(&mesh_create),decltype(&D3DXCreateMesh)>);
 static_assert(std::is_same_v<decltype(&mesh_clean),decltype(&D3DXCleanMesh)>);
 static_assert(std::is_same_v<decltype(&cursor_set),decltype(&SetCursor)>);
 static_assert(std::is_same_v<decltype(&cursor_position),decltype(&SetCursorPos)>);
+static_assert(std::is_same_v<decltype(&find_first),decltype(&FindFirstFileA)>);
+static_assert(std::is_same_v<decltype(&find_next),decltype(&FindNextFileA)>);
+static_assert(std::is_same_v<decltype(&find_close),decltype(&FindClose)>);
 template<typename T>T original(Operation op){return reinterpret_cast<T>(hooks[static_cast<unsigned>(op)].original);}
 
 HANDLE WINAPI file_open(LPCSTR name,DWORD access,DWORD share,LPSECURITY_ATTRIBUTES security,DWORD creation,DWORD flags,HANDLE templ) {
@@ -361,6 +370,37 @@ BOOL WINAPI cursor_position(int x,int y) {
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     Span span(Operation::CursorPosition);cpu.before_original();
     BOOL result=original<decltype(&SetCursorPos)>(span.op)(x,y);cpu.after_original();
+    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,!result);return result;
+}
+
+// Directory enumeration of the resource resolver (one FindFirstFileA per lookup,
+// no caching). A miss is the normal outcome of a loose-file probe: an invalid
+// handle with ERROR_FILE_NOT_FOUND or ERROR_NO_MORE_FILES, and FindNextFileA's
+// ERROR_NO_MORE_FILES termination, are ambiguous, not failures. Patterns are
+// never logged; bytes stay zero. LastError is restored exactly as elsewhere.
+HANDLE WINAPI find_first(LPCSTR pattern,LPWIN32_FIND_DATAA data) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    Span span(Operation::FindFirst);cpu.before_original();
+    HANDLE result=original<decltype(&FindFirstFileA)>(span.op)(pattern,data);cpu.after_original();
+    const DWORD error=GetLastError();const auto end=tick();
+    const bool missing=result==INVALID_HANDLE_VALUE&&(error==ERROR_FILE_NOT_FOUND||error==ERROR_NO_MORE_FILES);
+    span.finish(end,error,result==INVALID_HANDLE_VALUE&&!missing,0,false,missing);return result;
+}
+BOOL WINAPI find_next(HANDLE find,LPWIN32_FIND_DATAA data) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    Span span(Operation::FindNext);cpu.before_original();
+    BOOL result=original<decltype(&FindNextFileA)>(span.op)(find,data);cpu.after_original();
+    const DWORD error=GetLastError();const auto end=tick();
+    const bool exhausted=!result&&error==ERROR_NO_MORE_FILES;
+    span.finish(end,error,!result&&!exhausted,0,false,exhausted);return result;
+}
+BOOL WINAPI find_close(HANDLE find) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    Span span(Operation::FindClose);cpu.before_original();
+    BOOL result=original<decltype(&FindClose)>(span.op)(find);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,!result);return result;
 }
 

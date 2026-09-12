@@ -89,6 +89,41 @@ previous rows with no jitter term, and the seam checks that every routed draw
 uploaded `c216 = (1/W, 1/H, 0, 0)`: zero prior jitter, as the
 [integration design](../architecture/temporal-integration.md) requires.
 
+### Lazy RT binding equivalence (`X3M_MOTION_RT_MODE`)
+
+The route's default binds RT1/RT2 and `COLORWRITEENABLE1/2` around every
+routed draw (`perdraw`). The `lazy` experiment keeps them bound across
+consecutive routed draws and restores them before the first application
+call that could observe or depend on them (the list is in
+[telemetry.md](telemetry.md#route-and-boundary-cost)). Two kinds of runs
+prove the modes equivalent:
+
+- the regular script with `X3M_MOTION_RT_MODE=lazy` (`production-lazy-on`,
+  `seam-lazy-on`, `seam-ownership-lazy-on`, `seam-taa-lazy-on`): every
+  fixture check, restoration comparison, colour hash and readback file must
+  equal the per-draw twin's. Here the fixture's state snapshot after each
+  draw is itself a restore point (`GetRenderTarget`), so the DLL's
+  `set_rt` count stays four per routed draw with one `lazy_flushes` per
+  routed draw: equivalence by construction, covering every hook that restores;
+- the **burst** script (`burst` mode of the fixture, `production-burst-*`
+  and `seam-burst-*`): nine frames of `A B | A(flat PS, gate 3) | A B |
+  A(blend, gate 4) | B | application SetRenderTarget(0) (even frames) or
+  depth-only Clear inside the scene (odd frames) | A (gate 2: the selector
+  rejected)` with **no application getter between the routed draws**, scope
+  withheld so every routed draw is sentinel-only on both DLLs. The pre-burst
+  state snapshot (taken with the bindings the last draw leaves) must equal
+  the post-burst snapshot (`RESTORE label=burst differences=0`), and the
+  fixture prints per frame the colour hash, a process-independent `STATE`
+  signature of the snapshot and, seam, the FNV hash of the RT1/RT2
+  readbacks. The runner requires all of them identical between the modes,
+  the DLL's capture-frame readback files (frames 7-8) byte-identical, and
+  the DLL's per-frame `set_rt` to be 20 in per-draw mode (five routed
+  draws x four) and 12 in lazy mode (three bind/flush pairs: the flat draw,
+  the blend draw and the application call each end a run) in frames 0-6;
+  frames 7-8 are capture frames, whose diagnostics restore before every
+  draw, and count 20 in both modes with five flushes. The frame line is
+  logged every frame there (`X3M_MOTION_FRAME_LOG=1`).
+
 Each DLL runs with the route off and on in four environments (`VARIANTS` in
 `run_motion_output.py`), plus one plain run per DLL with the route and the
 jitter on, plus the TAA and bench runs described in
@@ -270,6 +305,11 @@ checkpoint.
 | plain, jitter | production on / seam on | 30 / 90 | 39 / 39 | – / 44,279 | – / 10,348 | – / 27,293 | 48,957 |
 | plain, TAA | production on / seam on | 69 / 150 | 51 / 51 | – / 44,279 | – / 10,348 | – / 27,293 | 48,957 |
 | ownership, TAA | production on / seam on | 69 / 150 | 51 / 51 | – / 44,279 | – / 10,348 | – / 27,293 | 48,957 |
+| plain, lazy RT mode | production on / seam on | 30 / 90 | 39 / 39 | – / 44,284 | – / 10,261 | – / 27,170 | 48,242 |
+| ownership, lazy RT mode | seam on | 90 | 39 | 44,284 | 10,261 | 27,170 | 48,242 |
+| plain, TAA, lazy RT mode | seam on | 150 | 51 | 44,279 | 10,348 | 27,293 | 48,957 |
+| burst, per-draw / lazy | production | 23 / 23 | 18 / 18 | – | – | – | 35,505 |
+| burst, per-draw / lazy | seam | 68 / 68 | 18 / 18 | 31,932 | 0 | 21,447 | 35,505 |
 
 All 39 restoration comparisons in every run report zero differences,
 including the application's `c24–27` after every jittered draw. Every
@@ -304,6 +344,29 @@ readback files (65,536 bytes) containing only ABI values. The final device and
 factory Release return zero in every run, through the wrapper as well, because
 the route drops its owned objects first (`motion_output_release` once per
 enabled run).
+
+Lazy RT mode (2026-09-12, fresh `build/`): the four lazy regular-script
+runs equal their per-draw twins in every colour hash (all 12 frames, the
+pre-boundary hashes of the TAA pair included), every readback file of
+frames 1-8 (16 files per pair, byte-identical), checks, restorations,
+motion/matched/RT2 pixel counts; their frame lines report `set_rt` = 4 x
+routed and `lazy_flushes` = routed (each fixture snapshot restores). The
+burst runs: both DLLs, both modes, 9 frames each, `RESTORE label=burst
+differences=0` in every frame, identical colour hashes, `STATE` signatures
+and (seam) RT1/RT2 hashes between the modes, identical `motion_1_7/8` and
+`depth_1_7/8` files, per-frame counters `draws=9 routed=5 gate2=2 gate3=1
+gate4=1 gate5=5 selector_state=9`, no apply/restore failure, and the DLL's
+route-issued `SetRenderTarget` count per frame **20 in per-draw mode
+against 12 in lazy mode** in frames 0-6 (three flushes per frame: before
+the flat-PS draw, before the blend draw and before the application
+`SetRenderTarget`/`Clear`), 20 with five flushes in the capture frames 7-8.
+The seam oracle still matches on 31,932 pixels (21,447 with RT2 depth, all
+sentinel in RT1 since scope is withheld). Per-frame cost fields of the
+64x64 runs (CPU QPC on the Preview backend, indicative only):
+`route_draw_us` 20-30 for five routed draws per-draw against 8-13 lazy,
+`set_rt_us` 9-17 against 4-11 plus `lazy_flush_us` 5-10, `fill_us` 20-60,
+`gate_us` 5-15, and 1.6-2.8 ms of `readback_us` in a capture frame (two
+64x64 files), which is why capture frames are classed separately.
 
 Wrapper witnesses: one `ownership_factory mode=wrapped` per wrapper run and no
 fallback; depth mode storage `available=1 source_bound=1 copy_valid=0` with
@@ -352,6 +415,54 @@ enabled runs: `motion-output-<case>-capture.log`; host unit summary:
 
 ## Gameplay diagnostic run
 
+### A/B cost runs (route and boundary telemetry)
+
+The iteration-7 run measured 38.5 ms per scene frame with TAA against
+16.1 ms with the route alone, with no metric covering the boundary or the
+route's own calls ([iteration-07.md](iteration-07.md), Timing). The proxy
+now reports both ([telemetry.md](telemetry.md#route-and-boundary-cost)).
+To attribute the difference, three runs of the **same save, same view,
+same sequence** (load, stand still for ten seconds, turn for ten seconds,
+fly forward for ten seconds, quit), each with `--telemetry`, no capture
+key pressed until the sequence is over (readbacks are excluded from
+ordinary frames but a captured frame is still a hitch):
+
+1. TAA on: `python3 tools/manage.py launch --direct --ownership --object-trace
+   --object-lifetime --motion-output --taa --telemetry --capture-start 999999
+   --capture-frames 4`
+2. Motion on, TAA off: the same command without `--taa` (the route, RT1/RT2,
+   the fill, the jitter off).
+3. Proxy with the route off: `python3 tools/manage.py launch --direct
+   --ownership --telemetry --capture-start 999999 --capture-frames 4`
+   (hooks and the ownership wrapper only).
+
+Optionally a fourth run repeats 1 with `--motion-rt-mode lazy`. For each
+session log run `python3 tools/analysis/summarize_telemetry.py <session.log>
+--output <summary.json>`; it prints the route/boundary table. Compare:
+
+- `frame_normal` per-window mean/minimum between the runs (the regression
+  itself; contains application work and pacing);
+- run 1 against run 2: `taa_run` count/mean/max and its phases
+  `taa_state_capture`, `taa_copy_color`, `taa_copy_depth`,
+  `taa_resolve_draw`, `taa_state_apply`, then `taa_copy_back`, and the
+  per-frame `taa_run_us` means of the `normal` class (capture frames are
+  listed separately). If the sum is a small fraction of the per-frame
+  difference, the CPU-side boundary is not the cause and the remainder is
+  GPU time or backend stalls elsewhere (`stretch_backend` of the
+  application's own bloom copy shows whether the backend now blocks in
+  the application's `StretchRect` right after the resolve);
+- run 2 against run 3: `route_gate`, `route_draw`, `route_set_rt`,
+  `route_jitter`, `route_fill` totals per second and the per-frame
+  `gate_us + route_draw_us + jitter_us + fill_us`, against the frame
+  difference; `draw_backend` mean between the runs (a routed draw's own
+  backend cost);
+- run 4 against run 1: `set_rt` and `route_draw_us` per frame (the lazy
+  mode's saving) against the per-frame difference.
+
+All spans are CPU-inclusive wall clock; a phase that shows up large is
+where the render thread waited, not proof of GPU cost, and a phase that
+is small does not exclude GPU cost of the same work.
+
 Two user-managed runs are defined: the diagnostic run below (route, no
 resolve) and the TAA run, which is the same command plus `--taa` (and
 `--taa-debug` for the offline comparison):
@@ -390,11 +501,25 @@ python3 tools/manage.py install
 python3 tools/manage.py launch --direct --ownership --object-trace --object-lifetime --motion-output --telemetry --capture-start 999999 --capture-frames 4
 ```
 
+Loading profile run (added 2026-09-12): the same install, then the loading
+diagnostics with the in-process sampling profiler
+([sampling-profiler.md](sampling-profiler.md)) and the verified adjacency
+cache (`--mesh-cache` requires `--telemetry`); the route is not needed to
+profile the menu, save-game and sector loads:
+
+```sh
+python3 tools/manage.py launch --direct --telemetry --profile --mesh-cache
+```
+
+`--profile-interval-us` (default 2000) sets the sampling interval; the
+profiler writes `profile_*` reports into the same session log, on the same
+QPC clock as `loading_metric`.
+
 `launch --dry-run` with the same options validates them and prints the command
 and `X3M_*` environment without starting the game; verified against a scratch
 game directory: `X3M_OWNERSHIP=1 X3M_OBJECT_TRACE=1 X3M_OBJECT_LIFETIME=1
 X3M_MOTION_OUTPUT=1 X3M_TELEMETRY=1 X3M_CAPTURE_START=999999
-X3M_CAPTURE_FRAMES=4`, depth copy, scene depth, finite positions, mesh cache
+X3M_CAPTURE_FRAMES=4 X3M_MOTION_RT_MODE=perdraw`, depth copy, scene depth, finite positions, mesh cache
 and motion capture `0`, `d3d9=n,b` for this child only. The launcher does not
 set `X3M_ADMISSION`; it is inherited from the shell, and the fixture covers the
 route with it on and off.

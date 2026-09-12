@@ -25,11 +25,27 @@ SAMPLE camera one pixel xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.0000000
 CHECK prepare constants PASS
 SAMPLE perspective previous depth xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
-SAMPLE mixed depth footprint xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+SAMPLE mixed depth footprint rejects the disocclusion xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+SAMPLE mixed depth footprint accepted at the surface depth xy=8,8 actual=0.56640625,0.56640625,0.56640625,1.00000000 expected=0.56640625 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
 SAMPLE outside bounds xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
 SAMPLE behind camera xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE history behind the surface accepted xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE sentinel history tap accepted xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+SAMPLE current sentinel pixel current-only xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE sentinel pixel reprojected at the far plane accumulates xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+SAMPLE sentinel pixel rejects history in front of the far plane xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE variance clip tighter than the neighborhood extremes xy=8,8 actual=0.43896484,0.43896484,0.43896484,1.00000000 expected=0.43900001 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE Catmull-Rom half-texel history xy=8,8 actual=0.46093750,0.46093750,0.46093750,1.00000000 expected=0.46093750 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE closest-depth dilation applies the nearer neighbor's velocity xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+SAMPLE equal depths keep the pixel's own correspondence xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
 SAMPLE object motion xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
 SAMPLE full precision object expected depth xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
@@ -111,11 +127,27 @@ SAMPLE camera one pixel xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.0000000
 CHECK prepare constants PASS
 SAMPLE perspective previous depth xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
-SAMPLE mixed depth footprint xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+SAMPLE mixed depth footprint rejects the disocclusion xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+SAMPLE mixed depth footprint accepted at the surface depth xy=8,8 actual=0.56640625,0.56640625,0.56640625,1.00000000 expected=0.56640625 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
 SAMPLE outside bounds xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
 SAMPLE behind camera xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE history behind the surface accepted xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE sentinel history tap accepted xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+SAMPLE current sentinel pixel current-only xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE sentinel pixel reprojected at the far plane accumulates xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
+SAMPLE sentinel pixel rejects history in front of the far plane xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE variance clip tighter than the neighborhood extremes xy=8,8 actual=0.43896484,0.43896484,0.43896484,1.00000000 expected=0.43900001 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE Catmull-Rom half-texel history xy=8,8 actual=0.46093750,0.46093750,0.46093750,1.00000000 expected=0.46093750 tolerance=0.00200000 PASS
+CHECK prepare constants PASS
+SAMPLE closest-depth dilation applies the nearer neighbor's velocity xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+SAMPLE equal depths keep the pixel's own correspondence xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
 SAMPLE object motion xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
 SAMPLE full precision object expected depth xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
@@ -172,4 +204,4 @@ SAMPLE epoch reset xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 exp
 CHECK resize invalidates PASS
 CHECK device reset invalidates PASS
 CHECK invalid CPU weight rejected PASS
-RESULT PASS samples=58 generations=2
+RESULT PASS samples=78 generations=2

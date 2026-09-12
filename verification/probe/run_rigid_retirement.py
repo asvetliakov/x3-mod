@@ -6,6 +6,9 @@ import json
 import os
 import re
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / 'verification/results'
@@ -53,8 +56,7 @@ def main():
               'cpu_baseline': 'SSE2; stack realignment; four-byte incoming Win32 stack'}
     summary_path.write_text(json.dumps(report, indent=2) + '\n')
     try:
-        active = subprocess.run(['pgrep', '-ifl', '[X]3AP[.]exe'], capture_output=True, text=True)
-        assert active.returncode == 1 and not active.stdout.strip(), 'Game running'
+        assert not game_running(), 'Game running'
         report['sources_before_build'] = sources()
         subprocess.run(['sh', str(ROOT / 'verification/probe/build_rigid_retirement.sh')], cwd=ROOT, check=True)
         report['sources_after_build'] = sources()
@@ -64,8 +66,7 @@ def main():
         report['wine_sha256'] = sha(Path(wine))
         command = [wine, '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=b', str(EXE)]
         report['command'] = command
-        active = subprocess.run(['pgrep', '-ifl', '[X]3AP[.]exe'], capture_output=True, text=True)
-        assert active.returncode == 1 and not active.stdout.strip(), 'Game running'
+        assert not game_running(), 'Game running'
         with report_path.open('w') as out, (RESULTS / 'rigid-retirement-wine.log').open('w') as err:
             run = subprocess.run(command, stdout=out, stderr=err, timeout=60,
                                  env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'))

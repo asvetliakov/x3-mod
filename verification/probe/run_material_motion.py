@@ -14,6 +14,9 @@ import re
 import shutil
 import statistics
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / 'verification/results'
@@ -264,8 +267,7 @@ def validate_report(text):
                 row_depth_cases=row_totals['depth_cases'],row_results=row_results)
 
 def no_game():
-    p = subprocess.run(['pgrep','-ifl','[X]3AP[.]exe'],capture_output=True,text=True)
-    assert p.returncode==1 and not p.stdout.strip(), 'X3AP running; no synthetic GPU run'
+    assert not game_running(), 'X3AP running; no synthetic GPU run'
 
 def main():
     result_path=RESULTS/'material-motion-summary.json'

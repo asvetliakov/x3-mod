@@ -24,6 +24,7 @@
 #include "../renderer/motion_history.h"
 #include "../renderer/motion_row_history.h"
 namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
+namespace x3m::telemetry { struct State; }
 namespace x3m {
 // Distinct clip-row constant windows the profile table names (c24-27 for the
 // point-light programs, c0-3 for the light-free variants). The route's shadow
@@ -56,6 +57,7 @@ struct MotionRoute {
     renderer::RigidDrawKey key{};
     std::uint64_t rows_hash = 0;
     std::uint64_t load_epoch = 0, registry_epoch = 0;
+    std::uint64_t ticks = 0;  // CPU ticks of apply (before_draw) plus undo (after_draw); telemetry only.
 };
 // Why the temporal resolve did not run at this frame's bloom copy (X3M_TAA=1).
 // None: it ran (see taa_result/taa_copy). NotReached: the selector never
@@ -90,6 +92,17 @@ struct MotionFrameCounters {
     std::uint32_t displacement_samples = 0, keyed = 0, missing = 0;
     float cut_median_px = 0, cut_missing_fraction = 0, cut_median_bound_px = 0, cut_missing_bound = 0;
     MotionTaaCounters taa;
+    // Per-frame cost totals (docs/verification/telemetry.md, "Route and
+    // boundary cost"). Counts are always kept; tick totals are CPU-side QPC
+    // wall clock taken only with X3M_TELEMETRY=1 (zero otherwise), never GPU
+    // time. set_rt counts every route-issued SetRenderTarget of the per-draw
+    // apply/undo path and the lazy flush (the fill's and the resolve's own
+    // SetRenderTarget calls are inside fill_ticks and the taa phases instead).
+    std::uint32_t set_rt = 0, jitter_writes = 0, lazy_flushes = 0, readbacks = 0;
+    std::uint64_t gate_ticks = 0, route_draw_ticks = 0, set_rt_ticks = 0, jitter_ticks = 0, fill_ticks = 0;
+    std::uint64_t lazy_flush_ticks = 0, readback_ticks = 0;
+    std::uint64_t taa_run_ticks = 0, taa_capture_ticks = 0, taa_copy_color_ticks = 0, taa_copy_depth_ticks = 0;
+    std::uint64_t taa_draw_ticks = 0, taa_apply_ticks = 0, taa_copy_back_ticks = 0;
 };
 // Halton(2,3) sample i (1-based) centred on zero, in raster pixels.
 float motion_jitter_sample(unsigned index, unsigned axis) noexcept;
@@ -120,8 +133,10 @@ public:
 
     // Lifecycle. attach runs the capability gate and the one-time mixed-format
     // MRT self test; on failure the route stays disabled for this device.
+    // `stats` (may be null) receives the route's CPU telemetry metrics
+    // (telemetry::Metric::Route*/Taa*) when telemetry is enabled.
     void attach(IDirect3DDevice9* device, void** native, std::uint64_t device_id,
-                const D3DCAPS9& caps, bool requested) noexcept;
+                const D3DCAPS9& caps, bool requested, telemetry::State* stats = nullptr) noexcept;
     bool enabled() const noexcept { return enabled_; }
     // RT2 (R32F current depth) is produced on this device: three simultaneous
     // targets, R32F render-target support and the three-format self test.
@@ -137,6 +152,20 @@ public:
     // 8-bit color in capture frames (X3M_TAA_DEBUG). Effective at attach.
     void configure_taa(bool requested, bool debug) noexcept;
     bool taa_enabled() const noexcept { return taa_enabled_; }
+    // RT1/RT2 binding policy (X3M_MOTION_RT_MODE). perdraw (default): each
+    // routed draw binds RT1/RT2 and COLORWRITEENABLE1/2 and after_draw puts
+    // the application's values back. lazy (experiment): the bindings stay
+    // across consecutive routed draws and restore_bindings() puts them back
+    // before any application call that could observe or depend on them
+    // (capture.cpp calls it from those hooks; before_draw calls it for every
+    // draw that does not route). Effective at attach; equivalence is proven
+    // by the motion-output fixture's burst cases.
+    void configure_rt_mode(bool lazy) noexcept { lazy_mode_ = lazy; }
+    bool lazy_rt_mode() const noexcept { return lazy_mode_; }
+    void restore_bindings() noexcept;
+    // Cadence of the periodic motion_output_frame line with telemetry on
+    // (every `frames` frames; default 60; capture frames always log).
+    void configure_frame_log(unsigned frames) noexcept { frame_log_interval_ = frames ? frames : 60u; }
     // Device references held by owned objects (variants, sentinel shader,
     // motion target surface), one per object in every reference model the
     // route runs under (native D3D9 and the ownership wrapper; see
@@ -256,6 +285,15 @@ private:
     HRESULT readback_surface(IDirect3DSurface9* surface, D3DFORMAT format, unsigned bytes_per_pixel,
                              const wchar_t* prefix, const wchar_t* extension, const char* tag, const char* format_name) noexcept;
     void apply_jitter(MotionRoute& route) noexcept;
+    void restore_jitter(MotionRoute& route) noexcept;
+    void evaluate_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
+    // Timed wrappers over the native SetRenderTarget/COLORWRITEENABLE calls of
+    // the per-draw path and the lazy flush; each counts into counters_.set_rt.
+    HRESULT bind_target(DWORD index, IDirect3DSurface9* surface) noexcept;
+    HRESULT bind_targets(MotionRoute& route) noexcept;
+    // CPU tick stamp (0 without telemetry) and metric recording into stats_.
+    std::uint64_t stamp() const noexcept;
+    void record(unsigned metric, std::uint64_t ticks, bool failed = false, std::uint64_t bytes = 0) noexcept;
     void finish_cut_detector() noexcept;
     bool ensure_taa() noexcept;
     HRESULT resolve(IDirect3DSurface9* main_surface) noexcept;
@@ -322,6 +360,13 @@ private:
     renderer::MotionRowHistory history_{0};
     MotionFrameCounters counters_{};
     unsigned logged_failures_ = 0;
+    // Telemetry sink (capture.cpp's per-device State) and frame-line cadence.
+    telemetry::State* stats_ = nullptr;
+    unsigned frame_log_interval_ = 60;
+    // Lazy binding state: RT1 (and RT2) bound by the route with the
+    // application's COLORWRITEENABLE1/2 values saved at bind time.
+    bool lazy_mode_ = false, lazy_rt1_ = false, lazy_rt2_ = false;
+    DWORD lazy_write1_ = 15, lazy_write2_ = 15;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     MotionOutputFixtureConfig fixture_{};
     bool fixture_configured_ = false, fixture_abi_known_ = false;

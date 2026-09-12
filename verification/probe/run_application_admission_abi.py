@@ -7,6 +7,9 @@ from pathlib import Path
 import re
 import statistics
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'verification/results'
@@ -63,8 +66,7 @@ def parse(data):
 
 
 def no_game():
-    run = subprocess.run(['pgrep', '-ifl', '[X]3AP[.]exe'], capture_output=True, text=True, timeout=10)
-    if run.returncode != 1 or run.stdout.strip():
+    if game_running():
         raise RuntimeError('game running or inventory failed; postpone CPU fixture')
 
 

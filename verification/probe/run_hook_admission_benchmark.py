@@ -11,6 +11,9 @@ import re
 import shutil
 import statistics
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / 'verification/results'
 BUILD = ROOT / 'verification/probe/build'
@@ -35,9 +38,9 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 def no_game():
-    p = subprocess.run(['pgrep', '-ifl', '[X]3AP[.]exe'], capture_output=True, text=True)
-    if p.returncode != 1 or p.stdout.strip():
-        raise RuntimeError('Game active or inventory failed: ' + p.stdout + p.stderr)
+    p = game_running()
+    if p:
+        raise RuntimeError('Game active or inventory failed: ' + '\n'.join(p))
 
 def source_hashes(paths):
     return {name: sha(ROOT / name) for name in paths}

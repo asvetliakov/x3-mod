@@ -213,6 +213,9 @@ HRESULT TemporalPass::ensure_block() noexcept {
 HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(out)*out={};
     diagnostics_.operation=diagnostics_.restoration=S_OK;
+    // Phase timing (Diagnostics::ticks_*): QPC pairs only, no device call changes.
+    diagnostics_.timed=timing_;
+    diagnostics_.ticks_capture=diagnostics_.ticks_copy_color=diagnostics_.ticks_copy_depth=diagnostics_.ticks_draw=diagnostics_.ticks_apply=0;
     auto fail=[&](HRESULT hr){invalidate();diagnostics_.operation=hr;return hr;};
     const bool sentinel=in.reactive_policy==ReactivePolicy::DerivedFromDepthSentinel;
     if(!out||!device_||!resolve_||diagnostics_.reset_pending||!in.width||!in.height||in.caller_stateblock_recording||!in.caller_queries_idle||
@@ -240,24 +243,35 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     x3::temporal::ResolveConstants constants{};std::copy(in.rejection,in.rejection+4,constants.rejection);
     if(!x3::temporal::prepare(constants,history_,in.clip_to_previous,in.current_jitter[0],in.current_jitter[1],
         in.previous_jitter[0],in.previous_jitter[1],in.weight,in.motion_policy==MotionPolicy::PerPixel,
-        in.reactive_policy==ReactivePolicy::RequiredMask,sentinel))return fail(E_INVALIDARG);
+        in.reactive_policy==ReactivePolicy::RequiredMask,sentinel,sentinel&&in.sentinel_camera))return fail(E_INVALIDARG);
     const bool used=history_.valid&&in.weight>0;
-    SavedState saved(*this,block_,render_targets_);hr=saved.capture();if(FAILED(hr))return fail(hr);
+    auto stamp=[&]()->std::uint64_t{if(!timing_)return 0;LARGE_INTEGER t{};QueryPerformanceCounter(&t);return std::uint64_t(t.QuadPart);};
+    std::uint64_t mark=stamp();
+    SavedState saved(*this,block_,render_targets_);hr=saved.capture();
+    diagnostics_.ticks_capture=stamp()-mark;
+    if(FAILED(hr))return fail(hr);
     const UINT next=current_^1;
     bool own_scene=false;
+    mark=stamp();
     hr=normalize(in.width,in.height);
+    diagnostics_.ticks_draw=stamp()-mark;
     auto step=[&](HRESULT value){hr=value;return SUCCEEDED(hr);};
     D d=device_;
     // Copies touch no device state; they run after normalize so the scratch and
     // the next depth history are bound nowhere. StretchRect is legal inside or
     // outside a scene. No sRGB flag is set on any sampler or target, so the
     // 8-bit copy is a plain UNORM-to-FP16 conversion of the linear-encoded data.
+    mark=stamp();
     if(SUCCEEDED(hr)&&in.color_surface&&step(ensure_scratch()))hr=call<StretchFn>(StretchRect)(d,in.color_surface,nullptr,scratch_surface_,nullptr,D3DTEXF_POINT);
+    diagnostics_.ticks_copy_color=stamp()-mark;
+    mark=stamp();
     if(SUCCEEDED(hr)&&in.current_depth){
         IDirect3DSurface9* source=nullptr;
         if(step(in.current_depth->GetSurfaceLevel(0,&source)))hr=call<StretchFn>(StretchRect)(d,source,nullptr,depth_surfaces_[next],nullptr,D3DTEXF_POINT);
         drop(source);
     }
+    diagnostics_.ticks_copy_depth=stamp()-mark;
+    mark=stamp();
     if(SUCCEEDED(hr)&&!in.caller_scene_open){hr=call<SceneFn>(BeginScene)(d);own_scene=SUCCEEDED(hr);}
     if(SUCCEEDED(hr)&&in.depth_snapshot&&step(call<SetRtFn>(SetRenderTarget)(d,0,depth_surfaces_[next]))&&
         step(call<SetPsFn>(SetPixelShader)(d,decoder_))&&step(call<SetTextureFn>(SetTexture)(d,0,in.depth_snapshot)))hr=quad(in.width,in.height);
@@ -275,10 +289,13 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
            step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,7,constants.options,1)))hr=quad(in.width,in.height);
     }
     if(own_scene&&!lost(hr)){const HRESULT end=call<SceneFn>(EndScene)(d);if(SUCCEEDED(hr)||lost(end))hr=end;}
+    diagnostics_.ticks_draw+=stamp()-mark;
     diagnostics_.operation=hr;
     // Once loss is observed, ordinary state setters are not valid recovery. A
     // failed pass never publishes any member of a newly written history set.
+    mark=stamp();
     diagnostics_.restoration=lost(hr)?hr:saved.restore();
+    diagnostics_.ticks_apply=stamp()-mark;
     if(FAILED(hr)||FAILED(diagnostics_.restoration)){
         invalidate();return FAILED(diagnostics_.restoration)?diagnostics_.restoration:hr;
     }

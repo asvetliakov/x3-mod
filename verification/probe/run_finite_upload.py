@@ -7,6 +7,9 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 FILES = [
@@ -42,9 +45,9 @@ def main():
         summary.write_text(json.dumps(meta, indent=2) + '\n')
     save()
     try:
-        processes = subprocess.run(['pgrep', '-ifl', 'X3AP.exe'], capture_output=True, text=True)
-        if processes.returncode not in (0, 1) or processes.stdout.strip():
-            raise RuntimeError('Game process present or process inventory failed: ' + processes.stdout)
+        processes = game_running()
+        if processes:
+            raise RuntimeError('Game process present or process inventory failed: ' + '\n'.join(processes))
         before = hashes()
         meta['source_hashes_before_build'] = before
         save()

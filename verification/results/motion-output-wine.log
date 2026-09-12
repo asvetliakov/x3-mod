@@ -24,3 +24,11 @@
 ==== bench-1280x768-taa-on
 ==== bench-5120x1440-taa-off
 ==== bench-5120x1440-taa-on
+==== production-lazy-on
+==== seam-lazy-on
+==== seam-ownership-lazy-on
+==== seam-taa-lazy-on
+==== production-burst-perdraw
+==== production-burst-lazy
+==== seam-burst-perdraw
+==== seam-burst-lazy

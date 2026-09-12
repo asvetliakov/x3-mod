@@ -5,6 +5,9 @@ import json
 from pathlib import Path
 import subprocess
 import time
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / 'verification/results'
@@ -25,8 +28,7 @@ def hashes():
 
 
 def no_game():
-    result = subprocess.run(['pgrep', '-ifl', '[X]3AP[.]exe'], capture_output=True, text=True, timeout=10)
-    if result.returncode != 1 or result.stdout.strip():
+    if game_running():
         raise RuntimeError('X3AP running or process inventory unavailable; postpone native fixture')
 
 

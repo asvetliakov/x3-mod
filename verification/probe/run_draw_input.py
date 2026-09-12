@@ -7,6 +7,9 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 DLL = Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll'
@@ -71,9 +74,9 @@ def main():
                    '--workdir', str(EXE.parent), str(EXE), r'C:\X3\d3dx9_37.dll', 'Z:' + str(ARCHIVE)]
         meta.update(fresh_build=True, phase='running', command=command)
         save()
-        active = subprocess.run(['pgrep', '-ifl', '[X]3AP[.]exe'], capture_output=True, text=True)
-        if active.returncode != 1 or active.stdout.strip():
-            raise RuntimeError('Game present or process inventory failed; postpone native verification: ' + active.stdout)
+        active = game_running()
+        if active:
+            raise RuntimeError('Game present or process inventory failed; postpone native verification: ' + '\n'.join(active))
         meta['no_game_before_run'] = True
         report = results / 'draw-input.txt'
         wine = results / 'draw-input-wine.log'

@@ -13,7 +13,94 @@ Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
 
-## Latest checkpoint: live same-draw motion route (source, not installed)
+## Latest checkpoint: TAA tremble fixed, resolve quality pass, loading attribution (2026-09-12)
+
+Evidence at this checkpoint (details in the linked documents):
+
+- **TAA rerun ([iteration 8](verification/iteration-08.md))** with the corrected
+  history convention: all six stationary frame pairs are `stable` (iteration 7:
+  all tracked the jitter); the resolved image moves 0.14–0.31× the raw colour
+  shift, and 0.05–0.11 px on a fully routed tile, i.e. at the (1−w) bound.
+  Blur improved from 0.56 to 0.64–0.75 gradient-energy ratio. Remaining flicker
+  sits in routed silhouette edges (share 0.78–0.89 of the residual variance)
+  and thin features; routed interiors are filtered 133–151×. **Frame time is
+  unchanged by TAA**: same-build run B (route on, TAA off) matches run A at
+  29.9 vs 29.9 ms and 63.9 vs 64.0 ms per regime; the iteration-7 "2.6×
+  regression" was regime occupancy, and is retracted. Attributable cost is
+  about 70 µs per frame at 1280×768.
+- **Resolve quality pass** ([design](architecture/temporal-integration.md)
+  "Resolve quality", [verification](verification/temporal-resolve.md)):
+  neighbourhood variance clip (mean ± 1.25σ ∩ min/max box) replaces the hard
+  depth equality; the depth test is a one-sided disocclusion test with
+  NaN-safe comparisons; closest-depth 3×3 dilation; 16-tap Catmull-Rom
+  history; sentinel policy `c7.w` (1 current-only, 2 camera far-plane path,
+  wired but off until the route supplies the camera transform). Fixture:
+  silhouette ring variance reduced 178× with zero ghosting, thin-line drift
+  ≤ 0.007 px and wobble ≤ 0.072 px, scrolling-sinusoid amplitude ratio 0.930
+  (bilinear model 0.712). Program 1,695 → 3,794 words with no boundary-cost
+  regression (resolve 0.32 ms at 1280×768, 1.62 ms at 5120×1440).
+- **Route cost telemetry and lazy MRT binding**
+  ([telemetry](verification/telemetry.md) "Route and boundary cost",
+  [motion output](verification/motion-output.md)): per-frame CPU-inclusive
+  metrics for gate, apply/undo, render-target sets, jitter writes, fills, the
+  five resolve phases, copy-back and readbacks (ticks only under
+  `X3M_TELEMETRY=1`); `X3M_MOTION_RT_MODE=lazy` keeps RT1/RT2 bound across
+  routed draws and restores before every other device operation, with
+  identical colour/motion/depth hashes in all fixture modes and 20 → 12
+  render-target sets per fixture frame. Default stays `perdraw`.
+- **Loading attribution ([iteration-8 loading](reverse-engineering/iteration08-loading.md))**:
+  menu load 30.1 s (8.4 s instrumented, **21.7 s unexplained**), save load
+  106.7 s (33.3 s instrumented, **73.4 s unexplained**); the two same-build
+  runs agree on the unexplained remainder within 0.4 s, so it is deterministic
+  engine CPU work, not I/O variance. The menu scene is reloaded from scratch on
+  every return (1,017 adjacency calls, 298 MB re-submitted). The mesh
+  adjacency cache was `enabled=0` in both runs (bounded upside 14.5 s per run).
+  The savegame is read through 13.9 M `gzread` calls of 3 bytes each.
+- **Loading orchestration ([disassembly](reverse-engineering/loading-orchestration.md))**:
+  the resource resolver runs an uninstrumented `FindFirstFileA` directory
+  enumeration per lookup with no negative or positive cache (at most one
+  `CreateFileA` per resource; CAT lookup is a `bsearch`); the script VM at
+  `0x004ab880` touches no hooked API; mesh adjacency is a pure temporary
+  (`CleanMesh` + `OptimizeInplace` only, remaps unused); the type-table pass
+  reruns on every new game/save load; no sleeps or CRC passes on the load path.
+  The loading tracer now hooks `FindFirstFileA`/`FindNextFileA`/`FindClose`
+  (19 boundaries, fixture 85/85).
+- **In-process sampling profiler** ([verification](verification/sampling-profiler.md)),
+  `X3M_PROFILE=1` / `tools/manage.py launch --profile`: a sampler thread
+  suspends each game thread at 2 ms intervals, records EIP, the EBP chain and a
+  conservative return-address scan, and reports per-thread module splits, top
+  leaf RVAs, top main-executable frames and caller pairs every 5 s on the same
+  QPC clock as the loading metrics. Fixture: 100% attribution for framed,
+  frame-pointer-omitted and waiting threads, no deadlock under concurrent heap
+  and file use, overhead within 1.5% (tick cost ≈150 µs per thread under
+  Wine). `tools/analysis/summarize_profile.py` and `X3ProfileSymbols.java`
+  map windows to functions. Not yet run in the game.
+- **Architecture reassessment ([assessment](architecture/assessment-2026-09-12.md))**:
+  keep the proxy architecture; add a `SetRenderState` shadow, an engine
+  frame-routine boundary hook (the scene-end callsite `0x004721b1` is not
+  glow-gated, so hooking it frees TAA from the bloom option), live camera
+  globals, and enable the adjacency cache.
+- **Camera state ([disassembly](reverse-engineering/camera-state-and-frame-routine.md))**:
+  `*0x00608a38` projection, `*0x00608a40` view (row-vector, left-handed, same
+  context scale as world matrices), final at the per-view Clear the proxy
+  already hooks; projection uses `zn = 6`, `zf = 2,000,000`, half-FOV from a
+  binary angle; `m22/m32` are rewritten before every material draw and must not
+  be sampled at draws. The second scene is a six-face environment-map render
+  that must be excluded from motion history. `DrawIndexedPrimitive` has no
+  direct engine callsite, so return-address bucketing cannot label the main
+  pass.
+- [Review 18](verification/review-18.md) (NaN fail-open sentinel test fixed,
+  shared game-running guard that ignores Ghidra jobs, doc/manifest fixes) and
+  [review 19](verification/review-19.md) (profiler). Suites: motion output 34
+  runs, ownership 26, fallback, temporal pass 318/164, temporal 78/78, scene
+  capture 4,908 checks, no-x87, 503 analysis tests.
+
+Next (in order): camera reprojection for sentinel pixels from the live camera
+globals (policy 2), the env-map exclusion, then the user runs: TAA on with
+`--profile --mesh-cache` for loading attribution and quality, and a proxy run
+with the route off for the cost baseline.
+
+## Checkpoint: live same-draw motion route (2026-09-12, superseded by the section above)
 
 The proxy can now, behind the off-by-default `X3M_MOTION_OUTPUT=1` switch,
 substitute the reviewed Argon SM3 pair with its motion variant during the main
@@ -143,7 +230,7 @@ passes `--motion-output`; see the run command in
 [motion output](verification/motion-output.md). The installed build predates the
 archive-wide table and the selector correction.
 
-## Session handoff (2026-09-12, before orchestrator compaction)
+## Session handoff (2026-09-12, before orchestrator compaction; completed, kept for provenance)
 
 Committed state: `398f00e` on `main`. Installed DLL: commit `162b2f7` build,
 SHA256 `200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9`
@@ -187,22 +274,23 @@ recover projection) so background and effects stop crawling when turning.
 
 ## Concrete next work
 
-1. First visual TAA gameplay run with `--taa --taa-debug` and a route-off
-   comparison of the same scene; analyze readbacks with per-frame jitter,
-   resolved-image sanity and frame time; tune history weight and cut bounds.
-2. User-managed diagnostic run with the installed route (command in
-   [motion output](verification/motion-output.md), "Gameplay diagnostic run"):
-   capture runs of at least three consecutive frames including one stationary
-   view, then run the readback analyzer, compare color against a route-off
-   capture of the same scene, and read the per-frame gate histogram for
-   unclassified shader pairs and frame time.
-3. Add projection jitter in the same hook and connect matched color/depth/motion
-   to the temporal resolve; define the camera-cut policy from the observed
-   camera-serial and view-delta evidence.
-4. Establish the FP16 scene path and enable only reviewed material variants
-   there; integrate a GPU-native HDR presentation route. Continue the remaining
-   roadmap features.
-5. Loading-time gap and alt-tab cursor remain tracked and unfixed.
+1. Camera reprojection for sentinel pixels: read the projection and view
+   globals at the per-view Clear, build `clip_to_previous`, enable sentinel
+   policy 2, exclude the environment-map render from history; verify against
+   the c34–36 constant rows in capture frames.
+2. User runs with the next installed build: TAA on with
+   `--telemetry --profile --mesh-cache` (loading attribution, adjacency-cache
+   hit rate, edge/thin-feature quality), then the same scene with
+   `launch --direct --telemetry` only (route-cost baseline).
+3. From the profile: attribute the unexplained loading seconds to engine
+   functions with `X3ProfileSymbols.java`, then choose between the negative
+   lookup cache, adjacency replacement, catalogue handle retention and engine
+   patches per [loading orchestration](reverse-engineering/loading-orchestration.md).
+4. Engine boundary hooks from the [assessment](architecture/assessment-2026-09-12.md):
+   `SetRenderState` shadow, frame-routine scene-end hook, pass field in the
+   history key.
+5. Establish the FP16 scene path and HDR presentation; continue the roadmap.
+6. Loading-time gap and alt-tab cursor remain tracked.
 
 ## Replay/admission line (reference only, superseded 2026-09-12)
 

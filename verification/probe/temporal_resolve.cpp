@@ -96,8 +96,8 @@ struct Fixture {
         uploadDepth(depth.p,.5f);uploadDepth(oldDepth.p,.5f);
     }
     ~Fixture(){for(unsigned i=0;i<5;++i)d->SetTexture(i,nullptr);d->SetRenderTarget(0,back.p);d->SetVertexShader(nullptr);d->SetPixelShader(nullptr);d->SetVertexDeclaration(nullptr);}
-    void prepare(float weight=.5f,float cx=0,float cy=0,float px=0,float py=0,bool useMotion=false,const float* matrix=identity){
-        require(x3::temporal::prepare(constants,state,matrix,cx,cy,px,py,weight,useMotion),"prepare constants");}
+    void prepare(float weight=.5f,float cx=0,float cy=0,float px=0,float py=0,bool useMotion=false,const float* matrix=identity,bool sentinelPolicy=false,bool sentinelCamera=false){
+        require(x3::temporal::prepare(constants,state,matrix,cx,cy,px,py,weight,useMotion,false,sentinelPolicy,sentinelCamera),"prepare constants");}
     void upload(IDirect3DTexture9* texture,const Image& input){D3DLOCKED_RECT lock{};
         D3DSURFACE_DESC desc{};check("Input description",texture->GetLevelDesc(0,&desc));
         const bool fullPrecision=desc.Format==D3DFMT_A32B32G32R32F;
@@ -192,13 +192,62 @@ void cases(Fixture& f,unsigned generation){
     perspective[0]=2;perspective[5]=2;perspective[15]=2;perspective[3]=4.f/W;
     f.uploadDepth(f.oldDepth.p,.25f);f.prepare(.5f,0,0,0,0,false,perspective);
     expect("perspective previous depth",f.render(),8,8,.5625f);f.uploadDepth(f.oldDepth.p,.5f);
-    // Reject the far/occluded half of a bilinear footprint BEFORE reconstruction.
+    // Mixed-depth footprint: a half-pixel camera translation (a static camera
+    // always lands on its own texel, the jitter is removed and restored) puts
+    // the lookup between previous x=8 (depth 0.5, at the surface) and x=9
+    // (depth 0.25, in front of the expected 0.5 by more than the 0.01
+    // tolerance): a contributing tap is an occluder that moved away, so the
+    // whole footprint is a disocclusion and is rejected. Before 2026-09-12
+    // this case passed 0.5 px as the PREVIOUS jitter, which the convention
+    // fix stopped reading, so it had silently become a single-tap lookup at
+    // x=8 (0.5).
+    float halfPixel[16];std::memcpy(halfPixel,identity,sizeof(halfPixel));halfPixel[3]=1.f/W;
     old[8*W+8]={.75f,.75f,.75f,1};f.upload(f.old.p,old);
-    f.depthPixel(f.oldDepth.p,9,8,.25f);f.prepare(.5f,0,0,.5f,0);
-    expect("mixed depth footprint",f.render(),8,8,.5f);f.uploadDepth(f.oldDepth.p,.5f);
+    f.depthPixel(f.oldDepth.p,9,8,.25f);f.prepare(.5f,0,0,0,0,false,halfPixel);
+    expect("mixed depth footprint rejects the disocclusion",f.render(),8,8,.25f);
+    // Both taps at the surface depth: Catmull-Rom over previous x=7..10
+    // (0.25, 0.75, 0.875, 0.25) weighted (-1, 9, 9, -1)/16 gives 0.8828125.
+    f.depthPixel(f.oldDepth.p,9,8,.5f);expect("mixed depth footprint accepted at the surface depth",f.render(),8,8,.56640625f);
     old[8*W+8]={.25f,.25f,.25f,1};f.upload(f.old.p,old);
     translate[3]=2;f.prepare(.5f,0,0,0,0,false,translate);expect("outside bounds",f.render(),8,8,.25f);
     std::memcpy(translate,identity,sizeof(translate));translate[15]=-1;f.prepare(.5f,0,0,0,0,false,translate);expect("behind camera",f.render(),8,8,.25f);
+    // Depth is a disocclusion test only. History BEHIND the surface (previous
+    // depth 0.9 against expected 0.5) is the background a silhouette moved
+    // over as the jitter flipped its coverage: accepted and clamped, so edges
+    // and thin features accumulate their supersampled coverage.
+    f.upload(f.old.p,image(.75f));f.uploadDepth(f.oldDepth.p,.9f);f.prepare();expect("history behind the surface accepted",f.render(),8,8,.5f);
+    // A -1 sentinel history tap under the depth-sentinel policy is that
+    // background too (the pixel had no opaque history): accepted, not dropped.
+    f.uploadDepth(f.oldDepth.p,-1.f);f.prepare(.5f,0,0,0,0,false,identity,true);expect("sentinel history tap accepted",f.render(),8,8,.5f);
+    // Current sentinel pixel: policy 1 is current-only; policy 2 reprojects it
+    // through the camera path at the far plane, accumulating over sentinel
+    // history and rejecting a valid history depth in front of the far plane
+    // (an object that moved off the background).
+    f.uploadDepth(f.depth.p,-1.f);expect("current sentinel pixel current-only",f.render(),8,8,.25f);
+    f.prepare(.5f,0,0,0,0,false,identity,true,true);expect("sentinel pixel reprojected at the far plane accumulates",f.render(),8,8,.5f);
+    f.uploadDepth(f.oldDepth.p,.5f);expect("sentinel pixel rejects history in front of the far plane",f.render(),8,8,.25f);
+    f.uploadDepth(f.depth.p,.5f);f.prepare();
+    // Variance clip tighter than the neighborhood extremes: one 1.0 among eight
+    // 0.25 in the current 3x3 gives mean 1/3, sigma 0.2357, upper bound
+    // 1/3 + 1.25 sigma = 0.628; history 1 clamps there, so the blend is
+    // 0.439 where the min/max box alone would allow 0.625.
+    Image outlier=image(.25f);outlier[8*W+9]={1,1,1,1};f.upload(f.current.p,outlier);f.upload(f.old.p,image(1));
+    expect("variance clip tighter than the neighborhood extremes",f.render(),8,8,.439f);
+    // Catmull-Rom history at a half-texel lookup (half-pixel camera
+    // translation): previous x=7..10 hold 0.25, 0.25, 1, 0.25, weighted
+    // (-1, 9, 9, -1)/16 = 0.671875 (bilinear would give 0.625), blended to
+    // 0.4609375.
+    f.upload(f.current.p,checker(.25f,1));Image cubic=image(.25f);cubic[8*W+9]={1,1,1,1};f.upload(f.old.p,cubic);
+    f.prepare(.5f,0,0,0,0,false,halfPixel);expect("Catmull-Rom half-texel history",f.render(),8,8,.4609375f);
+    // Closest-depth dilation: the right neighbor is nearer (0.25 against 0.5)
+    // and its correspondence says it came from x=10 (velocity +1), so this
+    // pixel applies that velocity and reads previous x=9 (0.875) instead of
+    // its own static correspondence (x=8, 0.25). Equal depths keep the
+    // pixel's own correspondence (the center wins ties).
+    f.upload(f.old.p,old);f.depthPixel(f.depth.p,9,8,.25f);
+    Image dilation(W*H,Pixel{0,0,0,0});dilation[8*W+8]={8.5f/W,8.5f/H,.5f,1};dilation[8*W+9]={10.5f/W,8.5f/H,.25f,1};f.upload(f.motion.p,dilation);
+    f.prepare(.5f,0,0,0,0,true);expect("closest-depth dilation applies the nearer neighbor's velocity",f.render(),8,8,.5625f);
+    f.uploadDepth(f.depth.p,.5f);expect("equal depths keep the pixel's own correspondence",f.render(),8,8,.25f);
     // Explicit object motion selects previous x=9, expected depth=.25 despite
     // static camera depth=.5. This checks independent object depth and UV routing.
     f.uploadDepth(f.oldDepth.p,.25f);Image motion(W*H,Pixel{0,0,0,0});motion[8*W+8]={(9.5f)/W,(8.5f)/H,.25f,1};

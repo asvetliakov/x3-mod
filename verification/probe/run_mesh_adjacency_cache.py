@@ -7,6 +7,9 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 ROOT=Path(__file__).resolve().parents[2]
 DLL=Path.home()/'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll'
@@ -24,8 +27,7 @@ def main():
     def save():summary.write_text(json.dumps(meta,indent=2)+'\n')
     save() # Invalidate any previous PASS before reading inputs or invoking the compiler.
     try:
-        processes=subprocess.run(['ps','-axo','pid=,comm='],capture_output=True,text=True,check=True).stdout
-        if any(re.search(r'(^|[\\/])X3AP\.exe(?:\s|$)',line,re.I) for line in processes.splitlines()):raise RuntimeError('X3AP is running')
+        if game_running():raise RuntimeError('X3AP is running')
         meta['source_hashes_before_build']=hashes(False);save()
         subprocess.run(['sh','verification/probe/build_mesh_adjacency_cache.sh'],cwd=ROOT,check=True,timeout=60)
         meta['source_hashes_after_build']=hashes(False)

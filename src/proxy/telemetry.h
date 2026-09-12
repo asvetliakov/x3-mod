@@ -11,7 +11,25 @@ enum class Metric : unsigned {
     DrawBackend, CaptureCpu, Snapshot, ShaderVS, ShaderPS, ShaderInspect,
     ShaderGetFunction, ShaderHash, ShaderDump, Texture, CubeTexture, VolumeTexture,
     RenderTarget, DepthStencil, VertexBuffer, IndexBuffer, Reset, LogFlush,
-    CursorProperties, CursorPosition, CursorShow, Count
+    CursorProperties, CursorPosition, CursorShow,
+    // Live motion route and temporal boundary (docs/verification/telemetry.md,
+    // "Route and boundary cost"). All CPU-inclusive wall clock, never GPU time.
+    StretchBackend,      // the application's own StretchRect backend call
+    RouteGate,           // before_draw gate evaluation per scene draw (fill and apply excluded)
+    RouteDraw,           // apply + undo around one routed draw (native draw and jitter writes excluded)
+    RouteSetRenderTarget,// one route-issued SetRenderTarget (per-draw apply/undo or lazy flush)
+    RouteJitter,         // one jitter constant write (the jittered rows or their restoration)
+    RouteFill,           // the per-frame sentinel fill (save, quad, restore)
+    RouteLazyFlush,      // one lazy-mode restoration of RT1/RT2 and their write masks
+    RouteReadback,       // one capture-frame readback to disk (motion, depth, color or resolved)
+    TaaRun,              // TemporalPass::run inclusive (nests the five below)
+    TaaStateCapture,     // state block Capture plus the binding getters
+    TaaCopyColor,        // 8-bit main target to FP16 scratch StretchRect
+    TaaCopyDepth,        // R32F depth to depth history StretchRect
+    TaaResolveDraw,      // normalize, scene bracket, resolve quad(s)
+    TaaStateApply,       // binding restoration plus state block Apply
+    TaaCopyBack,         // resolved FP16 to the 8-bit main target StretchRect
+    Count
 };
 struct Counter {
     uint64_t count=0, failures=0, total=0, minimum=UINT64_MAX, maximum=0, bytes=0;
@@ -48,6 +66,8 @@ void initialize(void (*flush_log)()=nullptr);
 bool enabled();
 uint64_t now();
 uint64_t frequency();
+// Ticks to microseconds with the QPC frequency; 0 while telemetry is disabled.
+double microseconds(uint64_t ticks);
 void record(State&,Metric,uint64_t ticks,bool failed=false,uint64_t bytes=0);
 State& process();
 void summary(State&,const char* reason,uint64_t frame);

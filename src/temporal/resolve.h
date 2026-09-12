@@ -8,8 +8,11 @@ struct ResolveConstants {
     float clip_to_previous[4][4]{}; // row-major rows, column-vector multiplication
     float size_jitter[4]{};
     float history[4]{};
-    float rejection[4]{0.0001f, 0.0f, 65000.0f, 0.000001f};
-    float options[4]{}; // motion enabled, reactive masks enabled, mask-snapshot mode, depth-sentinel reactive
+    // Depth tolerance max(absolute, relative * |expected|), HDR limit, minimum W.
+    float rejection[4]{0.0001f, 0.02f, 65000.0f, 0.000001f};
+    // motion enabled, reactive masks enabled, mask-snapshot mode, depth-sentinel
+    // policy (0 off, 1 sentinel pixels current-only, 2 camera path at the far plane).
+    float options[4]{};
 };
 static_assert(sizeof(ResolveConstants) == 8 * 4 * sizeof(float));
 
@@ -37,11 +40,14 @@ struct HistoryState {
 // still packed into c5.xy for ABI stability but the shader does not read it:
 // history is the accumulated output on the unjittered grid and is sampled at
 // the previous unjittered position, so no previous-jitter term exists.
+// sentinel_camera (with depth_sentinel_reactive) reprojects sentinel pixels
+// through the camera matrix at the far plane instead of keeping them
+// current-only; only valid when matrix_rows is a real camera reprojection.
 inline bool prepare(ResolveConstants& out, const HistoryState& state,
                     const float* matrix_rows, float current_x, float current_y,
                     float previous_x, float previous_y, float weight,
                     bool motion_enabled, bool reactive_enabled=false,
-                    bool depth_sentinel_reactive=false) noexcept {
+                    bool depth_sentinel_reactive=false, bool sentinel_camera=false) noexcept {
     if(!matrix_rows || !state.width || !state.height || !std::isfinite(weight)
         || weight<0 || weight>1 || !std::isfinite(current_x) || !std::isfinite(current_y)
         || !std::isfinite(previous_x) || !std::isfinite(previous_y)) return false;
@@ -60,7 +66,7 @@ inline bool prepare(ResolveConstants& out, const HistoryState& state,
     out.options[0]=motion_enabled?1.f:0.f;
     out.options[1]=reactive_enabled?1.f:0.f;
     out.options[2]=0;
-    out.options[3]=depth_sentinel_reactive?1.f:0.f;
+    out.options[3]=depth_sentinel_reactive?(sentinel_camera?2.f:1.f):0.f;
     return true;
 }
 } // namespace x3::temporal

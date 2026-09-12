@@ -21,6 +21,9 @@ from pathlib import Path
 import struct
 import subprocess
 import tempfile
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'verification/probe'))
+from game_guard import game_running  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 COMPILER_SOURCE = ROOT / 'tools/shaders/compile_rigid_motion_pixel.cpp'
@@ -107,8 +110,7 @@ def main():
                         help='fragment to (re)compile; default: every fragment')
     parser.add_argument('--d3dx', type=Path, default=Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll')
     args = parser.parse_args()
-    active = subprocess.run(['pgrep', '-ifl', '[X]3AP[.]exe'], capture_output=True, text=True)
-    if active.returncode != 1 or active.stdout.strip():
+    if game_running():
         raise RuntimeError('X3AP running or process inventory failed; postpone compilation')
     results = [compile_one(name, args) for name in (args.shader or sorted(SHADERS))]
     print(json.dumps(dict(result='PASS', check=args.check, shaders=results)))

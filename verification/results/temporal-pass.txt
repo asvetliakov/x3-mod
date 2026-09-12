@@ -286,10 +286,12 @@ CHECK sample texture exists PASS
 SAMPLE sentinel copied into depth history actual=-1.000000000 expected=-1.000000000 PASS
 CHECK sample texture exists PASS
 SAMPLE opaque pixel accumulates beside sentinel actual=0.500000000 expected=0.500000000 PASS
+CHECK sentinel flat frame PASS
+CHECK route atomic outputs valid PASS
 CHECK sentinel history tap PASS
 CHECK route atomic outputs valid PASS
 CHECK sample texture exists PASS
-SAMPLE previous sentinel tap contributes nothing actual=0.250000000 expected=0.250000000 PASS
+SAMPLE previous sentinel tap is accepted as background behind a silhouette actual=0.375000000 expected=0.375000000 PASS
 CHECK sample texture exists PASS
 SAMPLE opaque correspondence keeps accumulating actual=0.375000000 expected=0.375000000 PASS
 CHECK sentinel policy requires direct R32F depth PASS
@@ -410,20 +412,546 @@ CHECK stationary history follows the sequence PASS
 CHECK stationary history follows the sequence PASS
 CHECK stationary history follows the sequence PASS
 CHECK stationary history follows the sequence PASS
-EDGE left x=4 y=8 resolved_coverage=0.7480 sampled_coverage=0.7500 analytic_coverage=0.7200
-EDGE right x=12 y=8 resolved_coverage=0.6864 sampled_coverage=0.6875 analytic_coverage=0.7200
+EDGE left x=4 y=8 resolved_coverage=0.7479 sampled_coverage=0.7500 analytic_coverage=0.7200
+EDGE right x=12 y=8 resolved_coverage=0.6854 sampled_coverage=0.6875 analytic_coverage=0.7200
 EDGE top x=8 y=4 resolved_coverage=0.6851 sampled_coverage=0.6875 analytic_coverage=0.6300
 EDGE bottom x=8 y=12 resolved_coverage=0.5585 sampled_coverage=0.5625 analytic_coverage=0.5900
-EDGE corner x=4 y=4 resolved_coverage=0.4979 sampled_coverage=0.5000 analytic_coverage=0.4536
-STATIONARY frames=64 phases=16 weight=0.90 oracle_error=0.000488 interior_delta=0.000000 edge_delta=0.059082 ramp_delta=0.004395 edge_dc_error=0.0040 edge_analytic_error=0.0551 ramp_dc_error=0.0064 drift_px=0.000000
+EDGE corner x=4 y=4 resolved_coverage=0.4872 sampled_coverage=0.5000 analytic_coverage=0.4536
+STATIONARY frames=64 phases=16 weight=0.90 oracle_error=0.000488 interior_delta=0.000000 edge_delta=0.082520 ramp_delta=0.004395 edge_dc_error=0.0040 corner_dc_error=0.0128 edge_analytic_error=0.0551 ramp_dc_error=0.0064 drift_px=0.000000 ramp_gradient_energy_ratio=0.9947
 SAMPLE stationary one-step oracle max error over 64 frames actual=0.000488281 expected=0.000000000 tolerance=0.002000000 PASS
 SAMPLE stationary interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
-SAMPLE stationary fractional-edge max delta between consecutive phases actual=0.059082031 expected=0.000000000 tolerance=0.102000024 PASS
+SAMPLE stationary fractional-edge max delta between consecutive phases actual=0.082519531 expected=0.000000000 tolerance=0.102000024 PASS
 SAMPLE stationary bilinear ramp max delta between consecutive phases actual=0.004394531 expected=0.000000000 tolerance=0.010000000 PASS
 SAMPLE stationary edge coverage equals the jitter-sampled coverage over a period actual=0.004028320 expected=0.000000000 tolerance=0.010000000 PASS
+SAMPLE stationary corner coverage equals the jitter-sampled coverage within the variance-clip bias actual=0.012776693 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE stationary edge coverage converges to the analytic coverage actual=0.055099284 expected=0.000000000 tolerance=0.100000000 PASS
 SAMPLE stationary ramp period mean equals the supersampled texture mean actual=0.006439209 expected=0.000000000 tolerance=0.010000000 PASS
 SAMPLE stationary square centroid drift max over 64 frames (px) actual=0.000000000 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE stationary ramp gradient energy of the output over the input actual=0.994704461 expected=1.000000000 tolerance=0.100000000 PASS
+EDGE_CASES
+EDGE_MARGIN 0.0300
+CHECK edge geometry keeps jittered edges off the sample centers PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+THINLINE mode=far-background line=1px horizontal interior_delta=0.000000 edge_delta=0.055664 sum_delta=0.000244 drift_px=0.003499 wobble_px=0.051525 centroid=6.8113 analytic_center=6.8700 total_coverage=0.9948 width=1 coverage_error=0.0603
+SAMPLE thin line far-background 1px horizontal: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line far-background 1px horizontal: edge max delta between consecutive phases actual=0.055664062 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line far-background 1px horizontal: cross-section brightness delta between consecutive phases actual=0.000244141 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line far-background 1px horizontal: centroid drift between consecutive periods (px) actual=0.003499387 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line far-background 1px horizontal: centroid wobble across phases (px) actual=0.051524591 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line far-background 1px horizontal: centroid at the analytic line center (px) actual=6.811341381 expected=6.869999981 tolerance=0.100000000 PASS
+SAMPLE thin line far-background 1px horizontal: total coverage within 20% of the line width actual=0.994832357 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line far-background 1px horizontal: per-row coverage converges to the analytic coverage actual=0.060266927 expected=0.000000000 tolerance=0.100000000 PASS
+THINLINE mode=far-background line=2px horizontal interior_delta=0.000000 edge_delta=0.047363 sum_delta=0.000000 drift_px=0.006652 wobble_px=0.071947 centroid=15.5616 analytic_center=15.5900 total_coverage=1.9941 width=2 coverage_error=0.0315
+SAMPLE thin line far-background 2px horizontal: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line far-background 2px horizontal: edge max delta between consecutive phases actual=0.047363281 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line far-background 2px horizontal: cross-section brightness delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line far-background 2px horizontal: centroid drift between consecutive periods (px) actual=0.006651975 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line far-background 2px horizontal: centroid wobble across phases (px) actual=0.071947437 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line far-background 2px horizontal: centroid at the analytic line center (px) actual=15.561581783 expected=15.590000000 tolerance=0.100000000 PASS
+SAMPLE thin line far-background 2px horizontal: total coverage within 20% of the line width actual=0.997070312 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line far-background 2px horizontal: per-row coverage converges to the analytic coverage actual=0.031528320 expected=0.000000000 tolerance=0.100000000 PASS
+THINLINE mode=far-background line=1px vertical interior_delta=0.000000 edge_delta=0.059326 sum_delta=0.000244 drift_px=0.003007 wobble_px=0.041353 centroid=12.7488 analytic_center=12.7800 total_coverage=0.9956 width=1 coverage_error=0.0322
+SAMPLE thin line far-background 1px vertical: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line far-background 1px vertical: edge max delta between consecutive phases actual=0.059326172 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line far-background 1px vertical: cross-section brightness delta between consecutive phases actual=0.000244141 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line far-background 1px vertical: centroid drift between consecutive periods (px) actual=0.003006844 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line far-background 1px vertical: centroid wobble across phases (px) actual=0.041352785 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line far-background 1px vertical: centroid at the analytic line center (px) actual=12.748843293 expected=12.780000000 tolerance=0.100000000 PASS
+SAMPLE thin line far-background 1px vertical: total coverage within 20% of the line width actual=0.995646159 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line far-background 1px vertical: per-row coverage converges to the analytic coverage actual=0.032237956 expected=0.000000000 tolerance=0.100000000 PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+THINLINE mode=sentinel-camera line=1px horizontal interior_delta=0.000000 edge_delta=0.055664 sum_delta=0.000244 drift_px=0.003499 wobble_px=0.051525 centroid=6.8113 analytic_center=6.8700 total_coverage=0.9948 width=1 coverage_error=0.0603
+SAMPLE thin line sentinel-camera 1px horizontal: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera 1px horizontal: edge max delta between consecutive phases actual=0.055664062 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line sentinel-camera 1px horizontal: cross-section brightness delta between consecutive phases actual=0.000244141 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera 1px horizontal: centroid drift between consecutive periods (px) actual=0.003499387 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line sentinel-camera 1px horizontal: centroid wobble across phases (px) actual=0.051524591 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera 1px horizontal: centroid at the analytic line center (px) actual=6.811341381 expected=6.869999981 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera 1px horizontal: total coverage within 20% of the line width actual=0.994832357 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line sentinel-camera 1px horizontal: per-row coverage converges to the analytic coverage actual=0.060266927 expected=0.000000000 tolerance=0.100000000 PASS
+THINLINE mode=sentinel-camera line=2px horizontal interior_delta=0.000000 edge_delta=0.047363 sum_delta=0.000000 drift_px=0.006652 wobble_px=0.071947 centroid=15.5616 analytic_center=15.5900 total_coverage=1.9941 width=2 coverage_error=0.0315
+SAMPLE thin line sentinel-camera 2px horizontal: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera 2px horizontal: edge max delta between consecutive phases actual=0.047363281 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line sentinel-camera 2px horizontal: cross-section brightness delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera 2px horizontal: centroid drift between consecutive periods (px) actual=0.006651975 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line sentinel-camera 2px horizontal: centroid wobble across phases (px) actual=0.071947437 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera 2px horizontal: centroid at the analytic line center (px) actual=15.561581783 expected=15.590000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera 2px horizontal: total coverage within 20% of the line width actual=0.997070312 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line sentinel-camera 2px horizontal: per-row coverage converges to the analytic coverage actual=0.031528320 expected=0.000000000 tolerance=0.100000000 PASS
+THINLINE mode=sentinel-camera line=1px vertical interior_delta=0.000000 edge_delta=0.059326 sum_delta=0.000244 drift_px=0.003007 wobble_px=0.041353 centroid=12.7488 analytic_center=12.7800 total_coverage=0.9956 width=1 coverage_error=0.0322
+SAMPLE thin line sentinel-camera 1px vertical: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera 1px vertical: edge max delta between consecutive phases actual=0.059326172 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line sentinel-camera 1px vertical: cross-section brightness delta between consecutive phases actual=0.000244141 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera 1px vertical: centroid drift between consecutive periods (px) actual=0.003006844 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line sentinel-camera 1px vertical: centroid wobble across phases (px) actual=0.041352785 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera 1px vertical: centroid at the analytic line center (px) actual=12.748843293 expected=12.780000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera 1px vertical: total coverage within 20% of the line width actual=0.995646159 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line sentinel-camera 1px vertical: per-row coverage converges to the analytic coverage actual=0.032237956 expected=0.000000000 tolerance=0.100000000 PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+THINLINE mode=sentinel-current-only line=1px horizontal interior_delta=0.000000 edge_delta=0.202881 sum_delta=0.127930 drift_px=0.000000 wobble_px=0.687500 centroid=6.8125 analytic_center=6.8700 total_coverage=0.1387 width=1 coverage_error=0.5226
+THINLINE mode=sentinel-current-only line=2px horizontal interior_delta=0.000000 edge_delta=0.189453 sum_delta=0.062256 drift_px=0.000000 wobble_px=0.226871 centroid=15.5252 analytic_center=15.5900 total_coverage=1.1903 width=2 coverage_error=0.4790
+THINLINE mode=sentinel-current-only line=1px vertical interior_delta=0.000000 edge_delta=0.202881 sum_delta=0.127930 drift_px=0.000000 wobble_px=0.750000 centroid=12.7500 analytic_center=12.7800 total_coverage=0.1650 width=1 coverage_error=0.5799
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SILRING mode=far-background x=11 y=10 resolved=0.6920 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000553
+SILRING mode=far-background x=12 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=far-background x=13 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=far-background x=14 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=far-background x=15 y=10 resolved=0.6851 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000517
+SILRING mode=far-background x=10 y=11 resolved=0.7275 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.000613
+SILRING mode=far-background x=10 y=15 resolved=0.7168 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.000633
+SILRING mode=far-background x=16 y=15 resolved=0.2262 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.000598
+SILRING mode=far-background x=11 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=far-background x=12 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=far-background x=13 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=far-background x=14 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=far-background x=15 y=16 resolved=0.2861 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000697
+SILHOUETTE mode=far-background ring=24 raw_variance=0.109497 resolved_variance=0.000614 ratio=178.32 dc_error=0.0332 coverage_error=0.0839 interior_delta=0.000000 ghost_max=0.000000 moving_interior_min=1.0000
+SAMPLE silhouette far-background: edge variance across phases reduced at least 4x actual=100.000000000 expected=100.000000000 tolerance=96.000000000 PASS
+SAMPLE silhouette far-background: edge coverage equals the jitter-sampled coverage within the variance-clip bias actual=0.033203125 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE silhouette far-background: edge coverage converges to the analytic coverage actual=0.083948568 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE silhouette far-background: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE silhouette far-background: revealed background carries no square color beyond the clamp actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE silhouette far-background: moving square interior stays bright actual=1.000000000 expected=1.000000000 tolerance=0.100000000 PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SILRING mode=sentinel-camera x=11 y=10 resolved=0.6920 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000553
+SILRING mode=sentinel-camera x=12 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=sentinel-camera x=13 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=sentinel-camera x=14 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=sentinel-camera x=15 y=10 resolved=0.6851 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000517
+SILRING mode=sentinel-camera x=10 y=11 resolved=0.7275 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.000613
+SILRING mode=sentinel-camera x=10 y=15 resolved=0.7168 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.000633
+SILRING mode=sentinel-camera x=16 y=15 resolved=0.2262 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.000598
+SILRING mode=sentinel-camera x=11 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera x=12 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera x=13 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera x=14 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera x=15 y=16 resolved=0.2861 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000697
+SILHOUETTE mode=sentinel-camera ring=24 raw_variance=0.109497 resolved_variance=0.000614 ratio=178.32 dc_error=0.0332 coverage_error=0.0839 interior_delta=0.000000 ghost_max=0.000000 moving_interior_min=1.0000
+SAMPLE silhouette sentinel-camera: edge variance across phases reduced at least 4x actual=100.000000000 expected=100.000000000 tolerance=96.000000000 PASS
+SAMPLE silhouette sentinel-camera: edge coverage equals the jitter-sampled coverage within the variance-clip bias actual=0.033203125 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE silhouette sentinel-camera: edge coverage converges to the analytic coverage actual=0.083948568 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE silhouette sentinel-camera: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE silhouette sentinel-camera: revealed background carries no square color beyond the clamp actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE silhouette sentinel-camera: moving square interior stays bright actual=1.000000000 expected=1.000000000 tolerance=0.100000000 PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SILRING mode=sentinel-current-only x=10 y=10 resolved=0.0668 sampled=0.5000 analytic=0.4536 raw_variance=0.1406 resolved_variance=0.003043
+SILRING mode=sentinel-current-only x=11 y=10 resolved=0.1323 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.005727
+SILRING mode=sentinel-current-only x=12 y=10 resolved=0.1524 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.006973
+SILRING mode=sentinel-current-only x=13 y=10 resolved=0.1524 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.006973
+SILRING mode=sentinel-current-only x=14 y=10 resolved=0.1524 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.006973
+SILRING mode=sentinel-current-only x=15 y=10 resolved=0.1275 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.005973
+SILRING mode=sentinel-current-only x=16 y=10 resolved=0.0187 sampled=0.1875 analytic=0.1764 raw_variance=0.0857 resolved_variance=0.000856
+SILRING mode=sentinel-current-only x=10 y=11 resolved=0.1755 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.007913
+SILRING mode=sentinel-current-only x=16 y=11 resolved=0.0380 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.002571
+SILRING mode=sentinel-current-only x=10 y=12 resolved=0.1873 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.008327
+SILRING mode=sentinel-current-only x=16 y=12 resolved=0.0424 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.003034
+SILRING mode=sentinel-current-only x=10 y=13 resolved=0.1873 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.008327
+SILRING mode=sentinel-current-only x=16 y=13 resolved=0.0424 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.003034
+SILRING mode=sentinel-current-only x=10 y=14 resolved=0.1873 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.008327
+SILRING mode=sentinel-current-only x=16 y=14 resolved=0.0424 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.003034
+SILRING mode=sentinel-current-only x=10 y=15 resolved=0.1519 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.006612
+SILRING mode=sentinel-current-only x=16 y=15 resolved=0.0293 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.001580
+SILRING mode=sentinel-current-only x=10 y=16 resolved=0.0250 sampled=0.2500 analytic=0.2664 raw_variance=0.1055 resolved_variance=0.001053
+SILRING mode=sentinel-current-only x=11 y=16 resolved=0.0486 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.003065
+SILRING mode=sentinel-current-only x=12 y=16 resolved=0.0530 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.003476
+SILRING mode=sentinel-current-only x=13 y=16 resolved=0.0530 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.003476
+SILRING mode=sentinel-current-only x=14 y=16 resolved=0.0530 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.003476
+SILRING mode=sentinel-current-only x=15 y=16 resolved=0.0356 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.001703
+SILRING mode=sentinel-current-only x=16 y=16 resolved=0.0062 sampled=0.0625 analytic=0.1036 raw_variance=0.0330 resolved_variance=0.000329
+SILHOUETTE mode=sentinel-current-only ring=24 raw_variance=0.109497 resolved_variance=0.004411 ratio=24.83 dc_error=0.5981 coverage_error=0.5681 interior_delta=0.000000 ghost_max=0.000000 moving_interior_min=1.0000
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+BLUR velocity=0.25 input_amplitude=0.3599 shader_ratio=0.9296 catmull_rom_model_ratio=0.9318 bilinear_model_ratio=0.7122 shader_energy_ratio=0.8642 bilinear_energy_ratio=0.5072 oracle_error=0.003418
+SAMPLE scrolling wave: shader matches the Catmull-Rom CPU model actual=0.003417969 expected=0.000000000 tolerance=0.010000000 PASS
+SAMPLE scrolling wave: period-8 amplitude of the output over the input (Catmull-Rom) actual=0.929624727 expected=1.000000000 tolerance=0.100000000 PASS
+SAMPLE scrolling wave: Catmull-Rom keeps more amplitude than the previous bilinear filter actual=0.217421659 expected=1.000000000 tolerance=0.900000000 PASS
 RESET_CONTINUITY
 CHECK before reset frame PASS
 CHECK atomic outputs valid PASS
@@ -731,10 +1259,12 @@ CHECK sample texture exists PASS
 SAMPLE sentinel copied into depth history actual=-1.000000000 expected=-1.000000000 PASS
 CHECK sample texture exists PASS
 SAMPLE opaque pixel accumulates beside sentinel actual=0.500000000 expected=0.500000000 PASS
+CHECK sentinel flat frame PASS
+CHECK route atomic outputs valid PASS
 CHECK sentinel history tap PASS
 CHECK route atomic outputs valid PASS
 CHECK sample texture exists PASS
-SAMPLE previous sentinel tap contributes nothing actual=0.250000000 expected=0.250000000 PASS
+SAMPLE previous sentinel tap is accepted as background behind a silhouette actual=0.375000000 expected=0.375000000 PASS
 CHECK sample texture exists PASS
 SAMPLE opaque correspondence keeps accumulating actual=0.375000000 expected=0.375000000 PASS
 CHECK sentinel policy requires direct R32F depth PASS
@@ -855,18 +1385,544 @@ CHECK stationary history follows the sequence PASS
 CHECK stationary history follows the sequence PASS
 CHECK stationary history follows the sequence PASS
 CHECK stationary history follows the sequence PASS
-EDGE left x=4 y=8 resolved_coverage=0.7480 sampled_coverage=0.7500 analytic_coverage=0.7200
-EDGE right x=12 y=8 resolved_coverage=0.6864 sampled_coverage=0.6875 analytic_coverage=0.7200
+EDGE left x=4 y=8 resolved_coverage=0.7479 sampled_coverage=0.7500 analytic_coverage=0.7200
+EDGE right x=12 y=8 resolved_coverage=0.6854 sampled_coverage=0.6875 analytic_coverage=0.7200
 EDGE top x=8 y=4 resolved_coverage=0.6851 sampled_coverage=0.6875 analytic_coverage=0.6300
 EDGE bottom x=8 y=12 resolved_coverage=0.5585 sampled_coverage=0.5625 analytic_coverage=0.5900
-EDGE corner x=4 y=4 resolved_coverage=0.4979 sampled_coverage=0.5000 analytic_coverage=0.4536
-STATIONARY frames=64 phases=16 weight=0.90 oracle_error=0.000488 interior_delta=0.000000 edge_delta=0.059082 ramp_delta=0.004395 edge_dc_error=0.0040 edge_analytic_error=0.0551 ramp_dc_error=0.0064 drift_px=0.000000
+EDGE corner x=4 y=4 resolved_coverage=0.4872 sampled_coverage=0.5000 analytic_coverage=0.4536
+STATIONARY frames=64 phases=16 weight=0.90 oracle_error=0.000488 interior_delta=0.000000 edge_delta=0.082520 ramp_delta=0.004395 edge_dc_error=0.0040 corner_dc_error=0.0128 edge_analytic_error=0.0551 ramp_dc_error=0.0064 drift_px=0.000000 ramp_gradient_energy_ratio=0.9947
 SAMPLE stationary one-step oracle max error over 64 frames actual=0.000488281 expected=0.000000000 tolerance=0.002000000 PASS
 SAMPLE stationary interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
-SAMPLE stationary fractional-edge max delta between consecutive phases actual=0.059082031 expected=0.000000000 tolerance=0.102000024 PASS
+SAMPLE stationary fractional-edge max delta between consecutive phases actual=0.082519531 expected=0.000000000 tolerance=0.102000024 PASS
 SAMPLE stationary bilinear ramp max delta between consecutive phases actual=0.004394531 expected=0.000000000 tolerance=0.010000000 PASS
 SAMPLE stationary edge coverage equals the jitter-sampled coverage over a period actual=0.004028320 expected=0.000000000 tolerance=0.010000000 PASS
+SAMPLE stationary corner coverage equals the jitter-sampled coverage within the variance-clip bias actual=0.012776693 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE stationary edge coverage converges to the analytic coverage actual=0.055099284 expected=0.000000000 tolerance=0.100000000 PASS
 SAMPLE stationary ramp period mean equals the supersampled texture mean actual=0.006439209 expected=0.000000000 tolerance=0.010000000 PASS
 SAMPLE stationary square centroid drift max over 64 frames (px) actual=0.000000000 expected=0.000000000 tolerance=0.050000000 PASS
-RESULT PASS numerical=174 state_restorations=162 generations=2
+SAMPLE stationary ramp gradient energy of the output over the input actual=0.994704461 expected=1.000000000 tolerance=0.100000000 PASS
+EDGE_CASES
+EDGE_MARGIN 0.0300
+CHECK edge geometry keeps jittered edges off the sample centers PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+THINLINE mode=far-background line=1px horizontal interior_delta=0.000000 edge_delta=0.055664 sum_delta=0.000244 drift_px=0.003499 wobble_px=0.051525 centroid=6.8113 analytic_center=6.8700 total_coverage=0.9948 width=1 coverage_error=0.0603
+SAMPLE thin line far-background 1px horizontal: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line far-background 1px horizontal: edge max delta between consecutive phases actual=0.055664062 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line far-background 1px horizontal: cross-section brightness delta between consecutive phases actual=0.000244141 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line far-background 1px horizontal: centroid drift between consecutive periods (px) actual=0.003499387 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line far-background 1px horizontal: centroid wobble across phases (px) actual=0.051524591 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line far-background 1px horizontal: centroid at the analytic line center (px) actual=6.811341381 expected=6.869999981 tolerance=0.100000000 PASS
+SAMPLE thin line far-background 1px horizontal: total coverage within 20% of the line width actual=0.994832357 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line far-background 1px horizontal: per-row coverage converges to the analytic coverage actual=0.060266927 expected=0.000000000 tolerance=0.100000000 PASS
+THINLINE mode=far-background line=2px horizontal interior_delta=0.000000 edge_delta=0.047363 sum_delta=0.000000 drift_px=0.006652 wobble_px=0.071947 centroid=15.5616 analytic_center=15.5900 total_coverage=1.9941 width=2 coverage_error=0.0315
+SAMPLE thin line far-background 2px horizontal: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line far-background 2px horizontal: edge max delta between consecutive phases actual=0.047363281 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line far-background 2px horizontal: cross-section brightness delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line far-background 2px horizontal: centroid drift between consecutive periods (px) actual=0.006651975 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line far-background 2px horizontal: centroid wobble across phases (px) actual=0.071947437 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line far-background 2px horizontal: centroid at the analytic line center (px) actual=15.561581783 expected=15.590000000 tolerance=0.100000000 PASS
+SAMPLE thin line far-background 2px horizontal: total coverage within 20% of the line width actual=0.997070312 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line far-background 2px horizontal: per-row coverage converges to the analytic coverage actual=0.031528320 expected=0.000000000 tolerance=0.100000000 PASS
+THINLINE mode=far-background line=1px vertical interior_delta=0.000000 edge_delta=0.059326 sum_delta=0.000244 drift_px=0.003007 wobble_px=0.041353 centroid=12.7488 analytic_center=12.7800 total_coverage=0.9956 width=1 coverage_error=0.0322
+SAMPLE thin line far-background 1px vertical: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line far-background 1px vertical: edge max delta between consecutive phases actual=0.059326172 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line far-background 1px vertical: cross-section brightness delta between consecutive phases actual=0.000244141 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line far-background 1px vertical: centroid drift between consecutive periods (px) actual=0.003006844 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line far-background 1px vertical: centroid wobble across phases (px) actual=0.041352785 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line far-background 1px vertical: centroid at the analytic line center (px) actual=12.748843293 expected=12.780000000 tolerance=0.100000000 PASS
+SAMPLE thin line far-background 1px vertical: total coverage within 20% of the line width actual=0.995646159 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line far-background 1px vertical: per-row coverage converges to the analytic coverage actual=0.032237956 expected=0.000000000 tolerance=0.100000000 PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+THINLINE mode=sentinel-camera line=1px horizontal interior_delta=0.000000 edge_delta=0.055664 sum_delta=0.000244 drift_px=0.003499 wobble_px=0.051525 centroid=6.8113 analytic_center=6.8700 total_coverage=0.9948 width=1 coverage_error=0.0603
+SAMPLE thin line sentinel-camera 1px horizontal: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera 1px horizontal: edge max delta between consecutive phases actual=0.055664062 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line sentinel-camera 1px horizontal: cross-section brightness delta between consecutive phases actual=0.000244141 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera 1px horizontal: centroid drift between consecutive periods (px) actual=0.003499387 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line sentinel-camera 1px horizontal: centroid wobble across phases (px) actual=0.051524591 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera 1px horizontal: centroid at the analytic line center (px) actual=6.811341381 expected=6.869999981 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera 1px horizontal: total coverage within 20% of the line width actual=0.994832357 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line sentinel-camera 1px horizontal: per-row coverage converges to the analytic coverage actual=0.060266927 expected=0.000000000 tolerance=0.100000000 PASS
+THINLINE mode=sentinel-camera line=2px horizontal interior_delta=0.000000 edge_delta=0.047363 sum_delta=0.000000 drift_px=0.006652 wobble_px=0.071947 centroid=15.5616 analytic_center=15.5900 total_coverage=1.9941 width=2 coverage_error=0.0315
+SAMPLE thin line sentinel-camera 2px horizontal: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera 2px horizontal: edge max delta between consecutive phases actual=0.047363281 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line sentinel-camera 2px horizontal: cross-section brightness delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera 2px horizontal: centroid drift between consecutive periods (px) actual=0.006651975 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line sentinel-camera 2px horizontal: centroid wobble across phases (px) actual=0.071947437 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera 2px horizontal: centroid at the analytic line center (px) actual=15.561581783 expected=15.590000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera 2px horizontal: total coverage within 20% of the line width actual=0.997070312 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line sentinel-camera 2px horizontal: per-row coverage converges to the analytic coverage actual=0.031528320 expected=0.000000000 tolerance=0.100000000 PASS
+THINLINE mode=sentinel-camera line=1px vertical interior_delta=0.000000 edge_delta=0.059326 sum_delta=0.000244 drift_px=0.003007 wobble_px=0.041353 centroid=12.7488 analytic_center=12.7800 total_coverage=0.9956 width=1 coverage_error=0.0322
+SAMPLE thin line sentinel-camera 1px vertical: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera 1px vertical: edge max delta between consecutive phases actual=0.059326172 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line sentinel-camera 1px vertical: cross-section brightness delta between consecutive phases actual=0.000244141 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera 1px vertical: centroid drift between consecutive periods (px) actual=0.003006844 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line sentinel-camera 1px vertical: centroid wobble across phases (px) actual=0.041352785 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera 1px vertical: centroid at the analytic line center (px) actual=12.748843293 expected=12.780000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera 1px vertical: total coverage within 20% of the line width actual=0.995646159 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line sentinel-camera 1px vertical: per-row coverage converges to the analytic coverage actual=0.032237956 expected=0.000000000 tolerance=0.100000000 PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+THINLINE mode=sentinel-current-only line=1px horizontal interior_delta=0.000000 edge_delta=0.202881 sum_delta=0.127930 drift_px=0.000000 wobble_px=0.687500 centroid=6.8125 analytic_center=6.8700 total_coverage=0.1387 width=1 coverage_error=0.5226
+THINLINE mode=sentinel-current-only line=2px horizontal interior_delta=0.000000 edge_delta=0.189453 sum_delta=0.062256 drift_px=0.000000 wobble_px=0.226871 centroid=15.5252 analytic_center=15.5900 total_coverage=1.1903 width=2 coverage_error=0.4790
+THINLINE mode=sentinel-current-only line=1px vertical interior_delta=0.000000 edge_delta=0.202881 sum_delta=0.127930 drift_px=0.000000 wobble_px=0.750000 centroid=12.7500 analytic_center=12.7800 total_coverage=0.1650 width=1 coverage_error=0.5799
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SILRING mode=far-background x=11 y=10 resolved=0.6920 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000553
+SILRING mode=far-background x=12 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=far-background x=13 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=far-background x=14 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=far-background x=15 y=10 resolved=0.6851 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000517
+SILRING mode=far-background x=10 y=11 resolved=0.7275 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.000613
+SILRING mode=far-background x=10 y=15 resolved=0.7168 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.000633
+SILRING mode=far-background x=16 y=15 resolved=0.2262 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.000598
+SILRING mode=far-background x=11 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=far-background x=12 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=far-background x=13 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=far-background x=14 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=far-background x=15 y=16 resolved=0.2861 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000697
+SILHOUETTE mode=far-background ring=24 raw_variance=0.109497 resolved_variance=0.000614 ratio=178.32 dc_error=0.0332 coverage_error=0.0839 interior_delta=0.000000 ghost_max=0.000000 moving_interior_min=1.0000
+SAMPLE silhouette far-background: edge variance across phases reduced at least 4x actual=100.000000000 expected=100.000000000 tolerance=96.000000000 PASS
+SAMPLE silhouette far-background: edge coverage equals the jitter-sampled coverage within the variance-clip bias actual=0.033203125 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE silhouette far-background: edge coverage converges to the analytic coverage actual=0.083948568 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE silhouette far-background: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE silhouette far-background: revealed background carries no square color beyond the clamp actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE silhouette far-background: moving square interior stays bright actual=1.000000000 expected=1.000000000 tolerance=0.100000000 PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SILRING mode=sentinel-camera x=11 y=10 resolved=0.6920 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000553
+SILRING mode=sentinel-camera x=12 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=sentinel-camera x=13 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=sentinel-camera x=14 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=sentinel-camera x=15 y=10 resolved=0.6851 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000517
+SILRING mode=sentinel-camera x=10 y=11 resolved=0.7275 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.000613
+SILRING mode=sentinel-camera x=10 y=15 resolved=0.7168 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.000633
+SILRING mode=sentinel-camera x=16 y=15 resolved=0.2262 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.000598
+SILRING mode=sentinel-camera x=11 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera x=12 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera x=13 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera x=14 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera x=15 y=16 resolved=0.2861 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000697
+SILHOUETTE mode=sentinel-camera ring=24 raw_variance=0.109497 resolved_variance=0.000614 ratio=178.32 dc_error=0.0332 coverage_error=0.0839 interior_delta=0.000000 ghost_max=0.000000 moving_interior_min=1.0000
+SAMPLE silhouette sentinel-camera: edge variance across phases reduced at least 4x actual=100.000000000 expected=100.000000000 tolerance=96.000000000 PASS
+SAMPLE silhouette sentinel-camera: edge coverage equals the jitter-sampled coverage within the variance-clip bias actual=0.033203125 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE silhouette sentinel-camera: edge coverage converges to the analytic coverage actual=0.083948568 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE silhouette sentinel-camera: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE silhouette sentinel-camera: revealed background carries no square color beyond the clamp actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE silhouette sentinel-camera: moving square interior stays bright actual=1.000000000 expected=1.000000000 tolerance=0.100000000 PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SILRING mode=sentinel-current-only x=10 y=10 resolved=0.0668 sampled=0.5000 analytic=0.4536 raw_variance=0.1406 resolved_variance=0.003043
+SILRING mode=sentinel-current-only x=11 y=10 resolved=0.1323 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.005727
+SILRING mode=sentinel-current-only x=12 y=10 resolved=0.1524 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.006973
+SILRING mode=sentinel-current-only x=13 y=10 resolved=0.1524 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.006973
+SILRING mode=sentinel-current-only x=14 y=10 resolved=0.1524 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.006973
+SILRING mode=sentinel-current-only x=15 y=10 resolved=0.1275 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.005973
+SILRING mode=sentinel-current-only x=16 y=10 resolved=0.0187 sampled=0.1875 analytic=0.1764 raw_variance=0.0857 resolved_variance=0.000856
+SILRING mode=sentinel-current-only x=10 y=11 resolved=0.1755 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.007913
+SILRING mode=sentinel-current-only x=16 y=11 resolved=0.0380 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.002571
+SILRING mode=sentinel-current-only x=10 y=12 resolved=0.1873 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.008327
+SILRING mode=sentinel-current-only x=16 y=12 resolved=0.0424 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.003034
+SILRING mode=sentinel-current-only x=10 y=13 resolved=0.1873 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.008327
+SILRING mode=sentinel-current-only x=16 y=13 resolved=0.0424 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.003034
+SILRING mode=sentinel-current-only x=10 y=14 resolved=0.1873 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.008327
+SILRING mode=sentinel-current-only x=16 y=14 resolved=0.0424 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.003034
+SILRING mode=sentinel-current-only x=10 y=15 resolved=0.1519 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.006612
+SILRING mode=sentinel-current-only x=16 y=15 resolved=0.0293 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.001580
+SILRING mode=sentinel-current-only x=10 y=16 resolved=0.0250 sampled=0.2500 analytic=0.2664 raw_variance=0.1055 resolved_variance=0.001053
+SILRING mode=sentinel-current-only x=11 y=16 resolved=0.0486 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.003065
+SILRING mode=sentinel-current-only x=12 y=16 resolved=0.0530 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.003476
+SILRING mode=sentinel-current-only x=13 y=16 resolved=0.0530 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.003476
+SILRING mode=sentinel-current-only x=14 y=16 resolved=0.0530 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.003476
+SILRING mode=sentinel-current-only x=15 y=16 resolved=0.0356 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.001703
+SILRING mode=sentinel-current-only x=16 y=16 resolved=0.0062 sampled=0.0625 analytic=0.1036 raw_variance=0.0330 resolved_variance=0.000329
+SILHOUETTE mode=sentinel-current-only ring=24 raw_variance=0.109497 resolved_variance=0.004411 ratio=24.83 dc_error=0.5981 coverage_error=0.5681 interior_delta=0.000000 ghost_max=0.000000 moving_interior_min=1.0000
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+BLUR velocity=0.25 input_amplitude=0.3599 shader_ratio=0.9296 catmull_rom_model_ratio=0.9318 bilinear_model_ratio=0.7122 shader_energy_ratio=0.8642 bilinear_energy_ratio=0.5072 oracle_error=0.003418
+SAMPLE scrolling wave: shader matches the Catmull-Rom CPU model actual=0.003417969 expected=0.000000000 tolerance=0.010000000 PASS
+SAMPLE scrolling wave: period-8 amplitude of the output over the input (Catmull-Rom) actual=0.929624727 expected=1.000000000 tolerance=0.100000000 PASS
+SAMPLE scrolling wave: Catmull-Rom keeps more amplitude than the previous bilinear filter actual=0.217421659 expected=1.000000000 tolerance=0.900000000 PASS
+RESULT PASS numerical=318 state_restorations=164 generations=2

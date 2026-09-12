@@ -20,9 +20,10 @@ passes; those are required inputs from the renderer.
 | s6 | Previous reactive coverage | Owned R32F snapshot aligned with previous resolved color/depth |
 
 Every sampler uses POINT min/mag, no mip filter, CLAMP U/V and sRGB sampling off.
-The resolve performs its own four-tap history reconstruction so each color tap is
-tested against its own depth. Hardware bilinear filtering on any input would
-violate this contract. Output is a distinct FP16 target, never simultaneously
+The resolve performs its own history reconstruction (a 16-tap Catmull-Rom
+gather, one tap on the texel grid) and its own depth footprint test; every
+fetch is an explicit LOD-0 `tex2Dlod`. Hardware bilinear filtering on any
+input would violate this contract. Output is a distinct FP16 target, never simultaneously
 bound as an input; alpha is the current color's alpha (the game's main-target
 alpha survives the copy-back; history alpha is never blended; a NaN alpha
 becomes one). Disable depth, blending, alpha test, fog and
@@ -104,10 +105,11 @@ When enabled, s4 alpha carries three states:
   geometry without trustworthy previous transforms, deformation or identity.
 
 RGBA32F is required: at a 5120-pixel width, FP16 absolute UV can quantize by
-more than a pixel, and FP16 expected depth near 0.5 can lose more than the default
-1e-4 rejection tolerance. Using R32F history depth cannot repair precision lost in
-the motion input. The fixture checks expected depth 0.5002, which would round to
-0.5 in FP16 and falsely reject a matching surface. The detached
+more than a pixel, and FP16 expected depth near 0.5 would lose more than the
+1e-4 absolute tolerance. Using R32F history depth cannot repair precision lost in
+the motion input. The fixture's expected depth 0.5002 case remains as a routing
+regression; with the one-sided, 0.02-relative test of 2026-09-12 it no longer
+distinguishes FP16 rounding, the UV argument stands. The detached
 [rigid producer](../../docs/verification/rigid-motion.md) separately verifies
 RGBA32F rendering and this input contract. It is not live
 game routing or complete coverage of transparent contributors.
@@ -123,14 +125,78 @@ object's current depth need not equal its previous depth. The object path must
 be derived from actual previous object geometry/transforms, not guessed buffer
 identity or draw order. This module does not yet obtain that data from X3.
 
+## Algorithm (resolve quality pass, 2026-09-12)
+
+Per output pixel `p` (unjittered grid), in this order:
+
+1. **Early outs.** Snapshot mode; nonfinite current color (black); invalid
+   history, zero weight, invalid current depth, reactive current pixel and
+   the sentinel policy below all return the current color.
+2. **Depth-sentinel policy** (`c7.w`): 0 off; 1 a current pixel whose depth is
+   the -1 sentinel (nothing routed wrote it) is current-only; 2 such a pixel
+   is reprojected through the camera path at the far plane (depth 1). The
+   route uploads the identity matrix and fills the motion target with alpha
+   -1 today, so it must keep policy 1 (`prepare(..., sentinel_camera=false)`);
+   policy 2 is for a route that supplies `clip_to_previous` and marks those
+   pixels with motion alpha 0. Under policy 1 a jittered edge against the
+   sentinel background is wiped on every phase that uncovers it (see the
+   thin-line fixture, "sentinel-current-only": a 1-px line keeps 14% of its
+   coverage); under policy 2 it converges like any other edge.
+3. **Closest-depth dilation.** The closest valid depth of the current 3×3
+   (center wins ties) selects the pixel whose correspondence is used: its
+   camera reprojection (or its motion RG/B when `c7.x` is set and alpha is
+   1), shifted by its offset, i.e. its **velocity** applied to `p`. A pixel on
+   the far side of a silhouette follows the foreground it borders. The cross
+   is not enough: on the phases that uncover a silhouette corner on both
+   axes its only foreground neighbor is the diagonal one.
+4. **Lookup validity.** Nonfinite or huge projections, nonpositive W, motion
+   alpha other than 0/1 and an out-of-range previous UV reject. The
+   sub-texel fraction is snapped to the grid below 1e-4 texel.
+5. **Disocclusion test (the only depth rejection).** Every contributing tap
+   (weight > 0.01) of the bilinear footprint must be proven either at or
+   behind the expected previous depth, `previous >= expected - max(c6.x,
+   c6.y·|expected|)` (defaults 1e-4 and 0.02), or the -1 sentinel;
+   otherwise the lookup is rejected. History clearly in front was an
+   occluder that moved away. History behind, or sentinel, is the background
+   the surface's silhouette moved over as the jitter flipped its coverage:
+   accepted and bounded by the clip, so edges and thin features accumulate
+   their supersampled coverage. Because the threshold is the closest depth
+   of the 3×3, a background pixel beside a silhouette accepts the
+   foreground history it held on covered phases. NaN or above-range history
+   depth is corrupt input and fails closed: only `>=` and `<=` survive
+   compilation with NaN semantics on the verified backend (`v == v` folds to
+   true, `<` and `>` compile to negated forms a NaN passes), so every such
+   test is written with them.
+6. **History color.** Catmull-Rom over the 4×4 texel neighborhood (16 point
+   taps; the 9-tap form needs hardware bilinear filtering, which the sampler
+   contract excludes). On the texel grid (static content) it reads that one
+   texel under a real branch. Nonfinite taps contribute no energy and the
+   rest renormalize; below half the weight the lookup is rejected. With the
+   mask policy any nonzero-weight tap with reactive previous coverage
+   rejects the lookup.
+7. **Neighborhood clip.** The history is clamped per channel to
+   mean ± 1.25 σ of the finite current 3×3, intersected with the 3×3 min/max
+   box as the fallback bound, then blended: `lerp(current, history, c5.z)`.
+   γ = 1.25 keeps a converged 1-px line within about 5% and biases a corner
+   pixel with one bright neighbor by about 0.013 of coverage; 1.0 dims thin
+   lines visibly, larger values readmit clamp-bounded ghosting.
+
+Weight `c5.z` (route default 0.9): 0.85–0.95 is the sensible range; the
+per-phase ripple of a toggling edge sample is (1-w)·contrast, convergence
+takes about 2/(1-w) frames, and a larger weight holds clamp-bounded ghosts
+longer. Cost per pixel: 10 current color, 9 current depth, 1 motion, 4 history
+depth and 1 or 16 history color fetches (20 before; plus 1 + 1/16 mask
+fetches under the mask policy); the compiled program is 3,794 words (1,695
+before).
+
 ## Rejection and history lifecycle
 
-A nonpositive previous W, out-of-bounds previous UV, nonfinite color/depth, or
-previous depth disagreement rejects history. Four previous pixel-center taps are
-validated independently and remaining weights renormalized. Previous RGB is then
-clipped to the finite current 3×3 RGB bounds before the blend. This is a bounded
-initial resolve; it has no variance statistics, sharpening or
-special transparency reconstruction.
+A nonpositive previous W, out-of-bounds previous UV, nonfinite color/depth, a
+corrupt history depth, or a contributing history tap clearly in front of the
+expected previous depth rejects history (step 5 above). History behind the
+surface and sentinel taps are accepted. Previous RGB is clipped to the
+variance box of the finite current 3×3 within its min/max bounds before the
+blend. There is no sharpening or special transparency reconstruction.
 
 ### Reactive RGB coverage
 
@@ -164,12 +230,14 @@ history. A low-level shader caller that disables masks is responsible for the
 same known-nonreactive precondition; disabling masks is not a safe default for
 unclassified particle/effects color.
 
-Depth tolerance is `absolute + relative * abs(expected_previous_device_depth)`.
-Defaults are absolute 1e-4, relative zero. These are **device-depth units**, not
-meters. They require per-camera validation/tuning: distant surfaces in a
-perspective projection may have very similar device depth. R32F prevents adding
-FP16 quantization to D24 depth, but does not solve this projection ambiguity.
-No claim of final game disocclusion quality follows from the synthetic fixture.
+Depth tolerance is `max(absolute, relative * abs(expected_previous_device_depth))`
+and is one-sided: only history in front of the surface by more than it is
+rejected. Defaults are absolute 1e-4, relative 0.02. These are **device-depth
+units**, not meters. They require per-camera validation/tuning: distant
+surfaces in a perspective projection may have very similar device depth. R32F
+prevents adding FP16 quantization to D24 depth, but does not solve this
+projection ambiguity. No claim of final game disocclusion quality follows
+from the synthetic fixture.
 
 Colors outside the configurable finite HDR magnitude limit (default 65000) are
 invalid. Invalid current color outputs black, finite current color with invalid
@@ -302,16 +370,20 @@ paths produce bit-identical color and depth within half a D24 step.
 requires `current_depth` and no mask texture. `prepare(..., depth_sentinel_reactive=true)`
 sets `c7.w=1`: a current pixel with negative depth returns current color
 (`validDepth` already rejects it; the flag makes the intent explicit), and a
-previous tap with sentinel depth contributes no energy while the remaining taps
-of the footprint renormalize. Unlike `RequiredMask`, a sentinel tap does not
-reject the whole footprint: the sentinel marks pixels that had no opaque
-history at all (background, particles, unknown programs), not opaque history
-contaminated by a blended contributor, so silhouettes against the background
-keep their surviving opaque taps. Blended effects drawn over routed opaque
-geometry are **not** detected by the sentinel; the 3x3 neighborhood clip
+previous tap with sentinel depth is accepted as the background behind a
+silhouette (since 2026-09-12; before, it contributed no energy and the rest
+of the footprint renormalized). Unlike `RequiredMask`, a sentinel tap never
+rejects: the sentinel marks pixels that had no opaque history at all
+(background, particles, unknown programs), not opaque history contaminated
+by a blended contributor, so silhouettes against the background accumulate
+their jittered coverage under the neighborhood clip. Blended effects drawn
+over routed opaque geometry are **not** detected by the sentinel; the clip
 bounds, but does not remove, their history contribution. This policy
 completes usable history (unlike `Unavailable`, which invalidates every frame).
-No third draw and no snapshot mask are involved.
+No third draw and no snapshot mask are involved. `FrameInputs::sentinel_camera`
+selects policy 2 (`c7.w=2`, sentinel pixels reprojected at the far plane);
+the route must leave it false until it uploads a real camera matrix and
+fills the motion target with alpha 0 for unrouted pixels.
 
 **Jitter.** `FrameInputs::current_jitter` / `previous_jitter` are raster
 pixels, positive Y down; `prepare` divides them by the viewport size into

@@ -17,7 +17,7 @@ try:
     command=['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine','--bottle','Steam','--no-update','--dll','d3d9=b','--workdir',str(exe.parent),str(exe),r'C:\X3\d3dx9_37.dll','Z:'+str(root/'src/temporal/depth_decode.hlsl'),'Z:'+str(root/'src/temporal/resolve.hlsl')]
     report['command']=command
     with (results/'temporal-pass.txt').open('w') as out,(results/'temporal-pass-wine.log').open('w') as err:
-        run=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=90)
+        run=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=300)
     report['exit_code']=run.returncode
     text=(results/'temporal-pass.txt').read_text()
     report['source_unchanged']=hashes()==report['sources_before_build']
@@ -28,7 +28,7 @@ try:
     match=re.search(r'RESULT PASS numerical=(\d+) state_restorations=(\d+) generations=(\d+)',text)
     report['state_restorations']=int(match[2]) if match else 0
     report['generations']=int(match[3]) if match else 0
-    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(174,162,2) and report['samples']==162 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(318,164,2) and report['samples']==292 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
     assert report['source_unchanged'] and report['binary_unchanged'] and report['compiler_unchanged'],'Provenance changed during run'
     # Negative controls for the jitter convention: the stationary scene must
     # reject the plausible wrong lookups. Each variant mutates the two history

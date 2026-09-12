@@ -6,6 +6,9 @@ import json
 import os
 import re
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 root = Path(__file__).resolve().parents[2]
 results = root / 'verification/results'
@@ -63,8 +66,7 @@ try:
     report['local_qualification_inputs'] = {path.name: expected for path, expected in raw.items()}
     command += ['Z:' + str(path) for path in raw]
     report['command'] = command
-    active = subprocess.run(['pgrep', '-ifl', '[X]3AP[.]exe'], capture_output=True, text=True)
-    assert active.returncode == 1 and not active.stdout.strip(), 'X3AP running; postpone synthetic GPU verification'
+    assert not game_running(), 'X3AP running; postpone synthetic GPU verification'
     with (results / 'rigid-motion.txt').open('w') as out, (results / 'rigid-motion-wine.log').open('w') as err:
         run = subprocess.run(command, stdout=out, stderr=err,
                              env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'), timeout=90)

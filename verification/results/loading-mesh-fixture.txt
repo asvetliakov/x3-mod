@@ -15,18 +15,22 @@ loading_hook name=inflate installed=0
 loading_hook name=xmlReadMemory installed=0
 loading_hook name=D3DXCreateMesh installed=1
 loading_hook name=D3DXCleanMesh installed=1
-loading_trace coverage_begin=8167855925071 frequency=10000000 hooks=2 module=main inclusive=1 paths=0 qualification=named_pe32_imports
+loading_hook name=FindFirstFileA installed=0
+loading_hook name=FindNextFileA installed=0
+loading_hook name=FindClose installed=0
+loading_trace coverage_begin=9199012592538 frequency=10000000 hooks=2 module=main inclusive=1 paths=0 qualification=named_pe32_imports
 mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=8 objects_retained=0
 mesh_hook table=0 installed=0 owned_slots=0 scope=shared_native_vtable
 mesh_hook table=0 installed=1 owned_slots=3 scope=shared_native_vtable
-MESH_COUNT op=14 count=1 failures=0 inclusive=98 max=98
-MESH_COUNT op=15 count=1 failures=0 inclusive=228 max=228
-MESH_COUNT op=16 count=1 failures=0 inclusive=310 max=310
-MESH_COUNT op=17 count=2 failures=0 inclusive=804 max=501
-MESH_COUNT op=18 count=2 failures=1 inclusive=871 max=869
+MESH_COUNT op=14 count=1 failures=0 inclusive=70 max=70
+MESH_COUNT op=15 count=1 failures=0 inclusive=203 max=203
+MESH_COUNT op=19 count=1 failures=0 inclusive=163 max=163
+MESH_COUNT op=20 count=2 failures=0 inclusive=968 max=730
+MESH_COUNT op=21 count=2 failures=1 inclusive=440 max=438
 mesh_hook table=0 restored_slots=0 foreign_slots=1 remaining_owned_slots=0
 loading_hook name=D3DXCreateMesh restored=0 owned=1
 loading_hook name=D3DXCleanMesh restored=0 owned=1
 mesh_hook table=0 restored_slots=0 foreign_slots=1 remaining_owned_slots=0
 loading_trace disabled=reinitialization_not_supported
+ADMISSION_WITNESS requested=0 enabled=0 active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 valid=1
 LOADING MESH RESULT checks=123 failures=0

@@ -94,9 +94,9 @@ convention, the re-derived fixture cases, the new stationary scene
 (zero interior change between phases, zero centroid drift, edges converging
 to the jitter-sampled coverage) and the negative proof against the previous
 shader are in [temporal-resolve.md](../verification/temporal-resolve.md),
-"Stationary stability". Remaining limitation: silhouette edges against a
-different depth reject history whenever their coverage flips (absolute
-tolerance 1e-4), so those edge pixels do not accumulate a coverage fraction.
+"Stationary stability". The silhouette limitation that remained (edge
+pixels against a different depth rejected their history whenever their
+coverage flipped) is addressed by the resolve quality pass below.
 
 Jittered draws: every scene-phase draw whose vertex program is in the row-dot
 registry with a known matrix register (the c24 material family covers almost
@@ -272,8 +272,9 @@ Findings that change the route wiring in step 3:
   unjittered rows, so the route must upload **zero** for `c216.zw` (or shadow
   jittered rows); passing the actual prior jitter would shift the motion
   path's lookup by that jitter. This is a wiring rule for step 3.
-- **Sentinel semantics.** A sentinel history tap is dropped individually and
-  the footprint renormalizes; it does not reject the footprint the way a
+- **Sentinel semantics.** A sentinel history tap is accepted as the
+  background behind a silhouette (since the resolve quality pass; it was
+  dropped individually before); it never rejects the footprint the way a
   reactive mask tap does. Blended effects over routed opaque geometry stay
   undetected (RT2 keeps the opaque depth under them); only the neighborhood
   clip bounds them.
@@ -394,3 +395,71 @@ jitter-convention fix and its stationary scene, unchanged by the native-slot and
 state-block changes), `check_no_x87` (6 light hooks, 125 reachable
 functions, 0 violations) and 442 analysis unit tests pass on the rebuilt
 `build/` and `build-ownership/`.
+
+## Resolve quality (2026-09-12)
+
+Gameplay after the jitter-convention fix still showed trembling object edges
+and shimmering thin geometry and emissive lines with the camera still. Causes
+in the resolve: the absolute 1e-4 depth test against the history depth at the
+reprojected position, which at a silhouette belongs to the other surface, so
+an edge pixel lost its history on every phase that flipped its coverage;
+sentinel current pixels always current-only; no velocity dilation; bilinear
+history resampling. `src/temporal/resolve.hlsl` now implements the standard
+TAA structure (details and the per-step reasoning in the
+[algorithm section](../../src/temporal/README.md#algorithm-resolve-quality-pass-2026-09-12)):
+
+- **Neighborhood clip as the primary gate**: history clamped per channel to
+  mean +/- 1.25 sigma of the finite current 3x3 within its min/max box.
+- **Depth as a one-sided disocclusion test only**: every contributing tap of
+  the bilinear footprint must be at or behind the expected previous depth
+  of the closest-depth pixel of the 3x3, `max(1e-4, 0.02 * depth)`
+  tolerance, or the -1 sentinel; history clearly in front (an occluder that
+  moved away) rejects. The comparisons use only `>=` and `<=`: on the
+  verified backend `v == v` folds to true and `<` / `>` compile to negated
+  forms a NaN passes (measured with a probe shader), so a corrupt history
+  depth fails closed only in that form.
+- **Closest-depth dilation over the 3x3** (velocity of the closest pixel
+  applied to this one); the cross was tried first and lost half the
+  coverage of silhouette corners.
+- **Catmull-Rom history** (16 point taps under the point-sampler contract,
+  one tap on the grid under a real branch; all fetches are `tex2Dlod`).
+- **Sentinel policy** `c7.w`: 1 current-only (the route today), 2
+  reprojection at the far plane through `clip_to_previous`
+  (`FrameInputs::sentinel_camera`). The route must keep policy 1 until it
+  uploads a real camera matrix and fills RT1's alpha with 0 (camera path)
+  instead of -1 for unrouted pixels; with the identity matrix policy 2
+  would accumulate a moving background in place.
+- Weight stays `c5.z` = 0.9; 0.85-0.95 documented as the range.
+
+Cost: 10 current color, 9 current depth, 1 motion, 4 history depth and 1 or
+16 history color fetches per pixel (20 before), program 3,794 words (1,695).
+The route's measured resolve cost was not re-benchmarked here
+(`run_motion_output.py` is owned by another agent at the time of writing).
+
+Evidence ([temporal-resolve.md](../verification/temporal-resolve.md),
+"Resolve quality"): detached suite 78 / 78 with ten new checks per
+generation and no previous value changed; pass suite 318 numerical / 164
+state / 292 samples, negative controls intact. Against a far background or
+under policy 2: a 1-px line converges to 0.995 of its width with the
+integrated brightness stable to one FP16 ulp across phases, drift 0.0035 px,
+per-row coverage within 0.06 of analytic; a silhouette's ring variance drops
+178x with zero ghost behind the square moving 1 px/frame; the scrolling
+sinusoid keeps 0.93 of its amplitude (bilinear model 0.71). Under the
+route's present policy 1 over the sentinel background the same 1-px line
+keeps 14% of its coverage: that is the remaining source of thin-feature
+shimmer against the space background.
+
+Open items:
+
+- Route: supply the camera reprojection (`clip_to_previous` from the view
+  and projection shadow) and alpha-0 fills, then enable
+  `sentinel_camera`; until then thin features against the sentinel
+  background stay current-only. A cut-detector-gated variant (policy 2 only
+  when the median displacement is near zero) would already fix the
+  camera-still case.
+- Rebenchmark the boundary cost with the 3,794-word program at 5120x1440.
+- The seam TAA reference comparison of the motion-output suite shares the
+  bytecode and has to be rerun by its owner.
+- Per-pixel ripple of a toggling edge sample is (1-w) * contrast per frame
+  (0.05-0.06 measured); a longer Halton period or a higher weight trades it
+  against convergence time and ghost duration.

@@ -8,6 +8,9 @@ import os
 import re
 import shutil
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 PROBE = ROOT / 'verification/probe/build'
@@ -66,9 +69,9 @@ def main():
                        '--workdir', str(directory), str(directory / exe)]
             stdout_path = RESULTS / f'ownership-{mode}.txt'
             stderr_path = RESULTS / f'ownership-{mode}-wine.log'
-            active = subprocess.run(['pgrep', '-ifl', '[X]3AP[.]exe'], capture_output=True, text=True)
-            if active.returncode != 1 or active.stdout.strip():
-                raise RuntimeError('Game present or process inventory failed; postpone ownership verification: ' + active.stdout)
+            active = game_running()
+            if active:
+                raise RuntimeError('Game present or process inventory failed; postpone ownership verification: ' + '\n'.join(active))
             with stdout_path.open('w') as stdout, stderr_path.open('w') as stderr:
                 completed = subprocess.run(command, env=env, stdout=stdout, stderr=stderr, timeout=90)
             manifest['fixtures'][mode] = dict(exe_sha256=binaries[mode], report_sha256=digest(stdout_path),

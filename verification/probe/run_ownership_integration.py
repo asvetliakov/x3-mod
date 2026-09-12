@@ -7,6 +7,9 @@ import json
 import os
 import shutil
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 root = Path(__file__).resolve().parents[2]
 probe = root / 'verification/probe/build'
@@ -33,10 +36,10 @@ def selected_fixtures(mode):
     return fixtures
 
 def require_no_game():
-    inventory = subprocess.run(['pgrep', '-ifl', '[X]3AP[.]exe'], capture_output=True, text=True)
-    if inventory.returncode != 1 or inventory.stdout.strip():
+    inventory = game_running()
+    if inventory:
         raise RuntimeError('Game running or process inventory failed; postpone GPU verification: ' +
-                           inventory.stdout + inventory.stderr)
+                           '\n'.join(inventory))
 
 
 

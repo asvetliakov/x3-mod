@@ -24,6 +24,7 @@
       "enabled": false,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 30,
       "restorations": 39,
       "frames": 12,
@@ -66,16 +67,17 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-off-20260912-074138-154662",
-      "trace_sha256": "28969d832b46ecc2c300f059aa7dd788fe9f1156ba433d763d35c0fce477e27f",
-      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-production-off-20260912-090133-235221",
+      "trace_sha256": "700d78d1ff354d713e2e3430d40b676fa163ff9525428852e18c3d49ab1b74cc",
+      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "production-on": {
       "mode": "production",
       "enabled": true,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 30,
       "restorations": 39,
       "frames": 12,
@@ -164,16 +166,17 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-on-20260912-074139-929301",
-      "trace_sha256": "53ec34b08704ffaec764e012f48d38e2f0650a3f59f3a42ba0ac5f52d35d5560",
-      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-production-on-20260912-090136-117676",
+      "trace_sha256": "96fc2020bb4f5b8e65db560dac62fdab7ce0eac7f2cdab29cd4a6e785ff7f1cb",
+      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "seam-off": {
       "mode": "seam",
       "enabled": false,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 30,
       "restorations": 39,
       "frames": 12,
@@ -216,16 +219,17 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-off-20260912-074141-670274",
-      "trace_sha256": "a9e26c6257f31d22a306ebf395171829da6328bbcd4c6f2ff2dbf1f3fdea6f83",
-      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-seam-off-20260912-090137-937000",
+      "trace_sha256": "bc67191df5677e250ef1d7ea7c20b00ba3af86971e4e1db968ab26133fdcc284",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "seam-on": {
       "mode": "seam",
       "enabled": true,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 90,
       "restorations": 39,
       "frames": 12,
@@ -314,16 +318,17 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-on-20260912-074143-302204",
-      "trace_sha256": "b81e1e2e41025e77bc10320e24d48b0bd66f4af9de0b6095cae36292d91a60cc",
-      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-seam-on-20260912-090139-543191",
+      "trace_sha256": "9f10e2a5ac97e7487cd94d55592f1ff45af60a98bed8c7e0a39c151773788dce",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "production-ownership-off": {
       "mode": "production",
       "enabled": false,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 30,
       "restorations": 39,
       "frames": 12,
@@ -366,16 +371,17 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-ownership-off-20260912-074145-173919",
-      "trace_sha256": "51683834aa3209bc2a8a4e2ae908273f5e318a7855425e3192ab387c9a127607",
-      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-production-ownership-off-20260912-090141-248467",
+      "trace_sha256": "16263915846a45e44c0f7b77e4aa61abee3a129f88a71ac9f5c42995b02607e4",
+      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "production-ownership-on": {
       "mode": "production",
       "enabled": true,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 30,
       "restorations": 39,
       "frames": 12,
@@ -474,16 +480,17 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-ownership-on-20260912-074146-846046",
-      "trace_sha256": "7208079cdd9e4106fb8b0bc50142668c7c4c7dbc4328f67586b7392b3f40ddaa",
-      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-production-ownership-on-20260912-090142-849120",
+      "trace_sha256": "214967bd701ec5e31d445bde67706cf6aef4b0eb2d1a01d32764f2fe34a17451",
+      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "seam-ownership-off": {
       "mode": "seam",
       "enabled": false,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 30,
       "restorations": 39,
       "frames": 12,
@@ -526,16 +533,17 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-off-20260912-074148-561079",
-      "trace_sha256": "adc69bb796ee5576dcc24697192c3b284c401401186a5c48331ffdafa848022f",
-      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-seam-ownership-off-20260912-090144-820713",
+      "trace_sha256": "0609dd9c3595ccbd99f6b4cba958dba40cd84aa9aafd1dc18473f3495b8951ab",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "seam-ownership-on": {
       "mode": "seam",
       "enabled": true,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 90,
       "restorations": 39,
       "frames": 12,
@@ -634,16 +642,17 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-on-20260912-074150-196991",
-      "trace_sha256": "d57fce5430291eacc954a31fde618ebcf1e3e8c0739a3e634f85424623365b57",
-      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-seam-ownership-on-20260912-090146-474623",
+      "trace_sha256": "5cd49d54e15cc7ae7f6f181c44c4d52f26675b4972cb66674df0cf79c56444ca",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "production-depth-off": {
       "mode": "production",
       "enabled": false,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 30,
       "restorations": 39,
       "frames": 12,
@@ -690,16 +699,17 @@
         ]
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-depth-off-20260912-074151-922670",
-      "trace_sha256": "9cf1c8128a39135422df0dbb82fe3e166a8081ffd3b497291e201a067fa5f61d",
-      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-production-depth-off-20260912-090148-214723",
+      "trace_sha256": "257be9df6cc0e8155db4413f98e6e4472d6c84e23bd4f9c527039c8f38f54329",
+      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "production-depth-on": {
       "mode": "production",
       "enabled": true,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 30,
       "restorations": 39,
       "frames": 12,
@@ -802,16 +812,17 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-depth-on-20260912-074153-917934",
-      "trace_sha256": "a19f7ff9c553c1c4fd1a700785c9a0128e0a3d62b9a5ce8d05f59948e395f520",
-      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-production-depth-on-20260912-090149-891048",
+      "trace_sha256": "ceb1f3fe86b81440e9561a368bffdb2f8f485b5422bacff7a08ee70d59a26771",
+      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "seam-depth-off": {
       "mode": "seam",
       "enabled": false,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 30,
       "restorations": 39,
       "frames": 12,
@@ -858,16 +869,17 @@
         ]
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-depth-off-20260912-074155-803904",
-      "trace_sha256": "f359ce4fd660b6196b7b40c8c576f7a712d840eb6667f935533dbd6385275855",
-      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-seam-depth-off-20260912-090151-571242",
+      "trace_sha256": "dee28f19ca27069eae2f611ee5acb8f6fbdd88c4d643a56cca62460d0b1e10e1",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "seam-depth-on": {
       "mode": "seam",
       "enabled": true,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 90,
       "restorations": 39,
       "frames": 12,
@@ -970,16 +982,17 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-depth-on-20260912-074157-433097",
-      "trace_sha256": "be1566d40dc51c33967d8f7b65b9a67e3c5767adaaada3e596064ad3e8d2beea",
-      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-seam-depth-on-20260912-090153-218679",
+      "trace_sha256": "c40f3f28a3e8f6adf76909ad21d110d7cc823bbb4818f218551a41a173338e0b",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "production-admission-off": {
       "mode": "production",
       "enabled": false,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 30,
       "restorations": 39,
       "frames": 12,
@@ -1022,16 +1035,17 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-admission-off-20260912-074159-358798",
-      "trace_sha256": "a25277b520f89a132ac0c172eaf234444310135a8d4b87fcd9a4e5b04e9b785a",
-      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-production-admission-off-20260912-090155-023462",
+      "trace_sha256": "fbb46440d6c59d47ec3e9448c029c613d62de5a34b201bbd79946744b9ce5571",
+      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "production-admission-on": {
       "mode": "production",
       "enabled": true,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 30,
       "restorations": 39,
       "frames": 12,
@@ -1130,16 +1144,17 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-admission-on-20260912-074201-085255",
-      "trace_sha256": "540a08a9f89830e637d52acc959bab60f77854a26eb72dd10e1e931979de061b",
-      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-production-admission-on-20260912-090156-651708",
+      "trace_sha256": "78ef08ea43e8d6d72b258d72e489c339ae8a617c7e0edb7c3040ec41966af416",
+      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "seam-admission-off": {
       "mode": "seam",
       "enabled": false,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 30,
       "restorations": 39,
       "frames": 12,
@@ -1182,16 +1197,17 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-admission-off-20260912-074202-884751",
-      "trace_sha256": "2eaa5e90c602981ee52afdb1721b8da48eb564b1bb99c8538b0fc7e954acd44e",
-      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-seam-admission-off-20260912-090158-391000",
+      "trace_sha256": "e9846a62ca7225b3773e182cca0cdc92144392e78d044189835c6a838273f84b",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "seam-admission-on": {
       "mode": "seam",
       "enabled": true,
       "jitter": false,
       "taa": false,
+      "lazy": false,
       "checks": 90,
       "restorations": 39,
       "frames": 12,
@@ -1290,16 +1306,17 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-admission-on-20260912-074204-592197",
-      "trace_sha256": "172c812213b021ece6125c05c34be42f053ad9e481cc34f92a55a8fe6f8ac1f1",
-      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-seam-admission-on-20260912-090200-004432",
+      "trace_sha256": "e3a2a0d54262f798a4db561703abadd1b1c343db64ef1ac11ee3491a4d7a4af1",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "production-jitter-on": {
       "mode": "production",
       "enabled": true,
       "jitter": true,
       "taa": false,
+      "lazy": false,
       "checks": 30,
       "restorations": 39,
       "frames": 12,
@@ -1388,10 +1405,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-jitter-on-20260912-074206-522641",
-      "trace_sha256": "5632813d639da79653c30c352ed257109325ac2b8715d211931f68c5ebd4c9cb",
-      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77",
+      "directory": "verification/probe/build/motion-output-production-jitter-on-20260912-090201-999313",
+      "trace_sha256": "f076271c98c48edfb9b231c24f8bdd19ba5d19c5df1d0285cfb517fee3cf15de",
+      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523",
       "frames_differing_from_unjittered": [
         0,
         1,
@@ -1412,6 +1429,7 @@
       "enabled": true,
       "jitter": true,
       "taa": false,
+      "lazy": false,
       "checks": 90,
       "restorations": 39,
       "frames": 12,
@@ -1500,10 +1518,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-jitter-on-20260912-074208-345577",
-      "trace_sha256": "14cb50cc3ed1ea1ffea44baaec7eecfeed2ecd709a1d640da9f50df070362433",
-      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77",
+      "directory": "verification/probe/build/motion-output-seam-jitter-on-20260912-090203-934409",
+      "trace_sha256": "c71dac82b8d696261c05565ce87320497e8cc656f2dc405d0a7d06f47d7196b9",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523",
       "frames_differing_from_unjittered": [
         0,
         1,
@@ -1524,6 +1542,7 @@
       "enabled": true,
       "jitter": true,
       "taa": true,
+      "lazy": false,
       "checks": 69,
       "restorations": 51,
       "frames": 12,
@@ -1663,32 +1682,33 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-taa-on-20260912-074210-460640",
-      "trace_sha256": "343f847a38af09815f306add236964c523a7454ae25e83329101131fb5404bcf",
-      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-production-taa-on-20260912-090205-644033",
+      "trace_sha256": "77ed6a28edb05a45a90cd66e0dbd720f4454417311c7ee2e97c992971439a865",
+      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "seam-taa-on": {
       "mode": "seam",
       "enabled": true,
       "jitter": true,
       "taa": true,
+      "lazy": false,
       "checks": 150,
       "restorations": 51,
       "frames": 12,
       "color_hashes": {
         "0": "7780633dafe6b5fa",
-        "1": "258888a0a65dcf96",
+        "1": "fe5cc8b35cd801ca",
         "2": "47059dc8e751a751",
         "3": "35942d847a659ef3",
-        "4": "965f4492be4b1710",
+        "4": "c558fba5771359a1",
         "5": "0554c1e31f1e7738",
         "6": "d8dbde26c9cf0b5d",
-        "7": "711f8ca891ec756e",
+        "7": "b90efd03c4e2713e",
         "8": "48e1c7ad26e4fdc1",
         "9": "4fccb6c7391e6b2d",
-        "10": "9c7f2971a125b3d6",
-        "11": "15dabe2a5332bb06"
+        "10": "52dc6a7ccf7dd9e8",
+        "11": "e65aedcbf0499533"
       },
       "motion_pixels": 44279,
       "matched_pixels": 10348,
@@ -1710,17 +1730,17 @@
       ],
       "taa_changed_pixels": {
         "0": 0,
-        "1": 145,
+        "1": 211,
         "2": 0,
         "3": 0,
-        "4": 113,
+        "4": 146,
         "5": 0,
         "6": 0,
-        "7": 38,
+        "7": 61,
         "8": 0,
         "9": 0,
-        "10": 33,
-        "11": 226
+        "10": 253,
+        "11": 243
       },
       "color_hashes_before_boundary": {
         "0": "7780633dafe6b5fa",
@@ -1780,23 +1800,23 @@
       },
       "taa_image": {
         "differing_fraction": {
-          "1": 0.002197265625,
+          "1": 0.007080078125,
           "2": 0.0,
           "3": 0.0,
-          "4": 0.02294921875,
+          "4": 0.027587890625,
           "5": 0.0,
           "6": 0.0,
-          "7": 0.004638671875,
+          "7": 0.009521484375,
           "8": 0.0
         },
         "max_difference": {
-          "1": 0.05218912760416666,
+          "1": 0.07002192478553922,
           "2": 0.00023360906862746056,
           "3": 0.00023360906862746056,
           "4": 0.44848249846813726,
           "5": 0.00023360906862746056,
           "6": 0.00023360906862746056,
-          "7": 0.09156613817401961,
+          "7": 0.1417992685355392,
           "8": 0.00023360906862746056
         }
       },
@@ -1819,10 +1839,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-taa-on-20260912-074212-697849",
-      "trace_sha256": "d7d4dd270bf4c6ed539eb543cfcc4a98dc57ca3cc5c1f9a0b60c9f13c98fb1d3",
-      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77",
+      "directory": "verification/probe/build/motion-output-seam-taa-on-20260912-090207-723798",
+      "trace_sha256": "e94e197b81536db1f969f98e159c8a88e9925d6c01578f09f4efd8ab1bc0dbf4",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523",
       "frames_changed_by_history": [
         1,
         4,
@@ -1836,6 +1856,7 @@
       "enabled": true,
       "jitter": true,
       "taa": true,
+      "lazy": false,
       "checks": 69,
       "restorations": 51,
       "frames": 12,
@@ -1985,32 +2006,33 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-ownership-taa-on-20260912-074214-696335",
-      "trace_sha256": "4f187accb4123167e13fd9fcfcaf18d8711a814437c2746674e6b21e7251d488",
-      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
+      "directory": "verification/probe/build/motion-output-production-ownership-taa-on-20260912-090209-859703",
+      "trace_sha256": "ef803dc7d81f308a3e45cdcf87d69290ec2f022f83863de51cf3dd8bc2c3c487",
+      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     },
     "seam-ownership-taa-on": {
       "mode": "seam",
       "enabled": true,
       "jitter": true,
       "taa": true,
+      "lazy": false,
       "checks": 150,
       "restorations": 51,
       "frames": 12,
       "color_hashes": {
         "0": "7780633dafe6b5fa",
-        "1": "258888a0a65dcf96",
+        "1": "fe5cc8b35cd801ca",
         "2": "47059dc8e751a751",
         "3": "35942d847a659ef3",
-        "4": "965f4492be4b1710",
+        "4": "c558fba5771359a1",
         "5": "0554c1e31f1e7738",
         "6": "d8dbde26c9cf0b5d",
-        "7": "711f8ca891ec756e",
+        "7": "b90efd03c4e2713e",
         "8": "48e1c7ad26e4fdc1",
         "9": "4fccb6c7391e6b2d",
-        "10": "9c7f2971a125b3d6",
-        "11": "15dabe2a5332bb06"
+        "10": "52dc6a7ccf7dd9e8",
+        "11": "e65aedcbf0499533"
       },
       "motion_pixels": 44279,
       "matched_pixels": 10348,
@@ -2032,17 +2054,17 @@
       ],
       "taa_changed_pixels": {
         "0": 0,
-        "1": 145,
+        "1": 211,
         "2": 0,
         "3": 0,
-        "4": 113,
+        "4": 146,
         "5": 0,
         "6": 0,
-        "7": 38,
+        "7": 61,
         "8": 0,
         "9": 0,
-        "10": 33,
-        "11": 226
+        "10": 253,
+        "11": 243
       },
       "color_hashes_before_boundary": {
         "0": "7780633dafe6b5fa",
@@ -2102,23 +2124,23 @@
       },
       "taa_image": {
         "differing_fraction": {
-          "1": 0.002197265625,
+          "1": 0.007080078125,
           "2": 0.0,
           "3": 0.0,
-          "4": 0.02294921875,
+          "4": 0.027587890625,
           "5": 0.0,
           "6": 0.0,
-          "7": 0.004638671875,
+          "7": 0.009521484375,
           "8": 0.0
         },
         "max_difference": {
-          "1": 0.05218912760416666,
+          "1": 0.07002192478553922,
           "2": 0.00023360906862746056,
           "3": 0.00023360906862746056,
           "4": 0.44848249846813726,
           "5": 0.00023360906862746056,
           "6": 0.00023360906862746056,
-          "7": 0.09156613817401961,
+          "7": 0.1417992685355392,
           "8": 0.00023360906862746056
         }
       },
@@ -2151,10 +2173,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-taa-on-20260912-074216-510622",
-      "trace_sha256": "88d62912c9578ffa0586c5932b8fbeb92a7aaea61ec8f6ecc2f2f9e2004f5fdf",
-      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
-      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77",
+      "directory": "verification/probe/build/motion-output-seam-ownership-taa-on-20260912-090211-830248",
+      "trace_sha256": "4832fba2f51bec717a8bdfb1341c740d730df2747a2ce2385281c17b973c639d",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523",
       "frames_changed_by_history": [
         1,
         4,
@@ -2162,6 +2184,1120 @@
         10,
         11
       ]
+    },
+    "production-lazy-on": {
+      "mode": "production",
+      "enabled": true,
+      "jitter": false,
+      "taa": false,
+      "lazy": true,
+      "checks": 30,
+      "restorations": 39,
+      "frames": 12,
+      "color_hashes": {
+        "0": "86eb44945a50eb49",
+        "1": "8b2e5709a9312512",
+        "2": "8b2e5709a9312512",
+        "3": "86eb44945a50eb49",
+        "4": "cf2e37fae83fa592",
+        "5": "86eb44945a50eb49",
+        "6": "8b2e5709a9312512",
+        "7": "ddc0712e50d28304",
+        "8": "e975537fa974ffaf",
+        "9": "f138e92c0090e990",
+        "10": "e975537fa974ffaf",
+        "11": "f138e92c0090e990"
+      },
+      "motion_pixels": 0,
+      "matched_pixels": 0,
+      "max_uv_error_pixels": 0.0,
+      "max_previous_depth_error": 0.0,
+      "depth_pixels": 0,
+      "depth_written_pixels": 0,
+      "max_current_depth_error": 0.0,
+      "coverage_frames": 12,
+      "coverage_pixels": 48242,
+      "coverage_ambiguous_pixels": 910,
+      "depth_readbacks": {
+        "1": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "2": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "3": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "4": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "5": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "6": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "7": {
+          "written": 171,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "8": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.6000000238418579
+        }
+      },
+      "variants": 4,
+      "frames_logged": 9,
+      "readbacks": 8,
+      "routes": 19,
+      "variant": "plain",
+      "ownership": {
+        "wrapped": false,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-production-lazy-on-20260912-090220-423634",
+      "trace_sha256": "5df78af1780826eba3d5978a40ad6a68edf257facba9a12647e5668b1c79d7e0",
+      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+    },
+    "seam-lazy-on": {
+      "mode": "seam",
+      "enabled": true,
+      "jitter": false,
+      "taa": false,
+      "lazy": true,
+      "checks": 90,
+      "restorations": 39,
+      "frames": 12,
+      "color_hashes": {
+        "0": "86eb44945a50eb49",
+        "1": "8b2e5709a9312512",
+        "2": "8b2e5709a9312512",
+        "3": "86eb44945a50eb49",
+        "4": "cf2e37fae83fa592",
+        "5": "86eb44945a50eb49",
+        "6": "8b2e5709a9312512",
+        "7": "ddc0712e50d28304",
+        "8": "e975537fa974ffaf",
+        "9": "f138e92c0090e990",
+        "10": "e975537fa974ffaf",
+        "11": "f138e92c0090e990"
+      },
+      "motion_pixels": 44284,
+      "matched_pixels": 10261,
+      "max_uv_error_pixels": 0.00156247616,
+      "max_previous_depth_error": 3.69792081e-08,
+      "depth_pixels": 44284,
+      "depth_written_pixels": 27170,
+      "max_current_depth_error": 3.69455019e-06,
+      "coverage_frames": 12,
+      "coverage_pixels": 48242,
+      "coverage_ambiguous_pixels": 910,
+      "depth_readbacks": {
+        "1": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "2": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "3": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "4": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "5": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "6": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "7": {
+          "written": 171,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "8": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.6000000238418579
+        }
+      },
+      "variants": 4,
+      "frames_logged": 9,
+      "readbacks": 8,
+      "routes": 19,
+      "variant": "plain",
+      "ownership": {
+        "wrapped": false,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-lazy-on-20260912-090222-390168",
+      "trace_sha256": "378c39f8c6a85bf8928e9360d12360df99b4d1949e15e40250e6947ce80d8dc5",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+    },
+    "seam-ownership-lazy-on": {
+      "mode": "seam",
+      "enabled": true,
+      "jitter": false,
+      "taa": false,
+      "lazy": true,
+      "checks": 90,
+      "restorations": 39,
+      "frames": 12,
+      "color_hashes": {
+        "0": "86eb44945a50eb49",
+        "1": "8b2e5709a9312512",
+        "2": "8b2e5709a9312512",
+        "3": "86eb44945a50eb49",
+        "4": "cf2e37fae83fa592",
+        "5": "86eb44945a50eb49",
+        "6": "8b2e5709a9312512",
+        "7": "ddc0712e50d28304",
+        "8": "e975537fa974ffaf",
+        "9": "f138e92c0090e990",
+        "10": "e975537fa974ffaf",
+        "11": "f138e92c0090e990"
+      },
+      "motion_pixels": 44284,
+      "matched_pixels": 10261,
+      "max_uv_error_pixels": 0.00156247616,
+      "max_previous_depth_error": 3.69792081e-08,
+      "depth_pixels": 44284,
+      "depth_written_pixels": 27170,
+      "max_current_depth_error": 3.69455019e-06,
+      "coverage_frames": 12,
+      "coverage_pixels": 48242,
+      "coverage_ambiguous_pixels": 910,
+      "depth_readbacks": {
+        "1": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "2": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "3": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "4": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "5": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "6": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "7": {
+          "written": 171,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "8": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.6000000238418579
+        }
+      },
+      "variants": 4,
+      "frames_logged": 9,
+      "readbacks": 8,
+      "routes": 19,
+      "variant": "ownership",
+      "ownership": {
+        "wrapped": true,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        },
+        "source_epochs": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0,
+          "6": 0,
+          "7": 0,
+          "8": 0
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-lazy-on-20260912-090224-222373",
+      "trace_sha256": "1b6fad72a0ce00c8349a20c944f1cee1d613d3ae2cd9aaa6e76f091e94610177",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+    },
+    "seam-taa-lazy-on": {
+      "mode": "seam",
+      "enabled": true,
+      "jitter": true,
+      "taa": true,
+      "lazy": true,
+      "checks": 150,
+      "restorations": 51,
+      "frames": 12,
+      "color_hashes": {
+        "0": "7780633dafe6b5fa",
+        "1": "fe5cc8b35cd801ca",
+        "2": "47059dc8e751a751",
+        "3": "35942d847a659ef3",
+        "4": "c558fba5771359a1",
+        "5": "0554c1e31f1e7738",
+        "6": "d8dbde26c9cf0b5d",
+        "7": "b90efd03c4e2713e",
+        "8": "48e1c7ad26e4fdc1",
+        "9": "4fccb6c7391e6b2d",
+        "10": "52dc6a7ccf7dd9e8",
+        "11": "e65aedcbf0499533"
+      },
+      "motion_pixels": 44279,
+      "matched_pixels": 10348,
+      "max_uv_error_pixels": 0.00191186365,
+      "max_previous_depth_error": 7.21407726e-08,
+      "depth_pixels": 44279,
+      "depth_written_pixels": 27293,
+      "max_current_depth_error": 3.74090846e-06,
+      "coverage_frames": 12,
+      "coverage_pixels": 48957,
+      "coverage_ambiguous_pixels": 195,
+      "taa_history_frames": [
+        1,
+        2,
+        4,
+        7,
+        10,
+        11
+      ],
+      "taa_changed_pixels": {
+        "0": 0,
+        "1": 211,
+        "2": 0,
+        "3": 0,
+        "4": 146,
+        "5": 0,
+        "6": 0,
+        "7": 61,
+        "8": 0,
+        "9": 0,
+        "10": 253,
+        "11": 243
+      },
+      "color_hashes_before_boundary": {
+        "0": "7780633dafe6b5fa",
+        "1": "9d598f52bb65c0a6",
+        "2": "47059dc8e751a751",
+        "3": "35942d847a659ef3",
+        "4": "c9c5e220baccde15",
+        "5": "0554c1e31f1e7738",
+        "6": "d8dbde26c9cf0b5d",
+        "7": "ae0b3498446c57df",
+        "8": "48e1c7ad26e4fdc1",
+        "9": "4fccb6c7391e6b2d",
+        "10": "750cdfe97753849e",
+        "11": "245a6dd4042eff8d"
+      },
+      "depth_readbacks": {
+        "1": {
+          "written": 2660,
+          "min": 0.4877398908138275,
+          "max": 0.6000000238418579
+        },
+        "2": {
+          "written": 2683,
+          "min": 0.4888249635696411,
+          "max": 0.6000000238418579
+        },
+        "3": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "4": {
+          "written": 2677,
+          "min": 0.4885537326335907,
+          "max": 0.6000000238418579
+        },
+        "5": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "6": {
+          "written": 2616,
+          "min": 0.4890962541103363,
+          "max": 0.6000000238418579
+        },
+        "7": {
+          "written": 190,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "8": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.6000000238418579
+        }
+      },
+      "taa_image": {
+        "differing_fraction": {
+          "1": 0.007080078125,
+          "2": 0.0,
+          "3": 0.0,
+          "4": 0.027587890625,
+          "5": 0.0,
+          "6": 0.0,
+          "7": 0.009521484375,
+          "8": 0.0
+        },
+        "max_difference": {
+          "1": 0.07002192478553922,
+          "2": 0.00023360906862746056,
+          "3": 0.00023360906862746056,
+          "4": 0.44848249846813726,
+          "5": 0.00023360906862746056,
+          "6": 0.00023360906862746056,
+          "7": 0.1417992685355392,
+          "8": 0.00023360906862746056
+        }
+      },
+      "variants": 4,
+      "frames_logged": 9,
+      "readbacks": 8,
+      "routes": 19,
+      "variant": "plain",
+      "ownership": {
+        "wrapped": false,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-taa-lazy-on-20260912-090226-101182",
+      "trace_sha256": "844822922b029a88d8bd7a3d1913aa4c31b4b68bda5ad499c9ffca08646870f2",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+    },
+    "production-burst-perdraw": {
+      "mode": "production",
+      "burst": true,
+      "lazy": false,
+      "checks": 23,
+      "restorations": 18,
+      "frames": 9,
+      "color_hashes": {
+        "0": "30ae7100740db29e",
+        "1": "8531c0486e4f9a2f",
+        "2": "30ae7100740db29e",
+        "3": "8531c0486e4f9a2f",
+        "4": "30ae7100740db29e",
+        "5": "8531c0486e4f9a2f",
+        "6": "30ae7100740db29e",
+        "7": "8531c0486e4f9a2f",
+        "8": "30ae7100740db29e"
+      },
+      "state_hashes": {
+        "0": "e221da560c741276",
+        "1": "e221da560c741276",
+        "2": "e221da560c741276",
+        "3": "e221da560c741276",
+        "4": "e221da560c741276",
+        "5": "e221da560c741276",
+        "6": "e221da560c741276",
+        "7": "e221da560c741276",
+        "8": "e221da560c741276"
+      },
+      "motion_hashes": {},
+      "readback_sha256": {
+        "7": {
+          "motion": "40a7f9ecdfcb9433a0727a914a2d13fa1e83a56c9032c69b102bf24a783644dd",
+          "depth": "11e099304b38fa5a5c708675d7815d7027831a78fda85e4dff3e706deb3d2184"
+        },
+        "8": {
+          "motion": "40a7f9ecdfcb9433a0727a914a2d13fa1e83a56c9032c69b102bf24a783644dd",
+          "depth": "11e099304b38fa5a5c708675d7815d7027831a78fda85e4dff3e706deb3d2184"
+        }
+      },
+      "set_rt_per_frame": {
+        "0": 20,
+        "1": 20,
+        "2": 20,
+        "3": 20,
+        "4": 20,
+        "5": 20,
+        "6": 20,
+        "7": 20,
+        "8": 20
+      },
+      "lazy_flushes_per_frame": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+        "6": 0,
+        "7": 0,
+        "8": 0
+      },
+      "costs_us_per_frame": {
+        "0": {
+          "gate_us": 512.1,
+          "route_draw_us": 136.0,
+          "set_rt_us": 8.6,
+          "lazy_flush_us": 0.0,
+          "fill_us": 121.4,
+          "readback_us": 0.0
+        },
+        "1": {
+          "gate_us": 9.6,
+          "route_draw_us": 22.0,
+          "set_rt_us": 9.3,
+          "lazy_flush_us": 0.0,
+          "fill_us": 48.5,
+          "readback_us": 0.0
+        },
+        "2": {
+          "gate_us": 7.2,
+          "route_draw_us": 24.8,
+          "set_rt_us": 10.8,
+          "lazy_flush_us": 0.0,
+          "fill_us": 43.5,
+          "readback_us": 0.0
+        },
+        "3": {
+          "gate_us": 6.5,
+          "route_draw_us": 25.5,
+          "set_rt_us": 11.5,
+          "lazy_flush_us": 0.0,
+          "fill_us": 43.0,
+          "readback_us": 0.0
+        },
+        "4": {
+          "gate_us": 5.5,
+          "route_draw_us": 23.1,
+          "set_rt_us": 10.9,
+          "lazy_flush_us": 0.0,
+          "fill_us": 18.5,
+          "readback_us": 0.0
+        },
+        "5": {
+          "gate_us": 6.4,
+          "route_draw_us": 25.8,
+          "set_rt_us": 13.1,
+          "lazy_flush_us": 0.0,
+          "fill_us": 27.6,
+          "readback_us": 0.0
+        },
+        "6": {
+          "gate_us": 5.6,
+          "route_draw_us": 24.8,
+          "set_rt_us": 12.0,
+          "lazy_flush_us": 0.0,
+          "fill_us": 20.7,
+          "readback_us": 0.0
+        },
+        "7": {
+          "gate_us": 6.3,
+          "route_draw_us": 26.5,
+          "set_rt_us": 14.0,
+          "lazy_flush_us": 0.0,
+          "fill_us": 30.7,
+          "readback_us": 2062.4
+        },
+        "8": {
+          "gate_us": 6.7,
+          "route_draw_us": 26.8,
+          "set_rt_us": 13.5,
+          "lazy_flush_us": 0.0,
+          "fill_us": 28.2,
+          "readback_us": 2090.5
+        }
+      },
+      "coverage_pixels": 35505,
+      "depth_written_pixels": 0,
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-production-burst-perdraw-20260912-090228-079542",
+      "trace_sha256": "caed3c600a895f8a25f47aa4047c034bdcddc90ac6f682ecfd9d7fc40503fd53",
+      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+    },
+    "production-burst-lazy": {
+      "mode": "production",
+      "burst": true,
+      "lazy": true,
+      "checks": 23,
+      "restorations": 18,
+      "frames": 9,
+      "color_hashes": {
+        "0": "30ae7100740db29e",
+        "1": "8531c0486e4f9a2f",
+        "2": "30ae7100740db29e",
+        "3": "8531c0486e4f9a2f",
+        "4": "30ae7100740db29e",
+        "5": "8531c0486e4f9a2f",
+        "6": "30ae7100740db29e",
+        "7": "8531c0486e4f9a2f",
+        "8": "30ae7100740db29e"
+      },
+      "state_hashes": {
+        "0": "e221da560c741276",
+        "1": "e221da560c741276",
+        "2": "e221da560c741276",
+        "3": "e221da560c741276",
+        "4": "e221da560c741276",
+        "5": "e221da560c741276",
+        "6": "e221da560c741276",
+        "7": "e221da560c741276",
+        "8": "e221da560c741276"
+      },
+      "motion_hashes": {},
+      "readback_sha256": {
+        "7": {
+          "motion": "40a7f9ecdfcb9433a0727a914a2d13fa1e83a56c9032c69b102bf24a783644dd",
+          "depth": "11e099304b38fa5a5c708675d7815d7027831a78fda85e4dff3e706deb3d2184"
+        },
+        "8": {
+          "motion": "40a7f9ecdfcb9433a0727a914a2d13fa1e83a56c9032c69b102bf24a783644dd",
+          "depth": "11e099304b38fa5a5c708675d7815d7027831a78fda85e4dff3e706deb3d2184"
+        }
+      },
+      "set_rt_per_frame": {
+        "0": 12,
+        "1": 12,
+        "2": 12,
+        "3": 12,
+        "4": 12,
+        "5": 12,
+        "6": 12,
+        "7": 20,
+        "8": 20
+      },
+      "lazy_flushes_per_frame": {
+        "0": 3,
+        "1": 3,
+        "2": 3,
+        "3": 3,
+        "4": 3,
+        "5": 3,
+        "6": 3,
+        "7": 5,
+        "8": 5
+      },
+      "costs_us_per_frame": {
+        "0": {
+          "gate_us": 498.6,
+          "route_draw_us": 123.7,
+          "set_rt_us": 4.9,
+          "lazy_flush_us": 5.2,
+          "fill_us": 137.5,
+          "readback_us": 0.0
+        },
+        "1": {
+          "gate_us": 9.3,
+          "route_draw_us": 10.8,
+          "set_rt_us": 12.3,
+          "lazy_flush_us": 12.8,
+          "fill_us": 39.9,
+          "readback_us": 0.0
+        },
+        "2": {
+          "gate_us": 6.7,
+          "route_draw_us": 12.5,
+          "set_rt_us": 11.9,
+          "lazy_flush_us": 9.2,
+          "fill_us": 31.8,
+          "readback_us": 0.0
+        },
+        "3": {
+          "gate_us": 6.4,
+          "route_draw_us": 11.9,
+          "set_rt_us": 11.3,
+          "lazy_flush_us": 9.0,
+          "fill_us": 41.3,
+          "readback_us": 0.0
+        },
+        "4": {
+          "gate_us": 5.2,
+          "route_draw_us": 10.4,
+          "set_rt_us": 9.7,
+          "lazy_flush_us": 6.8,
+          "fill_us": 26.8,
+          "readback_us": 0.0
+        },
+        "5": {
+          "gate_us": 6.9,
+          "route_draw_us": 12.5,
+          "set_rt_us": 11.9,
+          "lazy_flush_us": 8.8,
+          "fill_us": 18.4,
+          "readback_us": 0.0
+        },
+        "6": {
+          "gate_us": 6.2,
+          "route_draw_us": 11.5,
+          "set_rt_us": 11.1,
+          "lazy_flush_us": 9.0,
+          "fill_us": 24.1,
+          "readback_us": 0.0
+        },
+        "7": {
+          "gate_us": 7.0,
+          "route_draw_us": 20.5,
+          "set_rt_us": 20.3,
+          "lazy_flush_us": 14.1,
+          "fill_us": 32.5,
+          "readback_us": 2597.4
+        },
+        "8": {
+          "gate_us": 6.3,
+          "route_draw_us": 18.6,
+          "set_rt_us": 20.1,
+          "lazy_flush_us": 14.9,
+          "fill_us": 30.5,
+          "readback_us": 2125.5
+        }
+      },
+      "coverage_pixels": 35505,
+      "depth_written_pixels": 0,
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-production-burst-lazy-20260912-090229-673958",
+      "trace_sha256": "cf17553d9f0279e9e76e6049bff5da21121ca95c2a7fee89219ed9c03973fe10",
+      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+    },
+    "seam-burst-perdraw": {
+      "mode": "seam",
+      "burst": true,
+      "lazy": false,
+      "checks": 68,
+      "restorations": 18,
+      "frames": 9,
+      "color_hashes": {
+        "0": "30ae7100740db29e",
+        "1": "8531c0486e4f9a2f",
+        "2": "30ae7100740db29e",
+        "3": "8531c0486e4f9a2f",
+        "4": "30ae7100740db29e",
+        "5": "8531c0486e4f9a2f",
+        "6": "30ae7100740db29e",
+        "7": "8531c0486e4f9a2f",
+        "8": "30ae7100740db29e"
+      },
+      "state_hashes": {
+        "0": "e221da560c741276",
+        "1": "e221da560c741276",
+        "2": "e221da560c741276",
+        "3": "e221da560c741276",
+        "4": "e221da560c741276",
+        "5": "e221da560c741276",
+        "6": "e221da560c741276",
+        "7": "e221da560c741276",
+        "8": "e221da560c741276"
+      },
+      "motion_hashes": {
+        "0": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "1": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "2": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "3": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "4": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "5": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "6": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "7": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "8": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ]
+      },
+      "readback_sha256": {
+        "7": {
+          "motion": "40a7f9ecdfcb9433a0727a914a2d13fa1e83a56c9032c69b102bf24a783644dd",
+          "depth": "11e099304b38fa5a5c708675d7815d7027831a78fda85e4dff3e706deb3d2184"
+        },
+        "8": {
+          "motion": "40a7f9ecdfcb9433a0727a914a2d13fa1e83a56c9032c69b102bf24a783644dd",
+          "depth": "11e099304b38fa5a5c708675d7815d7027831a78fda85e4dff3e706deb3d2184"
+        }
+      },
+      "set_rt_per_frame": {
+        "0": 20,
+        "1": 20,
+        "2": 20,
+        "3": 20,
+        "4": 20,
+        "5": 20,
+        "6": 20,
+        "7": 20,
+        "8": 20
+      },
+      "lazy_flushes_per_frame": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+        "6": 0,
+        "7": 0,
+        "8": 0
+      },
+      "costs_us_per_frame": {
+        "0": {
+          "gate_us": 483.3,
+          "route_draw_us": 129.0,
+          "set_rt_us": 9.1,
+          "lazy_flush_us": 0.0,
+          "fill_us": 96.2,
+          "readback_us": 0.0
+        },
+        "1": {
+          "gate_us": 8.1,
+          "route_draw_us": 22.1,
+          "set_rt_us": 9.4,
+          "lazy_flush_us": 0.0,
+          "fill_us": 40.2,
+          "readback_us": 0.0
+        },
+        "2": {
+          "gate_us": 7.8,
+          "route_draw_us": 21.6,
+          "set_rt_us": 10.1,
+          "lazy_flush_us": 0.0,
+          "fill_us": 34.1,
+          "readback_us": 0.0
+        },
+        "3": {
+          "gate_us": 8.5,
+          "route_draw_us": 28.6,
+          "set_rt_us": 14.8,
+          "lazy_flush_us": 0.0,
+          "fill_us": 21.9,
+          "readback_us": 0.0
+        },
+        "4": {
+          "gate_us": 5.5,
+          "route_draw_us": 22.9,
+          "set_rt_us": 11.9,
+          "lazy_flush_us": 0.0,
+          "fill_us": 23.8,
+          "readback_us": 0.0
+        },
+        "5": {
+          "gate_us": 5.8,
+          "route_draw_us": 19.8,
+          "set_rt_us": 9.4,
+          "lazy_flush_us": 0.0,
+          "fill_us": 30.3,
+          "readback_us": 0.0
+        },
+        "6": {
+          "gate_us": 5.9,
+          "route_draw_us": 21.6,
+          "set_rt_us": 11.0,
+          "lazy_flush_us": 0.0,
+          "fill_us": 29.6,
+          "readback_us": 0.0
+        },
+        "7": {
+          "gate_us": 7.6,
+          "route_draw_us": 28.2,
+          "set_rt_us": 13.8,
+          "lazy_flush_us": 0.0,
+          "fill_us": 32.1,
+          "readback_us": 2703.8
+        },
+        "8": {
+          "gate_us": 7.6,
+          "route_draw_us": 30.2,
+          "set_rt_us": 15.4,
+          "lazy_flush_us": 0.0,
+          "fill_us": 31.6,
+          "readback_us": 2220.4
+        }
+      },
+      "coverage_pixels": 35505,
+      "depth_written_pixels": 21447,
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-burst-perdraw-20260912-090231-308802",
+      "trace_sha256": "0c445f85542f6467c276ffc836aaa7a11afc915e7c112cc72267e943f4303052",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+    },
+    "seam-burst-lazy": {
+      "mode": "seam",
+      "burst": true,
+      "lazy": true,
+      "checks": 68,
+      "restorations": 18,
+      "frames": 9,
+      "color_hashes": {
+        "0": "30ae7100740db29e",
+        "1": "8531c0486e4f9a2f",
+        "2": "30ae7100740db29e",
+        "3": "8531c0486e4f9a2f",
+        "4": "30ae7100740db29e",
+        "5": "8531c0486e4f9a2f",
+        "6": "30ae7100740db29e",
+        "7": "8531c0486e4f9a2f",
+        "8": "30ae7100740db29e"
+      },
+      "state_hashes": {
+        "0": "e221da560c741276",
+        "1": "e221da560c741276",
+        "2": "e221da560c741276",
+        "3": "e221da560c741276",
+        "4": "e221da560c741276",
+        "5": "e221da560c741276",
+        "6": "e221da560c741276",
+        "7": "e221da560c741276",
+        "8": "e221da560c741276"
+      },
+      "motion_hashes": {
+        "0": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "1": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "2": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "3": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "4": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "5": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "6": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "7": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ],
+        "8": [
+          "39e6e57a44fc2325",
+          "d0f67268eddfb30c"
+        ]
+      },
+      "readback_sha256": {
+        "7": {
+          "motion": "40a7f9ecdfcb9433a0727a914a2d13fa1e83a56c9032c69b102bf24a783644dd",
+          "depth": "11e099304b38fa5a5c708675d7815d7027831a78fda85e4dff3e706deb3d2184"
+        },
+        "8": {
+          "motion": "40a7f9ecdfcb9433a0727a914a2d13fa1e83a56c9032c69b102bf24a783644dd",
+          "depth": "11e099304b38fa5a5c708675d7815d7027831a78fda85e4dff3e706deb3d2184"
+        }
+      },
+      "set_rt_per_frame": {
+        "0": 12,
+        "1": 12,
+        "2": 12,
+        "3": 12,
+        "4": 12,
+        "5": 12,
+        "6": 12,
+        "7": 20,
+        "8": 20
+      },
+      "lazy_flushes_per_frame": {
+        "0": 3,
+        "1": 3,
+        "2": 3,
+        "3": 3,
+        "4": 3,
+        "5": 3,
+        "6": 3,
+        "7": 5,
+        "8": 5
+      },
+      "costs_us_per_frame": {
+        "0": {
+          "gate_us": 578.2,
+          "route_draw_us": 120.0,
+          "set_rt_us": 5.2,
+          "lazy_flush_us": 38.4,
+          "fill_us": 96.9,
+          "readback_us": 0.0
+        },
+        "1": {
+          "gate_us": 8.8,
+          "route_draw_us": 8.6,
+          "set_rt_us": 9.4,
+          "lazy_flush_us": 10.7,
+          "fill_us": 44.8,
+          "readback_us": 0.0
+        },
+        "2": {
+          "gate_us": 9.2,
+          "route_draw_us": 11.2,
+          "set_rt_us": 10.4,
+          "lazy_flush_us": 9.0,
+          "fill_us": 66.9,
+          "readback_us": 0.0
+        },
+        "3": {
+          "gate_us": 7.5,
+          "route_draw_us": 14.0,
+          "set_rt_us": 12.8,
+          "lazy_flush_us": 9.0,
+          "fill_us": 22.9,
+          "readback_us": 0.0
+        },
+        "4": {
+          "gate_us": 7.6,
+          "route_draw_us": 11.9,
+          "set_rt_us": 11.8,
+          "lazy_flush_us": 9.1,
+          "fill_us": 22.3,
+          "readback_us": 0.0
+        },
+        "5": {
+          "gate_us": 7.2,
+          "route_draw_us": 10.4,
+          "set_rt_us": 11.1,
+          "lazy_flush_us": 9.5,
+          "fill_us": 23.1,
+          "readback_us": 0.0
+        },
+        "6": {
+          "gate_us": 7.2,
+          "route_draw_us": 11.1,
+          "set_rt_us": 11.5,
+          "lazy_flush_us": 8.8,
+          "fill_us": 19.0,
+          "readback_us": 0.0
+        },
+        "7": {
+          "gate_us": 7.5,
+          "route_draw_us": 19.7,
+          "set_rt_us": 21.0,
+          "lazy_flush_us": 15.1,
+          "fill_us": 33.7,
+          "readback_us": 2517.5
+        },
+        "8": {
+          "gate_us": 6.9,
+          "route_draw_us": 20.7,
+          "set_rt_us": 20.8,
+          "lazy_flush_us": 13.7,
+          "fill_us": 32.8,
+          "readback_us": 2198.8
+        }
+      },
+      "coverage_pixels": 35505,
+      "depth_written_pixels": 21447,
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-burst-lazy-20260912-090232-927218",
+      "trace_sha256": "e1afe7e0ce9bfe67f17e3d60d7939308b69228d81e96614f28ca11f94d431035",
+      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
     }
   },
   "local_inputs": {
@@ -2169,7 +3305,7 @@
     "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
   },
   "sources_before_build": {
-    "CMakeLists.txt": "1cda6357192e312f9d9d0a80a58f02b18b2cff1ef2522a2370f3e34e3a79933e",
+    "CMakeLists.txt": "463428e02eef0b440fd1580d7fece87e3e73355b99e0ff65cf37eaeb05b41f7b",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
@@ -2185,7 +3321,7 @@
     "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
     "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
-    "src/proxy/capture.cpp": "4a93d4cec4c601e3adf4353f91b9102ecb8c647145525bb6b4ce2c6c0ef8e5ce",
+    "src/proxy/capture.cpp": "36f53e8c4fcec8914892d733746aa3401736d50429d958c7190ff0bc9dcc2a7e",
     "src/proxy/capture.h": "1dc87985e7039fa7d2d8463aa3e62e55c472cddca5c0f738dea240c7dde3f164",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
@@ -2194,22 +3330,24 @@
     "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
     "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
     "src/proxy/loader.cpp": "aa2dede12db2e7f810bac277e8b6cb02858572056b149fce47b0b689620fcca0",
-    "src/proxy/loading_trace.cpp": "3ed55868676623a91506486ce05608ae500dce7c058a839a63739cf31bf94903",
-    "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
+    "src/proxy/loading_trace.cpp": "89fc26125e85b458ebe4e5a9dd440799f2a9af14ddd0bcfeb71eb626e69c4e87",
+    "src/proxy/loading_trace.h": "b4da3176c9852f3c9628c9a0d096400527d858360dcecae2d8a83a24a79032b0",
     "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
     "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
     "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
     "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
-    "src/proxy/motion_output.cpp": "b0e7ce9e68891a4cef6a00d1af824fb2c033d23454027c87d6ca17e5a92640b6",
-    "src/proxy/motion_output.h": "c834222e048352328ed51acc39aac06b3444934fe8d7a8383a81ef427ebe279d",
+    "src/proxy/motion_output.cpp": "974c201de5e4609280da7630e20d84b055467643b1970084b2727810a76fb863",
+    "src/proxy/motion_output.h": "66b5108000f1e2724d18ac87c8b2ea78321252db348866887f76e6bc4b72efdc",
     "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
     "src/proxy/object_trace.cpp": "22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba",
     "src/proxy/object_trace.h": "d09401eaa04830281dab30b7031fbae0c53f204ca4bfd0c9b3ea998185cdbde6",
+    "src/proxy/sampling_profiler.cpp": "1e26071844478f513a4af6fc85e4421e7d213399f014a1d20e10710f1f5e609b",
+    "src/proxy/sampling_profiler.h": "4dd65e4adce63b06eb8342b023403a8eba627aa355d53af26701f90588463d6f",
     "src/proxy/scene_capture.cpp": "a91007b084984bd0b27f2827b2b4c3e06e5c54cf10fe1fd1002e6920bc061712",
     "src/proxy/scene_capture.h": "26f04fb5fe2de7636e547424d40b00e5edf95d395e32a468343dd65f00030183",
-    "src/proxy/telemetry.cpp": "0cae95895de6613c4d72db7e8ff5ea89250802c78b37469005e52c5ecc7074b5",
-    "src/proxy/telemetry.h": "88dd36aa1755c2b61175aa3060e9c1843294c69e9ddceaa7d2c0a8bbbb54da37",
+    "src/proxy/telemetry.cpp": "5f0c64759d18a0a80f978eac066b3b68de44e992bd3797cb2a4ccad483ba86f5",
+    "src/proxy/telemetry.h": "863e64d4a819f8b5c1ee9077d7952778dd510e04b836ecd54921061ef1981a7a",
     "src/renderer/current_depth_pixel_program.h": "fd8ebaaf7ea379cfcda1423170e15fbe8a23347cbec5dba62f9e7b444c8b8553",
     "src/renderer/current_depth_pixel_program_inc.h": "3ca1fc61affdc38b5e67ffe9302c27997df47de377b6a874f497927c35ab4311",
     "src/renderer/material_motion.cpp": "1a0f10a2aa6857b81475eaf2047960283c65c92c8a52b5ba196a8eeb5208dddb",
@@ -2235,20 +3373,20 @@
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/scene_boundary.h": "6d2504e4b568e6fc0d24d2bd6a0d9437a5ccd54fe9e003905dfb46535256303e",
-    "src/renderer/temporal_pass.cpp": "6b5ff9f19908d8d281ed124bb4ac769b333fee221d61b8b3b587cc76daac1073",
-    "src/renderer/temporal_pass.h": "963e8084109395ae872ce7d0c8f49bcdd9527d117b04b4c828bfceb3c7583268",
+    "src/renderer/temporal_pass.cpp": "40047c19f605e9b009fc82e9ba0a75bce0895d7227f6b71a24b24ad1b3e01e46",
+    "src/renderer/temporal_pass.h": "5b686cd56dd2a5159fe56d63d5bd54a8da170d0eb11874fa7be8d7197eb0c5a9",
     "src/renderer/temporal_resolve_program.h": "1001b182ae52ad2b212ce567790224e4971146892952895c79807cbd4ebaa103",
-    "src/renderer/temporal_resolve_program_inc.h": "f3123c982fa261311e8e150ca7b9de183edb9eba46ef85b9ee32aa63e4738168",
+    "src/renderer/temporal_resolve_program_inc.h": "b51909c2a80f4957efd372e5ef2bfbff29937b2fac73a92202bcf9c1679fa243",
     "src/temporal/current_depth_ps.hlsl": "e58fdb561b1f1cf32b04339e0d3d47e014f9e1f00989eba98d04ea262bed27e5",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
-    "src/temporal/resolve.h": "2faf60401df1b852245d13f63ad4dba13b754b9ae5727579261988fad1cca846",
-    "src/temporal/resolve.hlsl": "ca4694d5fdee433e46d9d0d07cae4371d87f2c56d00a019aaffe9b6dff82fe01",
+    "src/temporal/resolve.h": "c2ef21f3d21d43ce5b396d4cb03cc593715562df9b38a568f46abec734291ea3",
+    "src/temporal/resolve.hlsl": "5319da34a6f7731f49c21a50d5bbe380a840f357762918e2f6ff684fa933261d",
     "src/temporal/rigid_motion_ps.hlsl": "9fad8bc470ca04dfa164da929c0343c14d3656cf6d7ba781643d8c55e8e66539",
     "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
     "verification/probe/abi_check.cpp": "8b8602dbc7bcd1326ea51727f019dd689d767a20be62daace7a5e58714fb7df3",
     "verification/probe/build_motion_output.sh": "7006bdb6fa1e900f14e0e2d01061e07c3430f71851bfcd730091a5cc8892bbdb",
-    "verification/probe/motion_output_fixture.cpp": "085a42fb01d4d750bd522096360376d40cc710a2c89e354c087c9f9eb9ae2a01",
-    "verification/probe/run_motion_output.py": "94ee8a2b6b98d72b77a34b699a42ab347b5ff6e8bf5143bd93c30ed31fe51fdc"
+    "verification/probe/motion_output_fixture.cpp": "b9c549c8a7182bb32a38eebf863e0b226c689aa3129e75d6715617913700398e",
+    "verification/probe/run_motion_output.py": "642c2cf40b86c35614de2dd858622f1e9a12bafca69125a1cc6c1c5f427a8e97"
   },
   "build_commands": [
     [
@@ -2283,9 +3421,9 @@
     ]
   ],
   "binaries": {
-    "verification/probe/build/motion_output_fixture.exe": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77",
-    "verification/probe/build/motion-output-seam/d3d9.dll": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
-    "build/d3d9.dll": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9"
+    "verification/probe/build/motion_output_fixture.exe": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523",
+    "verification/probe/build/motion-output-seam/d3d9.dll": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
+    "build/d3d9.dll": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64"
   },
   "bench": {
     "bench-1280x768-taa-off": {
@@ -2295,40 +3433,40 @@
       "height": 768,
       "frames_timed": 20,
       "boundary_ms": {
-        "min": 0.3178,
-        "median": 0.3361,
-        "max": 0.7125
+        "min": 0.2408,
+        "median": 0.3624,
+        "max": 0.6586
       },
       "samples_ms": [
-        1.4115,
-        0.3445,
-        0.3338,
-        0.3244,
-        0.7125,
-        0.6008,
-        0.3741,
-        0.3619,
-        0.3361,
-        0.3294,
-        0.3347,
-        0.3519,
-        0.3257,
-        0.3303,
-        0.329,
-        0.3378,
-        0.3393,
-        0.3315,
-        0.3419,
-        0.3178,
-        0.333,
-        0.3268,
-        0.3469,
-        0.3325
+        1.5189,
+        0.6576,
+        0.7702,
+        0.6378,
+        0.6586,
+        0.365,
+        0.3716,
+        0.2408,
+        0.3603,
+        0.3624,
+        0.3658,
+        0.3631,
+        0.3532,
+        0.3819,
+        0.3638,
+        0.3702,
+        0.3427,
+        0.3583,
+        0.3525,
+        0.3465,
+        0.3543,
+        0.354,
+        0.3898,
+        0.2483
       ],
       "timing": "cpu_inclusive_event_synchronized",
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-bench-1280x768-taa-off-20260912-074218-561626",
-      "trace_sha256": "d4db2b96a929b053358107413d539cb8f3dde3ed511d284ee865a66e001ef5f7"
+      "directory": "verification/probe/build/motion-output-bench-1280x768-taa-off-20260912-090213-898789",
+      "trace_sha256": "949f5161ad0d05a8c318184e68d8f20c0f815a4ba94f6bea0fc228c649d3495b"
     },
     "bench-1280x768-taa-on": {
       "mode": "bench",
@@ -2337,40 +3475,40 @@
       "height": 768,
       "frames_timed": 20,
       "boundary_ms": {
-        "min": 0.9116,
-        "median": 1.0081,
-        "max": 1.3171
+        "min": 0.6464,
+        "median": 0.6826,
+        "max": 1.0494
       },
       "samples_ms": [
-        14.0748,
-        1.6523,
-        0.9875,
-        1.3464,
-        1.3171,
-        0.9946,
-        1.0501,
-        0.9798,
-        1.0395,
-        1.0648,
-        0.9955,
-        1.0249,
-        0.997,
-        0.9311,
-        1.0403,
-        1.0188,
-        1.0488,
-        1.0296,
-        1.0081,
-        0.9963,
-        0.9116,
-        0.9592,
-        1.0014,
-        0.9565
+        25.1638,
+        1.5327,
+        1.1509,
+        1.1413,
+        0.7202,
+        1.0494,
+        0.6991,
+        0.6777,
+        0.6464,
+        0.7369,
+        0.703,
+        0.6523,
+        0.664,
+        0.6733,
+        0.7338,
+        0.6636,
+        0.6823,
+        0.6737,
+        0.686,
+        0.6718,
+        0.6666,
+        0.7853,
+        0.6826,
+        0.726
       ],
       "timing": "cpu_inclusive_event_synchronized",
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-bench-1280x768-taa-on-20260912-074220-247819",
-      "trace_sha256": "4db2b3214ff64cff386e017bb1da151f49cdd184ea30022bf12bedb34400773c"
+      "directory": "verification/probe/build/motion-output-bench-1280x768-taa-on-20260912-090215-480378",
+      "trace_sha256": "1f8e12860cdb6e898d6fbee669c8da15c3b501c5f36897de2802578b54d9644c"
     },
     "bench-5120x1440-taa-off": {
       "mode": "bench",
@@ -2379,40 +3517,40 @@
       "height": 1440,
       "frames_timed": 20,
       "boundary_ms": {
-        "min": 0.5702,
-        "median": 0.6089,
-        "max": 0.9866
+        "min": 0.6049,
+        "median": 0.6168,
+        "max": 0.9143
       },
       "samples_ms": [
-        6.6669,
-        1.0384,
-        1.0505,
-        1.0601,
-        0.9866,
-        0.6339,
-        0.6018,
-        0.6999,
-        0.6061,
-        0.5786,
-        0.6483,
-        0.7249,
-        0.6528,
-        0.6124,
-        0.6072,
-        0.7102,
-        0.5801,
-        0.6086,
-        0.6089,
-        0.5951,
-        0.5853,
-        0.7164,
-        0.5702,
-        0.5894
+        2.7657,
+        1.0386,
+        1.0125,
+        0.6333,
+        0.9143,
+        0.6452,
+        0.7388,
+        0.6161,
+        0.6419,
+        0.6093,
+        0.6185,
+        0.613,
+        0.6133,
+        0.6049,
+        0.6062,
+        0.6057,
+        0.6168,
+        0.6232,
+        0.6304,
+        0.6066,
+        0.6145,
+        0.6191,
+        0.6348,
+        0.6094
       ],
       "timing": "cpu_inclusive_event_synchronized",
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-bench-5120x1440-taa-off-20260912-074221-959509",
-      "trace_sha256": "e7be99272e91586eb8b514006600450c7a68931b91f75a9796fa7aef097447fe"
+      "directory": "verification/probe/build/motion-output-bench-5120x1440-taa-off-20260912-090217-120970",
+      "trace_sha256": "a989879d700b1a6b54bf56a37ee164c490e850a5a830c116f362134c82479ac7"
     },
     "bench-5120x1440-taa-on": {
       "mode": "bench",
@@ -2421,60 +3559,178 @@
       "height": 1440,
       "frames_timed": 20,
       "boundary_ms": {
-        "min": 2.633,
-        "median": 2.6798,
-        "max": 3.3512
+        "min": 2.1683,
+        "median": 2.2393,
+        "max": 2.4449
       },
       "samples_ms": [
-        35.1237,
-        15.0237,
-        5.9796,
-        3.1084,
-        3.3512,
-        2.9718,
-        2.9447,
-        2.7723,
-        2.8453,
-        2.6798,
-        2.7667,
-        2.6643,
-        2.633,
-        2.6514,
-        2.6752,
-        2.6588,
-        2.7683,
-        2.655,
-        2.6452,
-        2.7545,
-        2.6794,
-        2.7235,
-        2.6753,
-        2.6726
+        30.6218,
+        5.5547,
+        2.9419,
+        2.9001,
+        2.4449,
+        2.2999,
+        2.2733,
+        2.2393,
+        2.2348,
+        2.2339,
+        2.2762,
+        2.2301,
+        2.254,
+        2.2536,
+        2.2097,
+        2.215,
+        2.2367,
+        2.1833,
+        2.2424,
+        2.1683,
+        2.2342,
+        2.2611,
+        2.2322,
+        2.2805
       ],
       "timing": "cpu_inclusive_event_synchronized",
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-bench-5120x1440-taa-on-20260912-074224-076619",
-      "trace_sha256": "99119dd0a5c0814be89ebdfaec5b861181c1d924bbf524488c2060eb00149208"
+      "directory": "verification/probe/build/motion-output-bench-5120x1440-taa-on-20260912-090218-747318",
+      "trace_sha256": "7f270f41ad8e2d13615325421484d4dfa03cb1ae219d9d387843d793dd9e60dc"
     },
     "resolve-1280x768": {
-      "median_ms": 0.6719999999999999,
-      "min_ms": 0.5937999999999999,
-      "boundary_off_median_ms": 0.3361,
-      "boundary_on_median_ms": 1.0081
+      "median_ms": 0.3202,
+      "min_ms": 0.40559999999999996,
+      "boundary_off_median_ms": 0.3624,
+      "boundary_on_median_ms": 0.6826
     },
     "resolve-5120x1440": {
-      "median_ms": 2.0709,
-      "min_ms": 2.0628,
-      "boundary_off_median_ms": 0.6089,
-      "boundary_on_median_ms": 2.6798
+      "median_ms": 1.6225,
+      "min_ms": 1.5634,
+      "boundary_off_median_ms": 0.6168,
+      "boundary_on_median_ms": 2.2393
+    }
+  },
+  "lazy_equivalence": {
+    "regular": {
+      "production-lazy-on": {
+        "twin": "production-on",
+        "readback_files": 16,
+        "identical": true
+      },
+      "seam-lazy-on": {
+        "twin": "seam-on",
+        "readback_files": 16,
+        "identical": true
+      },
+      "seam-ownership-lazy-on": {
+        "twin": "seam-ownership-on",
+        "readback_files": 16,
+        "identical": true
+      },
+      "seam-taa-lazy-on": {
+        "twin": "seam-taa-on",
+        "readback_files": 16,
+        "identical": true
+      }
+    },
+    "burst": {
+      "production": {
+        "frames": 9,
+        "capture_frames": [
+          7,
+          8
+        ],
+        "identical_color": true,
+        "identical_state": true,
+        "identical_motion_depth": true,
+        "identical_readback_files": true,
+        "set_rt_per_frame": {
+          "perdraw": {
+            "0": 20,
+            "1": 20,
+            "2": 20,
+            "3": 20,
+            "4": 20,
+            "5": 20,
+            "6": 20,
+            "7": 20,
+            "8": 20
+          },
+          "lazy": {
+            "0": 12,
+            "1": 12,
+            "2": 12,
+            "3": 12,
+            "4": 12,
+            "5": 12,
+            "6": 12,
+            "7": 20,
+            "8": 20
+          }
+        },
+        "lazy_flushes_per_frame": {
+          "0": 3,
+          "1": 3,
+          "2": 3,
+          "3": 3,
+          "4": 3,
+          "5": 3,
+          "6": 3,
+          "7": 5,
+          "8": 5
+        }
+      },
+      "seam": {
+        "frames": 9,
+        "capture_frames": [
+          7,
+          8
+        ],
+        "identical_color": true,
+        "identical_state": true,
+        "identical_motion_depth": true,
+        "identical_readback_files": true,
+        "set_rt_per_frame": {
+          "perdraw": {
+            "0": 20,
+            "1": 20,
+            "2": 20,
+            "3": 20,
+            "4": 20,
+            "5": 20,
+            "6": 20,
+            "7": 20,
+            "8": 20
+          },
+          "lazy": {
+            "0": 12,
+            "1": 12,
+            "2": 12,
+            "3": 12,
+            "4": 12,
+            "5": 12,
+            "6": 12,
+            "7": 20,
+            "8": 20
+          }
+        },
+        "lazy_flushes_per_frame": {
+          "0": 3,
+          "1": 3,
+          "2": 3,
+          "3": 3,
+          "4": 3,
+          "5": 3,
+          "6": 3,
+          "7": 5,
+          "8": 5
+        }
+      }
     }
   },
   "color_identical_off_vs_on": true,
   "color_identical_across_variants": true,
   "jitter_changes_color": true,
-  "report_sha256": "b16395e98d291c6e0161d4912e3f1167b2728e112f97ff206dd8a2b11577cec4",
+  "report_sha256": "56ecd4aa15cf7281a8507f8af18bf02172c77f5daec6b516ed9c13fdcc038191",
   "sources_after_run": {
-    "CMakeLists.txt": "1cda6357192e312f9d9d0a80a58f02b18b2cff1ef2522a2370f3e34e3a79933e",
+    "CMakeLists.txt": "463428e02eef0b440fd1580d7fece87e3e73355b99e0ff65cf37eaeb05b41f7b",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
@@ -2490,7 +3746,7 @@
     "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
     "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
-    "src/proxy/capture.cpp": "4a93d4cec4c601e3adf4353f91b9102ecb8c647145525bb6b4ce2c6c0ef8e5ce",
+    "src/proxy/capture.cpp": "36f53e8c4fcec8914892d733746aa3401736d50429d958c7190ff0bc9dcc2a7e",
     "src/proxy/capture.h": "1dc87985e7039fa7d2d8463aa3e62e55c472cddca5c0f738dea240c7dde3f164",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
@@ -2499,22 +3755,24 @@
     "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
     "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
     "src/proxy/loader.cpp": "aa2dede12db2e7f810bac277e8b6cb02858572056b149fce47b0b689620fcca0",
-    "src/proxy/loading_trace.cpp": "3ed55868676623a91506486ce05608ae500dce7c058a839a63739cf31bf94903",
-    "src/proxy/loading_trace.h": "2ca0653000578d6cd8141804c4cb0554128bd22a847378b986eb0d3ef5853c69",
+    "src/proxy/loading_trace.cpp": "89fc26125e85b458ebe4e5a9dd440799f2a9af14ddd0bcfeb71eb626e69c4e87",
+    "src/proxy/loading_trace.h": "b4da3176c9852f3c9628c9a0d096400527d858360dcecae2d8a83a24a79032b0",
     "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
     "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
     "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
     "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
-    "src/proxy/motion_output.cpp": "b0e7ce9e68891a4cef6a00d1af824fb2c033d23454027c87d6ca17e5a92640b6",
-    "src/proxy/motion_output.h": "c834222e048352328ed51acc39aac06b3444934fe8d7a8383a81ef427ebe279d",
+    "src/proxy/motion_output.cpp": "974c201de5e4609280da7630e20d84b055467643b1970084b2727810a76fb863",
+    "src/proxy/motion_output.h": "66b5108000f1e2724d18ac87c8b2ea78321252db348866887f76e6bc4b72efdc",
     "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
     "src/proxy/object_trace.cpp": "22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba",
     "src/proxy/object_trace.h": "d09401eaa04830281dab30b7031fbae0c53f204ca4bfd0c9b3ea998185cdbde6",
+    "src/proxy/sampling_profiler.cpp": "1e26071844478f513a4af6fc85e4421e7d213399f014a1d20e10710f1f5e609b",
+    "src/proxy/sampling_profiler.h": "4dd65e4adce63b06eb8342b023403a8eba627aa355d53af26701f90588463d6f",
     "src/proxy/scene_capture.cpp": "a91007b084984bd0b27f2827b2b4c3e06e5c54cf10fe1fd1002e6920bc061712",
     "src/proxy/scene_capture.h": "26f04fb5fe2de7636e547424d40b00e5edf95d395e32a468343dd65f00030183",
-    "src/proxy/telemetry.cpp": "0cae95895de6613c4d72db7e8ff5ea89250802c78b37469005e52c5ecc7074b5",
-    "src/proxy/telemetry.h": "88dd36aa1755c2b61175aa3060e9c1843294c69e9ddceaa7d2c0a8bbbb54da37",
+    "src/proxy/telemetry.cpp": "5f0c64759d18a0a80f978eac066b3b68de44e992bd3797cb2a4ccad483ba86f5",
+    "src/proxy/telemetry.h": "863e64d4a819f8b5c1ee9077d7952778dd510e04b836ecd54921061ef1981a7a",
     "src/renderer/current_depth_pixel_program.h": "fd8ebaaf7ea379cfcda1423170e15fbe8a23347cbec5dba62f9e7b444c8b8553",
     "src/renderer/current_depth_pixel_program_inc.h": "3ca1fc61affdc38b5e67ffe9302c27997df47de377b6a874f497927c35ab4311",
     "src/renderer/material_motion.cpp": "1a0f10a2aa6857b81475eaf2047960283c65c92c8a52b5ba196a8eeb5208dddb",
@@ -2540,20 +3798,20 @@
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/scene_boundary.h": "6d2504e4b568e6fc0d24d2bd6a0d9437a5ccd54fe9e003905dfb46535256303e",
-    "src/renderer/temporal_pass.cpp": "6b5ff9f19908d8d281ed124bb4ac769b333fee221d61b8b3b587cc76daac1073",
-    "src/renderer/temporal_pass.h": "963e8084109395ae872ce7d0c8f49bcdd9527d117b04b4c828bfceb3c7583268",
+    "src/renderer/temporal_pass.cpp": "40047c19f605e9b009fc82e9ba0a75bce0895d7227f6b71a24b24ad1b3e01e46",
+    "src/renderer/temporal_pass.h": "5b686cd56dd2a5159fe56d63d5bd54a8da170d0eb11874fa7be8d7197eb0c5a9",
     "src/renderer/temporal_resolve_program.h": "1001b182ae52ad2b212ce567790224e4971146892952895c79807cbd4ebaa103",
-    "src/renderer/temporal_resolve_program_inc.h": "f3123c982fa261311e8e150ca7b9de183edb9eba46ef85b9ee32aa63e4738168",
+    "src/renderer/temporal_resolve_program_inc.h": "b51909c2a80f4957efd372e5ef2bfbff29937b2fac73a92202bcf9c1679fa243",
     "src/temporal/current_depth_ps.hlsl": "e58fdb561b1f1cf32b04339e0d3d47e014f9e1f00989eba98d04ea262bed27e5",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
-    "src/temporal/resolve.h": "2faf60401df1b852245d13f63ad4dba13b754b9ae5727579261988fad1cca846",
-    "src/temporal/resolve.hlsl": "ca4694d5fdee433e46d9d0d07cae4371d87f2c56d00a019aaffe9b6dff82fe01",
+    "src/temporal/resolve.h": "c2ef21f3d21d43ce5b396d4cb03cc593715562df9b38a568f46abec734291ea3",
+    "src/temporal/resolve.hlsl": "5319da34a6f7731f49c21a50d5bbe380a840f357762918e2f6ff684fa933261d",
     "src/temporal/rigid_motion_ps.hlsl": "9fad8bc470ca04dfa164da929c0343c14d3656cf6d7ba781643d8c55e8e66539",
     "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
     "verification/probe/abi_check.cpp": "8b8602dbc7bcd1326ea51727f019dd689d767a20be62daace7a5e58714fb7df3",
     "verification/probe/build_motion_output.sh": "7006bdb6fa1e900f14e0e2d01061e07c3430f71851bfcd730091a5cc8892bbdb",
-    "verification/probe/motion_output_fixture.cpp": "085a42fb01d4d750bd522096360376d40cc710a2c89e354c087c9f9eb9ae2a01",
-    "verification/probe/run_motion_output.py": "94ee8a2b6b98d72b77a34b699a42ab347b5ff6e8bf5143bd93c30ed31fe51fdc"
+    "verification/probe/motion_output_fixture.cpp": "b9c549c8a7182bb32a38eebf863e0b226c689aa3129e75d6715617913700398e",
+    "verification/probe/run_motion_output.py": "642c2cf40b86c35614de2dd858622f1e9a12bafca69125a1cc6c1c5f427a8e97"
   },
   "limits": [
     "Synthetic device program; not gameplay validation or temporal image quality.",

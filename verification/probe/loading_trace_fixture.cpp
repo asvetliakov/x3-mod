@@ -69,6 +69,9 @@ int main(){
     fixture_raw_read=rawRead;
     auto rawSeek=reinterpret_cast<decltype(&SetFilePointer)>(GetProcAddress(kernel,"SetFilePointer"));
     auto rawOpen=reinterpret_cast<decltype(&CreateFileA)>(GetProcAddress(kernel,"CreateFileA"));
+    auto rawFindFirst=reinterpret_cast<decltype(&FindFirstFileA)>(GetProcAddress(kernel,"FindFirstFileA"));
+    auto rawFindNext=reinterpret_cast<decltype(&FindNextFileA)>(GetProcAddress(kernel,"FindNextFileA"));
+    auto rawFindClose=reinterpret_cast<decltype(&FindClose)>(GetProcAddress(kernel,"FindClose"));
     auto user=GetModuleHandleW(L"user32.dll");
     auto rawCursor=reinterpret_cast<decltype(&SetCursor)>(GetProcAddress(user,"SetCursor"));
     const DWORD sentinel=0x2468;
@@ -107,6 +110,34 @@ int main(){
     check(absent==expected_absent&&absent==INVALID_HANDLE_VALUE&&error==expected_error,"open_failure_exact");
     HANDLE duplicate=CreateFileA(temp,GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,0,nullptr);
     check(duplicate!=INVALID_HANDLE_VALUE,"open_success");if(duplicate!=INVALID_HANDLE_VALUE)CloseHandle(duplicate);
+    // Directory enumeration: the open temp file matches the pattern; results,
+    // find data and LastError must equal the raw import's, including the
+    // ERROR_NO_MORE_FILES termination that the resolver loop depends on.
+    char pattern[MAX_PATH]{};GetTempPathA(MAX_PATH,pattern);strcat(pattern,"x3-loading-fixture*");
+    WIN32_FIND_DATAA find_data{},expected_find_data{};
+    SetLastError(sentinel);HANDLE find=FindFirstFileA(pattern,&find_data);error=GetLastError();
+    SetLastError(sentinel);HANDLE expected_find=rawFindFirst(pattern,&expected_find_data);expected_error=GetLastError();
+    check(find!=INVALID_HANDLE_VALUE&&expected_find!=INVALID_HANDLE_VALUE&&error==expected_error&&!strcmp(find_data.cFileName,expected_find_data.cFileName)&&find_data.nFileSizeLow==expected_find_data.nFileSizeLow,"find_first_success_exact");
+    unsigned next_calls=0,expected_next_calls=0;BOOL more=TRUE,expected_more=TRUE;
+    while(more&&next_calls<64){SetLastError(sentinel);more=FindNextFileA(find,&find_data);error=GetLastError();++next_calls;}
+    while(expected_more&&expected_next_calls<64){SetLastError(sentinel);expected_more=rawFindNext(expected_find,&expected_find_data);expected_error=GetLastError();++expected_next_calls;}
+    check(!more&&!expected_more&&next_calls==expected_next_calls&&error==expected_error&&error==ERROR_NO_MORE_FILES,"find_next_exhausted_exact");
+    SetLastError(sentinel);BOOL closed=FindClose(find);error=GetLastError();
+    SetLastError(sentinel);BOOL expected_closed=rawFindClose(expected_find);expected_error=GetLastError();
+    check(closed&&expected_closed&&error==expected_error,"find_close_exact");
+    strcat(pattern,"-absent*");
+    SetLastError(sentinel);HANDLE unmatched=FindFirstFileA(pattern,&find_data);error=GetLastError();
+    SetLastError(sentinel);HANDLE expected_unmatched=rawFindFirst(pattern,&expected_find_data);expected_error=GetLastError();
+    check(unmatched==INVALID_HANDLE_VALUE&&expected_unmatched==INVALID_HANDLE_VALUE&&error==expected_error&&error==ERROR_FILE_NOT_FOUND,"find_first_no_match_exact");
+    SetLastError(sentinel);HANDLE missing=FindFirstFileA("Z:\\definitely-nonexistent-x3-loading-fixture\\*",&find_data);error=GetLastError();
+    SetLastError(sentinel);HANDLE expected_missing=rawFindFirst("Z:\\definitely-nonexistent-x3-loading-fixture\\*",&expected_find_data);expected_error=GetLastError();
+    check(missing==INVALID_HANDLE_VALUE&&expected_missing==INVALID_HANDLE_VALUE&&error==expected_error&&error==ERROR_PATH_NOT_FOUND,"find_first_failure_exact");
+    SetLastError(sentinel);more=FindNextFileA(INVALID_HANDLE_VALUE,&find_data);error=GetLastError();
+    SetLastError(sentinel);expected_more=rawFindNext(INVALID_HANDLE_VALUE,&expected_find_data);expected_error=GetLastError();
+    check(!more&&!expected_more&&error==expected_error&&error!=ERROR_NO_MORE_FILES,"find_next_failure_exact");
+    SetLastError(sentinel);closed=FindClose(INVALID_HANDLE_VALUE);error=GetLastError();
+    SetLastError(sentinel);expected_closed=rawFindClose(INVALID_HANDLE_VALUE);expected_error=GetLastError();
+    check(!closed&&!expected_closed&&error==expected_error,"find_close_failure_exact");
     SetLastError(sentinel);rawCursor(nullptr);SetLastError(sentinel);HCURSOR expected_cursor=rawCursor(nullptr);expected_error=GetLastError();
     SetLastError(sentinel);HCURSOR cursor=SetCursor(nullptr);error=GetLastError();check(cursor==expected_cursor&&error==expected_error,"setcursor_exact");
     // Reference SetCursorPos so it has a named import, but do not move the user's cursor.
@@ -150,6 +181,9 @@ int main(){
     check(sample(data,Operation::FileRead).count==2&&sample(data,Operation::FileRead).failures==1&&sample(data,Operation::FileRead).bytes==4,"read_counters");
     check(sample(data,Operation::FileSeek).count==2&&sample(data,Operation::FileSeek).ambiguous==1,"seek_counters");
     check(sample(data,Operation::FileOpen).count==2&&sample(data,Operation::FileOpen).failures==1,"open_counters");
+    check(sample(data,Operation::FindFirst).count==3&&sample(data,Operation::FindFirst).failures==1&&sample(data,Operation::FindFirst).ambiguous==1&&sample(data,Operation::FindFirst).bytes==0,"find_first_counters");
+    check(sample(data,Operation::FindNext).count==next_calls+1&&sample(data,Operation::FindNext).failures==1&&sample(data,Operation::FindNext).ambiguous==1,"find_next_counters");
+    check(sample(data,Operation::FindClose).count==2&&sample(data,Operation::FindClose).failures==1&&sample(data,Operation::FindClose).ambiguous==0,"find_close_counters");
     check(sample(data,Operation::Effect).count==2&&sample(data,Operation::Effect).failures==1&&sample(data,Operation::Effect).bytes==246,"effect_counters");
     check(sample(data,Operation::Texture).bytes==321&&sample(data,Operation::CubeTexture).bytes==654&&sample(data,Operation::Surface).bytes==987,"texture_byte_counters");
     check(sample(data,Operation::MeshCreate).count==2&&sample(data,Operation::MeshCreate).failures==1,"mesh_create_counters");

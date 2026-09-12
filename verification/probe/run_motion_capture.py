@@ -5,6 +5,9 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / 'verification/results'
@@ -82,9 +85,9 @@ def main():
         if before != report['sources_after_build']:
             raise RuntimeError('Source changed during compilation')
         report.update(fresh_build=True, executable_sha256=sha(EXE), phase='running')
-        active = subprocess.run(['pgrep', '-ifl', '[X]3AP[.]exe'], capture_output=True, text=True)
-        if active.returncode != 1 or active.stdout.strip():
-            raise RuntimeError('Game present or process inventory unavailable; postpone fixture: ' + active.stdout)
+        active = game_running()
+        if active:
+            raise RuntimeError('Game present or process inventory unavailable; postpone fixture: ' + '\n'.join(active))
         report['no_game_before_run'] = True
         command = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
                    '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=b', '--workdir', str(EXE.parent),

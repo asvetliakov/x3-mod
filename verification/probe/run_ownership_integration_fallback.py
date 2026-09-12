@@ -16,7 +16,7 @@ assert manifest['result']=='PASS' and manifest['sources']==sources(),'Run fresh-
 assert manifest['binaries_at_end']==binaries(),'Integration binaries changed'
 object_root=root/'build-ownership/CMakeFiles/d3d9.dir'
 objects=sorted(p for p in (object_root/'src').rglob('*.obj') if 'ownership' not in p.parts or p.name in ('execution_state.cpp.obj', 'application_admission.cpp.obj', 'application_admission_abi.cpp.obj'))
-expected={'src/proxy/'+name+'.cpp.obj' for name in ('loader','capture','motion_capture','capture_state','scene_capture','object_trace','telemetry','loading_trace','draw_input','object_lifetime','mesh_adjacency_cache','motion_output')}
+expected={'src/proxy/'+name+'.cpp.obj' for name in ('loader','capture','motion_capture','capture_state','scene_capture','object_trace','telemetry','loading_trace','draw_input','object_lifetime','mesh_adjacency_cache','motion_output','sampling_profiler')}
 expected.update('src/renderer/'+name+'.cpp.obj' for name in
                 ('temporal_pass','material_radiance','motion_history','rigid_position','rigid_motion','rigid_replay_program','material_motion','motion_row_history'))
 expected.update('src/ownership/'+name+'.cpp.obj' for name in ('execution_state', 'application_admission', 'application_admission_abi'))

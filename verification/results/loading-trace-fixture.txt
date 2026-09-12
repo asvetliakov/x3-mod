@@ -15,9 +15,12 @@ loading_hook name=inflate installed=1
 loading_hook name=xmlReadMemory installed=1
 loading_hook name=D3DXCreateMesh installed=1
 loading_hook name=D3DXCleanMesh installed=1
-loading_trace coverage_begin=8167824119088 frequency=10000000 hooks=16 module=main inclusive=1 paths=0 qualification=named_pe32_imports
+loading_hook name=FindFirstFileA installed=1
+loading_hook name=FindNextFileA installed=1
+loading_hook name=FindClose installed=1
+loading_trace coverage_begin=9198991006917 frequency=10000000 hooks=19 module=main inclusive=1 paths=0 qualification=named_pe32_imports
 mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=8 objects_retained=0
-loading_benchmark synthetic=1 calls=20000 raw_us_per_call=0.003520 hooked_us_per_call=0.290395
+loading_benchmark synthetic=1 calls=20000 raw_us_per_call=0.003165 hooked_us_per_call=0.405585
 loading_hook name=CreateFileA restored=1 owned=1
 loading_hook name=ReadFile restored=0 owned=0
 loading_hook name=SetFilePointer restored=1 owned=1
@@ -34,5 +37,9 @@ loading_hook name=inflate restored=1 owned=1
 loading_hook name=xmlReadMemory restored=1 owned=1
 loading_hook name=D3DXCreateMesh restored=1 owned=1
 loading_hook name=D3DXCleanMesh restored=1 owned=1
+loading_hook name=FindFirstFileA restored=1 owned=1
+loading_hook name=FindNextFileA restored=1 owned=1
+loading_hook name=FindClose restored=1 owned=1
 loading_trace disabled=reinitialization_not_supported
-loading_fixture checks=75 failures=0
+ADMISSION_WITNESS requested=0 enabled=0 active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 valid=1
+loading_fixture checks=85 failures=0

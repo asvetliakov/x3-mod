@@ -255,6 +255,82 @@ void MotionOutput::configure_cut_bounds(float median_px_at_1280, float missing_f
 }
 void MotionOutput::configure_taa(bool requested, bool debug) noexcept { taa_requested_ = requested; taa_debug_ = debug; }
 
+// ---- cost telemetry --------------------------------------------------------
+
+// QPC stamp while telemetry is on (begin_frame latches the switch), else 0:
+// every tick total below then stays zero and no metric is recorded.
+std::uint64_t MotionOutput::stamp() const noexcept { return telemetry_ ? telemetry::now() : 0; }
+void MotionOutput::record(unsigned metric, std::uint64_t ticks, bool failed, std::uint64_t bytes) noexcept {
+    if (telemetry_ && stats_) telemetry::record(*stats_, static_cast<telemetry::Metric>(metric), ticks, failed, bytes);
+}
+// One route-issued SetRenderTarget of the per-draw apply/undo path or the
+// lazy flush: counted per frame and timed per call (route_set_rt).
+HRESULT MotionOutput::bind_target(DWORD index, IDirect3DSurface9* surface) noexcept {
+    const std::uint64_t begin = stamp();
+    const HRESULT hr = native<SetRenderTargetFn>(SetRenderTarget)(device_, index, surface);
+    const std::uint64_t ticks = stamp() - begin;
+    ++counters_.set_rt; counters_.set_rt_ticks += ticks;
+    record(unsigned(telemetry::Metric::RouteSetRenderTarget), ticks, FAILED(hr));
+    return hr;
+}
+// Binds RT1 (and RT2 for a depth row) with full write masks for a routed
+// draw. Per-draw mode saves the application's masks into the route for undo;
+// lazy mode saves them once at bind time, keeps the bindings across
+// consecutive routed draws, only toggles RT2 when the row's depth output
+// differs from the current binding, and releases them in restore_bindings.
+HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
+    HRESULT hr = S_OK;
+    if (!lazy_mode_) {
+        hr = native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_COLORWRITEENABLE1, &route.saved_write1);
+        if (SUCCEEDED(hr)) { hr = bind_target(1, target_surface_); route.rt_set = SUCCEEDED(hr); }
+        if (SUCCEEDED(hr)) { hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, 15); route.write_set = SUCCEEDED(hr); }
+        if (SUCCEEDED(hr) && route.depth) {
+            hr = native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_COLORWRITEENABLE2, &route.saved_write2);
+            if (SUCCEEDED(hr)) { hr = bind_target(2, depth_surface_); route.rt2_set = SUCCEEDED(hr); }
+            if (SUCCEEDED(hr)) { hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, 15); route.write2_set = SUCCEEDED(hr); }
+        }
+        return hr;
+    }
+    if (!lazy_rt1_) {
+        hr = native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_COLORWRITEENABLE1, &lazy_write1_);
+        if (SUCCEEDED(hr)) { hr = bind_target(1, target_surface_); lazy_rt1_ = SUCCEEDED(hr); }
+        if (SUCCEEDED(hr)) hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, 15);
+    }
+    if (SUCCEEDED(hr) && route.depth && !lazy_rt2_) {
+        hr = native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_COLORWRITEENABLE2, &lazy_write2_);
+        if (SUCCEEDED(hr)) { hr = bind_target(2, depth_surface_); lazy_rt2_ = SUCCEEDED(hr); }
+        if (SUCCEEDED(hr)) hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, 15);
+    } else if (SUCCEEDED(hr) && !route.depth && lazy_rt2_) {
+        // A motion-only row after a depth row: its variant writes no oC2, so
+        // RT2 goes back exactly as the per-draw mode would leave it.
+        hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, lazy_write2_);
+        if (SUCCEEDED(hr)) { hr = bind_target(2, nullptr); lazy_rt2_ = FAILED(hr); }
+    }
+    return hr;
+}
+// Lazy mode: put the application's RT1/RT2 bindings and write masks back
+// (reverse order of the bind). No-op in per-draw mode or when nothing is
+// bound, so every hook may call it unconditionally before a native call.
+void MotionOutput::restore_bindings() noexcept {
+    if (!lazy_rt1_ && !lazy_rt2_) return;
+    const std::uint64_t begin = stamp();
+    HRESULT first = S_OK;
+    auto step = [&](HRESULT hr) { if (SUCCEEDED(first) && FAILED(hr)) first = hr; };
+    if (lazy_rt2_) { step(native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, lazy_write2_)); step(bind_target(2, nullptr)); }
+    if (lazy_rt1_) { step(native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, lazy_write1_)); step(bind_target(1, nullptr)); }
+    lazy_rt1_ = lazy_rt2_ = false;
+    const std::uint64_t ticks = stamp() - begin;
+    ++counters_.lazy_flushes; counters_.lazy_flush_ticks += ticks;
+    record(unsigned(telemetry::Metric::RouteLazyFlush), ticks, FAILED(first));
+    if (FAILED(first)) {
+        ++counters_.restore_failures;
+        if (logged_failures_ < failure_log_limit) {
+            ++logged_failures_;
+            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=lazy_flush", id_, frame_, counters_.draws, first);
+        }
+    }
+}
+
 // ---- temporal resolve ------------------------------------------------------
 
 // The device reference count through the native slots (no hook re-entry):
@@ -323,16 +399,35 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface) noexcept {
             in.history_allowed = true; in.cut = counters_.cut;
             in.caller_scene_open = scene_open_; in.caller_stateblock_recording = shadow_.recording;
             in.caller_queries_idle = active_queries_ == 0;
+            // Phase timing of the run (telemetry only): the pass stamps its own
+            // five phases; the whole call is timed here and nests them.
+            taa_->configure_timing(telemetry_);
+            const std::uint64_t run_begin = stamp();
             hr = taa_->run(in, &out);
+            const std::uint64_t run_ticks = stamp() - run_begin;
             const auto diagnostics = taa_->diagnostics();
             t.result = diagnostics.operation; t.restore = diagnostics.restoration;
+            auto& c = counters_;
+            c.taa_run_ticks += run_ticks; c.taa_capture_ticks += diagnostics.ticks_capture;
+            c.taa_copy_color_ticks += diagnostics.ticks_copy_color; c.taa_copy_depth_ticks += diagnostics.ticks_copy_depth;
+            c.taa_draw_ticks += diagnostics.ticks_draw; c.taa_apply_ticks += diagnostics.ticks_apply;
+            record(unsigned(telemetry::Metric::TaaRun), run_ticks, FAILED(hr));
+            record(unsigned(telemetry::Metric::TaaStateCapture), diagnostics.ticks_capture);
+            record(unsigned(telemetry::Metric::TaaCopyColor), diagnostics.ticks_copy_color);
+            record(unsigned(telemetry::Metric::TaaCopyDepth), diagnostics.ticks_copy_depth);
+            record(unsigned(telemetry::Metric::TaaResolveDraw), diagnostics.ticks_draw);
+            record(unsigned(telemetry::Metric::TaaStateApply), diagnostics.ticks_apply, FAILED(diagnostics.restoration));
             if (SUCCEEDED(hr) && !out.color_surface) hr = E_FAIL;
             if (SUCCEEDED(hr)) {
                 if (capture_ && taa_debug_)
                     readback_surface(out.color_surface, D3DFMT_A16B16G16R16F, 8, L"taa", L"rgba16f", "motion_output_taa_readback", "rgba16f_row_major");
                 // Point-filtered full-rect copy of the resolved FP16 image back into
                 // the 8-bit main target; StretchRect changes no device state.
+                const std::uint64_t copy_begin = stamp();
                 hr = native<StretchFn>(StretchRect)(device_, out.color_surface, nullptr, main_surface, nullptr, D3DTEXF_POINT);
+                const std::uint64_t copy_ticks = stamp() - copy_begin;
+                counters_.taa_copy_back_ticks += copy_ticks;
+                record(unsigned(telemetry::Metric::TaaCopyBack), copy_ticks, FAILED(hr));
                 t.copy = hr;
                 if (FAILED(hr)) invalidate_taa();
                 else { t.resolved = true; t.used_history = out.used_history; }
@@ -349,6 +444,9 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface) noexcept {
 }
 void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_rect,
                                   IDirect3DSurface9* destination, const RECT* destination_rect) noexcept {
+    // The application's copy (and the resolve, which samples RT1/RT2) must
+    // see the application's bindings.
+    restore_bindings();
     if (!enabled_ || !taa_enabled_ || selector_.state() != renderer::BoundaryState::AwaitCopy) return;
     // Would this copy advance the selector out of AwaitCopy? Probe a copy of
     // it with the event after_stretch will feed (same sequence number, not
@@ -424,8 +522,9 @@ bool MotionOutput::ensure_target(UINT width, UINT height) noexcept {
 }
 
 void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::uint64_t device_id,
-                          const D3DCAPS9& caps, bool requested) noexcept {
+                          const D3DCAPS9& caps, bool requested, telemetry::State* stats) noexcept {
     device_ = device; native_ = native_table; id_ = device_id; caps_ = caps; requested_ = requested;
+    stats_ = stats; lazy_rt1_ = lazy_rt2_ = false;
     enabled_ = false; depth_enabled_ = false;
     if (!requested) return;
     history_ = renderer::MotionRowHistory(4096); // Reserves both tables once; ready() false on failure.
@@ -514,12 +613,12 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     }
     taa_enabled_ = taa_requested_ && !std::strcmp(taa_reason, "ok");
     scene_open_ = false; active_queries_ = 0;
-    log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u taa=%u taa_reason=%s taa_format=%08lx taa_debug=%u",
+    log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u taa=%u taa_reason=%s taa_format=%08lx taa_debug=%u rt_mode=%s",
         id_, enabled_, reason, detail[0] ? detail : "-", caps.NumSimultaneousRTs, caps.MaxVertexShaderConst,
         caps.PrimitiveMiscCaps, caps.VertexShaderVersion, caps.PixelShaderVersion, format_result,
         history_available_, unsigned(history_.stats().capacity), depth_enabled_, depth_reason,
         depth_detail[0] ? depth_detail : "-", depth_format_result, jitter_requested_, jitter_samples_,
-        taa_enabled_, taa_reason, taa_format_result, taa_debug_);
+        taa_enabled_, taa_reason, taa_format_result, taa_debug_, lazy_mode_ ? "lazy" : "perdraw");
 }
 
 // One actual mixed-format MRT draw into a 4x4 A8R8G8B8 + A32B32G32R32F pair
@@ -678,11 +777,16 @@ HRESULT MotionOutput::draw_quad(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, 
 // runs inside the application's BeginScene/EndScene, on both Windows and Wine.
 void MotionOutput::fill_sentinel() noexcept {
     fill_pending_ = false;
+    restore_bindings(); // The fill's saved state must be the application's (never bound here in practice: the latching Clear restored).
     const bool depth = depth_enabled_ && depth_surface_ && sentinel_mrt_ps_;
     if (!target_surface_ || !sentinel_ps_ || shadow_.recording || (depth_enabled_ && !depth)) { counters_.fill_result = E_ABORT; return; }
     HRESULT restore = S_OK;
+    const std::uint64_t begin = stamp();
     const HRESULT hr = draw_quad(target_surface_, depth ? depth_surface_ : nullptr, nullptr,
                                  depth ? sentinel_mrt_ps_ : sentinel_ps_, target_width_, target_height_, &restore);
+    const std::uint64_t ticks = stamp() - begin;
+    counters_.fill_ticks += ticks;
+    record(unsigned(telemetry::Metric::RouteFill), ticks, FAILED(hr) || FAILED(restore));
     counters_.fill_result = hr; counters_.fill_restore = restore;
     counters_.filled = SUCCEEDED(hr) && SUCCEEDED(restore);
     if ((FAILED(hr) || FAILED(restore)) && logged_failures_ < failure_log_limit) {
@@ -695,7 +799,8 @@ void MotionOutput::fill_sentinel() noexcept {
 void MotionOutput::before_reset() noexcept {
     // D3DPOOL_DEFAULT objects must not exist across Reset; shaders survive it.
     // The pass releases its histories, scratch and state block after RT1/RT2
-    // and keeps its resolve shader.
+    // and keeps its resolve shader. A lazily bound RT1/RT2 is unbound first.
+    restore_bindings();
     release_target();
     if (taa_) taa_call([&] { taa_->before_reset(); });
     target_failed_ = false;
@@ -942,8 +1047,13 @@ void MotionOutput::observe(renderer::Event& e, HRESULT result) noexcept {
     selector_.observe(e);
     // The scene phase ends with the event that moves the selector past Scene
     // (the bloom copy or a rejection); the cut verdict is complete then, so a
-    // future consumer at the copy boundary can read it before Present.
-    if (was_scene && selector_.state() != renderer::BoundaryState::Scene && !cut_finished_) finish_cut_detector();
+    // future consumer at the copy boundary can read it before Present. A
+    // lazily kept binding ends with the phase (already restored by the hook
+    // of a Clear/SetRenderTarget/copy; this covers SetDepth and a draw).
+    if (was_scene && selector_.state() != renderer::BoundaryState::Scene) {
+        restore_bindings();
+        if (!cut_finished_) finish_cut_detector();
+    }
 }
 bool MotionOutput::scene_bound() const noexcept {
     const auto& v = shadow_.viewport;
@@ -966,6 +1076,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
 
 void MotionOutput::before_clear(DWORD count, DWORD flags, float z) noexcept {
     if (!enabled_) return;
+    restore_bindings(); // The Clear must cover the application's targets only.
     pending_ = event(renderer::EventKind::Clear);
     bindings(pending_);
     pending_.clear_flags = flags; pending_.rect_count = count; pending_.clear_z = z;
@@ -1074,9 +1185,9 @@ void MotionOutput::undo(MotionRoute& route) noexcept {
     HRESULT first = S_OK;
     auto step = [&](HRESULT hr) { if (SUCCEEDED(first) && FAILED(hr)) first = hr; };
     if (route.write2_set) step(native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, route.saved_write2));
-    if (route.rt2_set) step(native<SetRenderTargetFn>(SetRenderTarget)(device_, 2, nullptr));
+    if (route.rt2_set) step(bind_target(2, nullptr));
     if (route.write_set) step(native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, route.saved_write1));
-    if (route.rt_set) step(native<SetRenderTargetFn>(SetRenderTarget)(device_, 1, nullptr));
+    if (route.rt_set) step(bind_target(1, nullptr));
     if (route.ps_set) step(native<SetPsFn>(SetPixelShader)(device_, shadow_.ps));
     if (route.vs_set) step(native<SetVsFn>(SetVertexShader)(device_, shadow_.vs));
     // Reserved ranges go back only if this draw changed them and the shadow
@@ -1112,16 +1223,56 @@ void MotionOutput::apply_jitter(MotionRoute& route) noexcept {
     std::memcpy(rows, shadow_.rows[window], sizeof rows);
     const float jx = 2.f * jitter_[0] / float(main_.width), jy = -2.f * jitter_[1] / float(main_.height);
     for (unsigned k = 0; k < 4; ++k) { rows[k] += jx * rows[12 + k]; rows[4 + k] += jy * rows[12 + k]; }
-    if (SUCCEEDED(native<SetConstantsFFn>(SetVertexShaderConstantF)(device_, row.matrix_register, rows, 4))) {
+    const std::uint64_t begin = stamp();
+    const HRESULT hr = native<SetConstantsFFn>(SetVertexShaderConstantF)(device_, row.matrix_register, rows, 4);
+    const std::uint64_t ticks = stamp() - begin;
+    ++counters_.jitter_writes; counters_.jitter_ticks += ticks;
+    record(unsigned(telemetry::Metric::RouteJitter), ticks, FAILED(hr));
+    if (SUCCEEDED(hr)) {
         route.jittered = true; route.jitter_register = row.matrix_register;
         ++counters_.jittered;
     }
 }
+// The application's own rows, bit-exact from the shadow (after the draw).
+void MotionOutput::restore_jitter(MotionRoute& route) noexcept {
+    const std::size_t window = window_of(route.jitter_register);
+    const std::uint64_t begin = stamp();
+    const HRESULT hr = window < motion_matrix_windows_max
+        ? native<SetConstantsFFn>(SetVertexShaderConstantF)(device_, route.jitter_register, shadow_.rows[window], 4) : E_FAIL;
+    const std::uint64_t ticks = stamp() - begin;
+    ++counters_.jitter_writes; counters_.jitter_ticks += ticks;
+    record(unsigned(telemetry::Metric::RouteJitter), ticks, FAILED(hr));
+    route.jittered = false;
+    if (FAILED(hr)) {
+        ++counters_.restore_failures;
+        if (logged_failures_ < failure_log_limit) {
+            ++logged_failures_;
+            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=jitter_rows", id_, frame_, counters_.draws, hr);
+        }
+    }
+}
 
+// Wraps the decision: times the gate evaluation (route_gate; the fill and
+// the apply are excluded and timed on their own) and, in lazy mode, releases
+// a kept RT1/RT2 binding before every draw that does not route so a foreign
+// program never writes the route's targets.
 MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     MotionRoute route{};
     ++counters_.draws;
     if (!enabled_) { route.gate = MotionGate::Feature; ++counters_.gates[1]; return route; }
+    const std::uint64_t begin = stamp(), fill_before = counters_.fill_ticks, flush_before = counters_.lazy_flush_ticks;
+    evaluate_draw(call, route);
+    if (!route.routed) restore_bindings();
+    if (telemetry_) {
+        const std::uint64_t total = stamp() - begin,
+            excluded = route.ticks + (counters_.fill_ticks - fill_before) + (counters_.lazy_flush_ticks - flush_before);
+        const std::uint64_t gate = total > excluded ? total - excluded : 0;
+        counters_.gate_ticks += gate;
+        record(unsigned(telemetry::Metric::RouteGate), gate);
+    }
+    return route;
+}
+void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route) noexcept {
     // Selector event for this draw; z states are the only per-draw getters and
     // only while the selector can still use them.
     const auto state = selector_.state();
@@ -1142,9 +1293,9 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     pending_valid_ = true;
     if (fill_pending_) fill_sentinel();
     // Gate 1: feature/capability, target owned, not recording a state block.
-    if (!target_surface_ || shadow_.recording) { route.gate = MotionGate::Feature; ++counters_.gates[1]; return route; }
+    if (!target_surface_ || shadow_.recording) { route.gate = MotionGate::Feature; ++counters_.gates[1]; return; }
     // Gate 2: scene phase with the latched main color/depth bound.
-    if (!scene_bound()) { route.gate = MotionGate::Scene; ++counters_.gates[2]; return route; }
+    if (!scene_bound()) { route.gate = MotionGate::Scene; ++counters_.gates[2]; return; }
     route.scene = true;
     // Every scene draw whose VS has a table row is jittered, routed or not,
     // so the rasterized coverage of the whole scene moves together.
@@ -1155,7 +1306,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     const renderer::MotionOutputProfile* pair = shadow_.vs_variant && shadow_.ps_variant && shadow_.vs_row
         ? renderer::material_motion_profile(shadow_.vs_hash, shadow_.ps_hash) : nullptr;
     if (!pair || !renderer::material_motion_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash)) {
-        route.gate = MotionGate::Pair; ++counters_.gates[3]; return route;
+        route.gate = MotionGate::Pair; ++counters_.gates[3]; return;
     }
     route.depth = depth_enabled_ && renderer::material_motion_pixel_writes_depth(*pair, depth_enabled_);
     // Gate 4: opaque ordinary draw state, known rows in the VS row's clip-row
@@ -1176,7 +1327,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
         shadow_.rows_known[window] && loop_bounded &&
         shadow_.stream0 && shadow_.stream0_stride && shadow_.declaration && call.primitives &&
         (!call.indexed || shadow_.indices);
-    if (!draw_state_ok) { route.gate = MotionGate::DrawState; ++counters_.gates[4]; return route; }
+    if (!draw_state_ok) { route.gate = MotionGate::DrawState; ++counters_.gates[4]; return; }
     // Key geometry fields come from the shadowed bindings and draw arguments.
     auto& key = route.key;
     key.vertex_buffer = shadow_.stream0; key.stream_offset = shadow_.stream0_offset; key.stride = shadow_.stream0_stride;
@@ -1219,8 +1370,8 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     static const float zeros[16]{};
     const float pixel[8] = {1.f / float(target_width_), 1.f / float(target_height_), 0.f, 0.f,
                             matched ? 1.f : 0.f, 0.f, 0.f, 0.f};
-    HRESULT hr = native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_COLORWRITEENABLE1, &route.saved_write1);
-    if (SUCCEEDED(hr)) { hr = native<SetVsFn>(SetVertexShader)(device_, shadow_.vs_variant); route.vs_set = SUCCEEDED(hr); }
+    const std::uint64_t apply_begin = stamp();
+    HRESULT hr = native<SetVsFn>(SetVertexShader)(device_, shadow_.vs_variant); route.vs_set = SUCCEEDED(hr);
     if (SUCCEEDED(hr)) { hr = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps_variant); route.ps_set = SUCCEEDED(hr); }
     if (SUCCEEDED(hr)) {
         hr = native<SetConstantsFFn>(SetVertexShaderConstantF)(device_,
@@ -1235,46 +1386,36 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
         if (SUCCEEDED(hr)) { std::memcpy(fixture_last_pixel_abi_, pixel, sizeof pixel); fixture_abi_known_ = true; }
 #endif
     }
-    if (SUCCEEDED(hr)) { hr = native<SetRenderTargetFn>(SetRenderTarget)(device_, 1, target_surface_); route.rt_set = SUCCEEDED(hr); }
-    if (SUCCEEDED(hr)) { hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, 15); route.write_set = SUCCEEDED(hr); }
-    if (SUCCEEDED(hr) && route.depth) {
-        hr = native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_COLORWRITEENABLE2, &route.saved_write2);
-        if (SUCCEEDED(hr)) { hr = native<SetRenderTargetFn>(SetRenderTarget)(device_, 2, depth_surface_); route.rt2_set = SUCCEEDED(hr); }
-        if (SUCCEEDED(hr)) { hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, 15); route.write2_set = SUCCEEDED(hr); }
-    }
+    if (SUCCEEDED(hr)) hr = bind_targets(route);
+    route.ticks = stamp() - apply_begin;
     if (FAILED(hr)) {
         // Partial application: put back what was set and draw the original.
+        restore_bindings();
         undo(route);
         ++counters_.apply_failures;
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
             log("motion_output_apply_failed device=%llu frame=%llu index=%lu result=%08lx", id_, frame_, counters_.draws, hr);
         }
-        return route;
+        return;
     }
     route.routed = true; route.matched = matched;
     ++counters_.routed; if (matched) ++counters_.matched; if (route.depth) ++counters_.depth_routed;
-    return route;
 }
 
 void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     if (!enabled_) return;
     const bool jittered = route.jittered;
-    if (route.routed) undo(route);
-    if (route.jittered) {
-        // The application's own rows, bit-exact from the shadow.
-        const std::size_t window = window_of(route.jitter_register);
-        const HRESULT hr = window < motion_matrix_windows_max
-            ? native<SetConstantsFFn>(SetVertexShaderConstantF)(device_, route.jitter_register, shadow_.rows[window], 4) : E_FAIL;
-        route.jittered = false;
-        if (FAILED(hr)) {
-            ++counters_.restore_failures;
-            if (logged_failures_ < failure_log_limit) {
-                ++logged_failures_;
-                log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=jitter_rows", id_, frame_, counters_.draws, hr);
-            }
-        }
+    if (route.routed) {
+        // route_draw: the apply (before_draw) plus this undo, without the
+        // native draw between them and without the jitter writes.
+        const std::uint64_t begin = stamp();
+        undo(route);
+        route.ticks += stamp() - begin;
+        counters_.route_draw_ticks += route.ticks;
+        record(unsigned(telemetry::Metric::RouteDraw), route.ticks);
     }
+    if (route.jittered) restore_jitter(route);
     if (pending_valid_) { pending_valid_ = false; observe(pending_, result); }
     if (capture_ && route.scene) {
         const auto& k = route.key;
@@ -1294,6 +1435,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
 // beside the capture log (row-major, bytes_per_pixel per pixel, no header).
 HRESULT MotionOutput::readback_surface(IDirect3DSurface9* surface, D3DFORMAT format, unsigned bytes_per_pixel,
                                        const wchar_t* prefix, const wchar_t* extension, const char* tag, const char* format_name) noexcept {
+    const std::uint64_t begin = stamp(); // route_readback: allocation, GetRenderTargetData, lock, file write.
     IDirect3DSurface9* copy = nullptr;
     HRESULT hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, target_width_, target_height_,
         format, D3DPOOL_SYSTEMMEM, &copy, nullptr);
@@ -1320,6 +1462,9 @@ HRESULT MotionOutput::readback_surface(IDirect3DSurface9* surface, D3DFORMAT for
         }
     }
     release(copy);
+    const std::uint64_t ticks = stamp() - begin;
+    ++counters_.readbacks; counters_.readback_ticks += ticks;
+    record(unsigned(telemetry::Metric::RouteReadback), ticks, FAILED(hr), written);
     log("%s device=%llu frame=%llu file=%ls_%llu_%llu.%ls width=%u height=%u format=%s result=%08lx bytes=%u",
         tag, id_, frame_, prefix, id_, frame_, extension, target_width_, target_height_, format_name, hr, unsigned(written));
     return hr;
@@ -1363,6 +1508,7 @@ void MotionOutput::finish_cut_detector() noexcept {
 
 void MotionOutput::before_present() noexcept {
     if (!enabled_) return;
+    restore_bindings();
     if (!cut_finished_) finish_cut_detector();
     // A frame that did not resolve (menu, rejected before the copy,
     // unrecognized, skipped) leaves no usable history. A rejection after the
@@ -1380,8 +1526,14 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     if (FAILED(result)) invalidate_taa();
     const bool committed = history_.commit(SUCCEEDED(result) && counters_.filled);
     const auto stats = history_.stats();
-    if (capture_ || (telemetry_ && frame_ % 60 == 0))
-        log("motion_output_frame device=%llu frame=%llu latched=%u filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx scene_open=%u active_queries=%lu taa_references=%u",
+    if (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0)) {
+        // Appended cost fields (totals for this frame; docs/verification/telemetry.md):
+        // counts are exact, the *_us totals are CPU-side QPC wall clock with
+        // telemetry on (timing=cpu_qpc) and zero otherwise (timing=off).
+        const auto& c = counters_;
+        const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
+        log("motion_output_frame device=%llu frame=%llu latched=%u filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx scene_open=%u active_queries=%lu taa_references=%u"
+            " rt_mode=%s timing=%s set_rt=%lu lazy_flushes=%lu jitter_writes=%lu readbacks=%lu gate_us=%.1f route_draw_us=%.1f set_rt_us=%.1f lazy_flush_us=%.1f jitter_us=%.1f fill_us=%.1f taa_run_us=%.1f taa_capture_us=%.1f taa_copy_color_us=%.1f taa_copy_depth_us=%.1f taa_draw_us=%.1f taa_apply_us=%.1f taa_copy_back_us=%.1f readback_us=%.1f",
             id_, frame_, counters_.latched, counters_.filled, counters_.fill_result, counters_.fill_restore,
             static_cast<unsigned long>(counters_.draws), static_cast<unsigned long>(counters_.routed), static_cast<unsigned long>(counters_.matched),
             static_cast<unsigned long>(counters_.gates[1]), static_cast<unsigned long>(counters_.gates[2]), static_cast<unsigned long>(counters_.gates[3]),
@@ -1393,7 +1545,13 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             static_cast<unsigned long>(counters_.jittered), counters_.cut, counters_.cut_median_px, counters_.cut_missing_fraction,
             static_cast<unsigned long>(counters_.displacement_samples), taa_enabled_, counters_.taa.attempted, counters_.taa.resolved,
             counters_.taa.used_history, static_cast<unsigned long>(counters_.taa.skip), counters_.taa.result, counters_.taa.restore,
-            counters_.taa.copy, scene_open_, static_cast<unsigned long>(active_queries_), taa_references_);
+            counters_.taa.copy, scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,
+            lazy_mode_ ? "lazy" : "perdraw", telemetry_ ? "cpu_qpc" : "off",
+            static_cast<unsigned long>(c.set_rt), static_cast<unsigned long>(c.lazy_flushes), static_cast<unsigned long>(c.jitter_writes),
+            static_cast<unsigned long>(c.readbacks), us(c.gate_ticks), us(c.route_draw_ticks), us(c.set_rt_ticks), us(c.lazy_flush_ticks),
+            us(c.jitter_ticks), us(c.fill_ticks), us(c.taa_run_ticks), us(c.taa_capture_ticks), us(c.taa_copy_color_ticks),
+            us(c.taa_copy_depth_ticks), us(c.taa_draw_ticks), us(c.taa_apply_ticks), us(c.taa_copy_back_ticks), us(c.readback_ticks));
+    }
 }
 
 #ifdef X3M_MOTION_OUTPUT_FIXTURE

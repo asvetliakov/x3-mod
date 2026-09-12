@@ -55,6 +55,9 @@ These are observed IAT virtual addresses, not fixed-address patch instructions. 
 | `zlib1!gzseek` | `0x005323fc` | Compressed-stream seeking time; may include work beyond seek |
 | `zlib1!inflate` | `0x005323e8` | Inflate-call wall time; input/output deltas from the compatible z_stream layout |
 | `libxml2!xmlReadMemory` | `0x005323ac` | XML parse calls, bytes and wall time |
+| `KERNEL32!FindFirstFileA` | `0x005321c0` | Resource-resolver directory enumeration (one per lookup, uncached; [loading-orchestration.md](loading-orchestration.md) section 2): count, wall time; a no-match result (`ERROR_FILE_NOT_FOUND`/`ERROR_NO_MORE_FILES`) is `ambiguous`, other invalid handles are failures |
+| `KERNEL32!FindNextFileA` | `0x005321bc` | Enumeration steps; `ERROR_NO_MORE_FILES` termination is `ambiguous`, not a failure |
+| `KERNEL32!FindClose` | `0x005321b8` | Enumeration close count/time |
 
 If tracking handles, additionally parse and forward `CloseHandle` (`0x005320c0`) and `gzclose` (`0x005323f0`), retaining generation IDs so recycled handles cannot inherit another file's category. Timing can remain per API if this metadata layer is omitted. Do not read arbitrary caller buffers for hashing or filenames in hot callbacks.
 
@@ -99,7 +102,7 @@ Do not change archive order, pre-extract the whole game, change shader quality/b
 
 ## Implemented next-build loading telemetry
 
-`src/proxy/loading_trace.{h,cpp}` now supplies opt-in main-module IAT diagnostics for 16 main-module boundaries: the three Win32 file APIs, six D3DX helpers (including CreateMesh and CleanMesh), `SetCursor`, `SetCursorPos`, and `gzopen`/`gzread`/`gzseek`/`inflate`/`xmlReadMemory`. `ShowCursor` is not a static import of this executable; absence of those calls in this trace is not evidence it never runs in other modules. Graphics telemetry separately observes D3D cursor methods.
+`src/proxy/loading_trace.{h,cpp}` now supplies opt-in main-module IAT diagnostics for 19 main-module boundaries: the three Win32 file APIs, the three directory-enumeration APIs of the resource resolver (`FindFirstFileA`, `FindNextFileA`, `FindClose`; added 2026-09-12, resolved by name like the others, paths never logged, bytes always zero), six D3DX helpers (including CreateMesh and CleanMesh), `SetCursor`, `SetCursorPos`, and `gzopen`/`gzread`/`gzseek`/`inflate`/`xmlReadMemory`. `ShowCursor` is not a static import of this executable; absence of those calls in this trace is not evidence it never runs in other modules. Graphics telemetry separately observes D3D cursor methods.
 
 Initialization occurs outside loader lock. The current production gate uses
 bounded readable PE32/i386 named-import parsing; it no longer reads or fingerprints
@@ -119,7 +122,9 @@ Loading spans subtract nested **loading** spans only. D3DX effect time still inc
 
 ### Synthetic verification
 
-`verification/probe/build_loading_trace.sh` builds a standalone executable and original stub D3DX/zlib/XML DLLs in its private build directory. Do not copy these stub DLLs into X3. The expanded ABI fixture completed **75 checks with zero failures** under CrossOver Preview without launching the game. It verifies disabled mode, malformed/escaping PE rejection, named-only import matching, all forwarded D3DX/codec/XML argument values, success/failure LastError, exact returned pointers/integers, output buffers, async pending reads, counters, IAT page protections, snapshot reset, and preservation of another interceptor installed before teardown.
+The ABI fixture (`verification/probe/run_loading_trace.py`, 85 checks since the directory-enumeration hooks) compares each forwarded result, find data and LastError with the raw import, including the `ERROR_NO_MORE_FILES` termination, the `ERROR_FILE_NOT_FOUND` no-match case and `ERROR_PATH_NOT_FOUND`/invalid-handle failures, and checks the count/failure/ambiguous counters of all three.
+
+`verification/probe/build_loading_trace.sh` builds a standalone executable and original stub D3DX/zlib/XML DLLs in its private build directory. Do not copy these stub DLLs into X3. The expanded ABI fixture completed **85 checks with zero failures** (75 before the directory-enumeration hooks) under CrossOver Preview without launching the game. It verifies disabled mode, malformed/escaping PE rejection, named-only import matching, all forwarded D3DX/codec/XML argument values, success/failure LastError, exact returned pointers/integers, output buffers, async pending reads, counters, IAT page protections, snapshot reset, and preservation of another interceptor installed before teardown.
 
 A same-process 20,000-call fake-inflate loop reports direct and instrumented stub costs separately in the raw fixture output. This is an illustrative callback-cost check with a trivial backend, not a game benchmark or a forecast of loading impact. Recorded evidence is `verification/results/loading-trace-fixture.txt`; the fresh-build source/executable/native-DLL fingerprints and native mesh results are in `verification/results/loading-trace-mesh-summary.json`. Production compilation completed with `-Wall -Wextra` and no warnings; symbol inspection confirms the fixture-only entry points are absent.
 
@@ -185,3 +190,22 @@ exact source/native/executable/report provenance is retained in the summary JSON
 The separately requested [adjacency cache](../verification/mesh-cache-hook.md)
 now has public-interface tests. No game loading speedup is established, and
 Windows runtime validation remains outstanding.
+
+## Sampling profiler
+
+The counters above cannot see the ~70 % of loading time that crosses no hooked
+boundary. `X3M_PROFILE=1` (`tools/manage.py launch --profile`) runs an
+in-process sampling profiler in the proxy: one sampler thread suspends each
+application thread every 2 ms (`X3M_PROFILE_INTERVAL_US`), records the exact
+leaf RVA, the first main-executable frame from an EBP walk plus a bounded
+return-address scan, and the caller of that frame, and writes delta reports
+(`profile_report`, `profile_thread`, `profile_leaf`, `profile_frame`,
+`profile_pair`) into the session log on the same QPC clock as `loading_metric`.
+`tools/analysis/summarize_profile.py` windows those reports by seconds after
+proxy initialization (the gap bounds from `analyze_iteration08_loading.py`) and
+`tools/analysis/X3ProfileSymbols.java` names the RVAs with Ghidra. Design,
+safety rules, limits (Wine/Rosetta context accuracy, frame-pointer-omitting
+functions, scan false positives, cost) and the synthetic Wine verification are
+in [docs/verification/sampling-profiler.md](../verification/sampling-profiler.md).
+No game session has been profiled yet; the next user-run loading session with
+`--telemetry --profile --mesh-cache` provides the first attribution.

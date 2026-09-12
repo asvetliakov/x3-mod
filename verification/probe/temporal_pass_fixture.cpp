@@ -401,8 +401,16 @@ void route_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,cons
     f.upload(.25f,1);auto s2=s.run(ps,in,"sentinel accumulation");require(s2.used_history,"sentinel policy accumulates");
     reactive_sample(d,s2.color,4,8,.25f,"sentinel current pixel resolves current-only");reactive_sample(d,s2.depth,4,8,-1.f,"sentinel copied into depth history");
     reactive_sample(d,s2.color,10,8,.5f,"opaque pixel accumulates beside sentinel");
+    // A previous SENTINEL tap is the background behind a silhouette and is
+    // accepted (clamped), not dropped (before 2026-09-12 it contributed no
+    // energy, which left jittered silhouettes current-only). One flat frame
+    // (0.5) first gives the sentinel pixel (4,8) a current-only history of
+    // 0.5, distinct from the following frame's current 0.25 at (8,8) whose
+    // correspondence points at it: the blend is 0.375; a dropped tap would
+    // give 0.25. The opaque pixel (10,8) keeps accumulating: 0.5 -> 0.375.
+    f.upload(.5f,.5f);s.run(ps,in,"sentinel flat frame");f.upload(.25f,1);
     f.uploadMotion(0);{D3DLOCKED_RECT ml{};check("lock sentinel correspondence",f.motion->LockRect(0,&ml,nullptr,0));const float corr[4]={4.5f/W,8.5f/H,.5f,1};std::memcpy(static_cast<char*>(ml.pBits)+8*ml.Pitch+8*16,corr,16);check("unlock sentinel correspondence",f.motion->UnlockRect(0));}
-    in.motion_policy=MotionPolicy::PerPixel;in.motion=f.motion.p;auto s3=s.run(ps,in,"sentinel history tap");reactive_sample(d,s3.color,8,8,.25f,"previous sentinel tap contributes nothing");reactive_sample(d,s3.color,10,8,.375f,"opaque correspondence keeps accumulating");
+    in.motion_policy=MotionPolicy::PerPixel;in.motion=f.motion.p;auto s3=s.run(ps,in,"sentinel history tap");reactive_sample(d,s3.color,8,8,.375f,"previous sentinel tap is accepted as background behind a silhouette");reactive_sample(d,s3.color,10,8,.375f,"opaque correspondence keeps accumulating");
     in=f.inputs();in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;require(ps.run(in,&failed)==E_INVALIDARG&&!failed.color,"sentinel policy requires direct R32F depth");
     in=f.inputs();in.depth_snapshot=nullptr;in.current_depth=s.depth32.p;auto known=s.run(ps,in,"sentinel to known transition");require(!known.used_history,"policy transition invalidates history");
     in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;auto back=s.run(ps,in,"known to sentinel transition");require(!back.used_history,"transition back invalidates history");
@@ -440,7 +448,10 @@ void route_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,cons
 // in place. The old convention (previous jitter added to the lookup) moved the
 // taps by the jitter difference every frame: oscillation plus bilinear blur.
 double halton(unsigned index,unsigned base){double f=1,r=0;while(index){f/=base;r+=f*(index%base);index/=base;}return r;}
-void metric(const char* label,double actual,double expected,double tolerance){const bool okay=std::isfinite(actual)&&std::fabs(actual-expected)<=tolerance;++numeric_checks;std::printf("SAMPLE %s actual=%.9f expected=%.9f tolerance=%.9f %s\n",label,actual,expected,tolerance,okay?"PASS":"FAIL");if(!okay)throw std::runtime_error(label);}
+// With deferMetrics set, a failing metric is recorded instead of thrown so every
+// number of a scene group is reported; the group throws the first failure at its end.
+bool deferMetrics=false;std::vector<std::string> deferredFailures;
+void metric(const char* label,double actual,double expected,double tolerance){const bool okay=std::isfinite(actual)&&std::fabs(actual-expected)<=tolerance;++numeric_checks;std::printf("SAMPLE %s actual=%.9f expected=%.9f tolerance=%.9f %s\n",label,actual,expected,tolerance,okay?"PASS":"FAIL");if(!okay){if(deferMetrics)deferredFailures.push_back(label);else throw std::runtime_error(label);}}
 struct StationaryScene {
     static constexpr UINT S=32,PHASES=16,FRAMES=64;
     // Area coordinates: pixel i spans [i, i+1). The fractional edges keep every
@@ -510,17 +521,20 @@ void stationary_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder
         // One-step oracle: the shader's arithmetic on the actual current image and
         // the actual previous output, with the history tap at this pixel's own
         // center (f = 0; a jitter-difference offset would blend the neighbors and
-        // fail at every edge and ramp pixel) and the 3x3 clamp of the current frame.
+        // fail at every edge and ramp pixel) and the neighborhood clip of the
+        // current frame: mean +/- 1.25 sigma of the 3x3 intersected with its min/max.
         for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x)for(UINT c=0;c<3;++c){const float cur=current[n][(y*S+x)*4+c];float expected=cur;
-            if(n){float lo=cur,hi=cur;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){const int nx=std::min(std::max(int(x)+dx,0),int(S)-1),ny=std::min(std::max(int(y)+dy,0),int(S)-1);const float v=current[n][(UINT(ny)*S+UINT(nx))*4+c];lo=std::min(lo,v);hi=std::max(hi,v);}
-                const float old=std::min(std::max(output[n-1][(y*S+x)*4+c],lo),hi);expected=halfFloat(toHalf(cur+w*(old-cur)));}
+            if(n){double lo=cur,hi=cur,m1=0,m2=0;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){const int nx=std::min(std::max(int(x)+dx,0),int(S)-1),ny=std::min(std::max(int(y)+dy,0),int(S)-1);const float v=current[n][(UINT(ny)*S+UINT(nx))*4+c];lo=std::min(lo,double(v));hi=std::max(hi,double(v));m1+=v/9.;m2+=double(v)*v/9.;}
+                const double sigma=std::sqrt(std::max(m2-m1*m1,0.));lo=std::max(lo,m1-1.25*sigma);hi=std::min(hi,m1+1.25*sigma);
+                const double old=std::min(std::max(double(output[n-1][(y*S+x)*4+c]),lo),hi);expected=halfFloat(toHalf(float(cur+w*(old-cur))));}
             modelError=std::max(modelError,double(std::fabs(output[n][(y*S+x)*4+c]-expected)));}
     }
     // (a) Stability across phases in the last period. Interior (flat regions and
     // the integer-aligned square): identical. Fractional-edge ring: the raw sample
-    // toggles, so the EMA moves by at most (1-w) per frame. Bilinear ramp: the
-    // jitter shifts the sampled texture by up to 0.94 px (0.02 in value), so the
-    // EMA moves by at most 0.002 plus FP16 rounding.
+    // toggles, so the EMA moves by at most (1-w) per frame (the variance clip
+    // adds a clamp step at corner pixels whose 3x3 holds one bright sample).
+    // Bilinear ramp: the jitter shifts the sampled texture by up to 0.94 px
+    // (0.02 in value), so the EMA moves by at most 0.002 plus FP16 rounding.
     auto ring=[](UINT x,UINT y){return ((x==4||x==12)&&y>=4&&y<=12)||((y==4||y==12)&&x>=4&&x<=12);};
     auto rampq=[](UINT x,UINT y){return x>=4&&x<28&&y>=18&&y<28;};
     double interiorDelta=0,ringDelta=0,rampDelta=0;
@@ -534,26 +548,242 @@ void stationary_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder
     auto periodMean=[&](const std::vector<std::vector<float>>& images,UINT x,UINT y){double sum=0;for(UINT n=N-P;n<N;++n)sum+=images[n][(y*S+x)*4];return sum/P;};
     struct EdgePixel{UINT x,y;double coverage;const char* label;};
     const EdgePixel edges[]={{4,8,1-.28,"left"},{12,8,.72,"right"},{8,4,1-.37,"top"},{8,12,.59,"bottom"},{4,4,(1-.28)*(1-.37),"corner"}};
-    double dcError=0,analyticError=0,rampDc=0;
+    // The corner pixel is measured apart: in the phases where only it is
+    // covered, its 3x3 holds one bright sample among eight dark ones and the
+    // variance clip (mean + 1.25 sigma = 0.628) trims its history, a
+    // deliberate bias of the clip (about 0.013 of coverage) that the linear
+    // DC-gain argument does not cover; the four edge pixels keep the 0.01 bound.
+    double dcError=0,cornerDcError=0,analyticError=0,rampDc=0;
     for(auto e:edges){const double resolved=(periodMean(output,e.x,e.y)-.25)/.75,sampled=(periodMean(current,e.x,e.y)-.25)/.75;
-        dcError=std::max(dcError,std::fabs(resolved-sampled));analyticError=std::max(analyticError,std::fabs(resolved-e.coverage));
+        (e.x==4&&e.y==4?cornerDcError:dcError)=std::max(e.x==4&&e.y==4?cornerDcError:dcError,std::fabs(resolved-sampled));analyticError=std::max(analyticError,std::fabs(resolved-e.coverage));
         std::printf("EDGE %s x=%u y=%u resolved_coverage=%.4f sampled_coverage=%.4f analytic_coverage=%.4f\n",e.label,e.x,e.y,resolved,sampled,e.coverage);}
     for(UINT y=18;y<28;++y)for(UINT x=4;x<28;++x)rampDc=std::max(rampDc,std::fabs(periodMean(output,x,y)-periodMean(current,x,y)));
+    // Resampling blur on the stationary ramp: the horizontal gradient energy of the
+    // period-mean output over that of the period-mean input (every history tap
+    // sits on a texel center, so no filter blurs it: the ratio is one for any filter).
+    double gradientOut=0,gradientIn=0;
+    for(UINT y=19;y<27;++y)for(UINT x=6;x<25;++x){gradientOut+=std::pow(periodMean(output,x+1,y)-periodMean(output,x,y),2);gradientIn+=std::pow(periodMean(current,x+1,y)-periodMean(current,x,y),2);}
+    const double rampSharpness=gradientOut/gradientIn;
     // (c) No drift: the centroid of the bright square (backdrop subtracted) over
     // a 9x9 window stays at its unjittered position (21, 7) in every frame.
     double drift=0;
     for(UINT n=0;n<N;++n){double mass=0,mx=0,my=0;for(UINT y=3;y<12;++y)for(UINT x=17;x<26;++x){const double v=output[n][(y*S+x)*4]-.25;mass+=v;mx+=v*x;my+=v*y;}
         drift=mass>3?std::max(drift,std::hypot(mx/mass-21,my/mass-7)):INFINITY;}
     // Every number is computed before any check so a failing resolve still reports all of them.
-    std::printf("STATIONARY frames=%u phases=%u weight=%.2f oracle_error=%.6f interior_delta=%.6f edge_delta=%.6f ramp_delta=%.6f edge_dc_error=%.4f edge_analytic_error=%.4f ramp_dc_error=%.4f drift_px=%.6f\n",N,P,double(w),modelError,interiorDelta,ringDelta,rampDelta,dcError,analyticError,rampDc,drift);
+    std::printf("STATIONARY frames=%u phases=%u weight=%.2f oracle_error=%.6f interior_delta=%.6f edge_delta=%.6f ramp_delta=%.6f edge_dc_error=%.4f corner_dc_error=%.4f edge_analytic_error=%.4f ramp_dc_error=%.4f drift_px=%.6f ramp_gradient_energy_ratio=%.4f\n",N,P,double(w),modelError,interiorDelta,ringDelta,rampDelta,dcError,cornerDcError,analyticError,rampDc,drift,rampSharpness);
     metric("stationary one-step oracle max error over 64 frames",modelError,0,.002);
     metric("stationary interior max delta between consecutive phases",interiorDelta,0,1./255);
     metric("stationary fractional-edge max delta between consecutive phases",ringDelta,0,(1-double(w))+.002);
     metric("stationary bilinear ramp max delta between consecutive phases",rampDelta,0,.01);
     metric("stationary edge coverage equals the jitter-sampled coverage over a period",dcError,0,.01);
+    metric("stationary corner coverage equals the jitter-sampled coverage within the variance-clip bias",cornerDcError,0,.02);
     metric("stationary edge coverage converges to the analytic coverage",analyticError,0,.1);
     metric("stationary ramp period mean equals the supersampled texture mean",rampDc,0,.01);
     metric("stationary square centroid drift max over 64 frames (px)",drift,0,.05);
+    metric("stationary ramp gradient energy of the output over the input",std::min(rampSharpness,1.),1,.1);
+}
+// Silhouette, thin-feature and resampling scenes (resolve quality pass,
+// 2026-09-12). Objects with their own depth are rasterized over a background
+// that is either the -1 sentinel (nothing routed, the game's space background)
+// or a routed far surface. Color, RGBA32F motion and R32F depth are drawn per
+// frame with the Halton jitter by three flat draws per object, exactly the
+// route's three targets: the motion program writes, from VPOS, the previous
+// unjittered texture-center UV of the content at the jittered sample
+// (p + 0.5 - j - v)/S, the expected depth and alpha 1 (the background's fill
+// alpha is a parameter: -1 unknown as the route fills today, 0 camera path).
+struct EdgeObject { double l,t,r,b; float value,depth; double vx=0,vy=0; bool scroll=false; double u0=0; };
+struct EdgeBackground { float value,depth,alpha; };
+struct EdgeScene {
+    static constexpr UINT S=32,P=16;
+    IDirect3DDevice9* d;
+    Com<IDirect3DTexture9> color,depth32,motion,wave;Com<IDirect3DSurface9> colorSurface,depthSurface,motionSurface;
+    Com<IDirect3DPixelShader9> flat,motionPS,textured;
+    EdgeScene(IDirect3DDevice9* device,Compiler compiler):d(device){
+        check("edge color",d->CreateTexture(S,S,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&color.p,nullptr));check("edge color surface",color->GetSurfaceLevel(0,&colorSurface.p));
+        check("edge depth",d->CreateTexture(S,S,1,D3DUSAGE_RENDERTARGET,D3DFMT_R32F,D3DPOOL_DEFAULT,&depth32.p,nullptr));check("edge depth surface",depth32->GetSurfaceLevel(0,&depthSurface.p));
+        check("edge motion",d->CreateTexture(S,S,1,D3DUSAGE_RENDERTARGET,D3DFMT_A32B32G32R32F,D3DPOOL_DEFAULT,&motion.p,nullptr));check("edge motion surface",motion->GetSurfaceLevel(0,&motionSurface.p));
+        check("edge wave",d->CreateTexture(S,S,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&wave.p,nullptr));
+        Com<ID3DXBuffer> a,b,c;compile(compiler,"float4 color:register(c0);float4 main():COLOR0{return color;}","ps_3_0",&a.p);
+        compile(compiler,"float4 j:register(c0);float4 k:register(c1);float4 main(float2 vpos:VPOS):COLOR0{return float4((vpos+0.5-j.xy-j.zw)*k.y,k.x,k.z);}","ps_3_0",&b.p);
+        compile(compiler,"sampler2D source:register(s0);float4 main(float2 uv:TEXCOORD0):COLOR0{return tex2D(source,uv);}","ps_3_0",&c.p);
+        check("edge flat PS",d->CreatePixelShader(static_cast<DWORD*>(a->GetBufferPointer()),&flat.p));check("edge motion PS",d->CreatePixelShader(static_cast<DWORD*>(b->GetBufferPointer()),&motionPS.p));check("edge textured PS",d->CreatePixelShader(static_cast<DWORD*>(c->GetBufferPointer()),&textured.p));
+        // Horizontal sinusoid of period 8 texels, 0.25..1, one texel per pixel, constant down the columns.
+        {D3DLOCKED_RECT lock{};check("lock wave",wave->LockRect(0,&lock,nullptr,0));for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){const unsigned char v=static_cast<unsigned char>(std::lround(255*(.625+.375*std::sin(2*3.14159265358979*x/8.))));const unsigned char px[4]={v,v,v,255};std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*4,px,4);}check("unlock wave",wave->UnlockRect(0));}
+    }
+    ~EdgeScene(){for(UINT i=0;i<7;++i)d->SetTexture(i,nullptr);d->SetPixelShader(nullptr);}
+    void target(IDirect3DSurface9* rt){
+        for(UINT n=0;n<20;++n)check("edge unbind",d->SetTexture(n<16?n:D3DVERTEXTEXTURESAMPLER0+n-16,nullptr));
+        check("edge MRT",d->SetRenderTarget(1,nullptr));check("edge DS",d->SetDepthStencilSurface(nullptr));check("edge RT",d->SetRenderTarget(0,rt));
+        D3DVIEWPORT9 vp{0,0,S,S,0,1};check("edge VP",d->SetViewport(&vp));
+        check("edge freq0",d->SetStreamSourceFreq(0,1));check("edge freq1",d->SetStreamSourceFreq(1,1));
+        check("edge VS",d->SetVertexShader(nullptr));check("edge FVF",d->SetFVF(D3DFVF_XYZRHW|D3DFVF_TEX1));check("edge TSS index",d->SetTextureStageState(0,D3DTSS_TEXCOORDINDEX,0));check("edge TSS transform",d->SetTextureStageState(0,D3DTSS_TEXTURETRANSFORMFLAGS,D3DTTFF_DISABLE));check("edge IB",d->SetIndices(nullptr));
+        for(auto state:{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_STENCILENABLE,D3DRS_ALPHATESTENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_SEPARATEALPHABLENDENABLE,D3DRS_FOGENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_SCISSORTESTENABLE,D3DRS_CLIPPLANEENABLE,D3DRS_CLIPPING,D3DRS_LIGHTING,D3DRS_INDEXEDVERTEXBLENDENABLE,D3DRS_POINTSPRITEENABLE,D3DRS_DITHERENABLE,D3DRS_ANTIALIASEDLINEENABLE})check("edge disable",d->SetRenderState(state,FALSE));
+        for(auto p:{std::pair<D3DRENDERSTATETYPE,DWORD>{D3DRS_VERTEXBLEND,D3DVBF_DISABLE},{D3DRS_FILLMODE,D3DFILL_SOLID},{D3DRS_CULLMODE,D3DCULL_NONE},{D3DRS_COLORWRITEENABLE,15},{D3DRS_MULTISAMPLEMASK,0xffffffff},{D3DRS_WRAP0,0}})check("edge render state",d->SetRenderState(p.first,p.second));
+        for(auto p:{std::pair<D3DSAMPLERSTATETYPE,DWORD>{D3DSAMP_MINFILTER,D3DTEXF_LINEAR},{D3DSAMP_MAGFILTER,D3DTEXF_LINEAR},{D3DSAMP_MIPFILTER,D3DTEXF_NONE},{D3DSAMP_ADDRESSU,D3DTADDRESS_WRAP},{D3DSAMP_ADDRESSV,D3DTADDRESS_WRAP},{D3DSAMP_SRGBTEXTURE,FALSE},{D3DSAMP_MAXMIPLEVEL,0}})check("edge sampler",d->SetSamplerState(0,p.first,p.second));
+    }
+    // Pre-transformed pixel space: pixel i's center is at i, so the area edge e lies at e-0.5; the jitter displaces the geometry by +j.
+    void quad(double left,double top,double right,double bottom,double jx,double jy,double u0=0,double u1=1){struct V{float x,y,z,rhw,u,v;};
+        const float l=float(left-.5+jx),t=float(top-.5+jy),r=float(right-.5+jx),b=float(bottom-.5+jy);
+        const V v[]={{l,t,.5f,1,float(u0),0},{r,t,.5f,1,float(u1),0},{l,b,.5f,1,float(u0),1},{r,b,.5f,1,float(u1),1}};
+        check("edge raster",d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,2,v,sizeof(V)));}
+    void constant(float a,float b,float c,float e,UINT slot=0){const float v[4]={a,b,c,e};check("edge constant",d->SetPixelShaderConstantF(slot,v,1));}
+    void render(const std::vector<EdgeObject>& objects,const EdgeBackground& bg,double jx,double jy){
+        target(colorSurface.p);check("edge Begin",d->BeginScene());
+        check("edge flat bind",d->SetPixelShader(flat.p));constant(bg.value,bg.value,bg.value,1);quad(0,0,S,S,0,0);
+        for(auto& o:objects){if(o.scroll){check("edge wave bind",d->SetTexture(0,wave.p));check("edge textured bind",d->SetPixelShader(textured.p));quad(o.l,o.t,o.r,o.b,jx,jy,o.u0,o.u0+(o.r-o.l)/S);check("edge wave unbind",d->SetTexture(0,nullptr));check("edge flat rebind",d->SetPixelShader(flat.p));}
+            else{constant(o.value,o.value,o.value,1);quad(o.l,o.t,o.r,o.b,jx,jy);}}
+        check("edge End",d->EndScene());
+        target(motionSurface.p);check("edge motion Begin",d->BeginScene());check("edge motion bind",d->SetPixelShader(motionPS.p));
+        constant(float(jx),float(jy),0,0);constant(bg.depth,1.f/S,bg.alpha,0,1);quad(0,0,S,S,0,0);
+        for(auto& o:objects){constant(float(jx),float(jy),float(o.vx),float(o.vy));constant(o.depth,1.f/S,1,0,1);quad(o.l,o.t,o.r,o.b,jx,jy);}
+        check("edge motion End",d->EndScene());
+        target(depthSurface.p);check("edge depth Begin",d->BeginScene());check("edge depth bind",d->SetPixelShader(flat.p));
+        constant(bg.depth,0,0,0);quad(0,0,S,S,0,0);
+        for(auto& o:objects){constant(o.depth,0,0,0);quad(o.l,o.t,o.r,o.b,jx,jy);}
+        check("edge depth End",d->EndScene());
+    }
+    std::vector<float> read(IDirect3DTexture9* texture){D3DSURFACE_DESC desc{};check("edge level desc",texture->GetLevelDesc(0,&desc));Com<IDirect3DSurface9> level,sys;check("edge level",texture->GetSurfaceLevel(0,&level.p));check("edge readback surface",d->CreateOffscreenPlainSurface(S,S,desc.Format,D3DPOOL_SYSTEMMEM,&sys.p,nullptr));check("edge validation-only readback",d->GetRenderTargetData(level.p,sys.p));D3DLOCKED_RECT lock{};check("edge lock",sys->LockRect(&lock,nullptr,D3DLOCK_READONLY));std::vector<float> out(S*S*4);
+        for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x)for(UINT c=0;c<4;++c){const char* p=static_cast<const char*>(lock.pBits)+y*lock.Pitch;float v=0;
+            if(desc.Format==D3DFMT_R32F){if(c==0)std::memcpy(&v,p+x*4,4);}else if(desc.Format==D3DFMT_A32B32G32R32F)std::memcpy(&v,p+x*16+c*4,4);else{unsigned short h;std::memcpy(&h,p+x*8+c*2,2);v=halfFloat(h);}
+            out[(y*S+x)*4+c]=v;}
+        check("edge unlock",sys->UnlockRect());return out;}
+};
+struct EdgeRun { std::vector<std::vector<float>> current,output,depth; };
+template<class Objects> EdgeRun edge_sequence(EdgeScene& s,const DWORD* decoder,const DWORD* resolver,Objects objects,const EdgeBackground& bg,unsigned frames,bool sentinelCamera,bool perPixel,const char* label){
+    constexpr UINT S=EdgeScene::S,P=EdgeScene::P;TemporalPass pass;check("edge initialize",pass.initialize(s.d,decoder,resolver));EdgeRun run;
+    for(unsigned n=0;n<frames;++n){
+        const unsigned index=n%P+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;const auto scene=objects(n);
+        s.render(scene,bg,jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));
+        if(n==0){ // The motion target follows the producer contract: for every pixel the first object covers, RG = (p + 0.5 - j - v)/S, B = its depth, A = 1.
+            const auto m=s.read(s.motion.p);double worst=0;unsigned covered=0;
+            for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x)if(run.depth[0][(y*S+x)*4]==scene[0].depth){++covered;for(double e:{std::fabs(m[(y*S+x)*4]-(x+.5-jx-scene[0].vx)/S),std::fabs(m[(y*S+x)*4+1]-(y+.5-jy-scene[0].vy)/S),double(std::fabs(m[(y*S+x)*4+2]-scene[0].depth)),double(std::fabs(m[(y*S+x)*4+3]-1))})worst=std::max(worst,e);}
+            ++numeric_checks;require(covered>0&&worst<=1e-6,"edge scene motion target equals the producer contract at every covered pixel");}
+        FrameInputs in;in.color=s.color.p;in.current_depth=s.depth32.p;in.motion=perPixel?s.motion.p:nullptr;in.width=S;in.height=S;in.epoch=1;std::copy(identity,identity+16,in.clip_to_previous);
+        in.current_jitter[0]=float(jx);in.current_jitter[1]=float(jy);in.weight=.9f;in.motion_policy=perPixel?MotionPolicy::PerPixel:MotionPolicy::KnownCameraOnly;
+        in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.sentinel_camera=sentinelCamera;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=true;
+        Output out;check("edge Begin resolve",s.d->BeginScene());check(label,pass.run(in,&out));check("edge End resolve",s.d->EndScene());
+        require(out.color&&pass.diagnostics().history_valid&&out.used_history==(n>0),"edge history follows the sequence");
+        run.output.push_back(s.read(out.color));
+    }
+    return run;
+}
+float px(const std::vector<float>& image,UINT x,UINT y,UINT c=0){return image[(y*EdgeScene::S+x)*4+c];}
+// Coverage of the unit interval [k, k+1) by [start, start+width).
+double coverage(double start,double width,unsigned k){return std::max(0.,std::min(double(k)+1,start+width)-std::max(double(k),start));}
+struct LineSpec { const char* label; bool horizontal; double start; unsigned width; UINT lo,hi,along0,along1; };
+// Thin-line metrics over the last period: a cross-section index k is interior when its analytic coverage is 0 or 1 (never or always covered under the jitter) and an edge otherwise.
+void thin_line_metrics(const EdgeRun& run,const LineSpec& L,bool assert,const char* mode){
+    constexpr UINT P=EdgeScene::P;const unsigned N=unsigned(run.output.size());constexpr double w=.9;
+    auto value=[&](const std::vector<float>& img,UINT along,UINT k){return L.horizontal?px(img,along,k):px(img,k,along);};
+    double interiorDelta=0,edgeDelta=0,sumDelta=0,wobble=0,coverageError=0,total=0;std::vector<double> sums,centroids;
+    auto centroidAt=[&](unsigned n){double mass=0,moment=0;for(UINT k=L.lo;k<=L.hi;++k)for(UINT a=L.along0;a<L.along1;++a){const double v=value(run.output[n],a,k)-.25;mass+=v;moment+=v*(k+.5);}return mass>0?moment/mass:INFINITY;};
+    double previousCentroid=0;for(unsigned n=N-2*P;n<N-P;++n)previousCentroid+=centroidAt(n)/P;
+    for(unsigned n=N-P;n<N;++n){double sum=0,mass=0,moment=0;
+        for(UINT k=L.lo;k<=L.hi;++k){const double analytic=coverage(L.start,L.width,k);const bool interior=analytic<=0||analytic>=1;
+            for(UINT a=L.along0;a<L.along1;++a){const double delta=std::fabs(value(run.output[n],a,k)-value(run.output[n-1],a,k));(interior?interiorDelta:edgeDelta)=std::max(interior?interiorDelta:edgeDelta,delta);
+                const double v=value(run.output[n],a,k)-.25;sum+=value(run.output[n],a,k);mass+=v;moment+=v*(k+.5);}}
+        sums.push_back(sum/(L.along1-L.along0));centroids.push_back(mass>0?moment/mass:INFINITY);}
+    for(size_t i=1;i<sums.size();++i)sumDelta=std::max(sumDelta,std::fabs(sums[i]-sums[i-1]));
+    double centroidMean=0;for(double c:centroids)centroidMean+=c/centroids.size();for(double c:centroids)wobble=std::max(wobble,std::fabs(c-centroidMean));
+    const double drift=std::fabs(centroidMean-previousCentroid);
+    for(UINT k=L.lo;k<=L.hi;++k){double mean=0;for(unsigned n=N-P;n<N;++n)for(UINT a=L.along0;a<L.along1;++a)mean+=value(run.output[n],a,k);mean/=P*(L.along1-L.along0);
+        const double resolved=(mean-.25)/.75;total+=resolved;coverageError=std::max(coverageError,std::fabs(resolved-coverage(L.start,L.width,k)));}
+    const double analyticCenter=L.start+L.width/2.;
+    std::printf("THINLINE mode=%s line=%s interior_delta=%.6f edge_delta=%.6f sum_delta=%.6f drift_px=%.6f wobble_px=%.6f centroid=%.4f analytic_center=%.4f total_coverage=%.4f width=%u coverage_error=%.4f\n",mode,L.label,interiorDelta,edgeDelta,sumDelta,drift,wobble,centroidMean,analyticCenter,total,L.width,coverageError);
+    if(!assert)return;
+    std::string prefix=std::string("thin line ")+mode+" "+L.label+": ";
+    metric((prefix+"interior max delta between consecutive phases").c_str(),interiorDelta,0,1./255);
+    metric((prefix+"edge max delta between consecutive phases").c_str(),edgeDelta,0,(1-w)*.75+.002);
+    metric((prefix+"cross-section brightness delta between consecutive phases").c_str(),sumDelta,0,1./255);
+    // Drift is the shift of the period-mean centroid between the last two
+    // periods; the per-phase wobble around that mean is the EMA ripple of the
+    // toggling edge rows: each moves by at most (1-w) * contrast = 0.075 per
+    // frame with a lever of one pixel per unit of line mass (0.75 for a
+    // 1-px line, 1.5 with two toggling rows for a 2-px line), so 0.1 px.
+    metric((prefix+"centroid drift between consecutive periods (px)").c_str(),drift,0,.05);
+    metric((prefix+"centroid wobble across phases (px)").c_str(),wobble,0,.1);
+    metric((prefix+"centroid at the analytic line center (px)").c_str(),centroidMean,analyticCenter,.1);
+    metric((prefix+"total coverage within 20% of the line width").c_str(),total/L.width,1,.2);
+    metric((prefix+"per-row coverage converges to the analytic coverage").c_str(),coverageError,0,.1);
+}
+void silhouette_metrics(const EdgeRun& run,double l,double t,double size,unsigned moveFrom,bool assert,const char* mode){
+    constexpr UINT S=EdgeScene::S,P=EdgeScene::P;const unsigned N=unsigned(run.output.size());
+    // Static phase, last static period: ring pixels (fractional coverage) and the interior.
+    double rawVariance=0,resolvedVariance=0,coverageError=0,dcError=0,interiorDelta=0;unsigned ring=0;
+    for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){const double cx=coverage(l,size,x),cy=coverage(t,size,y),analytic=cx*cy;if(analytic<=0||analytic>=1)continue;++ring;
+        double rawMean=0,outMean=0;for(unsigned n=moveFrom-P;n<moveFrom;++n){rawMean+=px(run.current[n],x,y)/P;outMean+=px(run.output[n],x,y)/P;}
+        double rv=0,ov=0;for(unsigned n=moveFrom-P;n<moveFrom;++n){rv+=std::pow(px(run.current[n],x,y)-rawMean,2)/P;ov+=std::pow(px(run.output[n],x,y)-outMean,2)/P;}
+        const double resolved=(outMean-.25)/.75,sampled=(rawMean-.25)/.75;
+        rawVariance+=rv;resolvedVariance+=ov;coverageError=std::max(coverageError,std::fabs(resolved-analytic));dcError=std::max(dcError,std::fabs(resolved-sampled));
+        if(std::fabs(resolved-analytic)>.05||std::fabs(resolved-sampled)>.02)std::printf("SILRING mode=%s x=%u y=%u resolved=%.4f sampled=%.4f analytic=%.4f raw_variance=%.4f resolved_variance=%.6f\n",mode,x,y,resolved,sampled,analytic,rv,ov);}
+    for(unsigned n=moveFrom-P;n<moveFrom;++n)for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x)if(coverage(l,size,x)*coverage(t,size,y)>=1)interiorDelta=std::max(interiorDelta,double(std::fabs(px(run.output[n],x,y)-px(run.output[n-1],x,y))));
+    const double ratio=resolvedVariance>0?rawVariance/resolvedVariance:INFINITY;
+    // Moving phase: a pixel whose 3x3 holds no square pixel in the current frame must be exactly the background (no ghost beyond the clamp); the square's interior stays bright.
+    double ghost=0,interiorMin=1;
+    for(unsigned n=moveFrom+1;n<N;++n)for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){bool adjacent=false;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)adjacent|=px(run.depth[n],x+dx,y+dy)==.5f;
+        const double lx=l+(n-moveFrom+1);if(!adjacent)ghost=std::max(ghost,std::fabs(px(run.output[n],x,y)-.25));
+        else if(x+.5>=lx+1.5&&x+.5<=lx+size-1.5&&y+.5>=t+1.5&&y+.5<=t+size-1.5)interiorMin=std::min(interiorMin,double(px(run.output[n],x,y)));}
+    std::printf("SILHOUETTE mode=%s ring=%u raw_variance=%.6f resolved_variance=%.6f ratio=%.2f dc_error=%.4f coverage_error=%.4f interior_delta=%.6f ghost_max=%.6f moving_interior_min=%.4f\n",mode,ring,rawVariance/ring,resolvedVariance/ring,ratio,dcError,coverageError,interiorDelta,ghost,interiorMin);
+    if(!assert)return;
+    std::string prefix=std::string("silhouette ")+mode+": ";
+    metric((prefix+"edge variance across phases reduced at least 4x").c_str(),std::min(ratio,100.),100,96);
+    // The ring's period mean follows the jitter-sampled coverage up to the
+    // variance clip's bias at pixels whose uncovered-phase 3x3 holds two
+    // bright samples (upper bound 0.806 against a 0.79 history): about 0.03.
+    metric((prefix+"edge coverage equals the jitter-sampled coverage within the variance-clip bias").c_str(),dcError,0,.05);
+    metric((prefix+"edge coverage converges to the analytic coverage").c_str(),coverageError,0,.1);
+    metric((prefix+"interior max delta between consecutive phases").c_str(),interiorDelta,0,1./255);
+    metric((prefix+"revealed background carries no square color beyond the clamp").c_str(),ghost,0,1./255);
+    metric((prefix+"moving square interior stays bright").c_str(),interiorMin,1,.1);
+}
+// CPU model of the resolve for the scrolling wave: history at (x - v, y) through the given 1-D filter, the variance/min-max clip of the current 3x3, the blend and FP16 rounding.
+std::vector<std::vector<float>> blur_model(const EdgeRun& run,double v,bool catmullRom){
+    constexpr UINT S=EdgeScene::S;constexpr float w=.9f;std::vector<std::vector<float>> out(run.output.size());
+    auto sample=[&](const std::vector<float>& img,double xs,UINT y,UINT c){const double pos=xs;const int base=int(std::floor(pos));const double f=pos-base;double sum=0;
+        if(catmullRom){const double w0=-.5*f+f*f-.5*f*f*f,w1=1-2.5*f*f+1.5*f*f*f,w2=.5*f+2*f*f-1.5*f*f*f,w3=-.5*f*f+.5*f*f*f;const double ws[4]={w0,w1,w2,w3};
+            for(int i=0;i<4;++i)sum+=ws[i]*px(img,UINT(std::min(std::max(base-1+i,0),int(S)-1)),y,c);}
+        else sum=(1-f)*px(img,UINT(std::min(std::max(base,0),int(S)-1)),y,c)+f*px(img,UINT(std::min(std::max(base+1,0),int(S)-1)),y,c);
+        return sum;};
+    for(unsigned n=0;n<run.output.size();++n){out[n]=run.current[n];if(!n)continue;
+        for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x)for(UINT c=0;c<3;++c){const float cur=px(run.current[n],x,y,c);double lo=cur,hi=cur,m1=0,m2=0;
+            for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){const UINT nx=UINT(std::min(std::max(int(x)+dx,0),int(S)-1)),ny=UINT(std::min(std::max(int(y)+dy,0),int(S)-1));const float q=px(run.current[n],nx,ny,c);lo=std::min(lo,double(q));hi=std::max(hi,double(q));m1+=q/9.;m2+=double(q)*q/9.;}
+            const double sigma=std::sqrt(std::max(m2-m1*m1,0.));lo=std::max(lo,m1-1.25*sigma);hi=std::min(hi,m1+1.25*sigma);
+            const double old=std::min(std::max(sample(out[n-1],x-v,y,c),lo),hi);out[n][(y*S+x)*4+c]=halfFloat(toHalf(float(cur+w*(old-cur))));}}
+    return out;
+}
+// Amplitude of the period-8 component along x over columns [x0, x1) of rows [y0, y1), averaged over the last period.
+double wave_amplitude(const std::vector<std::vector<float>>& images,UINT x0,UINT x1,UINT y0,UINT y1){constexpr UINT P=EdgeScene::P;const unsigned N=unsigned(images.size());double total=0;
+    for(unsigned n=N-P;n<N;++n)for(UINT y=y0;y<y1;++y){double re=0,im=0;for(UINT x=x0;x<x1;++x){re+=px(images[n],x,y)*std::cos(2*3.14159265358979*x/8);im-=px(images[n],x,y)*std::sin(2*3.14159265358979*x/8);}total+=2*std::hypot(re,im)/(x1-x0);}
+    return total/(P*(y1-y0));}
+void edge_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const DWORD* resolver){
+    std::puts("EDGE_CASES");EdgeScene s(d,compiler);constexpr UINT S=EdgeScene::S;
+    struct Defer{Defer(){deferMetrics=true;deferredFailures.clear();}~Defer(){deferMetrics=false;}} defer;
+    // Jittered edges stay at least 0.03 px from every sample center (no fill-rule ties) for the fractional positions used below.
+    {double margin=1;for(unsigned i=1;i<=EdgeScene::P;++i){const double jx=halton(i,2)-.5,jy=halton(i,3)-.5;for(double e:{6.37,7.37,14.59,16.59,10.37,16.37}){const double v=e+jy;margin=std::min(margin,std::fabs(v-std::floor(v)-.5));}for(double e:{12.28,13.28,10.28,16.28}){const double v=e+jx;margin=std::min(margin,std::fabs(v-std::floor(v)-.5));}}
+        std::printf("EDGE_MARGIN %.4f\n",margin);require(margin>=.029,"edge geometry keeps jittered edges off the sample centers");}
+    const EdgeBackground farBackground{.25f,.9f,1},sentinelUnknown{.25f,-1.f,-1},sentinelCamera{.25f,-1.f,0};
+    // (a) Thin lines: a 1-px and a 2-px horizontal line and a 1-px vertical line at fractional positions, static, 64 frames.
+    auto lines=[](unsigned){return std::vector<EdgeObject>{{3,6.37,29,7.37,1,.5f},{3,14.59,29,16.59,1,.5f},{12.28,20,13.28,30,1,.5f}};};
+    const LineSpec specs[]={{"1px horizontal",true,6.37,1,5,8,6,26},{"2px horizontal",true,14.59,2,13,17,6,26},{"1px vertical",false,12.28,1,11,14,22,28}};
+    struct Mode{const char* name;EdgeBackground bg;bool camera,perPixel,assert;};
+    const Mode modes[]={{"far-background",farBackground,false,true,true},{"sentinel-camera",sentinelCamera,true,true,true},{"sentinel-current-only",sentinelUnknown,false,true,false}};
+    for(auto& m:modes){auto run=edge_sequence(s,decoder,resolver,lines,m.bg,64,m.camera,m.perPixel,"thin lines");for(auto& L:specs)thin_line_metrics(run,L,m.assert,m.name);}
+    // (b) Silhouette: a 6x6 square at a fractional position, static for 32 frames, then moving +1 px/frame for 12 frames.
+    const double sl=10.28,st=10.37;auto square=[&](unsigned n){const double l=sl+(n>=32?n-31:0);return std::vector<EdgeObject>{{l,st,l+6,st+6,1,.5f,n>=32?1.:0.,0}};};
+    for(auto& m:modes){auto run=edge_sequence(s,decoder,resolver,square,m.bg,44,m.camera,m.perPixel,"silhouette");silhouette_metrics(run,sl,st,6,32,m.assert,m.name);}
+    // (c) Resampling blur: a static 24x8 quad whose period-8 sinusoid scrolls 0.25 px/frame (the history is resampled at a constant 0.75 texel offset every frame); the amplitude of the period-8 component of the output over the input, shader against the CPU models of the Catmull-Rom and the previous bilinear history filter.
+    const double v=.25;auto wave=[&](unsigned n){return std::vector<EdgeObject>{{4,12,28,20,1,.5f,v,0,true,-double(n)*v/S}};};
+    auto run=edge_sequence(s,decoder,resolver,wave,farBackground,64,false,true,"scrolling wave");
+    const auto cubic=blur_model(run,v,true),bilinear=blur_model(run,v,false);
+    const double input=wave_amplitude(run.current,8,24,13,19),shader=wave_amplitude(run.output,8,24,13,19),cubicModel=wave_amplitude(cubic,8,24,13,19),bilinearModel=wave_amplitude(bilinear,8,24,13,19);
+    double oracle=0;for(unsigned n=0;n<run.output.size();++n)for(UINT y=13;y<19;++y)for(UINT x=8;x<24;++x)oracle=std::max(oracle,double(std::fabs(px(run.output[n],x,y)-px(cubic[n],x,y))));
+    std::printf("BLUR velocity=%.2f input_amplitude=%.4f shader_ratio=%.4f catmull_rom_model_ratio=%.4f bilinear_model_ratio=%.4f shader_energy_ratio=%.4f bilinear_energy_ratio=%.4f oracle_error=%.6f\n",v,input,shader/input,cubicModel/input,bilinearModel/input,std::pow(shader/input,2),std::pow(bilinearModel/input,2),oracle);
+    // The CPU model and the shader differ by float rounding in the weights and
+    // the clip bounds, compounded through 64 frames of fractional resampling.
+    metric("scrolling wave: shader matches the Catmull-Rom CPU model",oracle,0,.01);
+    metric("scrolling wave: period-8 amplitude of the output over the input (Catmull-Rom)",std::min(shader/input,1.),1,.1);
+    metric("scrolling wave: Catmull-Rom keeps more amplitude than the previous bilinear filter",std::min(shader/input-bilinearModel/input,1.),1,.9);
+    if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
 }
 void reset_continuity(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS& pp,Compiler compiler,const DWORD* decoder,const DWORD* resolver){
     std::puts("RESET_CONTINUITY");TemporalPass pass;check("continuity initialize",pass.initialize(d,decoder,resolver));Output out;
@@ -572,6 +802,6 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
     const bool stationaryOnly=argc==5&&std::strcmp(argv[4],"stationary-only")==0;
     try{if((argc!=4&&!stationaryOnly)||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> [stationary-only]");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);compile(compiler,file(argv[3]),"ps_3_0",&rc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
         if(stationaryOnly){stationary_cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("RESULT PASS numerical=%u stationary_only=1\n",numeric_checks);result=0;}
-        else for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);stationary_cases(d.p,compiler,decoder,resolver);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
+        else for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);stationary_cases(d.p,compiler,decoder,resolver);edge_cases(d.p,compiler,decoder,resolver);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
         if(!stationaryOnly){std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);result=0;}
     }catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());}if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);return result;}

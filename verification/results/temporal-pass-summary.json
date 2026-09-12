@@ -1,18 +1,18 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "963e8084109395ae872ce7d0c8f49bcdd9527d117b04b4c828bfceb3c7583268",
-    "src/renderer/temporal_pass.cpp": "6b5ff9f19908d8d281ed124bb4ac769b333fee221d61b8b3b587cc76daac1073",
-    "src/temporal/resolve.h": "2faf60401df1b852245d13f63ad4dba13b754b9ae5727579261988fad1cca846",
-    "src/temporal/resolve.hlsl": "ca4694d5fdee433e46d9d0d07cae4371d87f2c56d00a019aaffe9b6dff82fe01",
+    "src/renderer/temporal_pass.h": "5b686cd56dd2a5159fe56d63d5bd54a8da170d0eb11874fa7be8d7197eb0c5a9",
+    "src/renderer/temporal_pass.cpp": "40047c19f605e9b009fc82e9ba0a75bce0895d7227f6b71a24b24ad1b3e01e46",
+    "src/temporal/resolve.h": "c2ef21f3d21d43ce5b396d4cb03cc593715562df9b38a568f46abec734291ea3",
+    "src/temporal/resolve.hlsl": "5319da34a6f7731f49c21a50d5bbe380a840f357762918e2f6ff684fa933261d",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
-    "verification/probe/temporal_pass_fixture.cpp": "764ae4dd1f2d4986b9bcd694cf369a56de1a25dc37016c84994d92eb8fda00ef",
+    "verification/probe/temporal_pass_fixture.cpp": "7a0decc659cf6658a8d898d40437f0f2aee67d209f6dcd0914d5164ac2e04c6b",
     "verification/probe/build_temporal_pass.sh": "87f5a149ca668fe8ff69806f53f3e84750cb0b3b9de0400c194fba5bbd22ba64",
-    "verification/probe/run_temporal_pass.py": "36714ade4b23b3c8a88d5c91b45b1d3ea2402059d17c9cec65cbcec8663d50a8"
+    "verification/probe/run_temporal_pass.py": "5d5f4aa445f62057c053fa53564d72ad68ed847114c05a40cb14ca8cc1652939"
   },
   "game_launched": false,
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "55efe4f92a0229500313e25ffd8331e54862a56ee192359291791be6b6278c83",
+  "executable_sha256": "7c8017542af52873b0a70e06a1cf88e1ce86161862aee0ba8c3a7b639fe5a19b",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -31,37 +31,37 @@
   "source_unchanged": true,
   "binary_unchanged": true,
   "compiler_unchanged": true,
-  "report_sha256": "3f2f86d0c00685aeea4746a2f2cbf1ba00ccea657efe61bb346b7efa75e10496",
-  "samples": 162,
-  "state_restorations": 162,
+  "report_sha256": "52acbcbc5b09b342e820c89687d09bb3a426592534b9a332ab267bb179a19f11",
+  "samples": 292,
+  "state_restorations": 164,
   "generations": 2,
   "negative_controls": {
     "previous-jitter": {
       "motion_line": "previousUV = motion.xy + history.xy;",
       "camera_line": "previousUV += 0.5 * sizeJitter.xy + history.xy;",
       "exit_code": 1,
-      "oracle_error": 0.421387,
-      "drift_px": 0.463797,
+      "oracle_error": 0.422852,
+      "drift_px": 0.489981,
       "report": "temporal-stationary-negative-previous-jitter.txt",
-      "report_sha256": "e76420fadc414e98c8d48a3336dfd4c66e3b9401499c6200275ab2be7ea801db"
+      "report_sha256": "40123c95b23c424999c5d7dfc678551a6ee1b73039f918a39f4b2bf2ebd94bd7"
     },
     "flipped-sign": {
       "motion_line": "previousUV = motion.xy - sizeJitter.zw;",
       "camera_line": "previousUV += 0.5 * sizeJitter.xy - sizeJitter.zw;",
       "exit_code": 1,
-      "oracle_error": 0.450195,
-      "drift_px": 0.747321,
+      "oracle_error": 0.454102,
+      "drift_px": 0.911719,
       "report": "temporal-stationary-negative-flipped-sign.txt",
-      "report_sha256": "ef281c0c93191aacb1684be9fd680ec8eadcc4f92411d40fe577c3a6e0c7c3f4"
+      "report_sha256": "bba99acbc30b3bb98ae013f528af3bcd0934425da0be4fbf742c9bc5e7643e09"
     },
     "no-jitter": {
       "motion_line": "previousUV = motion.xy;",
       "camera_line": "previousUV += 0.5 * sizeJitter.xy;",
       "exit_code": 1,
-      "oracle_error": 0.310547,
-      "drift_px": 0.404411,
+      "oracle_error": 0.286621,
+      "drift_px": 0.55702,
       "report": "temporal-stationary-negative-no-jitter.txt",
-      "report_sha256": "b9f2dca0c69a9d8a18f14781bddbe9f8e8aa30438ea6edda5191690f39badc6c"
+      "report_sha256": "f8f353a88fe76e5447bb5732335e360e1e1e09a2c6713d0ef7878bdd4d8ac9d4"
     }
   }
 }

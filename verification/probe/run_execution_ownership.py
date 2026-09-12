@@ -6,6 +6,9 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from game_guard import game_running  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 RESULT = ROOT / 'verification/results/execution-ownership-summary.json'
@@ -20,9 +23,9 @@ EXPECTED_CASES = ['CASE cpu-state disabled=1 PASS', 'CASE basic pure=0 PASS', 'C
     for hr in ('80004005', '88760868', '88760869')] + [f'CASE thread operation={i} PASS' for i in range(3)] + ['CASE cpu-state disabled=0 PASS', 'CASE dispatch-timing PASS']
 
 def require_no_game():
-    active = subprocess.run(['pgrep', '-ifl', 'X3AP.exe'], capture_output=True, text=True, timeout=10)
-    if active.returncode == 0: raise RuntimeError('X3 game active; synthetic GPU run refused')
-    if active.returncode != 1: raise RuntimeError('cannot establish game absence')
+    try: active = game_running()
+    except RuntimeError: raise RuntimeError('cannot establish game absence')
+    if active: raise RuntimeError('X3 game active; synthetic GPU run refused')
 
 def sha(path): return hashlib.sha256(path.read_bytes()).hexdigest()
 def hashes():
