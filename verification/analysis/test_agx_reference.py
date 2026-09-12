@@ -1,4 +1,5 @@
 """AgX host reference (design §3): curve properties, constants, and header/shader consistency."""
+import hashlib
 import json
 import re
 import subprocess
@@ -146,6 +147,28 @@ class ConstantTests(unittest.TestCase):
         self.assertNotIn('pow(v, 2.2)', text)  # output stays display encoded
         code = re.sub(r'//[^\n]*', '', text)
         self.assertNotRegex(code, r'\b(for|while)\b')
+
+
+class CompiledProgramTests(unittest.TestCase):
+    """Stage 2: the embedded ps_3_0 programs are pinned to their sources by the generator's manifests."""
+    def test_manifests_pin_the_sources(self):
+        for name, source in (('hdr-tonemap-program', 'src/temporal/agx.hlsl'),
+                             ('hdr-meter-level0-program', 'src/temporal/hdr_meter_level0_ps.hlsl'),
+                             ('hdr-meter-reduce-program', 'src/temporal/hdr_meter_reduce_ps.hlsl')):
+            manifest = json.loads((ROOT / 'verification/results' / f'{name}.json').read_text())
+            self.assertEqual(manifest['source'], source)
+            self.assertEqual(manifest['source_sha256'], hashlib.sha256((ROOT / source).read_bytes()).hexdigest(), name)
+            self.assertEqual(manifest['target'], 'ps_3_0')
+            header = ROOT / 'src/renderer' / (name.replace('-', '_') + '_inc.h')
+            self.assertEqual(manifest['header_sha256'], hashlib.sha256(header.read_bytes()).hexdigest(), name)
+            self.assertEqual(manifest['word_count'], header.read_text().count('0x'))
+
+    def test_meter_shader_mirrors_the_reference(self):
+        text = (ROOT / 'src/temporal/hdr_meter_level0_ps.hlsl').read_text()
+        self.assertIn('static const float3 lumaWeights = float3(0.2126, 0.7152, 0.0722);', text)
+        self.assertEqual(sorted(int(m) for m in re.findall(r'register\(c(\d+)\)', text)), [0, 1, 2, 3])
+        self.assertIn('log2(clamp(L, meter.x, meter.y))', text)
+        self.assertIn('acc * (1.0 / 16.0)', text)
 
 
 class RampTests(unittest.TestCase):

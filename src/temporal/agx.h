@@ -1,7 +1,8 @@
 #pragma once
 // CPU-side ABI for agx.hlsl (stage 2 of docs/architecture/hdr-scene-path.md).
-// This module owns no D3D interfaces or GPU state, and nothing includes it yet:
-// the constants are the ones tools/analysis/agx_reference.py defines, and
+// This module owns no D3D interfaces or GPU state; src/renderer/hdr_pass.cpp
+// uploads the block as c8..c21 before the AgX write-back draw. The constants
+// are the ones tools/analysis/agx_reference.py defines, and
 // verification/analysis/test_agx_reference.py parses this file to keep the two
 // identical. Provenance of every number is in that module's docstring
 // (Wrensch's Minimal AgX, a reduction of Sobotka's AgX; looks from the same

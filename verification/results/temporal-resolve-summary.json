@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T09:53:25.693265+00:00",
+  "started_utc": "2026-09-12T11:20:29.289847+00:00",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -22,7 +22,7 @@
   },
   "freshly_built": true,
   "build_exit_code": 0,
-  "executable_sha256": "0906682d02a82e4fe4d6e869d514c743fcc739ef871840cf70160a0642239c95",
+  "executable_sha256": "3a47e1712aa2ec5fe0dfe336561ac97a3673ce68b550d771cbc0c3e38819cb71",
   "exit_code": 0,
   "sample_checks": 78,
   "passed_sample_checks": 78,

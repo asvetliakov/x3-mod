@@ -1,4 +1,4 @@
-# FP16 HDR scene path, stage 1: verification
+# FP16 HDR scene path, stages 1 and 2: verification
 
 Synthetic verification of the stage-1 topology of
 [hdr-scene-path.md](../architecture/hdr-scene-path.md) ("Stage 1
@@ -191,13 +191,200 @@ the two sizes, on top of the route's RT1/RT2 and the TAA histories.
 their result files; verdicts are listed in the status record and, for the
 rerun after the fixes, in [review-22.md](review-22.md).
 
+## Stage 2: AgX tonemap and exposure (2026-09-12)
+
+Same suite, same day, after the stage-2 build (`run_motion_output.py`: fresh
+build + 82 DLL runs, 70 validated cases, PASS; the recorded pass is the
+review-23 rerun after its fixes: `build/d3d9.dll`
+`db63e120afcbb38e1382f22dffb96fb6030bbab50d1c3faf2b5587e055ce7e3d`, seam DLL
+`c0ae7ea45d23524119fb300e8aadbae05dab2755791395e7e77610227981207a`, fixture
+`eafb9e6da6b8ab39d29a08dbd5bba2a6ab8bde150fe868005af3946efd96561d`; the
+hashes are in `verification/results/motion-output-summary.json`).
+Every stage-1 case above was rerun unchanged with the default
+`X3M_HDR_TONEMAP=identity`: the eight twins present the same frames as
+before (99.01 / 99.01 / 99.01 / 99.01 / 98.93 / 98.88 / 98.61 / 98.97 % exact,
+max one code, alpha exact), the value and fault scripts, the forced-absent
+runs and the identity bench are as recorded above, so stage 2 leaves the
+stage-1 behaviour bit-for-bit in place.
+
+### Gate (every AgX run)
+
+`hdr_tonemap … tonemap=1 tonemap_reason=ok` and, with auto exposure,
+`meter=1 meter_reason=ok r32f_target=00000000 r32f_sampling=00000000`;
+the self test's stage-2 checks `tonemap=00000000 tonemap_errors=0
+meter=00000000 meter_errors=0 meter_value=6.00000 meter_expected=6.00000`
+(the one-level chain on the 4×4 additive sum `(4, 16, 1)`: 322.8 clipped
+to 64, log2 = 6 exactly). `seam-hdr-tonemap-shader-absent` (fixture fault
+12 queued at attach): `tonemap=0 tonemap_reason=shader meter=0
+meter_reason=tonemap tonemap_shader=80004005`, `X3M_HDR` stays enabled,
+every frame `tonemap=identity`, and the presented frames equal the identity
+conversion of the FP16 readback (max 0.5 code, the 8-bit rounding).
+
+### AgX ramp against the reference (`hdrramp`, 64×65, 260 cells × 3 frames)
+
+The fixture draws the 65 ramp rows of `verification/results/agx-ramp.json`
+(0.001 … 64, four samples per octave) as neutral / red / green / blue
+16-pixel cells with alpha `row/64`; the runner reads the FP16 input from
+the DLL's capture-frame readback (`hdr_1_<frame>.rgba16f`: the backend
+truncates the fixture's float inputs to FP16, max relative error 8.85e-4,
+one FP16 ulp) and compares the presented 8-bit codes with
+`agx_reference.tonemap_engine` on those exact inputs. Gate: ≤ 1 code max,
+≤ 0.5 code mean per channel (§8 ≤ 1/512 is the shader-vs-reference part;
+the 8-bit store rounds by up to 0.5 code on top).
+
+| run | look | decode | clamp | EV | max code error (r / g / b) | mean (r / g / b) | alpha |
+| --- | --- | --- | --- | ---: | --- | --- | ---: |
+| seam-hdr-ramp-none | none | gamma2.2 | off | 0 | 0.498 / 0.496 / 0.496 | 0.187 / 0.181 / 0.181 | exact |
+| seam-hdr-ramp-golden | golden | gamma2.2 | off | 0 | 0.489 / 0.497 / 0.499 | 0.108 / 0.174 / 0.202 | exact |
+| seam-hdr-ramp-punchy | punchy | gamma2.2 | off | 0 | 0.493 / 0.497 / 0.495 | 0.218 / 0.242 / 0.231 | exact |
+| seam-hdr-ramp-decode-none | none | none | off | 0 | 0.498 / 0.499 / 0.499 | 0.226 / 0.221 / 0.222 | exact |
+| seam-hdr-ramp-decode-srgb | none | srgb | off | 0 | 0.499 / 0.490 / 0.494 | 0.201 / 0.185 / 0.181 | exact |
+| seam-hdr-ramp-clamp4 | none | gamma2.2 | 4 | 0 | 0.498 / 0.496 / 0.496 | 0.131 / 0.168 / 0.152 | exact |
+| seam-hdr-ramp-ev-minus2 | none | gamma2.2 | off | −2 | 0.495 / 0.498 / 0.496 | 0.153 / 0.156 / 0.153 | exact |
+| seam-hdr-ramp-ev-plus1-punchy | punchy | gamma2.2 | 16 | +1 | 0.485 / 0.498 / 0.500 | 0.223 / 0.219 / 0.219 | exact |
+| production-hdr-ramp-none | none | gamma2.2 | off | 0 | 0.498 / 0.496 / 0.496 | 0.187 / 0.181 / 0.181 | exact |
+| seam-hdr-ramp-identity (tonemap off) | – | – | – | – | 0.497 / 0.497 / 0.497 | 0.082 / 0.082 / 0.082 | exact |
+
+The maximum never exceeds 0.5 code, i.e. every presented code is the
+correctly rounded reference value: the compiled `ps_3_0` program agrees
+with the double-precision reference to better than the 8-bit quantum on
+all 780 cells of every configuration (the mean of a pure rounding error is
+0.25; the measured means are the rounding plus a sub-0.1-code shader
+residual). The production DLL run is identical to the seam run. Each ramp
+frame's per-channel statistics repeat exactly in the next frame.
+
+### Exposure (`hdrexposure`, 40 frames, fixed `dt`)
+
+Four 32×32 blocks per frame: frames 0–9 mid-grey `0.18`, 10–19 bright
+`(1, .8, .9) / (.9, 1, .8) / (.8, .9, 1) / (1, 1, 1)`, 20–29 mid-grey with
+one block at `100` (25,000 after the decode; the meter clips it to 64),
+30–34 the hazard blocks `−1 / +Inf / −Inf / 0.18`, 35–39 a NaN block with
+three mid-grey ones (added by review 23). The finite negative block is
+deterministic and checked (the decode floors it: black, metered at the
+floor). The infinite and NaN blocks are **unspecified on this backend** and
+are recorded, not compared: measured, `+Inf`, `−Inf` and NaN all present
+white (`ffffffff`) and all meter at the floor, i.e. the backend treats an
+infinity like a NaN (the reference says `+Inf` → clip and white, `−Inf` →
+floor and black; `max(−Inf, 1e-10)` did not floor, so a shader-side clamp
+would rest on the same unspecified operations and was not attempted). What
+is required and proven: the host-side `isfinite` check on the 1×1 readback
+keeps the exposure state finite whether the value is swallowed or reaches
+the result, every step consumed an in-range meter, and the presented
+finite blocks of those frames match the reference. The stored FP16 values
+of the hazard pixels are in the summary (`hazard`). No gamma-space game
+content reaches 65504, so no infinity is expected from the scene.
+`seam-hdr-exposure`: `dt` 16 ms, defaults; `seam-hdr-exposure-offset`:
+`dt` 33 ms, `X3M_HDR_EV=1`, τ 0.2 / 0.6 s, look golden;
+`seam-ownership-hdr-exposure`: the first run through the ownership wrapper
+(the chain's two level surfaces (16×16, 4×4), two 1×1 ring targets and
+two readback surfaces are counted by `references()`; the device reaches
+zero at teardown).
+
+- **Meter.** Measured `avg_log_l` of the mid-grey frames −5.4439 against
+  the reference −5.4417 (the reference rounds the FP16 inputs to nearest,
+  the backend truncated them: 2.2 × log2(0.17993/0.18) ≈ −0.0012), bright
+  −0.2464 vs −0.2464, sun frames −2.5829 vs −2.5813: max absolute error
+  0.00215 log2 units = **0.063 % relative** (gate 1 %). The chain at
+  64×64 is three draws into 16×16, 4×4 and 1×1 R32F levels (`chain_bytes`
+  1,096); it reduces exactly to the mean.
+- **Clip.** Without the clip the sun frames would meter −0.43; with it
+  −2.58: the clip bounds the block's influence by 2.15 stops (the fourth
+  block contributes 6.0 instead of 14.6).
+- **Adaptation.** The EV sequence against `exposure_reference.simulate`
+  replayed on the measured meters: max error **1.2e-6 EV** (offset run
+  9.4e-7; gate 1e-3). End to end on the reference meters: 7.2e-4 and
+  1.7e-3 EV, the FP16 truncation of the inputs integrated over the frames
+  (the faster time constants of the offset run integrate more of it).
+  Direction: 0 → 0.116 (frame 1) → 0.898 (frame 9) → 0.979 (frame 10, the
+  last dark meter) → 0.617 (frame 19, τ_down) → 0.579 → 0.526 (frame 29,
+  towards the clipped target 0.109); the offset run 0 → 0.604 → 3.071 →
+  3.208 → 1.476 → 1.331 → 1.245. `dt` on every step 0.016 / 0.033 s
+  exactly; `stepped=1 steps=n` on every frame after the first.
+- **Presented blocks** against the reference tonemap at the consumed EV:
+  max 0.53 code (the 8-bit rounding), alpha exact.
+- **Phase cost at 64×64 (median, CPU-inclusive):** meter chain 88–105 µs
+  inside the write-back bracket (three draws), the copy and lock of the
+  previous frame's 1×1 at the latch 42–46 µs (a Present after it was
+  written: never a wait on the current frame), write-back draw 123–147 µs
+  including the chain and the AgX draw.
+
+### Tonemap ladder (`seam-hdr-tonemap-fault`, 59 checks, 9 frames)
+
+| frame | fault | `hdr_frame` | presented (vs the FP16 readback) |
+| ---: | --- | --- | --- |
+| 0 | none | `tonemapped=1 unwind=0 meter=00000000` | AgX |
+| 1 | 11: the tonemap draw fails | `tonemapped=0 unwind=1 unwind_reason=tonemap fallback=1 writeback_source=shader tonemap_draw=80004005` (`hdr_unwind=tonemap … draw=00000000 restore=00000000`) | identity, max 0.5 code |
+| 2 | none | `recheck=pass tonemapped=1` | AgX at the consumed EV, max 0.5 code |
+| 3 | 13: the meter chain fails | `tonemapped=1 unwind=0 meter=80004005` | AgX |
+| 4 | none | `stepped=0`, EV equal to frame 3's (the exposure held) | AgX, max 0.5 code |
+| 5, 6 | 11 twice | two more `hdr_unwind=tonemap`; `hdr_tonemap_disabled … reason=draw_failures` at frame 6 (the third failure) | identity |
+| 7, 8 | none | `recheck=pass` at 7, then `tonemap=identity tonemapped=0 meter=00000001 stepped=0` | identity, max 0.5 code |
+
+Exactly three `hdr_unwind=` lines, rechecks at frames 2, 6 and 7 (all
+passed), one disable line; the binding and every touched state are back
+after every frame (the fixture's state comparisons).
+
+### Cost (bench, 24 frames, 20 timed, EVENT-synchronized QPC, CPU-inclusive)
+
+`X3M_HDR_TONEMAP=agx`, auto exposure (the chain runs every frame), look
+none, decode gamma2.2; the resolve off and on. Stage-1 columns are this
+run's identity twins (they reproduce the stage-1 record above within its
+spread).
+
+| Size | resolve | boundary, HDR off | stage 1 (identity) | stage 2 (AgX + meter) | stage 2 − stage 1 (median / min) | chain memory |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| 1280×768 | off | 0.368 / 0.349 ms | 0.424 / 0.395 ms | 0.867 / 0.718 ms | **+0.443 / +0.323 ms** | 262,156 B |
+| 1280×768 | on | 0.740 / 0.693 ms | 0.806 / 0.750 ms | 1.196 / 1.077 ms | **+0.390 / +0.327 ms** | 262,156 B |
+| 5120×1440 | off | 0.613 / 0.479 ms | 0.928 / 0.911 ms | 1.428 / 1.386 ms | **+0.500 / +0.475 ms** | 1,966,296 B |
+| 5120×1440 | on | 2.248 / 2.216 ms | 2.718 / 2.577 ms | 2.945 / 2.880 ms | **+0.227 / +0.302 ms** | 1,966,296 B |
+
+Review 23's rerun reproduced three of the four increments (+0.33 / +0.33 /
++0.36 ms) but measured 2.653 ms against 0.936 ms (+1.72 ms) at 5120×1440
+with the resolve off, GPU-side (the CPU phases of its timed frames total
+0.7 ms); repeat the two 5120×1440 benches before treating either figure as
+the chain's cost at that size ([review-23.md](review-23.md), observation 9).
+Two findings, both measured on the bench before this run. (1) The AgX draw
+itself costs nothing measurable: with a manual EV (no chain, no readback)
+the 1280×768 boundary is 0.429 ms against the identity draw's 0.443 ms
+(one 24-frame run each, same spread). (2) The exposure chain is the whole
+increment, and where its 1×1 result is copied decides most of it: issuing
+`GetRenderTargetData` right after the chain, inside the write-back, cost
+1.207 ms against 0.443 ms — the backend waits for the queued frame there —
+while copying and locking at the next latch (the committed form) costs
+0.799 ms in the same A/B, i.e. +0.36 ms for six chain draws submitted at
+~25 µs each (`meter_us` 165–172 µs on the timed frames above, against a
+whole identity write-back of 74–158 µs) plus 36–74 µs for the deferred
+copy and lock (`readback_us`), the rest being the six small draws' GPU and
+switch latency. The increment is nearly size-independent, so it is the
+chain's per-draw overhead, not its bandwidth; the lever is a coarser chain
+(8× per axis: three draws at 1280×768 with 64 taps each) if a gameplay
+profile shows the boundary matters. Memory: the chain is
+`Σ ceil(w/4ⁱ) × ceil(h/4ⁱ) × 4` bytes plus 16 for the ring and readback
+surfaces (`hdr_target … chain_bytes=`), 0.26 MB and 1.97 MB at the two
+sizes on top of the FP16 target.
+
+## Other suites after the stage-2 change (same day)
+
+See the status record: `run_temporal_pass.py`, `temporal_run.py`,
+`run_ownership_integration.py`, `run_scene_capture.py`, `check_no_x87.py
+build/d3d9.dll`, the generator `--check` (seven programs) and `python3 -m
+unittest discover -s verification/analysis` (568 tests, including the
+native compile of `src/renderer/exposure.cpp` against the reference in
+`test_exposure_port.py` and the manifest pins of the three new programs in
+`test_agx_reference.py`).
+
 ## Limits
 
-- 64×64 (and 48×40, 1280×768, 5120×1440 bench) synthetic frames on the
-  CrossOver Preview backend; native Windows is cross-compiled only.
+- 64×64 (and 48×40, 64×65, 1280×768, 5120×1440 bench) synthetic frames on
+  the CrossOver Preview backend; native Windows is cross-compiled only.
 - The identity write-back is proven against the direct 8-bit path to one
-  code; no tonemap, exposure or HDR output exists yet (stage 2), and the
-  presented picture is unchanged by design.
+  code and the presented picture is unchanged by design; with
+  `X3M_HDR_TONEMAP=agx` the presented picture is the AgX transform of the
+  gamma-space FP16 scene decoded per §2 (a documented approximation),
+  proven against the Python reference on synthetic ramps and blocks, still
+  LDR to the game's bloom and GUI, and never seen in gameplay; the
+  exposure meter and adaptation are proven on constant blocks with a fixed
+  `dt`, not on game content or wall-clock intervals.
 - The game's compositor (`GetRenderTarget(0)` then `StretchRect`), its glow
   option, the HUD and text draws after the scene end, and the environment-map
   excursion after the compositor are modelled by the fixture scripts, not

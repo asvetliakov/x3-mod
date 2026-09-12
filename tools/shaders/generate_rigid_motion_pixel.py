@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Compile our original ps_3_0 fragments with a local native D3DX compiler.
 
-Four authored programs are embedded: the motion fragment
+Seven authored programs are embedded: the motion fragment
 (src/temporal/rigid_motion_ps.hlsl -> src/renderer/rigid_motion_pixel_program_inc.h),
 the current-depth fragment
 (src/temporal/current_depth_ps.hlsl -> src/renderer/current_depth_pixel_program_inc.h),
 the temporal resolve the live route runs (temporal step 3;
-src/temporal/resolve.hlsl -> src/renderer/temporal_resolve_program_inc.h) and
+src/temporal/resolve.hlsl -> src/renderer/temporal_resolve_program_inc.h),
 the HDR scene path's stage-1 identity write-back (src/temporal/hdr_writeback_ps.hlsl
--> src/renderer/hdr_writeback_program_inc.h).
+-> src/renderer/hdr_writeback_program_inc.h) and its stage-2 AgX tonemap
+(src/temporal/agx.hlsl -> src/renderer/hdr_tonemap_program_inc.h) and exposure
+meter chain (src/temporal/hdr_meter_level0_ps.hlsl and hdr_meter_reduce_ps.hlsl
+-> src/renderer/hdr_meter_level0_program_inc.h, hdr_meter_reduce_program_inc.h).
 `--shader` selects one (default: all). --check recompiles and compares the
 checked-in artifacts without changing them. The compiler DLL is an external
 local prerequisite, never redistributed. Only our authored shaders' compiled
@@ -42,6 +45,15 @@ SHADERS = {
     'hdr_writeback': dict(source=ROOT / 'src/temporal/hdr_writeback_ps.hlsl',
                           header=ROOT / 'src/renderer/hdr_writeback_program_inc.h',
                           provenance=ROOT / 'verification/results/hdr-writeback-program.json'),
+    'hdr_tonemap': dict(source=ROOT / 'src/temporal/agx.hlsl',
+                        header=ROOT / 'src/renderer/hdr_tonemap_program_inc.h',
+                        provenance=ROOT / 'verification/results/hdr-tonemap-program.json'),
+    'hdr_meter_level0': dict(source=ROOT / 'src/temporal/hdr_meter_level0_ps.hlsl',
+                             header=ROOT / 'src/renderer/hdr_meter_level0_program_inc.h',
+                             provenance=ROOT / 'verification/results/hdr-meter-level0-program.json'),
+    'hdr_meter_reduce': dict(source=ROOT / 'src/temporal/hdr_meter_reduce_ps.hlsl',
+                             header=ROOT / 'src/renderer/hdr_meter_reduce_program_inc.h',
+                             provenance=ROOT / 'verification/results/hdr-meter-reduce-program.json'),
 }
 
 

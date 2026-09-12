@@ -1,7 +1,10 @@
 // AgX tonemap for the FP16 HDR scene path (docs/architecture/hdr-scene-path.md §3).
-// Original ps_3_0 full-screen fragment. NOT compiled, embedded or wired yet: it
-// is the stage-2 port of tools/analysis/agx_reference.py, and agx.h names its
-// constant registers so the host uploads the very numbers the reference uses.
+// Original ps_3_0 full-screen fragment: the stage-2 port of
+// tools/analysis/agx_reference.py, compiled by tools/shaders/
+// generate_rigid_motion_pixel.py --shader hdr_tonemap into
+// src/renderer/hdr_tonemap_program_inc.h and bound by hdr_pass.cpp as the
+// write-back program when X3M_HDR_TONEMAP=agx. agx.h names its constant
+// registers so the host uploads the very numbers the reference uses.
 //
 // Contract
 //   s0   scene colour: the resolved FP16 image (TAA output, or the bloom
@@ -52,14 +55,20 @@ float4 lookPower  : register(c21);
 static const float3 lumaWeights = float3(0.2126, 0.7152, 0.0722);
 // Floor under log2 so black stays finite; the clamp to min_ev follows anyway.
 static const float logFloor = 1e-10;
+// Floor under the decode's pow (see decodeEngine).
+static const float decodeFloor = 1e-10;
 
 // Engine-space code value -> scene-linear (§2). Every branch is evaluated and
 // selected by the mode constant: no dynamic flow control for a per-pixel select.
 float3 decodeEngine(float3 e)
 {
-    e = max(e, 0);
-    float3 gamma = pow(e, decodeMode.x);
-    float3 srgb = lerp(e / 12.92, pow((e + 0.055) / 1.055, 2.4), step(0.04045, e));
+    // The floor keeps pow() (log/exp on SM3) off an exact zero; 1e-10^2.2 is
+    // 1e-22, indistinguishable from the reference's max(e, 0)^2.2 = 0. The
+    // identity mode returns the raw value, negatives included, exactly as
+    // agx_reference.decode('none') does (review 23).
+    float3 f = max(e, decodeFloor);
+    float3 gamma = pow(f, decodeMode.x);
+    float3 srgb = lerp(f / 12.92, pow((f + 0.055) / 1.055, 2.4), step(0.04045, f));
     float3 v = lerp(gamma, srgb, decodeMode.y);
     return lerp(v, e, decodeMode.z);
 }

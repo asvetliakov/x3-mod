@@ -769,3 +769,147 @@ and the four rung HRESULTs, `blocked`, `recheck`, `suspended`, `resumed`,
   re-creates the target at the new size; a Reset issued while the redirect
   is active succeeds with the main surface handed back first; a mid-scene
   switch to another target suspends and resumes with the frame intact.
+
+## Stage 2 implementation (2026-09-12)
+
+Delivered behind `X3M_HDR_TONEMAP=agx` (`tools/manage.py launch --hdr
+--hdr-tonemap`, requires `X3M_HDR=1`) with its sub-switches; every default
+reproduces stage 1 exactly (`X3M_HDR=1` alone is still the identity
+write-back, bit-for-bit: the identity program, its constants and its draw are
+untouched, and the stage-1 twins of the suite are rerun unchanged). Synthetic
+evidence is in [hdr-scene-path verification](../verification/hdr-scene-path.md)
+("Stage 2"); nothing here is gameplay-verified. Honest scope: with the tonemap
+on, the presented image is the AgX transform of a **gamma-space** FP16 scene
+decoded per §2 (the documented approximation: the game blended in gamma
+space), and it is still LDR to the game's bloom, HUD and text, which draw
+after the write-back exactly as in stage 1.
+
+### Switches and defaults
+
+| Switch | Values | Default | Note |
+| --- | --- | --- | --- |
+| `X3M_HDR_TONEMAP` | `identity` \| `agx` (`1`) | `identity` | The design does not say the tonemap defaults on with `X3M_HDR=1`, and §7 case 1 names `identity` explicitly, so stage 1 stays the default and the AgX path is opt-in |
+| `X3M_HDR_DECODE` | `gamma2.2` (`pow22`) \| `srgb` \| `none` | `gamma2.2` | §2 default; applies to the tonemap input and to the meter's level 0 |
+| `X3M_HDR_LOOK` | `none` \| `golden` \| `punchy` | `none` | §3 triples through `agx.h::set_look` |
+| `X3M_HDR_CLAMP` | float > 0 | off (65504 uploaded) | §2 firefly guard, `min` on the decoded input |
+| `X3M_HDR_EXPOSURE` | `auto` \| `manual` | `auto` | manual without an EV is EV 0 |
+| `X3M_HDR_EV_MANUAL` | EV in [−16, 16] | unset | forces `manual` with that EV, clamped to [`X3M_HDR_EV_MIN`, `X3M_HDR_EV_MAX`] (±8 by default) so `exp2(EV)` stays inside the constant block's range; the `hdr_tonemap` line prints the requested value, `hdr_frame … ev=` the effective one; the chain does not run (deterministic; the fixtures) |
+| `X3M_HDR_EV` (alias `X3M_HDR_EV_OFFSET`) | EV in [−16, 16] | 0 | the offset added to the auto target. **Deviation from the §3 text**, where `X3M_HDR_EV` forced the EV: the orchestrator's stage-2 brief names `X3M_HDR_EV` as the offset and `X3M_HDR_EV_MANUAL` as the override, and that is what is implemented; the design's `X3M_HDR_EV_OFFSET` remains accepted as the alias |
+| `X3M_HDR_KEY`, `X3M_HDR_EV_MIN/MAX`, `X3M_HDR_ADAPT_UP/DOWN` | floats | 0.18, −8/+8, 0.4 s/1.2 s | `exposure_reference.py` defaults |
+| `X3M_HDR_DT_MS` | ms in (0, 1000] | 0 (QPC) | a fixed adaptation step; fixtures and A/B only |
+
+### Files
+
+| File | Role |
+| --- | --- |
+| `src/temporal/agx.hlsl` → `src/renderer/hdr_tonemap_program{,_inc}.h` | the AgX write-back (`ps_3_0`, s0 the FP16 scene, c8..c21 the `AgxConstants` block, alpha carried); the only change from the stage-2 preparation is a `1e-10` floor under the decode's `pow` (SM3 `log` of an exact zero), applied to the gamma and sRGB branches only so `decode=none` passes the raw value through, negatives included, as the reference does (review 23); compiled and pinned by `generate_rigid_motion_pixel.py --shader hdr_tonemap` (`verification/results/hdr-tonemap-program.json`, 414 words) |
+| `src/temporal/hdr_meter_level0_ps.hlsl`, `hdr_meter_reduce_ps.hlsl` → `src/renderer/hdr_meter_program.h` + `hdr_meter_{level0,reduce}_program_inc.h` | the meter chain: level 0 folds `log2(clamp(luma(decode(scene)), 1e-4, 64))` into the first 4×4 reduction (one FP16 read per scene pixel, no full-resolution level-0 write), `reduce` averages 16 taps of the previous R32F level; taps are clamped by the CLAMP sampler exactly as `exposure_reference.reduce_chain` clamps its coordinates (1929 / 392 words) |
+| `src/renderer/exposure.{h,cpp}` | the mechanical port of `exposure_reference.py`: `decode_channel`, `luma`, `meter_level0`, `meter_clipped`, `reduce_mean`, `reduce_chain`, `ev_target`, `clamp_dt`, `adapt_rate`, `adapt`, `exposure_multiplier`, `resolve_ev`, `taa_k`, `luma_weight`, `weight_color`, `unweight_color`, `ExposureParams` (the defaults) and `ExposureState` (`step` = the loop body of `simulate`); no D3D types; `verification/analysis/test_exposure_port.py` compiles it natively and replays the reference on its output (23 cases) |
+| `src/renderer/hdr_pass.{h,cpp}` | `HdrConfig`, the stage-2 gates in `attach` and the self test, the meter chain resources and draw (`ensure_chain`, `meter_chain`), the lagged readback and adaptation at the latch (`begin_frame`), the constants (`prepare_constants`), the extended ladder in `write_back`, the c0..c21 save/restore, `references()` |
+| `src/proxy/motion_output.{h,cpp}`, `capture.cpp`, `telemetry.{h,cpp}` | switch parsing (`HdrConfig`), `begin_frame` at the latch, the `hdr_tonemap` attach line, the `hdr_frame` fields, `hdr_tonemap_disabled`, the metrics `hdr_meter` and `hdr_meter_readback`, the exported `hdr_taa_k()` (stage 3 consumes it; nothing does yet), the fixture export `x3m_hdr_fixture_exposure` |
+
+### Gates (attach, inside the enabled feature)
+
+Neither the tonemap nor the meter can refuse `X3M_HDR`; each demotes itself
+to the stage-1 behaviour with a reason on the `hdr_tonemap` line. Tonemap:
+`CreatePixelShader(agx)` (`reason=shader`), then in the self test a tonemap
+draw of the 4×4 additive sum must succeed with one code on every pixel and
+alpha 0.5 carried (`reason=self_test`). Meter (auto exposure only):
+`CheckDeviceFormat(RENDERTARGET, TEXTURE, R32F)` and sampling
+(`r32f_target`, `r32f_sampling`), the two meter programs (`shader`), then in
+the self test a one-level chain on the 4×4 sum through a temporary 1×1 ring
+slot must read back the host's `meter_level0((4, 16, 1))` to 1e-4 — exactly
+6.0 with the gamma or sRGB decode (322 clipped to 64), 3.628 with `none`
+(`meter_errors`, `meter_value`, `meter_expected` on the self-test detail).
+The chain levels are created with the target at the latched size
+(`hdr_target … chain_levels= chain_bytes=`); a failed creation disables the
+meter for the device (`meter_reason=chain`). Manual exposure or the identity
+tonemap never create a chain.
+
+### Exposure: meter on the GPU, adaptation on the host (a documented deviation)
+
+§3 keeps the adaptation state in a 1×1 R32F ping-pong written by a 1×1
+draw with nothing read back per frame. Stage 2 runs the **chain** on the
+GPU and the **adaptation** on the host: the last chain draw lands in one of
+two 1×1 R32F ring targets; **at the next frame's latch**
+(`HdrPass::begin_frame`) `GetRenderTargetData` copies that target into its
+system-memory surface and `LockRect` reads the four bytes, so the download
+waits on work submitted a Present earlier, never on the current frame
+(measured: issuing the copy right after the chain, inside the write-back,
+cost ~0.7 ms per frame on WineD3D at every size — the backend waits for
+the queued frame there — whereas the deferred copy plus lock costs 30–80 µs);
+the value feeds `ExposureState::step(avg_log_l, dt)` with `dt` the QPC
+interval between the two latches (clamped to [1/240, 1/5] s in the step;
+`X3M_HDR_DT_MS` replaces it for the fixtures) and `prepare_constants`
+uploads `exp2(EV)` as c8.x for that frame's write-back. The ring keeps the
+value intact while the current frame's chain writes the other slot. The tonemap of frame *n* therefore
+consumes the EV adapted from frame *n−1*'s meter, as §3 specifies. Reasons
+for the deviation: the prepared fragment already takes the exposure as a
+constant (c8.x, pinned by the reference test); the host state is what the
+`hdr_frame` line, the fixtures (`≤ 1e-3 EV` against `simulate`) and the
+stage-3 `k` upload need, and it costs one `LockRect` of four bytes per frame
+(`readback_us` on the frame line). A GPU-side adaptation draw can still be
+added behind the same `ExposureState` interface. Pass order inside one
+write-back bracket (§4 with the chain before the tonemap, one state
+save/restore): unbind texture 0 and RT1.., depth off, fixed FVF/sampler/render
+state, the chain (RT0 = level *i*, viewport, program, c0..c3, texture = level
+*i−1*, the −0.5 quad; 64×64 → 16 → 4 → 1: three draws; 1280×768 → 320×192 →
+80×48 → 20×12 → 5×3 → 2×1 → 1×1: six, the last into the ring slot), then
+RT0 = the game's main target, the AgX program with c8..c21, texture = the
+scene, the quad; restore c0..c21 with the rest. A flush mid-frame runs
+the chain too and its later end overwrites the same ring slot; the meter's
+failure is reported (`meter=` HRESULT) and never fails the image. A
+dimension change resets the state to EV 0 (§5); a Reset at the same size
+keeps it.
+
+### Must-unwind ladder, extended
+
+(1a) the AgX draw; on a failed draw with a clean restoration (1b) the
+identity draw of stage 1, reported as an unwind with reason `tonemap`
+(`hdr_unwind=tonemap`, `writeback_source=shader`, `fallback=1`, the block
+and the recovery self test at the next latch exactly as for any other rung);
+then the stage-1 rungs (2) `StretchRect` and (3) rebind. A tonemap draw
+failure with a failed restoration or a lost device goes straight to the
+stage-1 rungs. After `tonemap_failure_limit` = 3 failed tonemap draws the
+tonemap is disabled for the device (`hdr_tonemap_disabled … reason=draw_failures`,
+`tonemap=identity` on the frame line from then on); the meter stops with
+it. The stage-1 self test still exercises the identity program, so the
+fallback's rung is proven at attach whenever the tonemap is.
+
+### Telemetry
+
+`hdr_tonemap` once per device (both verdicts and every switch in force,
+including the derived time constants); `hdr_target` gains `chain_levels`,
+`chain_bytes`, `meter`, `meter_reason`; `hdr_frame` gains `tonemap`
+(the program in force), `tonemapped` (the last write-back's image is AgX),
+`look`, `decode`, `clamp`, `exposure`, `ev` (consumed), `ev_adapted`,
+`ev_target`, `avg_log_l`, `luma_mean` (`exp2(avg_log_l)`), `dt_ms`,
+`stepped`, `steps`, `meter`, `readback`, `tonemap_draw`, `fallback`,
+`meter_us` (the chain inside the draw bracket), `readback_us` (the lock at
+the latch), `k`, `chain_bytes`; metrics `hdr_meter`, `hdr_meter_readback`
+under `X3M_TELEMETRY=1`.
+
+### Verification (summary; numbers in the verification record)
+
+`hdrramp` (64×65: 65 ramp rows × neutral/red/green/blue, alpha `row/64`,
+drawn as constant quads, the FP16 input taken from the capture-frame
+readback so the comparison isolates the program): the presented codes
+against `agx_reference.tonemap_engine` on the exact FP16 inputs, per look,
+decode (`gamma2.2`, `srgb`, `none`), clamp and manual EV, seam and
+production DLL; gate ≤ 1 code max, ≤ 0.5 code mean per channel (§8), plus
+the identity program on the same ramp. `hdrexposure` (40 frames: ten of
+mid-grey, ten bright, ten mid-grey with a block at 100 far above the clip,
+five with −1 / +Inf / −Inf blocks, five with a NaN block — the infinities and the NaN are unspecified on this backend and behave alike, white and metered at the floor, the host guard keeping the state finite; fixed `dt`): the chain against the reference geometric mean of the FP16
+blocks (≤ 1%), the EV sequence against `simulate` replayed on the measured
+meters (≤ 1e-3 EV; the end-to-end error recorded), the up/down direction,
+the clip's effect on the sun frames, the presented blocks against the
+reference at the consumed EV (≤ 1 code); once more with an EV offset and
+other time constants, and once through the ownership wrapper (the chain's
+references at teardown). `hdrtonemapfault`: the ladder above frame by frame
+against the FP16 readback, and the program forced absent at attach (fault
+12). Bench: the stage-1 bench with the tonemap and the meter on. Cost
+finding: the AgX draw itself is free against the identity draw within the
+bench's spread (manual EV: no chain); the auto-exposure chain costs about
++0.35 ms at 1280×768 (six small draws submitted at ~25 µs each plus the
+deferred readback), the lever being a coarser chain (8× per axis, three
+draws) if a gameplay profile shows it.

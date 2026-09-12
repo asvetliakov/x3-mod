@@ -74,6 +74,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -200,6 +201,13 @@ constexpr DWORD hdr8_program[] = {0xffff0300u, 0x05000051u, 0xa00f0000u, 0x41000
 constexpr DWORD hdrmid_program[] = {0xffff0300u, 0x05000051u, 0xa00f0000u, 0x3f400000u, 0x3e800000u, 0x3ec00000u, 0x3f200000u,
                                     0x02000001u, 0x800f0800u, 0xa0e40000u, 0x0000ffffu};
 constexpr DWORD hdrmid_presented = 0x9fbf4060u; // A8R8G8B8: a=159 r=191 g=64 b=96
+// ps_3_0: mov oC0, c0: the constant-colour program of the stage-2 scripts
+// (hdrramp, hdrexposure): every quad's engine-space value is uploaded to c0.
+constexpr DWORD hdrconst_program[] = {0xffff0300u, 0x02000001u, 0x800f0800u, 0xa0e40000u, 0x0000ffffu};
+// Stage-2 ramp: exposure_reference/agx_reference ramp_values(): 0.001..64,
+// four samples per octave, 65 rows; columns neutral, red, green, blue.
+constexpr unsigned ramp_rows = 65, ramp_columns = 4, ramp_column_width = 16;
+double ramp_value(unsigned row) { return 0.001 * std::pow(2.0, double(row) * (std::log2(64.0 / 0.001) / 64.0)); }
 
 // The reference resolve: the production TemporalPass (same embedded bytecode
 // as the DLL) on a plain device of the system d3d9, fed with the DLL's own
@@ -300,11 +308,14 @@ struct Fixture {
     HRESULT (*last_pixel_abi)(IDirect3DDevice9*, float*, unsigned) = nullptr;
     bool seam = false, enabled = false, jitter = false, taa = false, bench = false, burst = false, lazy = false, envmap = false;
     bool hook = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
+    bool hdrramp = false, hdrexposure = false, hdrtonemapfault = false; // stage-2 scripts
     unsigned jitter_samples = 8;
     // HDR seam exports (X3M_HDR scripts).
     void (*hdr_fault)(IDirect3DDevice9*, unsigned, unsigned) = nullptr;
     HRESULT (*hdr_readback)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
+    HRESULT (*hdr_exposure)(IDirect3DDevice9*, float*, unsigned) = nullptr;
     Com<IDirect3DPixelShader9> hdr2, hdr8, hdrmid; // original ps_3_0 programs emitting (2,2,2,1), (8,8,8,.5) and (.75,.25,.375,.625)
+    Com<IDirect3DPixelShader9> hdrconst;           // mov oC0, c0 (stage-2 scripts)
     bool skip_coverage = false;             // the presented image is deliberately a previous frame's (fault script)
     std::vector<DWORD> previous_presented;  // the last presented image (fault script)
     // Engine scene-end hook script ("hook" mode): the seam exports, the stub
@@ -369,6 +380,7 @@ struct Fixture {
         api(d->CreatePixelShader(hdr2_program, &hdr2.p), "CreatePixelShader hdr2");
         api(d->CreatePixelShader(hdr8_program, &hdr8.p), "CreatePixelShader hdr8");
         api(d->CreatePixelShader(hdrmid_program, &hdrmid.p), "CreatePixelShader hdrmid");
+        api(d->CreatePixelShader(hdrconst_program, &hdrconst.p), "CreatePixelShader hdrconst");
         create_shaders();
         const D3DVERTEXELEMENT9 elements[] = {
             {0, 0, D3DDECLTYPE_FLOAT16_4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
@@ -1340,6 +1352,145 @@ struct Fixture {
         // main target), the frame runs LDR on an uncleared main target.
         hdrfault_frame(10, true, false);
     }
+    // ---- Stage 2 scripts (AgX tonemap, exposure) ----------------------------
+    // One pre-transformed quad of a constant engine-space value through the
+    // hdrconst program (never routed: DrawPrimitiveUP is not a route hook,
+    // and the latch already marked the FP16 target pending).
+    void constant_quad(float x0, float y0, float x1, float y1, float r, float g, float b, float a) {
+        struct V { float x, y, z, rhw; };
+        const V quad[4] = {{x0 - .5f, y0 - .5f, 0, 1}, {x1 - .5f, y0 - .5f, 0, 1}, {x0 - .5f, y1 - .5f, 0, 1}, {x1 - .5f, y1 - .5f, 0, 1}};
+        const float c0[4] = {r, g, b, a};
+        api(d->SetPixelShaderConstantF(0, c0, 1), "SetPixelShaderConstantF c0");
+        api(d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof quad[0]), "DrawPrimitiveUP constant quad");
+    }
+    void constant_state() {
+        api(d->SetVertexShader(nullptr), "SetVertexShader null"); api(d->SetPixelShader(hdrconst.p), "SetPixelShader hdrconst");
+        api(d->SetFVF(D3DFVF_XYZRHW), "SetFVF XYZRHW");
+        for (auto s : {D3DRS_ALPHABLENDENABLE, D3DRS_ALPHATESTENABLE, D3DRS_FOGENABLE, D3DRS_SCISSORTESTENABLE, D3DRS_STENCILENABLE, D3DRS_CLIPPLANEENABLE, D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_SRGBWRITEENABLE})
+            api(d->SetRenderState(s, FALSE), "constant state off");
+        api(d->SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID), "fill"); api(d->SetRenderState(D3DRS_COLORWRITEENABLE, 15), "write"); api(d->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE), "cull");
+        const D3DVIEWPORT9 vp{0, 0, W, H, 0, 1}; api(d->SetViewport(&vp), "SetViewport full");
+    }
+    void exposure_state_line(const char* tag) {
+        if (!hdr_exposure) return;
+        float e[8]{}; api(hdr_exposure(d.p, e, 8), "hdr exposure readback");
+        std::printf("%s frame=%llu ev=%.6f ev_adapted=%.6f ev_target=%.6f avg_log_l=%.6f dt=%.6f exposure=%.6f steps=%u k=%.6f\n",
+                    tag, frame, e[0], e[1], e[2], e[3], e[4], e[5], unsigned(e[6]), e[7]);
+    }
+    // hdrramp: 64x65 target, row r = ramp_value(r) (0.001..64), columns
+    // neutral / red / green / blue, alpha r/64. The presented cell centre and
+    // its uniformity are printed; the FP16 input is in the DLL's capture-frame
+    // readback (hdr_1_<frame>.rgba16f), so the runner compares the compiled
+    // program against the Python reference on the exact FP16 inputs.
+    void hdrramp_frame() {
+        frame_begin();
+        constant_state();
+        for (unsigned row = 0; row < ramp_rows; ++row) {
+            const float x = float(ramp_value(row)), a = float(row) / 64.f;
+            const float values[ramp_columns][3] = {{x, x, x}, {x, 0, 0}, {0, x, 0}, {0, 0, x}};
+            for (unsigned col = 0; col < ramp_columns; ++col)
+                constant_quad(float(col * ramp_column_width), float(row), float((col + 1) * ramp_column_width), float(row + 1), values[col][0], values[col][1], values[col][2], a);
+        }
+        api(d->EndScene(), "EndScene");
+        const auto image = color_image();
+        std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
+        write_presented(image);
+        unsigned nonuniform = 0;
+        for (unsigned row = 0; row < ramp_rows; ++row) for (unsigned col = 0; col < ramp_columns; ++col) {
+            const DWORD centre = image[std::size_t(row) * W + col * ramp_column_width + ramp_column_width / 2];
+            bool uniform = true;
+            for (unsigned x = 0; x < ramp_column_width; ++x) uniform = uniform && image[std::size_t(row) * W + col * ramp_column_width + x] == centre;
+            nonuniform += !uniform;
+            std::printf("RAMP frame=%llu row=%u col=%u input=%.9g presented=%08lx uniform=%u\n", frame, row, col, ramp_value(row), centre, uniform);
+        }
+        require(!nonuniform, "every ramp cell presents one code on all its pixels");
+        exposure_state_line("EXPOSURE_STATE");
+        api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
+        ++frame; ++frames_since_reset;
+    }
+    void run_hdrramp() {
+        require(enabled && hdr, "hdrramp needs the route and the HDR switch");
+        for (unsigned i = 0; i < 3; ++i) hdrramp_frame();
+    }
+    // hdrexposure: four 32x32 blocks of constant engine-space values per
+    // frame (a dark scene, a bright one, the dark one with a block far above
+    // the meter clip, then the hazard and NaN blocks); the state the tonemap
+    // consumed this frame is printed after the latch, the presented block
+    // centres after the write-back.
+    void hdrexposure_frame(const float (&blocks)[4][4]) {
+        frame_begin();
+        exposure_state_line("EXPOSURE_STATE");
+        constant_state();
+        for (unsigned i = 0; i < 4; ++i) {
+            const float x0 = float((i % 2) * (W / 2)), y0 = float((i / 2) * (H / 2));
+            constant_quad(x0, y0, x0 + float(W / 2), y0 + float(H / 2), blocks[i][0], blocks[i][1], blocks[i][2], blocks[i][3]);
+        }
+        std::printf("EXPOSURE_BLOCKS frame=%llu b0=%.9g,%.9g,%.9g,%.9g b1=%.9g,%.9g,%.9g,%.9g b2=%.9g,%.9g,%.9g,%.9g b3=%.9g,%.9g,%.9g,%.9g\n", frame,
+                    blocks[0][0], blocks[0][1], blocks[0][2], blocks[0][3], blocks[1][0], blocks[1][1], blocks[1][2], blocks[1][3],
+                    blocks[2][0], blocks[2][1], blocks[2][2], blocks[2][3], blocks[3][0], blocks[3][1], blocks[3][2], blocks[3][3]);
+        api(d->EndScene(), "EndScene");
+        const auto image = color_image();
+        std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
+        write_presented(image);
+        DWORD centre[4]; unsigned nonuniform = 0;
+        for (unsigned i = 0; i < 4; ++i) {
+            const unsigned x0 = (i % 2) * (W / 2), y0 = (i / 2) * (H / 2);
+            centre[i] = image[std::size_t(y0 + H / 4) * W + x0 + W / 4];
+            for (unsigned y = y0; y < y0 + H / 2; ++y) for (unsigned x = x0; x < x0 + W / 2; ++x) nonuniform += image[std::size_t(y) * W + x] != centre[i];
+        }
+        std::printf("EXPOSURE_PRESENTED frame=%llu p0=%08lx p1=%08lx p2=%08lx p3=%08lx nonuniform=%u\n", frame, centre[0], centre[1], centre[2], centre[3], nonuniform);
+        require(!nonuniform, "every block presents one code");
+        api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
+        ++frame; ++frames_since_reset;
+    }
+    void run_hdrexposure() {
+        require(enabled && hdr && hdr_exposure, "hdrexposure needs the route, the HDR switch and the exposure export");
+        const float dark[4][4] = {{.18f, .18f, .18f, 1}, {.18f, .18f, .18f, 1}, {.18f, .18f, .18f, 1}, {.18f, .18f, .18f, 1}};
+        const float bright[4][4] = {{1, .8f, .9f, 1}, {.9f, 1, .8f, .5f}, {.8f, .9f, 1, 1}, {1, 1, 1, .25f}};
+        const float sun[4][4] = {{.18f, .18f, .18f, 1}, {.18f, .18f, .18f, 1}, {.18f, .18f, .18f, 1}, {100, 100, 100, 1}};
+        for (unsigned i = 0; i < 10; ++i) hdrexposure_frame(dark);
+        for (unsigned i = 0; i < 10; ++i) hdrexposure_frame(bright);
+        for (unsigned i = 0; i < 10; ++i) hdrexposure_frame(sun);
+        // Hazard pixels (review 23): a negative block and +Inf / -Inf blocks
+        // are deterministic (the decode floors the negatives, the meter clips
+        // the infinity to meter_clip, the tonemap clamps it to 65504); a NaN
+        // block's treatment by the backend's min/max is unspecified, so the
+        // host-side isfinite check on the 1x1 readback must keep the exposure
+        // state finite whether the NaN is swallowed or reaches the result.
+        const float inf = std::numeric_limits<float>::infinity(), nan = std::numeric_limits<float>::quiet_NaN();
+        const float hazard[4][4] = {{-1, -1, -1, 1}, {inf, inf, inf, 1}, {-inf, -inf, -inf, 1}, {.18f, .18f, .18f, 1}};
+        const float poison[4][4] = {{nan, nan, nan, 1}, {.18f, .18f, .18f, 1}, {.18f, .18f, .18f, 1}, {.18f, .18f, .18f, 1}};
+        for (unsigned i = 0; i < 5; ++i) hdrexposure_frame(hazard);
+        for (unsigned i = 0; i < 5; ++i) hdrexposure_frame(poison);
+    }
+    // hdrtonemapfault: the regular material/flat scene with the AgX write-back;
+    // one injected fault per frame (11: the tonemap draw fails -> the identity
+    // draw, an unwind; 13: the meter chain fails -> the exposure holds).
+    // Coverage is not asserted (the presented colours are tonemapped); the
+    // runner compares the presented image against the reference from the
+    // FP16 capture readback. With X3M_FIXTURE_HDR_FAULT=12 queued at attach
+    // the tonemap program "fails to create": every frame is identity.
+    void hdrtonemapfault_frame(unsigned fault) {
+        if (fault) hdr_fault(d.p, fault, 1);
+        frame_begin();
+        exposure_state_line("EXPOSURE_STATE");
+        draw(a, .75f, 0, 0, false, true, false);
+        draw(b, 0, 0, 0, false, false, false, Alter::FlatPixel);
+        skip_coverage = true;
+        frame_end();
+        std::printf("HDR_TONEMAP_FAULT frame=%llu fault=%u\n", frame - 1, fault);
+    }
+    void run_hdrtonemapfault() {
+        require(enabled && seam && hdr && hdr_fault && hdr_exposure, "hdrtonemapfault needs the seam, the HDR switch and its exports");
+        char setting[8]{};
+        if (GetEnvironmentVariableA("X3M_FIXTURE_HDR_FAULT", setting, sizeof setting) > 0) { for (unsigned i = 0; i < 3; ++i) hdrtonemapfault_frame(0); return; }
+        // f0 normal; f1 tonemap draw fails (identity fallback, recheck next);
+        // f2 normal; f3 meter fails (tonemap applied, no step next); f4 normal;
+        // f5, f6 tonemap draw fails again (the third failure disables the
+        // tonemap for the device); f7, f8 identity from then on.
+        const unsigned script[] = {0, 11, 0, 13, 0, 11, 11, 0, 0};
+        for (unsigned fault : script) hdrtonemapfault_frame(fault);
+    }
     void stateblock_case() {
         // A state block Apply rebinding the flat PS must be seen by the route:
         // the draw is not routed and the flat PS is still bound afterwards.
@@ -1442,7 +1593,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|envmap|hook|hdrvalues|hdrfault [WxH]");
+        if ((argc != 4 && argc != 5) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault [WxH]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -1452,6 +1603,8 @@ int main(int argc, char** argv) {
         f.hook = mode == "hook";
         f.hdrvalues = mode == "hdrvalues";
         f.hdrfault = mode == "hdrfault";
+        f.hdrramp = mode == "hdrramp"; f.hdrexposure = mode == "hdrexposure"; f.hdrtonemapfault = mode == "hdrtonemapfault";
+        if (f.hdrramp) { Fixture::W = 64; Fixture::H = ramp_rows; }
         if (f.bench) {
             unsigned w = 0, h = 0;
             if (argc != 5 || std::sscanf(argv[4], "%ux%u", &w, &h) != 2 || !w || !h || w > 8192 || h > 8192) throw std::runtime_error("bench needs WxH");
@@ -1468,8 +1621,9 @@ int main(int argc, char** argv) {
         f.hook_status = symbol<const char* (*)()>(runtime, "x3m_scene_hook_fixture_status", false);
         f.hdr_fault = symbol<void (*)(IDirect3DDevice9*, unsigned, unsigned)>(runtime, "x3m_hdr_fixture_fault", false);
         f.hdr_readback = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_hdr_fixture_readback", false);
+        f.hdr_exposure = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned)>(runtime, "x3m_hdr_fixture_exposure", false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
-        require(f.bench || f.burst || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.burst || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.taa = f.enabled && GetEnvironmentVariableA("X3M_TAA", setting, sizeof setting) == 1 && setting[0] == '1';
         // The DLL implies the jitter with the resolve on.
@@ -1485,7 +1639,7 @@ int main(int argc, char** argv) {
         if (f.hdr_fault && GetEnvironmentVariableA("X3M_FIXTURE_HDR_FAULT", setting, sizeof setting) > 0) f.hdr_fault(nullptr, unsigned(std::atoi(setting)), 1);
         if (f.camera) { fake_camera_pose(0); f.camera_install(&fake_projection_slot, &fake_view_slot); }
         char path[MAX_PATH]{}; GetModuleFileNameA(runtime, path, MAX_PATH);
-        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s camera=%u sentinel=%u envmap=%u hook=%u state_shadow=%u hdr=%u hdrvalues=%u hdrfault=%u\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw", f.camera, f.sentinel, f.envmap, f.hook, f.state_shadow, f.hdr, f.hdrvalues, f.hdrfault);
+        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s camera=%u sentinel=%u envmap=%u hook=%u state_shadow=%u hdr=%u hdrvalues=%u hdrfault=%u hdrramp=%u hdrexposure=%u hdrtonemapfault=%u\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw", f.camera, f.sentinel, f.envmap, f.hook, f.state_shadow, f.hdr, f.hdrvalues, f.hdrfault, f.hdrramp, f.hdrexposure, f.hdrtonemapfault);
         f.vs_words = load(argv[1]); f.ps_words = load(argv[2]);
         f.vs_hash = fnv(f.vs_words.data(), f.vs_words.size() * 4); f.ps_hash = fnv(f.ps_words.data(), f.ps_words.size() * 4);
         f.flat_hash = fnv(flat_program, sizeof flat_program);
@@ -1502,13 +1656,14 @@ int main(int argc, char** argv) {
         f.create(mode == "production");
         if (f.taa && f.enabled && f.seam && !f.bench) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
         if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
-        else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault(); else f.run();
+        else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
+        else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }
         // Teardown: every fixture object released, then the device must reach zero.
         f.back.reset(); f.depth.reset(); f.bloom_surface.reset(); f.bloom.reset();
         for (UINT i = 0; i < 4; ++i) api(f.d->SetTexture(i, nullptr), "SetTexture null");
         api(f.d->SetVertexShader(nullptr), "unbind"); api(f.d->SetPixelShader(nullptr), "unbind"); api(f.d->SetStreamSource(0, nullptr, 0, 0), "unbind"); api(f.d->SetVertexDeclaration(nullptr), "unbind");
-        f.vs.reset(); f.ps.reset(); f.flat.reset(); f.hdr2.reset(); f.hdr8.reset(); f.hdrmid.reset(); f.declaration.reset(); f.vb_a.reset(); f.vb_b.reset(); f.cube.reset();
+        f.vs.reset(); f.ps.reset(); f.flat.reset(); f.hdr2.reset(); f.hdr8.reset(); f.hdrmid.reset(); f.hdrconst.reset(); f.declaration.reset(); f.vb_a.reset(); f.vb_b.reset(); f.cube.reset();
         for (auto& t : f.textures) t.reset();
         const ULONG device_refs = f.d.p->Release(); f.d.p = nullptr;
         require(device_refs == 0, "device final Release reaches zero with the route's objects released");

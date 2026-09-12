@@ -834,6 +834,7 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
                 if (SUCCEEDED(native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &rt0)) && rt0 && SUCCEEDED(rt0->GetDesc(&rt0_desc)) && rt0_desc.Format != D3DFMT_UNKNOWN)
                     hdr_main_format = rt0_desc.Format;
                 release(rt0);
+                hdr_->configure(hdr_config_);
                 hdr_->attach(device_, native_, caps, hdr_main_format, depth_enabled_);
                 hdr_caps = hdr_->caps(); hdr_reason = hdr_caps.reason;
                 hdr_enabled_ = hdr_->enabled();
@@ -843,6 +844,14 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         log("hdr_device device=%llu enabled=%u reason=%s fp16_target=%08lx fp16_blending=%08lx fp16_filter=%08lx fp16_sampling=%08lx stretch_conversion=%08lx main_format=%u mrt_blending=%u self_test_targets=%u self_test=%s route=%u depth=%u",
             id_, hdr_enabled_, hdr_reason, hdr_caps.fp16_target, hdr_caps.fp16_blending, hdr_caps.fp16_filter, hdr_caps.fp16_sampling,
             hdr_caps.stretch_conversion, unsigned(hdr_main_format), hdr_caps.mrt_blending, hdr_caps.self_test_targets, hdr_caps.self_test_detail, enabled_, depth_enabled_);
+        // Stage 2: the tonemap and meter verdicts and the switches in force.
+        const auto& c = hdr_config_; const auto& x = c.params;
+        log("hdr_tonemap device=%llu enabled=%u requested=%s tonemap=%u tonemap_reason=%s meter=%u meter_reason=%s look=%s decode=%s clamp=%g exposure=%s ev_manual=%.4f ev_offset=%.4f key=%.4f ev_min=%.2f ev_max=%.2f tau_up=%.3f tau_down=%.3f meter_floor=%g meter_clip=%g fixed_dt_ms=%.3f tonemap_shader=%08lx meter_shader=%08lx r32f_target=%08lx r32f_sampling=%08lx",
+            id_, hdr_enabled_, renderer::hdr_tonemap_name(c.tonemap), hdr_caps.tonemap, hdr_caps.tonemap_reason, hdr_caps.meter, hdr_caps.meter_reason,
+            renderer::hdr_look_name(c.look), renderer::hdr_decode_name(c.decode), double(c.clamp_max), renderer::hdr_exposure_name(c.exposure),
+            double(c.ev_manual), double(x.ev_offset), double(x.key), double(x.ev_min), double(x.ev_max), double(x.tau_up), double(x.tau_down),
+            double(x.meter_floor), double(x.meter_clip), double(c.fixed_dt) * 1000., hdr_caps.tonemap_shader, hdr_caps.meter_shader, hdr_caps.r32f_target, hdr_caps.r32f_sampling);
+        hdr_tonemap_disabled_logged_ = false; hdr_taa_k_ = 0.f;
     }
     log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u taa=%u taa_reason=%s taa_format=%08lx taa_debug=%u rt_mode=%s camera=%s sentinel=%u camera_cut_deg=%.2f camera_log=%u state_shadow=%u scene_hook=%u hdr=%u",
         id_, enabled_, reason, detail[0] ? detail : "-", caps.NumSimultaneousRTs, caps.MaxVertexShaderConst,
@@ -1798,8 +1807,9 @@ void MotionOutput::begin_redirect() noexcept {
     const HRESULT create = hdr_->ensure_target(pending_.rt.width, pending_.rt.height);
     h.target_create = create;
     if (!had_target || FAILED(create))
-        log("hdr_target device=%llu frame=%llu width=%u height=%u format=A16B16G16R16F bytes=%llu create=%08lx",
-            id_, frame_, pending_.rt.width, pending_.rt.height, FAILED(create) ? 0ull : hdr_->target_bytes(), create);
+        log("hdr_target device=%llu frame=%llu width=%u height=%u format=A16B16G16R16F bytes=%llu create=%08lx chain_levels=%u chain_bytes=%llu meter=%u meter_reason=%s",
+            id_, frame_, pending_.rt.width, pending_.rt.height, FAILED(create) ? 0ull : hdr_->target_bytes(), create,
+            hdr_->chain_levels(), hdr_->chain_bytes(), hdr_->caps().meter, hdr_->caps().meter_reason);
     if (FAILED(create)) { hdr_target_failed_ = true; return; } // Retry only after Reset, like the motion target.
     // The application's RT0 (one reference, held until the redirect ends) must
     // be the logical binding the shadow describes; else nothing is redirected.
@@ -1823,6 +1833,17 @@ void MotionOutput::begin_redirect() noexcept {
     hdr_target_ = describe_surface(hdr_->target());
     hdr_state_ = HdrState::Active; hdr_dirty_ = true; hdr_latch_pending_ = true;
     h.redirected = true;
+    // Stage 2: consume the previous frame's meter and adapt the EV this
+    // frame's tonemap consumes (a no-op with the identity write-back).
+    if (hdr_->tonemap_active()) {
+        static std::uint64_t frequency = 0;
+        if (!frequency) { LARGE_INTEGER f{}; QueryPerformanceFrequency(&f); frequency = std::uint64_t(f.QuadPart); }
+        LARGE_INTEGER now{}; QueryPerformanceCounter(&now);
+        const renderer::HdrFrameBegin b = hdr_->begin_frame(std::uint64_t(now.QuadPart), frequency, telemetry_);
+        h.stepped = b.stepped; h.readback = b.readback; h.readback_ticks = b.ticks_readback;
+        if (b.readback != S_FALSE) record(unsigned(telemetry::Metric::HdrMeterReadback), b.ticks_readback, FAILED(b.readback));
+        hdr_taa_k_ = hdr_->meter_active() ? hdr_->exposure().k() : 0.f;
+    }
 }
 // One write-back through the pass (the ladder), with the capture-frame
 // readback of the FP16 image before the first one of the frame, the
@@ -1837,9 +1858,15 @@ renderer::HdrWriteback MotionOutput::hdr_writeback(IDirect3DSurface9* final_rt0,
     if (write) {
         ++h.writebacks; h.source = unsigned(r.source);
         h.writeback_ticks += ticks; h.writeback_draw_ticks += r.ticks_draw; h.writeback_stretch_ticks += r.ticks_stretch;
+        h.tonemap = r.tonemap; h.fallback = h.fallback || r.fallback; h.tonemap_draw = r.tonemap_draw;
+        if (r.meter != S_FALSE) { h.meter = r.meter; h.meter_ticks += r.ticks_meter; record(unsigned(telemetry::Metric::HdrMeter), r.ticks_meter, FAILED(r.meter)); }
         record(unsigned(telemetry::Metric::HdrWriteback), ticks, r.unwind);
         record(unsigned(telemetry::Metric::HdrWritebackDraw), r.ticks_draw, FAILED(r.draw) || FAILED(r.restore));
         if (r.ticks_stretch) record(unsigned(telemetry::Metric::HdrWritebackStretch), r.ticks_stretch, FAILED(r.stretch));
+        if (r.fallback && !hdr_->tonemap_active() && !hdr_tonemap_disabled_logged_) {
+            hdr_tonemap_disabled_logged_ = true;
+            log("hdr_tonemap_disabled device=%llu frame=%llu reason=draw_failures draw=%08lx", id_, frame_, r.tonemap_draw);
+        }
     }
     if (r.ticks_bind) { h.bind_ticks += r.ticks_bind; record(unsigned(telemetry::Metric::HdrBind), r.ticks_bind, FAILED(r.bind)); }
     hdr_dirty_ = false;
@@ -1886,14 +1913,26 @@ void MotionOutput::log_hdr_frame() noexcept {
     const auto& h = counters_.hdr;
     const auto& caps = hdr_ ? hdr_->caps() : renderer::HdrCaps{};
     const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
-    log("hdr_frame device=%llu frame=%llu hdr=%u redirected=%u end=%s writebacks=%lu flushes=%lu writeback_source=%s unwind=%u unwind_reason=%s unwind_draw=%08lx unwind_restore=%08lx unwind_stretch=%08lx unwind_bind=%08lx blocked=%u recheck=%s suspended=%lu resumed=%lu dirty_at_present=%u refused_msaa=%u target_create=%08lx latch_bind=%08lx target=%ux%u target_bytes=%llu caps=%s stretch_conversion=%08lx timing=%s redirect_us=%.1f writeback_us=%.1f writeback_draw_us=%.1f writeback_stretch_us=%.1f bind_us=%.1f recheck_us=%.1f",
+    // Stage 2 fields: the tonemap in force (identity | agx), its look and
+    // decode, the exposure mode, the EV the frame's tonemap consumed, the
+    // adapted/target EV, the metered log2 mean (avg_log_l) and its linear
+    // value (luma_mean), the dt of the step, the meter/readback HRESULTs and
+    // their CPU phases, the TAA weighting k exported for stage 3.
+    const bool tonemap = hdr_ && hdr_->tonemap_active();
+    const auto& e = hdr_ ? hdr_->exposure() : renderer::ExposureState{};
+    const auto& c = hdr_ ? hdr_->config() : renderer::HdrConfig{};
+    log("hdr_frame device=%llu frame=%llu hdr=%u redirected=%u end=%s writebacks=%lu flushes=%lu writeback_source=%s unwind=%u unwind_reason=%s unwind_draw=%08lx unwind_restore=%08lx unwind_stretch=%08lx unwind_bind=%08lx blocked=%u recheck=%s suspended=%lu resumed=%lu dirty_at_present=%u refused_msaa=%u target_create=%08lx latch_bind=%08lx target=%ux%u target_bytes=%llu caps=%s stretch_conversion=%08lx timing=%s redirect_us=%.1f writeback_us=%.1f writeback_draw_us=%.1f writeback_stretch_us=%.1f bind_us=%.1f recheck_us=%.1f tonemap=%s tonemapped=%u look=%s decode=%s clamp=%g exposure=%s ev=%.5f ev_adapted=%.5f ev_target=%.5f avg_log_l=%.5f luma_mean=%.6g dt_ms=%.3f stepped=%u steps=%u meter=%08lx readback=%08lx tonemap_draw=%08lx fallback=%u meter_us=%.1f readback_us=%.1f k=%.5f chain_bytes=%llu",
         id_, frame_, hdr_enabled_, h.redirected, hdr_end_name(h.end), static_cast<unsigned long>(h.writebacks), static_cast<unsigned long>(h.flushes),
         hdr_source_name(h.source), h.unwind, h.unwind_reason, h.unwind_draw, h.unwind_restore, h.unwind_stretch, h.unwind_bind,
         h.blocked, h.recheck_ran ? (h.recheck_passed ? "pass" : "fail") : "none", static_cast<unsigned long>(h.suspended),
         static_cast<unsigned long>(h.resumed), h.dirty_at_present, h.refused_msaa, h.target_create, h.latch_bind,
         hdr_ ? hdr_->width() : 0u, hdr_ ? hdr_->height() : 0u, hdr_ ? hdr_->target_bytes() : 0ull, caps.reason, caps.stretch_conversion,
         telemetry_ ? "cpu_qpc" : "off", us(h.redirect_ticks), us(h.writeback_ticks), us(h.writeback_draw_ticks), us(h.writeback_stretch_ticks),
-        us(h.bind_ticks), us(h.recheck_ticks));
+        us(h.bind_ticks), us(h.recheck_ticks),
+        tonemap ? "agx" : "identity", h.tonemap, renderer::hdr_look_name(c.look), renderer::hdr_decode_name(c.decode), double(c.clamp_max),
+        renderer::hdr_exposure_name(c.exposure), double(e.ev()), double(e.ev_adapted()), double(e.ev_target()), double(e.avg_log_l()),
+        double(std::exp2(e.avg_log_l())), double(e.dt()) * 1000., h.stepped, e.steps(), h.meter, h.readback, h.tonemap_draw, h.fallback,
+        us(h.meter_ticks), us(h.readback_ticks), double(hdr_taa_k_), hdr_ ? hdr_->chain_bytes() : 0ull);
 }
 
 // ---- frame end -------------------------------------------------------------
@@ -2107,6 +2146,14 @@ void MotionOutput::fixture_hdr_fault(unsigned kind, unsigned count) noexcept {
 HRESULT MotionOutput::fixture_hdr_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept {
     if (!hdr_) return D3DERR_NOTAVAILABLE;
     return hdr_->fixture_readback(out, floats, width, height);
+}
+HRESULT MotionOutput::fixture_hdr_exposure(float* out, std::size_t floats) const noexcept {
+    if (!hdr_) return D3DERR_NOTAVAILABLE;
+    if (!out || floats < 8) return D3DERR_MOREDATA;
+    const auto& e = hdr_->exposure();
+    out[0] = e.ev(); out[1] = e.ev_adapted(); out[2] = e.ev_target(); out[3] = e.avg_log_l();
+    out[4] = e.dt(); out[5] = e.exposure(); out[6] = float(e.steps()); out[7] = hdr_taa_k_;
+    return S_OK;
 }
 HRESULT MotionOutput::fixture_last_pixel_abi(float* out, std::size_t floats) const noexcept {
     if (!out || floats < 8) return D3DERR_MOREDATA;

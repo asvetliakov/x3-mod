@@ -40,8 +40,15 @@ bool motion_output_requested = false;
 bool motion_jitter_requested = false;
 bool taa_requested = false, taa_debug_requested = false;
 // X3M_HDR=1 (default off; requires X3M_MOTION_OUTPUT=1): the FP16 HDR scene
-// path, stage 1 (docs/architecture/hdr-scene-path.md).
+// path (docs/architecture/hdr-scene-path.md). Stage 2 switches, all
+// defaulting to the stage-1 identity behaviour: X3M_HDR_TONEMAP=agx|identity,
+// X3M_HDR_DECODE=gamma2.2|pow22|srgb|none, X3M_HDR_LOOK=none|golden|punchy,
+// X3M_HDR_CLAMP=<float>, X3M_HDR_EXPOSURE=auto|manual, X3M_HDR_EV_MANUAL=<ev>
+// (implies manual), X3M_HDR_EV=<offset> (alias X3M_HDR_EV_OFFSET),
+// X3M_HDR_KEY, X3M_HDR_EV_MIN/MAX, X3M_HDR_ADAPT_UP/DOWN (seconds),
+// X3M_HDR_DT_MS (fixed adaptation step; fixtures).
 bool hdr_requested = false;
+x3m::renderer::HdrConfig hdr_config{};
 // X3M_MOTION_RT_MODE=lazy keeps the route's RT1/RT2 bindings across routed
 // draws (experiment; default perdraw); X3M_MOTION_FRAME_LOG=<n> sets the
 // periodic motion_output_frame cadence with telemetry on (default 60).
@@ -1152,7 +1159,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         log("scene_hook active=%u status=%s reinstalled=1",scene_hook::active(),scene_hook::status());
     }
     hooked.motion_output.configure_scene_hook(scene_hook::active());
-    hooked.motion_output.configure_hdr(hdr_requested);
+    hooked.motion_output.configure_hdr(hdr_requested,hdr_config);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
     if(hooked.motion_output.enabled()){
         // The route needs the complete selector event stream plus setter
@@ -1252,6 +1259,28 @@ void initialize_log(HMODULE module) {
     // The FP16 HDR scene path (stage 1: redirect, identity write-back) needs
     // the route's hooks and selector.
     hdr_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_HDR",setting,32)==1 && setting[0]==L'1';
+    hdr_config=x3m::renderer::HdrConfig{};
+    if(GetEnvironmentVariableW(L"X3M_HDR_TONEMAP",setting,32)>0 && (!wcscmp(setting,L"agx")||!wcscmp(setting,L"1")))hdr_config.tonemap=x3m::renderer::HdrTonemap::Agx;
+    if(GetEnvironmentVariableW(L"X3M_HDR_DECODE",setting,32)>0){
+        if(!wcscmp(setting,L"none"))hdr_config.decode=x3::temporal::AgxDecode::none;
+        else if(!wcscmp(setting,L"srgb"))hdr_config.decode=x3::temporal::AgxDecode::srgb;
+        else hdr_config.decode=x3::temporal::AgxDecode::gamma22; // gamma2.2 | pow22 | gamma
+    }
+    if(GetEnvironmentVariableW(L"X3M_HDR_LOOK",setting,32)>0){
+        if(!wcscmp(setting,L"golden"))hdr_config.look=x3::temporal::AgxLook::golden;
+        else if(!wcscmp(setting,L"punchy"))hdr_config.look=x3::temporal::AgxLook::punchy;
+    }
+    if(GetEnvironmentVariableW(L"X3M_HDR_CLAMP",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=65504.f)hdr_config.clamp_max=v;}
+    if(GetEnvironmentVariableW(L"X3M_HDR_EXPOSURE",setting,32)>0 && !wcscmp(setting,L"manual"))hdr_config.exposure=x3m::renderer::ExposureMode::Manual;
+    if(GetEnvironmentVariableW(L"X3M_HDR_EV_MANUAL",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f){hdr_config.exposure=x3m::renderer::ExposureMode::Manual;hdr_config.ev_manual=v;}}
+    if(GetEnvironmentVariableW(L"X3M_HDR_EV",setting,32)>0||GetEnvironmentVariableW(L"X3M_HDR_EV_OFFSET",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_offset=v;}
+    if(GetEnvironmentVariableW(L"X3M_HDR_KEY",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=64.f)hdr_config.params.key=v;}
+    if(GetEnvironmentVariableW(L"X3M_HDR_EV_MIN",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_min=v;}
+    if(GetEnvironmentVariableW(L"X3M_HDR_EV_MAX",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_max=v;}
+    if(hdr_config.params.ev_min>hdr_config.params.ev_max)hdr_config.params.ev_min=hdr_config.params.ev_max;
+    if(GetEnvironmentVariableW(L"X3M_HDR_ADAPT_UP",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=60.f)hdr_config.params.tau_up=v;}
+    if(GetEnvironmentVariableW(L"X3M_HDR_ADAPT_DOWN",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=60.f)hdr_config.params.tau_down=v;}
+    if(GetEnvironmentVariableW(L"X3M_HDR_DT_MS",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=1000.f)hdr_config.fixed_dt=v/1000.f;}
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
     motion_state_shadow=!(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)==1 && setting[0]==L'0');
     const bool scene_hook_requested=GetEnvironmentVariableW(L"X3M_SCENE_HOOK",setting,32)==1 && setting[0]==L'1';
@@ -1369,5 +1398,12 @@ extern "C" __declspec(dllexport) HRESULT x3m_hdr_fixture_readback(IDirect3DDevic
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
     return it->second->motion_output.fixture_hdr_readback(out,floats,width,height);
+}
+// Stage 2: the exposure state (ev, ev_adapted, ev_target, avg_log_l, dt, exposure, steps, k).
+extern "C" __declspec(dllexport) HRESULT x3m_hdr_fixture_exposure(IDirect3DDevice9* device,float* out,unsigned floats) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    const auto it=x3m::devices.find(device);
+    if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
+    return it->second->motion_output.fixture_hdr_exposure(out,floats);
 }
 #endif

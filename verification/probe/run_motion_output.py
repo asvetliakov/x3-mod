@@ -115,6 +115,7 @@ from pathlib import Path
 import datetime
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -127,6 +128,8 @@ sys.path.insert(0, str(ROOT / 'verification/probe'))
 from verify_ownership_integration import verify_admission  # noqa: E402
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 import analyze_motion_readback as readback_analysis  # noqa: E402
+import agx_reference as agx_ref  # noqa: E402  (stage 2: the tonemap oracle)
+import exposure_reference as exposure_ref  # noqa: E402  (stage 2: the meter/adaptation oracle)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
 PROBE = ROOT / 'verification/probe'
@@ -152,9 +155,9 @@ VARIANTS = {
     'depth': dict(X3M_OWNERSHIP='1', X3M_DEPTH_COPY='1', X3M_SCENE_DEPTH_CAPTURE='1'),
     'admission': dict(X3M_OWNERSHIP='1', X3M_ADMISSION='1')}
 def case(name, mode, variant='plain', enabled='1', jitter=False, taa=False, bench=None, lazy=False, burst=False, camera=False, sentinel=None, envmap=False,
-         hook=None, shadow=True, hdr=False, hdr_fault=None):
+         hook=None, shadow=True, hdr=False, hdr_fault=None, hdr_env=None):
     return dict(name=name, mode=mode, variant=variant, enabled=enabled, jitter=jitter, taa=taa, bench=bench, lazy=lazy, burst=burst,
-                camera=camera, sentinel=sentinel, envmap=envmap, hook=hook, shadow=shadow, hdr=hdr, hdr_fault=hdr_fault)
+                camera=camera, sentinel=sentinel, envmap=envmap, hook=hook, shadow=shadow, hdr=hdr, hdr_fault=hdr_fault, hdr_env=hdr_env or {})
 
 
 CASES = [case(f'{dll}-{state}' if variant == 'plain' else f'{dll}-{variant}-{state}', dll, variant, enabled)
@@ -200,6 +203,32 @@ CASES += [case('production-hdr-on', 'production', hdr=True), case('seam-hdr-on',
           case('seam-hdr-values', 'hdrvalues', hdr=True), case('seam-hdr-fault', 'hdrfault', hdr=True),
           case('seam-hdr-caps-absent', 'seam', hdr=True, hdr_fault='1'), case('seam-hdr-selftest-absent', 'seam', hdr=True, hdr_fault='3')]
 CASES += [case(f'bench-{size}-hdr-on-taa-{state}', 'bench', jitter=True, taa=state == 'on', bench=size, hdr=True) for size in BENCH_SIZES for state in ('off', 'on')]
+# FP16 HDR scene path, stage 2 (X3M_HDR_TONEMAP=agx): the AgX ramp against the
+# Python reference per look, decode mode, clamp and manual EV (seam and
+# production DLL), the exposure meter/adaptation script, the tonemap fault
+# script, the tonemap program forced absent at attach, and the bench with the
+# tonemap and the auto-exposure meter on.
+AGX = dict(X3M_HDR_TONEMAP='agx')
+RAMP_CASES = {'seam-hdr-ramp-none': dict(AGX, X3M_HDR_EV_MANUAL='0'),
+              'seam-hdr-ramp-golden': dict(AGX, X3M_HDR_EV_MANUAL='0', X3M_HDR_LOOK='golden'),
+              'seam-hdr-ramp-punchy': dict(AGX, X3M_HDR_EV_MANUAL='0', X3M_HDR_LOOK='punchy'),
+              'seam-hdr-ramp-decode-none': dict(AGX, X3M_HDR_EV_MANUAL='0', X3M_HDR_DECODE='none'),
+              'seam-hdr-ramp-decode-srgb': dict(AGX, X3M_HDR_EV_MANUAL='0', X3M_HDR_DECODE='srgb'),
+              'seam-hdr-ramp-clamp4': dict(AGX, X3M_HDR_EV_MANUAL='0', X3M_HDR_CLAMP='4'),
+              'seam-hdr-ramp-ev-minus2': dict(AGX, X3M_HDR_EV_MANUAL='-2'),
+              'seam-hdr-ramp-ev-plus1-punchy': dict(AGX, X3M_HDR_EV_MANUAL='1', X3M_HDR_LOOK='punchy', X3M_HDR_CLAMP='16'),
+              'production-hdr-ramp-none': dict(AGX, X3M_HDR_EV_MANUAL='0'),
+              'seam-hdr-ramp-identity': dict(X3M_HDR_EV_MANUAL='0')}  # tonemap off: the stage-1 conversion on the same ramp
+CASES += [case(name, 'hdrramp', hdr=True, hdr_env=env) for name, env in RAMP_CASES.items()]
+EXPOSURE_CASES = {'seam-hdr-exposure': dict(AGX, X3M_HDR_DT_MS='16'),
+                  'seam-hdr-exposure-offset': dict(AGX, X3M_HDR_DT_MS='33', X3M_HDR_EV='1', X3M_HDR_ADAPT_UP='0.2', X3M_HDR_ADAPT_DOWN='0.6', X3M_HDR_LOOK='golden')}
+CASES += [case(name, 'hdrexposure', hdr=True, hdr_env=env) for name, env in EXPOSURE_CASES.items()]
+# The meter chain's level surfaces and readback surfaces through the ownership wrapper (reference accounting at teardown).
+CASES += [case('seam-ownership-hdr-exposure', 'hdrexposure', 'ownership', hdr=True, hdr_env=EXPOSURE_CASES['seam-hdr-exposure'])]
+CASES += [case('seam-hdr-tonemap-fault', 'hdrtonemapfault', hdr=True, hdr_env=dict(AGX, X3M_HDR_DT_MS='16')),
+          case('seam-hdr-tonemap-shader-absent', 'hdrtonemapfault', hdr=True, hdr_fault='12', hdr_env=dict(AGX, X3M_HDR_DT_MS='16'))]
+CASES += [case(f'bench-{size}-hdr-tonemap-taa-{state}', 'bench', jitter=True, taa=state == 'on', bench=size, hdr=True, hdr_env=dict(AGX, X3M_MOTION_FRAME_LOG='4')) for size in BENCH_SIZES for state in ('off', 'on')]  # frame lines every 4 frames: the adapted state of a timed frame
+HDR_MODES = ('hdrvalues', 'hdrfault', 'hdrramp', 'hdrexposure', 'hdrtonemapfault')
 # hdr_frame expectations: end point per script (HdrEnd names), write-backs
 # per frame (the EndScene flush, the bloom-copy or hook end; the fixture's
 # GetRenderTargetData before the TAA boundary flushes first).
@@ -395,7 +424,7 @@ def validate_ownership(name, variant, enabled, trace):
     return result
 
 
-def validate_bench(name, taa, size, text, trace, hdr=False):
+def validate_bench(name, taa, size, text, trace, hdr=False, tonemap=False):
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: bench did not pass'
     mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
@@ -420,8 +449,18 @@ def validate_bench(name, taa, size, text, trace, hdr=False):
         # Frame 0 (telemetry cadence): redirected, written back once at the bloom copy, no unwind; the target's size and bytes.
         assert 0 in hdr_frames and (hdr_frames[0]['redirected'], hdr_frames[0]['end'], hdr_frames[0]['unwind'], hdr_frames[0]['writeback_source']) == ('1', 'bloom_copy', '0', 'shader'), (name, hdr_frames.get(0))
         assert hdr_frames[0]['target'] == f'{width}x{height}' and int(hdr_frames[0]['target_bytes']) == int(width) * int(height) * 8, (name, hdr_frames[0])
-        result['hdr_frame0'] = {k: hdr_frames[0][k] for k in ('end', 'writebacks', 'flushes', 'writeback_source', 'target', 'target_bytes', 'redirect_us', 'writeback_us', 'writeback_draw_us')}
+        result['hdr_frame0'] = {k: hdr_frames[0][k] for k in ('end', 'writebacks', 'flushes', 'writeback_source', 'target', 'target_bytes', 'redirect_us', 'writeback_us', 'writeback_draw_us',
+                                                                'tonemap', 'exposure', 'meter', 'readback', 'meter_us', 'readback_us', 'chain_bytes')}
         result['target_bytes'] = int(hdr_frames[0]['target_bytes'])
+        result['tonemap'] = tonemap
+        assert hdr_frames[0]['tonemap'] == ('agx' if tonemap else 'identity'), (name, hdr_frames[0])
+        if tonemap:
+            # Auto exposure: the chain ran in frame 0 (no readback yet); the last timed frame stepped on the previous frame's meter.
+            last = hdr_frames[max(hdr_frames)]
+            assert hdr_frames[0]['meter'] == '00000000' and hdr_frames[0]['exposure'] == 'auto' and int(hdr_frames[0]['chain_bytes']) > 0, (name, hdr_frames[0])
+            assert max(hdr_frames) >= 20 and last['stepped'] == '1' and last['readback'] == '00000000' and int(last['steps']) == max(hdr_frames), (name, last)
+            result['chain_bytes'] = int(hdr_frames[0]['chain_bytes'])
+            result['hdr_frame_last'] = {k: last[k] for k in ('frame', 'ev', 'ev_adapted', 'ev_target', 'avg_log_l', 'dt_ms', 'steps', 'meter_us', 'readback_us', 'writeback_draw_us')}
     else:
         assert not hdr_frames, (name, 'hdr_frame lines without the switch')
     return result
@@ -474,7 +513,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     assert mode_line == {'seam': str(int(seam)), 'enabled': str(int(enabled)), 'jitter': str(int(jitter)),
                          'jitter_samples': str(JITTER_SAMPLES), 'taa': str(int(taa)), 'bench': '0', 'width': '64', 'height': '64',
                          'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode, 'camera': str(int(camera)), 'sentinel': sentinel_mode,
-                         'envmap': '0', 'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': str(int(hdr)), 'hdrvalues': '0', 'hdrfault': '0'}, (name, mode_line)
+                         'envmap': '0', 'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': str(int(hdr)), 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0'}, (name, mode_line)
     # The camera script: the 31-degree jump at frame 7 is a cut unless the
     # switch is off; strict mode without a camera skips every frame.
     strict_skip = sentinel == '2' and not camera
@@ -910,7 +949,7 @@ def accept_hdr_twin(name, comparison):
     assert material['differing'] <= HDR_TWIN_MAX_MATERIAL_DIFFERING_FRACTION * material['pixels'], f'{name}: more material pixels differ than FP16 double rounding can explain: {comparison}'
 
 
-def validate_hdrvalues(name, text, trace, directory):
+def validate_hdrvalues(name, text, trace, directory, hdr_env=None, hdr_fault=None):
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS ') and 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: fixture did not pass'
     terminal = fields(lines[-1])
@@ -946,7 +985,7 @@ def validate_hdrvalues(name, text, trace, directory):
             'hdr_frames': {f: {k: h[k] for k in ('end', 'writebacks', 'flushes', 'suspended', 'resumed', 'target')} for f, h in hdr_frames.items()}}
 
 
-def validate_hdrfault(name, text, trace, directory):
+def validate_hdrfault(name, text, trace, directory, hdr_env=None, hdr_fault=None):
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS ') and 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: fixture did not pass'
     terminal = fields(lines[-1])
@@ -1001,6 +1040,369 @@ def check_render_state(name, frame, summary, shadow, resyncs):
     else:
         assert h == 0, (name, frame, q, h)
     return {'queries': q, 'hits': h, 'gets': g, 'resyncs': r}
+
+
+# ---- FP16 HDR scene path, stage 2 -------------------------------------------
+RAMP_MAX_CODE_ERROR = 1.0     # section 8 gate: <= 1 code max ...
+RAMP_MEAN_CODE_ERROR = 0.5    # ... and <= 1/512 (half a code) mean, per channel
+EXPOSURE_METER_TOLERANCE = 0.01   # 1% of the reference avg_log_l (floor 0.005 log2 units)
+EXPOSURE_EV_TOLERANCE = 1e-3      # EV, adaptation replayed on the measured meters
+HALF_RELATIVE = 2.0 ** -10        # one FP16 ulp: the backend truncates (measured 8.8e-4 > the 2^-11 of round-to-nearest) when storing the fixture's float inputs
+
+
+def read_half_image(path, width, height):
+    """hdr_<device>_<frame>.rgba16f: row-major RGBA halves -> list of (r, g, b, a) floats."""
+    data = path.read_bytes()
+    assert len(data) == width * height * 8, (path, len(data))
+    values = struct.unpack('<%de' % (width * height * 4), data)
+    return [values[i:i + 4] for i in range(0, len(values), 4)]
+
+
+def half_round(x):
+    """The FP16 value the render target stores for a float input (round to nearest even)."""
+    return struct.unpack('<e', struct.pack('<e', x))[0]
+
+
+def bgra8(data, index):
+    b, g, r, a = data[index * 4:index * 4 + 4]
+    return r, g, b, a
+
+
+def hdr_env_params(hdr_env):
+    """The reference's arguments from the run's X3M_HDR_* environment."""
+    decode = hdr_env.get('X3M_HDR_DECODE', 'gamma2.2')
+    decode = 'none' if decode == 'none' else 'srgb' if decode == 'srgb' else 'gamma2.2'
+    return dict(agx=hdr_env.get('X3M_HDR_TONEMAP') in ('agx', '1'), decode=decode, look=hdr_env.get('X3M_HDR_LOOK', 'none'),
+                clamp=float(hdr_env.get('X3M_HDR_CLAMP', '0')), ev_manual=hdr_env.get('X3M_HDR_EV_MANUAL'),
+                ev_offset=float(hdr_env.get('X3M_HDR_EV', hdr_env.get('X3M_HDR_EV_OFFSET', '0'))),
+                tau_up=float(hdr_env.get('X3M_HDR_ADAPT_UP', exposure_ref.TAU_UP)), tau_down=float(hdr_env.get('X3M_HDR_ADAPT_DOWN', exposure_ref.TAU_DOWN)),
+                key=float(hdr_env.get('X3M_HDR_KEY', exposure_ref.KEY)), dt=float(hdr_env.get('X3M_HDR_DT_MS', '0')) / 1000.0)
+
+
+def reference_codes(rgb_engine, ev, params):
+    """The presented RGB the reference expects for one engine-space FP16 input under the run's switches (0..255 floats)."""
+    if params['agx']:
+        out = agx_ref.tonemap_engine(rgb_engine, exposure=2.0 ** ev, decode_mode=params['decode'], look_name=params['look'], clamp_max=params['clamp'])
+    else:
+        out = tuple(min(max(c, 0.0), 1.0) for c in rgb_engine)
+    return tuple(255.0 * c for c in out)
+
+
+def code_errors(presented_rgb, reference_rgb):
+    return [abs(p - r) for p, r in zip(presented_rgb, reference_rgb)]
+
+
+def hdr_stage2_lines(trace):
+    tl = trace.splitlines()
+    return {'device': [fields(l) for l in tl if l.startswith('hdr_device ')],
+            'tonemap': [fields(l) for l in tl if l.startswith('hdr_tonemap ')],
+            'frames': {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('hdr_frame ')},
+            'unwinds': [fields(l.replace('hdr_unwind=', 'reason=', 1)) for l in tl if l.startswith('hdr_unwind=')],
+            'rechecks': {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('hdr_recheck ')},
+            'disabled': [fields(l) for l in tl if l.startswith('hdr_tonemap_disabled ')],
+            'targets': [fields(l) for l in tl if l.startswith('hdr_target ')]}
+
+
+def validate_hdrramp(name, text, trace, directory, hdr_env, hdr_fault=None):
+    """The compiled AgX program (or the identity write-back) over the 65-row
+    ramp against the Python reference on the exact FP16 inputs of the
+    capture-frame readback: per-channel code error max <= 1 and mean <= 0.5,
+    alpha carried, every cell uniform, the inputs within FP16 rounding of
+    ramp_values()."""
+    lines = text.splitlines()
+    mode_line = fields(next(l for l in lines if l.startswith('MODE ')))
+    assert (mode_line['enabled'], mode_line['hdr'], mode_line['hdrramp'], mode_line['width'], mode_line['height']) == ('1', '1', '1', '64', '65'), (name, mode_line)
+    terminal = fields(lines[-1])
+    assert lines[-1].startswith('RESULT PASS'), (name, lines[-1])
+    params = hdr_env_params(hdr_env)
+    ev = float(params['ev_manual'])
+    s2 = hdr_stage2_lines(trace)
+    assert len(s2['device']) == 1 and s2['device'][0]['enabled'] == '1' and len(s2['tonemap']) == 1, (name, s2['device'], s2['tonemap'])
+    tm = s2['tonemap'][0]
+    assert tm['tonemap'] == str(int(params['agx'])) and tm['exposure'] == 'manual' and float(tm['ev_manual']) == ev, (name, tm)
+    assert tm['tonemap_reason'] == ('ok' if params['agx'] else 'off') and tm['meter'] == '0' and tm['look'] == params['look'] and tm['decode'] == params['decode'], (name, tm)
+    assert sorted(s2['frames']) == [0, 1, 2] and not s2['unwinds'], (name, sorted(s2['frames']), s2['unwinds'])
+    for frame, h in s2['frames'].items():
+        assert (h['redirected'], h['unwind'], h['writeback_source'], h['tonemap'], h['exposure'], h['fallback']) == ('1', '0', 'shader', 'agx' if params['agx'] else 'identity', 'manual', '0'), (name, frame, h)
+        assert abs(float(h['ev']) - ev) < 1e-6 and h['stepped'] == '0' and h['target'] == '64x65', (name, frame, h)
+    ramp = {}
+    for l in lines:
+        if l.startswith('RAMP '):
+            f = fields(l); ramp[(int(f['frame']), int(f['row']), int(f['col']))] = f
+    assert len(ramp) == 3 * 65 * 4 and all(f['uniform'] == '1' for f in ramp.values()), (name, len(ramp))
+    reference_rows = agx_ref.ramp_values()
+    assert len(reference_rows) == 65
+    stats = {}
+    for frame in (1, 2):
+        inputs = read_half_image(directory / 'x3-modern-captures' / f'hdr_1_{frame}.rgba16f', 64, 65)
+        presented = read_presented(directory, frame, 64, 65)
+        errors = [[], [], []]; alpha_errors = []; input_errors = []
+        for row in range(65):
+            for col in range(4):
+                index = row * 64 + col * 16 + 8
+                r, g, b, a = inputs[index]
+                x = reference_rows[row]
+                expected_input = [(x, x, x), (x, 0.0, 0.0), (0.0, x, 0.0), (0.0, 0.0, x)][col]
+                for actual, ideal in zip((r, g, b), expected_input):
+                    input_errors.append(abs(actual - ideal) / ideal if ideal else abs(actual))
+                assert abs(a - row / 64.0) < 1e-6, (name, frame, row, col, a)
+                pr, pg, pb, pa = bgra8(presented, index)
+                assert f'{pa:02x}{pr:02x}{pg:02x}{pb:02x}' == ramp[(frame, row, col)]['presented'], (name, frame, row, col)
+                ref = reference_codes((r, g, b), ev, params)
+                for k, e in enumerate(code_errors((pr, pg, pb), ref)):
+                    errors[k].append(e)
+                alpha_errors.append(abs(pa - round(255.0 * a)))
+        assert max(input_errors) <= HALF_RELATIVE, (name, frame, max(input_errors))
+        per_channel = {c: {'max': max(errors[k]), 'mean': sum(errors[k]) / len(errors[k])} for k, c in enumerate('rgb')}
+        overall = [e for k in range(3) for e in errors[k]]
+        stats[frame] = {'channels': per_channel, 'max': max(overall), 'mean': sum(overall) / len(overall),
+                        'alpha_max': max(alpha_errors), 'cells': 65 * 4, 'input_max_relative_error': max(input_errors)}
+        assert stats[frame]['max'] <= RAMP_MAX_CODE_ERROR, f'{name}: frame {frame} ramp max error {stats[frame]["max"]} codes exceeds 1: {per_channel}'
+        assert stats[frame]['mean'] <= RAMP_MEAN_CODE_ERROR, f'{name}: frame {frame} ramp mean error {stats[frame]["mean"]} codes exceeds 0.5: {per_channel}'
+        assert stats[frame]['alpha_max'] <= 1, (name, frame, stats[frame])
+    assert stats[1]['channels'] == stats[2]['channels'], (name, 'the ramp is not deterministic between frames')
+    return {'mode': 'hdrramp', 'agx': params['agx'], 'look': params['look'], 'decode': params['decode'], 'clamp': params['clamp'], 'ev': ev,
+            'checks': int(terminal['checks']), 'frames': 3, 'cells': 65 * 4, 'ramp': stats[1], 'ramp_frame2': stats[2],
+            'tonemap_line': {k: tm[k] for k in ('tonemap', 'tonemap_reason', 'meter', 'meter_reason', 'look', 'decode', 'clamp', 'exposure', 'ev_manual')},
+            'self_test': s2['device'][0]['self_test'],
+            'color_hashes': {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}}
+
+
+def parse_float(text):
+    """float() tolerant of the CRT spellings of the non-finite values the hazard blocks print (1.#INF, -1.#IND, nan, inf)."""
+    t = text.strip().lower()
+    if '#inf' in t or t.lstrip('+-') == 'inf':
+        return float('-inf') if t.startswith('-') else float('inf')
+    if '#' in t or 'nan' in t:
+        return float('nan')
+    return float(t)
+
+
+EXPOSURE_FRAMES = 40
+EXPOSURE_HAZARD_FRAMES = range(30, 35)   # blocks -1 / +inf / -inf / 0.18: the finite negative is deterministic (floor, black); the
+                                         # infinities are unspecified on this backend (review 23: handled like NaN, recorded not compared)
+EXPOSURE_POISON_FRAMES = range(35, 40)   # a NaN block: the backend's min/max may swallow it or not; the host keeps the state finite
+
+
+def validate_hdrexposure(name, text, trace, directory, hdr_env, hdr_fault=None):
+    """The meter chain against the reference geometric mean of the four
+    blocks (<= 1%), the adaptation sequence replayed by the reference on the
+    measured meters (<= 1e-3 EV), the fixed dt, the EV offset and time
+    constants of the run, the meter clip on the sun block, the presented
+    blocks against the reference tonemap at the consumed EV (<= 1 code), and
+    the hazard frames: a finite negative block metered and presented as the
+    reference says; infinite and NaN blocks (unspecified on this backend)
+    never reaching the exposure state (every state value finite; a step, if
+    any, consumed an in-range meter), their stored FP16 values, presented
+    codes and meters recorded."""
+    lines = text.splitlines()
+    mode_line = fields(next(l for l in lines if l.startswith('MODE ')))
+    assert (mode_line['enabled'], mode_line['hdr'], mode_line['hdrexposure']) == ('1', '1', '1'), (name, mode_line)
+    assert lines[-1].startswith('RESULT PASS'), (name, lines[-1])
+    terminal = fields(lines[-1])
+    params = hdr_env_params(hdr_env)
+    assert params['agx'] and params['dt'] > 0 and params['ev_manual'] is None
+    s2 = hdr_stage2_lines(trace)
+    tm = s2['tonemap'][0]
+    assert (tm['tonemap'], tm['meter'], tm['meter_reason'], tm['exposure']) == ('1', '1', 'ok', 'auto'), (name, tm)
+    assert abs(float(tm['fixed_dt_ms']) / 1000.0 - params['dt']) < 1e-6 and float(tm['ev_offset']) == params['ev_offset'], (name, tm)
+    device_line = next(l for l in trace.splitlines() if l.startswith('hdr_device '))
+    assert 'tonemap_errors=0 meter=00000000 meter_errors=0' in device_line, (name, device_line)
+    assert s2['targets'] and int(s2['targets'][0]['chain_levels']) == 3 and int(s2['targets'][0]['chain_bytes']) == 16 * 16 * 4 + 4 * 4 * 4 + 8, (name, s2['targets'])
+    states = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('EXPOSURE_STATE ')}
+    blocks = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('EXPOSURE_BLOCKS ')}
+    presented = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('EXPOSURE_PRESENTED ')}
+    frames = EXPOSURE_FRAMES
+    assert sorted(states) == sorted(blocks) == sorted(presented) == list(range(frames)) == sorted(s2['frames']), (name, sorted(states))
+    assert not s2['unwinds'] and not s2['disabled'], (name, s2['unwinds'])
+    block_values = {}
+    for frame, b in blocks.items():
+        block_values[frame] = [tuple(half_round(parse_float(c)) for c in b[f'b{i}'].split(',')) for i in range(4)]
+    for frame in EXPOSURE_HAZARD_FRAMES:
+        assert block_values[frame][0][0] == -1.0 and block_values[frame][1][0] == float('inf') and block_values[frame][2][0] == float('-inf'), (name, frame, block_values[frame])
+    for frame in EXPOSURE_POISON_FRAMES:
+        assert math.isnan(block_values[frame][0][0]), (name, frame, block_values[frame])
+    # Reference meter per frame: the exact mean of the four equal blocks (64x64 -> 16 -> 4 -> 1 reduces exactly to the mean);
+    # not applied to the frames with an infinite or NaN block (unspecified on this backend).
+    reference_meter = {}; unclipped_meter = {}
+    for frame, values in block_values.items():
+        if any(not math.isfinite(c) for v in values for c in v[:3]):
+            continue
+        logs = [exposure_ref.meter_level0(v[:3], params['decode']) for v in values]
+        reference_meter[frame] = exposure_ref.reduce_mean(logs)
+        unclipped_meter[frame] = exposure_ref.reduce_mean([exposure_ref.meter_level0(v[:3], params['decode'], meter_clip=1e9) for v in values])
+    # What the reference says about the hazard blocks: the negative and -inf blocks meter at the floor, +inf at the clip.
+    hazard = block_values[EXPOSURE_HAZARD_FRAMES[0]]
+    assert exposure_ref.meter_level0(hazard[0][:3], params['decode']) == exposure_ref.meter_level0(hazard[2][:3], params['decode']) == math.log2(exposure_ref.METER_FLOOR), (name, hazard)
+    assert exposure_ref.meter_level0(hazard[1][:3], params['decode']) == math.log2(exposure_ref.METER_CLIP), (name, hazard)
+    meter_errors = {}; meter_relative = {}; poison_stepped = {}
+    meter_low, meter_high = math.log2(exposure_ref.METER_FLOOR) - 1e-3, math.log2(exposure_ref.METER_CLIP) + 1e-3
+    steps = 0
+    for frame in range(1, frames):
+        h = s2['frames'][frame]
+        st = states[frame]
+        assert h['readback'] == '00000000' and h['meter'] == '00000000', (name, frame, h)
+        assert all(math.isfinite(parse_float(st[k])) for k in ('ev', 'ev_adapted', 'ev_target', 'avg_log_l', 'exposure', 'k')), (name, frame, st)
+        assert abs(float(h['ev']) - float(st['ev'])) < 1e-4 and abs(float(h['avg_log_l']) - float(st['avg_log_l'])) < 1e-4, (name, frame, h, st)
+        if frame - 1 in reference_meter:
+            assert h['stepped'] == '1', (name, frame, h)
+            measured = float(st['avg_log_l'])
+            ref = reference_meter[frame - 1]
+            meter_errors[frame] = abs(measured - ref)
+            meter_relative[frame] = abs(measured - ref) / abs(ref) if ref else abs(measured - ref)
+            assert meter_errors[frame] <= max(0.005, EXPOSURE_METER_TOLERANCE * abs(ref)), (name, frame, measured, ref)
+        else:
+            # An infinite or NaN block: either the chain's result was rejected by
+            # the host (no step, the state held) or the backend swallowed the
+            # value and the step consumed a meter inside the clamp range.
+            assert h['stepped'] in ('0', '1'), (name, frame, h)
+            poison_stepped[frame] = int(h['stepped'])
+            if h['stepped'] == '1':
+                assert meter_low <= float(st['avg_log_l']) <= meter_high, (name, frame, st)
+        steps += int(h['stepped'])
+        assert int(h['steps']) == steps, (name, frame, h, steps)
+        if h['stepped'] == '1':
+            assert abs(float(st['dt']) - params['dt']) < 1e-6, (name, frame, st)
+    h0 = s2['frames'][0]
+    assert h0['stepped'] == '0' and h0['meter'] == '00000000' and float(states[0]['ev']) == 0.0, (name, h0, states[0])
+    # Adaptation replayed on the measured meters (isolates the host arithmetic; a
+    # frame without a step holds) and, for the deterministic frames, on the
+    # reference meters (end to end).
+    kw = dict(key=params['key'], ev_offset=params['ev_offset'], tau_up=params['tau_up'], tau_down=params['tau_down'])
+    expected = [0.0]
+    for frame in range(1, frames):
+        if s2['frames'][frame]['stepped'] == '1':
+            target = exposure_ref.ev_target(float(states[frame]['avg_log_l']), params['key'], params['ev_offset'])
+            expected.append(exposure_ref.adapt(expected[-1], target, params['dt'], params['tau_up'], params['tau_down']))
+        else:
+            expected.append(expected[-1])
+    ev_errors = [abs(float(states[f]['ev']) - expected[f]) for f in range(frames)]
+    assert max(ev_errors) <= EXPOSURE_EV_TOLERANCE, (name, max(ev_errors), ev_errors)
+    deterministic = EXPOSURE_HAZARD_FRAMES[0]   # frames whose consumed meter is deterministic: 0 .. 29 (frame 30 consumed frame 29's)
+    end_to_end = exposure_ref.simulate([reference_meter[f] for f in range(deterministic)], [params['dt']] * deterministic, 0.0, **kw)
+    end_to_end_errors = [abs(float(states[f]['ev']) - end_to_end[f]) for f in range(deterministic)]
+    ev_sequence = [float(states[f]['ev']) for f in range(frames)]
+    # Direction: the dark scene raises the EV, the bright one lowers it, the clipped sun block bounds the drop.
+    assert ev_sequence[9] > ev_sequence[1] > ev_sequence[0] and ev_sequence[19] < ev_sequence[11], (name, ev_sequence)
+    assert reference_meter[20] < unclipped_meter[20] - 1.0, (name, reference_meter[20], unclipped_meter[20])  # the clip mattered by more than one stop
+    # Presented blocks against the reference tonemap at the consumed EV (infinite and NaN blocks are not compared: unspecified).
+    presented_errors = []
+    for frame in range(frames):
+        ev = float(states[frame]['ev'])
+        for i in range(4):
+            code = int(presented[frame][f'p{i}'], 16)
+            pr, pg, pb, pa = (code >> 16) & 255, (code >> 8) & 255, code & 255, code >> 24
+            assert abs(pa - round(255.0 * block_values[frame][i][3])) <= 1, (name, frame, i, pa)
+            if any(not math.isfinite(c) for c in block_values[frame][i][:3]):
+                continue
+            ref = reference_codes(block_values[frame][i][:3], ev, params)
+            presented_errors.extend(code_errors((pr, pg, pb), ref))
+        assert presented[frame]['nonuniform'] == '0', (name, frame)
+    assert max(presented_errors) <= RAMP_MAX_CODE_ERROR, (name, max(presented_errors))
+    # The record of the unspecified inputs: what the FP16 target stored (the capture-frame readback), what was presented and metered.
+    hazard_record = {}
+    for frame in (EXPOSURE_HAZARD_FRAMES[0], EXPOSURE_POISON_FRAMES[0]):
+        stored = read_half_image(directory / 'x3-modern-captures' / f'hdr_1_{frame}.rgba16f', 64, 64)
+        centres = [stored[(((i // 2) * 32 + 16) * 64) + (i % 2) * 32 + 16] for i in range(4)]
+        for i in range(4):
+            expected = block_values[frame][i]
+            for actual, ideal in zip(centres[i], expected):
+                # Finite values: the backend truncates to FP16 (one ulp, HALF_RELATIVE); the infinities and the NaN must be stored as such.
+                assert (math.isnan(ideal) and math.isnan(actual)) or actual == ideal \
+                    or (math.isfinite(ideal) and abs(actual - ideal) <= HALF_RELATIVE * abs(ideal)), (name, frame, i, centres[i], expected)
+        hazard_record[frame] = {'stored': [[str(c) for c in px] for px in centres], 'presented': [presented[frame][f'p{i}'] for i in range(4)],
+                                'meter_consumed_next_frame': float(states[frame + 1]['avg_log_l']), 'stepped_next_frame': int(s2['frames'][frame + 1]['stepped'])}
+    return {'mode': 'hdrexposure', 'frames': frames, 'checks': int(terminal['checks']), 'dt_s': params['dt'], 'ev_offset': params['ev_offset'],
+            'tau_up': params['tau_up'], 'tau_down': params['tau_down'], 'look': params['look'],
+            'meter_max_abs_error_log2': max(meter_errors.values()), 'meter_max_relative_error': max(meter_relative.values()),
+            'ev_max_error_replayed': max(ev_errors), 'ev_max_error_end_to_end': max(end_to_end_errors),
+            'ev_sequence': ev_sequence, 'reference_meter': [reference_meter.get(f) for f in range(frames)],
+            'measured_meter': [float(states[f]['avg_log_l']) for f in range(frames)],
+            'sun_clip_effect_log2': unclipped_meter[20] - reference_meter[20],
+            'hazard_frames': list(EXPOSURE_HAZARD_FRAMES), 'poison_frames': list(EXPOSURE_POISON_FRAMES), 'unspecified_stepped': poison_stepped, 'hazard': hazard_record,
+            'presented_max_code_error': max(presented_errors), 'chain_bytes': int(s2['targets'][0]['chain_bytes']),
+            'phase_us': {k: [float(s2['frames'][f][k]) for f in range(frames)] for k in ('meter_us', 'readback_us', 'writeback_draw_us')},
+            'color_hashes': {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}}
+
+
+TONEMAP_FAULT_SCRIPT = {0: dict(fault=0, tonemapped=1, unwind=0, reason='none', recheck='none', meter='00000000', stepped=0),
+                        1: dict(fault=11, tonemapped=0, unwind=1, reason='tonemap', recheck='none', meter='00000000', stepped=1),
+                        2: dict(fault=0, tonemapped=1, unwind=0, reason='none', recheck='pass', meter='00000000', stepped=1),
+                        3: dict(fault=13, tonemapped=1, unwind=0, reason='none', recheck='none', meter='80004005', stepped=1),
+                        4: dict(fault=0, tonemapped=1, unwind=0, reason='none', recheck='none', meter='00000000', stepped=0),
+                        5: dict(fault=11, tonemapped=0, unwind=1, reason='tonemap', recheck='none', meter='00000000', stepped=1),
+                        6: dict(fault=11, tonemapped=0, unwind=1, reason='tonemap', recheck='pass', meter='00000000', stepped=1),
+                        7: dict(fault=0, tonemapped=0, unwind=0, reason='none', recheck='pass', meter='00000001', stepped=0),
+                        8: dict(fault=0, tonemapped=0, unwind=0, reason='none', recheck='none', meter='00000001', stepped=0)}
+
+
+def compare_image_to_reference(directory, frame, ev, params, identity):
+    """Every pixel of presented_<frame> against the reference of hdr_1_<frame>.rgba16f (identity: the clamped conversion)."""
+    inputs = read_half_image(directory / 'x3-modern-captures' / f'hdr_1_{frame}.rgba16f', 64, 64)
+    presented = read_presented(directory, frame, 64, 64)
+    p = dict(params, agx=not identity)
+    errors = []; alpha = []
+    for i, (r, g, b, a) in enumerate(inputs):
+        pr, pg, pb, pa = bgra8(presented, i)
+        errors.extend(code_errors((pr, pg, pb), reference_codes((r, g, b), ev, p)))
+        alpha.append(abs(pa - round(255.0 * min(max(a, 0.0), 1.0))))
+    return {'max': max(errors), 'mean': sum(errors) / len(errors), 'alpha_max': max(alpha), 'pixels': len(inputs)}
+
+
+def validate_hdrtonemapfault(name, text, trace, directory, hdr_env, hdr_fault=None):
+    """The tonemap ladder: a failed tonemap draw takes the identity draw (one
+    hdr_unwind=tonemap line, recheck at the next latch), a failed meter chain
+    leaves the tonemap and holds the exposure, three draw failures disable the
+    tonemap; presented frames checked against the reference of the FP16
+    readback. With the program forced absent at attach (fault 12) every frame
+    is the identity write-back."""
+    lines = text.splitlines()
+    mode_line = fields(next(l for l in lines if l.startswith('MODE ')))
+    assert (mode_line['seam'], mode_line['enabled'], mode_line['hdr'], mode_line['hdrtonemapfault']) == ('1', '1', '1', '1'), (name, mode_line)
+    assert lines[-1].startswith('RESULT PASS'), (name, lines[-1])
+    terminal = fields(lines[-1])
+    params = hdr_env_params(hdr_env)
+    s2 = hdr_stage2_lines(trace)
+    tm = s2['tonemap'][0]
+    states = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('EXPOSURE_STATE ')}
+    result = {'mode': 'hdrtonemapfault', 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
+              'color_hashes': {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}}
+    if hdr_fault == '12':
+        assert (tm['tonemap'], tm['tonemap_reason'], tm['meter'], tm['meter_reason'], tm['tonemap_shader']) == ('0', 'shader', '0', 'tonemap', '80004005'), (name, tm)
+        assert sorted(s2['frames']) == [0, 1, 2] and not s2['unwinds'] and not s2['disabled'], (name, sorted(s2['frames']))
+        for frame, h in s2['frames'].items():
+            assert (h['tonemap'], h['tonemapped'], h['unwind'], h['writeback_source'], h['stepped']) == ('identity', '0', '0', 'shader', '0'), (name, frame, h)
+        images = {frame: compare_image_to_reference(directory, frame, 0.0, params, identity=True) for frame in (1, 2)}
+        assert all(v['max'] <= 1 and v['alpha_max'] <= 1 for v in images.values()), (name, images)
+        result.update(frames=3, shader_absent=True, tonemap_line={k: tm[k] for k in ('tonemap', 'tonemap_reason', 'meter', 'meter_reason', 'tonemap_shader')}, images=images)
+        return result
+    assert (tm['tonemap'], tm['tonemap_reason'], tm['meter'], tm['meter_reason']) == ('1', 'ok', '1', 'ok'), (name, tm)
+    assert sorted(s2['frames']) == sorted(TONEMAP_FAULT_SCRIPT), (name, sorted(s2['frames']))
+    faults = {int(fields(l)['frame']): int(fields(l)['fault']) for l in lines if l.startswith('HDR_TONEMAP_FAULT ')}
+    for frame, expect in TONEMAP_FAULT_SCRIPT.items():
+        h = s2['frames'][frame]
+        assert faults[frame] == expect['fault'], (name, frame, faults)
+        assert (h['redirected'], h['writeback_source'], h['blocked']) == ('1', 'shader', '0'), (name, frame, h)
+        assert (int(h['tonemapped']), int(h['unwind']), h['unwind_reason'], h['recheck'], h['meter'], int(h['stepped'])) == \
+            (expect['tonemapped'], expect['unwind'], expect['reason'], expect['recheck'], expect['meter'], expect['stepped']), (name, frame, h, expect)
+        assert h['fallback'] == str(int(expect['reason'] == 'tonemap')), (name, frame, h)
+        assert h['tonemap'] == ('identity' if frame >= 6 else 'agx'), (name, frame, h)  # disabled inside frame 6's write-back
+        if expect['reason'] == 'tonemap':
+            assert h['tonemap_draw'] == '80004005' and h['unwind_draw'] == '00000000', (name, frame, h)
+    assert [u['reason'] for u in s2['unwinds']] == ['tonemap'] * 3 and all(u['source'] == 'shader' for u in s2['unwinds']), (name, s2['unwinds'])
+    assert sorted(s2['rechecks']) == [2, 6, 7] and all(r['passed'] == '1' for r in s2['rechecks'].values()), (name, s2['rechecks'])
+    assert len(s2['disabled']) == 1 and int(s2['disabled'][0]['frame']) == 6 and s2['disabled'][0]['reason'] == 'draw_failures', (name, s2['disabled'])
+    # The exposure held across the failed meter: frame 4 consumed no step, its EV equals frame 3's.
+    assert abs(float(states[4]['ev']) - float(states[3]['ev'])) < 1e-9 and float(states[3]['ev']) != float(states[2]['ev']), (name, states[2], states[3], states[4])
+    images = {1: compare_image_to_reference(directory, 1, float(states[1]['ev']), params, identity=True),
+              2: compare_image_to_reference(directory, 2, float(states[2]['ev']), params, identity=False),
+              4: compare_image_to_reference(directory, 4, float(states[4]['ev']), params, identity=False),
+              7: compare_image_to_reference(directory, 7, float(states[7]['ev']), params, identity=True)}
+    assert all(v['max'] <= 1 and v['alpha_max'] <= 1 for v in images.values()), (name, images)
+    result.update(frames=len(TONEMAP_FAULT_SCRIPT), unwinds=[{k: u[k] for k in ('reason', 'frame', 'source', 'draw', 'restore')} for u in s2['unwinds']],
+                  rechecks=sorted(s2['rechecks']), disabled_frame=6, images=images,
+                  hdr_frames={f: {k: h[k] for k in ('tonemap', 'tonemapped', 'unwind', 'unwind_reason', 'fallback', 'recheck', 'meter', 'stepped', 'ev')} for f, h in s2['frames'].items()})
+    return result
 
 
 def validate_envmap(name, text, trace, directory, hdr=False):
@@ -1083,7 +1485,7 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True):
     mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
     assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '0', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
                          'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '1', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0',
-                         'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0'}, (name, mode_line)
+                         'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0'}, (name, mode_line)
     # Per frame: the fill and the burst restoration comparisons, the coverage
     # oracle (both DLLs), the COLORWRITEENABLE1 read-back between routed draws
     # and, seam, the motion/depth oracle.
@@ -1269,13 +1671,13 @@ def main():
         wine_log = (RESULTS / 'motion-output-wine.log').open('w')
         result['bench'] = {}
         for entry in CASES:
-            name, mode, variant, enabled, jitter, taa, bench, lazy, burst, camera, sentinel, envmap, hook, shadow, hdr, hdr_fault = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst', 'camera', 'sentinel', 'envmap', 'hook', 'shadow', 'hdr', 'hdr_fault'))
+            name, mode, variant, enabled, jitter, taa, bench, lazy, burst, camera, sentinel, envmap, hook, shadow, hdr, hdr_fault, hdr_env = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst', 'camera', 'sentinel', 'envmap', 'hook', 'shadow', 'hdr', 'hdr_fault', 'hdr_env'))
             if only and name not in only:
                 continue
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(EXE, directory)
-            shutil.copy(SEAM if mode in ('seam', 'hdrvalues', 'hdrfault') else DLL, directory / 'd3d9.dll')
+            shutil.copy(SEAM if mode in ('seam',) + HDR_MODES and not name.startswith('production') else DLL, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -1287,13 +1689,16 @@ def main():
                        X3M_OWNERSHIP='0', X3M_DEPTH_COPY='0', X3M_SCENE_DEPTH_CAPTURE='0', X3M_OBJECT_TRACE='0', X3M_OBJECT_LIFETIME='0',
                        X3M_MESH_CACHE='0', X3M_ADMISSION='0', X3M_FINITE_POSITIONS='0', X3M_MOTION_CAPTURE='0')
             env.update(VARIANTS[variant])
-            if mode in ('hdrvalues', 'hdrfault'):
+            env.update(hdr_env)
+            if mode in HDR_MODES:
                 env['X3M_MOTION_FRAME_LOG'] = '1'  # every frame's route and hdr lines
             command = [str(WINE), '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=n,b', '--workdir', str(directory),
                        str(directory / EXE.name)] + ['Z:' + str(p) for p in RAW] + ['hook' if hook is not None else 'burst' if burst else 'envmap' if envmap else mode] + ([bench] if bench else [])
-            if mode in ('hdrvalues', 'hdrfault'):
+            if mode in HDR_MODES:
                 # The regular capture window covers the first frames; the frame lines come every frame.
-                env['X3M_CAPTURE_START'] = '1'; env['X3M_CAPTURE_FRAMES'] = '8'
+                # hdrexposure needs no early readback and moves the window (the DLL caps it at eight frames)
+                # onto the hazard and NaN frames so their stored FP16 values are on record.
+                env['X3M_CAPTURE_START'] = str(EXPOSURE_HAZARD_FRAMES[0]) if mode == 'hdrexposure' else '1'; env['X3M_CAPTURE_FRAMES'] = '8'
             no_game()
             wine_log.write(f'==== {name}\n'); wine_log.flush()
             completed = subprocess.run(command, env=env, stdout=subprocess.PIPE, stderr=wine_log, text=True, timeout=360)
@@ -1303,14 +1708,15 @@ def main():
             assert completed.returncode == 0 and len(traces) == 1, f'{name}: exit {completed.returncode}, traces {len(traces)}'
             trace = traces[0].read_text()
             if bench:
-                case = validate_bench(name, taa, bench, text, trace, hdr)
+                case = validate_bench(name, taa, bench, text, trace, hdr, tonemap=bool(hdr_env))
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]))
                 result['bench'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} boundary_ms={case["boundary_ms"]}', flush=True)
                 continue
-            if mode in ('hdrvalues', 'hdrfault'):
-                case = (validate_hdrvalues if mode == 'hdrvalues' else validate_hdrfault)(name, text, trace, directory)
+            if mode in HDR_MODES:
+                case = {'hdrvalues': validate_hdrvalues, 'hdrfault': validate_hdrfault, 'hdrramp': validate_hdrramp,
+                        'hdrexposure': validate_hdrexposure, 'hdrtonemapfault': validate_hdrtonemapfault}[mode](name, text, trace, directory, hdr_env, hdr_fault)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')

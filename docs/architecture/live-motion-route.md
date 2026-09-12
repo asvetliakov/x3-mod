@@ -197,7 +197,7 @@ TAA run is user-managed.
 | `src/proxy/capture.cpp` | Hook installation, state block and query wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT`, `X3M_MOTION_JITTER[_SAMPLES]`, `X3M_MOTION_CUT_*`, `X3M_TAA`, `X3M_TAA_DEBUG`, `X3M_MOTION_RT_MODE`, `X3M_MOTION_FRAME_LOG` and `X3M_STATE_SHADOW` parsing; the lazy mode's restore points and `GetRenderTarget`/`GetRenderTargetData`/`GetRenderState` hooks; the light `SetRenderState` hook feeding the render-state shadow; `scene_end_signal`, the engine hook's listener |
 | `src/proxy/scene_hook.{h,cpp}` | Engine scene-end boundary (`X3M_SCENE_HOOK=1`): the five-byte callsite patch of `CALL 0x004c4750` at `0x004721b1` behind the exact-executable gate, its trampoline and restore; fixture seam for the runner's own callsite (section "Engine boundaries and state shadow") |
 | `src/renderer/temporal_pass.{h,cpp}` + `temporal_resolve_program{,_inc}.h` | The resolve the route runs (native-slot calls, cached state block) and its embedded `ps_3_0` bytecode |
-| `src/renderer/hdr_pass.{h,cpp}` + `hdr_writeback_program{,_inc}.h` | FP16 HDR scene path, stage 1 (`X3M_HDR=1`): the owned `A16B16G16R16F` RT0, the capability gate and four-format self test, the identity write-back ladder; the route decides when to redirect, flush and end ([hdr-scene-path.md](hdr-scene-path.md), "Stage 1 implementation") |
+| `src/renderer/hdr_pass.{h,cpp}` + `hdr_writeback_program{,_inc}.h`, `hdr_tonemap_program{,_inc}.h`, `hdr_meter_program.h` + `hdr_meter_{level0,reduce}_program_inc.h`, `exposure.{h,cpp}`, `src/temporal/agx.{h,hlsl}` | FP16 HDR scene path (`X3M_HDR=1`): the owned `A16B16G16R16F` RT0, the capability gate and four-format self test, the write-back ladder (stage 1: identity; stage 2 with `X3M_HDR_TONEMAP=agx`: the AgX tonemap, the exposure meter chain and the host adaptation of `exposure.h`); the route decides when to redirect, flush and end ([hdr-scene-path.md](hdr-scene-path.md), "Stage 1 implementation" and "Stage 2 implementation") |
 | `src/proxy/scene_capture.{h,cpp}` | `describe_surface` shared with the route |
 | `src/proxy/camera_state.{h,cpp}` + `src/renderer/camera_reprojection.h` | Live engine camera read at the selector's Clear events behind the exact-executable gate (no patch), the far-plane `clip_to_previous` builder and the sentinel policy decision (`X3M_TAA_SENTINEL`, `X3M_CAMERA_CUT_DEG`, `X3M_CAMERA_LOG`); see [temporal-integration.md](temporal-integration.md#camera-reprojection-for-sentinel-pixels-2026-09-12) |
 | `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug`, `--taa-sentinel auto|1|2`, `--camera-cut-deg`, `--camera-log`, `--state-shadow on|off`, `--scene-hook`, `--hdr` |
@@ -240,6 +240,26 @@ Present ends); every proxy consumer keeps seeing the application's logical
 RT0; fails closed on the capability gate and self test; the per-frame
 `hdr_frame` line and the `hdr_*` metrics report it
 ([hdr-scene-path.md](hdr-scene-path.md), "Stage 1 implementation").
+`X3M_HDR_TONEMAP=agx` (default `identity`, `--hdr-tonemap`; requires
+`X3M_HDR=1`) makes the write-back the AgX tonemap of the FP16 scene with
+`X3M_HDR_DECODE=gamma2.2|srgb|none` (`--hdr-decode`, default gamma2.2),
+`X3M_HDR_LOOK=none|golden|punchy` (`--hdr-look`), `X3M_HDR_CLAMP=<float>`
+(`--hdr-clamp`, default off) and the exposure: `X3M_HDR_EXPOSURE=auto|manual`
+(default auto: the log-luminance meter chain over the FP16 target, read back
+one frame late, adapted on the host with `X3M_HDR_ADAPT_UP/DOWN` 0.4/1.2 s,
+`X3M_HDR_KEY` 0.18, `X3M_HDR_EV_MIN/MAX` ±8), `X3M_HDR_EV=<offset>`
+(`--hdr-ev`; alias `X3M_HDR_EV_OFFSET`), `X3M_HDR_EV_MANUAL=<ev>`
+(`--hdr-ev-manual`: fixed EV, no meter) and `X3M_HDR_DT_MS` (a fixed
+adaptation step for fixtures). A tonemap that fails to create or self-test
+falls back to the identity write-back inside the enabled feature; a failed
+tonemap draw takes the identity draw (an unwind, reason `tonemap`) and three
+such failures disable the tonemap for the device. `hdr_tonemap` (attach),
+`hdr_target` (`chain_bytes`) and the `hdr_frame` fields `tonemap`,
+`tonemapped`, `look`, `decode`, `exposure`, `ev`, `ev_adapted`, `ev_target`,
+`avg_log_l`, `luma_mean`, `dt_ms`, `meter`, `readback`, `meter_us`,
+`readback_us`, `k` report it, with the metrics `hdr_meter` and
+`hdr_meter_readback` ([hdr-scene-path.md](hdr-scene-path.md), "Stage 2
+implementation").
 `X3M_SCENE_HOOK=1` (default off, `--scene-hook`; requires
 `X3M_MOTION_OUTPUT=1`) patches the frame routine's compositing callsite so
 the route learns the scene end from the engine and, with `X3M_TAA=1`,

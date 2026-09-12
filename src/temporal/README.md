@@ -436,3 +436,18 @@ is refused until `after_reset(SUCCEEDED)`, after which resources are
 re-created lazily on the next run with invalid history. `shutdown` remains the
 full teardown. The fixture keeps one pass alive across a real device Reset.
 <!-- END route inputs (step 2) -->
+
+## AgX tonemap and exposure meter (HDR scene path, stage 2)
+
+`agx.hlsl` is the `ps_3_0` AgX write-back of the FP16 HDR scene path (s0 the
+FP16 scene, c8..c21 the block `agx.h` declares: exposure and clamp, decode
+mode, inset/outset matrices, log range, sigmoid coefficients, look; output
+display-encoded, alpha carried). `hdr_meter_level0_ps.hlsl` folds the log2
+luminance of the decoded scene into the first 4x4 reduction (s0 the scene,
+c0 source size, c1 decode mode, c2 meter floor/clip, c3 output size);
+`hdr_meter_reduce_ps.hlsl` averages 16 taps of the previous R32F level (c0,
+c3). All three are compiled by `tools/shaders/generate_rigid_motion_pixel.py`
+into `src/renderer/hdr_*_program_inc.h` with pinned manifests under
+`verification/results/`, and their constants are pinned to
+`tools/analysis/agx_reference.py` / `exposure_reference.py` by
+`verification/analysis/test_agx_reference.py`.

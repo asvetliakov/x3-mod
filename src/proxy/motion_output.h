@@ -28,7 +28,8 @@
 #include "../renderer/motion_history.h"
 #include "../renderer/motion_row_history.h"
 #include "../renderer/camera_reprojection.h"
-namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; class HdrPass; struct HdrWriteback; }
+#include "../renderer/hdr_pass.h"
+namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
 namespace x3m::telemetry { struct State; }
 namespace x3m {
 // Distinct clip-row constant windows the profile table names (c24-27 for the
@@ -110,6 +111,12 @@ struct MotionHdrCounters {
     HRESULT target_create = S_FALSE, latch_bind = S_FALSE;
     std::uint64_t redirect_ticks = 0, writeback_ticks = 0, writeback_draw_ticks = 0, writeback_stretch_ticks = 0;
     std::uint64_t bind_ticks = 0, recheck_ticks = 0;
+    // Stage 2: the last write-back's tonemap/fallback verdict and meter
+    // result, the latch's meter readback and adaptation step, the phase
+    // timings (meter chain inside the draw, readback lock at the latch).
+    bool tonemap = false, fallback = false, stepped = false;
+    HRESULT tonemap_draw = S_FALSE, meter = S_FALSE, readback = S_FALSE;
+    std::uint64_t meter_ticks = 0, readback_ticks = 0;
 };
 struct MotionTaaCounters {
     bool attempted = false;      // The main-target bloom copy was recognized this frame.
@@ -275,8 +282,11 @@ public:
     // the scene end (hook, bloom copy) or, failing those, flushes at EndScene
     // and ends at Present. Every consumer of the proxy keeps seeing the
     // application's logical RT0 through the methods below.
-    void configure_hdr(bool requested) noexcept { hdr_requested_ = requested; }
+    void configure_hdr(bool requested, const renderer::HdrConfig& config) noexcept { hdr_requested_ = requested; hdr_config_ = config; }
     bool hdr_enabled() const noexcept { return hdr_enabled_; }
+    // Stage 2: the adapted exposure multiplier as the TAA luminance weighting
+    // k (exported for stage 3; nothing consumes it yet; 0 without the meter).
+    float hdr_taa_k() const noexcept { return hdr_taa_k_; }
     bool hdr_redirected() const noexcept { return hdr_state_ != HdrState::Off; }
     // BEFORE the application's SetRenderTarget: the surface to bind natively.
     // Index 0 while redirected: the application's main surface maps to the FP16
@@ -388,6 +398,9 @@ public:
     // is queued for the pass) and the FP16 target as floats (4 per pixel).
     void fixture_hdr_fault(unsigned kind, unsigned count) noexcept;
     HRESULT fixture_hdr_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept;
+    // Stage 2 exposure state: ev (consumed), ev_adapted, ev_target,
+    // avg_log_l, dt, exposure, steps, k (eight floats).
+    HRESULT fixture_hdr_exposure(float* out, std::size_t floats) const noexcept;
 #endif
 
 private:
@@ -554,7 +567,10 @@ private:
     // passing recheck at a later latch or by Reset) and the target allocation
     // failure latch (retried after Reset, like the motion target).
     std::unique_ptr<renderer::HdrPass> hdr_;
+    renderer::HdrConfig hdr_config_{};
     bool hdr_requested_ = false, hdr_enabled_ = false;
+    bool hdr_tonemap_disabled_logged_ = false;
+    float hdr_taa_k_ = 0.f;
     HdrState hdr_state_ = HdrState::Off;
     IDirect3DSurface9* hdr_main_ = nullptr;
     renderer::Surface hdr_target_{};

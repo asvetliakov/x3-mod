@@ -1,5 +1,8 @@
 #include "hdr_pass.h"
 #include "hdr_writeback_program.h"
+#include "hdr_tonemap_program.h"
+#include "hdr_meter_program.h"
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -17,7 +20,7 @@ enum Slot : unsigned {
     DrawPrimitiveUP = 83, SetVertexDeclaration = 87, GetVertexDeclaration = 88, SetFVF = 89, GetFVF = 90,
     SetVertexShader = 92, GetVertexShader = 93, SetStreamSource = 100, GetStreamSource = 101,
     SetStreamSourceFreq = 102, GetStreamSourceFreq = 103, CreatePixelShader = 106, SetPixelShader = 107,
-    GetPixelShader = 108
+    GetPixelShader = 108, SetPixelShaderConstantF = 109, GetPixelShaderConstantF = 110
 };
 using D = IDirect3DDevice9*;
 using GetDirect3DFn = HRESULT(WINAPI*)(D, IDirect3D9**);
@@ -60,6 +63,8 @@ using GetFreqFn = HRESULT(WINAPI*)(D, UINT, UINT*);
 using CreatePsFn = HRESULT(WINAPI*)(D, const DWORD*, IDirect3DPixelShader9**);
 using SetPsFn = HRESULT(WINAPI*)(D, IDirect3DPixelShader9*);
 using GetPsFn = HRESULT(WINAPI*)(D, IDirect3DPixelShader9**);
+using SetPsConstFn = HRESULT(WINAPI*)(D, UINT, const float*, UINT);
+using GetPsConstFn = HRESULT(WINAPI*)(D, UINT, float*, UINT);
 
 template<class T> void drop(T*& value) noexcept { if (T* held = value) { value = nullptr; held->Release(); } }
 bool lost(HRESULT hr) noexcept { return hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET; }
@@ -142,7 +147,18 @@ static_assert(sampler_count == sizeof(sampler_values) / sizeof(sampler_values[0]
 constexpr D3DTEXTURESTAGESTATETYPE touched_stages[] = {D3DTSS_TEXCOORDINDEX, D3DTSS_TEXTURETRANSFORMFLAGS};
 constexpr DWORD stage_values[] = {0, D3DTTFF_DISABLE};
 struct Vertex { float x, y, z, rhw, u, v; };
+// The meter chain's constant block, c0..c3 (hdr_meter_level0_ps.hlsl).
+struct MeterConstants { float source[4]; float decode[4]; float meter[4]; float output[4]; };
 } // namespace
+
+const char* hdr_tonemap_name(HdrTonemap tonemap) noexcept { return tonemap == HdrTonemap::Agx ? "agx" : "identity"; }
+const char* hdr_look_name(x3::temporal::AgxLook look) noexcept {
+    return look == x3::temporal::AgxLook::golden ? "golden" : look == x3::temporal::AgxLook::punchy ? "punchy" : "none";
+}
+const char* hdr_decode_name(x3::temporal::AgxDecode decode) noexcept {
+    return decode == x3::temporal::AgxDecode::srgb ? "srgb" : decode == x3::temporal::AgxDecode::none ? "none" : "gamma2.2";
+}
+const char* hdr_exposure_name(ExposureMode mode) noexcept { return mode == ExposureMode::Manual ? "manual" : "auto"; }
 
 // Everything the injected draws touch. COM references returned by the getters
 // are released by the destructor after restoration.
@@ -160,6 +176,10 @@ struct HdrPass::SavedState {
     IDirect3DBaseTexture9* texture = nullptr;
     DWORD samplers[sampler_count]{}, stages[2]{}, states[touched_count]{};
     unsigned target_count = 1;
+    // Stage 2: the meter's c0..c3 and the tonemap's c8..c21 (saved as one
+    // block, only when a stage-2 program runs; the identity path is unchanged).
+    bool constants_saved = false;
+    float constants[HdrPass::constant_count][4]{};
     ~SavedState() {
         for (auto& target : targets) drop(target);
         drop(depth); drop(declaration); drop(vs); drop(ps); drop(stream); drop(texture);
@@ -175,14 +195,80 @@ std::uint64_t HdrPass::stamp(bool timing) const noexcept {
 
 void HdrPass::shutdown() noexcept {
     release_target();
-    drop(shader_);
+    drop(shader_); drop(tonemap_shader_); drop(meter_level0_shader_); drop(meter_reduce_shader_);
     device_ = nullptr; native_ = nullptr;
     caps_ = HdrCaps{};
+    tonemap_failures_ = 0; latch_ticks_ = 0;
+    exposure_.reset();
 }
 
 void HdrPass::release_target() noexcept {
     drop(target_);
     width_ = height_ = 0;
+    release_chain();
+}
+
+void HdrPass::release_chain() noexcept {
+    for (unsigned i = 0; i < chain_max_levels; ++i) { drop(chain_[i]); chain_width_[i] = chain_height_[i] = 0; }
+    chain_count_ = 0;
+    for (unsigned i = 0; i < 2; ++i) { drop(chain_ring_[i]); drop(chain_readback_[i]); chain_pending_[i] = false; }
+}
+
+std::uint64_t HdrPass::chain_bytes() const noexcept {
+    std::uint64_t bytes = 0;
+    for (unsigned i = 0; i < chain_count_; ++i) bytes += std::uint64_t(chain_width_[i]) * chain_height_[i] * 4;
+    if (chain_ring_[0]) bytes += 2 * 4;
+    return bytes;
+}
+
+unsigned HdrPass::references() const noexcept {
+    unsigned n = (target_ ? 1u : 0u) + (shader_ ? 1u : 0u) + (tonemap_shader_ ? 1u : 0u)
+        + (meter_level0_shader_ ? 1u : 0u) + (meter_reduce_shader_ ? 1u : 0u) + chain_count_;
+    for (unsigned i = 0; i < 2; ++i) n += (chain_ring_[i] ? 1u : 0u) + (chain_readback_[i] ? 1u : 0u);
+    return n;
+}
+
+// The meter chain for a `width` x `height` scene: R32F render-target levels
+// of ceil(size / 4) per axis down to the last level above 1x1, then the two
+// 1x1 ring targets and their system-memory readback surfaces. Only level-0
+// surfaces are retained (one device reference each, in both reference
+// models); a failure releases everything and disables the meter.
+HRESULT HdrPass::ensure_chain(UINT width, UINT height) noexcept {
+    if (!caps_.meter || !device_) return S_FALSE;
+    if (chain_ring_[0] && chain_ring_[1] && chain_readback_[0] && chain_readback_[1]) {
+        // Sized for this scene already?
+        UINT w = width, h = height; unsigned count = 0;
+        while (count < chain_max_levels) { const UINT nw = (w + 3) / 4, nh = (h + 3) / 4; if (nw == 1 && nh == 1) break; ++count; w = nw; h = nh; }
+        bool same = count == chain_count_;
+        w = width; h = height;
+        for (unsigned i = 0; same && i < count; ++i) { w = (w + 3) / 4; h = (h + 3) / 4; same = chain_[i] && chain_width_[i] == w && chain_height_[i] == h; }
+        if (same) return S_OK;
+    }
+    release_chain();
+    HRESULT hr = S_OK;
+    auto level = [&](UINT w, UINT h, IDirect3DSurface9** out) {
+        IDirect3DTexture9* texture = nullptr;
+        HRESULT r = call<CreateTextureFn>(CreateTexture)(device_, w, h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R32F, D3DPOOL_DEFAULT, &texture, nullptr);
+        if (SUCCEEDED(r) && texture) r = texture->GetSurfaceLevel(0, out);
+        else if (SUCCEEDED(r)) r = E_FAIL;
+        drop(texture);
+        return r;
+    };
+    UINT w = width, h = height;
+    while (SUCCEEDED(hr)) {
+        const UINT nw = (w + 3) / 4, nh = (h + 3) / 4;
+        if (nw == 1 && nh == 1) break;
+        if (chain_count_ >= chain_max_levels) { hr = E_OUTOFMEMORY; break; }
+        hr = level(nw, nh, &chain_[chain_count_]);
+        if (SUCCEEDED(hr)) { chain_width_[chain_count_] = nw; chain_height_[chain_count_] = nh; ++chain_count_; }
+        w = nw; h = nh;
+    }
+    for (unsigned i = 0; SUCCEEDED(hr) && i < 2; ++i) {
+        hr = level(1, 1, &chain_ring_[i]);
+        if (SUCCEEDED(hr)) hr = call<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 1, 1, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &chain_readback_[i], nullptr);
+    }
+    if (FAILED(hr)) { release_chain(); caps_.meter = false; caps_.meter_reason = "chain"; }
+    return hr;
 }
 
 // Lazily (re)creates the FP16 render-target texture; only its level-0
@@ -199,7 +285,11 @@ HRESULT HdrPass::ensure_target(UINT width, UINT height) noexcept {
     else if (SUCCEEDED(hr)) hr = E_FAIL;
     drop(texture);
     if (FAILED(hr) || !target_) { drop(target_); return FAILED(hr) ? hr : E_FAIL; }
-    width_ = width; height_ = height;
+    // A dimension change invalidates the exposure state (section 5); a Reset
+    // at the same size keeps it.
+    if (last_width_ && (last_width_ != width || last_height_ != height)) exposure_.reset();
+    width_ = last_width_ = width; height_ = last_height_ = height;
+    if (caps_.meter) ensure_chain(width, height); // a failure disables the meter, not the feature
     return S_OK;
 }
 
@@ -244,6 +334,7 @@ HRESULT HdrPass::save(SavedState& saved) noexcept {
         if (FAILED(hr = call<GetStageFn>(GetTextureStageState)(device_, 0, touched_stages[i], &saved.stages[i]))) return hr;
     for (unsigned i = 0; i < touched_count; ++i)
         if (FAILED(hr = call<GetRsFn>(GetRenderState)(device_, touched_states[i], &saved.states[i]))) return hr;
+    if (saved.constants_saved && FAILED(hr = call<GetPsConstFn>(GetPixelShaderConstantF)(device_, 0, &saved.constants[0][0], constant_count))) return hr;
     return S_OK;
 }
 
@@ -272,19 +363,25 @@ HRESULT HdrPass::restore(const SavedState& saved, IDirect3DSurface9* rt0) noexce
     for (unsigned i = 0; i < sampler_count; ++i) step(call<SetSamplerFn>(SetSamplerState)(device_, 0, touched_samplers[i], saved.samplers[i]));
     for (unsigned i = 0; i < 2; ++i) step(call<SetStageFn>(SetTextureStageState)(device_, 0, touched_stages[i], saved.stages[i]));
     for (unsigned i = 0; i < touched_count; ++i) step(call<SetRsFn>(SetRenderState)(device_, touched_states[i], saved.states[i]));
+    if (saved.constants_saved) step(call<SetPsConstFn>(SetPixelShaderConstantF)(device_, 0, &saved.constants[0][0], constant_count));
     return first;
 }
 
-// The identity copy: `source_texture` (level 0 = `source_target`, which must
+// The write-back draw: `source_texture` (level 0 = `source_target`, which must
 // not be bound as a target meanwhile) sampled point-wise into `destination`
-// through the embedded ps_3_0. Returns the operation result; *restoration
-// receives the restoration result separately; RT0 ends bound to final_rt0.
+// through the embedded ps_3_0 identity copy or, with `program`, the given
+// program (the AgX tonemap with its c8..c21 block) preceded by the meter
+// chain when the program asks for it. Returns the operation result;
+// *restoration receives the restoration result separately; RT0 ends bound
+// to final_rt0. The meter's failure is reported in the program, never as the
+// draw's (the image does not depend on it).
 HRESULT HdrPass::copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* source_texture, IDirect3DSurface9* destination,
                            UINT width, UINT height, IDirect3DSurface9* final_rt0, HRESULT* restoration,
-                           HRESULT injected_draw, bool injected_restore) noexcept {
+                           HRESULT injected_draw, bool injected_restore, Program* program) noexcept {
     (void)source_target;
     *restoration = S_OK;
     SavedState saved;
+    saved.constants_saved = program != nullptr;
     HRESULT hr = save(saved);
     if (FAILED(hr)) return hr;
     HRESULT op = S_OK;
@@ -293,18 +390,28 @@ HRESULT HdrPass::copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* 
     // RT1.. are unbound before RT0 changes: D3D9 requires every bound target
     // to match RT0's dimensions, and the destination may differ from RT1's.
     for (unsigned i = 1; i < saved.target_count; ++i) step(call<SetRtFn>(SetRenderTarget)(device_, i, nullptr));
-    step(call<SetRtFn>(SetRenderTarget)(device_, 0, destination));
     step(call<SetDepthFn>(SetDepthStencilSurface)(device_, nullptr));
-    const D3DVIEWPORT9 viewport{0, 0, width, height, 0.f, 1.f};
-    step(call<SetViewportFn>(SetViewport)(device_, &viewport));
     step(call<SetFvfFn>(SetFVF)(device_, D3DFVF_XYZRHW | D3DFVF_TEX1));
     step(call<SetVsFn>(SetVertexShader)(device_, nullptr));
-    step(call<SetPsFn>(SetPixelShader)(device_, shader_));
     step(call<SetFreqFn>(SetStreamSourceFreq)(device_, 0, 1));
-    step(call<SetTextureFn>(SetTexture)(device_, 0, source_texture));
     for (unsigned i = 0; i < sampler_count; ++i) step(call<SetSamplerFn>(SetSamplerState)(device_, 0, touched_samplers[i], sampler_values[i]));
     for (unsigned i = 0; i < 2; ++i) step(call<SetStageFn>(SetTextureStageState)(device_, 0, touched_stages[i], stage_values[i]));
     for (unsigned i = 0; i < touched_count; ++i) step(call<SetRsFn>(SetRenderState)(device_, touched_states[i], touched_values[i]));
+    // Stage 2, section 4 order: the meter chain reads the FP16 scene before
+    // the tonemap writes the 8-bit image (its result is consumed next frame).
+    if (SUCCEEDED(op) && program && program->meter) {
+        const std::uint64_t begin = stamp(program->timing);
+        program->meter_result = meter_chain(source_texture, width, height, fault(HdrFault::Meter) ? E_FAIL : S_OK);
+        program->ticks_meter = stamp(program->timing) - begin;
+        step(call<SetTextureFn>(SetTexture)(device_, 0, nullptr));
+    }
+    step(call<SetRtFn>(SetRenderTarget)(device_, 0, destination));
+    const D3DVIEWPORT9 viewport{0, 0, width, height, 0.f, 1.f};
+    step(call<SetViewportFn>(SetViewport)(device_, &viewport));
+    step(call<SetPsFn>(SetPixelShader)(device_, program && program->shader ? program->shader : shader_));
+    if (program && program->constants)
+        step(call<SetPsConstFn>(SetPixelShaderConstantF)(device_, x3::temporal::kAgxFirstRegister, program->constants, x3::temporal::kAgxRegisterCount));
+    step(call<SetTextureFn>(SetTexture)(device_, 0, source_texture));
     if (SUCCEEDED(op)) {
         // Integer raster sample positions: shift by -0.5 so every texel centre is
         // covered and TEXCOORD0 lands on texel centres under point sampling.
@@ -316,6 +423,63 @@ HRESULT HdrPass::copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* 
     }
     *restoration = restore(saved, final_rt0);
     if (injected_restore && SUCCEEDED(*restoration)) *restoration = E_FAIL;  // fixture seam: reported after the actual restoration
+    return op;
+}
+
+// The exposure meter (section 3): level 0 folds the log2 luminance of the
+// decoded scene into the first 4x reduction, the reduce program halves the
+// remaining levels by four per axis, the last draw lands in the current
+// 1x1 ring target and GetRenderTargetData queues its copy into the ring's
+// system-memory surface (locked at the next latch: never on this frame).
+// Runs inside copy_draw's state bracket: FVF, samplers, stage and render
+// states are already set; RT1.. and the depth surface are unbound; every
+// level binds RT0, viewport, program, constants and the previous level (its
+// texture container obtained per use) and draws the -0.5 quad.
+HRESULT HdrPass::meter_chain(IDirect3DTexture9* scene_texture, UINT width, UINT height, HRESULT injected) noexcept {
+    if (!chain_ring_[chain_slot_] || !chain_readback_[chain_slot_] || !meter_level0_shader_ || !meter_reduce_shader_) return D3DERR_NOTAVAILABLE;
+    if (FAILED(injected)) return injected;
+    HRESULT op = S_OK;
+    auto step = [&](HRESULT result) { if (SUCCEEDED(op) && FAILED(result)) op = result; };
+    IDirect3DBaseTexture9* source = scene_texture;
+    IDirect3DTexture9* previous = nullptr;
+    UINT sw = width, sh = height;
+    for (unsigned i = 0; SUCCEEDED(op) && i <= chain_count_; ++i) {
+        const bool last = i == chain_count_;
+        IDirect3DSurface9* dst = last ? chain_ring_[chain_slot_] : chain_[i];
+        const UINT dw = last ? 1u : chain_width_[i], dh = last ? 1u : chain_height_[i];
+        step(call<SetRtFn>(SetRenderTarget)(device_, 0, dst));
+        const D3DVIEWPORT9 viewport{0, 0, dw, dh, 0.f, 1.f};
+        step(call<SetViewportFn>(SetViewport)(device_, &viewport));
+        step(call<SetPsFn>(SetPixelShader)(device_, i == 0 ? meter_level0_shader_ : meter_reduce_shader_));
+        MeterConstants c{};
+        c.source[0] = float(sw); c.source[1] = float(sh); c.source[2] = 1.f / float(sw); c.source[3] = 1.f / float(sh);
+        for (unsigned k = 0; k < 4; ++k) c.decode[k] = agx_.decode[k];
+        c.meter[0] = config_.params.meter_floor; c.meter[1] = config_.params.meter_clip;
+        c.output[0] = float(dw); c.output[1] = float(dh);
+        step(call<SetPsConstFn>(SetPixelShaderConstantF)(device_, 0, &c.source[0], 4));
+        step(call<SetTextureFn>(SetTexture)(device_, 0, source));
+        if (SUCCEEDED(op)) {
+            const float w = float(dw) - .5f, h = float(dh) - .5f;
+            const Vertex quad[4] = {{-.5f, -.5f, 0.f, 1.f, 0.f, 0.f}, {w, -.5f, 0.f, 1.f, 1.f, 0.f},
+                                    {-.5f, h, 0.f, 1.f, 0.f, 1.f}, {w, h, 0.f, 1.f, 1.f, 1.f}};
+            step(call<DrawUpFn>(DrawPrimitiveUP)(device_, D3DPT_TRIANGLESTRIP, 2, quad, sizeof quad[0]));
+        }
+        drop(previous);
+        if (!last) {
+            HRESULT hr = dst->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&previous));
+            if (SUCCEEDED(hr) && !previous) hr = E_NOINTERFACE;
+            step(hr);
+            source = previous;
+        }
+        sw = dw; sh = dh;
+    }
+    drop(previous);
+    // The ring slot now holds this frame's meter; its copy to system memory
+    // is issued at the next latch (begin_frame), a Present later, so the
+    // backend's download never waits on this frame's queued work (measured:
+    // an immediate GetRenderTargetData here cost ~0.7 ms per frame on
+    // WineD3D at every size, the deferred one microseconds).
+    chain_pending_[chain_slot_] = SUCCEEDED(op);
     return op;
 }
 
@@ -380,7 +544,9 @@ bool HdrPass::self_test(bool with_depth, bool scene_open, char* detail, std::siz
     IDirect3DPixelShader9* mrt_shader = nullptr; IDirect3DPixelShader9* single_shader = nullptr;
     bool ok = false;
     HRESULT hr = S_OK, restore_hr = S_OK, draw = S_OK, blend = S_OK, copy = S_OK, copy_restore = S_OK, scene_hr = S_OK, stretch = S_FALSE;
-    unsigned scene_errors = 0, sum_errors = 0, motion_errors = 0, depth_errors = 0, copy_errors = 0, stretch_errors = 0;
+    HRESULT tonemap = S_FALSE, meter = S_FALSE;
+    unsigned scene_errors = 0, sum_errors = 0, motion_errors = 0, depth_errors = 0, copy_errors = 0, stretch_errors = 0, tonemap_errors = 0, meter_errors = 0;
+    float meter_value = 0.f, meter_expected = 0.f;
     const char* stage = "create";
     bool own_scene = false;
     do {
@@ -458,6 +624,78 @@ bool HdrPass::self_test(bool with_depth, bool scene_open, char* detail, std::siz
             if (r != 255 || g != 255 || b != 255 || a < 126 || a > 130) ++copy_errors;
         }
         color_copy->UnlockRect();
+        // Stage 2 (gated inside the feature): the AgX program must draw the
+        // sum with the alpha carried and one value on every pixel; the meter
+        // chain must reduce the 4x4 sum to the host reference of its clipped
+        // log2 luminance (exactly 6.0 for gamma2.2/sRGB: 322 clipped to 64).
+        // A failure demotes the tonemap or the meter to identity/manual and
+        // never refuses the feature.
+        if (caps_.tonemap && tonemap_shader_) {
+            stage = "tonemap";
+            IDirect3DSurface9* current = nullptr;
+            if (FAILED(hr = call<GetRtFn>(GetRenderTarget)(device_, 0, &current)) || !current) { if (SUCCEEDED(hr)) hr = E_FAIL; break; }
+            x3::temporal::AgxConstants constants{};
+            x3::temporal::prepare(constants, 1.f, config_.clamp_max, config_.decode, config_.look);
+            Program program; program.shader = tonemap_shader_; program.constants = &constants.exposure[0];
+            HRESULT tonemap_restore = S_OK;
+            tonemap = copy_draw(scene_surface, scene, color, 4, 4, current, &tonemap_restore, S_OK, false, &program);
+            drop(current);
+            if (FAILED(tonemap_restore)) { hr = tonemap_restore; stage = "restore"; break; }
+            if (SUCCEEDED(tonemap)) {
+                if (FAILED(hr = call<GetRtDataFn>(GetRenderTargetData)(device_, color, color_copy))) break;
+                if (FAILED(hr = color_copy->LockRect(&lock, nullptr, D3DLOCK_READONLY))) break;
+                DWORD first = 0;
+                for (unsigned y = 0; y < 4; ++y) for (unsigned x = 0; x < 4; ++x) {
+                    DWORD value = 0; std::memcpy(&value, static_cast<const char*>(lock.pBits) + y * lock.Pitch + x * 4, 4);
+                    if (!x && !y) first = value;
+                    const int a = int(value >> 24);
+                    if (value != first || a < 126 || a > 130 || !(value & 0x00ffffffu)) ++tonemap_errors;
+                }
+                color_copy->UnlockRect();
+            }
+            if (FAILED(tonemap) || tonemap_errors) { caps_.tonemap = false; caps_.tonemap_reason = "self_test"; }
+        }
+        if (caps_.meter && meter_level0_shader_) {
+            stage = "meter";
+            IDirect3DTexture9* one = nullptr; IDirect3DSurface9* one_surface = nullptr; IDirect3DSurface9* one_copy = nullptr;
+            IDirect3DSurface9* saved_ring = chain_ring_[chain_slot_]; IDirect3DSurface9* saved_readback = chain_readback_[chain_slot_];
+            IDirect3DSurface9* saved_levels[chain_max_levels]; const unsigned saved_count = chain_count_;
+            for (unsigned i = 0; i < chain_max_levels; ++i) saved_levels[i] = chain_[i];
+            const bool saved_pending = chain_pending_[chain_slot_];
+            meter = call<CreateTextureFn>(CreateTexture)(device_, 1, 1, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R32F, D3DPOOL_DEFAULT, &one, nullptr);
+            if (SUCCEEDED(meter) && one) meter = one->GetSurfaceLevel(0, &one_surface);
+            if (SUCCEEDED(meter)) meter = call<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 1, 1, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &one_copy, nullptr);
+            if (SUCCEEDED(meter)) {
+                // A 4x4 scene reduces in one level-0 draw straight into the 1x1:
+                // run the production chain code on a temporary ring slot.
+                chain_ring_[chain_slot_] = one_surface; chain_readback_[chain_slot_] = one_copy; chain_count_ = 0;
+                IDirect3DSurface9* current = nullptr;
+                if (FAILED(meter = call<GetRtFn>(GetRenderTarget)(device_, 0, &current)) || !current) { if (SUCCEEDED(meter)) meter = E_FAIL; }
+                else {
+                    Program program; program.shader = shader_; program.meter = true;
+                    HRESULT meter_restore = S_OK;
+                    meter = copy_draw(scene_surface, scene, color, 4, 4, current, &meter_restore, S_OK, false, &program);
+                    if (SUCCEEDED(meter)) meter = program.meter_result;
+                    if (SUCCEEDED(meter) && FAILED(meter_restore)) meter = meter_restore;
+                    drop(current);
+                }
+                chain_ring_[chain_slot_] = saved_ring; chain_readback_[chain_slot_] = saved_readback; chain_count_ = saved_count;
+                for (unsigned i = 0; i < chain_max_levels; ++i) chain_[i] = saved_levels[i];
+                chain_pending_[chain_slot_] = saved_pending;
+                if (SUCCEEDED(meter)) meter = call<GetRtDataFn>(GetRenderTargetData)(device_, one_surface, one_copy);
+                if (SUCCEEDED(meter) && SUCCEEDED(meter = one_copy->LockRect(&lock, nullptr, D3DLOCK_READONLY))) {
+                    std::memcpy(&meter_value, lock.pBits, 4);
+                    one_copy->UnlockRect();
+                    const float sum[3] = {4.f, 16.f, 1.f};
+                    const ExposureDecode decode = config_.decode == x3::temporal::AgxDecode::none ? ExposureDecode::None
+                        : config_.decode == x3::temporal::AgxDecode::srgb ? ExposureDecode::Srgb : ExposureDecode::Gamma22;
+                    meter_expected = meter_level0(sum, decode, config_.params);
+                    if (!(std::fabs(meter_value - meter_expected) <= 1e-4f)) ++meter_errors;
+                }
+            }
+            drop(one_copy); drop(one_surface); drop(one);
+            if (FAILED(meter) || meter_errors) { caps_.meter = false; caps_.meter_reason = "self_test"; }
+        }
         if (SUCCEEDED(caps_.stretch_conversion)) {
             stage = "stretch";
             if (FAILED(hr = call<ColorFillFn>(ColorFill)(device_, color, nullptr, 0))) break;
@@ -482,8 +720,9 @@ bool HdrPass::self_test(bool with_depth, bool scene_open, char* detail, std::siz
     drop(single_shader); drop(mrt_shader);
     drop(color_copy); drop(depth_copy); drop(motion_copy); drop(scene_copy);
     drop(color); drop(depth_surface); drop(depth); drop(motion_surface); drop(motion); drop(scene_surface); drop(scene);
-    std::snprintf(detail, detail_size, "stage=%s result=%08lx draw=%08lx blend=%08lx copy=%08lx restore=%08lx copy_restore=%08lx scene=%08lx stretch=%08lx scene_errors=%u sum_errors=%u motion_errors=%u depth_errors=%u copy_errors=%u stretch_errors=%u targets=%u",
-                  stage, hr, draw, blend, copy, restore_hr, copy_restore, scene_hr, stretch, scene_errors, sum_errors, motion_errors, depth_errors, copy_errors, stretch_errors, with_depth ? 3u : 2u);
+    std::snprintf(detail, detail_size, "stage=%s result=%08lx draw=%08lx blend=%08lx copy=%08lx restore=%08lx copy_restore=%08lx scene=%08lx stretch=%08lx scene_errors=%u sum_errors=%u motion_errors=%u depth_errors=%u copy_errors=%u stretch_errors=%u targets=%u tonemap=%08lx tonemap_errors=%u meter=%08lx meter_errors=%u meter_value=%.5f meter_expected=%.5f",
+                  stage, hr, draw, blend, copy, restore_hr, copy_restore, scene_hr, stretch, scene_errors, sum_errors, motion_errors, depth_errors, copy_errors, stretch_errors, with_depth ? 3u : 2u,
+                  tonemap, tonemap_errors, meter, meter_errors, double(meter_value), double(meter_expected));
     return ok;
 }
 
@@ -528,13 +767,86 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
         const HRESULT hr = call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(hdr_writeback_program()), &shader_);
         if (FAILED(hr) || !shader_) { reason = "shader"; std::snprintf(caps_.self_test_detail, sizeof caps_.self_test_detail, "create=%08lx", hr); drop(shader_); }
     }
+    // Stage 2: the tonemap program and, with auto exposure, the meter chain
+    // (R32F render-target textures sampled by the reduce program). Each gates
+    // itself; a refusal keeps the identity write-back (X3M_HDR stays on).
+    if (!std::strcmp(reason, "ok") && config_.tonemap == HdrTonemap::Agx) {
+        caps_.tonemap_shader = fault(HdrFault::TonemapShader) ? E_FAIL
+            : call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(hdr_tonemap_program()), &tonemap_shader_);
+        if (FAILED(caps_.tonemap_shader) || !tonemap_shader_) { drop(tonemap_shader_); caps_.tonemap = false; caps_.tonemap_reason = "shader"; }
+        else { caps_.tonemap = true; caps_.tonemap_reason = "ok"; }
+        if (caps_.tonemap && config_.exposure == ExposureMode::Auto) {
+            IDirect3D9* factory = nullptr; D3DDEVICE_CREATION_PARAMETERS creation{}; D3DDISPLAYMODE mode{};
+            if (SUCCEEDED(call<GetDirect3DFn>(GetDirect3D)(device_, &factory)) && factory
+                && SUCCEEDED(call<GetCreationFn>(GetCreationParameters)(device_, &creation)) && SUCCEEDED(call<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &mode))) {
+                caps_.r32f_target = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, mode.Format, D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE, D3DFMT_R32F);
+                caps_.r32f_sampling = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, mode.Format, 0, D3DRTYPE_TEXTURE, D3DFMT_R32F);
+            } else { caps_.r32f_target = E_FAIL; caps_.r32f_sampling = E_FAIL; }
+            drop(factory);
+            if (FAILED(caps_.r32f_target)) caps_.meter_reason = "r32f_target";
+            else if (FAILED(caps_.r32f_sampling)) caps_.meter_reason = "r32f_sampling";
+            else {
+                caps_.meter_shader = call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(hdr_meter_level0_program()), &meter_level0_shader_);
+                if (SUCCEEDED(caps_.meter_shader)) caps_.meter_shader = call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(hdr_meter_reduce_program()), &meter_reduce_shader_);
+                if (FAILED(caps_.meter_shader) || !meter_level0_shader_ || !meter_reduce_shader_) { drop(meter_level0_shader_); drop(meter_reduce_shader_); caps_.meter_reason = "shader"; }
+                else { caps_.meter = true; caps_.meter_reason = "ok"; }
+            }
+        }
+    }
+    exposure_.configure(config_.params, config_.exposure, config_.ev_manual);
+    exposure_.reset();
+    tonemap_failures_ = 0; latch_ticks_ = 0; chain_slot_ = 0;
     if (!std::strcmp(reason, "ok")) {
         caps_.self_test_targets = with_depth ? 3u : 2u;
         if (!self_test(with_depth, false, caps_.self_test_detail, sizeof caps_.self_test_detail)) reason = "self_test";
     }
+    if (!caps_.tonemap) {
+        drop(tonemap_shader_); caps_.meter = false;
+        if (config_.tonemap == HdrTonemap::Agx && config_.exposure == ExposureMode::Auto && (!std::strcmp(caps_.meter_reason, "ok") || !std::strcmp(caps_.meter_reason, "off"))) caps_.meter_reason = "tonemap";
+    }
+    if (!caps_.meter) { drop(meter_level0_shader_); drop(meter_reduce_shader_); }
+    prepare_constants();
     caps_.reason = reason;
     caps_.enabled = !std::strcmp(reason, "ok");
-    if (!caps_.enabled) drop(shader_);
+    if (!caps_.enabled) { drop(shader_); drop(tonemap_shader_); drop(meter_level0_shader_); drop(meter_reduce_shader_); caps_.tonemap = caps_.meter = false; }
+}
+
+// The tonemap's constant block for the coming write-back: exp2 of the EV the
+// state resolves (manual or adapted), the clamp, decode mode and look. An
+// out-of-range exposure (never from the clamped EV range) falls back to 1.
+void HdrPass::prepare_constants() noexcept {
+    if (!x3::temporal::prepare(agx_, exposure_.exposure(), config_.clamp_max, config_.decode, config_.look))
+        x3::temporal::prepare(agx_, 1.f, config_.clamp_max, config_.decode, config_.look);
+}
+
+// At the latch: the previous frame's 1x1 meter (queued into the ring's
+// system-memory surface by that frame's chain) is locked now -- a frame
+// later, so the lock does not wait on this frame's work -- and the host
+// adaptation step runs on it with the QPC interval between the two latches
+// (or the fixed fixture dt). The ring slot then advances for this frame's
+// chain and the tonemap constants take the new EV.
+HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t frequency, bool timing) noexcept {
+    HdrFrameBegin r{};
+    float dt = config_.fixed_dt > 0.f ? config_.fixed_dt
+        : (latch_ticks_ && frequency && now_ticks > latch_ticks_) ? float(double(now_ticks - latch_ticks_) / double(frequency)) : config_.params.dt_max;
+    latch_ticks_ = now_ticks;
+    if (meter_active() && chain_pending_[chain_slot_] && chain_ring_[chain_slot_] && chain_readback_[chain_slot_]) {
+        const std::uint64_t begin = stamp(timing);
+        D3DLOCKED_RECT lock{};
+        r.readback = call<GetRtDataFn>(GetRenderTargetData)(device_, chain_ring_[chain_slot_], chain_readback_[chain_slot_]);
+        if (SUCCEEDED(r.readback)) r.readback = chain_readback_[chain_slot_]->LockRect(&lock, nullptr, D3DLOCK_READONLY);
+        float value = 0.f;
+        if (SUCCEEDED(r.readback)) { std::memcpy(&value, lock.pBits, 4); chain_readback_[chain_slot_]->UnlockRect(); }
+        chain_pending_[chain_slot_] = false;
+        r.ticks_readback = stamp(timing) - begin;
+        if (SUCCEEDED(r.readback) && std::isfinite(value)) {
+            exposure_.step(value, dt);
+            r.stepped = true; r.avg_log_l = value; r.dt = exposure_.dt();
+        }
+    }
+    chain_slot_ ^= 1u;
+    prepare_constants();
+    return r;
 }
 
 // The must-unwind ladder. The shader copy is the normal path; a failed draw
@@ -557,7 +869,27 @@ HdrWriteback HdrPass::write_back(IDirect3DSurface9* main, IDirect3DSurface9* fin
         if (SUCCEEDED(hr) && !texture) hr = E_NOINTERFACE;
         bool own_scene = false;
         if (SUCCEEDED(hr) && !scene_open) { hr = call<SceneFn>(BeginScene)(device_); own_scene = SUCCEEDED(hr); }
-        if (SUCCEEDED(hr)) hr = copy_draw(target_, texture, main, width_, height_, final_rt0, &result.restore, injected_draw, injected_restore);
+        // Stage 2: the AgX program with its constants (and the meter chain
+        // before it in auto exposure); a failed tonemap draw with a clean
+        // restoration takes rung 1b, the identity draw, and is reported as
+        // an unwind (reason "tonemap") so the recovery self test runs at the
+        // next latch; repeated failures disable the tonemap for the device.
+        const bool use_tonemap = tonemap_active();
+        if (SUCCEEDED(hr)) {
+            Program program;
+            if (use_tonemap) {
+                program.shader = tonemap_shader_; program.constants = &agx_.exposure[0];
+                program.meter = meter_active() && chain_ring_[0] != nullptr; program.timing = timing;
+                const HRESULT injected_tonemap = fault(HdrFault::TonemapDraw) ? E_FAIL : injected_draw;
+                hr = copy_draw(target_, texture, main, width_, height_, final_rt0, &result.restore, injected_tonemap, injected_restore, &program);
+                result.tonemap = true; result.tonemap_draw = hr; result.meter = program.meter_result; result.ticks_meter = program.ticks_meter;
+                if (FAILED(hr) && !lost(hr) && SUCCEEDED(result.restore) && SUCCEEDED(injected_draw)) {
+                    ++tonemap_failures_;
+                    result.tonemap = false; result.fallback = true;
+                    hr = copy_draw(target_, texture, main, width_, height_, final_rt0, &result.restore, injected_draw, injected_restore);
+                }
+            } else hr = copy_draw(target_, texture, main, width_, height_, final_rt0, &result.restore, injected_draw, injected_restore);
+        }
         result.draw = hr;
         // A scene we opened is always closed, lost device included: the runtime
         // keeps its in-scene flag otherwise and the application's next
@@ -565,7 +897,12 @@ HdrWriteback HdrPass::write_back(IDirect3DSurface9* main, IDirect3DSurface9* fin
         if (own_scene) { const HRESULT end = call<SceneFn>(EndScene)(device_); if (FAILED(end) && SUCCEEDED(result.draw)) result.draw = end; }
         drop(texture);
         result.ticks_draw = stamp(timing) - begin;
-        if (SUCCEEDED(result.draw) && SUCCEEDED(result.restore)) { result.source = HdrWritebackSource::Shader; return result; }
+        if (SUCCEEDED(result.draw) && SUCCEEDED(result.restore)) {
+            result.source = HdrWritebackSource::Shader;
+            // The fallback image is complete and RT0 is final_rt0 already: no rebind.
+            if (result.fallback) { result.unwind = true; result.unwind_reason = "tonemap"; }
+            return result;
+        }
         result.unwind = true;
         if (SUCCEEDED(result.draw)) { result.source = HdrWritebackSource::Shader; result.unwind_reason = "restore"; }
         else {

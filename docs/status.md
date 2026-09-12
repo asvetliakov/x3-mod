@@ -168,6 +168,26 @@ Evidence at this checkpoint (details in the linked documents):
   model (`exposure_reference.py`), `src/temporal/agx.hlsl` + `agx.h` (constants
   c8–c21), 32 tests; not compiled or wired.
 
+- **FP16 HDR scene path, stage 2 ([implementation](architecture/hdr-scene-path.md)
+  "Stage 2 implementation", [verification](verification/hdr-scene-path.md),
+  [review 23](verification/review-23.md))**: `X3M_HDR_TONEMAP=agx`
+  (`--hdr-tonemap`, default off = stage-1 identity) writes the FP16 scene back
+  through AgX (looks none/golden/punchy, decode gamma2.2/sRGB/none, optional
+  clamp, alpha carried) with automatic exposure from a GPU log-luminance meter
+  chain (1×1 R32F ring read back one frame later, host adaptation τ 0.4 s up /
+  1.2 s down, EV range −8..+8, manual EV override). Fixture: every ramp code
+  is the correctly rounded Python reference (max error ≤ 0.50 code across
+  looks, decodes, clamp and EV settings); meter error 0.063%; EV replay 1.2e-6
+  vs the reference; three injected tonemap faults unwind to identity. Cost
+  +0.33–0.44 ms at 1280×768; the 5120×1440 figure needs a re-measure (one
+  bench showed +1.7 ms with the resolve off). Infinite or NaN scene pixels
+  present white on this backend (documented, host adaptation guarded). The
+  presented image is AgX of a gamma-space FP16 scene (approximation), still
+  LDR to the game's bloom and GUI; nothing gameplay-verified.
+
+**Installed (2026-09-12, after review 23):** `build/d3d9.dll` from the HDR
+stage-2 checkpoint, SHA-256 `db63e120afcbb38e1382f22dffb96fb6030bbab50d1c3faf2b5587e055ce7e3d`, through `tools/manage.py install`.
+
 **Installed (2026-09-12, after review 22):** `build/d3d9.dll` from the HDR
 stage-1 checkpoint, SHA-256 `4f46feee7d9204bd7fbae55378d6e15fb0c2bfe81fddb7e4c64fa0ca84388a8d`, through `tools/manage.py install`.
 
@@ -388,6 +408,10 @@ each run.
    (and `--scene-hook` if run 2 was clean). The image must look identical;
    read `hdr_device`, the `hdr_frame` end distribution, any `hdr_unwind` /
    `hdr_recheck`, and check the alt-tab cursor.
+5. **Run 5 — first tonemapped look**: run 4 plus `--hdr-tonemap agx`
+   (optionally `--hdr-look golden`, `--hdr-ev -1`). Expect a different
+   contrast curve and adapting brightness; report what looks wrong. Read the
+   `hdr_frame` ev/luma fields and `hdr_tonemap`.
 
 ## Concrete next work
 
@@ -405,9 +429,10 @@ each run.
 4. Confirm the scene-end hook in gameplay (`--scene-hook` run: the
    `scene_end_check` and `draws_after_hook` distributions), then make it the
    default resolve point.
-5. HDR stage 2 (AgX tonemap + exposure at the write-back), stage 3 (TAA on
-   HDR), stage 4 (radiance clamp removal), stage 5 (HDR bloom) per the
-   [design](architecture/hdr-scene-path.md); continue the roadmap.
+5. HDR stage 3 (TAA on HDR with luminance weighting), stage 4 (radiance
+   clamp removal), stage 5 (HDR bloom) per the
+   [design](architecture/hdr-scene-path.md); re-measure the 5120×1440 stage-2
+   cost; continue the roadmap.
 6. Loading-time gap and alt-tab cursor remain tracked.
 
 ## Replay/admission line (reference only, superseded 2026-09-12)

@@ -36,6 +36,9 @@ enum class Metric : unsigned {
     HdrWritebackStretch, // the emergency StretchRect rung (only when the draw failed)
     HdrBind,             // an explicit rebind of RT0 at the end of a write-back (unwind or nothing to write)
     HdrRecheck,          // the recovery self test at a latch while blocked
+    // Stage 2 (AgX tonemap and exposure meter).
+    HdrMeter,            // the meter chain's draws inside the write-back bracket (auto exposure)
+    HdrMeterReadback,    // the lagged 1x1 readback lock and adaptation step at the latch
     Count
 };
 struct Counter {

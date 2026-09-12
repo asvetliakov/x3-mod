@@ -12,7 +12,7 @@
   },
   "game_launched": false,
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "b2b7adb667e8ef26d21a123e718e9c67961bc67259aa31f5506aa13911f113d4",
+  "executable_sha256": "3ffb3c3f0c77a4f0250b8d243c99461eef3d4dc14015819de624cdca83c0b2b3",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",

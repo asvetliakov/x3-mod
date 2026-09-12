@@ -51,7 +51,13 @@ def main():
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
     parser.add_argument('--scene-hook', action='store_true', help='Patch the frame routine\'s compositing callsite (0x004721b1, exact executable only) so the route learns the scene end from the engine and, with --taa, resolves there before the glow pass instead of at the bloom copy (X3M_SCENE_HOOK=1; requires --motion-output; default off until a gameplay run confirms it)')
-    parser.add_argument('--hdr', action='store_true', help='FP16 HDR scene path, stage 1 (X3M_HDR=1; requires --motion-output): the scene renders into an owned A16B16G16R16F target bound as RT0 at the latching Clear and is written back into the game\'s 8-bit main target with an identity tonemap at the scene end (--scene-hook, else the bloom copy, else EndScene/Present); fails closed on the capability gate and self test; presented frames equal the non-HDR frames to within one 8-bit code (docs/architecture/hdr-scene-path.md, "Stage 1 implementation")')
+    parser.add_argument('--hdr', action='store_true', help='FP16 HDR scene path (X3M_HDR=1; requires --motion-output): the scene renders into an owned A16B16G16R16F target bound as RT0 at the latching Clear and is written back into the game\'s 8-bit main target at the scene end (--scene-hook, else the bloom copy, else EndScene/Present); fails closed on the capability gate and self test. Without --hdr-tonemap the write-back is the stage-1 identity copy and presented frames equal the non-HDR frames to within one 8-bit code (docs/architecture/hdr-scene-path.md, "Stage 1 implementation")')
+    parser.add_argument('--hdr-tonemap', action='store_true', help='Stage 2 (X3M_HDR_TONEMAP=agx; requires --hdr): the write-back is the AgX tonemap of the FP16 scene (decode, clamp, exposure, look; alpha carried), auto exposure metered by the log-luminance reduction chain over the FP16 target and adapted on the host (tau 0.4 s up / 1.2 s down); the presented image is still LDR to the game\'s bloom and GUI, and the decode of a gamma-space scene is a documented approximation ("Stage 2 implementation"); default off: identity write-back')
+    parser.add_argument('--hdr-look', choices=['none', 'golden', 'punchy'], default='none', help='AgX look (X3M_HDR_LOOK; requires --hdr-tonemap; default none)')
+    parser.add_argument('--hdr-decode', choices=['gamma2.2', 'pow22', 'srgb', 'none'], default='gamma2.2', help='Engine-space decode before the tonemap and the meter (X3M_HDR_DECODE; requires --hdr-tonemap): gamma2.2 (default; pow22 is the same curve), srgb, or none for the A/B against the decoded transform')
+    parser.add_argument('--hdr-ev', type=float, default=0.0, help='Exposure offset in EV added to the auto-exposure target (X3M_HDR_EV; requires --hdr-tonemap; default 0)')
+    parser.add_argument('--hdr-ev-manual', type=float, default=None, help='Fixed EV instead of auto exposure (X3M_HDR_EV_MANUAL; requires --hdr-tonemap): the meter chain does not run; deterministic; clamped to the EV range (X3M_HDR_EV_MIN/MAX, -8..8 by default)')
+    parser.add_argument('--hdr-clamp', type=float, default=0.0, help='Clamp of the decoded scene value before the tonemap, the blunt firefly guard (X3M_HDR_CLAMP; requires --hdr-tonemap; default 0 = off)')
     parser.add_argument('--state-shadow', choices=['on', 'off'], default='on', help='Render-state shadow of the route (X3M_STATE_SHADOW): on (default) hooks SetRenderState and answers the per-draw state queries from the shadow; off issues GetRenderState per query (A/B; requires --motion-output)')
     parser.add_argument('--motion-rt-mode', choices=['perdraw', 'lazy'], default='perdraw', help='RT1/RT2 binding policy of the route: perdraw (default) rebinds around every routed draw; lazy keeps the bindings across consecutive routed draws (A/B experiment, requires --motion-output)')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
@@ -90,6 +96,12 @@ def main():
         parser.error('--scene-hook requires --motion-output.')
     if args.hdr and not args.motion_output:
         parser.error('--hdr requires --motion-output.')
+    if args.hdr_tonemap and not args.hdr:
+        parser.error('--hdr-tonemap requires --hdr.')
+    if not args.hdr_tonemap and (args.hdr_look != 'none' or args.hdr_decode != 'gamma2.2' or args.hdr_ev != 0.0 or args.hdr_ev_manual is not None or args.hdr_clamp != 0.0):
+        parser.error('--hdr-look, --hdr-decode, --hdr-ev, --hdr-ev-manual and --hdr-clamp require --hdr-tonemap.')
+    if not -16.0 <= args.hdr_ev <= 16.0 or (args.hdr_ev_manual is not None and not -16.0 <= args.hdr_ev_manual <= 16.0) or not 0.0 <= args.hdr_clamp <= 65504.0:
+        parser.error('--hdr-ev and --hdr-ev-manual must be within [-16, 16], --hdr-clamp within [0, 65504].')
     if args.state_shadow != 'on' and not args.motion_output:
         parser.error('--state-shadow requires --motion-output.')
     if not 100 <= args.profile_interval_us <= 1000000:
@@ -157,6 +169,12 @@ def main():
         env['X3M_MOTION_RT_MODE'] = args.motion_rt_mode
         env['X3M_SCENE_HOOK'] = '1' if args.scene_hook else '0'
         env['X3M_HDR'] = '1' if args.hdr else '0'
+        env['X3M_HDR_TONEMAP'] = 'agx' if args.hdr_tonemap else 'identity'
+        env['X3M_HDR_LOOK'] = args.hdr_look
+        env['X3M_HDR_DECODE'] = args.hdr_decode
+        env['X3M_HDR_EV'] = repr(args.hdr_ev)
+        env['X3M_HDR_EV_MANUAL'] = '' if args.hdr_ev_manual is None else repr(args.hdr_ev_manual)
+        env['X3M_HDR_CLAMP'] = repr(args.hdr_clamp)
         env['X3M_STATE_SHADOW'] = '1' if args.state_shadow == 'on' else '0'
         env['X3M_PROFILE'] = '1' if args.profile else '0'
         env['X3M_PROFILE_INTERVAL_US'] = str(args.profile_interval_us)

@@ -66,3 +66,21 @@ consumes a matched entry once, reserves its tables at construction and
 allocates nothing per draw. `MotionHistory` remains the two-phase replay
 reference. The device-facing route lives in `src/proxy/motion_output.cpp`; see
 [live motion route](../../docs/architecture/live-motion-route.md).
+
+## FP16 HDR scene path (`hdr_pass.{h,cpp}`, `exposure.{h,cpp}`)
+
+`HdrPass` owns the `A16B16G16R16F` scene target the live route binds as RT0,
+the attach-time capability gate and self test, and the write-back into the
+game's 8-bit target: the stage-1 identity copy (`hdr_writeback_program{,_inc}.h`)
+or, configured with `X3M_HDR_TONEMAP=agx`, the AgX tonemap
+(`hdr_tonemap_program{,_inc}.h`, compiled from `src/temporal/agx.hlsl` with the
+constant block of `src/temporal/agx.h`) preceded by the exposure meter chain
+(`hdr_meter_program.h`: `hdr_meter_{level0,reduce}_program_inc.h`, a 4x-per-axis
+log-luminance reduction into a 1x1 R32F, read back one frame late through a
+two-surface ring). `exposure.{h,cpp}` is the host port of
+`tools/analysis/exposure_reference.py` (target, dt clamp, first-order adaptation
+with separate up/down time constants, manual override, the TAA weighting `k`);
+`verification/analysis/test_exposure_port.py` compiles it natively against the
+reference. Every device call goes through the native vtable slots; the route
+(`src/proxy/motion_output.cpp`) owns the policy. Design and evidence:
+[docs/architecture/hdr-scene-path.md](../../docs/architecture/hdr-scene-path.md).

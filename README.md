@@ -60,10 +60,18 @@ both history options, implies `--motion-jitter`) runs the temporal resolve at th
 copy and presents the resolved image; `--taa-debug` writes the resolved FP16
 image in capture frames. This is the first TAA that reaches the screen; it is
 verified synthetically, not yet in gameplay. `--hdr` (env `X3M_HDR=1`,
-requires `--motion-output`) is stage 1 of the FP16 HDR scene path: the scene
-renders into an owned FP16 target and is written back with an identity
-tonemap, so the picture is unchanged (to within one 8-bit code) while the
-topology is exercised; no tonemapping, exposure or HDR output yet. See
+requires `--motion-output`) is the FP16 HDR scene path: the scene renders
+into an owned FP16 target and is written back into the game's 8-bit target.
+Alone it is stage 1, an identity write-back that leaves the picture unchanged
+(to within one 8-bit code) while the topology is exercised. `--hdr-tonemap`
+(env `X3M_HDR_TONEMAP=agx`) is stage 2: the write-back becomes the AgX
+tonemap of the FP16 scene with auto exposure (a GPU log-luminance meter, host
+adaptation), the looks `--hdr-look none|golden|punchy`, the decode
+`--hdr-decode gamma2.2|srgb|none`, `--hdr-ev` (offset), `--hdr-ev-manual`
+(fixed EV) and `--hdr-clamp`. Honest scope: the presented image is AgX
+tonemapped from a gamma-space FP16 scene (the decode is a documented
+approximation) and is still LDR to the game's bloom and GUI; verified
+against the Python reference synthetically, not in gameplay. See
 [live motion route](docs/architecture/live-motion-route.md),
 [temporal integration](docs/architecture/temporal-integration.md) and the exact
 gameplay commands in
