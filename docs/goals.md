@@ -12,7 +12,7 @@ Preview are both required targets; native Windows runtime behavior is untested.
 | 2 | Modern tonemapping | AgX is implemented and was seen in game at fixed EV 0. Keep AgX. A custom X3 look remains a later tuning task. |
 | 3 | FP16 lighting and HDR emissive | Not started. Requires the material pass; allocating an FP16 target does not complete this goal. |
 | 4 | HDR bloom | Not started; next visual feature after the current integration and user tests. Build on the FP16 target and the existing compositor/glow map. Initial bloom will inherit the current scene-content limitation. |
-| 5 | Automatic exposure | Existing whole-scene log-average meter overexposes black space (about +7 EV). Space-aware tile meter passed independent branch review and both-bottle fixtures; integration, installation and game validation remain. |
+| 5 | Automatic exposure | Existing whole-scene log-average meter overexposes black space (about +7 EV). Space-aware tile meter passed independent branch review and both-bottle fixtures; the reviewed build is integrated and installed; game validation remains. |
 | 6 | New material shaders | Not started. Prerequisite for scene-referred lighting and real HDR, with shader coverage beyond captured scenes. |
 | 7 | GTAO/SSAO | Not started. The motion route supplies R32F depth on RT2. |
 | 8 | Better directional/self shadows | Not started. |
@@ -21,7 +21,7 @@ Preview are both required targets; native Windows runtime behavior is untested.
 | 11 | TAA | **Done and verified in game.** Same-draw motion, engine camera reprojection and scene-end resolve; stable history and removed tremble/shimmer. RCAS sharpen and mip bias were also verified. Candidate defaults 0.75 / −0.5 await an actual 0.75 capture before being enabled; that setting is currently modeled, not measured in game. |
 | 12 | Volumetric nebula/fog | Not started. |
 | 13 | Depth-aware lens effects | Not started. |
-| 14 | Additional improvements | Loading reduced from 87 s to about 34–38 s on X3; route-on frame time from 16.9 to 12.1 ms in the recorded comparisons. Crypto cache, reader and adjacency fixes passed independent review and scoped fixtures. All still need integrated installation and game acceptance. Diagnostic timings are not uninstrumented game FPS. |
+| 14 | Additional improvements | Loading reduced from 87 s to about 34–38 s on X3; route-on frame time from 16.9 to 12.1 ms in the recorded comparisons. Crypto cache, reader and adjacency fixes passed independent review and scoped fixtures. All are installed in the integrated build and still need game acceptance. Diagnostic timings are not uninstrumented game FPS. |
 | 15 | macOS menu bar | Not started. Also track the separate game/macOS double cursor after alt-tab; first compare with vanilla. |
 | 16 | Clustered forward lighting | Not started. Material and light reconstruction precede implementation. |
 
@@ -42,11 +42,13 @@ they are not a measured final-image baseline.
    not close review 31 or establish native-Windows runtime behavior.
 2. Crypto cache reviewed/fixed and merged from `8794a5d` (572 checks per bottle);
    space-aware exposure branch `e897011` reviewed/fixed and merged
-   (98 motion/HDR cases per bottle). Neither change is installed or accepted
-   by a game run yet.
+   (98 motion/HDR cases per bottle). Both changes are installed at qualification
+   checkpoint `c85c5b5`;
+   game acceptance remains pending.
 3. Reader/adjacency review and affected fixtures are complete (review 31).
    Checkpoint `ae03d9a` is committed. Combined selected motion/HDR and
-   CryptoAPI checks and independent artifact review passed; install next.
+   CryptoAPI checks and independent artifact review passed. Qualification
+   checkpoint `c85c5b5` is installed and its bytes and run commands verified.
 4. Ask the user for the handoff's six controlled run groups: crypto, reader verify
    then fast, adjacency verify then fast, sharpen 0.75, new exposure, vanilla
    cursor comparison. Reader fast requires zero verification mismatches;

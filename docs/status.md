@@ -11,31 +11,33 @@ AgX is implemented, was seen at fixed exposure, and is retained. FP16 scene
 redirection exists, but the lighting is still the game's gamma-space output
 decoded into FP16: scene-referred HDR and HDR display output are not complete.
 The whole-scene auto-exposure meter is wrong for space; its replacement has
-passed branch review and awaits integrated installation and game validation. Loading is down from 87 s to about
+passed review, is integrated and installed, and awaits game validation. Loading is down from 87 s to about
 34–38 s in the recorded X3 runs. See the reconciled [goal checklist](goals.md),
 [full user objective](user-objective.md) and [roadmap](architecture/roadmap.md).
 Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
 
-Current work: review 30 is committed and installed; crypto is reviewed and
-merged, the reviewed exposure branch is merged, and the reader has
-passed 4,721 checks plus independent artifact review. Adjacency output
-preservation and cache/hook qualification are accepted on both bottles:
-X3 computed all 37 retained meshes; Steam used native fallback for all 37.
-The final combined rendering checks passed all eleven selected cases
-(1,156 checks / 435 frames), and merged X3 CryptoAPI passed 572 checks.
-Independent final artifact review passed; the candidate DLL is ready for installation;
-then request
-the [controlled run groups](verification/next-runs-2026-09-13.md) from handoff
-section 5. **Current install:** review-30 checkpoint `3124e0b`, SHA-256
-`d648594bf346f8ccc8d5e476bcc26345d16741974f76c5b3769017075712e825`, bottle X3.
-The agent never launches the game. Installed at resumption was review-29 build
-`a34c389`, SHA-256 `4abd56b3a77682594756c8805f6f1661c35f8f7b611a297f312bfec2d00855a8`.
-Main resumed at `f4d2384`; fixes called “uncommitted” in the historical notes
-were captured in WIP commit `1c8322e`. Review findings and later installs will
-be recorded below. Older run lists and completion claims below are historical;
-the current checklist and September 13 handoff supersede them.
+Current work: reviews 30–34 are complete, crypto and space-aware exposure are
+merged, reader/adjacency fixes are qualified, and the integrated build is
+installed in bottle X3. **Current install:** qualification checkpoint `c85c5b5`
+(production source `ae03d9a`), SHA-256
+`ae2482fd5146c62898fbe20c45441d9d14183d705c50e3d03872094ec635b193`.
+The next step is the user's [controlled run groups](verification/next-runs-2026-09-13.md),
+starting with crypto loading. The agent never launches the game. Gameplay
+acceptance of these new changes remains pending.
+
+Installation was verified against the build and app-local manifest; X3AP.exe
+and cxbottle.conf are unchanged. All eight command variants passed post-install
+`--dry-run`; an independent Sol/high review reproduced their exact command and
+environment records and verified the installed files and rollback hashes.
+The previous review-30 DLL and manifest are retained in the local
+rollback directory recorded by
+[integrated-install-20260913.json](../verification/results/integrated-install-20260913.json).
+Review 30 was `3124e0b`, SHA-256
+`d648594bf346f8ccc8d5e476bcc26345d16741974f76c5b3769017075712e825`;
+the resumption started with review 29 (`a34c389`). Older entries below describe
+historical checkpoints and do not override this installed state or the goals.
 
 The [run-16 offline comparison](verification/run16-exposure-baseline.md) recovers
 seven unresolved HDR inputs. Applying the candidate policy to them yields +2 EV
@@ -69,9 +71,9 @@ check; CLI dry-run and six crypto host controls pass. Full integrated fixture
 qualification follows the adjacency/reader work before installation. The
 approximately 4× signature-fixture speedup is not a measured game load saving.
 
-## Combined DLL qualification (2026-09-13; installation pending)
+## Combined DLL qualification and installation (2026-09-13)
 
-Frozen source `ae03d9a` produced candidate SHA-256
+Frozen source `ae03d9a` produced installed DLL SHA-256
 `ae2482fd5146c62898fbe20c45441d9d14183d705c50e3d03872094ec635b193`.
 [Review 34](verification/review-34-integration.md) records eleven validated
 selected motion/HDR cases (not a full-suite pass), all ten shader checks,
