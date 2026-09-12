@@ -247,11 +247,38 @@ class Iteration09Log(unittest.TestCase):
         self.assertEqual(s['per_stage']['no_route_record']['0']['SRGBTEXTURE'], {'1': 1})
 
     def test_sampler_missing_states(self):
+        # This synthetic log predates the mip-bias capture (no state 8/9 lines).
         s = self.report['samplers']
         self.assertIn('MIPMAPLODBIAS', s['states_not_recorded'])
         self.assertEqual(s['sharpness_states_missing'], ['MIPMAPLODBIAS'])
         self.assertEqual(sorted(s['states_recorded']),
                          ['MAGFILTER', 'MAXANISOTROPY', 'MINFILTER', 'MIPFILTER', 'SRGBTEXTURE'])
+        self.assertIn('predates', s['note'])
+
+    def test_sampler_lod_bias_recorded(self):
+        # capture.cpp since the mip-bias work logs MIPMAPLODBIAS raw plus
+        # bias=<float> (-0.5 is 0xbf000000 = 3204448256) and MAXMIPLEVEL raw.
+        lines = self.log.read_text().splitlines()
+        first = next(i for i, l in enumerate(lines) if l.startswith('draw device=1 frame=21 index=0 '))
+        lines[first + 1:first + 1] = ['sampler stage=0 state=8 value=3204448256 bias=-0.5',
+                                      'sampler stage=0 state=9 value=0',
+                                      'sampler stage=1 state=8 value=0 bias=0',
+                                      'sampler stage=1 state=9 value=0']
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'biased.log'
+            path.write_text('\n'.join(lines) + '\n')
+            s = tool.analyze(path, width=1280, height=768)['samplers']
+        self.assertEqual(s['per_stage']['routed_matched']['0']['MIPMAPLODBIAS'], {'-0.5': 1})
+        self.assertEqual(s['per_stage']['routed_matched']['0']['MAXMIPLEVEL'], {'0': 1})
+        self.assertEqual(s['per_stage']['routed_matched']['1']['MIPMAPLODBIAS'], {'0': 1})
+        self.assertNotIn('MIPMAPLODBIAS', s['states_not_recorded'])
+        self.assertEqual(s['sharpness_states_missing'], [])
+        self.assertIn('MIPMAPLODBIAS', s['states_recorded'])
+        self.assertIn('MAXMIPLEVEL', s['states_recorded'])
+        self.assertNotIn('predates', s['note'])
+        # A stage whose recorded states are all at the defaults (bias 0,
+        # MAXMIPLEVEL 0 included) stays a default stage.
+        self.assertEqual(s['default_stages']['rejected_gate4'], [0])
 
     def test_witnesses(self):
         self.assertEqual(self.report['witnesses']['motion_output_target'], 1)

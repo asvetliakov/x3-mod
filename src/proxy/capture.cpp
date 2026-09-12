@@ -40,6 +40,11 @@ bool motion_output_requested = false;
 bool motion_jitter_requested = false;
 bool taa_requested = false, taa_debug_requested = false;
 float taa_k_override = -1.f; // X3M_TAA_K (stage 3): fixed k of the resolve's luminance weighting on the HDR path; negative: derived from the exposure
+// X3M_TAA_MIP_BIAS=<float> (default 0 = off, bit-identical; -0.5 intended):
+// D3DSAMP_MIPMAPLODBIAS the route applies to the mip-mapped stages of routed
+// draws while the jitter is on (docs/architecture/temporal-integration.md,
+// "Mip LOD bias"); installs the light SetTexture/SetSamplerState hooks.
+float taa_mip_bias = 0.f;
 // X3M_HDR=1 (default off; requires X3M_MOTION_OUTPUT=1): the FP16 HDR scene
 // path (docs/architecture/hdr-scene-path.md). Stage 2 switches, all
 // defaulting to the stage-1 identity behaviour: X3M_HDR_TONEMAP=agx|identity,
@@ -363,7 +368,7 @@ void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT
     for (DWORD i=0; i<16; ++i) {
         IDirect3DBaseTexture9* texture = nullptr;
         if (SUCCEEDED(d->GetTexture(i,&texture)) && texture) {
-            log("texture stage=%lu ptr=%p type=%u identity=%llu",i,texture,texture->GetType(),resource_id(texture));
+            log("texture stage=%lu ptr=%p type=%u identity=%llu levels=%lu",i,texture,texture->GetType(),resource_id(texture),texture->GetLevelCount());
             if (texture->GetType()==D3DRTYPE_TEXTURE) {
                 D3DSURFACE_DESC desc{};
                 if (SUCCEEDED(static_cast<IDirect3DTexture9*>(texture)->GetLevelDesc(0,&desc)))
@@ -375,6 +380,15 @@ void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT
             DWORD value = 0;
             if (SUCCEEDED(d->GetSamplerState(i,state,&value))) log("sampler stage=%lu state=%u value=%lu",i,state,value);
         }
+        // The LOD bias is a float bit pattern in the DWORD: logged raw (same
+        // line shape as above) and reinterpreted; MAXMIPLEVEL shows whether
+        // level 0 of the chain is reachable (sampler-states-and-mips.md, 5).
+        DWORD value = 0;
+        if (SUCCEEDED(d->GetSamplerState(i,D3DSAMP_MIPMAPLODBIAS,&value))) {
+            float bias = 0.f; memcpy(&bias,&value,sizeof bias);
+            log("sampler stage=%lu state=%u value=%lu bias=%g",i,unsigned(D3DSAMP_MIPMAPLODBIAS),value,double(bias));
+        }
+        if (SUCCEEDED(d->GetSamplerState(i,D3DSAMP_MAXMIPLEVEL,&value))) log("sampler stage=%lu state=%u value=%lu",i,unsigned(D3DSAMP_MAXMIPLEVEL),value);
     }
     IDirect3DVertexDeclaration9* declaration = nullptr;
     if (SUCCEEDED(d->GetVertexDeclaration(&declaration)) && declaration) {
@@ -1015,6 +1029,35 @@ HRESULT WINAPI set_render_state(IDirect3DDevice9* d,D3DRENDERSTATETYPE state,DWO
     if(SUCCEEDED(hr))ctx.motion_output.set_render_state(state,value);
     return hr;
 }
+// Mip LOD bias (X3M_TAA_MIP_BIAS, installed only with a non-zero bias): the
+// application's texture bindings and MIPFILTER/MIPMAPLODBIAS writes feed the
+// route's sampler shadow. Light boundary like the other hot setters: integer
+// stores on both sides of the native call. The texture's level count is read
+// once per pointer change, inside the native section, from the object the
+// application just passed (valid by the call's own contract); GetLevelCount
+// is a D3D runtime accessor like the native SetTexture beside it, an
+// indirect call check_no_x87.py does not walk (same as the native slot).
+HRESULT WINAPI set_texture(IDirect3DDevice9* d,DWORD stage,IDirect3DBaseTexture9* texture){
+    LightCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    PlainHookGuard lock;auto& ctx=*devices.at(d);
+    const bool query=ctx.motion_output.texture_levels_wanted(stage,texture);
+    cpu.before_original();
+    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,IDirect3DBaseTexture9*)>(65)(d,stage,texture);
+    const DWORD levels=SUCCEEDED(hr)&&query?texture->GetLevelCount():0;
+    cpu.after_original();
+    if(SUCCEEDED(hr))ctx.motion_output.set_texture(stage,texture,levels,query);
+    return hr;
+}
+HRESULT WINAPI set_sampler_state(IDirect3DDevice9* d,DWORD stage,D3DSAMPLERSTATETYPE type,DWORD value){
+    LightCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    PlainHookGuard lock;auto& ctx=*devices.at(d);
+    cpu.before_original();
+    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,D3DSAMPLERSTATETYPE,DWORD)>(69)(d,stage,type,value);cpu.after_original();
+    if(SUCCEEDED(hr))ctx.motion_output.set_sampler_state(stage,type,value);
+    return hr;
+}
 // Lazy mode only: an application read of a write mask the route holds must
 // see the application's own value (the other half of the lazy-mode hole).
 HRESULT WINAPI get_render_state(IDirect3DDevice9* d,D3DRENDERSTATETYPE state,DWORD* value){
@@ -1153,6 +1196,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_cut_bounds(motion_cut_median_px,motion_cut_missing);
     hooked.motion_output.configure_taa(taa_requested,taa_debug_requested);
     hooked.motion_output.configure_taa_k(taa_k_override);
+    hooked.motion_output.configure_mip_bias(taa_mip_bias);
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
     hooked.motion_output.configure_sentinel(taa_sentinel_mode,camera_cut_degrees,camera_log_frames);
@@ -1184,6 +1228,8 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         // mode needs the same hook with the shadow off (X3M_STATE_SHADOW=0):
         // an application write to a held write mask must flush the binding first.
         if(hooked.motion_output.state_shadow()||hooked.motion_output.lazy_rt_mode())hooked.set(57,set_render_state);
+        // Mip LOD bias: the sampler shadow's two light setter hooks (only with a non-zero bias).
+        if(hooked.motion_output.mip_bias_active()){hooked.set(65,set_texture);hooked.set(69,set_sampler_state);}
         // Lazy binding: the application's target and write-mask getters restore first.
         if(hooked.motion_output.lazy_rt_mode()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);hooked.set(58,get_render_state);}
         // HDR redirect: the application's GetRenderTarget(0) and its reads of
@@ -1267,6 +1313,10 @@ void initialize_log(HMODULE module) {
     // exposure (0 is a valid override, so a failed conversion, which wcstof
     // reports as 0, must not be taken: the whole string has to be consumed).
     if(GetEnvironmentVariableW(L"X3M_TAA_K",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=65504.f)taa_k_override=v;}
+    // X3M_TAA_MIP_BIAS=<bias> (-8 <= bias <= 8, whole string consumed; 0, unset
+    // or invalid: off): requires the route with the jitter (X3M_TAA=1 or
+    // X3M_MOTION_JITTER=1); the bias is applied only while the jitter is active.
+    if(motion_jitter_requested && GetEnvironmentVariableW(L"X3M_TAA_MIP_BIAS",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=-8.f&&v<=8.f)taa_mip_bias=v;}
     // The FP16 HDR scene path (stage 1: redirect, identity write-back) needs
     // the route's hooks and selector.
     hdr_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_HDR",setting,32)==1 && setting[0]==L'1';
@@ -1303,9 +1353,9 @@ void initialize_log(HMODULE module) {
     }
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s camera_cut_deg=%.2f camera_log=%u state_shadow=%u scene_hook=%u hdr=%u taa_k=%.5f",
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s camera_cut_deg=%.2f camera_log=%u state_shadow=%u scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g",
         motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log,
-        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames,motion_state_shadow,scene_hook_requested,hdr_requested,taa_k_override);
+        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames,motion_state_shadow,scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias));
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     if(telemetry::enabled())loading_trace::initialize();

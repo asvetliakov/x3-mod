@@ -1,41 +1,46 @@
 motion_capture_mode requested=0 enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0
-motion_output_mode requested=0 scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=0 taa=0 taa_debug=0 jitter=0 jitter_samples=8 cut_median_px=48.000 cut_missing=0.250 rt_mode=perdraw frame_log=60 sentinel=auto camera_cut_deg=20.00 camera_log=300 state_shadow=1 scene_hook=0 hdr=0 taa_k=-1.00000
+motion_output_mode requested=0 scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=0 taa=0 taa_debug=0 jitter=0 jitter_samples=8 cut_median_px=48.000 cut_missing=0.250 rt_mode=perdraw frame_log=60 sentinel=auto camera_cut_deg=20.00 camera_log=300 state_shadow=1 scene_hook=0 hdr=0 taa_k=-1.00000 mip_bias=0
 x3-modern-renderer version=0.4 schema=2 capture_start=1 capture_frames=1 pointer_bits=32
-telemetry_start schema=1 qpc_frequency=10000000 qpc=9496541318011 anchor=proxy_initialize cpu_only=1 per_draw=0
+telemetry_start schema=1 qpc_frequency=10000000 qpc=9537158730598 anchor=proxy_initialize cpu_only=1 per_draw=0
 application_admission_mode requested=0 enabled=0 live_replay=0 coverage_complete=0
-telemetry_span name=backend_load qpc_begin=9496541323078 qpc_end=9496542047447 thread=908 success=1 error=0
+telemetry_span name=backend_load qpc_begin=9537158735580 qpc_end=9537159401526 thread=844 success=1 error=0
 backend path=C:\windows\system32\d3d9.dll
 object_trace active=0 status=disabled recovery_required=0
 camera_state active=0 status=disabled
 scene_hook active=0 status=disabled
 object_lifetime active=0 status=disabled recovery_required=0 baseline_complete=0 baseline_entries=0
-telemetry_span name=direct3d_create9 qpc_begin=9496542051110 qpc_end=9496551399353 thread=908 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9537159405361 qpc_end=9537168015597 thread=844 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_summary device=0 frame=0 reason=interval qpc=9496551410921 since_start_us=1009291.000 interval_us=1009291.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=1 failures=0 total_us=144.100 min_us=144.100 max_us=144.100 bytes=0 buckets=0,0,1,0,0,0
-telemetry_presentation phase=create_before device=0 thread=908 focus_window=000d006a device_window=000d006a width=320 height=200 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=844 focus_window=0017005a device_window=0017005a width=320 height=200 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=320 height=200 format=0 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=908 focus_window=000d006a device_window=000d006a width=320 height=200 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=844 focus_window=0017005a device_window=0017005a width=320 height=200 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
-device_hooked ptr=00d4fed8 device=1 ex=0
+device_hooked ptr=0011b140 device=1 ex=0
 shader kind=ps id=c294f234bcdafae7 bytes=20 dumped=1
-telemetry_first_present device=1 frame=0 qpc=9496552271752 since_start_us=1095374.100 capture=0 reset_count=0
-telemetry_window_context device=1 frame=0 render_thread=908 window_thread=908 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
-telemetry_window device=1 frame=0 qpc=9496552276002 window=000d006a foreground=00000000 thread_focus=00000000 iconic=0 visible=1 style=14cf0000 exstyle=00000100 window_rect=80,80,420,320 client_rect=0,0,332,206
-telemetry_cursor_poll device=1 frame=0 qpc=9496552276002 flags=1 cursor=00000000 x=834 y=442
-telemetry_present_window device=1 frame=0 override=00000000 device_window=000d006a result=00000000
+telemetry_summary device=0 frame=0 reason=interval qpc=9537168745848 since_start_us=1001525.000 interval_us=1001525.000 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=15 failures=0 total_us=5.700 min_us=0.100 max_us=1.200 bytes=0 buckets=15,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=50972.800 min_us=50972.800 max_us=50972.800 bytes=0 buckets=0,0,0,0,1,0
+telemetry_metric device=0 name=shader_inspect count=1 failures=0 total_us=1252.200 min_us=1252.200 max_us=1252.200 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=shader_getfunction count=1 failures=0 total_us=32.800 min_us=32.800 max_us=32.800 bytes=0 buckets=0,1,0,0,0,0
+telemetry_metric device=0 name=shader_hash count=1 failures=0 total_us=0.400 min_us=0.400 max_us=0.400 bytes=20 buckets=1,0,0,0,0,0
+telemetry_metric device=0 name=shader_dump count=1 failures=0 total_us=1175.600 min_us=1175.600 max_us=1175.600 bytes=20 buckets=0,0,0,1,0,0
+telemetry_first_present device=1 frame=0 qpc=9537168752276 since_start_us=1002167.800 capture=0 reset_count=0
+telemetry_window_context device=1 frame=0 render_thread=844 window_thread=844 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
+telemetry_window device=1 frame=0 qpc=9537168763953 window=0017005a foreground=00000000 thread_focus=00000000 iconic=0 visible=1 style=14cf0000 exstyle=00000100 window_rect=80,80,420,320 client_rect=0,0,332,206
+telemetry_cursor_poll device=1 frame=0 qpc=9537168763953 flags=1 cursor=00000000 x=-1512 y=0
+telemetry_present_window device=1 frame=0 override=00000000 device_window=0017005a result=00000000
 frame_end device=1 frame=0 draws=1 capture=0 present=00000000
 frame_begin device=1 frame=1
-capture_event device=1 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9496552299350
+capture_event device=1 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9537168774848
 clear flags=1 color=ff102030 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-resource identity=1 ptr=00117ce0 type=1
-surface role=clear_rt0 ptr=00117ce0 identity=1 width=320 height=200 format=22 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+resource identity=1 ptr=00c50c78 type=1
+surface role=clear_rt0 ptr=00c50c78 identity=1 width=320 height=200 format=22 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=320 h=200 minz=0 maxz=1
-capture_event device=1 frame=1 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9496552333249
+capture_event device=1 frame=1 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9537168800032
 draw device=1 frame=1 index=1 kind=up topology=4 primitives=1 vs=0000000000000000 ps=c294f234bcdafae7
 geometry source=user_memory
-surface role=rt0 ptr=00117ce0 identity=1 width=320 height=200 format=22 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=00c50c78 identity=1 width=320 height=200 format=22 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=1
 state id=23 value=4
@@ -69,81 +74,113 @@ sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
+sampler stage=0 state=8 value=0 bias=0
+sampler stage=0 state=9 value=0
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
+sampler stage=1 state=8 value=0 bias=0
+sampler stage=1 state=9 value=0
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
+sampler stage=2 state=8 value=0 bias=0
+sampler stage=2 state=9 value=0
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
 sampler stage=3 state=10 value=1
 sampler stage=3 state=11 value=0
+sampler stage=3 state=8 value=0 bias=0
+sampler stage=3 state=9 value=0
 sampler stage=4 state=6 value=1
 sampler stage=4 state=5 value=1
 sampler stage=4 state=7 value=0
 sampler stage=4 state=10 value=1
 sampler stage=4 state=11 value=0
+sampler stage=4 state=8 value=0 bias=0
+sampler stage=4 state=9 value=0
 sampler stage=5 state=6 value=1
 sampler stage=5 state=5 value=1
 sampler stage=5 state=7 value=0
 sampler stage=5 state=10 value=1
 sampler stage=5 state=11 value=0
+sampler stage=5 state=8 value=0 bias=0
+sampler stage=5 state=9 value=0
 sampler stage=6 state=6 value=1
 sampler stage=6 state=5 value=1
 sampler stage=6 state=7 value=0
 sampler stage=6 state=10 value=1
 sampler stage=6 state=11 value=0
+sampler stage=6 state=8 value=0 bias=0
+sampler stage=6 state=9 value=0
 sampler stage=7 state=6 value=1
 sampler stage=7 state=5 value=1
 sampler stage=7 state=7 value=0
 sampler stage=7 state=10 value=1
 sampler stage=7 state=11 value=0
+sampler stage=7 state=8 value=0 bias=0
+sampler stage=7 state=9 value=0
 sampler stage=8 state=6 value=1
 sampler stage=8 state=5 value=1
 sampler stage=8 state=7 value=0
 sampler stage=8 state=10 value=1
 sampler stage=8 state=11 value=0
+sampler stage=8 state=8 value=0 bias=0
+sampler stage=8 state=9 value=0
 sampler stage=9 state=6 value=1
 sampler stage=9 state=5 value=1
 sampler stage=9 state=7 value=0
 sampler stage=9 state=10 value=1
 sampler stage=9 state=11 value=0
+sampler stage=9 state=8 value=0 bias=0
+sampler stage=9 state=9 value=0
 sampler stage=10 state=6 value=1
 sampler stage=10 state=5 value=1
 sampler stage=10 state=7 value=0
 sampler stage=10 state=10 value=1
 sampler stage=10 state=11 value=0
+sampler stage=10 state=8 value=0 bias=0
+sampler stage=10 state=9 value=0
 sampler stage=11 state=6 value=1
 sampler stage=11 state=5 value=1
 sampler stage=11 state=7 value=0
 sampler stage=11 state=10 value=1
 sampler stage=11 state=11 value=0
+sampler stage=11 state=8 value=0 bias=0
+sampler stage=11 state=9 value=0
 sampler stage=12 state=6 value=1
 sampler stage=12 state=5 value=1
 sampler stage=12 state=7 value=0
 sampler stage=12 state=10 value=1
 sampler stage=12 state=11 value=0
+sampler stage=12 state=8 value=0 bias=0
+sampler stage=12 state=9 value=0
 sampler stage=13 state=6 value=1
 sampler stage=13 state=5 value=1
 sampler stage=13 state=7 value=0
 sampler stage=13 state=10 value=1
 sampler stage=13 state=11 value=0
+sampler stage=13 state=8 value=0 bias=0
+sampler stage=13 state=9 value=0
 sampler stage=14 state=6 value=1
 sampler stage=14 state=5 value=1
 sampler stage=14 state=7 value=0
 sampler stage=14 state=10 value=1
 sampler stage=14 state=11 value=0
+sampler stage=14 state=8 value=0 bias=0
+sampler stage=14 state=9 value=0
 sampler stage=15 state=6 value=1
 sampler stage=15 state=5 value=1
 sampler stage=15 state=7 value=0
 sampler stage=15 state=10 value=1
 sampler stage=15 state=11 value=0
+sampler stage=15 state=8 value=0 bias=0
+sampler stage=15 state=9 value=0
 vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
 vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
 vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
@@ -235,56 +272,54 @@ motion_input device=1 frame=1 index=1 blockers=00000fff proofs=16 position_path=
 motion_geometry device=1 frame=1 index=1 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=1 index=1 result=00000000
 frame_end device=1 frame=1 draws=1 capture=1 present=00000000
-telemetry_presentation phase=reset_before device=1 thread=908 focus_window=000d006a device_window=000d006a width=320 height=200 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
-reset_begin ptr=00d4fed8 device=1
-telemetry_presentation phase=reset_after device=1 thread=908 focus_window=000d006a device_window=000d006a width=320 height=200 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
-telemetry_summary device=1 frame=2 reason=reset qpc=9496552574039 since_start_us=1125602.800 interval_us=42525.500 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=416.300 min_us=416.300 max_us=416.300 bytes=0 buckets=0,0,1,0,0,0
-telemetry_metric device=1 name=present_capture count=1 failures=0 total_us=15.000 min_us=15.000 max_us=15.000 bytes=0 buckets=0,1,0,0,0,0
-telemetry_metric device=1 name=frame_capture count=1 failures=0 total_us=16443.900 min_us=16443.900 max_us=16443.900 bytes=0 buckets=0,0,0,0,1,0
-telemetry_metric device=1 name=capture_cpu count=2 failures=0 total_us=3857.100 min_us=507.100 max_us=3350.000 bytes=0 buckets=0,0,1,1,0,0
-telemetry_metric device=1 name=snapshot count=1 failures=0 total_us=1270.600 min_us=1270.600 max_us=1270.600 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=1 name=shader_ps_backend count=1 failures=0 total_us=708.200 min_us=708.200 max_us=708.200 bytes=0 buckets=0,0,1,0,0,0
-telemetry_metric device=1 name=texture count=1 failures=0 total_us=266.600 min_us=266.600 max_us=266.600 bytes=0 buckets=0,0,1,0,0,0
-telemetry_metric device=1 name=reset count=1 failures=0 total_us=13402.200 min_us=13402.200 max_us=13402.200 bytes=0 buckets=0,0,0,0,1,0
-telemetry_metric device=1 name=log_flush count=2 failures=0 total_us=2.200 min_us=0.600 max_us=1.600 bytes=0 buckets=2,0,0,0,0,0
+telemetry_presentation phase=reset_before device=1 thread=844 focus_window=0017005a device_window=0017005a width=320 height=200 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+reset_begin ptr=0011b140 device=1
+telemetry_presentation phase=reset_after device=1 thread=844 focus_window=0017005a device_window=0017005a width=320 height=200 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_summary device=1 frame=2 reason=reset qpc=9537168959826 since_start_us=1022922.800 interval_us=31877.400 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=386.600 min_us=386.600 max_us=386.600 bytes=0 buckets=0,0,1,0,0,0
+telemetry_metric device=1 name=present_capture count=1 failures=0 total_us=7.400 min_us=7.400 max_us=7.400 bytes=0 buckets=1,0,0,0,0,0
+telemetry_metric device=1 name=frame_capture count=1 failures=0 total_us=12698.300 min_us=12698.300 max_us=12698.300 bytes=0 buckets=0,0,0,0,1,0
+telemetry_metric device=1 name=capture_cpu count=2 failures=0 total_us=3791.400 min_us=321.900 max_us=3469.500 bytes=0 buckets=0,0,1,1,0,0
+telemetry_metric device=1 name=snapshot count=1 failures=0 total_us=1404.200 min_us=1404.200 max_us=1404.200 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=1 name=shader_ps_backend count=1 failures=0 total_us=688.500 min_us=688.500 max_us=688.500 bytes=0 buckets=0,0,1,0,0,0
+telemetry_metric device=1 name=texture count=1 failures=0 total_us=247.800 min_us=247.800 max_us=247.800 bytes=0 buckets=0,0,1,0,0,0
+telemetry_metric device=1 name=reset count=1 failures=0 total_us=7645.700 min_us=7645.700 max_us=7645.700 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=1 name=log_flush count=2 failures=0 total_us=1.200 min_us=0.400 max_us=0.800 bytes=0 buckets=2,0,0,0,0,0
 reset_end device=1 result=00000000
-telemetry_first_present device=1 frame=2 qpc=9496552585627 since_start_us=1126761.600 capture=0 reset_count=1
-telemetry_summary device=1 frame=3 reason=device_destroy qpc=9496552651028 since_start_us=1133301.700 interval_us=7698.900 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=10.600 min_us=10.600 max_us=10.600 bytes=0 buckets=0,1,0,0,0,0
-telemetry_metric device=1 name=log_flush count=2 failures=0 total_us=0.900 min_us=0.200 max_us=0.700 bytes=0 buckets=2,0,0,0,0,0
-telemetry_summary device=0 frame=3 reason=device_destroy qpc=9496552651581 since_start_us=1133357.000 interval_us=124066.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=29 failures=0 total_us=21.700 min_us=0.100 max_us=7.900 bytes=0 buckets=29,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=59937.200 min_us=59937.200 max_us=59937.200 bytes=0 buckets=0,0,0,0,1,0
-telemetry_metric device=0 name=shader_inspect count=2 failures=0 total_us=2247.400 min_us=4.900 max_us=2242.500 bytes=0 buckets=1,0,0,1,0,0
-telemetry_metric device=0 name=shader_getfunction count=2 failures=0 total_us=35.000 min_us=2.100 max_us=32.900 bytes=0 buckets=1,1,0,0,0,0
-telemetry_metric device=0 name=shader_hash count=2 failures=0 total_us=0.500 min_us=0.200 max_us=0.300 bytes=40 buckets=2,0,0,0,0,0
-telemetry_metric device=0 name=shader_dump count=1 failures=0 total_us=2032.000 min_us=2032.000 max_us=2032.000 bytes=20 buckets=0,0,0,1,0,0
-telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=25.100 min_us=25.100 max_us=25.100 bytes=0 buckets=0,1,0,0,0,0
-device_destroy ptr=00d4fed8 device=1
+telemetry_first_present device=1 frame=2 qpc=9537168968260 since_start_us=1023766.200 capture=0 reset_count=1
+telemetry_summary device=1 frame=3 reason=device_destroy qpc=9537169036784 since_start_us=1030618.600 interval_us=7695.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=5.700 min_us=5.700 max_us=5.700 bytes=0 buckets=1,0,0,0,0,0
+telemetry_metric device=1 name=log_flush count=2 failures=0 total_us=0.700 min_us=0.300 max_us=0.400 bytes=0 buckets=2,0,0,0,0,0
+telemetry_summary device=0 frame=3 reason=device_destroy qpc=9537169037237 since_start_us=1030663.900 interval_us=29138.900 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=15 failures=0 total_us=3.300 min_us=0.100 max_us=0.700 bytes=0 buckets=15,0,0,0,0,0
+telemetry_metric device=0 name=shader_inspect count=1 failures=0 total_us=2.000 min_us=2.000 max_us=2.000 bytes=0 buckets=1,0,0,0,0,0
+telemetry_metric device=0 name=shader_getfunction count=1 failures=0 total_us=0.700 min_us=0.700 max_us=0.700 bytes=0 buckets=1,0,0,0,0,0
+telemetry_metric device=0 name=shader_hash count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=20 buckets=1,0,0,0,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=30.500 min_us=30.500 max_us=30.500 bytes=0 buckets=0,1,0,0,0,0
+device_destroy ptr=0011b140 device=1
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_presentation phase=create_before device=0 thread=908 focus_window=000d006a device_window=000d006a width=320 height=200 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=844 focus_window=0017005a device_window=0017005a width=320 height=200 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=320 height=200 format=22 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=908 focus_window=000d006a device_window=000d006a width=320 height=200 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=844 focus_window=0017005a device_window=0017005a width=320 height=200 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
-device_hooked ptr=00d4fed8 device=2 ex=0
-telemetry_first_present device=2 frame=0 qpc=9496552713680 since_start_us=1139566.900 capture=0 reset_count=0
-telemetry_window_context device=2 frame=0 render_thread=908 window_thread=908 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
-telemetry_window device=2 frame=0 qpc=9496552713858 window=000d006a foreground=00000000 thread_focus=00000000 iconic=0 visible=1 style=14cf0000 exstyle=00000100 window_rect=80,80,420,320 client_rect=0,0,332,206
-telemetry_cursor_poll device=2 frame=0 qpc=9496552713858 flags=1 cursor=00000000 x=834 y=442
-telemetry_present_window device=2 frame=0 override=00000000 device_window=000d006a result=00000000
+device_hooked ptr=0011b140 device=2 ex=0
+telemetry_first_present device=2 frame=0 qpc=9537169088401 since_start_us=1035780.300 capture=0 reset_count=0
+telemetry_window_context device=2 frame=0 render_thread=844 window_thread=844 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
+telemetry_window device=2 frame=0 qpc=9537169088486 window=0017005a foreground=00000000 thread_focus=00000000 iconic=0 visible=1 style=14cf0000 exstyle=00000100 window_rect=80,80,420,320 client_rect=0,0,332,206
+telemetry_cursor_poll device=2 frame=0 qpc=9537169088486 flags=1 cursor=00000000 x=-1512 y=0
+telemetry_present_window device=2 frame=0 override=00000000 device_window=0017005a result=00000000
 frame_end device=2 frame=0 draws=1 capture=0 present=00000000
 frame_begin device=2 frame=1
-capture_event device=2 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9496552715885
+capture_event device=2 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9537169090124
 clear flags=1 color=ff102030 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-resource identity=2 ptr=00117d20 type=1
-surface role=clear_rt0 ptr=00117d20 identity=2 width=320 height=200 format=22 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+resource identity=2 ptr=00c50cb8 type=1
+surface role=clear_rt0 ptr=00c50cb8 identity=2 width=320 height=200 format=22 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=320 h=200 minz=0 maxz=1
-capture_event device=2 frame=1 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9496552719206
+capture_event device=2 frame=1 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9537169093045
 draw device=2 frame=1 index=1 kind=up topology=4 primitives=1 vs=0000000000000000 ps=c294f234bcdafae7
 geometry source=user_memory
-surface role=rt0 ptr=00117d20 identity=2 width=320 height=200 format=22 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=00c50cb8 identity=2 width=320 height=200 format=22 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=1
 state id=23 value=4
@@ -318,81 +353,113 @@ sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
+sampler stage=0 state=8 value=0 bias=0
+sampler stage=0 state=9 value=0
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
+sampler stage=1 state=8 value=0 bias=0
+sampler stage=1 state=9 value=0
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
+sampler stage=2 state=8 value=0 bias=0
+sampler stage=2 state=9 value=0
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
 sampler stage=3 state=10 value=1
 sampler stage=3 state=11 value=0
+sampler stage=3 state=8 value=0 bias=0
+sampler stage=3 state=9 value=0
 sampler stage=4 state=6 value=1
 sampler stage=4 state=5 value=1
 sampler stage=4 state=7 value=0
 sampler stage=4 state=10 value=1
 sampler stage=4 state=11 value=0
+sampler stage=4 state=8 value=0 bias=0
+sampler stage=4 state=9 value=0
 sampler stage=5 state=6 value=1
 sampler stage=5 state=5 value=1
 sampler stage=5 state=7 value=0
 sampler stage=5 state=10 value=1
 sampler stage=5 state=11 value=0
+sampler stage=5 state=8 value=0 bias=0
+sampler stage=5 state=9 value=0
 sampler stage=6 state=6 value=1
 sampler stage=6 state=5 value=1
 sampler stage=6 state=7 value=0
 sampler stage=6 state=10 value=1
 sampler stage=6 state=11 value=0
+sampler stage=6 state=8 value=0 bias=0
+sampler stage=6 state=9 value=0
 sampler stage=7 state=6 value=1
 sampler stage=7 state=5 value=1
 sampler stage=7 state=7 value=0
 sampler stage=7 state=10 value=1
 sampler stage=7 state=11 value=0
+sampler stage=7 state=8 value=0 bias=0
+sampler stage=7 state=9 value=0
 sampler stage=8 state=6 value=1
 sampler stage=8 state=5 value=1
 sampler stage=8 state=7 value=0
 sampler stage=8 state=10 value=1
 sampler stage=8 state=11 value=0
+sampler stage=8 state=8 value=0 bias=0
+sampler stage=8 state=9 value=0
 sampler stage=9 state=6 value=1
 sampler stage=9 state=5 value=1
 sampler stage=9 state=7 value=0
 sampler stage=9 state=10 value=1
 sampler stage=9 state=11 value=0
+sampler stage=9 state=8 value=0 bias=0
+sampler stage=9 state=9 value=0
 sampler stage=10 state=6 value=1
 sampler stage=10 state=5 value=1
 sampler stage=10 state=7 value=0
 sampler stage=10 state=10 value=1
 sampler stage=10 state=11 value=0
+sampler stage=10 state=8 value=0 bias=0
+sampler stage=10 state=9 value=0
 sampler stage=11 state=6 value=1
 sampler stage=11 state=5 value=1
 sampler stage=11 state=7 value=0
 sampler stage=11 state=10 value=1
 sampler stage=11 state=11 value=0
+sampler stage=11 state=8 value=0 bias=0
+sampler stage=11 state=9 value=0
 sampler stage=12 state=6 value=1
 sampler stage=12 state=5 value=1
 sampler stage=12 state=7 value=0
 sampler stage=12 state=10 value=1
 sampler stage=12 state=11 value=0
+sampler stage=12 state=8 value=0 bias=0
+sampler stage=12 state=9 value=0
 sampler stage=13 state=6 value=1
 sampler stage=13 state=5 value=1
 sampler stage=13 state=7 value=0
 sampler stage=13 state=10 value=1
 sampler stage=13 state=11 value=0
+sampler stage=13 state=8 value=0 bias=0
+sampler stage=13 state=9 value=0
 sampler stage=14 state=6 value=1
 sampler stage=14 state=5 value=1
 sampler stage=14 state=7 value=0
 sampler stage=14 state=10 value=1
 sampler stage=14 state=11 value=0
+sampler stage=14 state=8 value=0 bias=0
+sampler stage=14 state=9 value=0
 sampler stage=15 state=6 value=1
 sampler stage=15 state=5 value=1
 sampler stage=15 state=7 value=0
 sampler stage=15 state=10 value=1
 sampler stage=15 state=11 value=0
+sampler stage=15 state=8 value=0 bias=0
+sampler stage=15 state=9 value=0
 vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
 vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
 vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
@@ -484,31 +551,31 @@ motion_input device=2 frame=1 index=1 blockers=00000fff proofs=16 position_path=
 motion_geometry device=2 frame=1 index=1 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=2 frame=1 index=1 result=00000000
 frame_end device=2 frame=1 draws=1 capture=1 present=00000000
-telemetry_presentation phase=reset_before device=2 thread=908 focus_window=000d006a device_window=000d006a width=320 height=200 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
-reset_begin ptr=00d4fed8 device=2
-telemetry_presentation phase=reset_after device=2 thread=908 focus_window=000d006a device_window=000d006a width=320 height=200 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
-telemetry_summary device=2 frame=2 reason=reset qpc=9496552810692 since_start_us=1149268.100 interval_us=12079.400 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=2 name=present_normal count=1 failures=0 total_us=28.400 min_us=28.400 max_us=28.400 bytes=0 buckets=0,1,0,0,0,0
-telemetry_metric device=2 name=present_capture count=1 failures=0 total_us=8.600 min_us=8.600 max_us=8.600 bytes=0 buckets=1,0,0,0,0,0
-telemetry_metric device=2 name=frame_capture count=1 failures=0 total_us=4173.500 min_us=4173.500 max_us=4173.500 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=2 name=capture_cpu count=2 failures=0 total_us=584.400 min_us=31.300 max_us=553.100 bytes=0 buckets=0,1,1,0,0,0
-telemetry_metric device=2 name=snapshot count=1 failures=0 total_us=489.300 min_us=489.300 max_us=489.300 bytes=0 buckets=0,0,1,0,0,0
-telemetry_metric device=2 name=shader_ps_backend count=1 failures=0 total_us=9.800 min_us=9.800 max_us=9.800 bytes=0 buckets=1,0,0,0,0,0
-telemetry_metric device=2 name=texture count=1 failures=0 total_us=6.900 min_us=6.900 max_us=6.900 bytes=0 buckets=1,0,0,0,0,0
-telemetry_metric device=2 name=reset count=1 failures=0 total_us=5366.400 min_us=5366.400 max_us=5366.400 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=2 name=log_flush count=2 failures=0 total_us=1.100 min_us=0.500 max_us=0.600 bytes=0 buckets=2,0,0,0,0,0
+telemetry_presentation phase=reset_before device=2 thread=844 focus_window=0017005a device_window=0017005a width=320 height=200 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+reset_begin ptr=0011b140 device=2
+telemetry_presentation phase=reset_after device=2 thread=844 focus_window=0017005a device_window=0017005a width=320 height=200 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_summary device=2 frame=2 reason=reset qpc=9537169165435 since_start_us=1043483.700 interval_us=9815.000 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=2 name=present_normal count=1 failures=0 total_us=12.800 min_us=12.800 max_us=12.800 bytes=0 buckets=0,1,0,0,0,0
+telemetry_metric device=2 name=present_capture count=1 failures=0 total_us=6.900 min_us=6.900 max_us=6.900 bytes=0 buckets=1,0,0,0,0,0
+telemetry_metric device=2 name=frame_capture count=1 failures=0 total_us=2652.500 min_us=2652.500 max_us=2652.500 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=2 name=capture_cpu count=2 failures=0 total_us=592.600 min_us=26.900 max_us=565.700 bytes=0 buckets=0,1,1,0,0,0
+telemetry_metric device=2 name=snapshot count=1 failures=0 total_us=520.500 min_us=520.500 max_us=520.500 bytes=0 buckets=0,0,1,0,0,0
+telemetry_metric device=2 name=shader_ps_backend count=1 failures=0 total_us=7.700 min_us=7.700 max_us=7.700 bytes=0 buckets=1,0,0,0,0,0
+telemetry_metric device=2 name=texture count=1 failures=0 total_us=4.500 min_us=4.500 max_us=4.500 bytes=0 buckets=1,0,0,0,0,0
+telemetry_metric device=2 name=reset count=1 failures=0 total_us=4918.800 min_us=4918.800 max_us=4918.800 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=2 name=log_flush count=2 failures=0 total_us=0.900 min_us=0.400 max_us=0.500 bytes=0 buckets=2,0,0,0,0,0
 reset_end device=2 result=00000000
-telemetry_first_present device=2 frame=2 qpc=9496552820517 since_start_us=1150250.600 capture=0 reset_count=1
-telemetry_summary device=2 frame=3 reason=device_destroy qpc=9496552891440 since_start_us=1157342.900 interval_us=8074.800 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=2 name=present_normal count=1 failures=0 total_us=10.100 min_us=10.100 max_us=10.100 bytes=0 buckets=0,1,0,0,0,0
-telemetry_metric device=2 name=log_flush count=2 failures=0 total_us=0.800 min_us=0.300 max_us=0.500 bytes=0 buckets=2,0,0,0,0,0
-telemetry_summary device=0 frame=3 reason=device_destroy qpc=9496552891932 since_start_us=1157392.100 interval_us=24035.100 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=29 failures=0 total_us=5.900 min_us=0.000 max_us=0.800 bytes=0 buckets=29,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2886.200 min_us=2886.200 max_us=2886.200 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=0 name=shader_inspect count=2 failures=0 total_us=4.900 min_us=2.000 max_us=2.900 bytes=0 buckets=2,0,0,0,0,0
+telemetry_first_present device=2 frame=2 qpc=9537169173791 since_start_us=1044319.300 capture=0 reset_count=1
+telemetry_summary device=2 frame=3 reason=device_destroy qpc=9537169218164 since_start_us=1048756.600 interval_us=5272.900 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=2 name=present_normal count=1 failures=0 total_us=4.600 min_us=4.600 max_us=4.600 bytes=0 buckets=1,0,0,0,0,0
+telemetry_metric device=2 name=log_flush count=2 failures=0 total_us=0.500 min_us=0.200 max_us=0.300 bytes=0 buckets=2,0,0,0,0,0
+telemetry_summary device=0 frame=3 reason=device_destroy qpc=9537169218519 since_start_us=1048792.100 interval_us=18128.200 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=29 failures=0 total_us=4.800 min_us=0.100 max_us=0.400 bytes=0 buckets=29,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2270.400 min_us=2270.400 max_us=2270.400 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=shader_inspect count=2 failures=0 total_us=3.700 min_us=1.600 max_us=2.100 bytes=0 buckets=2,0,0,0,0,0
 telemetry_metric device=0 name=shader_getfunction count=2 failures=0 total_us=1.400 min_us=0.500 max_us=0.900 bytes=0 buckets=2,0,0,0,0,0
-telemetry_metric device=0 name=shader_hash count=2 failures=0 total_us=0.500 min_us=0.100 max_us=0.400 bytes=40 buckets=2,0,0,0,0,0
+telemetry_metric device=0 name=shader_hash count=2 failures=0 total_us=0.400 min_us=0.200 max_us=0.200 bytes=40 buckets=2,0,0,0,0,0
 telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
-device_destroy ptr=00d4fed8 device=2
+device_destroy ptr=0011b140 device=2
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0

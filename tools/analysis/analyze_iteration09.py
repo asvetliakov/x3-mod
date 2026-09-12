@@ -142,6 +142,11 @@ def scan(path, device='1'):
         elif event == 'sampler' and draw is not None:
             f = it07.fields(line)
             stage, state, value = (it07.number(f.get(k)) for k in ('stage', 'state', 'value'))
+            # MIPMAPLODBIAS is a float bit pattern in the DWORD; capture.cpp
+            # logs the raw value and, since the mip-bias work, `bias=<float>`,
+            # which is the value worth tabulating (-0.5, not 3204448256).
+            if state == 8 and f.get('bias') is not None:
+                value = f['bias']
             if stage is not None and state is not None:
                 draw['samplers'].setdefault(stage, {})[state] = value
                 states_seen[SAMPLER_STATES.get(state, 'state%d' % state)] += 1
@@ -342,7 +347,7 @@ def camera_report(cameras, width=1280, height=768, detail=True):
 # ---- 4. sampler census --------------------------------------------------------------
 
 DEFAULT_STAGE = {'MINFILTER': {'POINT'}, 'MAGFILTER': {'POINT'}, 'MIPFILTER': {'NONE'},
-                 'MAXANISOTROPY': {'1'}, 'SRGBTEXTURE': {'0'}}
+                 'MAXANISOTROPY': {'1'}, 'SRGBTEXTURE': {'0'}, 'MIPMAPLODBIAS': {'0'}, 'MAXMIPLEVEL': {'0'}}
 
 
 def is_default_stage(names):
@@ -381,8 +386,11 @@ def sampler_report(scan_result):
         'stage0_signatures': [{'class': k[0], 'min': k[1], 'mag': k[2], 'mip': k[3], 'aniso': k[4],
                                'srgb': k[5], 'draws': n}
                               for k, n in scan_result['stage0'].most_common(20)],
-        'note': ('capture.cpp records only the sampler states it enumerates; a texture LOD bias '
-                 'decision needs D3DSAMP_MIPMAPLODBIAS, which is not among them')}
+        'note': ('capture.cpp records the sampler states it enumerates; MIPMAPLODBIAS and MAXMIPLEVEL '
+                 'are among them since the mip-bias work (logged raw and as bias=<float>)'
+                 if 'MIPMAPLODBIAS' in seen else
+                 'capture.cpp records only the sampler states it enumerates; a texture LOD bias '
+                 'decision needs D3DSAMP_MIPMAPLODBIAS, which this log predates')}
 
 
 # ---- 5. the resolve's own low-pass (model, not a measurement) -----------------------

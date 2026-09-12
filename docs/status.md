@@ -449,6 +449,12 @@ Completed since the evening handoff:
   674/675 (one import error from the in-flight `bottle` module). Bench: HDR
   TAA 1.935 ms vs 8-bit 2.317 ms at 5120×1440. Verdict: go, `--taa-k` unset
   by default; not yet seen in game.
+- **Mip LOD bias (TAA blur fix, sampler half)** — `--taa-mip-bias -0.5`
+  (`X3M_TAA_MIP_BIAS`, default off, next to `--taa-k`): the route biases the
+  mip-mapped stages of routed material draws while the jitter is on and
+  restores before every other draw, at the scene end and before Reset;
+  capture now logs `MIPMAPLODBIAS`/`MAXMIPLEVEL`. Fixture evidence in
+  [taa-mip-bias.md](verification/taa-mip-bias.md); not yet seen in game.
 - **New-bottle loading profile** —
   [loading-profile-bottle-x3.md](reverse-engineering/loading-profile-bottle-x3.md).
   FEX removed the adjacency bottleneck (GenerateAdjacency 69.15 s → 3.13 s per

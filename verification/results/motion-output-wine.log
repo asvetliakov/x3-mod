@@ -1,4 +1,6 @@
 ==== production-off
+msync: bootstrapped mach port on wine-1f859fc-msync.
+msync: up and running.
 ==== production-on
 ==== seam-off
 ==== seam-on
@@ -88,3 +90,13 @@
 ==== production-taa-hdr-tonemap-on
 ==== seam-taa-hook-hdr-tonemap-on
 ==== seam-taa-hdr-tonemap-fault
+==== production-mipbias-off
+==== production-mipbias-zero
+==== production-mipbias-on
+==== production-mipbias-on1
+==== seam-mipbias-on
+==== seam-mipbias-lazy-on
+==== seam-taa-mipbias-on
+==== production-taa-mipbias-on
+==== seam-jitter-mipbias-zero
+==== seam-taa-lazy-mipbias-on
