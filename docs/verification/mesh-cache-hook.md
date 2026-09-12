@@ -192,7 +192,7 @@ while descriptors are deliberately false.
 
 Current retained evidence is `verification/results/mesh-cache-hook-summary.json`
 and its six raw reports. Native off/on/fault cases pass 1,714/2,003/2,011 checks;
-wrapped off/on/fault cases pass 2,189/2,673/2,681 checks (13,271 total; run of
+wrapped off/on/fault cases pass 2,189/2,673/2,681 checks (13,271 total, reconfirmed after the adjacency parity rewrite on 2026-09-12; run of
 2026-09-12). Each enabled case records 40 core calls, 21 hits, 17 misses, one
 recursive contention fallback and one unsupported-FP bypass (an unmasked x87
 denormal exception, control `0x007d`; the earlier alternate-control bypass is now

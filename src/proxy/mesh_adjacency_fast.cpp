@@ -101,11 +101,14 @@ inline float score(const Vec& n,const Vec& m) noexcept {
 // the comparisons `key[right] <= key[left]` (choose the right child) and
 // `key[element] < key[child]` (stop), then repeated extraction to the end, so
 // the array ends in descending key order with the heap's permutation among
-// equal keys. Le/Lt are those two comparisons.
-template<class Le,class Lt> void heapsort(uint32_t* a,uint32_t n,Le le,Lt lt) noexcept {
-    for(uint32_t i=0;i<n;++i)a[i]=i;
+// equal keys. Each element carries its key in the upper 32 bits as an integer
+// code with the float order of finite keys (-0 == +0) and its vertex index
+// below, so a comparison reads only the heap array (the indirection through the
+// vertices cost most of the sort). Le/Lt are the two comparisons.
+inline uint32_t order_code(uint32_t bits) noexcept { bits=normalize_zero(bits);return (bits&0x80000000u)?~bits:(bits|0x80000000u); }
+template<class Le,class Lt> void heapsort(uint64_t* a,uint32_t n,Le le,Lt lt) noexcept {
     if(n<2)return;
-    auto sift=[&](uint32_t element,uint32_t pos,uint32_t child,uint32_t size) noexcept {
+    auto sift=[&](uint64_t element,uint32_t pos,uint32_t child,uint32_t size) noexcept {
         while(child<size){
             uint32_t chosen=child;
             if(child+1<size&&le(a[child+1],a[child]))chosen=child+1;
@@ -115,7 +118,7 @@ template<class Le,class Lt> void heapsort(uint32_t* a,uint32_t n,Le le,Lt lt) no
         a[pos]=element;
     };
     for(uint32_t i=(n>>1);i-->0;)sift(a[i],i,2*i+1,n);
-    for(uint32_t m=n;m-->0;){const uint32_t element=a[m];a[m]=a[0];sift(element,0,1,m);}
+    for(uint32_t m=n;m-->0;){const uint64_t element=a[m];a[m]=a[0];sift(element,0,1,m);}
 }
 // A directed edge is identified by its id = face * 3 + point; its corners are
 // corners[face*3 + point], corners[face*3 + (point+1)%3] and the third corner,
@@ -123,9 +126,15 @@ template<class Le,class Lt> void heapsort(uint32_t* a,uint32_t n,Le le,Lt lt) no
 // edge (whose corners are the slot's key; it stays valid after its chain
 // empties, as a tombstone) and the chain head.
 struct Slot { uint32_t anchor,head; };
-struct NormalCache { // lazily malloc'd only when a chain offers several candidates
-    Vec* normals=nullptr;unsigned char* ready=nullptr;
+struct NormalCache { // lazily malloc'd only when a chain offers several candidates; without it normals are recomputed per candidate
+    Vec* normals=nullptr;unsigned char* ready=nullptr;bool tried=false;
     ~NormalCache(){std::free(normals);std::free(ready);}
+    void acquire(size_t count) noexcept {
+        if(tried)return;
+        tried=true;normals=static_cast<Vec*>(std::malloc(count*sizeof(Vec)));ready=static_cast<unsigned char*>(std::malloc(count));
+        if(!normals||!ready){std::free(normals);std::free(ready);normals=nullptr;ready=nullptr;return;}
+        std::memset(ready,0,count);
+    }
 };
 }
 const char* status_name(unsigned status) noexcept {
@@ -145,13 +154,17 @@ Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexce
     const uint32_t V=in.vertex_count,F=in.face_count;
     if(!in.vertices||!in.indices||!adjacency||V<3||!F||in.stride<12||in.position_offset>in.stride-12||
        F>unused/3||!(in.epsilon>=0.f)||std::isinf(in.epsilon))return report; // Status::Input (D3DX needs V/3 edge buckets)
+    // D3DX's 16-bit class treats a face whose first index is 0xffff as absent in
+    // the adjacency stage; with more than 65,535 vertices that index names a real
+    // vertex, which the module would pair. Such meshes are left to native.
+    if(!in.indices_32bit&&V>0xffffu)return report;
     // The 4x squared-distance margin of the gate needs a normal float epsilon^2.
     if(in.epsilon>0.f&&!std::isnormal(in.epsilon*in.epsilon))return report;
     // Arena layout (bytes): persistent arrays, then the larger of the two phase
     // scratches (representative table; unquantized-gate cell hash).
     const uint64_t E=uint64_t(F)*3,vertex_slots=table_size(V),edge_slots=table_size(E);
-    const uint64_t persistent=padded(uint64_t(V)*sizeof(Vec))*(in.position_offset?2:1)+padded(uint64_t(V)*4)*5+padded(E*4)*4+padded(F)+padded(edge_slots*sizeof(Slot));
-    const uint64_t phase_rep=padded(vertex_slots*4);
+    const uint64_t persistent=padded(uint64_t(V)*sizeof(Vec))*(in.position_offset?2:1)+padded(uint64_t(V)*4)*5+padded(E*4)*4+padded(F)+padded(E)+padded(edge_slots*sizeof(Slot));
+    const uint64_t phase_rep=padded(vertex_slots*4)>padded(uint64_t(V)*8)?padded(vertex_slots*4):padded(uint64_t(V)*8); // representative table; heapsort elements
     const uint64_t phase_gate=padded(table_size(V)*4)+padded(uint64_t(V)*4)+padded(uint64_t(V)*12);
     const uint64_t total=persistent+(phase_rep>phase_gate?phase_rep:phase_gate);
     if(total>uint64_t(SIZE_MAX/2)){report.status=Status::Allocation;return report;}
@@ -167,7 +180,7 @@ Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexce
     auto* positions=scratch.array<Vec>(V);auto* head=in.position_offset?scratch.array<Vec>(V):positions;auto* cls=scratch.array<uint32_t>(V);auto* rep=scratch.array<uint32_t>(V);
     auto* order=scratch.array<uint32_t>(V);auto* class_next=scratch.array<uint32_t>(V);auto* corner_head=scratch.array<uint32_t>(V);
     auto* raw=scratch.array<uint32_t>(size_t(E));auto* corner_next=scratch.array<uint32_t>(size_t(E));auto* corners=scratch.array<uint32_t>(size_t(E));auto* next=scratch.array<uint32_t>(size_t(E));
-    auto* active=scratch.array<unsigned char>(F);auto* slots=scratch.array<Slot>(size_t(edge_slots));
+    auto* active=scratch.array<unsigned char>(F);auto* retired=scratch.array<unsigned char>(size_t(E));auto* slots=scratch.array<Slot>(size_t(edge_slots));
     const size_t persistent_mark=scratch.mark();
     if(scratch.overflow()){report.status=Status::Allocation;return report;}
     const auto* bytes=static_cast<const unsigned char*>(in.vertices);
@@ -286,24 +299,43 @@ Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexce
         // window of keys within epsilon below the current one; under the gate the
         // vertices that pass its distance test are exactly the class members, so
         // each class is threaded in sweep order and walked from the representative.
-        if(policy.heap_order)heapsort(order,V,[&](uint32_t a,uint32_t b) noexcept {return head[a].x<=head[b].x;},[&](uint32_t a,uint32_t b) noexcept {return head[a].x<head[b].x;});
-        else heapsort(order,V,[&](uint32_t a,uint32_t b) noexcept {return head[a].x<head[b].x||(head[a].x==head[b].x&&a>=b);},[&](uint32_t a,uint32_t b) noexcept {return head[a].x<head[b].x||(head[a].x==head[b].x&&a>b);});
-        // Thread each class in sweep order: walking the order backwards and
-        // prepending makes class_next[v] the member that follows v; rep[] holds
-        // the class heads meanwhile and is reset afterwards.
-        std::memset(class_next,0xff,size_t(V)*sizeof(uint32_t));
-        for(uint32_t i=V;i-->0;){const uint32_t v=order[i],c=cls[v];class_next[v]=rep[c];rep[c]=v;}
-        std::memset(rep,0xff,size_t(V)*sizeof(uint32_t));
-        const double eps=double(in.epsilon);
-        for(uint32_t i=0;i<V;++i){
-            const uint32_t v=order[i];
-            if(rep[v]!=unused)continue;
-            rep[v]=v;
-            for(uint32_t w=class_next[v];w!=unused;w=class_next[w]){
-                if(eps<double(head[v].x)-double(head[w].x))break; // outside D3DX's key window (only possible when the key is not the position)
-                if(rep[w]!=unused)continue;
-                if(policy.weld_refusal&&shares_face(v,w)){++report.refused_welds;continue;}
-                rep[w]=v;
+        // Under the gate the sweep order decides only which member of a class is
+        // its representative and how a class splits when a weld is refused. With
+        // the position at byte 0 (class members share the key, so the window
+        // never cuts a class) and no face referencing two distinct vertices of one
+        // class (so no refusal is possible), every class welds whole onto whichever
+        // member comes first, and the output does not depend on which one: face
+        // adjacency only compares representatives for equality and the score
+        // normals read identical positions. The sort is then skipped and the
+        // class's lowest index stands in for the heap's choice.
+        bool order_matters=head!=positions;
+        for(uint32_t f=0;f<F&&!order_matters;++f){const uint32_t* r=raw+size_t(f)*3;order_matters=(r[0]!=r[1]&&cls[r[0]]==cls[r[1]])||(r[1]!=r[2]&&cls[r[1]]==cls[r[2]])||(r[0]!=r[2]&&cls[r[0]]==cls[r[2]]);}
+        if(!order_matters){for(uint32_t v=0;v<V;++v)rep[v]=cls[v];}
+        else{
+            auto* packed=scratch.array<uint64_t>(V);
+            if(scratch.overflow()){report.status=Status::Allocation;return report;}
+            for(uint32_t v=0;v<V;++v){uint32_t bits;std::memcpy(&bits,&head[v].x,sizeof bits);packed[v]=uint64_t(order_code(bits))<<32|v;}
+            if(policy.heap_order)heapsort(packed,V,[](uint64_t a,uint64_t b) noexcept {return (a>>32)<=(b>>32);},[](uint64_t a,uint64_t b) noexcept {return (a>>32)<(b>>32);});
+            else heapsort(packed,V,[](uint64_t a,uint64_t b) noexcept {return (a>>32)<(b>>32)||((a>>32)==(b>>32)&&uint32_t(a)>=uint32_t(b));},[](uint64_t a,uint64_t b) noexcept {return (a>>32)<(b>>32)||((a>>32)==(b>>32)&&uint32_t(a)>uint32_t(b));});
+            for(uint32_t i=0;i<V;++i)order[i]=uint32_t(packed[i]);
+            scratch.rewind(persistent_mark);
+            // Thread each class in sweep order: walking the order backwards and
+            // prepending makes class_next[v] the member that follows v; rep[] holds
+            // the class heads meanwhile and is reset afterwards.
+            std::memset(class_next,0xff,size_t(V)*sizeof(uint32_t));
+            for(uint32_t i=V;i-->0;){const uint32_t v=order[i],c=cls[v];class_next[v]=rep[c];rep[c]=v;}
+            std::memset(rep,0xff,size_t(V)*sizeof(uint32_t));
+            const double eps=double(in.epsilon);
+            for(uint32_t i=0;i<V;++i){
+                const uint32_t v=order[i];
+                if(rep[v]!=unused)continue;
+                rep[v]=v;
+                for(uint32_t w=class_next[v];w!=unused;w=class_next[w]){
+                    if(eps<double(head[v].x)-double(head[w].x))break; // outside D3DX's key window (only possible when the key is not the position)
+                    if(rep[w]!=unused)continue;
+                    if(policy.weld_refusal&&shares_face(v,w)){++report.refused_welds;continue;}
+                    rep[w]=v;
+                }
             }
         }
     }
@@ -337,18 +369,22 @@ Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexce
         if(policy.head_insertion||slots[s].head==unused){next[id]=slots[s].head;slots[s].head=id;}
         else{uint32_t tail=slots[s].head;while(next[tail]!=unused)tail=next[tail];next[tail]=id;next[id]=unused;}
     };
-    auto unlink=[&](size_t s,uint32_t pred,uint32_t id) noexcept { if(pred==unused)slots[s].head=next[id];else next[pred]=next[id]; };
-    auto relink=[&](size_t s,uint32_t pred,uint32_t id) noexcept { if(pred==unused){next[id]=slots[s].head;slots[s].head=id;}else{next[id]=next[pred];next[pred]=id;} };
-    auto remove=[&](uint32_t a,uint32_t b,uint32_t id) noexcept { // D3DX FUN_0058a8ff: the entry (a, b, face) leaves its chain
-        const size_t s=slot_of(a,b);if(slots[s].anchor==unused)return;
-        uint32_t pred=unused;for(uint32_t cur=slots[s].head;cur!=unused;pred=cur,cur=next[cur])if(cur==id){unlink(s,pred,cur);return;}
-    };
     for(uint32_t f=0;f<F;++f){if(!active[f])continue;for(uint32_t k=0;k<3;++k)insert(f*3+k);}
+    // D3DX unlinks a matched entry inside the lookup and removes the querying
+    // edge's own entry (FUN_0058a8ff, a chain walk) after a successful lookup. A
+    // retired flag hides an entry from the scans instead: the remaining entries
+    // keep their relative order, the own entry needs no second hash lookup, and
+    // clearing the flag puts a refused entry back at its old chain position, which
+    // is where D3DX relinks it.
+    std::memset(retired,0,size_t(E));
     for(size_t i=0;i<size_t(E);++i)adjacency[i]=unused;
     // Face normals are needed only where a chain offers several candidates; they
     // are then computed once per edge (from the edge's own corner order, as D3DX).
+    // The output contract (written whole only on Ok) forbids failing here, so a
+    // cache that cannot be allocated only costs the recomputation.
     NormalCache cache;
-    auto normal_of=[&](uint32_t id) noexcept -> const Vec& {
+    auto normal_of=[&](uint32_t id) noexcept -> Vec {
+        if(!cache.normals)return face_normal(head,edge_v1(id),edge_v2(id),edge_other(id));
         if(!cache.ready[id]){cache.normals[id]=face_normal(head,edge_v1(id),edge_v2(id),edge_other(id));cache.ready[id]=1;}
         return cache.normals[id];
     };
@@ -360,38 +396,34 @@ Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexce
             if(row[k]!=unused)continue;
             const uint32_t vb=corners[own],va=edge_v2(own); // the reverse edge (va, vb) is looked up
             const size_t s=slot_of(va,vb);
-            uint32_t found=unused,found_pred=unused;
+            uint32_t found=unused;
             if(slots[s].anchor!=unused){
-                unsigned candidates=0;float best=0.f;bool scored=false;uint32_t pred=unused;
-                for(uint32_t cur=slots[s].head;cur!=unused;pred=cur,cur=next[cur]){
+                unsigned candidates=0;float best=0.f;bool scored=false;
+                for(uint32_t cur=slots[s].head;cur!=unused;cur=next[cur]){
+                    if(retired[cur])continue;
                     ++candidates;
-                    if(found==unused){found=cur;found_pred=pred;continue;}
+                    if(found==unused){found=cur;continue;}
                     if(!policy.normal_selection)continue;
-                    if(!cache.normals){
-                        cache.normals=static_cast<Vec*>(std::malloc(size_t(E)*sizeof(Vec)));cache.ready=static_cast<unsigned char*>(std::malloc(size_t(E)));
-                        if(!cache.normals||!cache.ready){report.status=Status::Allocation;return report;}
-                        std::memset(cache.ready,0,size_t(E));
-                    }
+                    cache.acquire(size_t(E));
                     if(!scored){best=score(normal_of(found),normal_of(own));scored=true;}
                     const float candidate=score(normal_of(cur),normal_of(own));
-                    if(best<candidate){best=candidate;found=cur;found_pred=pred;++report.normal_selected;}
+                    if(best<candidate){best=candidate;found=cur;++report.normal_selected;}
                 }
                 if(candidates>1)++report.multi_candidates;
             }
             if(found==unused){
-                if(policy.retire_own_entry)remove(vb,va,own);
+                if(policy.retire_own_entry)retired[own]=1;
                 continue;
             }
             // D3DX: the selected entry is unlinked inside the lookup and the querying
             // edge's own entry is removed after a successful lookup; the
             // single-adjacency check then compares the earlier slots of this face.
-            unlink(s,found_pred,found);
-            remove(vb,va,own);
+            retired[found]=1;retired[own]=1;
             const uint32_t g=found/3;bool repeated=false;
             for(uint32_t j=0;j<(policy.later_slot_check?3u:k);++j)if(j!=k&&row[j]==g)repeated=true;
             if(repeated){
                 ++report.repeated_neighbours;
-                if(!policy.unlink_refused)relink(s,found_pred,found);
+                if(!policy.unlink_refused)retired[found]=0;
                 continue;
             }
             row[k]=g;

@@ -10,7 +10,8 @@ root=Path(__file__).resolve().parents[2];results=bottle.results_dir(root);build=
 native=bottle.game_dir() / 'd3dx9_37.dll'
 paths=[root/name for name in ('src/proxy/capture.h','src/proxy/cpu_state.h','src/proxy/loading_trace.h','src/proxy/loading_trace.cpp','src/proxy/mesh_adjacency_cache.h','src/proxy/mesh_adjacency_cache.cpp','src/proxy/mesh_adjacency_fast.h','src/proxy/mesh_adjacency_fast.cpp','src/ownership/d3d9_ownership.h','src/ownership/d3d9_ownership.cpp', 'src/ownership/application_admission.h', 'src/ownership/application_admission.cpp', 'src/ownership/application_admission_abi.h', 'src/ownership/application_admission_abi.cpp', 'src/ownership/execution_state.cpp', 'src/ownership/execution_state.h', 'src/ownership/finite_buffer_evidence.cpp', 'src/ownership/finite_buffer_evidence.h', 'src/ownership/portable_managed_upload.cpp', 'src/ownership/portable_managed_upload.h','src/ownership/d3d9_classes_inc.h','src/ownership/d3d9_forwarders_inc.h','verification/probe/loading_admission_witness.h','verification/probe/loading_trace_fixture.cpp','verification/probe/loading_trace_stub.cpp','verification/probe/loading_trace_stub.def','verification/probe/loading_codec_stub.cpp','verification/probe/loading_mesh_fixture.cpp','verification/probe/mesh_adjacency_fast_fixture.cpp','verification/probe/build_loading_trace.sh', 'verification/probe/build_admission_dependencies.sh','verification/probe/run_loading_trace.py')]
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-MESH_ADJACENCY_CHECKS=(2179,2219) # exact inventory of the cache-off and cache-on runs (mesh_adjacency_fast_fixture.cpp)
+MESH_ADJACENCY_CHECKS=(33272,33328) # exact inventory of the cache-off and cache-on runs (mesh_adjacency_fast_fixture.cpp: 53 named cases, the 2,000-mesh random sweep, the self-test dump replay, state sweep, hook part)
+ADJACENCY_RANDOM='ADJACENCY_RANDOM trials=2000 equal=2000 mismatched=0 ' # the random differential sweep against d3dx9_37 must be complete and clean
 hashes=lambda:{str(p.relative_to(root)):sha(p) for p in paths}
 report={'passed':False,'phase':'building','admission':int(admission),'game_launched':False, 'bottle':bottle.describe(),'cases':{}}
 (results/('loading-trace-mesh'+suffix+'-summary.json')).write_text(json.dumps(report,indent=2)+'\n')
@@ -45,6 +46,16 @@ try:
             assert computable and all(c['equal']=='1' and c['mismatches']=='0' for c in computable),'Module output differs from native D3DX'
             computable_names={c['name'] for c in computable} # non-computable cases (native fallback) print their policy variants with equal=0 by design
             assert all(p['equal']=='1' for p in report['cases'][case]['policies'] if p['variant']=='default' and p['name'] in computable_names),'Default policy differs from native on tie evidence'
+            random_lines=[line for line in text.splitlines() if line.startswith('ADJACENCY_RANDOM ')]
+            assert len(random_lines)==1 and random_lines[0].startswith(ADJACENCY_RANDOM) and 'ADJACENCY_RANDOM_MISMATCH' not in text,'Random differential sweep against native D3DX: '+(random_lines[0] if random_lines else 'missing')
+            report['cases'][case]['random_sweep']=dict(re.findall(r'(\w+)=([^\s]+)',random_lines[0]))
+            if case=='mesh-adjacency-cache-off':
+                # The fixture wrote the dump of fan-tilted-abc (native and module arrays) into its
+                # working directory; the offline replay tool must read it and reproduce native.
+                replay=subprocess.run(['python3',str(root/'tools/analysis/replay_mesh_adjacency.py'),str(directory/'mesh-adjacency-selftest.bin')],cwd=root,capture_output=True,text=True,timeout=300)
+                summary=[line for line in replay.stdout.splitlines() if line.startswith('REPLAY_SUMMARY ')]
+                assert replay.returncode==0 and summary==['REPLAY_SUMMARY dumps=1 failures=0'],'Self-test dump replay: '+replay.stdout[-2000:]+replay.stderr[-2000:]
+                report['cases'][case]['selftest_replay']=summary[0]
         assert run.returncode==0 and 'failures=0' in text and 'FAIL' not in text,text[-4000:]
         assert before==sha(binary) and dlls=={p.name:sha(p) for p in directory.glob('*.dll')},'Binaries changed during run'
     assert hashes()==report['sources_before_build'] and sha(native)==report['native_before'],'Sources changed during run'

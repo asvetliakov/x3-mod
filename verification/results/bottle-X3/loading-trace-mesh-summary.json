@@ -1,6 +1,6 @@
 {
-  "passed": false,
-  "phase": "failed",
+  "passed": true,
+  "phase": "complete",
   "admission": 0,
   "game_launched": false,
   "bottle": {
@@ -27,13 +27,13 @@
       "checks": 85,
       "wine_log_sha256": "06bb0bf4cb250155ea8c208eb08f13662e526c8f474265eac9a41e565eafaf31",
       "exit_code": 0,
-      "executable_sha256": "f0483ddd20decc27944cf2f06ccf671d9247c64b031838664733c0dc522ebfef",
+      "executable_sha256": "f8be89092fc812d0528a58e72f50cc25adf24a4390c8b46441b839be402ceee1",
       "dll_sha256": {
-        "d3dx9_37.dll": "55ef303252dd1b9bd97df3be725d106cfadc331d884f722114aa0df946afe8ce",
-        "zlib1.dll": "651e9f4679f138ee61c07ec159cdb486b030299bf6479333dc70604a2cb8fa30",
-        "libxml2.dll": "934bdd9c3e6d65279e83f8d68f6930fe943865d7575ad4d5d25e906884f27e09"
+        "d3dx9_37.dll": "014c556b992a4c5de5f36111ed18d31e3a081560c4e8f72442edee9f686c5825",
+        "zlib1.dll": "248a23330fb683f622b8f4375a94573eb96144ad3be6eeae38b98ac6a189fa86",
+        "libxml2.dll": "18a864a6b34e34a2848072ab0269426749f16553e604528c93764d757543b052"
       },
-      "report_sha256": "91a0ef5452f86da3b07e64917a506ed313258a06b610860f4ea3d85f9e56db1c"
+      "report_sha256": "7d6e61f049486fbfe75d68c23cbcd2a87d4c68f9322dacb3fea8925ac15855ab"
     },
     "loading-mesh": {
       "admission_witness": [
@@ -49,11 +49,11 @@
       "checks": 123,
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "exit_code": 0,
-      "executable_sha256": "6320deb5e5e5e2bc81293e2e1b6e6bffb1b416a1da7aa4e1ab1cd3594fad8a3b",
+      "executable_sha256": "3a88dec50c0a3934d12bbe4b4f19517afbf671be65698923402816e8bc4b6765",
       "dll_sha256": {
         "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
       },
-      "report_sha256": "241240e9d627cd4767b93e887f440e844377892307a057080d8fd13626bdec4f"
+      "report_sha256": "e4163d00b05182bb0140a2e1d5c56992ca8b13271516c0c536eaa33847ed8700"
     },
     "mesh-adjacency-cache-off": {
       "admission_witness": [
@@ -66,14 +66,14 @@
         "0",
         "1"
       ],
-      "checks": 2179,
+      "checks": 33272,
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "exit_code": 0,
-      "executable_sha256": "008163c8ac077cabf1ce01707cb608cead5144fb9aefef62043f4442b85935c4",
+      "executable_sha256": "2bf7178b6362c8e78b52ec0c960de7c5e0227feb70698a304990f7b5347bd93c",
       "dll_sha256": {
         "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
       },
-      "report_sha256": "985624a56e12e291a7fb47b2bcd6a2d1c8581d57f06a9886b873cb7a1072e1c0",
+      "report_sha256": "3f6c81ce3328a58c4e0d62fe3f6ac9d92545db87be6ad75243425aa76e3a8219",
       "adjacency_cases": [
         {
           "name": "quad-16",
@@ -87,9 +87,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "489.700",
-          "fast_us": "415.800",
-          "speedup": "1.18",
+          "native_us": "489.800",
+          "fast_us": "914.800",
+          "speedup": "0.54",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -97,7 +97,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "4"
         },
@@ -113,9 +113,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "341.800",
-          "fast_us": "2.300",
-          "speedup": "148.61",
+          "native_us": "337.500",
+          "fast_us": "1.300",
+          "speedup": "259.62",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -123,7 +123,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "4"
         },
@@ -139,9 +139,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "55.800",
-          "fast_us": "2.300",
-          "speedup": "24.26",
+          "native_us": "65.700",
+          "fast_us": "1.500",
+          "speedup": "43.80",
           "quantized": "1",
           "representatives": "4",
           "welded": "2",
@@ -149,7 +149,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "4"
         },
@@ -165,9 +165,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "20.600",
-          "fast_us": "1.700",
-          "speedup": "12.12",
+          "native_us": "17.200",
+          "fast_us": "0.800",
+          "speedup": "21.50",
           "quantized": "1",
           "representatives": "6",
           "welded": "0",
@@ -175,7 +175,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "6"
         },
@@ -191,9 +191,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "16.800",
-          "fast_us": "1.300",
-          "speedup": "12.92",
+          "native_us": "29.200",
+          "fast_us": "0.800",
+          "speedup": "36.50",
           "quantized": "1",
           "representatives": "4",
           "welded": "2",
@@ -201,7 +201,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "4"
         },
@@ -217,9 +217,9 @@
           "equal": "0",
           "mismatches": "0",
           "first": "0",
-          "native_us": "6.200",
+          "native_us": "28.200",
           "fast_us": "0.300",
-          "speedup": "20.67",
+          "speedup": "94.00",
           "quantized": "0",
           "representatives": "0",
           "welded": "0",
@@ -227,7 +227,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "0"
         },
@@ -243,9 +243,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "16.700",
-          "fast_us": "1.200",
-          "speedup": "13.92",
+          "native_us": "5.600",
+          "fast_us": "2.100",
+          "speedup": "2.67",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -253,7 +253,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "4"
         },
@@ -269,9 +269,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "108.100",
-          "fast_us": "1.800",
-          "speedup": "60.06",
+          "native_us": "84.000",
+          "fast_us": "1.500",
+          "speedup": "56.00",
           "quantized": "0",
           "representatives": "4",
           "welded": "0",
@@ -279,7 +279,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "4"
         },
@@ -295,9 +295,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "23.000",
-          "fast_us": "33.700",
-          "speedup": "0.68",
+          "native_us": "5.300",
+          "fast_us": "28.000",
+          "speedup": "0.19",
           "quantized": "0",
           "representatives": "4",
           "welded": "0",
@@ -305,7 +305,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "4"
         },
@@ -321,17 +321,17 @@
           "equal": "0",
           "mismatches": "0",
           "first": "0",
-          "native_us": "15.800",
-          "fast_us": "1.100",
-          "speedup": "14.36",
+          "native_us": "8.900",
+          "fast_us": "1.200",
+          "speedup": "7.42",
           "quantized": "0",
-          "representatives": "4",
+          "representatives": "0",
           "welded": "0",
           "multi_candidates": "0",
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "0"
         },
@@ -347,9 +347,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "315.700",
-          "fast_us": "18.000",
-          "speedup": "17.54",
+          "native_us": "396.400",
+          "fast_us": "63.100",
+          "speedup": "6.28",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -357,7 +357,7 @@
           "normal_selected": "1",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "7"
         },
@@ -373,9 +373,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "16.700",
-          "fast_us": "1.700",
-          "speedup": "9.82",
+          "native_us": "29.600",
+          "fast_us": "0.700",
+          "speedup": "42.29",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -383,7 +383,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "7"
         },
@@ -399,9 +399,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "5.800",
-          "fast_us": "1.800",
-          "speedup": "3.22",
+          "native_us": "47.000",
+          "fast_us": "1.000",
+          "speedup": "47.00",
           "quantized": "1",
           "representatives": "5",
           "welded": "0",
@@ -409,7 +409,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "7"
         },
@@ -425,9 +425,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "16.900",
-          "fast_us": "1.500",
-          "speedup": "11.27",
+          "native_us": "32.800",
+          "fast_us": "1.100",
+          "speedup": "29.82",
           "quantized": "1",
           "representatives": "4",
           "welded": "1",
@@ -435,7 +435,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "7"
         },
@@ -451,9 +451,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "16.700",
-          "fast_us": "1.400",
-          "speedup": "11.93",
+          "native_us": "27.900",
+          "fast_us": "3.600",
+          "speedup": "7.75",
           "quantized": "1",
           "representatives": "4",
           "welded": "1",
@@ -461,7 +461,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "7"
         },
@@ -477,9 +477,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "15",
-          "native_us": "20.000",
-          "fast_us": "2.100",
-          "speedup": "9.52",
+          "native_us": "16.800",
+          "fast_us": "2.000",
+          "speedup": "8.40",
           "quantized": "1",
           "representatives": "6",
           "welded": "0",
@@ -487,7 +487,7 @@
           "normal_selected": "1",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "11"
         },
@@ -503,9 +503,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "17.500",
-          "fast_us": "1.600",
-          "speedup": "10.94",
+          "native_us": "19.000",
+          "fast_us": "0.800",
+          "speedup": "23.75",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -513,7 +513,7 @@
           "normal_selected": "0",
           "degenerate_faces": "2",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "9"
         },
@@ -529,9 +529,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "6.100",
-          "fast_us": "1.200",
-          "speedup": "5.08",
+          "native_us": "35.200",
+          "fast_us": "0.500",
+          "speedup": "70.40",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -539,7 +539,7 @@
           "normal_selected": "0",
           "degenerate_faces": "1",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "6"
         },
@@ -555,17 +555,17 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "6.200",
-          "fast_us": "1.400",
-          "speedup": "4.43",
+          "native_us": "52.100",
+          "fast_us": "1.300",
+          "speedup": "40.08",
           "quantized": "1",
-          "representatives": "4",
-          "welded": "1",
+          "representatives": "5",
+          "welded": "0",
           "multi_candidates": "0",
           "normal_selected": "0",
           "degenerate_faces": "0",
-          "welded_degenerate_faces": "1",
-          "dropped_edges": "2",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
           "repeated_neighbours": "0",
           "unmatched": "7"
         },
@@ -581,17 +581,17 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "8.800",
-          "fast_us": "1.300",
-          "speedup": "6.77",
+          "native_us": "8.600",
+          "fast_us": "0.800",
+          "speedup": "10.75",
           "quantized": "1",
-          "representatives": "4",
-          "welded": "1",
+          "representatives": "5",
+          "welded": "0",
           "multi_candidates": "0",
           "normal_selected": "0",
           "degenerate_faces": "0",
-          "welded_degenerate_faces": "1",
-          "dropped_edges": "2",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
           "repeated_neighbours": "0",
           "unmatched": "6"
         },
@@ -607,17 +607,17 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "13.000",
-          "fast_us": "1.200",
-          "speedup": "10.83",
+          "native_us": "16.400",
+          "fast_us": "0.700",
+          "speedup": "23.43",
           "quantized": "1",
-          "representatives": "4",
-          "welded": "1",
+          "representatives": "5",
+          "welded": "0",
           "multi_candidates": "0",
           "normal_selected": "0",
           "degenerate_faces": "0",
-          "welded_degenerate_faces": "1",
-          "dropped_edges": "2",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
           "repeated_neighbours": "0",
           "unmatched": "4"
         },
@@ -633,17 +633,17 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "17.200",
-          "fast_us": "1.700",
-          "speedup": "10.12",
+          "native_us": "17.300",
+          "fast_us": "0.700",
+          "speedup": "24.71",
           "quantized": "1",
-          "representatives": "4",
-          "welded": "1",
+          "representatives": "5",
+          "welded": "0",
           "multi_candidates": "0",
           "normal_selected": "0",
           "degenerate_faces": "0",
-          "welded_degenerate_faces": "1",
-          "dropped_edges": "2",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
           "repeated_neighbours": "0",
           "unmatched": "4"
         },
@@ -659,17 +659,17 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "5.800",
-          "fast_us": "1.000",
-          "speedup": "5.80",
+          "native_us": "16.400",
+          "fast_us": "0.600",
+          "speedup": "27.33",
           "quantized": "1",
-          "representatives": "4",
-          "welded": "1",
+          "representatives": "5",
+          "welded": "0",
           "multi_candidates": "0",
           "normal_selected": "0",
           "degenerate_faces": "0",
-          "welded_degenerate_faces": "1",
-          "dropped_edges": "2",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
           "repeated_neighbours": "0",
           "unmatched": "6"
         },
@@ -685,17 +685,17 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "16.300",
-          "fast_us": "1.100",
-          "speedup": "14.82",
+          "native_us": "21.000",
+          "fast_us": "0.600",
+          "speedup": "35.00",
           "quantized": "1",
-          "representatives": "4",
-          "welded": "1",
+          "representatives": "5",
+          "welded": "0",
           "multi_candidates": "0",
           "normal_selected": "0",
           "degenerate_faces": "0",
-          "welded_degenerate_faces": "1",
-          "dropped_edges": "2",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
           "repeated_neighbours": "0",
           "unmatched": "6"
         },
@@ -711,17 +711,17 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "16.700",
-          "fast_us": "1.200",
-          "speedup": "13.92",
+          "native_us": "29.600",
+          "fast_us": "1.000",
+          "speedup": "29.60",
           "quantized": "1",
-          "representatives": "4",
-          "welded": "1",
+          "representatives": "5",
+          "welded": "0",
           "multi_candidates": "0",
           "normal_selected": "0",
           "degenerate_faces": "0",
-          "welded_degenerate_faces": "1",
-          "dropped_edges": "2",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
           "repeated_neighbours": "0",
           "unmatched": "7"
         },
@@ -737,17 +737,17 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "35.500",
-          "fast_us": "1.400",
-          "speedup": "25.36",
+          "native_us": "16.900",
+          "fast_us": "1.100",
+          "speedup": "15.36",
           "quantized": "1",
-          "representatives": "4",
-          "welded": "2",
+          "representatives": "5",
+          "welded": "1",
           "multi_candidates": "0",
           "normal_selected": "0",
           "degenerate_faces": "0",
-          "welded_degenerate_faces": "1",
-          "dropped_edges": "2",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
           "repeated_neighbours": "0",
           "unmatched": "7"
         },
@@ -763,17 +763,17 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "16.600",
-          "fast_us": "1.200",
-          "speedup": "13.83",
+          "native_us": "16.200",
+          "fast_us": "0.700",
+          "speedup": "23.14",
           "quantized": "1",
-          "representatives": "4",
-          "welded": "2",
+          "representatives": "5",
+          "welded": "1",
           "multi_candidates": "0",
           "normal_selected": "0",
           "degenerate_faces": "0",
-          "welded_degenerate_faces": "1",
-          "dropped_edges": "2",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
           "repeated_neighbours": "0",
           "unmatched": "4"
         },
@@ -789,17 +789,17 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "15.900",
-          "fast_us": "1.600",
-          "speedup": "9.94",
+          "native_us": "18.500",
+          "fast_us": "1.000",
+          "speedup": "18.50",
           "quantized": "1",
-          "representatives": "4",
-          "welded": "2",
+          "representatives": "5",
+          "welded": "1",
           "multi_candidates": "0",
           "normal_selected": "0",
           "degenerate_faces": "0",
-          "welded_degenerate_faces": "1",
-          "dropped_edges": "2",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
           "repeated_neighbours": "0",
           "unmatched": "6"
         },
@@ -815,17 +815,17 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "18.200",
-          "fast_us": "1.500",
-          "speedup": "12.13",
+          "native_us": "16.500",
+          "fast_us": "0.700",
+          "speedup": "23.57",
           "quantized": "1",
-          "representatives": "4",
-          "welded": "1",
+          "representatives": "5",
+          "welded": "0",
           "multi_candidates": "0",
           "normal_selected": "0",
           "degenerate_faces": "0",
-          "welded_degenerate_faces": "1",
-          "dropped_edges": "2",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
           "repeated_neighbours": "0",
           "unmatched": "7"
         },
@@ -841,17 +841,17 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "16.900",
-          "fast_us": "1.400",
-          "speedup": "12.07",
+          "native_us": "16.800",
+          "fast_us": "1.100",
+          "speedup": "15.27",
           "quantized": "1",
-          "representatives": "4",
-          "welded": "1",
+          "representatives": "5",
+          "welded": "0",
           "multi_candidates": "1",
           "normal_selected": "1",
           "degenerate_faces": "0",
-          "welded_degenerate_faces": "1",
-          "dropped_edges": "2",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
           "repeated_neighbours": "0",
           "unmatched": "7"
         },
@@ -867,9 +867,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "20.400",
-          "fast_us": "1.500",
-          "speedup": "13.60",
+          "native_us": "31.900",
+          "fast_us": "0.900",
+          "speedup": "35.44",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -877,7 +877,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "3",
           "unmatched": "5"
         },
@@ -893,9 +893,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "9",
-          "native_us": "6.000",
-          "fast_us": "1.400",
-          "speedup": "4.29",
+          "native_us": "18.600",
+          "fast_us": "1.000",
+          "speedup": "18.60",
           "quantized": "1",
           "representatives": "4",
           "welded": "0",
@@ -903,7 +903,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "2",
           "unmatched": "7"
         },
@@ -919,9 +919,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "6",
-          "native_us": "28.900",
-          "fast_us": "1.300",
-          "speedup": "22.23",
+          "native_us": "16.200",
+          "fast_us": "0.800",
+          "speedup": "20.25",
           "quantized": "1",
           "representatives": "5",
           "welded": "1",
@@ -929,9 +929,425 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "4"
+        },
+        {
+          "name": "refusal-chain",
+          "faces": "4",
+          "vertices": "7",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "12",
+          "native_us": "17.100",
+          "fast_us": "1.500",
+          "speedup": "11.40",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "12"
+        },
+        {
+          "name": "refusal-pair-face",
+          "faces": "4",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "12",
+          "native_us": "6.200",
+          "fast_us": "1.000",
+          "speedup": "6.20",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "8"
+        },
+        {
+          "name": "heap-order-0",
+          "faces": "6",
+          "vertices": "9",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "18",
+          "native_us": "34.300",
+          "fast_us": "2.600",
+          "speedup": "13.19",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "3",
+          "multi_candidates": "1",
+          "normal_selected": "1",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "1",
+          "unmatched": "10"
+        },
+        {
+          "name": "heap-order-1",
+          "faces": "6",
+          "vertices": "9",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "18",
+          "native_us": "7.800",
+          "fast_us": "1.800",
+          "speedup": "4.33",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "3",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "10"
+        },
+        {
+          "name": "heap-order-2",
+          "faces": "6",
+          "vertices": "9",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "18",
+          "native_us": "18.000",
+          "fast_us": "1.900",
+          "speedup": "9.47",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "4",
+          "multi_candidates": "1",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "refused_welds": "0",
+          "repeated_neighbours": "2",
+          "unmatched": "14"
+        },
+        {
+          "name": "heap-order-3",
+          "faces": "6",
+          "vertices": "9",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "18",
+          "native_us": "10.400",
+          "fast_us": "2.100",
+          "speedup": "4.95",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "3",
+          "multi_candidates": "1",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "2",
+          "unmatched": "14"
+        },
+        {
+          "name": "heap-order-4",
+          "faces": "6",
+          "vertices": "9",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "18",
+          "native_us": "47.300",
+          "fast_us": "2.100",
+          "speedup": "22.52",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "3",
+          "multi_candidates": "2",
+          "normal_selected": "2",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "10"
+        },
+        {
+          "name": "heap-order-5",
+          "faces": "6",
+          "vertices": "9",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "18",
+          "native_us": "18.300",
+          "fast_us": "2.000",
+          "speedup": "9.15",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "4",
+          "multi_candidates": "2",
+          "normal_selected": "1",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "1",
+          "unmatched": "8"
+        },
+        {
+          "name": "own-entry-survives",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "6.800",
+          "fast_us": "0.900",
+          "speedup": "7.56",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "2",
+          "unmatched": "5"
+        },
+        {
+          "name": "refused-consumed",
+          "faces": "4",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "12",
+          "native_us": "16.100",
+          "fast_us": "1.300",
+          "speedup": "12.38",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "2",
+          "unmatched": "8"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "faces": "4",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "12",
+          "native_us": "7.300",
+          "fast_us": "1.300",
+          "speedup": "5.62",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "3",
+          "unmatched": "8"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "6.100",
+          "fast_us": "0.800",
+          "speedup": "7.62",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "83.300",
+          "fast_us": "0.900",
+          "speedup": "92.56",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "5.500",
+          "fast_us": "0.700",
+          "speedup": "7.86",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "faces": "3",
+          "vertices": "7",
+          "bits": "16",
+          "epsilon": "0",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "61.800",
+          "fast_us": "0.800",
+          "speedup": "77.25",
+          "quantized": "0",
+          "representatives": "5",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "5"
+        },
+        {
+          "name": "fan-eight",
+          "faces": "10",
+          "vertices": "11",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "30",
+          "native_us": "60.700",
+          "fast_us": "3.900",
+          "speedup": "15.56",
+          "quantized": "1",
+          "representatives": "11",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "3",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "26"
         },
         {
           "name": "grid-224x224-32",
@@ -945,9 +1361,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "298374",
-          "native_us": "45200.300",
-          "fast_us": "20320.600",
-          "speedup": "2.22",
+          "native_us": "45261.500",
+          "fast_us": "10602.400",
+          "speedup": "4.27",
           "quantized": "1",
           "representatives": "50176",
           "welded": "0",
@@ -955,7 +1371,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "892"
         },
@@ -971,9 +1387,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "133206",
-          "native_us": "87576.200",
-          "fast_us": "8494.300",
-          "speedup": "10.31",
+          "native_us": "87989.000",
+          "fast_us": "5538.000",
+          "speedup": "15.89",
           "quantized": "1",
           "representatives": "22500",
           "welded": "110706",
@@ -981,7 +1397,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "596"
         },
@@ -997,9 +1413,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "60000",
-          "native_us": "236593.700",
-          "fast_us": "3666.400",
-          "speedup": "64.53",
+          "native_us": "234804.300",
+          "fast_us": "2320.200",
+          "speedup": "101.20",
           "quantized": "1",
           "representatives": "20001",
           "welded": "19999",
@@ -1007,7 +1423,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "20000"
         },
@@ -1023,9 +1439,9 @@
           "equal": "1",
           "mismatches": "0",
           "first": "58806",
-          "native_us": "28914.100",
-          "fast_us": "3487.200",
-          "speedup": "8.29",
+          "native_us": "28677.400",
+          "fast_us": "2031.200",
+          "speedup": "14.12",
           "quantized": "1",
           "representatives": "10000",
           "welded": "48806",
@@ -1033,7 +1449,7 @@
           "normal_selected": "0",
           "degenerate_faces": "0",
           "welded_degenerate_faces": "0",
-          "dropped_edges": "0",
+          "refused_welds": "0",
           "repeated_neighbours": "0",
           "unmatched": "396"
         }
@@ -1059,25 +1475,31 @@
         },
         {
           "name": "nan-position",
-          "variant": "no_raw_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "0",
           "mismatches": "6"
         },
         {
           "name": "nan-position",
-          "variant": "rep_degenerate_skip",
+          "variant": "index_order_sweep",
           "equal": "0",
           "mismatches": "6"
         },
         {
           "name": "nan-position",
-          "variant": "no_welded_corner_drop",
+          "variant": "retire_own_entry",
           "equal": "0",
           "mismatches": "6"
         },
         {
           "name": "nan-position",
-          "variant": "double_adjacency",
+          "variant": "keep_refused_entry",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "later_slot_check",
           "equal": "0",
           "mismatches": "6"
         },
@@ -1101,25 +1523,31 @@
         },
         {
           "name": "unquantized-near-1.5e-6",
-          "variant": "no_raw_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "0",
           "mismatches": "6"
         },
         {
           "name": "unquantized-near-1.5e-6",
-          "variant": "rep_degenerate_skip",
+          "variant": "index_order_sweep",
           "equal": "0",
           "mismatches": "6"
         },
         {
           "name": "unquantized-near-1.5e-6",
-          "variant": "no_welded_corner_drop",
+          "variant": "retire_own_entry",
           "equal": "0",
           "mismatches": "6"
         },
         {
           "name": "unquantized-near-1.5e-6",
-          "variant": "double_adjacency",
+          "variant": "keep_refused_entry",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "later_slot_check",
           "equal": "0",
           "mismatches": "6"
         },
@@ -1143,25 +1571,31 @@
         },
         {
           "name": "fan-tilted-abc",
-          "variant": "no_raw_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-tilted-abc",
-          "variant": "rep_degenerate_skip",
+          "variant": "index_order_sweep",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-tilted-abc",
-          "variant": "no_welded_corner_drop",
+          "variant": "retire_own_entry",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-tilted-abc",
-          "variant": "double_adjacency",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1185,25 +1619,31 @@
         },
         {
           "name": "fan-tilted-bac",
-          "variant": "no_raw_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-tilted-bac",
-          "variant": "rep_degenerate_skip",
+          "variant": "index_order_sweep",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-tilted-bac",
-          "variant": "no_welded_corner_drop",
+          "variant": "retire_own_entry",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-tilted-bac",
-          "variant": "double_adjacency",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1227,25 +1667,31 @@
         },
         {
           "name": "fan-tilted-cba",
-          "variant": "no_raw_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-tilted-cba",
-          "variant": "rep_degenerate_skip",
+          "variant": "index_order_sweep",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-tilted-cba",
-          "variant": "no_welded_corner_drop",
+          "variant": "retire_own_entry",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-tilted-cba",
-          "variant": "double_adjacency",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1269,25 +1715,31 @@
         },
         {
           "name": "fan-coplanar-abc",
-          "variant": "no_raw_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-coplanar-abc",
-          "variant": "rep_degenerate_skip",
+          "variant": "index_order_sweep",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-coplanar-abc",
-          "variant": "no_welded_corner_drop",
+          "variant": "retire_own_entry",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-coplanar-abc",
-          "variant": "double_adjacency",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1311,25 +1763,31 @@
         },
         {
           "name": "fan-coplanar-cba",
-          "variant": "no_raw_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-coplanar-cba",
-          "variant": "rep_degenerate_skip",
+          "variant": "index_order_sweep",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-coplanar-cba",
-          "variant": "no_welded_corner_drop",
+          "variant": "retire_own_entry",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-coplanar-cba",
-          "variant": "double_adjacency",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1353,25 +1811,31 @@
         },
         {
           "name": "fan-four",
-          "variant": "no_raw_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-four",
-          "variant": "rep_degenerate_skip",
+          "variant": "index_order_sweep",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-four",
-          "variant": "no_welded_corner_drop",
+          "variant": "retire_own_entry",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "fan-four",
-          "variant": "double_adjacency",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1395,25 +1859,31 @@
         },
         {
           "name": "degenerate-aba-aaa",
-          "variant": "no_raw_degenerate_skip",
-          "equal": "0",
-          "mismatches": "2"
-        },
-        {
-          "name": "degenerate-aba-aaa",
-          "variant": "rep_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "degenerate-aba-aaa",
-          "variant": "no_welded_corner_drop",
+          "variant": "index_order_sweep",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "degenerate-aba-aaa",
-          "variant": "double_adjacency",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1437,25 +1907,31 @@
         },
         {
           "name": "degenerate-lookup",
-          "variant": "no_raw_degenerate_skip",
-          "equal": "0",
-          "mismatches": "2"
-        },
-        {
-          "name": "degenerate-lookup",
-          "variant": "rep_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "degenerate-lookup",
-          "variant": "no_welded_corner_drop",
+          "variant": "index_order_sweep",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "degenerate-lookup",
-          "variant": "double_adjacency",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1479,25 +1955,31 @@
         },
         {
           "name": "degenerate-welded",
-          "variant": "no_raw_degenerate_skip",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded",
-          "variant": "rep_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "0",
           "mismatches": "3"
         },
         {
           "name": "degenerate-welded",
-          "variant": "no_welded_corner_drop",
-          "equal": "0",
-          "mismatches": "2"
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
         },
         {
           "name": "degenerate-welded",
-          "variant": "double_adjacency",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1521,25 +2003,31 @@
         },
         {
           "name": "degenerate-welded-041",
-          "variant": "no_raw_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "degenerate-welded-041",
-          "variant": "rep_degenerate_skip",
+          "variant": "index_order_sweep",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "degenerate-welded-041",
-          "variant": "no_welded_corner_drop",
-          "equal": "0",
-          "mismatches": "2"
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
         },
         {
           "name": "degenerate-welded-041",
-          "variant": "double_adjacency",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1563,193 +2051,223 @@
         },
         {
           "name": "degenerate-welded-041b",
-          "variant": "no_raw_degenerate_skip",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-041b",
-          "variant": "rep_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "0",
           "mismatches": "2"
         },
         {
           "name": "degenerate-welded-041b",
-          "variant": "no_welded_corner_drop",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "no_weld_refusal",
           "equal": "0",
           "mismatches": "3"
         },
         {
-          "name": "degenerate-welded-041b",
-          "variant": "double_adjacency",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-104",
-          "variant": "default",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-104",
-          "variant": "tail_insertion",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-104",
-          "variant": "no_normal_selection",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-104",
-          "variant": "no_raw_degenerate_skip",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-104",
-          "variant": "rep_degenerate_skip",
-          "equal": "0",
-          "mismatches": "2"
-        },
-        {
-          "name": "degenerate-welded-104",
-          "variant": "no_welded_corner_drop",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-104",
-          "variant": "double_adjacency",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-104b",
-          "variant": "default",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-104b",
-          "variant": "tail_insertion",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-104b",
-          "variant": "no_normal_selection",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-104b",
-          "variant": "no_raw_degenerate_skip",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-104b",
-          "variant": "rep_degenerate_skip",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-104b",
-          "variant": "no_welded_corner_drop",
-          "equal": "0",
-          "mismatches": "2"
-        },
-        {
-          "name": "degenerate-welded-104b",
-          "variant": "double_adjacency",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-401",
-          "variant": "default",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-401",
-          "variant": "tail_insertion",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-401",
-          "variant": "no_normal_selection",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-401",
-          "variant": "no_raw_degenerate_skip",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-401",
-          "variant": "rep_degenerate_skip",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-401",
-          "variant": "no_welded_corner_drop",
-          "equal": "0",
-          "mismatches": "2"
-        },
-        {
-          "name": "degenerate-welded-401",
-          "variant": "double_adjacency",
+          "name": "degenerate-welded-410",
+          "variant": "index_order_sweep",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "degenerate-welded-410",
-          "variant": "default",
+          "variant": "retire_own_entry",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "degenerate-welded-410",
-          "variant": "tail_insertion",
+          "variant": "keep_refused_entry",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "degenerate-welded-410",
-          "variant": "no_normal_selection",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-410",
-          "variant": "no_raw_degenerate_skip",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-410",
-          "variant": "rep_degenerate_skip",
-          "equal": "0",
-          "mismatches": "3"
-        },
-        {
-          "name": "degenerate-welded-410",
-          "variant": "no_welded_corner_drop",
-          "equal": "0",
-          "mismatches": "2"
-        },
-        {
-          "name": "degenerate-welded-410",
-          "variant": "double_adjacency",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1773,25 +2291,31 @@
         },
         {
           "name": "degenerate-welded-451",
-          "variant": "no_raw_degenerate_skip",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-451",
-          "variant": "rep_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "0",
           "mismatches": "3"
         },
         {
           "name": "degenerate-welded-451",
-          "variant": "no_welded_corner_drop",
+          "variant": "index_order_sweep",
           "equal": "0",
-          "mismatches": "2"
+          "mismatches": "3"
         },
         {
           "name": "degenerate-welded-451",
-          "variant": "double_adjacency",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1815,25 +2339,31 @@
         },
         {
           "name": "degenerate-welded-541a",
-          "variant": "no_raw_degenerate_skip",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-541a",
-          "variant": "rep_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "0",
           "mismatches": "2"
         },
         {
           "name": "degenerate-welded-541a",
-          "variant": "no_welded_corner_drop",
+          "variant": "index_order_sweep",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "retire_own_entry",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "degenerate-welded-541a",
-          "variant": "double_adjacency",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1857,25 +2387,31 @@
         },
         {
           "name": "degenerate-welded-541b",
-          "variant": "no_raw_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "degenerate-welded-541b",
-          "variant": "rep_degenerate_skip",
+          "variant": "index_order_sweep",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "degenerate-welded-541b",
-          "variant": "no_welded_corner_drop",
-          "equal": "0",
-          "mismatches": "2"
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
         },
         {
           "name": "degenerate-welded-541b",
-          "variant": "double_adjacency",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1899,25 +2435,31 @@
         },
         {
           "name": "degenerate-welded-abb",
-          "variant": "no_raw_degenerate_skip",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-abb",
-          "variant": "rep_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "0",
           "mismatches": "3"
         },
         {
           "name": "degenerate-welded-abb",
-          "variant": "no_welded_corner_drop",
-          "equal": "0",
-          "mismatches": "2"
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
         },
         {
           "name": "degenerate-welded-abb",
-          "variant": "double_adjacency",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1941,25 +2483,31 @@
         },
         {
           "name": "degenerate-welded-second",
-          "variant": "no_raw_degenerate_skip",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "degenerate-welded-second",
-          "variant": "rep_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "0",
           "mismatches": "3"
         },
         {
           "name": "degenerate-welded-second",
-          "variant": "no_welded_corner_drop",
-          "equal": "0",
-          "mismatches": "2"
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
         },
         {
           "name": "degenerate-welded-second",
-          "variant": "double_adjacency",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "later_slot_check",
           "equal": "1",
           "mismatches": "0"
         },
@@ -1983,27 +2531,33 @@
         },
         {
           "name": "duplicate-faces",
-          "variant": "no_raw_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "duplicate-faces",
-          "variant": "rep_degenerate_skip",
+          "variant": "index_order_sweep",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "duplicate-faces",
-          "variant": "no_welded_corner_drop",
-          "equal": "1",
-          "mismatches": "0"
-        },
-        {
-          "name": "duplicate-faces",
-          "variant": "double_adjacency",
+          "variant": "retire_own_entry",
           "equal": "0",
-          "mismatches": "5"
+          "mismatches": "2"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
         },
         {
           "name": "double-adjacency-order",
@@ -2025,40 +2579,814 @@
         },
         {
           "name": "double-adjacency-order",
-          "variant": "no_raw_degenerate_skip",
+          "variant": "no_weld_refusal",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "double-adjacency-order",
-          "variant": "rep_degenerate_skip",
+          "variant": "index_order_sweep",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "double-adjacency-order",
-          "variant": "no_welded_corner_drop",
+          "variant": "retire_own_entry",
           "equal": "1",
           "mismatches": "0"
         },
         {
           "name": "double-adjacency-order",
-          "variant": "double_adjacency",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "index_order_sweep",
           "equal": "0",
           "mismatches": "4"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "7"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "4"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "retire_own_entry",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "retire_own_entry",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "4"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "retire_own_entry",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "4"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
         }
       ],
       "verify_stats": [
         {
-          "calls": "37",
-          "computed": "35",
+          "calls": "53",
+          "computed": "51",
           "fallbacks": "2",
-          "verify_meshes": "35",
-          "verify_equal": "35",
+          "verify_meshes": "51",
+          "verify_equal": "51",
           "verify_mismatched": "0",
           "mismatch_entries": "0",
-          "quantized": "33",
-          "unquantized": "2",
+          "quantized": "48",
+          "unquantized": "3",
           "module_non_finite": "1",
           "module_epsilon_neighbour": "1"
         }
@@ -2066,27 +3394,3392 @@
       "fast_stats": [
         {
           "cache": "0",
-          "calls": "74",
-          "computed": "70",
+          "calls": "106",
+          "computed": "102",
           "fallbacks": "4",
           "faults": "0",
-          "fast_ticks": "731383",
+          "fast_ticks": "345285",
           "cache_hits": "0",
           "cache_misses": "0"
         }
       ],
-      "metrics": []
+      "metrics": [],
+      "random_sweep": {
+        "trials": "2000",
+        "equal": "2000",
+        "mismatched": "0",
+        "multi_candidate_meshes": "117",
+        "refused_weld_meshes": "460"
+      },
+      "selftest_replay": "REPLAY_SUMMARY dumps=1 failures=0"
+    },
+    "mesh-adjacency-cache-on": {
+      "admission_witness": [
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "checks": 33328,
+      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "executable_sha256": "2bf7178b6362c8e78b52ec0c960de7c5e0227feb70698a304990f7b5347bd93c",
+      "dll_sha256": {
+        "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+      },
+      "report_sha256": "bbab5f56d845f89f3be22cbee3574fba50884f4a6475b9d899bddb81a44813e4",
+      "adjacency_cases": [
+        {
+          "name": "quad-16",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "497.000",
+          "fast_us": "961.700",
+          "speedup": "0.52",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "quad-32",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "32",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "347.500",
+          "fast_us": "1.300",
+          "speedup": "267.31",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "exact-duplicates",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "55.800",
+          "fast_us": "1.200",
+          "speedup": "46.50",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "grid-neighbours-6.1e-5",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "17.900",
+          "fast_us": "1.100",
+          "speedup": "16.27",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "signed-zero",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "17.000",
+          "fast_us": "0.700",
+          "speedup": "24.29",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "nan-position",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "non_finite",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "0",
+          "mismatches": "0",
+          "first": "0",
+          "native_us": "16.000",
+          "fast_us": "0.300",
+          "speedup": "53.33",
+          "quantized": "0",
+          "representatives": "0",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "0"
+        },
+        {
+          "name": "position-offset-8",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "5.600",
+          "fast_us": "6.100",
+          "speedup": "0.92",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "epsilon-zero",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "0",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "70.900",
+          "fast_us": "1.300",
+          "speedup": "54.54",
+          "quantized": "0",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "unquantized-far",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "8.400",
+          "fast_us": "32.300",
+          "speedup": "0.26",
+          "quantized": "0",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "epsilon_neighbour",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "0",
+          "mismatches": "0",
+          "first": "0",
+          "native_us": "30.000",
+          "fast_us": "1.100",
+          "speedup": "27.27",
+          "quantized": "0",
+          "representatives": "0",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "320.500",
+          "fast_us": "57.500",
+          "speedup": "5.57",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "1",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "18.200",
+          "fast_us": "1.000",
+          "speedup": "18.20",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "25.000",
+          "fast_us": "0.800",
+          "speedup": "31.25",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "17.300",
+          "fast_us": "1.200",
+          "speedup": "14.42",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "1",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "32.200",
+          "fast_us": "0.700",
+          "speedup": "46.00",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-four",
+          "faces": "5",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "15",
+          "native_us": "20.000",
+          "fast_us": "2.200",
+          "speedup": "9.09",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "1",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "11"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "faces": "3",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "6.800",
+          "fast_us": "0.600",
+          "speedup": "11.33",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "2",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "9"
+        },
+        {
+          "name": "degenerate-lookup",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "15.900",
+          "fast_us": "0.500",
+          "speedup": "31.80",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "1",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "6.500",
+          "fast_us": "1.100",
+          "speedup": "5.91",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "15.600",
+          "fast_us": "0.800",
+          "speedup": "19.50",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "8.600",
+          "fast_us": "1.000",
+          "speedup": "8.60",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "16.100",
+          "fast_us": "0.700",
+          "speedup": "23.00",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "8.300",
+          "fast_us": "0.900",
+          "speedup": "9.22",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "30.200",
+          "fast_us": "1.100",
+          "speedup": "27.45",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "29.400",
+          "fast_us": "1.000",
+          "speedup": "29.40",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "faces": "3",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "32.700",
+          "fast_us": "1.100",
+          "speedup": "29.73",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "16.300",
+          "fast_us": "0.800",
+          "speedup": "20.38",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "16.100",
+          "fast_us": "0.800",
+          "speedup": "20.12",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "6.000",
+          "fast_us": "0.700",
+          "speedup": "8.57",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "16.700",
+          "fast_us": "1.000",
+          "speedup": "16.70",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "1",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "duplicate-faces",
+          "faces": "3",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "16.300",
+          "fast_us": "1.000",
+          "speedup": "16.30",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "3",
+          "unmatched": "5"
+        },
+        {
+          "name": "double-adjacency-order",
+          "faces": "3",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "7.700",
+          "fast_us": "1.400",
+          "speedup": "5.50",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "2",
+          "unmatched": "7"
+        },
+        {
+          "name": "unreferenced-vertices",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "6.800",
+          "fast_us": "0.700",
+          "speedup": "9.71",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "refusal-chain",
+          "faces": "4",
+          "vertices": "7",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "12",
+          "native_us": "35.700",
+          "fast_us": "2.300",
+          "speedup": "15.52",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "12"
+        },
+        {
+          "name": "refusal-pair-face",
+          "faces": "4",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "12",
+          "native_us": "17.400",
+          "fast_us": "1.100",
+          "speedup": "15.82",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "8"
+        },
+        {
+          "name": "heap-order-0",
+          "faces": "6",
+          "vertices": "9",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "18",
+          "native_us": "18.600",
+          "fast_us": "2.500",
+          "speedup": "7.44",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "3",
+          "multi_candidates": "1",
+          "normal_selected": "1",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "1",
+          "unmatched": "10"
+        },
+        {
+          "name": "heap-order-1",
+          "faces": "6",
+          "vertices": "9",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "18",
+          "native_us": "19.800",
+          "fast_us": "1.700",
+          "speedup": "11.65",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "3",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "10"
+        },
+        {
+          "name": "heap-order-2",
+          "faces": "6",
+          "vertices": "9",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "18",
+          "native_us": "53.900",
+          "fast_us": "1.900",
+          "speedup": "28.37",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "4",
+          "multi_candidates": "1",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "refused_welds": "0",
+          "repeated_neighbours": "2",
+          "unmatched": "14"
+        },
+        {
+          "name": "heap-order-3",
+          "faces": "6",
+          "vertices": "9",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "18",
+          "native_us": "17.800",
+          "fast_us": "1.800",
+          "speedup": "9.89",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "3",
+          "multi_candidates": "1",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "2",
+          "unmatched": "14"
+        },
+        {
+          "name": "heap-order-4",
+          "faces": "6",
+          "vertices": "9",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "18",
+          "native_us": "47.000",
+          "fast_us": "2.400",
+          "speedup": "19.58",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "3",
+          "multi_candidates": "2",
+          "normal_selected": "2",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "1",
+          "repeated_neighbours": "0",
+          "unmatched": "10"
+        },
+        {
+          "name": "heap-order-5",
+          "faces": "6",
+          "vertices": "9",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "18",
+          "native_us": "20.500",
+          "fast_us": "1.800",
+          "speedup": "11.39",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "4",
+          "multi_candidates": "2",
+          "normal_selected": "1",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "1",
+          "unmatched": "8"
+        },
+        {
+          "name": "own-entry-survives",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "25.000",
+          "fast_us": "0.700",
+          "speedup": "35.71",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "2",
+          "unmatched": "5"
+        },
+        {
+          "name": "refused-consumed",
+          "faces": "4",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "12",
+          "native_us": "31.800",
+          "fast_us": "1.300",
+          "speedup": "24.46",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "2",
+          "unmatched": "8"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "faces": "4",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "12",
+          "native_us": "16.300",
+          "fast_us": "0.800",
+          "speedup": "20.38",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "3",
+          "unmatched": "8"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "15.500",
+          "fast_us": "0.900",
+          "speedup": "17.22",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "16.000",
+          "fast_us": "0.900",
+          "speedup": "17.78",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "16.100",
+          "fast_us": "0.700",
+          "speedup": "23.00",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "faces": "3",
+          "vertices": "7",
+          "bits": "16",
+          "epsilon": "0",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "14.400",
+          "fast_us": "1.100",
+          "speedup": "13.09",
+          "quantized": "0",
+          "representatives": "5",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "5"
+        },
+        {
+          "name": "fan-eight",
+          "faces": "10",
+          "vertices": "11",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "30",
+          "native_us": "68.700",
+          "fast_us": "4.600",
+          "speedup": "14.93",
+          "quantized": "1",
+          "representatives": "11",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "3",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "26"
+        },
+        {
+          "name": "grid-224x224-32",
+          "faces": "99458",
+          "vertices": "50176",
+          "bits": "32",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "298374",
+          "native_us": "44781.000",
+          "fast_us": "10681.200",
+          "speedup": "4.19",
+          "quantized": "1",
+          "representatives": "50176",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "892"
+        },
+        {
+          "name": "split-150x150-32",
+          "faces": "44402",
+          "vertices": "133206",
+          "bits": "32",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "133206",
+          "native_us": "87412.400",
+          "fast_us": "5575.300",
+          "speedup": "15.68",
+          "quantized": "1",
+          "representatives": "22500",
+          "welded": "110706",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "596"
+        },
+        {
+          "name": "star-20000-32",
+          "faces": "20000",
+          "vertices": "40000",
+          "bits": "32",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "60000",
+          "native_us": "240447.800",
+          "fast_us": "2346.800",
+          "speedup": "102.46",
+          "quantized": "1",
+          "representatives": "20001",
+          "welded": "19999",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "20000"
+        },
+        {
+          "name": "split-16",
+          "faces": "19602",
+          "vertices": "58806",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "58806",
+          "native_us": "28638.500",
+          "fast_us": "2122.200",
+          "speedup": "13.49",
+          "quantized": "1",
+          "representatives": "10000",
+          "welded": "48806",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "refused_welds": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "396"
+        }
+      ],
+      "policies": [
+        {
+          "name": "nan-position",
+          "variant": "default",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "index_order_sweep",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "retire_own_entry",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "keep_refused_entry",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "later_slot_check",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "default",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "index_order_sweep",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "retire_own_entry",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "keep_refused_entry",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "later_slot_check",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "5"
+        },
+        {
+          "name": "fan-four",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "index_order_sweep",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "index_order_sweep",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "retire_own_entry",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "index_order_sweep",
+          "equal": "0",
+          "mismatches": "4"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-chain",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refusal-pair-face",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-0",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "7"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-1",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-2",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-3",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-4",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "4"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "retire_own_entry",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "heap-order-5",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "retire_own_entry",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "own-entry-survives",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "4"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "refused-consumed",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "retire_own_entry",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "later-slot-prefilled",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-apart",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-equal",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "key-window-offset-8-within-eps",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "no_weld_refusal",
+          "equal": "0",
+          "mismatches": "4"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "epsilon-zero-refusal",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "no_weld_refusal",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "index_order_sweep",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "retire_own_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "keep_refused_entry",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-eight",
+          "variant": "later_slot_check",
+          "equal": "1",
+          "mismatches": "0"
+        }
+      ],
+      "verify_stats": [
+        {
+          "calls": "53",
+          "computed": "51",
+          "fallbacks": "2",
+          "verify_meshes": "51",
+          "verify_equal": "51",
+          "verify_mismatched": "0",
+          "mismatch_entries": "0",
+          "quantized": "48",
+          "unquantized": "3",
+          "module_non_finite": "1",
+          "module_epsilon_neighbour": "1"
+        }
+      ],
+      "fast_stats": [
+        {
+          "cache": "1",
+          "calls": "106",
+          "computed": "102",
+          "fallbacks": "4",
+          "faults": "0",
+          "fast_ticks": "342066",
+          "cache_hits": "0",
+          "cache_misses": "53"
+        }
+      ],
+      "metrics": [],
+      "random_sweep": {
+        "trials": "2000",
+        "equal": "2000",
+        "mismatched": "0",
+        "multi_candidate_meshes": "117",
+        "refused_weld_meshes": "460"
+      }
     }
   },
   "sources_before_build": {
     "src/proxy/capture.h": "e573832e0771ad93c76d58dfc8ddc9b33aec5c7db5d4a6ca526797bb5736cf31",
     "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
-    "src/proxy/loading_trace.h": "55bd9f79f0fdb302d2c8ebd893ee6757d26912a1cca98598aebd5f443230a22a",
-    "src/proxy/loading_trace.cpp": "9218e7078929b4d1d0bc6baea4115198a16221b8a761f562fe7117487c2497a4",
+    "src/proxy/loading_trace.h": "3006304d762a20c99ceeca07c44e1f8548ee86f72134268ecc47a66cc28eecd0",
+    "src/proxy/loading_trace.cpp": "9c796d434fa7c13e137a4dc860b4bc249d6da0763514658ca27f7fdfbf671eb3",
     "src/proxy/mesh_adjacency_cache.h": "9ec016ca7b35df32e0316d4cc83c096cb70ec2c7e5c9e039724e22fd9415003e",
     "src/proxy/mesh_adjacency_cache.cpp": "9e76ef433c8915a25a77a04e7a45c3487465fe720ba2f18cd089781a6f060d83",
-    "src/proxy/mesh_adjacency_fast.h": "60816662acab09ec4206ddb5f3b8dbb5da20ea0f2fb4176768535d539d386449",
-    "src/proxy/mesh_adjacency_fast.cpp": "2e47be87f3523f3f77dfecc696c626f4dbc6c1b577279cb35e8099fab9dbca0d",
+    "src/proxy/mesh_adjacency_fast.h": "25ee144e3f76ad26b64f75f98d5d2e2376aa5c934bef17522cfd61e6df56c266",
+    "src/proxy/mesh_adjacency_fast.cpp": "e9893ce07dc21bb69300e76cd4c492d5f6585514da0c9012d0af4898cfdb6f9b",
     "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
     "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
@@ -2107,11 +6800,46 @@
     "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
     "verification/probe/loading_codec_stub.cpp": "688dae30bb88f07cd79cab193dd9480b34e45e34544742df75255f254908a5ab",
     "verification/probe/loading_mesh_fixture.cpp": "e6949c1c5b66af9c5e702fa4434974bb84b59f0894a85598a78ad0894bc26067",
-    "verification/probe/mesh_adjacency_fast_fixture.cpp": "88732fbf3628b2466db16b396d90904576ba4e9ac0006433705dc7f0d6b536fc",
-    "verification/probe/build_loading_trace.sh": "cc242d175f97fb63b268aa11fe4ddb86b6b9109e2f0f1d73f9ba46952c5e9084",
+    "verification/probe/mesh_adjacency_fast_fixture.cpp": "2da9dcc2f83662b210fa456ae674c44d7884a3fdabb6b871711b02a92c583adf",
+    "verification/probe/build_loading_trace.sh": "8eec869a2f0fe85f1cd1990a60c3bbf339b2974c00ce881a0744a61f56d4ffed",
     "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
-    "verification/probe/run_loading_trace.py": "89c2b521b83a5e0f127c055df49c8b52eb5da9fa22678a11998e646ce60138c5"
+    "verification/probe/run_loading_trace.py": "14e354f138c13f2df215f20e8ebb838c202ae39abd0c61c443b74e6151de8723"
   },
   "native_before": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "error": "AssertionError('Default policy differs from native on tie evidence')"
+  "sources_after_run": {
+    "src/proxy/capture.h": "e573832e0771ad93c76d58dfc8ddc9b33aec5c7db5d4a6ca526797bb5736cf31",
+    "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
+    "src/proxy/loading_trace.h": "3006304d762a20c99ceeca07c44e1f8548ee86f72134268ecc47a66cc28eecd0",
+    "src/proxy/loading_trace.cpp": "9c796d434fa7c13e137a4dc860b4bc249d6da0763514658ca27f7fdfbf671eb3",
+    "src/proxy/mesh_adjacency_cache.h": "9ec016ca7b35df32e0316d4cc83c096cb70ec2c7e5c9e039724e22fd9415003e",
+    "src/proxy/mesh_adjacency_cache.cpp": "9e76ef433c8915a25a77a04e7a45c3487465fe720ba2f18cd089781a6f060d83",
+    "src/proxy/mesh_adjacency_fast.h": "25ee144e3f76ad26b64f75f98d5d2e2376aa5c934bef17522cfd61e6df56c266",
+    "src/proxy/mesh_adjacency_fast.cpp": "e9893ce07dc21bb69300e76cd4c492d5f6585514da0c9012d0af4898cfdb6f9b",
+    "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+    "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+    "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+    "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+    "verification/probe/loading_admission_witness.h": "fa68ba0cefda5aaf2829fc24183d10f40bd21197875f8e37ace60a74abfee6aa",
+    "verification/probe/loading_trace_fixture.cpp": "9f97535c70d1130a9366eea04f4e7881e6af57c6b17399d6efcccc6f200e914d",
+    "verification/probe/loading_trace_stub.cpp": "ac9f065e7263d174b4a120fb1d8a7f294370dc503cb25002fe20697bee7fa905",
+    "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
+    "verification/probe/loading_codec_stub.cpp": "688dae30bb88f07cd79cab193dd9480b34e45e34544742df75255f254908a5ab",
+    "verification/probe/loading_mesh_fixture.cpp": "e6949c1c5b66af9c5e702fa4434974bb84b59f0894a85598a78ad0894bc26067",
+    "verification/probe/mesh_adjacency_fast_fixture.cpp": "2da9dcc2f83662b210fa456ae674c44d7884a3fdabb6b871711b02a92c583adf",
+    "verification/probe/build_loading_trace.sh": "8eec869a2f0fe85f1cd1990a60c3bbf339b2974c00ce881a0744a61f56d4ffed",
+    "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+    "verification/probe/run_loading_trace.py": "14e354f138c13f2df215f20e8ebb838c202ae39abd0c61c443b74e6151de8723"
+  },
+  "native_after": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "sources_and_binaries_unchanged": true
 }

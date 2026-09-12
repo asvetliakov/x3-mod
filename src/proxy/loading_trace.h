@@ -5,6 +5,7 @@
 #ifdef X3M_LOADING_TRACE_FIXTURE
 #include "mesh_adjacency_cache.h"
 #endif
+struct ID3DXMesh; // adjacency_write_dump takes the mesh opaquely; the production header does not include d3dx9mesh.h
 
 // Optional loading diagnostics and separately requested experimental adjacency cache.
 // Only the main EXE's verified named

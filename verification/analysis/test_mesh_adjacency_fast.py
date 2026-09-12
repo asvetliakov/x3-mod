@@ -360,6 +360,33 @@ class HostModule(unittest.TestCase):
         unq[3] = tuple(ref.float_to_bits(c) for c in (0.3 + 4e-6, 0.0, 0.0))
         self.assertEqual(self.check(unq, f, 1e-6)[0], 'ok')
 
+    def test_order_shortcut_matches_reference(self):
+        # The module skips D3DX's heapsort when the position is the key and no face
+        # references two distinct vertices of one position class (the engine's split
+        # layout): the port always sorts, so equal output on a class-heavy mesh pins
+        # the invariance argument; one face touching two copies of a position, or a
+        # key that is not the position, must send the module back to the full sweep.
+        n = 6
+        vertices, faces = [], []
+
+        def corner(x, y):
+            vertices.append(P(x - 3, y - 3, (x * 5 + y * 11) % 7))
+            return len(vertices) - 1
+        for y in range(n - 1):
+            for x in range(n - 1):
+                faces.append((corner(x, y), corner(x + 1, y), corner(x + 1, y + 1)))
+                faces.append((corner(x, y), corner(x + 1, y + 1), corner(x, y + 1)))
+        for policy in ({}, dict(heap_order=False), dict(weld_refusal=False)):
+            status, report, _ = self.check(vertices, faces, 1e-6, **policy)
+            self.assertEqual((status, report['representatives'], report['refused_welds']), ('ok', n * n, 0), policy)
+        forced = faces + [(0, 3, 1)]  # vertices 0 and 3 are two copies of corner (0, 0)
+        status, report, _ = self.check(vertices, forced, 1e-6)
+        self.assertEqual((status, report['refused_welds'] > 0 or report['welded_degenerate_faces'] > 0), ('ok', True))
+        self.check(vertices, forced, 1e-6, heap_order=False)
+        heads = [(Q(v % 3), ZERO, ZERO) for v in range(len(vertices))]  # key at byte 0 differs from the position (offset 8: the driver's 20-byte vertex)
+        status, report, _ = self.check(vertices, faces, 1e-6, offset=8, heads=heads)
+        self.assertEqual(status, 'ok')
+
     def test_random_meshes_match_reference(self):
         rng = random.Random(20260912)
         for trial in range(80):

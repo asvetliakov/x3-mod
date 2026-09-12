@@ -178,9 +178,28 @@ vertex one chain.
 that, under its equivalence gate (distinct positions further apart than
 `2 * epsilon`), the distance test reduces to bit equality: the sweep walks each
 equal-position class in heap order instead of the key window, keeping the
-window test only for the key. The score reads the byte-0 triple like D3DX.
-It uses `rsqrtss` on x86 (`_mm_rsqrt_ss`)
-and `1/sqrt` on the host, double precision for the cross product (exact for
-the engine's 24-bit quantized coordinates) and the dot product. The attribute
-table is checked through the public interface: a mesh whose table does not
-cover the faces contiguously in order falls back to native.
+window test only for the key. Two implementation choices keep the output
+identical while avoiding D3DX's cost:
+
+* The heap sort runs on packed `(key code, index)` elements and is skipped
+  altogether when the position is the first vertex element and no face
+  references two distinct vertices of one class: the heap permutation then
+  decides only which member represents its class, which no output depends on
+  (edges compare representatives for equality; the score normals read identical
+  positions). Any face touching two copies of a position, or a key that is not
+  the position, runs the full sort and sweep.
+* Entries are never unlinked from their chains; a retired flag hides the
+  selected entry (inside the lookup) and the querying edge's own entry (after a
+  successful lookup), and clearing the flag is the relink of the
+  `unlink_refused=false` variant. The relative order of the live entries is
+  D3DX's.
+
+The score reads the byte-0 triple like D3DX and uses `rsqrtss` on x86
+(`_mm_rsqrt_ss`; the fixture runs the module and D3DX on the same CPU or
+emulator, so the approximation's bits match by construction) and `1/sqrt` on the
+host, double precision for the cross product (exact for the engine's 24-bit
+quantized coordinates) and the dot product. The attribute table is checked
+through the public interface: a mesh whose table does not cover the faces
+contiguously in order falls back to native. Fixture evidence: 53 named cases and
+a 2,000-mesh random differential sweep equal to d3dx9_37 on both bottles
+([mesh-adjacency-fast.md](../verification/mesh-adjacency-fast.md)).

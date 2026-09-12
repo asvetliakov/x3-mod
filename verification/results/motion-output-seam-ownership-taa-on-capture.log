@@ -1,16 +1,16 @@
 motion_capture_mode requested=0 enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0
 motion_output_mode requested=1 scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=1 taa=1 taa_debug=1 jitter=1 jitter_samples=8 cut_median_px=48.000 cut_missing=0.250 rt_mode=perdraw frame_log=60 sentinel=auto camera_cut_deg=20.00 camera_log=300 state_shadow=1 scene_hook=0 hdr=0 taa_k=-1.00000 mip_bias=0 taa_sharpen=0.000
 x3-modern-renderer version=0.4 schema=2 capture_start=1 capture_frames=8 pointer_bits=32
-telemetry_start schema=1 qpc_frequency=10000000 qpc=9579324011493 anchor=proxy_initialize cpu_only=1 per_draw=1
+telemetry_start schema=1 qpc_frequency=10000000 qpc=9692586817741 anchor=proxy_initialize cpu_only=1 per_draw=1
 application_admission_mode requested=0 enabled=0 live_replay=0 coverage_complete=0
 ownership_mode requested=1 depth_copy_requested=0 depth_copy_enabled=0 scope=normal9 fallback=native
-telemetry_span name=backend_load qpc_begin=9579324020943 qpc_end=9579324075199 thread=948 success=1 error=0
+telemetry_span name=backend_load qpc_begin=9692586827138 qpc_end=9692586877685 thread=948 success=1 error=0
 backend path=C:\windows\system32\d3d9.dll
 object_trace active=0 status=disabled recovery_required=0
 camera_state active=0 status=executable_mismatch
 scene_hook active=0 status=disabled
 object_lifetime active=0 status=disabled recovery_required=0 baseline_complete=0 baseline_entries=0
-telemetry_span name=direct3d_create9 qpc_begin=9579324080583 qpc_end=9579332412045 thread=948 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9692586883648 qpc_end=9692595150295 thread=948 success=1
 ownership_factory mode=wrapped native=0011cae0 public=00118c78 result=00000000
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
 telemetry_presentation phase=create_before device=0 thread=948 focus_window=0016005e device_window=0016005e width=64 height=64 format=21 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
@@ -38,28 +38,28 @@ resource identity=4 ptr=02152cb8 type=6
 resource identity=5 ptr=02152ef8 type=1
 resource identity=6 ptr=02152ec8 type=3
 motion_output_taa device=1 initialize=00000000 references=1 sharpen=0.000
-telemetry_summary device=0 frame=0 reason=interval qpc=9579334252259 since_start_us=1024076.600 interval_us=1024076.600 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=51 failures=0 total_us=19.000 min_us=0.100 max_us=2.300 bytes=0 buckets=51,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=7959.700 min_us=7959.700 max_us=7959.700 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=0 name=shader_inspect count=7 failures=0 total_us=3319.500 min_us=328.800 max_us=1024.800 bytes=0 buckets=0,0,6,1,0,0
-telemetry_metric device=0 name=shader_getfunction count=7 failures=0 total_us=175.400 min_us=0.400 max_us=154.800 bytes=0 buckets=5,1,1,0,0,0
-telemetry_metric device=0 name=shader_hash count=7 failures=0 total_us=16.600 min_us=0.200 max_us=11.500 bytes=7340 buckets=6,1,0,0,0,0
-telemetry_metric device=0 name=shader_dump count=7 failures=0 total_us=3036.100 min_us=321.000 max_us=832.300 bytes=7340 buckets=0,0,7,0,0,0
-motion_output_frame device=1 frame=0 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=0 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=2 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=0 jitter_x=0.000000 jitter_y=-0.166667 jitter_previous_x=0.000000 jitter_previous_y=0.000000 jittered=2 cut=1 cut_median_px=0.0000 cut_missing=1.0000 cut_samples=0 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=0 gate_us=973.3 route_draw_us=129.1 set_rt_us=4.7 lazy_flush_us=0.0 jitter_us=2.0 fill_us=167.6 taa_run_us=3083.9 taa_capture_us=52.5 taa_copy_color_us=89.0 taa_copy_depth_us=1.4 taa_draw_us=1613.5 taa_apply_us=479.5 taa_copy_back_us=1.9 readback_us=0.0 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 sb_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
+telemetry_summary device=0 frame=0 reason=interval qpc=9692597010082 since_start_us=1019234.100 interval_us=1019234.100 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=51 failures=0 total_us=18.400 min_us=0.100 max_us=2.300 bytes=0 buckets=51,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=8625.700 min_us=8625.700 max_us=8625.700 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=shader_inspect count=7 failures=0 total_us=3365.000 min_us=309.000 max_us=1096.900 bytes=0 buckets=0,0,6,1,0,0
+telemetry_metric device=0 name=shader_getfunction count=7 failures=0 total_us=175.000 min_us=0.400 max_us=153.500 bytes=0 buckets=5,1,1,0,0,0
+telemetry_metric device=0 name=shader_hash count=7 failures=0 total_us=14.200 min_us=0.200 max_us=9.300 bytes=7340 buckets=7,0,0,0,0,0
+telemetry_metric device=0 name=shader_dump count=7 failures=0 total_us=3052.900 min_us=300.300 max_us=910.800 bytes=7340 buckets=0,0,7,0,0,0
+motion_output_frame device=1 frame=0 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=0 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=2 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=0 jitter_x=0.000000 jitter_y=-0.166667 jitter_previous_x=0.000000 jitter_previous_y=0.000000 jittered=2 cut=1 cut_median_px=0.0000 cut_missing=1.0000 cut_samples=0 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=0 gate_us=779.8 route_draw_us=128.2 set_rt_us=4.4 lazy_flush_us=0.0 jitter_us=1.7 fill_us=131.1 taa_run_us=2588.6 taa_capture_us=48.9 taa_copy_color_us=227.7 taa_copy_depth_us=1.9 taa_draw_us=1107.0 taa_apply_us=394.7 taa_copy_back_us=1.6 readback_us=0.0 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 sb_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
 camera_state device=1 frame=0 status=executable_mismatch reads=0 valid=0 read_failure=0 failure=0 projection=00000000 view=00000000 p00=0 p11=0 p20=0 p21=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 t=0,0,0 background_valid=0 background_p00=0 background_p11=0 background_rotation_deg=0.0000 history_view_valid=0 history_view_frame=0 rotation_deg=0.0000 policy=1 reason=2 camera_cut=0 mode=0 cut_deg=20.00
-telemetry_first_present device=1 frame=0 qpc=9579334592057 since_start_us=1058056.400 capture=0 reset_count=0
+telemetry_first_present device=1 frame=0 qpc=9692597397783 since_start_us=1058004.200 capture=0 reset_count=0
 telemetry_window_context device=1 frame=0 render_thread=948 window_thread=948 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
-telemetry_window device=1 frame=0 qpc=9579334594594 window=0016005e foreground=00000000 thread_focus=00000000 iconic=0 visible=0 style=04cf0000 exstyle=00000100 window_rect=0,0,119,96 client_rect=0,0,111,62
-telemetry_cursor_poll device=1 frame=0 qpc=9579334594594 flags=1 cursor=00000000 x=2936 y=997
+telemetry_window device=1 frame=0 qpc=9692597403543 window=0016005e foreground=00000000 thread_focus=00000000 iconic=0 visible=0 style=04cf0000 exstyle=00000100 window_rect=0,0,119,96 client_rect=0,0,111,62
+telemetry_cursor_poll device=1 frame=0 qpc=9692597403543 flags=1 cursor=00000000 x=4001 y=1135
 telemetry_present_window device=1 frame=0 override=00000000 device_window=0016005e result=00000000
 frame_end device=1 frame=0 draws=3 capture=0 present=00000000
 frame_begin device=1 frame=1
-capture_event device=1 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9579334603251
+capture_event device=1 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9692597409153
 clear flags=3 color=ff203040 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=1 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9579334613159
+capture_event device=1 frame=1 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9692597419915
 draw device=1 frame=1 index=1 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=98731d5594e36226
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -374,12 +374,12 @@ draw_args start_vertex=0
 motion_input device=1 frame=1 index=1 blockers=00000252 proofs=20 position_path=1 vs=53a0a641107ed76c ps=98731d5594e36226 declaration=0cdf6a8c884ad955 rows_hash=1b0c97ae01a7ec05 color=1 depth=2 width=64 height=64 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=1 index=1 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=1 index=1 result=00000000
-capture_event device=1 frame=1 seq=3 after_draw=1 op=clear result=00000000 qpc=9579334627387
+capture_event device=1 frame=1 seq=3 after_draw=1 op=clear result=00000000 qpc=9692597434422
 clear flags=2 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=1 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9579334629261
+capture_event device=1 frame=1 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9692597436115
 draw device=1 frame=1 index=2 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -697,7 +697,7 @@ motion_route device=1 frame=1 index=2 gate=0 routed=1 matched=1 depth=1 jittered
 motion_input device=1 frame=1 index=2 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=6e1905db0b783f53 color=1 depth=2 width=64 height=64 cull=1 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=1 index=2 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=1 index=2 result=00000000
-capture_event device=1 frame=1 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9579334640557
+capture_event device=1 frame=1 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9692597446580
 draw device=1 frame=1 index=3 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=4 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -1016,31 +1016,31 @@ motion_input device=1 frame=1 index=3 blockers=00000210 proofs=28 position_path=
 motion_geometry device=1 frame=1 index=3 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=1 index=3 result=00000000
 motion_output_cut device=1 frame=1 samples=2 median_px=1.6000 keyed=2 missing=0 missing_fraction=0.0000 bound_px=2.400 bound_missing=0.250 cut=0
-capture_event device=1 frame=1 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9579334651406
+capture_event device=1 frame=1 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9692597457307
 set_depth ptr=00000000 result=00000000
 surface role=depth_binding ptr=0 identity=0
 motion_output_color_readback device=1 frame=1 file=color_1_1.bgra8 width=64 height=64 format=bgra8_row_major result=00000000 bytes=16384
 motion_output_taa_readback device=1 frame=1 file=taa_1_1.rgba16f width=64 height=64 format=rgba16f_row_major result=00000000 bytes=32768
-capture_event device=1 frame=1 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9579334679012
+capture_event device=1 frame=1 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9692597486831
 stretch_rect source=02152e68 dest=02152ef8 filter=0 source_rect_null=1 dest_rect_null=1
 surface role=stretch_source ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=stretch_dest ptr=02152ef8 identity=5 width=64 height=64 format=21 usage=1 msaa=0 container=6 container_type=3 container_result=00000000
-capture_event device=1 frame=1 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9579334746350
+capture_event device=1 frame=1 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9692597544323
 set_depth ptr=02152e98 result=00000000
 surface role=depth_binding ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 motion_output_readback device=1 frame=1 file=motion_1_1.rgba32f width=64 height=64 format=rgba32f_row_major result=00000000 bytes=65536
 motion_output_depth_readback device=1 frame=1 file=depth_1_1.r32f width=64 height=64 format=r32f_row_major result=00000000 bytes=16384
-motion_output_frame device=1 frame=1 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=2 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=0 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=1 jitter_x=-0.250000 jitter_y=0.166667 jitter_previous_x=0.000000 jitter_previous_y=-0.166667 jittered=2 cut=0 cut_median_px=1.6000 cut_missing=0.0000 cut_samples=2 taa=1 taa_attempted=1 taa_resolved=1 taa_history=1 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=4 gate_us=87.7 route_draw_us=20.2 set_rt_us=10.0 lazy_flush_us=0.0 jitter_us=1.6 fill_us=66.5 taa_run_us=398.0 taa_capture_us=13.6 taa_copy_color_us=2.5 taa_copy_depth_us=2.0 taa_draw_us=287.6 taa_apply_us=17.8 taa_copy_back_us=2.3 readback_us=2976.4 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 sb_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
+motion_output_frame device=1 frame=1 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=2 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=0 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=1 jitter_x=-0.250000 jitter_y=0.166667 jitter_previous_x=0.000000 jitter_previous_y=-0.166667 jittered=2 cut=0 cut_median_px=1.6000 cut_missing=0.0000 cut_samples=2 taa=1 taa_attempted=1 taa_resolved=1 taa_history=1 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=4 gate_us=52.6 route_draw_us=17.8 set_rt_us=8.6 lazy_flush_us=0.0 jitter_us=1.2 fill_us=77.8 taa_run_us=307.9 taa_capture_us=7.0 taa_copy_color_us=2.2 taa_copy_depth_us=2.0 taa_draw_us=270.5 taa_apply_us=17.6 taa_copy_back_us=3.4 readback_us=2744.1 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 sb_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
 camera_state device=1 frame=1 status=executable_mismatch reads=0 valid=0 read_failure=0 failure=0 projection=00000000 view=00000000 p00=0 p11=0 p20=0 p21=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 t=0,0,0 background_valid=0 background_p00=0 background_p11=0 background_rotation_deg=0.0000 history_view_valid=0 history_view_frame=1 rotation_deg=0.0000 policy=1 reason=2 camera_cut=0 mode=0 cut_deg=20.00
 frame_end device=1 frame=1 draws=3 capture=1 present=00000000
 ownership_copy_depth phase=present device=1 frame=1 result=00000000 status=00000001 requested=0 available=0 source_bound=0 copy_valid=0 generation=0 source_epoch=0 copy_epoch=0 source_width=0 source_height=0 source_format=0 source_type=0 source_usage=0 source_pool=0 source_msaa=0 source_quality=0
 frame_begin device=1 frame=2
-capture_event device=1 frame=2 seq=1 after_draw=0 op=clear result=00000000 qpc=9579334761411
+capture_event device=1 frame=2 seq=1 after_draw=0 op=clear result=00000000 qpc=9692597555087
 clear flags=3 color=ff203040 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=2 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9579334762480
+capture_event device=1 frame=2 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9692597556093
 draw device=1 frame=2 index=1 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=98731d5594e36226
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -1357,12 +1357,12 @@ draw_args start_vertex=0
 motion_input device=1 frame=2 index=1 blockers=00000252 proofs=20 position_path=1 vs=53a0a641107ed76c ps=98731d5594e36226 declaration=0cdf6a8c884ad955 rows_hash=1b0c97ae01a7ec05 color=1 depth=2 width=64 height=64 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=2 index=1 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=2 index=1 result=00000000
-capture_event device=1 frame=2 seq=3 after_draw=1 op=clear result=00000000 qpc=9579334771908
+capture_event device=1 frame=2 seq=3 after_draw=1 op=clear result=00000000 qpc=9692597565255
 clear flags=2 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=2 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9579334772781
+capture_event device=1 frame=2 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9692597566099
 draw device=1 frame=2 index=2 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -1680,7 +1680,7 @@ motion_route device=1 frame=2 index=2 gate=5 routed=1 matched=0 depth=1 jittered
 motion_input device=1 frame=2 index=2 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=6e1905db0b783f53 color=1 depth=2 width=64 height=64 cull=1 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=2 index=2 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=2 index=2 result=00000000
-capture_event device=1 frame=2 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9579334783484
+capture_event device=1 frame=2 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9692597576845
 draw device=1 frame=2 index=3 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=4 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -1999,31 +1999,31 @@ motion_input device=1 frame=2 index=3 blockers=00000210 proofs=28 position_path=
 motion_geometry device=1 frame=2 index=3 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=2 index=3 result=00000000
 motion_output_cut device=1 frame=2 samples=0 median_px=0.0000 keyed=0 missing=0 missing_fraction=0.0000 bound_px=2.400 bound_missing=0.250 cut=0
-capture_event device=1 frame=2 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9579334794007
+capture_event device=1 frame=2 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9692597587967
 set_depth ptr=00000000 result=00000000
 surface role=depth_binding ptr=0 identity=0
 motion_output_color_readback device=1 frame=2 file=color_1_2.bgra8 width=64 height=64 format=bgra8_row_major result=00000000 bytes=16384
 motion_output_taa_readback device=1 frame=2 file=taa_1_2.rgba16f width=64 height=64 format=rgba16f_row_major result=00000000 bytes=32768
-capture_event device=1 frame=2 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9579334814737
+capture_event device=1 frame=2 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9692597631079
 stretch_rect source=02152e68 dest=02152ef8 filter=0 source_rect_null=1 dest_rect_null=1
 surface role=stretch_source ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=stretch_dest ptr=02152ef8 identity=5 width=64 height=64 format=21 usage=1 msaa=0 container=6 container_type=3 container_result=00000000
-capture_event device=1 frame=2 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9579334861045
+capture_event device=1 frame=2 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9692597695861
 set_depth ptr=02152e98 result=00000000
 surface role=depth_binding ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 motion_output_readback device=1 frame=2 file=motion_1_2.rgba32f width=64 height=64 format=rgba32f_row_major result=00000000 bytes=65536
 motion_output_depth_readback device=1 frame=2 file=depth_1_2.r32f width=64 height=64 format=r32f_row_major result=00000000 bytes=16384
-motion_output_frame device=1 frame=2 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=0 gate1=0 gate2=1 gate3=0 gate4=0 gate5=2 gate6=0 apply_failures=0 restore_failures=0 history_previous=0 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=2 jitter_x=0.250000 jitter_y=-0.388889 jitter_previous_x=-0.250000 jitter_previous_y=0.166667 jittered=2 cut=0 cut_median_px=0.0000 cut_missing=0.0000 cut_samples=0 taa=1 taa_attempted=1 taa_resolved=1 taa_history=1 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=4 gate_us=7.8 route_draw_us=17.6 set_rt_us=8.0 lazy_flush_us=0.0 jitter_us=1.5 fill_us=59.5 taa_run_us=240.3 taa_capture_us=7.1 taa_copy_color_us=2.2 taa_copy_depth_us=2.2 taa_draw_us=207.5 taa_apply_us=13.4 taa_copy_back_us=2.2 readback_us=2071.5 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 sb_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
+motion_output_frame device=1 frame=2 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=0 gate1=0 gate2=1 gate3=0 gate4=0 gate5=2 gate6=0 apply_failures=0 restore_failures=0 history_previous=0 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=2 jitter_x=0.250000 jitter_y=-0.388889 jitter_previous_x=-0.250000 jitter_previous_y=0.166667 jittered=2 cut=0 cut_median_px=0.0000 cut_missing=0.0000 cut_samples=0 taa=1 taa_attempted=1 taa_resolved=1 taa_history=1 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=4 gate_us=8.4 route_draw_us=17.0 set_rt_us=7.4 lazy_flush_us=0.0 jitter_us=1.5 fill_us=62.2 taa_run_us=207.0 taa_capture_us=11.7 taa_copy_color_us=2.5 taa_copy_depth_us=2.1 taa_draw_us=170.6 taa_apply_us=12.9 taa_copy_back_us=3.1 readback_us=4359.9 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 sb_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
 camera_state device=1 frame=2 status=executable_mismatch reads=0 valid=0 read_failure=0 failure=0 projection=00000000 view=00000000 p00=0 p11=0 p20=0 p21=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 t=0,0,0 background_valid=0 background_p00=0 background_p11=0 background_rotation_deg=0.0000 history_view_valid=0 history_view_frame=2 rotation_deg=0.0000 policy=1 reason=2 camera_cut=0 mode=0 cut_deg=20.00
 frame_end device=1 frame=2 draws=3 capture=1 present=00000000
 ownership_copy_depth phase=present device=1 frame=2 result=00000000 status=00000001 requested=0 available=0 source_bound=0 copy_valid=0 generation=0 source_epoch=0 copy_epoch=0 source_width=0 source_height=0 source_format=0 source_type=0 source_usage=0 source_pool=0 source_msaa=0 source_quality=0
 frame_begin device=1 frame=3
-capture_event device=1 frame=3 seq=1 after_draw=0 op=clear result=00000000 qpc=9579334870537
+capture_event device=1 frame=3 seq=1 after_draw=0 op=clear result=00000000 qpc=9692597706138
 clear flags=3 color=ff203040 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=3 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9579334871459
+capture_event device=1 frame=3 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9692597707220
 draw device=1 frame=3 index=1 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=98731d5594e36226
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -2340,12 +2340,12 @@ draw_args start_vertex=0
 motion_input device=1 frame=3 index=1 blockers=00000252 proofs=20 position_path=1 vs=53a0a641107ed76c ps=98731d5594e36226 declaration=0cdf6a8c884ad955 rows_hash=1b0c97ae01a7ec05 color=1 depth=2 width=64 height=64 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=3 index=1 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=3 index=1 result=00000000
-capture_event device=1 frame=3 seq=3 after_draw=1 op=clear result=00000000 qpc=9579334880450
+capture_event device=1 frame=3 seq=3 after_draw=1 op=clear result=00000000 qpc=9692597717628
 clear flags=2 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=3 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9579334881306
+capture_event device=1 frame=3 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9692597718532
 draw device=1 frame=3 index=2 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -2663,7 +2663,7 @@ motion_route device=1 frame=3 index=2 gate=6 routed=1 matched=0 depth=1 jittered
 motion_input device=1 frame=3 index=2 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=1 depth=2 width=64 height=64 cull=1 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=3 index=2 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=3 index=2 result=00000000
-capture_event device=1 frame=3 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9579334892367
+capture_event device=1 frame=3 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9692597729479
 draw device=1 frame=3 index=3 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=4 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -2982,31 +2982,31 @@ motion_input device=1 frame=3 index=3 blockers=00000210 proofs=28 position_path=
 motion_geometry device=1 frame=3 index=3 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=3 index=3 result=00000000
 motion_output_cut device=1 frame=3 samples=0 median_px=0.0000 keyed=2 missing=2 missing_fraction=1.0000 bound_px=2.400 bound_missing=0.250 cut=1
-capture_event device=1 frame=3 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9579334903735
+capture_event device=1 frame=3 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9692597740085
 set_depth ptr=00000000 result=00000000
 surface role=depth_binding ptr=0 identity=0
 motion_output_color_readback device=1 frame=3 file=color_1_3.bgra8 width=64 height=64 format=bgra8_row_major result=00000000 bytes=16384
 motion_output_taa_readback device=1 frame=3 file=taa_1_3.rgba16f width=64 height=64 format=rgba16f_row_major result=00000000 bytes=32768
-capture_event device=1 frame=3 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9579334929270
+capture_event device=1 frame=3 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9692597760696
 stretch_rect source=02152e68 dest=02152ef8 filter=0 source_rect_null=1 dest_rect_null=1
 surface role=stretch_source ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=stretch_dest ptr=02152ef8 identity=5 width=64 height=64 format=21 usage=1 msaa=0 container=6 container_type=3 container_result=00000000
-capture_event device=1 frame=3 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9579334989376
+capture_event device=1 frame=3 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9692597806124
 set_depth ptr=02152e98 result=00000000
 surface role=depth_binding ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 motion_output_readback device=1 frame=3 file=motion_1_3.rgba32f width=64 height=64 format=rgba32f_row_major result=00000000 bytes=65536
 motion_output_depth_readback device=1 frame=3 file=depth_1_3.r32f width=64 height=64 format=r32f_row_major result=00000000 bytes=16384
-motion_output_frame device=1 frame=3 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=0 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=2 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=3 jitter_x=-0.375000 jitter_y=-0.055556 jitter_previous_x=0.250000 jitter_previous_y=-0.388889 jittered=2 cut=1 cut_median_px=0.0000 cut_missing=1.0000 cut_samples=0 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=4 gate_us=9.0 route_draw_us=17.4 set_rt_us=7.9 lazy_flush_us=0.0 jitter_us=1.7 fill_us=53.0 taa_run_us=296.0 taa_capture_us=6.9 taa_copy_color_us=4.0 taa_copy_depth_us=1.6 taa_draw_us=259.8 taa_apply_us=15.6 taa_copy_back_us=5.2 readback_us=2593.9 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 sb_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
+motion_output_frame device=1 frame=3 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=0 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=2 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=3 jitter_x=-0.375000 jitter_y=-0.055556 jitter_previous_x=0.250000 jitter_previous_y=-0.388889 jittered=2 cut=1 cut_median_px=0.0000 cut_missing=1.0000 cut_samples=0 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=4 gate_us=10.2 route_draw_us=17.2 set_rt_us=8.1 lazy_flush_us=0.0 jitter_us=1.3 fill_us=63.5 taa_run_us=221.3 taa_capture_us=6.4 taa_copy_color_us=2.6 taa_copy_depth_us=2.0 taa_draw_us=190.0 taa_apply_us=13.1 taa_copy_back_us=2.3 readback_us=1969.3 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 sb_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
 camera_state device=1 frame=3 status=executable_mismatch reads=0 valid=0 read_failure=0 failure=0 projection=00000000 view=00000000 p00=0 p11=0 p20=0 p21=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 t=0,0,0 background_valid=0 background_p00=0 background_p11=0 background_rotation_deg=0.0000 history_view_valid=0 history_view_frame=3 rotation_deg=0.0000 policy=1 reason=2 camera_cut=0 mode=0 cut_deg=20.00
 frame_end device=1 frame=3 draws=3 capture=1 present=00000000
 ownership_copy_depth phase=present device=1 frame=3 result=00000000 status=00000001 requested=0 available=0 source_bound=0 copy_valid=0 generation=0 source_epoch=0 copy_epoch=0 source_width=0 source_height=0 source_format=0 source_type=0 source_usage=0 source_pool=0 source_msaa=0 source_quality=0
 frame_begin device=1 frame=4
-capture_event device=1 frame=4 seq=1 after_draw=0 op=clear result=00000000 qpc=9579335000706
+capture_event device=1 frame=4 seq=1 after_draw=0 op=clear result=00000000 qpc=9692597815079
 clear flags=3 color=ff203040 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=4 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9579335001928
+capture_event device=1 frame=4 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9692597816111
 draw device=1 frame=4 index=1 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=98731d5594e36226
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -3323,12 +3323,12 @@ draw_args start_vertex=0
 motion_input device=1 frame=4 index=1 blockers=00000252 proofs=20 position_path=1 vs=53a0a641107ed76c ps=98731d5594e36226 declaration=0cdf6a8c884ad955 rows_hash=1b0c97ae01a7ec05 color=1 depth=2 width=64 height=64 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=4 index=1 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=4 index=1 result=00000000
-capture_event device=1 frame=4 seq=3 after_draw=1 op=clear result=00000000 qpc=9579335012522
+capture_event device=1 frame=4 seq=3 after_draw=1 op=clear result=00000000 qpc=9692597827629
 clear flags=2 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=4 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9579335013585
+capture_event device=1 frame=4 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9692597828811
 draw device=1 frame=4 index=2 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -3646,7 +3646,7 @@ motion_route device=1 frame=4 index=2 gate=0 routed=1 matched=1 depth=1 jittered
 motion_input device=1 frame=4 index=2 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=6e1905db0b783f53 color=1 depth=2 width=64 height=64 cull=1 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=4 index=2 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=4 index=2 result=00000000
-capture_event device=1 frame=4 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9579335024785
+capture_event device=1 frame=4 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9692597839483
 draw device=1 frame=4 index=3 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=4 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -3964,7 +3964,7 @@ motion_route device=1 frame=4 index=3 gate=0 routed=1 matched=1 depth=1 jittered
 motion_input device=1 frame=4 index=3 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=8804f37c47da2009 color=1 depth=2 width=64 height=64 cull=1 vb=4 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=4 index=3 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=4 index=3 result=00000000
-capture_event device=1 frame=4 seq=6 after_draw=3 op=draw_begin result=00000000 qpc=9579335035767
+capture_event device=1 frame=4 seq=6 after_draw=3 op=draw_begin result=00000000 qpc=9692597849492
 draw device=1 frame=4 index=4 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -4282,7 +4282,7 @@ motion_route device=1 frame=4 index=4 gate=4 routed=0 matched=0 depth=0 jittered
 motion_input device=1 frame=4 index=4 blockers=00000250 proofs=20 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=6e1905db0b783f53 color=1 depth=2 width=64 height=64 cull=1 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=4 index=4 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=4 index=4 result=00000000
-capture_event device=1 frame=4 seq=7 after_draw=4 op=draw_begin result=00000000 qpc=9579335046682
+capture_event device=1 frame=4 seq=7 after_draw=4 op=draw_begin result=00000000 qpc=9692597858987
 draw device=1 frame=4 index=5 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=98731d5594e36226
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -4601,31 +4601,31 @@ motion_input device=1 frame=4 index=5 blockers=00000212 proofs=20 position_path=
 motion_geometry device=1 frame=4 index=5 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=4 index=5 result=00000000
 motion_output_cut device=1 frame=4 samples=2 median_px=1.6000 keyed=2 missing=0 missing_fraction=0.0000 bound_px=2.400 bound_missing=0.250 cut=0
-capture_event device=1 frame=4 seq=8 after_draw=5 op=set_depth result=00000000 qpc=9579335057438
+capture_event device=1 frame=4 seq=8 after_draw=5 op=set_depth result=00000000 qpc=9692597872202
 set_depth ptr=00000000 result=00000000
 surface role=depth_binding ptr=0 identity=0
 motion_output_color_readback device=1 frame=4 file=color_1_4.bgra8 width=64 height=64 format=bgra8_row_major result=00000000 bytes=16384
 motion_output_taa_readback device=1 frame=4 file=taa_1_4.rgba16f width=64 height=64 format=rgba16f_row_major result=00000000 bytes=32768
-capture_event device=1 frame=4 seq=9 after_draw=5 op=stretch_rect result=00000000 qpc=9579335129988
+capture_event device=1 frame=4 seq=9 after_draw=5 op=stretch_rect result=00000000 qpc=9692597951165
 stretch_rect source=02152e68 dest=02152ef8 filter=0 source_rect_null=1 dest_rect_null=1
 surface role=stretch_source ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=stretch_dest ptr=02152ef8 identity=5 width=64 height=64 format=21 usage=1 msaa=0 container=6 container_type=3 container_result=00000000
-capture_event device=1 frame=4 seq=10 after_draw=5 op=set_depth result=00000000 qpc=9579335195641
+capture_event device=1 frame=4 seq=10 after_draw=5 op=set_depth result=00000000 qpc=9692598007802
 set_depth ptr=02152e98 result=00000000
 surface role=depth_binding ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 motion_output_readback device=1 frame=4 file=motion_1_4.rgba32f width=64 height=64 format=rgba32f_row_major result=00000000 bytes=65536
 motion_output_depth_readback device=1 frame=4 file=depth_1_4.r32f width=64 height=64 format=r32f_row_major result=00000000 bytes=16384
-motion_output_frame device=1 frame=4 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=5 routed=2 matched=2 gate1=0 gate2=1 gate3=1 gate4=1 gate5=0 gate6=0 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=4 jitter_x=0.125000 jitter_y=0.277778 jitter_previous_x=-0.375000 jitter_previous_y=-0.055556 jittered=4 cut=0 cut_median_px=1.6000 cut_missing=0.0000 cut_samples=2 taa=1 taa_attempted=1 taa_resolved=1 taa_history=1 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=8 readbacks=4 gate_us=33.1 route_draw_us=18.1 set_rt_us=7.7 lazy_flush_us=0.0 jitter_us=2.8 fill_us=91.2 taa_run_us=256.8 taa_capture_us=9.7 taa_copy_color_us=3.0 taa_copy_depth_us=2.0 taa_draw_us=220.3 taa_apply_us=13.7 taa_copy_back_us=2.2 readback_us=2164.1 state_shadow=1 rs_queries=23 rs_hits=23 rs_gets=14 rs_resyncs=0 sb_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
+motion_output_frame device=1 frame=4 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=5 routed=2 matched=2 gate1=0 gate2=1 gate3=1 gate4=1 gate5=0 gate6=0 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=4 jitter_x=0.125000 jitter_y=0.277778 jitter_previous_x=-0.375000 jitter_previous_y=-0.055556 jittered=4 cut=0 cut_median_px=1.6000 cut_missing=0.0000 cut_samples=2 taa=1 taa_attempted=1 taa_resolved=1 taa_history=1 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=8 readbacks=4 gate_us=30.7 route_draw_us=14.8 set_rt_us=7.4 lazy_flush_us=0.0 jitter_us=2.5 fill_us=157.8 taa_run_us=279.9 taa_capture_us=9.1 taa_copy_color_us=3.1 taa_copy_depth_us=1.5 taa_draw_us=244.9 taa_apply_us=13.3 taa_copy_back_us=2.4 readback_us=2269.4 state_shadow=1 rs_queries=23 rs_hits=23 rs_gets=14 rs_resyncs=0 sb_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
 camera_state device=1 frame=4 status=executable_mismatch reads=0 valid=0 read_failure=0 failure=0 projection=00000000 view=00000000 p00=0 p11=0 p20=0 p21=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 t=0,0,0 background_valid=0 background_p00=0 background_p11=0 background_rotation_deg=0.0000 history_view_valid=0 history_view_frame=4 rotation_deg=0.0000 policy=1 reason=2 camera_cut=0 mode=0 cut_deg=20.00
 frame_end device=1 frame=4 draws=5 capture=1 present=00000000
 ownership_copy_depth phase=present device=1 frame=4 result=00000000 status=00000001 requested=0 available=0 source_bound=0 copy_valid=0 generation=0 source_epoch=0 copy_epoch=0 source_width=0 source_height=0 source_format=0 source_type=0 source_usage=0 source_pool=0 source_msaa=0 source_quality=0
 frame_begin device=1 frame=5
-capture_event device=1 frame=5 seq=1 after_draw=0 op=clear result=00000000 qpc=9579335207895
+capture_event device=1 frame=5 seq=1 after_draw=0 op=clear result=00000000 qpc=9692598018175
 clear flags=3 color=ff203040 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=5 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9579335208929
+capture_event device=1 frame=5 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9692598019230
 draw device=1 frame=5 index=1 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=98731d5594e36226
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -4942,12 +4942,12 @@ draw_args start_vertex=0
 motion_input device=1 frame=5 index=1 blockers=00000252 proofs=20 position_path=1 vs=53a0a641107ed76c ps=98731d5594e36226 declaration=0cdf6a8c884ad955 rows_hash=1b0c97ae01a7ec05 color=1 depth=2 width=64 height=64 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=5 index=1 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=5 index=1 result=00000000
-capture_event device=1 frame=5 seq=3 after_draw=1 op=clear result=00000000 qpc=9579335219361
+capture_event device=1 frame=5 seq=3 after_draw=1 op=clear result=00000000 qpc=9692598029250
 clear flags=2 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=5 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9579335220235
+capture_event device=1 frame=5 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9692598030323
 draw device=1 frame=5 index=2 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -5265,7 +5265,7 @@ motion_route device=1 frame=5 index=2 gate=0 routed=1 matched=1 depth=1 jittered
 motion_input device=1 frame=5 index=2 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=1 depth=2 width=64 height=64 cull=1 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=5 index=2 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=5 index=2 result=00000000
-capture_event device=1 frame=5 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9579335233646
+capture_event device=1 frame=5 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9692598042161
 draw device=1 frame=5 index=3 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -5583,7 +5583,7 @@ motion_route device=1 frame=5 index=3 gate=6 routed=1 matched=0 depth=1 jittered
 motion_input device=1 frame=5 index=3 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=1 depth=2 width=64 height=64 cull=1 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=5 index=3 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=5 index=3 result=00000000
-capture_event device=1 frame=5 seq=6 after_draw=3 op=draw_begin result=00000000 qpc=9579335243981
+capture_event device=1 frame=5 seq=6 after_draw=3 op=draw_begin result=00000000 qpc=9692598052352
 draw device=1 frame=5 index=4 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=4 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -5902,31 +5902,31 @@ motion_input device=1 frame=5 index=4 blockers=00000210 proofs=28 position_path=
 motion_geometry device=1 frame=5 index=4 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=5 index=4 result=00000000
 motion_output_cut device=1 frame=5 samples=2 median_px=1.6000 keyed=3 missing=1 missing_fraction=0.3333 bound_px=2.400 bound_missing=0.250 cut=1
-capture_event device=1 frame=5 seq=7 after_draw=4 op=set_depth result=00000000 qpc=9579335255065
+capture_event device=1 frame=5 seq=7 after_draw=4 op=set_depth result=00000000 qpc=9692598063248
 set_depth ptr=00000000 result=00000000
 surface role=depth_binding ptr=0 identity=0
 motion_output_color_readback device=1 frame=5 file=color_1_5.bgra8 width=64 height=64 format=bgra8_row_major result=00000000 bytes=16384
 motion_output_taa_readback device=1 frame=5 file=taa_1_5.rgba16f width=64 height=64 format=rgba16f_row_major result=00000000 bytes=32768
-capture_event device=1 frame=5 seq=8 after_draw=4 op=stretch_rect result=00000000 qpc=9579335274700
+capture_event device=1 frame=5 seq=8 after_draw=4 op=stretch_rect result=00000000 qpc=9692598083795
 stretch_rect source=02152e68 dest=02152ef8 filter=0 source_rect_null=1 dest_rect_null=1
 surface role=stretch_source ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=stretch_dest ptr=02152ef8 identity=5 width=64 height=64 format=21 usage=1 msaa=0 container=6 container_type=3 container_result=00000000
-capture_event device=1 frame=5 seq=9 after_draw=4 op=set_depth result=00000000 qpc=9579335321805
+capture_event device=1 frame=5 seq=9 after_draw=4 op=set_depth result=00000000 qpc=9692598135635
 set_depth ptr=02152e98 result=00000000
 surface role=depth_binding ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 motion_output_readback device=1 frame=5 file=motion_1_5.rgba32f width=64 height=64 format=rgba32f_row_major result=00000000 bytes=65536
 motion_output_depth_readback device=1 frame=5 file=depth_1_5.r32f width=64 height=64 format=r32f_row_major result=00000000 bytes=16384
-motion_output_frame device=1 frame=5 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=4 routed=3 matched=2 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=1 apply_failures=0 restore_failures=0 history_previous=3 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=3 jitter=1 jitter_index=5 jitter_x=-0.125000 jitter_y=-0.277778 jitter_previous_x=0.125000 jitter_previous_y=0.277778 jittered=3 cut=1 cut_median_px=1.6000 cut_missing=0.3333 cut_samples=2 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=12 lazy_flushes=0 jitter_writes=6 readbacks=4 gate_us=17.9 route_draw_us=27.1 set_rt_us=13.0 lazy_flush_us=0.0 jitter_us=2.2 fill_us=108.7 taa_run_us=252.2 taa_capture_us=6.0 taa_copy_color_us=2.0 taa_copy_depth_us=2.2 taa_draw_us=221.9 taa_apply_us=12.8 taa_copy_back_us=1.5 readback_us=1811.9 state_shadow=1 rs_queries=26 rs_hits=26 rs_gets=14 rs_resyncs=0 sb_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
+motion_output_frame device=1 frame=5 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=4 routed=3 matched=2 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=1 apply_failures=0 restore_failures=0 history_previous=3 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=3 jitter=1 jitter_index=5 jitter_x=-0.125000 jitter_y=-0.277778 jitter_previous_x=0.125000 jitter_previous_y=0.277778 jittered=3 cut=1 cut_median_px=1.6000 cut_missing=0.3333 cut_samples=2 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=12 lazy_flushes=0 jitter_writes=6 readbacks=4 gate_us=17.4 route_draw_us=24.1 set_rt_us=11.8 lazy_flush_us=0.0 jitter_us=1.7 fill_us=75.5 taa_run_us=231.4 taa_capture_us=6.3 taa_copy_color_us=3.4 taa_copy_depth_us=2.1 taa_draw_us=200.6 taa_apply_us=12.6 taa_copy_back_us=2.6 readback_us=2000.1 state_shadow=1 rs_queries=26 rs_hits=26 rs_gets=14 rs_resyncs=0 sb_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
 camera_state device=1 frame=5 status=executable_mismatch reads=0 valid=0 read_failure=0 failure=0 projection=00000000 view=00000000 p00=0 p11=0 p20=0 p21=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 t=0,0,0 background_valid=0 background_p00=0 background_p11=0 background_rotation_deg=0.0000 history_view_valid=0 history_view_frame=5 rotation_deg=0.0000 policy=1 reason=2 camera_cut=0 mode=0 cut_deg=20.00
 frame_end device=1 frame=5 draws=4 capture=1 present=00000000
 ownership_copy_depth phase=present device=1 frame=5 result=00000000 status=00000001 requested=0 available=0 source_bound=0 copy_valid=0 generation=0 source_epoch=0 copy_epoch=0 source_width=0 source_height=0 source_format=0 source_type=0 source_usage=0 source_pool=0 source_msaa=0 source_quality=0
 frame_begin device=1 frame=6
-capture_event device=1 frame=6 seq=1 after_draw=0 op=clear result=00000000 qpc=9579335330577
+capture_event device=1 frame=6 seq=1 after_draw=0 op=clear result=00000000 qpc=9692598146060
 clear flags=3 color=ff203040 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=6 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9579335331503
+capture_event device=1 frame=6 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9692598147111
 draw device=1 frame=6 index=1 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=98731d5594e36226
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -6243,12 +6243,12 @@ draw_args start_vertex=0
 motion_input device=1 frame=6 index=1 blockers=00000252 proofs=20 position_path=1 vs=53a0a641107ed76c ps=98731d5594e36226 declaration=0cdf6a8c884ad955 rows_hash=1b0c97ae01a7ec05 color=1 depth=2 width=64 height=64 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=6 index=1 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=6 index=1 result=00000000
-capture_event device=1 frame=6 seq=3 after_draw=1 op=clear result=00000000 qpc=9579335340940
+capture_event device=1 frame=6 seq=3 after_draw=1 op=clear result=00000000 qpc=9692598157695
 clear flags=2 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=6 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9579335341775
+capture_event device=1 frame=6 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9692598158767
 draw device=1 frame=6 index=2 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -6566,7 +6566,7 @@ motion_route device=1 frame=6 index=2 gate=6 routed=1 matched=0 depth=1 jittered
 motion_input device=1 frame=6 index=2 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=6e1905db0b783f53 color=1 depth=2 width=64 height=64 cull=1 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=6 index=2 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=6 index=2 result=00000000
-capture_event device=1 frame=6 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9579335353550
+capture_event device=1 frame=6 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9692598170441
 draw device=1 frame=6 index=3 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=4 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -6885,31 +6885,31 @@ motion_input device=1 frame=6 index=3 blockers=00000210 proofs=28 position_path=
 motion_geometry device=1 frame=6 index=3 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=6 index=3 result=00000000
 motion_output_cut device=1 frame=6 samples=1 median_px=1.6000 keyed=2 missing=1 missing_fraction=0.5000 bound_px=2.400 bound_missing=0.250 cut=1
-capture_event device=1 frame=6 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9579335365161
+capture_event device=1 frame=6 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9692598184455
 set_depth ptr=00000000 result=00000000
 surface role=depth_binding ptr=0 identity=0
 motion_output_color_readback device=1 frame=6 file=color_1_6.bgra8 width=64 height=64 format=bgra8_row_major result=00000000 bytes=16384
 motion_output_taa_readback device=1 frame=6 file=taa_1_6.rgba16f width=64 height=64 format=rgba16f_row_major result=00000000 bytes=32768
-capture_event device=1 frame=6 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9579335388136
+capture_event device=1 frame=6 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9692598205810
 stretch_rect source=02152e68 dest=02152ef8 filter=0 source_rect_null=1 dest_rect_null=1
 surface role=stretch_source ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=stretch_dest ptr=02152ef8 identity=5 width=64 height=64 format=21 usage=1 msaa=0 container=6 container_type=3 container_result=00000000
-capture_event device=1 frame=6 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9579335437948
+capture_event device=1 frame=6 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9692598250881
 set_depth ptr=02152e98 result=00000000
 surface role=depth_binding ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 motion_output_readback device=1 frame=6 file=motion_1_6.rgba32f width=64 height=64 format=rgba32f_row_major result=00000000 bytes=65536
 motion_output_depth_readback device=1 frame=6 file=depth_1_6.r32f width=64 height=64 format=r32f_row_major result=00000000 bytes=16384
-motion_output_frame device=1 frame=6 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=1 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=1 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=6 jitter_x=0.375000 jitter_y=0.055556 jitter_previous_x=-0.125000 jitter_previous_y=-0.277778 jittered=2 cut=1 cut_median_px=1.6000 cut_missing=0.5000 cut_samples=1 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=4 gate_us=12.2 route_draw_us=17.3 set_rt_us=8.3 lazy_flush_us=0.0 jitter_us=1.5 fill_us=51.2 taa_run_us=253.1 taa_capture_us=6.3 taa_copy_color_us=2.8 taa_copy_depth_us=1.5 taa_draw_us=210.5 taa_apply_us=23.6 taa_copy_back_us=1.2 readback_us=2111.4 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 sb_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
+motion_output_frame device=1 frame=6 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=1 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=1 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=6 jitter_x=0.375000 jitter_y=0.055556 jitter_previous_x=-0.125000 jitter_previous_y=-0.277778 jittered=2 cut=1 cut_median_px=1.6000 cut_missing=0.5000 cut_samples=1 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=4 gate_us=15.9 route_draw_us=20.8 set_rt_us=10.4 lazy_flush_us=0.0 jitter_us=1.6 fill_us=105.9 taa_run_us=290.4 taa_capture_us=6.2 taa_copy_color_us=3.6 taa_copy_depth_us=2.2 taa_draw_us=256.9 taa_apply_us=13.7 taa_copy_back_us=2.5 readback_us=1954.2 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 sb_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
 camera_state device=1 frame=6 status=executable_mismatch reads=0 valid=0 read_failure=0 failure=0 projection=00000000 view=00000000 p00=0 p11=0 p20=0 p21=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 t=0,0,0 background_valid=0 background_p00=0 background_p11=0 background_rotation_deg=0.0000 history_view_valid=0 history_view_frame=6 rotation_deg=0.0000 policy=1 reason=2 camera_cut=0 mode=0 cut_deg=20.00
 frame_end device=1 frame=6 draws=3 capture=1 present=00000000
 ownership_copy_depth phase=present device=1 frame=6 result=00000000 status=00000001 requested=0 available=0 source_bound=0 copy_valid=0 generation=0 source_epoch=0 copy_epoch=0 source_width=0 source_height=0 source_format=0 source_type=0 source_usage=0 source_pool=0 source_msaa=0 source_quality=0
 frame_begin device=1 frame=7
-capture_event device=1 frame=7 seq=1 after_draw=0 op=clear result=00000000 qpc=9579335447169
+capture_event device=1 frame=7 seq=1 after_draw=0 op=clear result=00000000 qpc=9692598260070
 clear flags=3 color=ff203040 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=7 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9579335448144
+capture_event device=1 frame=7 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9692598261024
 draw device=1 frame=7 index=1 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=98731d5594e36226
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -7226,12 +7226,12 @@ draw_args start_vertex=0
 motion_input device=1 frame=7 index=1 blockers=00000252 proofs=20 position_path=1 vs=53a0a641107ed76c ps=98731d5594e36226 declaration=0cdf6a8c884ad955 rows_hash=1b0c97ae01a7ec05 color=1 depth=2 width=64 height=64 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=7 index=1 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=7 index=1 result=00000000
-capture_event device=1 frame=7 seq=3 after_draw=1 op=clear result=00000000 qpc=9579335457615
+capture_event device=1 frame=7 seq=3 after_draw=1 op=clear result=00000000 qpc=9692598270643
 clear flags=2 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=7 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9579335462118
+capture_event device=1 frame=7 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9692598275221
 draw device=1 frame=7 index=2 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=98731d5594e36226
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -7549,7 +7549,7 @@ motion_route device=1 frame=7 index=2 gate=3 routed=0 matched=0 depth=0 jittered
 motion_input device=1 frame=7 index=2 blockers=00000212 proofs=20 position_path=1 vs=53a0a641107ed76c ps=98731d5594e36226 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=1 depth=2 width=64 height=64 cull=1 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=7 index=2 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=7 index=2 result=00000000
-capture_event device=1 frame=7 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9579335476582
+capture_event device=1 frame=7 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9692598290217
 draw device=1 frame=7 index=3 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=4 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -7868,31 +7868,31 @@ motion_input device=1 frame=7 index=3 blockers=00000210 proofs=28 position_path=
 motion_geometry device=1 frame=7 index=3 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=7 index=3 result=00000000
 motion_output_cut device=1 frame=7 samples=1 median_px=1.6000 keyed=1 missing=0 missing_fraction=0.0000 bound_px=2.400 bound_missing=0.250 cut=0
-capture_event device=1 frame=7 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9579335487647
+capture_event device=1 frame=7 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9692598301062
 set_depth ptr=00000000 result=00000000
 surface role=depth_binding ptr=0 identity=0
 motion_output_color_readback device=1 frame=7 file=color_1_7.bgra8 width=64 height=64 format=bgra8_row_major result=00000000 bytes=16384
 motion_output_taa_readback device=1 frame=7 file=taa_1_7.rgba16f width=64 height=64 format=rgba16f_row_major result=00000000 bytes=32768
-capture_event device=1 frame=7 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9579335506885
+capture_event device=1 frame=7 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9692598326959
 stretch_rect source=02152e68 dest=02152ef8 filter=0 source_rect_null=1 dest_rect_null=1
 surface role=stretch_source ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=stretch_dest ptr=02152ef8 identity=5 width=64 height=64 format=21 usage=1 msaa=0 container=6 container_type=3 container_result=00000000
-capture_event device=1 frame=7 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9579335551173
+capture_event device=1 frame=7 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9692598376925
 set_depth ptr=02152e98 result=00000000
 surface role=depth_binding ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 motion_output_readback device=1 frame=7 file=motion_1_7.rgba32f width=64 height=64 format=rgba32f_row_major result=00000000 bytes=65536
 motion_output_depth_readback device=1 frame=7 file=depth_1_7.r32f width=64 height=64 format=r32f_row_major result=00000000 bytes=16384
-motion_output_frame device=1 frame=7 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=1 matched=1 gate1=0 gate2=1 gate3=1 gate4=0 gate5=0 gate6=0 apply_failures=0 restore_failures=0 history_previous=1 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=1 jitter=1 jitter_index=7 jitter_x=-0.437500 jitter_y=0.388889 jitter_previous_x=0.375000 jitter_previous_y=0.055556 jittered=2 cut=0 cut_median_px=1.6000 cut_missing=0.0000 cut_samples=1 taa=1 taa_attempted=1 taa_resolved=1 taa_history=1 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=4 lazy_flushes=0 jitter_writes=4 readbacks=4 gate_us=11.1 route_draw_us=10.2 set_rt_us=4.6 lazy_flush_us=0.0 jitter_us=1.1 fill_us=58.0 taa_run_us=249.7 taa_capture_us=5.5 taa_copy_color_us=2.9 taa_copy_depth_us=2.2 taa_draw_us=218.3 taa_apply_us=13.0 taa_copy_back_us=1.9 readback_us=2293.2 state_shadow=1 rs_queries=12 rs_hits=2 rs_gets=24 rs_resyncs=2 sb_resyncs=2 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
+motion_output_frame device=1 frame=7 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=1 matched=1 gate1=0 gate2=1 gate3=1 gate4=0 gate5=0 gate6=0 apply_failures=0 restore_failures=0 history_previous=1 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=1 jitter=1 jitter_index=7 jitter_x=-0.437500 jitter_y=0.388889 jitter_previous_x=0.375000 jitter_previous_y=0.055556 jittered=2 cut=0 cut_median_px=1.6000 cut_missing=0.0000 cut_samples=1 taa=1 taa_attempted=1 taa_resolved=1 taa_history=1 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=4 lazy_flushes=0 jitter_writes=4 readbacks=4 gate_us=10.0 route_draw_us=9.5 set_rt_us=4.9 lazy_flush_us=0.0 jitter_us=1.0 fill_us=59.3 taa_run_us=196.9 taa_capture_us=5.3 taa_copy_color_us=3.9 taa_copy_depth_us=1.7 taa_draw_us=161.9 taa_apply_us=17.1 taa_copy_back_us=3.0 readback_us=2460.4 state_shadow=1 rs_queries=12 rs_hits=2 rs_gets=24 rs_resyncs=2 sb_resyncs=2 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
 camera_state device=1 frame=7 status=executable_mismatch reads=0 valid=0 read_failure=0 failure=0 projection=00000000 view=00000000 p00=0 p11=0 p20=0 p21=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 t=0,0,0 background_valid=0 background_p00=0 background_p11=0 background_rotation_deg=0.0000 history_view_valid=0 history_view_frame=7 rotation_deg=0.0000 policy=1 reason=2 camera_cut=0 mode=0 cut_deg=20.00
 frame_end device=1 frame=7 draws=3 capture=1 present=00000000
 ownership_copy_depth phase=present device=1 frame=7 result=00000000 status=00000001 requested=0 available=0 source_bound=0 copy_valid=0 generation=0 source_epoch=0 copy_epoch=0 source_width=0 source_height=0 source_format=0 source_type=0 source_usage=0 source_pool=0 source_msaa=0 source_quality=0
 frame_begin device=1 frame=8
-capture_event device=1 frame=8 seq=1 after_draw=0 op=clear result=00000000 qpc=9579335566104
+capture_event device=1 frame=8 seq=1 after_draw=0 op=clear result=00000000 qpc=9692598386319
 clear flags=3 color=ff203040 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=8 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9579335567130
+capture_event device=1 frame=8 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9692598387354
 draw device=1 frame=8 index=1 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=98731d5594e36226
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -8209,12 +8209,12 @@ draw_args start_vertex=0
 motion_input device=1 frame=8 index=1 blockers=00000252 proofs=20 position_path=1 vs=53a0a641107ed76c ps=98731d5594e36226 declaration=0cdf6a8c884ad955 rows_hash=1b0c97ae01a7ec05 color=1 depth=2 width=64 height=64 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=8 index=1 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=8 index=1 result=00000000
-capture_event device=1 frame=8 seq=3 after_draw=1 op=clear result=00000000 qpc=9579335577655
+capture_event device=1 frame=8 seq=3 after_draw=1 op=clear result=00000000 qpc=9692598397323
 clear flags=2 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=clear_depth ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=8 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9579335584727
+capture_event device=1 frame=8 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9692598404559
 draw device=1 frame=8 index=2 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -8532,7 +8532,7 @@ motion_route device=1 frame=8 index=2 gate=6 routed=1 matched=0 depth=1 jittered
 motion_input device=1 frame=8 index=2 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=1 depth=2 width=64 height=64 cull=1 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=8 index=2 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=8 index=2 result=00000000
-capture_event device=1 frame=8 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9579335594557
+capture_event device=1 frame=8 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9692598414691
 draw device=1 frame=8 index=3 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=4 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -8851,94 +8851,94 @@ motion_input device=1 frame=8 index=3 blockers=00000210 proofs=28 position_path=
 motion_geometry device=1 frame=8 index=3 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=8 index=3 result=00000000
 motion_output_cut device=1 frame=8 samples=1 median_px=1.6000 keyed=2 missing=1 missing_fraction=0.5000 bound_px=2.400 bound_missing=0.250 cut=1
-capture_event device=1 frame=8 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9579335605651
+capture_event device=1 frame=8 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9692598425999
 set_depth ptr=00000000 result=00000000
 surface role=depth_binding ptr=0 identity=0
 motion_output_color_readback device=1 frame=8 file=color_1_8.bgra8 width=64 height=64 format=bgra8_row_major result=00000000 bytes=16384
 motion_output_taa_readback device=1 frame=8 file=taa_1_8.rgba16f width=64 height=64 format=rgba16f_row_major result=00000000 bytes=32768
-capture_event device=1 frame=8 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9579335629595
+capture_event device=1 frame=8 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9692598443849
 stretch_rect source=02152e68 dest=02152ef8 filter=0 source_rect_null=1 dest_rect_null=1
 surface role=stretch_source ptr=02152e68 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
 surface role=stretch_dest ptr=02152ef8 identity=5 width=64 height=64 format=21 usage=1 msaa=0 container=6 container_type=3 container_result=00000000
-capture_event device=1 frame=8 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9579335673241
+capture_event device=1 frame=8 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9692598487450
 set_depth ptr=02152e98 result=00000000
 surface role=depth_binding ptr=02152e98 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 motion_output_readback device=1 frame=8 file=motion_1_8.rgba32f width=64 height=64 format=rgba32f_row_major result=00000000 bytes=65536
 motion_output_depth_readback device=1 frame=8 file=depth_1_8.r32f width=64 height=64 format=r32f_row_major result=00000000 bytes=16384
-motion_output_frame device=1 frame=8 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=1 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=1 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=0 jitter_x=0.000000 jitter_y=-0.166667 jitter_previous_x=-0.437500 jitter_previous_y=0.388889 jittered=2 cut=1 cut_median_px=1.6000 cut_missing=0.5000 cut_samples=1 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=4 gate_us=11.8 route_draw_us=14.8 set_rt_us=7.3 lazy_flush_us=0.0 jitter_us=1.2 fill_us=103.4 taa_run_us=266.9 taa_capture_us=8.2 taa_copy_color_us=4.2 taa_copy_depth_us=2.5 taa_draw_us=225.2 taa_apply_us=18.1 taa_copy_back_us=0.9 readback_us=2138.9 state_shadow=1 rs_queries=18 rs_hits=10 rs_gets=22 rs_resyncs=1 sb_resyncs=1 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
+motion_output_frame device=1 frame=8 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=1 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=1 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=0 jitter_x=0.000000 jitter_y=-0.166667 jitter_previous_x=-0.437500 jitter_previous_y=0.388889 jittered=2 cut=1 cut_median_px=1.6000 cut_missing=0.5000 cut_samples=1 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000000 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=12 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=2 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=4 gate_us=12.8 route_draw_us=18.4 set_rt_us=9.3 lazy_flush_us=0.0 jitter_us=1.2 fill_us=69.2 taa_run_us=204.9 taa_capture_us=6.2 taa_copy_color_us=2.0 taa_copy_depth_us=1.8 taa_draw_us=174.8 taa_apply_us=12.9 taa_copy_back_us=3.4 readback_us=2910.8 state_shadow=1 rs_queries=18 rs_hits=10 rs_gets=22 rs_resyncs=1 sb_resyncs=1 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1 mip_bias=0 mip_bias_sets=0 mip_bias_restores=0 mip_bias_draws=0 mip_bias_stages=0000 mip_bias_reads=0 mip_bias_game_writes=0 mip_bias_game_writes_total=0 mip_bias_failures=0 mip_bias_biased_now=0000
 camera_state device=1 frame=8 status=executable_mismatch reads=0 valid=0 read_failure=0 failure=0 projection=00000000 view=00000000 p00=0 p11=0 p20=0 p21=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 t=0,0,0 background_valid=0 background_p00=0 background_p11=0 background_rotation_deg=0.0000 history_view_valid=0 history_view_frame=8 rotation_deg=0.0000 policy=1 reason=2 camera_cut=0 mode=0 cut_deg=20.00
 frame_end device=1 frame=8 draws=3 capture=1 present=00000000
 ownership_copy_depth phase=present device=1 frame=8 result=00000000 status=00000001 requested=0 available=0 source_bound=0 copy_valid=0 generation=0 source_epoch=0 copy_epoch=0 source_width=0 source_height=0 source_format=0 source_type=0 source_usage=0 source_pool=0 source_msaa=0 source_quality=0
 telemetry_presentation phase=reset_before device=1 thread=948 focus_window=0016005e device_window=0016005e width=64 height=64 format=21 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
 reset_begin ptr=016820d8 device=1
 telemetry_presentation phase=reset_after device=1 thread=948 focus_window=0016005e device_window=0016005e width=64 height=64 format=21 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
-resource identity=11 ptr=0214ab08 type=1
-resource identity=12 ptr=0214ab08 type=1
+resource identity=11 ptr=0223e530 type=1
+resource identity=12 ptr=0223e530 type=1
 motion_output_reset device=1 result=00000000 generation=2 taa_references=1
 ownership_copy_depth phase=reset_after device=1 frame=9 result=00000000 status=00000001 requested=0 available=0 source_bound=0 copy_valid=0 generation=0 source_epoch=0 copy_epoch=0 source_width=0 source_height=0 source_format=0 source_type=0 source_usage=0 source_pool=0 source_msaa=0 source_quality=0
-telemetry_summary device=1 frame=9 reason=reset qpc=9579335742295 since_start_us=1173080.200 interval_us=305035.300 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=883.900 min_us=883.900 max_us=883.900 bytes=0 buckets=0,0,1,0,0,0
-telemetry_metric device=1 name=present_capture count=8 failures=0 total_us=600.800 min_us=62.300 max_us=91.000 bytes=0 buckets=0,8,0,0,0,0
-telemetry_metric device=1 name=frame_capture count=8 failures=0 total_us=109002.300 min_us=10948.700 max_us=20733.100 bytes=0 buckets=0,0,0,0,8,0
-telemetry_metric device=1 name=draw_backend count=30 failures=0 total_us=755.000 min_us=2.200 max_us=324.400 bytes=0 buckets=25,3,2,0,0,0
-telemetry_metric device=1 name=capture_cpu count=67 failures=0 total_us=40801.200 min_us=19.200 max_us=2222.500 bytes=0 buckets=0,32,20,15,0,0
-telemetry_metric device=1 name=snapshot count=27 failures=0 total_us=22502.100 min_us=741.600 max_us=1157.500 bytes=0 buckets=0,0,26,1,0,0
-telemetry_metric device=1 name=shader_vs_backend count=1 failures=0 total_us=401.600 min_us=401.600 max_us=401.600 bytes=0 buckets=0,0,1,0,0,0
-telemetry_metric device=1 name=shader_ps_backend count=6 failures=0 total_us=105.700 min_us=3.900 max_us=69.400 bytes=0 buckets=4,2,0,0,0,0
-telemetry_metric device=1 name=texture count=5 failures=0 total_us=48.300 min_us=4.100 max_us=23.900 bytes=0 buckets=4,1,0,0,0,0
-telemetry_metric device=1 name=cube_texture count=1 failures=0 total_us=141.800 min_us=141.800 max_us=141.800 bytes=0 buckets=0,0,1,0,0,0
-telemetry_metric device=1 name=vertex_buffer count=2 failures=0 total_us=281.000 min_us=5.100 max_us=275.900 bytes=144 buckets=1,0,1,0,0,0
-telemetry_metric device=1 name=reset count=1 failures=0 total_us=5568.600 min_us=5568.600 max_us=5568.600 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=1 name=log_flush count=9 failures=0 total_us=3.900 min_us=0.200 max_us=1.200 bytes=0 buckets=9,0,0,0,0,0
-telemetry_metric device=1 name=stretch_backend count=9 failures=0 total_us=7.700 min_us=0.700 max_us=1.100 bytes=0 buckets=9,0,0,0,0,0
-telemetry_metric device=1 name=route_gate count=30 failures=0 total_us=1163.900 min_us=1.600 max_us=541.600 bytes=0 buckets=26,2,2,0,0,0
-telemetry_metric device=1 name=route_draw count=18 failures=0 total_us=271.800 min_us=4.400 max_us=124.700 bytes=0 buckets=13,4,1,0,0,0
-telemetry_metric device=1 name=route_set_rt count=72 failures=0 total_us=71.500 min_us=0.200 max_us=3.700 bytes=0 buckets=72,0,0,0,0,0
-telemetry_metric device=1 name=route_jitter count=42 failures=0 total_us=15.600 min_us=0.200 max_us=0.900 bytes=0 buckets=42,0,0,0,0,0
-telemetry_metric device=1 name=route_fill count=9 failures=0 total_us=759.100 min_us=51.200 max_us=167.600 bytes=0 buckets=0,6,3,0,0,0
-telemetry_metric device=1 name=route_readback count=32 failures=0 total_us=18161.300 min_us=339.300 max_us=1082.800 bytes=1048576 buckets=0,0,31,1,0,0
-telemetry_metric device=1 name=taa_run count=9 failures=0 total_us=5296.900 min_us=240.300 max_us=3083.900 bytes=0 buckets=0,0,8,1,0,0
-telemetry_metric device=1 name=taa_state_capture count=9 failures=0 total_us=115.800 min_us=5.500 max_us=52.500 bytes=0 buckets=7,2,0,0,0,0
-telemetry_metric device=1 name=taa_copy_color count=9 failures=0 total_us=112.600 min_us=2.000 max_us=89.000 bytes=0 buckets=8,1,0,0,0,0
-telemetry_metric device=1 name=taa_copy_depth count=9 failures=0 total_us=17.600 min_us=1.400 max_us=2.500 bytes=0 buckets=9,0,0,0,0,0
-telemetry_metric device=1 name=taa_resolve_draw count=9 failures=0 total_us=3464.600 min_us=207.500 max_us=1613.500 bytes=0 buckets=0,0,8,1,0,0
-telemetry_metric device=1 name=taa_state_apply count=9 failures=0 total_us=607.500 min_us=12.800 max_us=479.500 bytes=0 buckets=0,8,1,0,0,0
-telemetry_metric device=1 name=taa_copy_back count=9 failures=0 total_us=19.300 min_us=0.900 max_us=5.200 bytes=0 buckets=9,0,0,0,0,0
+telemetry_summary device=1 frame=9 reason=reset qpc=9692598577014 since_start_us=1175927.300 interval_us=314136.400 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=1104.800 min_us=1104.800 max_us=1104.800 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=1 name=present_capture count=8 failures=0 total_us=611.500 min_us=68.400 max_us=102.500 bytes=0 buckets=0,7,1,0,0,0
+telemetry_metric device=1 name=frame_capture count=8 failures=0 total_us=111082.400 min_us=10893.100 max_us=20308.900 bytes=0 buckets=0,0,0,0,8,0
+telemetry_metric device=1 name=draw_backend count=30 failures=0 total_us=687.000 min_us=2.100 max_us=279.700 bytes=0 buckets=26,2,2,0,0,0
+telemetry_metric device=1 name=capture_cpu count=67 failures=0 total_us=43467.100 min_us=19.400 max_us=3757.900 bytes=0 buckets=0,31,21,15,0,0
+telemetry_metric device=1 name=snapshot count=27 failures=0 total_us=22889.500 min_us=760.500 max_us=1228.300 bytes=0 buckets=0,0,26,1,0,0
+telemetry_metric device=1 name=shader_vs_backend count=1 failures=0 total_us=414.900 min_us=414.900 max_us=414.900 bytes=0 buckets=0,0,1,0,0,0
+telemetry_metric device=1 name=shader_ps_backend count=6 failures=0 total_us=114.600 min_us=4.200 max_us=80.500 bytes=0 buckets=4,2,0,0,0,0
+telemetry_metric device=1 name=texture count=5 failures=0 total_us=112.500 min_us=2.300 max_us=92.300 bytes=0 buckets=4,1,0,0,0,0
+telemetry_metric device=1 name=cube_texture count=1 failures=0 total_us=125.500 min_us=125.500 max_us=125.500 bytes=0 buckets=0,0,1,0,0,0
+telemetry_metric device=1 name=vertex_buffer count=2 failures=0 total_us=277.800 min_us=3.500 max_us=274.300 bytes=144 buckets=1,0,1,0,0,0
+telemetry_metric device=1 name=reset count=1 failures=0 total_us=6368.500 min_us=6368.500 max_us=6368.500 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=1 name=log_flush count=9 failures=0 total_us=3.600 min_us=0.200 max_us=0.700 bytes=0 buckets=9,0,0,0,0,0
+telemetry_metric device=1 name=stretch_backend count=9 failures=0 total_us=8.400 min_us=0.700 max_us=1.400 bytes=0 buckets=9,0,0,0,0,0
+telemetry_metric device=1 name=route_gate count=30 failures=0 total_us=937.800 min_us=1.800 max_us=412.100 bytes=0 buckets=26,2,2,0,0,0
+telemetry_metric device=1 name=route_draw count=18 failures=0 total_us=267.800 min_us=4.300 max_us=123.900 bytes=0 buckets=13,4,1,0,0,0
+telemetry_metric device=1 name=route_set_rt count=72 failures=0 total_us=72.300 min_us=0.200 max_us=4.400 bytes=0 buckets=72,0,0,0,0,0
+telemetry_metric device=1 name=route_jitter count=42 failures=0 total_us=13.700 min_us=0.200 max_us=0.700 bytes=0 buckets=42,0,0,0,0,0
+telemetry_metric device=1 name=route_fill count=9 failures=0 total_us=802.300 min_us=59.300 max_us=157.800 bytes=0 buckets=0,6,3,0,0,0
+telemetry_metric device=1 name=route_readback count=32 failures=0 total_us=20668.200 min_us=349.800 max_us=2994.800 bytes=1048576 buckets=0,0,29,3,0,0
+telemetry_metric device=1 name=taa_run count=9 failures=0 total_us=4528.300 min_us=196.900 max_us=2588.600 bytes=0 buckets=0,0,8,1,0,0
+telemetry_metric device=1 name=taa_state_capture count=9 failures=0 total_us=107.100 min_us=5.300 max_us=48.900 bytes=0 buckets=7,2,0,0,0,0
+telemetry_metric device=1 name=taa_copy_color count=9 failures=0 total_us=251.000 min_us=2.000 max_us=227.700 bytes=0 buckets=8,0,1,0,0,0
+telemetry_metric device=1 name=taa_copy_depth count=9 failures=0 total_us=17.300 min_us=1.500 max_us=2.200 bytes=0 buckets=9,0,0,0,0,0
+telemetry_metric device=1 name=taa_resolve_draw count=9 failures=0 total_us=2777.200 min_us=161.900 max_us=1107.000 bytes=0 buckets=0,0,8,1,0,0
+telemetry_metric device=1 name=taa_state_apply count=9 failures=0 total_us=507.900 min_us=12.600 max_us=394.700 bytes=0 buckets=0,8,1,0,0,0
+telemetry_metric device=1 name=taa_copy_back count=9 failures=0 total_us=24.300 min_us=1.600 max_us=3.400 bytes=0 buckets=9,0,0,0,0,0
 reset_end device=1 result=00000000
 motion_output_target device=1 width=64 height=64 create=00000000 level=00000000 depth=1 depth_create=00000000 depth_level=00000000
-resource identity=13 ptr=0214abf8 type=1
-resource identity=14 ptr=0214abc8 type=3
-telemetry_first_present device=1 frame=9 qpc=9579336166848 since_start_us=1215535.500 capture=0 reset_count=1
+resource identity=13 ptr=0223e620 type=1
+resource identity=14 ptr=0223e5f0 type=3
+telemetry_first_present device=1 frame=9 qpc=9692598997081 since_start_us=1217934.000 capture=0 reset_count=1
 motion_output_variant device=1 kind=vs original=53a0a641107ed76c transform=0 create=00000000 words=556 depth=1
 motion_output_variant device=1 kind=ps original=8759c7838bbc86c2 transform=0 create=00000000 words=1402 depth=1
 motion_output_release device=1 held=20 count=22 released=1
-telemetry_summary device=1 frame=12 reason=device_destroy qpc=9579336440533 since_start_us=1242904.000 interval_us=69823.800 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=1 name=present_normal count=3 failures=0 total_us=84.800 min_us=12.500 max_us=58.800 bytes=0 buckets=0,3,0,0,0,0
-telemetry_metric device=1 name=frame_normal count=2 failures=0 total_us=22531.000 min_us=6950.200 max_us=15580.800 bytes=0 buckets=0,0,0,1,1,0
-telemetry_metric device=1 name=draw_backend count=9 failures=0 total_us=41.000 min_us=1.900 max_us=7.800 bytes=0 buckets=9,0,0,0,0,0
-telemetry_metric device=1 name=shader_vs_backend count=1 failures=0 total_us=26.600 min_us=26.600 max_us=26.600 bytes=0 buckets=0,1,0,0,0,0
-telemetry_metric device=1 name=shader_ps_backend count=1 failures=0 total_us=11.000 min_us=11.000 max_us=11.000 bytes=0 buckets=0,1,0,0,0,0
-telemetry_metric device=1 name=texture count=1 failures=0 total_us=5.000 min_us=5.000 max_us=5.000 bytes=0 buckets=1,0,0,0,0,0
-telemetry_metric device=1 name=log_flush count=4 failures=0 total_us=1.500 min_us=0.300 max_us=0.500 bytes=0 buckets=4,0,0,0,0,0
-telemetry_metric device=1 name=stretch_backend count=3 failures=0 total_us=2.900 min_us=0.600 max_us=1.500 bytes=0 buckets=3,0,0,0,0,0
-telemetry_metric device=1 name=route_gate count=9 failures=0 total_us=30.800 min_us=1.700 max_us=6.200 bytes=0 buckets=9,0,0,0,0,0
-telemetry_metric device=1 name=route_draw count=6 failures=0 total_us=30.700 min_us=4.000 max_us=5.700 bytes=0 buckets=6,0,0,0,0,0
-telemetry_metric device=1 name=route_set_rt count=24 failures=0 total_us=8.600 min_us=0.200 max_us=0.700 bytes=0 buckets=24,0,0,0,0,0
-telemetry_metric device=1 name=route_jitter count=12 failures=0 total_us=3.100 min_us=0.200 max_us=0.500 bytes=0 buckets=12,0,0,0,0,0
-telemetry_metric device=1 name=route_fill count=3 failures=0 total_us=643.100 min_us=55.000 max_us=421.100 bytes=0 buckets=0,1,2,0,0,0
-telemetry_metric device=1 name=taa_run count=3 failures=0 total_us=999.200 min_us=289.300 max_us=371.300 bytes=0 buckets=0,0,3,0,0,0
-telemetry_metric device=1 name=taa_state_capture count=3 failures=0 total_us=53.200 min_us=3.500 max_us=36.700 bytes=0 buckets=1,2,0,0,0,0
-telemetry_metric device=1 name=taa_copy_color count=3 failures=0 total_us=12.400 min_us=3.000 max_us=5.500 bytes=0 buckets=3,0,0,0,0,0
-telemetry_metric device=1 name=taa_copy_depth count=3 failures=0 total_us=4.700 min_us=0.900 max_us=2.200 bytes=0 buckets=3,0,0,0,0,0
-telemetry_metric device=1 name=taa_resolve_draw count=3 failures=0 total_us=823.200 min_us=229.000 max_us=323.700 bytes=0 buckets=0,0,3,0,0,0
-telemetry_metric device=1 name=taa_state_apply count=3 failures=0 total_us=63.800 min_us=12.400 max_us=37.400 bytes=0 buckets=0,3,0,0,0,0
-telemetry_metric device=1 name=taa_copy_back count=3 failures=0 total_us=4.500 min_us=0.700 max_us=2.900 bytes=0 buckets=3,0,0,0,0,0
-telemetry_summary device=0 frame=12 reason=device_destroy qpc=9579336441995 since_start_us=1243050.200 interval_us=218973.600 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=437 failures=0 total_us=104.900 min_us=0.000 max_us=1.700 bytes=0 buckets=437,0,0,0,0,0
-telemetry_metric device=0 name=shader_inspect count=56 failures=0 total_us=386.900 min_us=1.400 max_us=12.900 bytes=0 buckets=38,18,0,0,0,0
-telemetry_metric device=0 name=shader_getfunction count=56 failures=0 total_us=43.700 min_us=0.400 max_us=1.400 bytes=0 buckets=56,0,0,0,0,0
-telemetry_metric device=0 name=shader_hash count=56 failures=0 total_us=279.700 min_us=0.100 max_us=11.300 bytes=150072 buckets=55,1,0,0,0,0
-telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=23.900 min_us=23.900 max_us=23.900 bytes=0 buckets=0,1,0,0,0,0
+telemetry_summary device=1 frame=12 reason=device_destroy qpc=9692599268180 since_start_us=1245043.900 interval_us=69116.600 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=present_normal count=3 failures=0 total_us=67.200 min_us=11.800 max_us=43.100 bytes=0 buckets=0,3,0,0,0,0
+telemetry_metric device=1 name=frame_normal count=2 failures=0 total_us=21877.900 min_us=6715.200 max_us=15162.700 bytes=0 buckets=0,0,0,1,1,0
+telemetry_metric device=1 name=draw_backend count=9 failures=0 total_us=39.900 min_us=2.000 max_us=7.900 bytes=0 buckets=9,0,0,0,0,0
+telemetry_metric device=1 name=shader_vs_backend count=1 failures=0 total_us=19.100 min_us=19.100 max_us=19.100 bytes=0 buckets=0,1,0,0,0,0
+telemetry_metric device=1 name=shader_ps_backend count=1 failures=0 total_us=12.500 min_us=12.500 max_us=12.500 bytes=0 buckets=0,1,0,0,0,0
+telemetry_metric device=1 name=texture count=1 failures=0 total_us=6.900 min_us=6.900 max_us=6.900 bytes=0 buckets=1,0,0,0,0,0
+telemetry_metric device=1 name=log_flush count=4 failures=0 total_us=1.800 min_us=0.300 max_us=0.800 bytes=0 buckets=4,0,0,0,0,0
+telemetry_metric device=1 name=stretch_backend count=3 failures=0 total_us=2.100 min_us=0.500 max_us=0.800 bytes=0 buckets=3,0,0,0,0,0
+telemetry_metric device=1 name=route_gate count=9 failures=0 total_us=30.700 min_us=1.600 max_us=6.200 bytes=0 buckets=9,0,0,0,0,0
+telemetry_metric device=1 name=route_draw count=6 failures=0 total_us=30.600 min_us=4.100 max_us=5.600 bytes=0 buckets=6,0,0,0,0,0
+telemetry_metric device=1 name=route_set_rt count=24 failures=0 total_us=9.200 min_us=0.200 max_us=1.000 bytes=0 buckets=24,0,0,0,0,0
+telemetry_metric device=1 name=route_jitter count=12 failures=0 total_us=3.100 min_us=0.200 max_us=0.300 bytes=0 buckets=12,0,0,0,0,0
+telemetry_metric device=1 name=route_fill count=3 failures=0 total_us=480.400 min_us=52.000 max_us=365.600 bytes=0 buckets=0,2,1,0,0,0
+telemetry_metric device=1 name=taa_run count=3 failures=0 total_us=868.500 min_us=262.800 max_us=336.900 bytes=0 buckets=0,0,3,0,0,0
+telemetry_metric device=1 name=taa_state_capture count=3 failures=0 total_us=49.600 min_us=3.500 max_us=41.000 bytes=0 buckets=2,1,0,0,0,0
+telemetry_metric device=1 name=taa_copy_color count=3 failures=0 total_us=10.000 min_us=2.300 max_us=5.000 bytes=0 buckets=3,0,0,0,0,0
+telemetry_metric device=1 name=taa_copy_depth count=3 failures=0 total_us=4.200 min_us=1.100 max_us=1.600 bytes=0 buckets=3,0,0,0,0,0
+telemetry_metric device=1 name=taa_resolve_draw count=3 failures=0 total_us=726.000 min_us=202.900 max_us=287.900 bytes=0 buckets=0,0,3,0,0,0
+telemetry_metric device=1 name=taa_state_apply count=3 failures=0 total_us=38.100 min_us=12.100 max_us=13.300 bytes=0 buckets=0,3,0,0,0,0
+telemetry_metric device=1 name=taa_copy_back count=3 failures=0 total_us=2.100 min_us=0.600 max_us=0.900 bytes=0 buckets=3,0,0,0,0,0
+telemetry_summary device=0 frame=12 reason=device_destroy qpc=9692599269737 since_start_us=1245199.600 interval_us=225965.500 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=437 failures=0 total_us=98.700 min_us=0.000 max_us=2.000 bytes=0 buckets=437,0,0,0,0,0
+telemetry_metric device=0 name=shader_inspect count=56 failures=0 total_us=403.500 min_us=1.500 max_us=27.300 bytes=0 buckets=38,18,0,0,0,0
+telemetry_metric device=0 name=shader_getfunction count=56 failures=0 total_us=39.400 min_us=0.400 max_us=1.300 bytes=0 buckets=56,0,0,0,0,0
+telemetry_metric device=0 name=shader_hash count=56 failures=0 total_us=277.400 min_us=0.100 max_us=9.400 bytes=150072 buckets=56,0,0,0,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=33.700 min_us=33.700 max_us=33.700 bytes=0 buckets=0,1,0,0,0,0
 device_destroy ptr=016820d8 device=1
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0

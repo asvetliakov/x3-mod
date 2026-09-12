@@ -1,5 +1,5 @@
 mesh_cache requested=0 enabled=0 activation=await_public_mesh_and_buffer_contract adjacency_metric_scope=hook_service restart_on_cleanup_failure=1
-mesh_adjacency mode=native scope=hook_service equivalence=exact_position_equality gate=public_systemmem_readonly+declaration_float3 order=cache_lookup,compute,cache_store native_fallback=1
+mesh_adjacency mode=native scope=hook_service equivalence=d3dx_rules+exact_position_equality gate=public_systemmem_readonly+declaration_float3+no_attribute_table order=cache_lookup,compute,cache_store native_fallback=1 dump=0 rsqrt=rsqrtss
 loading_hook name=CreateFileA installed=1
 loading_hook name=ReadFile installed=1
 loading_hook name=SetFilePointer installed=1
@@ -19,9 +19,13 @@ loading_hook name=D3DXCleanMesh installed=1
 loading_hook name=FindFirstFileA installed=1
 loading_hook name=FindNextFileA installed=1
 loading_hook name=FindClose installed=1
-loading_trace coverage_begin=9508075900082 frequency=10000000 hooks=19 module=main inclusive=1 paths=0 qualification=named_pe32_imports
+loading_hook name=gzgetc installed=0
+loading_hook name=gztell installed=0
+loading_hook name=gzclose installed=0
+loading_hook name=gzwrite installed=0
+loading_trace coverage_begin=9691357075368 frequency=10000000 hooks=19 module=main inclusive=1 paths=0 qualification=named_pe32_imports
 mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=8 objects_retained=0
-loading_benchmark synthetic=1 calls=20000 raw_us_per_call=0.002810 hooked_us_per_call=1.364320
+loading_benchmark synthetic=1 calls=20000 raw_us_per_call=0.003195 hooked_us_per_call=1.338260
 loading_hook name=CreateFileA restored=1 owned=1
 loading_hook name=ReadFile restored=0 owned=0
 loading_hook name=SetFilePointer restored=1 owned=1

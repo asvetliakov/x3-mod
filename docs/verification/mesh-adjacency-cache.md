@@ -173,7 +173,7 @@ and records failure if compilation, launch or timeout handling fails. Its proces
 is used without Present or game assets. Fixture seams are compile-time only;
 production source also compiles independently with `-Wall -Wextra -Werror`.
 
-The final fixture passes **767 checks** (`run_mesh_adjacency_cache.py`, 2026-09-12;
+The final fixture passes **767 checks** (`run_mesh_adjacency_cache.py`, 2026-09-12, unchanged by the adjacency parity rewrite of the same night;
 741 before the FP-contract change). Coverage includes:
 
 - The FP contract: ten state variants driven through fill and reuse. Sticky

@@ -215,7 +215,8 @@ AdjacencyCompute adjacency_compute(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output) 
     DWORD position_offset=0;bool position_found=false;
     for(unsigned i=0;i<MAX_FVF_DECL_SIZE&&declaration[i].Stream!=0xff;++i){
         const auto& e=declaration[i];
-        if(e.Stream==0&&e.Usage==D3DDECLUSAGE_POSITION&&e.UsageIndex==0&&e.Type==D3DDECLTYPE_FLOAT3){position_offset=e.Offset;position_found=true;} // D3DX keeps the last such element
+        if(e.Stream!=0)return fall(AdjacencyFallback::Declaration); // D3DX's parse ignores the stream number; only single-stream declarations are mirrored here
+        if(e.Usage==D3DDECLUSAGE_POSITION&&e.UsageIndex==0&&e.Type==D3DDECLTYPE_FLOAT3){position_offset=e.Offset;position_found=true;} // D3DX keeps the last such element
     }
     if(!position_found||position_offset>stride-12)return fall(AdjacencyFallback::Declaration);
     // D3DX walks the faces of the attribute table's ranges when a table exists;

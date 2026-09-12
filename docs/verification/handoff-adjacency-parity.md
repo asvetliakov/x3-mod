@@ -1,5 +1,21 @@
 # Handoff: fast GenerateAdjacency parity (paused 2026-09-12 night, account switch)
 
+**Resolved 2026-09-12 (later session).** Remaining items 1-4 below are done; the
+record is in [mesh-adjacency-fast.md](mesh-adjacency-fast.md) (*D3DX equivalence*,
+*Run 8 and the parity fix*, *Parity rewrite: performance*, *Suite record*):
+direct fixture runs and `run_loading_trace.py` on both bottles (Steam/Rosetta,
+records `verification/results/`; X3/FEX, records `verification/results/bottle-X3/`)
+give `ADJACENCY_RANDOM trials=2000 equal=2000 mismatched=0`, 51/51 computable
+named cases equal to native and the inventories `cache=0 checks=33272` /
+`cache=1 checks=33328` with `failures=0`; `rsqrtss` is bit-identical under FEX
+and Rosetta (probe); no seventh rule was needed. The rewrite's performance regression
+(heap sort and chain removal) was fixed without changing the output. Item 5, the
+game acceptance run, is still the user's:
+`python3 tools/manage.py launch --telemetry --mesh-adjacency verify --mesh-adjacency-dump`
+on bottle X3 must end with `verify_mismatched=0`. Everything below is the
+pre-resolution state, kept for provenance.
+
+
 State of the working tree (uncommitted; compiles: the x86 module and fixture
 objects build with `i686-w64-mingw32-g++ -Werror`, the host unit tests pass).
 

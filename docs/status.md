@@ -32,12 +32,20 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   the caller's state restored; NaN/near-neighbour inputs fall back to native
   behind a 2·ε gate. The cache's FP gate now keys precision/FTZ instead of
   refusing them (`mesh_adjacency_cache` 767 checks, hook survey 13,271).
-  **Blocked (2026-09-12 night, bottle X3 run 8): verify mode reported
-  `verify_mismatched=167` of 7,715 meshes; the D3DX rules were decompiled and
-  the module rewritten to them, Wine suites and the game verify run are still
-  pending — `fast` stays off until a verify run shows `verify_mismatched=0`
-  ([handoff-adjacency-parity.md](verification/handoff-adjacency-parity.md),
-  [d3dx-generate-adjacency.md](reverse-engineering/d3dx-generate-adjacency.md)).**
+  **Parity fix (2026-09-12 night, after bottle X3 run 8 reported
+  `verify_mismatched=167` of 7,715 meshes): the six D3DX rules the module got
+  wrong were decompiled from the game's d3dx9_37 and the module, its Python
+  port and the fixture rewritten to them
+  ([d3dx-generate-adjacency.md](reverse-engineering/d3dx-generate-adjacency.md),
+  [handoff-adjacency-parity.md](verification/handoff-adjacency-parity.md), resolved).
+  Fixture evidence on both bottles (Steam/Rosetta and X3/FEX): 51/51 computable
+  named cases and a 2,000-mesh random differential sweep byte-identical to
+  d3dx9_37 (`mismatched=0`), 33,272 checks; the rewrite's speed regression was
+  removed (host: grid 3.97 ms, split-150 1.90 ms, review 25: 4.12 / 1.83). Still
+  `fast` stays off until the user's verify run on bottle X3 shows
+  `verify_mismatched=0` (`launch --telemetry --mesh-adjacency verify
+  --mesh-adjacency-dump`; any `mesh-adjacency-<n>.bin` goes through
+  `tools/analysis/replay_mesh_adjacency.py --wine` first).**
   The thread-local arena retains ≤16 MB per loader thread for the process lifetime.
 - **Direct engine reads** (`X3M_ENGINE_READS=rpm` restores ReadProcessMemory;
   [route-cost-run1.md](verification/route-cost-run1.md)). Reads are validated
