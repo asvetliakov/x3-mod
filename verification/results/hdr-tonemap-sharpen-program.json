@@ -3,7 +3,7 @@
   "source": "src/temporal/agx_sharpen_ps.hlsl",
   "source_sha256": "398233d7eb29bd99d8071697bfa7e0573c277511fe9c0fada3073facf284aca5",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
-  "compiler_sha256": "50ce16e50069b2d6bf599575aa82828158b233e46723c1b7c277bcae7aacc152",
+  "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
   "target": "ps_3_0",
   "flags": 32768,
@@ -18,7 +18,7 @@
   "header_sha256": "ed43e66f9bf91bab53ba18a3fa78a062cfcb9c3ed51bbfd6a8f3e67140a1472f",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
-    "tools/shaders/generate_rigid_motion_pixel.py": "7fac8448ea5cdf9f644a84ed8f2ea45dac78b4c3d6a25ee0a38a3df2cef77841"
+    "tools/shaders/generate_rigid_motion_pixel.py": "ecd275c268c671908592159806aaab59bb0668dbde81b15e99e06c776f85eae8"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false

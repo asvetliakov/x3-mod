@@ -134,7 +134,8 @@ def compile_one(name, args):
     source, header, provenance = shader['source'], shader['header'], shader['provenance']
     target = shader.get('target', 'ps_3_0')
     expanded, included = expand_includes(source)
-    inputs = (source, COMPILER_SOURCE, Path(__file__).resolve(), args.d3dx.resolve()) + tuple(included)
+    compiler_path = args.d3dx.resolve()
+    inputs = (source, COMPILER_SOURCE, Path(__file__).resolve(), compiler_path) + tuple(included)
     before = {path: sha(path.read_bytes()) for path in inputs}
     with tempfile.TemporaryDirectory(prefix='x3-original-motion-') as directory:
         work = Path(directory)
@@ -161,7 +162,7 @@ def compile_one(name, args):
     text += ''.join('    ' + ', '.join(f'0x{v:08x}u' for v in words[i:i+6]) + ',\n'
                     for i in range(0, len(words), 6))
     record = dict(schema=1, source=str(source.relative_to(ROOT)), source_sha256=before[source],
-                  compiler='native d3dx9_37.dll D3DXCompileShader', compiler_sha256=before[inputs[-1]],
+                  compiler='native d3dx9_37.dll D3DXCompileShader', compiler_sha256=before[compiler_path],
                   entry='main', target=target, flags=32768, flags_name='D3DXSHADER_OPTIMIZATION_LEVEL3',
                   defines=None, includes={str(path.relative_to(ROOT)): before[path] for path in included} or None,
                   word_count=len(words), bytecode_sha256=sha(data),

@@ -53,6 +53,14 @@ in every case because of its cap, versus +5.66…+8 for the old rule. Actual
 post-TAA meter inputs and presented images are absent, so this is a scoped
 counterfactual, not game acceptance of the new meter or its appearance.
 
+## Shader provenance correction (2026-09-13)
+
+[Review 36](verification/review-36-shader-provenance.md) corrects an offline
+manifest bug that recorded an include hash as the compiler DLL identity in the
+two sharpen programs. All ten programs were recompiled; bytecode and generated
+headers are unchanged. The regression and independent review passed. This is a
+provenance correction only; the installed camera build above remains unchanged.
+
 ## Bloom preparation checkpoint (2026-09-13)
 
 Targeted disassembly and independent review produced the

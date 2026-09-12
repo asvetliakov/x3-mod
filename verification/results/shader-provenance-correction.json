@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "scope": "10 native shader recompilations; provenance correction only",
+  "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "corrected_compiler_fields": [
+    "taa_sharpen",
+    "hdr_tonemap_sharpen"
+  ],
+  "all_10_bytecode_and_header_hashes_unchanged": true,
+  "old_records_local": "/tmp/x3-shader-provenance-before.json",
+  "native_compile_log": "/tmp/x3-shader-provenance-regenerate.log",
+  "host_test_passed": 1,
+  "old_expression_negative_control": "expected assertion failure; no setup errors",
+  "game_launched": false,
+  "installed_dll_changed": false
+}
