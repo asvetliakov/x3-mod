@@ -30,7 +30,10 @@ Evidence: [iteration 13](verification/iteration-13.md),
 [compositor and glow](reverse-engineering/compositor-and-glow.md),
 [window and cursor](architecture/window-and-cursor.md), and the
 [current status](status.md). The handoff records the fixed-exposure run 16;
-its raw log/readbacks remain local in `/tmp/x3-bottleX3-run16/`.
+its raw log remains local in `/tmp/x3-bottleX3-run16/`. Inspection confirmed
+`taa_debug=0` and no resolved/presented readbacks. Seven logged unresolved HDR
+inputs were recovered into that snapshot from the live capture directory;
+they are not a measured final-image baseline.
 
 ## Execution order
 
