@@ -12,6 +12,29 @@ Baseline built here from the unmodified sources (`cmake -S . -B build
 (untracked; a copy at the session scratchpad `d3d9-baseline.dll`). Note the
 review-26 runner rebuilds with `RelWithDebInfo --clean-first`, so its hash differs.
 
+## Status per item (third pause, 2026-09-12 ~21:40; commit "Native-Windows fixes in progress (paused 2)")
+
+Everything below the table of the second pause still holds; what changed
+since, all on the Steam bottle under `wine_lock.py`:
+
+| Item | Status now | Evidence |
+| --- | --- | --- |
+| D3 `seam-msaa` | **verified** | partial run PASS, 5 checks: `motion_output_msaa_refused device=1 frame=0 msaa=2 width=64 height=64`, every frame line `msaa=2 routed=0 jittered=0 taa_skip=11 gate1=draws`, no `motion_output_target`. |
+| W1/W3 `run_d3d9_exports.py` | **PASS** | writable case 8/8 (`source=game`, On12 forwarded a live factory, shim fallback `result=00000000 popped=4`, On12Ex `8876086a`), read-only case 8/8 (`source=localappdata`, log under `C:\users\crossover\AppData\Local\x3-modern-renderer\captures`, nothing written into the 0555 directory). Records committed: `d3d9-exports-summary.json`, `d3d9-exports.txt`, capture logs. |
+| `run_temporal_pass.py` | **PASS** | 508/278/2, 386 samples, `quad_twins` ×6 identical, `copy_modes` ×2 `history_identical=1 display_max_code_difference=0`; negative controls and sharpen measure as before. Records committed. |
+| full `run_motion_output.py` | **all 113 cases exit 0; suite aborted in the runner's own cross-case block** (`readback_files` referenced before its definition) | Fixed by moving the block after the definition; a dry run of that block against the completed cases passes: `seam-taa-quad-fvf` identical (16 readback files, 8 history files, presented frames), `seam-taa-copy-draw` history identical and presented `max_code_difference=0` `exact_fraction=1.0`. Also fixed: the mipbias and burst validators' exact `MODE` dictionaries lacked the new `msaa=0` key. **The full suite must be rerun** (`motion-output-summary.json` on disk says FAIL; not committed). |
+| `temporal_run.py` | **timed out twice** (`timed_out=true`, `exit_code=null`, 39 samples read) while other agents held the GPU/lock; the fixture text itself ends `RESULT PASS samples=78 generations=2` | rerun when the runner lock is quiet; no source change indicated (the runner builds only `temporal_resolve.cpp`). |
+| `run_ownership_integration.py` | was running at pause (holder `nw-ownership`); result unknown | check `verification/results/ownership-integration-summary.json` mtime, rerun if absent. |
+| not run | `run_scene_capture.py`, `run_loading_trace.py`, `run_object_lifetime.py`, `run_object_trace.py`, generator `--check`, `X3M_FIXTURE_BOTTLE=X3 run_motion_output.py` | chain script at the scratchpad `chain3.sh` (killed at pause) lists the order. |
+
+Next step: rerun in this order under the lock — `run_motion_output.py` (full),
+`temporal_run.py`, `run_ownership_integration.py` (if no fresh record),
+`run_scene_capture.py`, `run_loading_trace.py`, `run_object_lifetime.py`,
+`run_object_trace.py`, generator `--check`, X3-bottle motion rerun; then fill
+the counts into status.md / motion-output.md / platform-portability.md and
+commit "Native-Windows fixes D1–D3, W1, W3; engine_memory summary; FEX NaN
+bits (pre-review 28)".
+
 ## Status per item (second pause, 2026-09-12 ~21:20; commit "Native-Windows fixes in progress (paused)")
 
 Every source, fixture, runner and doc edit of the design below is in the

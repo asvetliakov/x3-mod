@@ -1976,7 +1976,7 @@ def validate_mipbias(name, mode, lazy, mip_bias, text, trace, directory):
     assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '1', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
                          'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0',
                          'hook': '0', 'state_shadow': '1', 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
-                         'mipbias': '1', 'mip_bias': mip_bias_text(mip_bias), 'sharpen': '0'}, (name, mode_line)
+                         'mipbias': '1', 'mip_bias': mip_bias_text(mip_bias), 'sharpen': '0', 'msaa': '0'}, (name, mode_line)
     assert int(terminal['frames']) == MIPBIAS_FRAMES and text.count('RESET PASS') == 1, (name, terminal)
     restores = [fields(l) for l in lines if l.startswith('RESTORE ')]
     assert len(restores) == MIPBIAS_FRAMES and all(r['differences'] == '0' and r['label'] == 'fill' for r in restores), (name, restores)
@@ -2074,7 +2074,7 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True):
     assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '0', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
                          'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '1', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0',
                          'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
-                         'mipbias': '0', 'mip_bias': '0', 'sharpen': '0'}, (name, mode_line)
+                         'mipbias': '0', 'mip_bias': '0', 'sharpen': '0', 'msaa': '0'}, (name, mode_line)
     # Per frame: the fill and the burst restoration comparisons, the coverage
     # oracle (both DLLs), the COLORWRITEENABLE1 read-back between routed draws
     # and, seam, the motion/depth oracle.
@@ -2427,6 +2427,30 @@ def main():
                 assert not presented['identical'] and presented['differing_channels_bgra'][3] == 0, f'{sharpen_name}: presented frames equal {twin} (nothing sharpened) or alpha differs: {presented}'
                 entry['reference'] = {k: a['sharpen'][k] for k in ('sharpen', 'gain', 'max_code_error', 'mean_code_error', 'changed_fraction')}
             result['sharpen'][sharpen_name] = entry
+        # Color is bit-identical with the route off and on in every environment,
+        # and the wrapper/depth/admission environments change nothing either.
+        # With jitter on the raster moves: the colour must differ from the
+        # unjittered run (the per-pixel coverage oracle above says by how much).
+        for mode in ('production', 'seam'):
+            reference = result['cases'][mode + '-off']['color_hashes']
+            for variant in VARIANTS:
+                prefix = mode + '-' if variant == 'plain' else f'{mode}-{variant}-'
+                off, on = result['cases'][prefix + 'off']['color_hashes'], result['cases'][prefix + 'on']['color_hashes']
+                assert off == on, f'{prefix}: color differs between route off and on'
+                assert off == reference, f'{prefix}: color differs from the plain run'
+            jittered = result['cases'][mode + '-jitter-on']['color_hashes']
+            differing = [f for f in jittered if jittered[f] != reference[f]]
+            assert len(differing) >= 6, f'{mode}-jitter-on: jitter changed the colour of only {len(differing)} of 12 frames'
+            result['cases'][mode + '-jitter-on']['frames_differing_from_unjittered'] = differing
+        assert result['cases']['production-jitter-on']['color_hashes'] == result['cases']['seam-jitter-on']['color_hashes'], 'jitter colour differs between the production and the seam DLL'
+        # Lazy RT binding equivalence. Regular script: the lazy runs equal their
+        # per-draw twins in colour, readback files, checks and restorations.
+        # Burst script: colour, state signature, seam RT1/RT2 hashes and the
+        # DLL's readback files agree between the modes; the SetRenderTarget
+        # count per frame drops from 20 to 12 outside the capture frames.
+        def readback_files(case_name):
+            directory = ROOT / result['cases'][case_name]['directory'] / 'x3-modern-captures'
+            return {p.name: sha(p) for p in sorted(directory.glob('*.rgba32f')) + sorted(directory.glob('*.r32f'))}
         # Native-Windows fixes: the XYZRHW quad twin is byte-identical to the
         # vs_3_0 quads everywhere (presented frames, RT1/RT2 readbacks, FP16
         # history, checks); the draw copy mode reproduces the stretch mode's
@@ -2457,30 +2481,6 @@ def main():
             result['native_windows'][twin_name] = {'twin': twin, 'history_identical': history_identical, 'presented': presented,
                                                    'presented_identical': presented['identical'], 'copy': 'staging_stretch_plus_identity_draws'}
         result['native_windows']['seam-msaa'] = result['cases']['seam-msaa']['refused']
-        # Color is bit-identical with the route off and on in every environment,
-        # and the wrapper/depth/admission environments change nothing either.
-        # With jitter on the raster moves: the colour must differ from the
-        # unjittered run (the per-pixel coverage oracle above says by how much).
-        for mode in ('production', 'seam'):
-            reference = result['cases'][mode + '-off']['color_hashes']
-            for variant in VARIANTS:
-                prefix = mode + '-' if variant == 'plain' else f'{mode}-{variant}-'
-                off, on = result['cases'][prefix + 'off']['color_hashes'], result['cases'][prefix + 'on']['color_hashes']
-                assert off == on, f'{prefix}: color differs between route off and on'
-                assert off == reference, f'{prefix}: color differs from the plain run'
-            jittered = result['cases'][mode + '-jitter-on']['color_hashes']
-            differing = [f for f in jittered if jittered[f] != reference[f]]
-            assert len(differing) >= 6, f'{mode}-jitter-on: jitter changed the colour of only {len(differing)} of 12 frames'
-            result['cases'][mode + '-jitter-on']['frames_differing_from_unjittered'] = differing
-        assert result['cases']['production-jitter-on']['color_hashes'] == result['cases']['seam-jitter-on']['color_hashes'], 'jitter colour differs between the production and the seam DLL'
-        # Lazy RT binding equivalence. Regular script: the lazy runs equal their
-        # per-draw twins in colour, readback files, checks and restorations.
-        # Burst script: colour, state signature, seam RT1/RT2 hashes and the
-        # DLL's readback files agree between the modes; the SetRenderTarget
-        # count per frame drops from 20 to 12 outside the capture frames.
-        def readback_files(case_name):
-            directory = ROOT / result['cases'][case_name]['directory'] / 'x3-modern-captures'
-            return {p.name: sha(p) for p in sorted(directory.glob('*.rgba32f')) + sorted(directory.glob('*.r32f'))}
         equivalence = {'regular': {}, 'burst': {}}
         for lazy_name, twin in (('production-lazy-on', 'production-on'), ('seam-lazy-on', 'seam-on'),
                                 ('seam-ownership-lazy-on', 'seam-ownership-on'), ('seam-taa-lazy-on', 'seam-taa-on')):

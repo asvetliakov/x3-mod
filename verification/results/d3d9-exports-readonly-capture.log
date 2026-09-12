@@ -1,0 +1,13 @@
+capture_dir=C:\users\crossover\AppData\Local\x3-modern-renderer\captures source=localappdata
+motion_capture_mode requested=0 enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0
+motion_output_mode requested=0 scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=0 taa=0 taa_debug=0 jitter=0 jitter_samples=8 cut_median_px=48.000 cut_missing=0.250 rt_mode=perdraw frame_log=60 sentinel=auto camera_cut_deg=20.00 camera_log=300 state_shadow=1 scene_hook=0 hdr=0 taa_k=-1.00000 mip_bias=0 taa_sharpen=0.000
+x3-modern-renderer version=0.4 schema=2 capture_start=120 capture_frames=1 pointer_bits=32
+application_admission_mode requested=0 enabled=0 live_replay=0 coverage_complete=0
+backend path=C:\windows\system32\d3d9.dll
+object_trace active=0 status=disabled recovery_required=0
+camera_state active=0 status=disabled
+scene_hook active=0 status=disabled
+object_lifetime active=0 status=disabled recovery_required=0 baseline_complete=0 baseline_entries=0
+d3d9_export name=Direct3DCreate9On12 forwarded=1 unproxied=1
+d3d9_export name=Direct3D9EnableMaximizedWindowedModeShim forwarded=0
+d3d9_export name=Direct3DCreate9On12Ex forwarded=0 unproxied=0

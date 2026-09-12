@@ -2153,6 +2153,121 @@ SHARPEN_NAN saturate_nan_code=0 uniform=1
 CHECK an all-NaN input gives one defined code everywhere (the backend's saturate(NaN)) PASS
 SHARPEN_NONFINITE outside=0 alpha_diff=0 changed=52 nan_pixel=0,0,0 posinf_pixel=255,255,255 neginf_pixel=0,0,0
 CHECK NaN, +inf and -inf taps stay inside the neighbourhood bound as their saturated values and poison nothing PASS
+QUAD_TWIN_CASES
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+QUAD_TWIN variant=stretch frames=3 identical=1
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+QUAD_TWIN variant=sharpen frames=3 identical=1
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+QUAD_TWIN variant=draw_copy frames=3 identical=1
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK stretch mode run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK draw copy mode run PASS
+CHECK route atomic outputs valid PASS
+CHECK draw copy mode wrote the display itself PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK stretch mode run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK draw copy mode run PASS
+CHECK route atomic outputs valid PASS
+CHECK draw copy mode wrote the display itself PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK stretch mode run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK draw copy mode run PASS
+CHECK route atomic outputs valid PASS
+CHECK draw copy mode wrote the display itself PASS
+COPY_MODE draw_vs_stretch history_identical=1 display_max_code_difference=0 display_differing_bytes=0 of 3072
+CHECK draw copy mode history equals stretch mode history byte for byte PASS
+CHECK draw copy mode display within one code of the stretch mode copy-back PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK draw copy mode without the copy program refused PASS
+CHECK the refused run left the main target untouched PASS
+CHECK draw copy mode with an FP16 input PASS
+CHECK route atomic outputs valid PASS
+CHECK an FP16 input takes no copy in draw mode PASS
 RESET_CONTINUITY
 CHECK before reset frame PASS
 CHECK atomic outputs valid PASS
@@ -4327,4 +4442,119 @@ SHARPEN_NAN saturate_nan_code=0 uniform=1
 CHECK an all-NaN input gives one defined code everywhere (the backend's saturate(NaN)) PASS
 SHARPEN_NONFINITE outside=0 alpha_diff=0 changed=52 nan_pixel=0,0,0 posinf_pixel=255,255,255 neginf_pixel=0,0,0
 CHECK NaN, +inf and -inf taps stay inside the neighbourhood bound as their saturated values and poison nothing PASS
-RESULT PASS numerical=468 state_restorations=228 generations=2
+QUAD_TWIN_CASES
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+QUAD_TWIN variant=stretch frames=3 identical=1
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+QUAD_TWIN variant=sharpen frames=3 identical=1
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK vs_3_0 quad run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK XYZRHW twin run PASS
+CHECK route atomic outputs valid PASS
+CHECK display ownership follows the mode on both paths PASS
+CHECK vs_3_0 quad history equals the XYZRHW twin byte for byte PASS
+CHECK vs_3_0 quad display image equals the XYZRHW twin byte for byte PASS
+QUAD_TWIN variant=draw_copy frames=3 identical=1
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK stretch mode run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK draw copy mode run PASS
+CHECK route atomic outputs valid PASS
+CHECK draw copy mode wrote the display itself PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK stretch mode run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK draw copy mode run PASS
+CHECK route atomic outputs valid PASS
+CHECK draw copy mode wrote the display itself PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK stretch mode run PASS
+CHECK route atomic outputs valid PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK draw copy mode run PASS
+CHECK route atomic outputs valid PASS
+CHECK draw copy mode wrote the display itself PASS
+COPY_MODE draw_vs_stretch history_identical=1 display_max_code_difference=0 display_differing_bytes=0 of 3072
+CHECK draw copy mode history equals stretch mode history byte for byte PASS
+CHECK draw copy mode display within one code of the stretch mode copy-back PASS
+CHECK 8-bit main target holds the exact bytes PASS
+CHECK draw copy mode without the copy program refused PASS
+CHECK the refused run left the main target untouched PASS
+CHECK draw copy mode with an FP16 input PASS
+CHECK route atomic outputs valid PASS
+CHECK an FP16 input takes no copy in draw mode PASS
+RESULT PASS numerical=508 state_restorations=278 generations=2

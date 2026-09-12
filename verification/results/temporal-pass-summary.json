@@ -1,17 +1,17 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "089c43f3335dffce23aea754a37a994a58cc3ca02536e29170684566c9d9650d",
-    "src/renderer/temporal_pass.cpp": "a1531762ef6ca8ef4d55b8c708bf6897296693640e9c14dd427f6d82b1c6c721",
+    "src/renderer/temporal_pass.h": "8976a5a8115ecd1f7ec96558f348749796a345c9365a3203554d24500599ca2c",
+    "src/renderer/temporal_pass.cpp": "c667e67e49ce2066baa1f119bec648c22ef7637535eae797c27bd14001e5c8f8",
     "src/temporal/resolve.h": "68f4b7a9e727c617cf76b75e1a669d90d8254e991f9d833cb12353f6432cec02",
     "src/temporal/resolve.hlsl": "6dc25ca6186191436c77eb5ecdc5fc033dbc71f39f415abd576c66c27c3d7a16",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
     "src/temporal/sharpen.h": "7929b76d44483ec76a5e939f7fd1245d981a88fe7eb6a32a73bae43fe81b771f",
     "src/temporal/rcas.hlsl": "50ce16e50069b2d6bf599575aa82828158b233e46723c1b7c277bcae7aacc152",
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
-    "verification/probe/temporal_pass_fixture.cpp": "7f7f09c0880b4af4cdb025b83f82e4f072de83a2c3b6aaa60273111403c0f5da",
-    "verification/probe/build_temporal_pass.sh": "87f5a149ca668fe8ff69806f53f3e84750cb0b3b9de0400c194fba5bbd22ba64",
-    "verification/probe/run_temporal_pass.py": "5f464e6dc2d0dd609c1afe9c6592f6329a141caa22141c3ad8687196993280df"
+    "verification/probe/temporal_pass_fixture.cpp": "c742c2a6077204f7365a1c7cd32aed43250eb3ea055e440ed392705e5d8a02d7",
+    "verification/probe/build_temporal_pass.sh": "a59f6e17764411adad516db293587561c0f30a63ebc8a58a663e067f4e49f6e9",
+    "verification/probe/run_temporal_pass.py": "40deeb92678a6845936a24bb861921216666133f52b419884b102bcbe5f0866b"
   },
   "game_launched": false,
   "bottle": {
@@ -23,7 +23,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "5fca3dd2ea033874e21bc28b37c9def218f307735b56cab75faba58bd5772c1a",
+  "executable_sha256": "db0120471153cbe80fe215c4ca18f03b96f27144b4adc408e2f6603841d7a5e1",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -32,20 +32,20 @@
     "--dll",
     "d3d9=b",
     "--workdir",
-    "/Users/asvetl/x3-mod/verification/probe/build",
-    "/Users/asvetl/x3-mod/verification/probe/build/temporal_pass_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0100a8066b313223/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0100a8066b313223/verification/probe/build/temporal_pass_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl",
-    "Z:/Users/asvetl/x3-mod/src/temporal/resolve.hlsl",
-    "Z:/Users/asvetl/x3-mod/src/temporal/taa_sharpen_ps.hlsl"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a0100a8066b313223/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a0100a8066b313223/src/temporal/resolve.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a0100a8066b313223/src/temporal/taa_sharpen_ps.hlsl"
   ],
   "exit_code": 0,
   "source_unchanged": true,
   "binary_unchanged": true,
   "compiler_unchanged": true,
-  "report_sha256": "2c2beeead80802c1f3675fb1936112b55270ebac225818c58e29d5c86204850b",
+  "report_sha256": "9855b3bd708b8ae496d50131e6517eb6747c767206a5f62cb79482240deaafa6",
   "samples": 386,
-  "state_restorations": 228,
+  "state_restorations": 278,
   "generations": 2,
   "camera": {
     "static-builder": {
@@ -89,6 +89,50 @@
       "error": 0.01353
     }
   },
+  "quad_twins": [
+    {
+      "variant": "stretch",
+      "frames": "3",
+      "identical": "1"
+    },
+    {
+      "variant": "sharpen",
+      "frames": "3",
+      "identical": "1"
+    },
+    {
+      "variant": "draw_copy",
+      "frames": "3",
+      "identical": "1"
+    },
+    {
+      "variant": "stretch",
+      "frames": "3",
+      "identical": "1"
+    },
+    {
+      "variant": "sharpen",
+      "frames": "3",
+      "identical": "1"
+    },
+    {
+      "variant": "draw_copy",
+      "frames": "3",
+      "identical": "1"
+    }
+  ],
+  "copy_modes": [
+    {
+      "history_identical": "1",
+      "display_max_code_difference": "0",
+      "display_differing_bytes": "0"
+    },
+    {
+      "history_identical": "1",
+      "display_max_code_difference": "0",
+      "display_differing_bytes": "0"
+    }
+  ],
   "sharpen": {
     "verdicts": [
       {

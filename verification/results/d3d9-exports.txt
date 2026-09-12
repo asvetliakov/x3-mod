@@ -1,0 +1,70 @@
+==== writable exit=0
+ENV LOCALAPPDATA=C:\users\crossover\AppData\Local
+ENV USERPROFILE=C:\users\crossover
+MODULE Y:\x3-mod\.claude\worktrees\agent-a0100a8066b313223\verification\probe\build\d3d9-exports-writable-20260912-212524-921019\d3d9.dll readonly=0
+EXPORT name=D3DPERF_BeginEvent address=7ac037a0
+EXPORT name=D3DPERF_EndEvent address=7ac03b00
+EXPORT name=D3DPERF_GetStatus address=7ac03e30
+EXPORT name=D3DPERF_QueryRepeatFrame address=7ac04160
+EXPORT name=D3DPERF_SetMarker address=7ac04490
+EXPORT name=D3DPERF_SetOptions address=7ac04b10
+EXPORT name=D3DPERF_SetRegion address=7ac047d0
+EXPORT name=DebugSetLevel address=7ac013d0
+EXPORT name=DebugSetMute address=7ac04e40
+EXPORT name=Direct3D9EnableMaximizedWindowedModeShim address=7ac01461
+EXPORT name=Direct3DCreate9 address=7ac02510
+EXPORT name=Direct3DCreate9Ex address=7ac02aa0
+EXPORT name=Direct3DCreate9On12 address=7ac02f10
+EXPORT name=Direct3DCreate9On12Ex address=7ac03310
+EXPORT name=Direct3DShaderValidatorCreate9 address=7ac05160
+EXPORT name=PSGPError address=7ac013ff
+EXPORT name=PSGPSampleTexture address=7ac01430
+CHECK all seventeen system d3d9 export names resolve on the proxy PASS
+CALL name=D3DPERF_GetStatus result=00000000
+CHECK D3DPERF_GetStatus callable PASS
+CALL name=Direct3DCreate9On12 result=0011c5c8
+CHECK Direct3DCreate9On12 callable PASS
+FACTORY adapters=2
+CHECK the 9On12 factory is a live IDirect3D9 PASS
+CHECK the 9On12 factory released to zero PASS
+CALL name=Direct3D9EnableMaximizedWindowedModeShim result=00000000 popped=4
+CHECK the shim fallback returns 0 and pops its one argument PASS
+CHECK the shim's second call is the same fallback PASS
+CALL name=Direct3DCreate9On12Ex result=8876086a out=00000000
+CHECK Direct3DCreate9On12Ex without a backend export answers D3DERR_NOTAVAILABLE and null PASS
+RESULT PASS checks=8 failures=0
+==== readonly exit=0
+ENV LOCALAPPDATA=C:\users\crossover\AppData\Local
+ENV USERPROFILE=C:\users\crossover
+MODULE Y:\x3-mod\.claude\worktrees\agent-a0100a8066b313223\verification\probe\build\d3d9-exports-readonly-20260912-212527-882013\d3d9.dll readonly=1
+EXPORT name=D3DPERF_BeginEvent address=7ac037a0
+EXPORT name=D3DPERF_EndEvent address=7ac03b00
+EXPORT name=D3DPERF_GetStatus address=7ac03e30
+EXPORT name=D3DPERF_QueryRepeatFrame address=7ac04160
+EXPORT name=D3DPERF_SetMarker address=7ac04490
+EXPORT name=D3DPERF_SetOptions address=7ac04b10
+EXPORT name=D3DPERF_SetRegion address=7ac047d0
+EXPORT name=DebugSetLevel address=7ac013d0
+EXPORT name=DebugSetMute address=7ac04e40
+EXPORT name=Direct3D9EnableMaximizedWindowedModeShim address=7ac01461
+EXPORT name=Direct3DCreate9 address=7ac02510
+EXPORT name=Direct3DCreate9Ex address=7ac02aa0
+EXPORT name=Direct3DCreate9On12 address=7ac02f10
+EXPORT name=Direct3DCreate9On12Ex address=7ac03310
+EXPORT name=Direct3DShaderValidatorCreate9 address=7ac05160
+EXPORT name=PSGPError address=7ac013ff
+EXPORT name=PSGPSampleTexture address=7ac01430
+CHECK all seventeen system d3d9 export names resolve on the proxy PASS
+CALL name=D3DPERF_GetStatus result=00000000
+CHECK D3DPERF_GetStatus callable PASS
+CALL name=Direct3DCreate9On12 result=0011c5a0
+CHECK Direct3DCreate9On12 callable PASS
+FACTORY adapters=2
+CHECK the 9On12 factory is a live IDirect3D9 PASS
+CHECK the 9On12 factory released to zero PASS
+CALL name=Direct3D9EnableMaximizedWindowedModeShim result=00000000 popped=4
+CHECK the shim fallback returns 0 and pops its one argument PASS
+CHECK the shim's second call is the same fallback PASS
+CALL name=Direct3DCreate9On12Ex result=8876086a out=00000000
+CHECK Direct3DCreate9On12Ex without a backend export answers D3DERR_NOTAVAILABLE and null PASS
+RESULT PASS checks=8 failures=0
