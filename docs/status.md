@@ -95,6 +95,13 @@ Evidence at this checkpoint (details in the linked documents):
   runs, ownership 26, fallback, temporal pass 318/164, temporal 78/78, scene
   capture 4,908 checks, no-x87, 503 analysis tests.
 
+**Installed (2026-09-12, after review 19):** `build/d3d9.dll` from commit
+`459ddfa`, SHA-256
+`4380a720be5d2e786b502d338e507af750515654177ba4174cf9b346975266ca`, through
+`tools/manage.py install` (bottle configuration unchanged). The previous
+installed build (commit `162b2f7`, `200aefff…`) is superseded; rollbacks stay
+in `artifacts/rollback/`.
+
 Next (in order): camera reprojection for sentinel pixels from the live camera
 globals (policy 2), the env-map exclusion, then the user runs: TAA on with
 `--profile --mesh-cache` for loading attribution and quality, and a proxy run
