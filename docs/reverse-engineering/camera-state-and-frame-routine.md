@@ -309,6 +309,50 @@ relative-call redirect, no prologue relocation) applies unchanged.
 | **Environment-map pass** | `0x00472210` `CALL 0x0047e820` | `E8 rel32`, returns to `0x00472215` | `in_EAX` = view, `unaff_ESI` = context — **both are register arguments**, so a trampoline must forward EAX and ESI unchanged and preserve ESI/EDI/EBX/EBP. Returns 0/1 in EAX, tested at `0x00472215` | **No, for detection.** A mid-frame `EndScene` followed by `Clear(TARGET|ZBUFFER, Z=1.0)` and a `BeginScene`, with six cube-face target changes in between, is unique and observable at the D3D level. Patch only to bracket the pass cheaply |
 | Frame scene end (fallback) | `0x00472574` `CALL 0x004c5250` | `E8 rel32` | `void(void)`, returns 0/1; nothing reads it | No — the last `EndScene` before `Present` is already observable |
 
+### Implemented hook: scene end / compositing begin (2026-09-12)
+
+`src/proxy/scene_hook.cpp` (`X3M_SCENE_HOOK=1`, `tools/manage.py launch
+--scene-hook`; default off) patches the second row of the table. Exact
+contract as built and fixture-verified
+([motion-output.md](../verification/motion-output.md#engine-scene-end-hook-x3m_scene_hook)):
+
+- Site `0x004721b1`, five bytes, expected exactly `E8 9A 25 05 00`
+  (`CALL 0x004c4750`: rel32 `0x0005259a = 0x004c4750 − 0x004721b6`), read
+  with `ReadProcessMemory` after the object-trace identity gate (SHA-256 and
+  size of X3AP.exe) passed. Any other bytes, any other executable: no write,
+  status `callsite_mismatch` / `executable_mismatch`.
+- Patch: only the rel32 changes, to `trampoline − 0x004721b6`; the `E8`
+  opcode and the return address `0x004721b6` stay. `VirtualProtect`
+  (execute-read-write), write, `FlushInstructionCache`, protection restored;
+  a failure after the write rolls the bytes back (`patch_rolled_back`).
+- Trampoline (naked): `pushfl; pushal; call _x3m_scene_end_signal; popal;
+  popfl; jmp *_x3m_scene_end_original`. EAX–EDI and the flags reach
+  `0x004c4750` as the frame routine left them (ESI = current view survives,
+  `0x004721bb` reads `[ESI+0x270]` after the return); the original's `ret`
+  returns to `0x004721b6`. No arguments, no stack cleanup (`void(void)`),
+  nothing relocated.
+- Signal: cdecl, `force_align_arg_pointer` (the game's stack is 4-byte
+  aligned at the call), wraps the listener in the full CPU boundary of
+  `cpu_state.h` (FNSAVE/FRSTOR of the x87 state, MXCSR, the thread's last
+  error), the same transport as the heavy device hooks: the listener's path
+  (resolve, telemetry, log formatter) executes x87 code — int64-to-double
+  conversions and the CRT's float formatting — so the light MXCSR-only
+  contract does not apply (review 21). Once per frame. The listener
+  (`capture.cpp::scene_end_signal`) runs under the capture mutex on the
+  render thread and may run the full temporal resolve (heavy device work) —
+  the boundary is light on state, not on time.
+- Shutdown: the original five bytes are written back (same protect/flush
+  sequence) when the last device is released, refused if the site no longer
+  holds our bytes or the originals (`shutdown_not_owned`); a device created
+  later reinstalls. Nothing on disk changes.
+- Use: the route treats the signal as the scene end (routing/jitter stop,
+  cut verdict, and with `X3M_TAA=1` the resolve on the bound RT0 before the
+  compositor runs), so the glow option no longer decides whether the resolve
+  runs; the `StretchRect` selector becomes the fallback and the two are
+  cross-checked per frame (`scene_end_source`, `scene_end_check`).
+  Unverified in gameplay as of this note; the hook is exercised on the
+  motion-output fixture's own `E8` callsite through the seam DLL.
+
 Reentrancy: `0x0047c840` runs 3× per frame minimum (more with multiple views) and
 `0x004721b1` at most once; neither is recursive and both are on the render thread
 under the frame routine. `0x0047e820` re-enters the same traversal helpers six

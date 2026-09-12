@@ -37,3 +37,11 @@
 ==== seam-taa-camera-sentinel2-on
 ==== seam-taa-sentinel2-nocamera-on
 ==== seam-taa-envmap
+==== production-shadow-off
+==== seam-shadow-off
+==== seam-taa-shadow-off
+==== seam-lazy-shadow-off
+==== seam-burst-perdraw-shadow-off
+==== seam-burst-lazy-shadow-off
+==== seam-taa-hook-on
+==== seam-taa-hook-unpatched

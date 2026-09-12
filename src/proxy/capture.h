@@ -12,4 +12,8 @@ void log(const char* format, ...);
 void hook_direct3d(IDirect3D9* object);
 // Capture output directory (wide path, no trailing separator). Valid after initialize_log.
 const wchar_t* capture_directory();
+// Listener of the engine scene-end hook (scene_hook.h): called on the render
+// thread before the frame routine's compositing call; forwards to every hooked
+// device's route under the capture mutex.
+void scene_end_signal();
 }

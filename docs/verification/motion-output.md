@@ -7,12 +7,12 @@ and never enters the repository or the reports.
 
 ```sh
 python3 verification/probe/run_motion_row_history.py     # host unit fixture, release + ASan/UBSan
-python3 verification/probe/run_motion_output.py          # fresh build + 26 DLL runs (four environments, jitter, TAA, bench)
+python3 verification/probe/run_motion_output.py          # fresh build + 47 DLL runs (four environments, jitter, TAA, bench, lazy, burst, camera, state shadow, scene hook)
 python3 verification/probe/check_no_x87.py               # light setter hooks reach no x87 code
 ```
 
 `check_no_x87.py` disassembles `build/d3d9.dll`, walks the static call graph
-from the six `LightCallBoundary` setter hooks and fails on any x87 opcode
+from the seven `LightCallBoundary` setter hooks (`SetRenderState` included since 2026-09-12; 129 reachable functions) and fails on any x87 opcode
 other than the project's own fnsave/frstor transport pairs and the MXCSR
 transfers; it backs the boundary choice recorded in
 [review 12](review-12.md).
@@ -135,7 +135,7 @@ capture frames) and **admission** (`X3M_OWNERSHIP=1 X3M_ADMISSION=1`, the
 process admission monitor the launcher environment may carry). The fixture
 itself is unchanged: through the wrapper its device, shaders, buffers and
 surfaces are canonical wrappers, the route's native slots are the wrapper's
-methods, and the same 30 or 90 checks, 39 restoration comparisons, Reset
+methods, and the same 31 or 91 checks, 39 restoration comparisons, Reset
 with RT1 and RT2 owned and the zero final device/factory Release apply. The wrapper
 environments add these witnesses from the capture log: exactly one
 `ownership_factory mode=wrapped`, no fallback, `ownership_copy_depth` at
@@ -150,6 +150,49 @@ ownership integration) plus `admission_metric` per captured frame with zero
 veto bits. Balanced adoption/retirement is proven by the fixture's zero final
 Release: the wrapper's logical device count reaches zero only when every child
 wrapper, the route's included, has been released.
+
+### Render-state shadow (`X3M_STATE_SHADOW`)
+
+The route answers its per-draw render-state queries (the selector's
+`ZENABLE`/`ZWRITEENABLE`, the gate-4 `ALPHABLENDENABLE`, `ALPHATESTENABLE`,
+`SRGBWRITEENABLE`, `COLORWRITEENABLE`, and `COLORWRITEENABLE1/2` saved around
+RT1/RT2) from a shadow fed by the light `SetRenderState` hook
+([live-motion-route.md](../architecture/live-motion-route.md#engine-boundaries-and-state-shadow-2026-09-12)).
+The regular script now also exercises the shadow's resynchronization rules:
+frame 7 captures a second state block with blending off, enables blending
+through `SetRenderState` and applies the block (blend off again without a
+`SetRenderState` call; the next draw B routes only if the shadow dropped the
+recorded TRUE); frame 8 records a `ZWRITEENABLE = FALSE` between
+`BeginStateBlock`/`EndStateBlock` that is never applied and reads the state
+back (one new fixture check, hence 31/91 instead of 30/90); the burst script
+writes `COLORWRITEENABLE1 = 7` while the route holds RT1 in lazy mode, routes
+a draw under it, reads it back (must be 7: the lazy-mode hole, closed by the
+`SetRenderState`/`GetRenderState` hooks in lazy mode with the shadow on or
+off) and restores 15 (nine new checks, 77/32 instead of 68/23).
+
+Six runs repeat with the shadow off (`production-shadow-off`,
+`seam-shadow-off`, `seam-taa-shadow-off`, `seam-lazy-shadow-off`,
+`seam-burst-perdraw-shadow-off`, `seam-burst-lazy-shadow-off`) and must equal
+their shadow-on twins in colour hashes, pre-boundary colour, readback files,
+per-draw route decisions (gate/routed/matched per draw), checks,
+restorations, motion/matched/RT2 pixels, `set_rt` and `lazy_flushes` per
+frame: all identical. The DLL's per-frame counters, summed over the nine
+logged frames (0 by telemetry, 1–8 captured):
+
+| Script | Route state queries | Native `GetRenderState`, shadow off | Native, shadow on | Shadow hits | Resyncs |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| regular (production, seam, seam TAA, seam lazy) | 169 | 295 | 144 | 151 | 3 |
+| burst per-draw (seam) | 423 | 549 | 126 | 423 | 0 |
+| burst lazy (seam) | 395 | 521 | 126 | 395 | 0 |
+
+With the shadow on the native reads are exactly the sentinel fill's
+14-state save per frame (`rs_gets = 14 + queries − hits`, asserted per
+frame) plus the refills after a resynchronization (frame 7: two state block
+Applies, 10 misses; frame 8: `EndStateBlock`, 8 misses; every other frame
+has zero misses, i.e. zero `GetRenderState` from routed-draw evaluation);
+with it off every query is a native read (`rs_hits = 0`). In the burst
+script the per-draw evaluation's 47 (per-draw) or 43 (lazy: the write masks
+are saved at the three binds, not per draw) queries per frame all hit.
 
 ## Temporal resolve (step 3)
 
@@ -260,17 +303,17 @@ the runner compares it with the DLL's `motion_output_frame` fields and
   10, 11 (the script's cuts plus the camera cut); the resolved image equals
   the reference on all 12 frames; the camera path changes the colour of
   history frames only (unrouted pixels now blend the reprojected previous
-  frame). 164 fixture checks.
+  frame). 165 fixture checks.
 - `seam-taa-camera-sentinel1-on` (switch off): policy 1 everywhere, no
   camera cut (frame 7 keeps its history), and the colour of every frame is
   bit-identical to `seam-taa-on` (no camera installed) — which itself is
   bit-identical to the pre-change run (compared against the previous
-  `motion-output-summary.json` hashes during development). 163 checks.
+  `motion-output-summary.json` hashes during development). 164 checks.
 - `seam-taa-camera-sentinel2-on` (strict, camera readable): identical to
-  auto (nothing skipped). 164 checks.
+  auto (nothing skipped). 165 checks.
 - `seam-taa-sentinel2-nocamera-on` (strict, no camera): every frame is
   attempted and skipped (`taa_skip=9`, `taa_resolved=0`), no debug
-  readbacks, the colour equals the jittered raster. 145 checks.
+  readbacks, the colour equals the jittered raster. 146 checks.
 - `seam-taa-envmap` (mode `envmap`, camera, auto): five frames — routed,
   environment map between the background draw and the depth Clear, routed,
   environment map before the initial Clear, routed. The environment-map
@@ -288,14 +331,75 @@ the runner compares it with the DLL's `motion_output_frame` fields and
 Bench with the 3,840-word resolve (policy 1 in the bench: the production
 DLL has no camera in the synthetic process, and the camera read adds two
 64-byte copies per frame at the Clear hooks, outside the boundary): boundary
-median 0.351 ms (resolve off) versus 0.738 ms (on) at 1280x768 and 0.487
-versus 2.243 ms at 5120x1440, i.e. **0.387 ms** and **1.756 ms** for the
-resolve, its copies and the copy-back, CPU-inclusive (previous program:
-0.320 / 1.623 ms from boundaries of 0.683 / 2.239 ms; the 1280x768 delta
-moved with the off-side median, 0.362 to 0.351 ms, within the run-to-run
-spread of these EVENT-synchronized samples). Per-case results, the camera
-decisions per frame and the environment-map counters:
-`verification/results/motion-output-summary.json` (`cases`, `camera`).
+median 0.355 ms (resolve off) versus 0.736 ms (on) at 1280x768 and 0.486
+versus 2.243 ms at 5120x1440, i.e. **0.381 ms** and **1.757 ms** for the
+resolve, its copies and the copy-back, CPU-inclusive (the run before the
+state shadow and the scene hook: 0.351 / 0.738 and 0.487 / 2.243 ms, deltas
+0.387 / 1.756 ms; earlier program: 0.320 / 1.623 ms from boundaries of
+0.683 / 2.239 ms; the differences are within the run-to-run spread of these
+EVENT-synchronized samples). Per-case results, the camera decisions per
+frame, the environment-map counters, the shadow A/B counters and the hook
+verdicts: `verification/results/motion-output-summary.json` (`cases`,
+`camera`, `state_shadow`, `scene_hook`).
+
+### Engine scene-end hook (`X3M_SCENE_HOOK`)
+
+The `hook` script (seam, TAA, two runs) verifies the callsite patch of
+`src/proxy/scene_hook.cpp` on the fixture's own code
+([camera-state-and-frame-routine.md](../reverse-engineering/camera-state-and-frame-routine.md#implemented-hook-scene-end--compositing-begin-2026-09-12)):
+the fixture VirtualAllocs a frame-routine stub that saves the callee-saved
+registers, loads ESI/EDI/EBX/EBP with markers, `CALL`s a fake compositor
+through a five-byte `E8 rel32` site, stores the four registers after the
+call and returns; two more sites hold an `E8` to another function and five
+NOPs. The seam export `x3m_scene_hook_fixture_install(site, target)` runs
+the production `patch` (identity gate bypassed, everything else identical:
+the `E8` check, the rel32-resolves-to-target check, protect/write/flush/
+restore); the production `initialize` also runs in this process and refuses
+with `executable_mismatch` (logged), so the loader never patches the fixture.
+The compositor records the signal count at entry and, in "glow on" frames,
+issues the frame routine's depth unbind and bloom `StretchRect`; in "glow
+off" frames it issues nothing. Seven frames: glow on, glow on, a frame whose
+only signal arrives in the selector's Background phase (before the depth
+Clear) with the compositor then called directly, glow on, glow off, glow off,
+glow on. Checks (134 with the patch, 119 unpatched, 28 restoration
+comparisons with zero differences, the motion/depth oracle on all 7 frames,
+14,906 matched pixels):
+
+- install refused on the `CALL` to another target (`target_mismatch`) and on
+  the NOP site (`callsite_mismatch`), with every byte of the three sites
+  unchanged; with `X3M_SCENE_HOOK=1` the verified site is patched to an `E8`
+  whose target lies in the DLL (`active`), a second install is refused while
+  the patch is live, and shutdown restores the original five bytes
+  (`restored`; a second shutdown is a no-op);
+- exactly one signal per callsite call, none once unpatched, the signal
+  precedes the compositor (its entry count equals the previous count plus
+  one), and ESI/EDI/EBX/EBP carry their markers across the patched call;
+- the resolve at the hook: with the patch, every frame resolves
+  (`source=hook`, except the outside-Scene frame, which the copy path
+  resolves as the fallback, `source=stretchrect`, with one logged
+  `motion_output_scene_hook_disagreement` and `scene_end_check=4`), the
+  bloom copy receives the resolved main target, the 8-bit image equals the
+  reference resolve of the same inputs byte for byte and the DLL's FP16
+  debug readback equals the reference FP16 output on frames 1–6; the
+  glow-off frames resolve at the hook with history (`scene_end_check=2`
+  HookOnly; 314 and 324 changed pixels), the glow-on frames report
+  `scene_end_check=1` Agree with zero draws after the hook;
+- unpatched (`X3M_SCENE_HOOK=0`, `scene_hook=0`, loader status `disabled`):
+  the glow-on frames resolve at the copy (`scene_end_check=3` StretchOnly,
+  not a disagreement without the patch), the glow-off frames are not
+  attempted (`taa_skip=2`, `source=none`, the 8-bit target untouched) and
+  drop the history, so 3 history frames instead of 6;
+- across the two runs the pre-boundary raster is identical in every frame
+  and the presented colour is identical in frames 0–3 (the frames both
+  resolve, at the hook and at the copy respectively: 0, 211, 186 and 299
+  changed pixels in both) and differs in 4, 5 (hook only) and 6 (history
+  only with the hook): the resolve at the engine boundary is
+  indistinguishable from the resolve at the bloom copy.
+
+The trace also shows the `scene_hook active=0 status=executable_mismatch`
+line of the production install path with the switch on. The game's own
+callsite is not exercised here; the gameplay run with `--scene-hook` is
+user-managed.
 
 ## Ownership wrapper interaction
 
@@ -360,22 +464,26 @@ checkpoint.
 
 | Environment | Case | Fixture checks | Restoration comparisons | Motion pixels | Matched pixels | RT2 written pixels | Coverage pixels |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| plain | production off / on | 30 / 30 | 39 / 39 | – | – | – | 48,242 |
-| plain | seam off / on | 30 / 90 | 39 / 39 | – / 44,284 | – / 10,261 | – / 27,170 | 48,242 |
-| ownership | production off / on | 30 / 30 | 39 / 39 | – | – | – | 48,242 |
-| ownership | seam off / on | 30 / 90 | 39 / 39 | – / 44,284 | – / 10,261 | – / 27,170 | 48,242 |
-| depth | production off / on | 30 / 30 | 39 / 39 | – | – | – | 48,242 |
-| depth | seam off / on | 30 / 90 | 39 / 39 | – / 44,284 | – / 10,261 | – / 27,170 | 48,242 |
-| admission | production off / on | 30 / 30 | 39 / 39 | – | – | – | 48,242 |
-| admission | seam off / on | 30 / 90 | 39 / 39 | – / 44,284 | – / 10,261 | – / 27,170 | 48,242 |
-| plain, jitter | production on / seam on | 30 / 90 | 39 / 39 | – / 44,279 | – / 10,348 | – / 27,293 | 48,957 |
-| plain, TAA | production on / seam on | 69 / 150 | 51 / 51 | – / 44,279 | – / 10,348 | – / 27,293 | 48,957 |
-| ownership, TAA | production on / seam on | 69 / 150 | 51 / 51 | – / 44,279 | – / 10,348 | – / 27,293 | 48,957 |
-| plain, lazy RT mode | production on / seam on | 30 / 90 | 39 / 39 | – / 44,284 | – / 10,261 | – / 27,170 | 48,242 |
-| ownership, lazy RT mode | seam on | 90 | 39 | 44,284 | 10,261 | 27,170 | 48,242 |
-| plain, TAA, lazy RT mode | seam on | 150 | 51 | 44,279 | 10,348 | 27,293 | 48,957 |
-| burst, per-draw / lazy | production | 23 / 23 | 18 / 18 | – | – | – | 35,505 |
-| burst, per-draw / lazy | seam | 68 / 68 | 18 / 18 | 31,932 | 0 | 21,447 | 35,505 |
+| plain | production off / on | 31 / 31 | 39 / 39 | – | – | – | 48,242 |
+| plain | seam off / on | 31 / 91 | 39 / 39 | – / 44,284 | – / 10,261 | – / 27,170 | 48,242 |
+| ownership | production off / on | 31 / 31 | 39 / 39 | – | – | – | 48,242 |
+| ownership | seam off / on | 31 / 91 | 39 / 39 | – / 44,284 | – / 10,261 | – / 27,170 | 48,242 |
+| depth | production off / on | 31 / 31 | 39 / 39 | – | – | – | 48,242 |
+| depth | seam off / on | 31 / 91 | 39 / 39 | – / 44,284 | – / 10,261 | – / 27,170 | 48,242 |
+| admission | production off / on | 31 / 31 | 39 / 39 | – | – | – | 48,242 |
+| admission | seam off / on | 31 / 91 | 39 / 39 | – / 44,284 | – / 10,261 | – / 27,170 | 48,242 |
+| plain, jitter | production on / seam on | 31 / 91 | 39 / 39 | – / 44,279 | – / 10,348 | – / 27,293 | 48,957 |
+| plain, TAA | production on / seam on | 71 / 152 | 51 / 51 | – / 44,279 | – / 10,348 | – / 27,293 | 48,957 |
+| ownership, TAA | production on / seam on | 71 / 152 | 51 / 51 | – / 44,279 | – / 10,348 | – / 27,293 | 48,957 |
+| plain, lazy RT mode | production on / seam on | 31 / 91 | 39 / 39 | – / 44,284 | – / 10,261 | – / 27,170 | 48,242 |
+| ownership, lazy RT mode | seam on | 91 | 39 | 44,284 | 10,261 | 27,170 | 48,242 |
+| plain, TAA, lazy RT mode | seam on | 152 | 51 | 44,279 | 10,348 | 27,293 | 48,957 |
+| burst, per-draw / lazy | production | 32 / 32 | 18 / 18 | – | – | – | 35,505 |
+| burst, per-draw / lazy | seam | 77 / 77 | 18 / 18 | 31,932 | 0 | 21,447 | 35,505 |
+| shadow off, regular | production on / seam on | 31 / 91 | 39 / 39 | – / 44,284 | – / 10,261 | – / 27,170 | 48,242 |
+| shadow off, TAA / lazy | seam on | 152 / 91 | 51 / 39 | 44,279 / 44,284 | 10,348 / 10,261 | 27,293 / 27,170 | 48,957 / 48,242 |
+| shadow off, burst per-draw / lazy | seam | 77 / 77 | 18 / 18 | 31,932 | 0 | 21,447 | 35,505 |
+| hook script, patched / unpatched | seam, TAA | 134 / 119 | 28 / 28 | 25,811 | 14,906 | 17,367 | 28,553 |
 
 All 39 restoration comparisons in every run report zero differences,
 including the application's `c24–27` after every jittered draw. Every
@@ -636,3 +744,6 @@ CPU-inclusive. Object scope is injected; the game observers are not exercised,
 so the wrapper environments prove the route's fill, routing, Reset and release
 through the wrapper, not object history through it. Native Windows is
 cross-compiled but not executed. Setter-hook cost in the game is unmeasured.
+The engine scene-end hook is exercised on the fixture's own `E8` callsite
+through the seam; the game's `0x004721b1` patch is verified for its expected
+bytes and identity gate only, not in gameplay, and stays off by default.

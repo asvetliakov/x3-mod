@@ -35,6 +35,17 @@
 // their own Clear, view and draws, BeginScene) between routed frames, before
 // the scene's depth Clear and before the initial Clear, and prints per-frame
 // expectations for the runner (nothing routed, camera state unread, no resolve).
+// "hook" (seam, TAA) is the engine scene-end hook script: a VirtualAlloc'd
+// frame-routine stub CALLs a fake compositor through a five-byte E8 callsite
+// the seam DLL patches (x3m_scene_hook_fixture_install, the same mechanism as
+// the game's 0x004721b1 -> 0x004c4750 patch); the compositor stands in for the
+// glow pass (depth unbind plus the bloom copy, or nothing with glow off). The
+// script checks refused installs on mismatched bytes, the patched and
+// restored bytes, one signal per call before the compositor, ESI/EDI/EBX/EBP
+// across the trampoline, and that the resolve at the hook equals the reference
+// resolve (and the copy path's output) in glow-on frames and still runs in
+// glow-off frames; with X3M_SCENE_HOOK=0 the same script runs unpatched.
+// X3M_STATE_SHADOW=0 runs any script with the route's render-state shadow off.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <d3d9.h>
@@ -245,6 +256,13 @@ struct Reference {
     }
 };
 
+struct Fixture;
+} // namespace
+// Stand-ins for the engine's compositing callee 0x004c4750 (glow pass) and for
+// an unrelated function, reached through the fixture stub's E8 callsites.
+extern "C" void __cdecl fixture_compositor();
+extern "C" void __cdecl fixture_other_target();
+namespace {
 struct Fixture {
     static inline UINT W = 64, H = 64;
     HMODULE runtime = nullptr;
@@ -253,7 +271,22 @@ struct Fixture {
     HRESULT (*readback_depth)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*last_pixel_abi)(IDirect3DDevice9*, float*, unsigned) = nullptr;
     bool seam = false, enabled = false, jitter = false, taa = false, bench = false, burst = false, lazy = false, envmap = false;
+    bool hook = false, state_shadow = true;
     unsigned jitter_samples = 8;
+    // Engine scene-end hook script ("hook" mode): the seam exports, the stub
+    // code page and its three sites (the verified one, one calling another
+    // target, one that is not a CALL), the original bytes, and what the
+    // compositor observed on its last call (see fixture_compositor below).
+    int (*hook_install)(void*, void*) = nullptr; int (*hook_shutdown)() = nullptr;
+    unsigned (*hook_signals)() = nullptr; const char* (*hook_status)() = nullptr;
+    static inline Fixture* hook_fixture = nullptr;
+    static inline bool hook_glow = true, hook_installed = false, hook_compositor_failed = false;
+    static inline unsigned hook_compositor_calls = 0, hook_compositor_signals = 0;
+    static inline std::uint32_t hook_registers[4]{};
+    unsigned char* hook_code = nullptr; unsigned char* hook_site = nullptr; unsigned char* hook_site_other = nullptr; unsigned char* hook_site_plain = nullptr;
+    unsigned char hook_original[5]{};
+    void (*hook_stub)() = nullptr;
+    bool history_valid = false; // the route holds a resolved previous frame (hook script)
     // Camera: the fake engine globals installed (X3M_FIXTURE_CAMERA=rotate),
     // the policy switch (X3M_TAA_SENTINEL: 0 auto, 1, 2 strict), this frame's
     // scene view, the view of the last frame that resolved (the history's) and
@@ -466,7 +499,9 @@ struct Fixture {
         mix(x.ps_low, sizeof x.ps_low); mix(&x.frequency0, sizeof x.frequency0); tag(x.indices ? 1 : 0);
         return h;
     }
-    void frame_begin() {
+    // `before_scene` runs after the background draw and before the scene's
+    // depth Clear (the selector's Background phase); the hook script signals there.
+    void frame_begin(void (*before_scene)(Fixture&) = nullptr) {
         records.clear(); draw_index = 0; scene_rejected = false;
         // The route advances its Halton sequence at every latching Clear; every
         // regular fixture frame latches, so the n-th latch uses sample (n % samples) + 1.
@@ -488,6 +523,7 @@ struct Fixture {
         compare(before, snapshot(), "fill");
         scene_states(); material_state();
         set_camera(frame);
+        if (before_scene) before_scene(*this);
         api(d->Clear(0, nullptr, D3DCLEAR_ZBUFFER, 0, 1, 0), "Clear depth");
     }
     // The scene view of this frame: one degree of yaw per frame with a
@@ -839,8 +875,17 @@ struct Fixture {
             burst_draw(a, .75f, 0, 0); burst_draw(b, 0, 0, 0);
             burst_draw(a, .75f, 0, 0, Alter::FlatPixel, false);
             burst_draw(a, .8f, .125f, 0); burst_draw(b, -.05f, 0, .1f);
+            // The lazy-mode hole: an application write of COLORWRITEENABLE1
+            // while the route holds RT1 (the SetRenderState hook flushes first),
+            // a routed draw under the application's mask, then the application
+            // reads the mask back (the GetRenderState hook flushes first) and
+            // must see its own value; both modes must produce the same image.
+            api(d->SetRenderState(D3DRS_COLORWRITEENABLE1, 7), "application COLORWRITEENABLE1 write between routed draws");
             burst_draw(a, .8f, .125f, 0, Alter::Blend, false);
             burst_draw(b, -.05f, 0, .1f);
+            DWORD mask = 0; api(d->GetRenderState(D3DRS_COLORWRITEENABLE1, &mask), "application COLORWRITEENABLE1 read between routed draws");
+            require(mask == 7, "the application reads back its own COLORWRITEENABLE1 between routed draws");
+            api(d->SetRenderState(D3DRS_COLORWRITEENABLE1, 15), "application COLORWRITEENABLE1 restore");
             if (i % 2 == 0) {
                 // Same target rebound: the viewport and scissor rectangle reset with it.
                 api(d->SetRenderTarget(0, back.p), "SetRenderTarget 0 (application)");
@@ -931,6 +976,149 @@ struct Fixture {
         for (auto& f : faces) f.reset();
         face_depth.reset(); face_cube.reset();
     }
+    // ---- engine scene-end hook script ("hook" mode) ----
+    // The frame-routine stub (a VirtualAlloc'd code page): saves the
+    // callee-saved registers, loads ESI/EDI/EBX/EBP with markers, CALLs the
+    // compositor through a five-byte E8 site (the one the seam patches, like
+    // 0x004721b1), stores the four registers after the call, restores and
+    // returns. Two more sites: an E8 to another function (target mismatch)
+    // and five NOPs (not a CALL); both installs must be refused untouched.
+    void hook_create() {
+        hook_code = static_cast<unsigned char*>(VirtualAlloc(nullptr, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+        require(hook_code != nullptr, "hook stub memory");
+        unsigned char* p = hook_code;
+        auto byte = [&](unsigned char b) { *p++ = b; };
+        auto dword = [&](std::uint32_t v) { std::memcpy(p, &v, 4); p += 4; };
+        auto address = [](const void* x) { return std::uint32_t(reinterpret_cast<std::uintptr_t>(x)); };
+        auto call = [&](void* target) { unsigned char* site = p; byte(0xe8); dword(address(target) - (address(site) + 5)); return site; };
+        byte(0x55); byte(0x56); byte(0x57); byte(0x53);                       // push ebp; push esi; push edi; push ebx
+        byte(0xbe); dword(0x51515151); byte(0xbf); dword(0x61616161);         // mov esi/edi, markers
+        byte(0xbb); dword(0x71717171); byte(0xbd); dword(0x81818181);         // mov ebx/ebp, markers
+        hook_site = call(reinterpret_cast<void*>(&fixture_compositor));
+        byte(0x89); byte(0x35); dword(address(&hook_registers[0]));           // mov [regs+0], esi
+        byte(0x89); byte(0x3d); dword(address(&hook_registers[1]));           // mov [regs+4], edi
+        byte(0x89); byte(0x1d); dword(address(&hook_registers[2]));           // mov [regs+8], ebx
+        byte(0x89); byte(0x2d); dword(address(&hook_registers[3]));           // mov [regs+12], ebp
+        byte(0x5b); byte(0x5f); byte(0x5e); byte(0x5d); byte(0xc3);           // pop ebx; pop edi; pop esi; pop ebp; ret
+        hook_site_other = call(reinterpret_cast<void*>(&fixture_other_target)); byte(0xc3);
+        hook_site_plain = p; for (int i = 0; i < 5; ++i) byte(0x90); byte(0xc3);
+        std::memcpy(hook_original, hook_site, 5);
+        DWORD old = 0; require(VirtualProtect(hook_code, 4096, PAGE_EXECUTE_READ, &old) != FALSE, "hook stub protection");
+        FlushInstructionCache(GetCurrentProcess(), hook_code, 4096);
+        hook_stub = reinterpret_cast<void (*)()>(hook_code);
+        hook_fixture = this;
+    }
+    unsigned signals() const { return hook_installed ? hook_signals() : 0; }
+    // Calls the stub with the compositor idle (glow off) and checks the
+    // register/signal contract; `before_scene` is the Background-phase signal
+    // of frame 2 (the hook must not end a scene that has not started).
+    void stub_call(bool glow) {
+        hook_glow = glow; hook_compositor_calls = 0; hook_compositor_failed = false; std::memset(hook_registers, 0, sizeof hook_registers);
+        const unsigned before = signals();
+        hook_stub();
+        require(!hook_compositor_failed && hook_compositor_calls == 1, "the compositor ran exactly once per callsite call");
+        require(hook_registers[0] == 0x51515151 && hook_registers[1] == 0x61616161 && hook_registers[2] == 0x71717171 && hook_registers[3] == 0x81818181,
+                "ESI/EDI/EBX/EBP preserved across the patched callsite");
+        require(signals() - before == (hook_installed ? 1u : 0u), "exactly one signal per callsite call (none unpatched)");
+        if (hook_installed) require(hook_compositor_signals == before + 1, "the signal precedes the compositor");
+    }
+    static void hook_signal_before_scene(Fixture& f) { f.stub_call(false); }
+    // One hook-script frame. glow: the compositor unbinds depth and copies the
+    // main target (the selector's scene end); off: it does nothing.
+    // outside: the only callsite call of this frame happens before the scene's
+    // depth Clear and the compositor is then called directly (no signal), so
+    // the copy path must resolve as the fallback.
+    void hook_frame(bool glow, bool outside) {
+        frame_begin(outside ? &Fixture::hook_signal_before_scene : nullptr);
+        const bool alternate = frame % 2, matched = frames_since_reset > 0;
+        draw(a, alternate ? .8f : .75f, alternate ? .125f : 0, 0, true, true, matched); draw(b, alternate ? -.05f : 0, 0, alternate ? .1f : 0, true, true, matched);
+        decide();
+        const auto before_image = color_image();
+        std::vector<float> motion_data(std::size_t(W) * H * 4), depth_data(std::size_t(W) * H); unsigned w = 0, h = 0;
+        api(readback(d.p, motion_data.data(), unsigned(motion_data.size()), &w, &h), "reference motion readback");
+        api(readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h), "reference depth readback");
+        const Snapshot before = snapshot();
+        if (outside) { hook_glow = glow; hook_compositor_calls = 0; hook_compositor_failed = false; fixture_compositor(); require(!hook_compositor_failed && hook_compositor_calls == 1, "the direct compositor ran"); }
+        else stub_call(glow);
+        Snapshot after = snapshot();
+        if (glow) { require(after.depth == nullptr, "the compositor unbound the depth surface"); after.depth = before.depth; }
+        compare(before, after, "hook");
+        const auto after_image = color_image();
+        if (glow) require(color_image(bloom_surface.p) == after_image, "the bloom copy receives the main target as resolved");
+        unsigned changed = 0;
+        for (std::size_t i = 0; i < after_image.size(); ++i) if (after_image[i] != before_image[i]) { if (++changed <= 4) std::printf("CHANGED frame=%llu x=%u y=%u before=%08lx after=%08lx\n", frame, unsigned(i % W), unsigned(i / W), before_image[i], after_image[i]); }
+        const bool at_hook = hook_installed && !outside, resolves = at_hook || glow;
+        bool history = false;
+        if (resolves) {
+            reference.upload(before_image, motion_data, depth_data);
+            std::vector<DWORD> expected; std::vector<unsigned char> half;
+            const auto out = reference.run(jx, jy, pjx, pjy, expected_cut(), decision.matrix, decision.policy == 2, expected, half);
+            history = out.used_history;
+            unsigned mismatches = 0;
+            for (std::size_t i = 0; i < expected.size(); ++i) if (expected[i] != after_image[i]) { if (++mismatches <= 4) std::printf("TAA_DIFF frame=%llu index=%u actual=%08lx reference=%08lx\n", frame, unsigned(i), after_image[i], expected[i]); }
+            require(!mismatches, "main target after the hook/copy equals the reference resolve of the same inputs, byte for byte");
+            char name[64]; std::snprintf(name, sizeof name, "reference_taa_%llu.rgba16f", frame);
+            FILE* file = std::fopen(name, "wb"); require(file != nullptr, "reference FP16 output written");
+            std::fwrite(half.data(), 1, half.size(), file); std::fclose(file);
+            ++taa_reference_frames;
+        } else {
+            require(!changed, "a glow-off frame without the hook leaves the 8-bit main target untouched");
+            reference.pass.invalidate(); ++taa_skipped_frames;
+        }
+        const bool expect_history = resolves && history_valid && !expected_cut();
+        require(history == expect_history, "history use follows the script (the route drops history on a frame it cannot resolve)");
+        if (!history) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
+        history_valid = resolves;
+        camera_history = resolves ? camera_current : x3m::renderer::CameraState{};
+        std::printf("TAA frame=%llu history=%u cut=%u changed=%u policy=%u skipped=%u source=%s glow=%u outside=%u\n", frame, history, expected_cut(), changed, decision.policy, !resolves,
+                    at_hook ? "hook" : glow ? "stretchrect" : "none", glow, outside);
+        ++taa_frames; taa_history_frames += history; taa_changed_pixels += changed;
+        std::printf("COLOR_BEFORE frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(before_image)));
+        verify_coverage(before_image);
+        api(d->EndScene(), "EndScene");
+        const auto image = color_image();
+        std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
+        verify_motion();
+        if (glow) api(d->SetDepthStencilSurface(depth.p), "SetDepthStencilSurface rebind");
+        api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
+        ++frame; ++frames_since_reset;
+    }
+    void run_hook() {
+        require(enabled && seam && taa && hook_install && hook_shutdown && hook_signals && hook_status, "hook needs the seam, TAA and the scene-hook exports");
+        hook_create();
+        char setting[8]{}; const bool want = GetEnvironmentVariableA("X3M_SCENE_HOOK", setting, sizeof setting) == 1 && setting[0] == '1';
+        auto compositor = reinterpret_cast<void*>(&fixture_compositor);
+        require(hook_install(hook_site_other, compositor) == 0 && !std::strcmp(hook_status(), "target_mismatch"), "install refused on a CALL to another target");
+        require(hook_install(hook_site_plain, compositor) == 0 && !std::strcmp(hook_status(), "callsite_mismatch"), "install refused on a site that is not a CALL");
+        require(!std::memcmp(hook_site, hook_original, 5) && hook_site_other[0] == 0xe8 && hook_site_plain[0] == 0x90, "refused installs change no bytes");
+        if (want) {
+            require(hook_install(hook_site, compositor) == 1 && !std::strcmp(hook_status(), "active"), "install on the verified callsite");
+            std::uint32_t rel = 0; std::memcpy(&rel, hook_site + 1, 4);
+            const auto target = reinterpret_cast<std::uintptr_t>(hook_site) + 5 + rel;
+            HMODULE owner = nullptr;
+            GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, reinterpret_cast<LPCSTR>(target), &owner);
+            require(hook_site[0] == 0xe8 && target != reinterpret_cast<std::uintptr_t>(compositor) && owner == runtime, "the patched site CALLs the DLL's trampoline");
+            require(hook_install(hook_site, compositor) == 0 && !std::strcmp(hook_status(), "active"), "a second install is refused while the patch is live");
+            hook_installed = true;
+        }
+        std::printf("HOOK installed=%u status=%s\n", hook_installed, hook_status());
+        // f0-f1 glow on (f1 with history); f2 the only signal arrives in the
+        // Background phase and the copy path resolves; f3 glow on; f4-f5 glow
+        // off (the assessment's case: no bloom copy, the hook still resolves);
+        // f6 glow on again.
+        hook_frame(true, false); hook_frame(true, false); hook_frame(true, true); hook_frame(true, false);
+        hook_frame(false, false); hook_frame(false, false); hook_frame(true, false);
+        require(taa_frames == 7, "every hook-script frame ran the boundary");
+        require(taa_skipped_frames == (hook_installed ? 0u : 2u) && taa_history_frames == (hook_installed ? 6u : 3u), "hook script: the glow-off frames resolve only through the hook");
+        if (hook_installed) {
+            require(hook_shutdown() == 1 && !std::strcmp(hook_status(), "restored"), "shutdown restores the callsite");
+            require(!std::memcmp(hook_site, hook_original, 5), "restored bytes are the original CALL");
+            hook_installed = false;
+            stub_call(false);
+            require(hook_shutdown() == 1, "shutdown without a patch is a no-op");
+        }
+        VirtualFree(hook_code, 0, MEM_RELEASE); hook_code = nullptr; hook_fixture = nullptr;
+    }
     void stateblock_case() {
         // A state block Apply rebinding the flat PS must be seen by the route:
         // the draw is not routed and the flat PS is still bound afterwards.
@@ -946,6 +1134,25 @@ struct Fixture {
         require(bound == flat.p, "state block Apply rebinding is honored (flat PS still bound)");
         records.push_back({&a, .75f, 0, 0, false, false, a.rt, a.rp, a.rzo, true, enabled && jitter});
         std::printf("EXPECT frame=%llu index=%u object=A routed=0 matched=0 jittered=%u\n", frame, draw_index, enabled && jitter);
+        // Render-state shadow: a second block captures the reviewed PS with
+        // blending off, the application then enables blending through
+        // SetRenderState, and Apply puts it back without a SetRenderState
+        // call. The next draw (B, routed and matched by the script) passes
+        // gate 4 only if the shadow dropped the recorded TRUE at the Apply.
+        api(d->SetPixelShader(ps.p), "SetPixelShader reviewed for the second block");
+        Com<IDirect3DStateBlock9> restore_block; api(d->CreateStateBlock(D3DSBT_ALL, &restore_block.p), "CreateStateBlock (blend off)");
+        api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE), "blend on before Apply");
+        api(restore_block->Apply(), "StateBlock Apply (blend off again)");
+    }
+    // Render-state shadow: a write recorded between BeginStateBlock and
+    // EndStateBlock never reaches the device; the block is dropped unapplied.
+    // The draws that follow (frame 8) must still pass gate 4 with z writes on.
+    void recorded_write_case() {
+        api(d->BeginStateBlock(), "BeginStateBlock");
+        api(d->SetRenderState(D3DRS_ZWRITEENABLE, FALSE), "recorded z-write off (not applied)");
+        Com<IDirect3DStateBlock9> recorded; api(d->EndStateBlock(&recorded.p), "EndStateBlock");
+        DWORD value = 1; api(d->GetRenderState(D3DRS_ZWRITEENABLE, &value), "GetRenderState after recording");
+        require(value == TRUE, "a recorded render-state write does not reach the device");
     }
     void recreate_shaders() {
         api(d->SetVertexShader(nullptr), "unbind vs"); api(d->SetPixelShader(nullptr), "unbind ps");
@@ -968,7 +1175,7 @@ struct Fixture {
         frame_begin(); draw(a, .8f, .125f, 0, true, true, false); draw(b, -.05f, 0, .1f, true, true, true); frame_end();
         // f7: state block Apply resynchronizes the shadow; f8: A had no f7 record.
         frame_begin(); stateblock_case(); draw(b, 0, 0, 0, true, true, true); frame_end();
-        frame_begin(); draw(a, .75f, 0, 0, true, true, false); draw(b, -.05f, 0, .1f, true, true, true); frame_end();
+        frame_begin(); recorded_write_case(); draw(a, .75f, 0, 0, true, true, false); draw(b, -.05f, 0, .1f, true, true, true); frame_end();
         // Reset with the motion target owned; history restarts, then resumes.
         reset();
         frame_begin(); draw(a, .8f, .125f, 0, true, true, false); draw(b, 0, 0, 0, true, true, false); frame_end();
@@ -990,6 +1197,21 @@ struct Fixture {
     }
 };
 } // namespace
+// The glow pass stand-in: records the signal count at entry (the trampoline's
+// signal must precede it), then with glow the depth unbind and the bloom copy
+// of the frame routine's 0x004c4750, without glow nothing. Exceptions stay
+// inside (the stub frame has no unwind information).
+extern "C" void __cdecl fixture_compositor() {
+    auto& f = *Fixture::hook_fixture;
+    ++Fixture::hook_compositor_calls;
+    Fixture::hook_compositor_signals = f.signals();
+    if (!Fixture::hook_glow) return;
+    try {
+        api(f.d->SetDepthStencilSurface(nullptr), "compositor SetDepthStencilSurface null");
+        api(f.d->StretchRect(f.back.p, nullptr, f.bloom_surface.p, nullptr, D3DTEXF_NONE), "compositor StretchRect bloom copy");
+    } catch (...) { Fixture::hook_compositor_failed = true; }
+}
+extern "C" void __cdecl fixture_other_target() { ++Fixture::hook_compositor_calls; }
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
@@ -1006,6 +1228,7 @@ int main(int argc, char** argv) {
         f.bench = mode == "bench";
         f.burst = mode == "burst";
         f.envmap = mode == "envmap";
+        f.hook = mode == "hook";
         if (f.bench) {
             unsigned w = 0, h = 0;
             if (argc != 5 || std::sscanf(argv[4], "%ux%u", &w, &h) != 2 || !w || !h || w > 8192 || h > 8192) throw std::runtime_error("bench needs WxH");
@@ -1016,8 +1239,12 @@ int main(int argc, char** argv) {
         f.readback_depth = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_motion_output_fixture_readback_depth", false);
         f.last_pixel_abi = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned)>(runtime, "x3m_motion_output_fixture_last_pixel_abi", false);
         f.camera_install = symbol<void (*)(const float* const*, const float* const*)>(runtime, "x3m_camera_state_fixture_install", false);
+        f.hook_install = symbol<int (*)(void*, void*)>(runtime, "x3m_scene_hook_fixture_install", false);
+        f.hook_shutdown = symbol<int (*)()>(runtime, "x3m_scene_hook_fixture_shutdown", false);
+        f.hook_signals = symbol<unsigned (*)()>(runtime, "x3m_scene_hook_fixture_signals", false);
+        f.hook_status = symbol<const char* (*)()>(runtime, "x3m_scene_hook_fixture_status", false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
-        require(f.bench || f.burst || f.envmap || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.burst || f.envmap || f.hook || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.taa = f.enabled && GetEnvironmentVariableA("X3M_TAA", setting, sizeof setting) == 1 && setting[0] == '1';
         // The DLL implies the jitter with the resolve on.
@@ -1027,9 +1254,10 @@ int main(int argc, char** argv) {
         char rt_mode[8]{}; f.lazy = GetEnvironmentVariableA("X3M_MOTION_RT_MODE", rt_mode, sizeof rt_mode) == 4 && !std::strcmp(rt_mode, "lazy");
         char camera_mode[8]{}; f.camera = f.seam && GetEnvironmentVariableA("X3M_FIXTURE_CAMERA", camera_mode, sizeof camera_mode) == 6 && !std::strcmp(camera_mode, "rotate");
         if (GetEnvironmentVariableA("X3M_TAA_SENTINEL", setting, sizeof setting) > 0) f.sentinel = !std::strcmp(setting, "1") ? 1 : !std::strcmp(setting, "2") ? 2 : 0;
+        f.state_shadow = !(GetEnvironmentVariableA("X3M_STATE_SHADOW", setting, sizeof setting) == 1 && setting[0] == '0');
         if (f.camera) { fake_camera_pose(0); f.camera_install(&fake_projection_slot, &fake_view_slot); }
         char path[MAX_PATH]{}; GetModuleFileNameA(runtime, path, MAX_PATH);
-        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s camera=%u sentinel=%u envmap=%u\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw", f.camera, f.sentinel, f.envmap);
+        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s camera=%u sentinel=%u envmap=%u hook=%u state_shadow=%u\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw", f.camera, f.sentinel, f.envmap, f.hook, f.state_shadow);
         f.vs_words = load(argv[1]); f.ps_words = load(argv[2]);
         f.vs_hash = fnv(f.vs_words.data(), f.vs_words.size() * 4); f.ps_hash = fnv(f.ps_words.data(), f.ps_words.size() * 4);
         f.flat_hash = fnv(flat_program, sizeof flat_program);
@@ -1045,7 +1273,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if (f.taa && f.enabled && f.seam && !f.bench) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.envmap) f.run_envmap(); else f.run();
+        if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }
         // Teardown: every fixture object released, then the device must reach zero.
         f.back.reset(); f.depth.reset(); f.bloom_surface.reset(); f.bloom.reset();

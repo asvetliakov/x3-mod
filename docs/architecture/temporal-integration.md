@@ -16,7 +16,11 @@ draws overlays. The selector recognizes that copy as `AwaitCopy`
 (`src/renderer/scene_boundary.h`). Depth is unbound just before it but its
 content survives until the frame's final depth-only Clear.
 
-The resolve runs at that copy point, before the application's `StretchRect`:
+The resolve runs at that copy point, before the application's `StretchRect`
+— or, since 2026-09-12 with `X3M_SCENE_HOOK=1`, at the engine's scene-end
+callsite just before the compositor is called, which precedes the same copy
+and exists whether or not glow is enabled (see "Resolve placement with the
+engine hook" under step 3):
 
 ```text
 main RT (8-bit)  --StretchRect-->  FP16 scratch (current color)
@@ -316,7 +320,31 @@ generation, identity matrix, current/previous jitter in pixels, cut,
 `Output::color_surface` back into the main target with a point-filtered
 full-rect `StretchRect` through the native slot; the application's copy then
 proceeds on the resolved image. Failure leaves the main target untouched and
-invalidates the history. `X3M_TAA=1` requires `X3M_MOTION_OUTPUT=1`, implies
+invalidates the history.
+
+**Resolve placement with the engine hook (2026-09-12).** With
+`X3M_SCENE_HOOK=1` the primary resolve point is the engine scene-end signal
+(`src/proxy/scene_hook.cpp`: the patched `CALL 0x004c4750` at `0x004721b1`,
+[camera-state-and-frame-routine.md](../reverse-engineering/camera-state-and-frame-routine.md#implemented-hook-scene-end--compositing-begin-2026-09-12)),
+delivered to `MotionOutput::scene_end_hook` before the compositor runs and
+therefore before its `GetRenderTarget(0)` / depth unbind / bloom copy
+([compositor-and-glow.md](../reverse-engineering/compositor-and-glow.md)).
+There the selector is still in the Scene phase and the depth surface is
+still bound; the resolve reads and rewrites the bound RT0, which must be the
+latched main target (skip reason 10 otherwise), with the same `FrameInputs`
+as at the copy (RT2 is the current depth, so the bound D24X8 surface is not
+needed). The frame's one resolve attempt is recorded with its source: the
+`StretchRect` path then finds the frame attempted and does nothing, so a
+glow-on frame resolves once, at the hook, and the bloom copy receives the
+resolved image exactly as before; a glow-off frame — no compositor device
+calls at all — resolves at the hook too, which removes the video-option
+dependency. The copy path remains the fallback when the hook is off, refused
+(wrong executable or bytes) or fired outside the Scene phase. The fixture's
+hook script proves the two points equivalent: the frames both the patched
+and the unpatched run resolve are bit-identical, and every hook resolve
+equals the reference pass byte for byte
+([motion-output.md](../verification/motion-output.md#engine-scene-end-hook-x3m_scene_hook)).
+`X3M_TAA=1` requires `X3M_MOTION_OUTPUT=1`, implies
 `X3M_MOTION_JITTER=1`, and the device must pass the route's gate with RT2,
 FP16 render targets, sampled FP16/RGBA32F/R32F textures and `StretchRect`
 format conversion between A8R8G8B8/X8R8G8B8 and FP16

@@ -50,6 +50,8 @@ def main():
     parser.add_argument('--taa-sentinel', choices=['auto', '1', '2'], default='auto', help='Depth-sentinel policy of the resolve (requires --taa): auto reprojects unrouted (background) pixels through the live camera at the far plane whenever the engine camera read yields a transform, 1 keeps them current-only, 2 is strict (skips the resolve on frames without a transform)')
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
+    parser.add_argument('--scene-hook', action='store_true', help='Patch the frame routine\'s compositing callsite (0x004721b1, exact executable only) so the route learns the scene end from the engine and, with --taa, resolves there before the glow pass instead of at the bloom copy (X3M_SCENE_HOOK=1; requires --motion-output; default off until a gameplay run confirms it)')
+    parser.add_argument('--state-shadow', choices=['on', 'off'], default='on', help='Render-state shadow of the route (X3M_STATE_SHADOW): on (default) hooks SetRenderState and answers the per-draw state queries from the shadow; off issues GetRenderState per query (A/B; requires --motion-output)')
     parser.add_argument('--motion-rt-mode', choices=['perdraw', 'lazy'], default='perdraw', help='RT1/RT2 binding policy of the route: perdraw (default) rebinds around every routed draw; lazy keeps the bindings across consecutive routed draws (A/B experiment, requires --motion-output)')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
@@ -83,6 +85,10 @@ def main():
         parser.error('--camera-cut-deg must be in (0, 180] and --camera-log in [1, 1000000].')
     if args.motion_rt_mode != 'perdraw' and not args.motion_output:
         parser.error('--motion-rt-mode requires --motion-output.')
+    if args.scene_hook and not args.motion_output:
+        parser.error('--scene-hook requires --motion-output.')
+    if args.state_shadow != 'on' and not args.motion_output:
+        parser.error('--state-shadow requires --motion-output.')
     if not 100 <= args.profile_interval_us <= 1000000:
         parser.error('--profile-interval-us must be between 100 and 1000000.')
     if args.taa:
@@ -146,6 +152,8 @@ def main():
         env['X3M_CAMERA_CUT_DEG'] = repr(args.camera_cut_deg)
         env['X3M_CAMERA_LOG'] = str(args.camera_log)
         env['X3M_MOTION_RT_MODE'] = args.motion_rt_mode
+        env['X3M_SCENE_HOOK'] = '1' if args.scene_hook else '0'
+        env['X3M_STATE_SHADOW'] = '1' if args.state_shadow == 'on' else '0'
         env['X3M_PROFILE'] = '1' if args.profile else '0'
         env['X3M_PROFILE_INTERVAL_US'] = str(args.profile_interval_us)
         # --dll applies to this child only, preserving the user's other overrides.

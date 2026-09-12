@@ -34,6 +34,10 @@ namespace x3m {
 // captures every window; a draw reads the window of its VS row. The actual
 // count is derived from the table at compile time in motion_output.cpp.
 inline constexpr std::size_t motion_matrix_windows_max = 4;
+// Render states the route reads per draw and shadows from the SetRenderState
+// hook (X3M_STATE_SHADOW): the selector's z states, the gate-4 opaque-draw
+// checks and the write masks saved around RT1/RT2 (motion_output.cpp lists them).
+inline constexpr std::size_t motion_shadow_state_count = 8;
 }
 
 namespace x3m {
@@ -66,8 +70,23 @@ struct MotionRoute {
 // None: it ran (see taa_result/taa_copy). NotReached: the selector never
 // presented the AwaitCopy event (menu, rejected or unrecognized frame).
 // CameraState: X3M_TAA_SENTINEL=2 (strict) and no far-plane transform this frame.
+// Target: the engine scene-end hook fired while RT0 was not the latched main target.
 enum class TaaSkip : unsigned { None = 0, Disabled = 1, NotReached = 2, NoJitter = 3, NotFilled = 4,
-                                Recording = 5, Queries = 6, Initialize = 7, Container = 8, CameraState = 9 };
+                                Recording = 5, Queries = 6, Initialize = 7, Container = 8, CameraState = 9, Target = 10 };
+// Where this frame's resolve ran: at the engine scene-end hook (X3M_SCENE_HOOK,
+// before the compositing call 0x004c4750) or at the bloom copy (the StretchRect
+// hook, the fallback when the engine hook is absent or did not fire in the
+// scene phase). Logged as scene_end_source=none|hook|stretchrect.
+enum class SceneEndSource : unsigned { None = 0, Hook = 1, StretchRect = 2 };
+// Cross-check of the engine hook against the selector at Present
+// (scene_end_check): Agree = the hook fired once in the Scene phase and the
+// selector then reached the bloom copy with no scene draw in between; HookOnly
+// = the hook fired in the Scene phase and no bloom copy followed (glow off);
+// StretchOnly = the bloom copy came without a hook signal (hook not installed;
+// a disagreement when it is); Disagree = a signal outside the Scene phase, more
+// than one signal, a scene draw between the hook and the copy, or StretchOnly
+// with the hook installed.
+enum class SceneEndCheck : unsigned { None = 0, Agree = 1, HookOnly = 2, StretchOnly = 3, Disagree = 4 };
 struct MotionTaaCounters {
     bool attempted = false;      // The main-target bloom copy was recognized this frame.
     bool resolved = false;       // run() and the copy-back both succeeded: the main target holds the resolved image.
@@ -79,6 +98,7 @@ struct MotionTaaCounters {
     std::uint32_t camera_policy = 1, camera_reason = 1;
     bool camera_cut = false;     // rotation since the previous resolved frame exceeded X3M_CAMERA_CUT_DEG
     float camera_rotation_deg = 0;
+    std::uint32_t source = 0;    // SceneEndSource of the attempt
 };
 struct MotionFrameCounters {
     std::uint32_t draws = 0, routed = 0, matched = 0, gates[7]{};
@@ -118,6 +138,21 @@ struct MotionFrameCounters {
     std::uint64_t lazy_flush_ticks = 0, readback_ticks = 0;
     std::uint64_t taa_run_ticks = 0, taa_capture_ticks = 0, taa_copy_color_ticks = 0, taa_copy_depth_ticks = 0;
     std::uint64_t taa_draw_ticks = 0, taa_apply_ticks = 0, taa_copy_back_ticks = 0;
+    // Render-state shadow (X3M_STATE_SHADOW): shadowed state queries of the
+    // route (gate evaluation and the RT1/RT2 write-mask saves), how many the
+    // shadow answered (hits), every native GetRenderState the route issued
+    // (gets: shadow misses plus the fill's state save; with the shadow off
+    // every query is a get) and shadow resynchronizations this frame (state
+    // block Apply/EndStateBlock, Reset, a failed restoration).
+    std::uint32_t rs_queries = 0, rs_hits = 0, rs_gets = 0, rs_resyncs = 0;
+    // Engine scene-end hook (X3M_SCENE_HOOK): signals this frame, signals that
+    // arrived outside the selector's Scene phase (with the selector state of
+    // the last one), draws evaluated after a Scene-phase signal (compositing
+    // must follow the hook: those draws neither route nor jitter), whether the
+    // selector reached the bloom copy afterwards, and the verdict (SceneEndCheck).
+    std::uint32_t hook_signals = 0, hook_outside_scene = 0, hook_state = 0, draws_after_hook = 0;
+    bool hook_scene_end = false, bloom_copy_seen = false;
+    std::uint32_t scene_end_check = 0;
 };
 // Halton(2,3) sample i (1-based) centred on zero, in raster pixels.
 float motion_jitter_sample(unsigned index, unsigned axis) noexcept;
@@ -183,6 +218,31 @@ public:
     void configure_rt_mode(bool lazy) noexcept { lazy_mode_ = lazy; }
     bool lazy_rt_mode() const noexcept { return lazy_mode_; }
     void restore_bindings() noexcept;
+    // Render-state shadow (X3M_STATE_SHADOW, default on): the SetRenderState
+    // hook feeds set_render_state and the route answers its per-draw state
+    // queries from the shadow instead of GetRenderState. The shadow starts
+    // unknown, fills lazily (one native read per state), is dropped by every
+    // shadow resynchronization (state block Apply/EndStateBlock, Reset) and
+    // by any failed restoration of the route's own state changes. Off: every
+    // query is a native GetRenderState (the previous behaviour, A/B).
+    void configure_state_shadow(bool enabled) noexcept { state_shadow_ = enabled; }
+    bool state_shadow() const noexcept { return state_shadow_; }
+    // BEFORE the application's SetRenderState (light hook: no logging, no
+    // telemetry record): in lazy mode an application write to a write mask the
+    // route holds first puts the application's bindings back, so the write
+    // lands where the application expects it (closes the lazy-mode hole).
+    void before_set_render_state(D3DRENDERSTATETYPE state) noexcept;
+    // After a successful application SetRenderState; ignored while recording.
+    void set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexcept;
+    // Engine scene-end hook (X3M_SCENE_HOOK): `installed` records whether the
+    // callsite patch is live (for the cross-check verdict); scene_end_hook is
+    // the trampoline's signal, called before the engine's compositing call on
+    // the render thread, outside any device hook. In the Scene phase it ends
+    // routing/jitter for the frame, finishes the cut verdict and, with TAA on,
+    // runs the temporal resolve on the bound RT0 (which must be the latched
+    // main target); the StretchRect path then skips this frame's resolve.
+    void configure_scene_hook(bool installed) noexcept { scene_hook_installed_ = installed; }
+    void scene_end_hook() noexcept;
     // Cadence of the periodic motion_output_frame line with telemetry on
     // (every `frames` frames; default 60; capture frames always log).
     void configure_frame_log(unsigned frames) noexcept { frame_log_interval_ = frames ? frames : 60u; }
@@ -296,6 +356,8 @@ private:
         bool extra_rt[4]{};
         renderer::Viewport viewport;
         bool recording = false;
+        DWORD states[motion_shadow_state_count]{};      // application render states (shadow_states order)
+        bool states_known[motion_shadow_state_count]{};
     };
     struct SavedState;
     template<typename Fn> Fn native(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
@@ -311,6 +373,17 @@ private:
     // the per-draw path and the lazy flush; each counts into counters_.set_rt.
     HRESULT bind_target(DWORD index, IDirect3DSurface9* surface) noexcept;
     HRESULT bind_targets(MotionRoute& route) noexcept;
+    // The lazy-mode flush behind restore_bindings. `quiet` (the light
+    // SetRenderState hook) records no telemetry metric and logs nothing: its
+    // metrics and failure line are deferred to the next heavy call.
+    template<bool quiet> HRESULT flush_bindings() noexcept;
+    void record_deferred() noexcept;
+    // Shadowed render-state query: the shadow's value when known, else one
+    // native GetRenderState (counted) that fills the shadow.
+    HRESULT render_state(D3DRENDERSTATETYPE state, DWORD* value) noexcept;
+    HRESULT get_render_state_native(D3DRENDERSTATETYPE state, DWORD* value) noexcept;
+    void invalidate_render_states() noexcept;
+    bool resolve_allowed(SceneEndSource source) noexcept;
     // CPU tick stamp (0 without telemetry) and metric recording into stats_.
     std::uint64_t stamp() const noexcept;
     void record(unsigned metric, std::uint64_t ticks, bool failed = false, std::uint64_t bytes = 0) noexcept;
@@ -400,6 +473,12 @@ private:
     // application's COLORWRITEENABLE1/2 values saved at bind time.
     bool lazy_mode_ = false, lazy_rt1_ = false, lazy_rt2_ = false;
     DWORD lazy_write1_ = 15, lazy_write2_ = 15;
+    bool state_shadow_ = true, scene_hook_installed_ = false;
+    // Metrics of quiet lazy flushes (from the light SetRenderState hook),
+    // recorded and logged at the next heavy call.
+    std::uint32_t deferred_flushes_ = 0;
+    std::uint64_t deferred_flush_ticks_ = 0;
+    HRESULT deferred_flush_result_ = S_OK;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     MotionOutputFixtureConfig fixture_{};
     bool fixture_configured_ = false, fixture_abi_known_ = false;

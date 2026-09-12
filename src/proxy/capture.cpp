@@ -5,6 +5,7 @@
 #include "sampling_profiler.h"
 #include "scene_capture.h"
 #include "object_trace.h"
+#include "scene_hook.h"
 #include "camera_state.h"
 #include "object_lifetime.h"
 #include "draw_input.h"
@@ -43,6 +44,10 @@ bool taa_requested = false, taa_debug_requested = false;
 // periodic motion_output_frame cadence with telemetry on (default 60).
 bool motion_rt_lazy = false;
 unsigned motion_frame_log = 60;
+// X3M_STATE_SHADOW=0 turns the route's render-state shadow off (default on:
+// SetRenderState is hooked and the per-draw state queries never reach
+// GetRenderState after the first read); X3M_SCENE_HOOK is parsed by scene_hook.
+bool motion_state_shadow = true;
 // X3M_TAA_SENTINEL=auto|1|2 selects the resolve's depth-sentinel policy
 // (auto: far-plane camera reprojection whenever the live camera read yields a
 // transform; 1: current-only; 2: strict, skip the resolve without one);
@@ -405,7 +410,12 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
     }
     // The profiler's quiescent stop: the last device is gone and the capture
     // mutex is released, so its final report cannot wait on a lock we hold.
-    if(last_device_destroyed)sampling_profiler::shutdown();
+    if(last_device_destroyed){
+        sampling_profiler::shutdown();
+        // The frame routine cannot run without a device: quiescent for the
+        // callsite restore (the object-trace patch keeps its own lifetime).
+        if(scene_hook::installed()){const bool restored=scene_hook::shutdown();log("scene_hook_shutdown restored=%u status=%s",restored,scene_hook::status());}
+    }
     if(!refs){
         // A nested final factory Release can report this device root still
         // active. Finish the outer device root only after its own cleanup.
@@ -969,6 +979,32 @@ X3M_SHADOW_HOOK(LightCallBoundary,PlainHookGuard,set_viewport,47,(IDirect3DDevic
 X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,set_declaration,87,(IDirect3DDevice9* d,IDirect3DVertexDeclaration9* declaration),(d,declaration),set_vertex_declaration(declaration))
 X3M_SHADOW_HOOK(CpuCallBoundary,HookGuard,set_fvf,89,(IDirect3DDevice9* d,DWORD fvf),(d,fvf),set_fvf(fvf))
 #undef X3M_SHADOW_HOOK
+// Render-state shadow (X3M_STATE_SHADOW, default on). Light boundary like the
+// other hot setters: before the native call only the lazy-mode flush of a
+// held write mask (no logging, no telemetry record: motion_output.cpp,
+// flush_bindings<true>), after it the shadow store; check_no_x87.py walks
+// this hook too.
+HRESULT WINAPI set_render_state(IDirect3DDevice9* d,D3DRENDERSTATETYPE state,DWORD value){
+    LightCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    PlainHookGuard lock;auto& ctx=*devices.at(d);
+    ctx.motion_output.before_set_render_state(state);
+    cpu.before_original();
+    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD)>(57)(d,state,value);cpu.after_original();
+    if(SUCCEEDED(hr))ctx.motion_output.set_render_state(state,value);
+    return hr;
+}
+// Lazy mode only: an application read of a write mask the route holds must
+// see the application's own value (the other half of the lazy-mode hole).
+HRESULT WINAPI get_render_state(IDirect3DDevice9* d,D3DRENDERSTATETYPE state,DWORD* value){
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;auto& ctx=*devices.at(d);
+    ctx.motion_output.restore_bindings();
+    cpu.before_original();
+    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD*)>(58)(d,state,value);cpu.after_original();
+    return hr;
+}
 HRESULT WINAPI begin_stateblock(IDirect3DDevice9* d){
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
@@ -1092,6 +1128,14 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
     hooked.motion_output.configure_sentinel(taa_sentinel_mode,camera_cut_degrees,camera_log_frames);
+    hooked.motion_output.configure_state_shadow(motion_state_shadow);
+    // The engine scene-end hook is installed at backend load; a device created
+    // after the last one was destroyed (the patch restored then) reinstalls it.
+    if(scene_hook::requested()&&!scene_hook::installed()){
+        scene_hook::initialize(&scene_end_signal);
+        log("scene_hook active=%u status=%s reinstalled=1",scene_hook::active(),scene_hook::status());
+    }
+    hooked.motion_output.configure_scene_hook(scene_hook::active());
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
     if(hooked.motion_output.enabled()){
         // The route needs the complete selector event stream plus setter
@@ -1107,8 +1151,12 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         hooked.set(59,create_stateblock);hooked.set(60,begin_stateblock);hooked.set(61,end_stateblock);
         // Scene and query tracking for the resolve's caller contract.
         hooked.set(41,begin_scene);hooked.set(42,end_scene);hooked.set(118,create_query);
-        // Lazy binding: the application's target getters restore first.
-        if(hooked.motion_output.lazy_rt_mode()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);}
+        // Render-state shadow: the application's render-state writes. Lazy
+        // mode needs the same hook with the shadow off (X3M_STATE_SHADOW=0):
+        // an application write to a held write mask must flush the binding first.
+        if(hooked.motion_output.state_shadow()||hooked.motion_output.lazy_rt_mode())hooked.set(57,set_render_state);
+        // Lazy binding: the application's target and write-mask getters restore first.
+        if(hooked.motion_output.lazy_rt_mode()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);hooked.set(58,get_render_state);}
     }
     ownership_depth_info(d,devices.at(d)->id,devices.at(d)->frame,"create_after");
 }
@@ -1182,6 +1230,8 @@ void initialize_log(HMODULE module) {
     if(taa_requested)motion_jitter_requested=true;
     taa_debug_requested=taa_requested && GetEnvironmentVariableW(L"X3M_TAA_DEBUG",setting,32)>0 && wcstoul(setting,nullptr,10)>0;
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
+    motion_state_shadow=!(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)==1 && setting[0]==L'0');
+    const bool scene_hook_requested=GetEnvironmentVariableW(L"X3M_SCENE_HOOK",setting,32)==1 && setting[0]==L'1';
     if(GetEnvironmentVariableW(L"X3M_MOTION_FRAME_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=100000)motion_frame_log=unsigned(n);}
     if(GetEnvironmentVariableW(L"X3M_TAA_SENTINEL",setting,32)>0){
         if(!wcscmp(setting,L"1"))taa_sentinel_mode=x3m::renderer::SentinelMode::CurrentOnly;
@@ -1190,9 +1240,9 @@ void initialize_log(HMODULE module) {
     }
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s camera_cut_deg=%.2f camera_log=%u",
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s camera_cut_deg=%.2f camera_log=%u state_shadow=%u scene_hook=%u",
         motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log,
-        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames);
+        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames,motion_state_shadow,scene_hook_requested);
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     if(telemetry::enabled())loading_trace::initialize();
@@ -1206,6 +1256,12 @@ namespace { MotionOutputFixtureConfig fixture_config{}; bool fixture_configured=
 void fixture_apply(Device& ctx) { if(fixture_configured) ctx.motion_output.fixture_configure(fixture_config); }
 #endif
 
+// The engine scene-end signal: render thread, outside any device hook; every
+// route sees it under the same mutex the hooks hold.
+void scene_end_signal() {
+    std::lock_guard<std::recursive_mutex> lock(mutex);
+    for(auto& entry:devices) entry.second->motion_output.scene_end_hook();
+}
 void log(const char* format,...) {
     std::lock_guard<std::recursive_mutex> lock(mutex);
     if(!logfile) return;
@@ -1249,6 +1305,22 @@ extern "C" __declspec(dllexport) void x3m_camera_state_fixture_install(const flo
     std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
     x3m::camera_state::fixture_install(projection_slot,view_slot);
 }
+// Engine scene-end hook seam: the fixture executable's own E8 callsite and
+// compositor stand in for 0x004721b1 / 0x004c4750; identity gate bypassed.
+extern "C" __declspec(dllexport) int x3m_scene_hook_fixture_install(void* site,void* target) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    const bool result=x3m::scene_hook::fixture_install(site,target,&x3m::scene_end_signal);
+    for(auto& entry:x3m::devices) entry.second->motion_output.configure_scene_hook(x3m::scene_hook::active());
+    return result;
+}
+extern "C" __declspec(dllexport) int x3m_scene_hook_fixture_shutdown() {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    const bool result=x3m::scene_hook::fixture_shutdown();
+    for(auto& entry:x3m::devices) entry.second->motion_output.configure_scene_hook(x3m::scene_hook::active());
+    return result;
+}
+extern "C" __declspec(dllexport) unsigned x3m_scene_hook_fixture_signals() { return unsigned(x3m::scene_hook::signals()); }
+extern "C" __declspec(dllexport) const char* x3m_scene_hook_fixture_status() { return x3m::scene_hook::status(); }
 extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_last_pixel_abi(IDirect3DDevice9* device,float* out,unsigned floats) {
     std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
     const auto it=x3m::devices.find(device);

@@ -485,16 +485,27 @@ def row_deltas(before, after):
                 translation_abs=translation, translation_rel=translation / translation_scale)
 
 
+# RigidDrawKey::pass of the live route (src/renderer/motion_history.h,
+# MotionPass): every draw this analyzer keys lies inside the Scene-phase
+# bracket, which is the main scene pass by definition, so the field is the
+# constant 1 here. The capture format carries no pass field; a future capture
+# of a depth-only or shadow pass must bracket those draws separately before
+# they can be keyed apart (docs/reverse-engineering/motion-history-key.md).
+PASS_MAIN_SCENE = 1
+
+
 def build_key_fields(draw, geometry):
     life, context = draw.life, draw.context
     return dict(load_epoch=life['load_epoch'], registry_epoch=life['registry_epoch'],
                 node_serial=life['node_serial'], camera_serial=life['camera_serial'],
-                model=context.get('model'), lod=context.get('lod'), **geometry)
+                model=context.get('model'), lod=context.get('lod'), **geometry,
+                render_pass=PASS_MAIN_SCENE)
 
 
 K1_FIELDS = ('load_epoch', 'registry_epoch', 'node_serial', 'camera_serial', 'model', 'lod',
              'vb', 'ib', 'stream_offset', 'stride', 'declaration', 'topology',
-             'start_index', 'primitives', 'base_vertex', 'min_vertex', 'num_vertices', 'indexed')
+             'start_index', 'primitives', 'base_vertex', 'min_vertex', 'num_vertices', 'indexed',
+             'render_pass')
 # K2 drops the three allocation/declaration identities only.
 K2_FIELDS = tuple(name for name in K1_FIELDS if name not in ('vb', 'ib', 'declaration'))
 # K2b additionally drops the stream binding geometry, leaving lifetime + draw args.

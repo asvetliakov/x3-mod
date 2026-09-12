@@ -114,6 +114,38 @@ Evidence at this checkpoint (details in the linked documents):
   sampled attribution by function, symbolized through Ghidra); dry run on the
   iteration-8 log reproduces the gap figures in 1.6 s.
 
+- **Engine boundaries and render-state shadow** ([design](architecture/live-motion-route.md)
+  "Engine boundaries and state shadow", [review 21](verification/review-21.md)):
+  `X3M_STATE_SHADOW` (default on) hooks `SetRenderState` and answers the
+  route's per-draw state queries from an eight-state shadow (native
+  `GetRenderState` calls per fixture frame 295 → 144, 423 → 126 in bursts),
+  resynchronised on state-block Apply, EndStateBlock and Reset; it also closes
+  the lazy-mode write-mask hole. `X3M_SCENE_HOOK=1` (default off,
+  `--scene-hook`) patches the frame routine's compositing callsite
+  (`0x004721b1`, bytes verified, restored at the last device release) so the
+  route learns the scene end from the engine and the TAA resolve runs there
+  before the glow pass; the bloom `StretchRect` becomes the fallback. Fixture:
+  hook frames bit-identical to the copy-path resolve, glow-off frames resolve
+  only with the hook. The history key gained a pass field (main scene = 1)
+  without changing any match. Review 21 found the hook's signal ran under the
+  light CPU boundary although the resolve reaches x87 code; it now preserves
+  the full state once per frame.
+- **Compositor and glow ([disassembly](reverse-engineering/compositor-and-glow.md))**:
+  the compositor returns at once unless the registry bit `VideoD3DFlags2`
+  bit 7 ("Glow enabled") is set; with glow on it reads RT0 only through the
+  bloom `StretchRect` and the final additive blend; HUD and text draw after it
+  straight to the back buffer; no readback of RT0 in normal frames.
+- **FP16 HDR scene path design ([design](architecture/hdr-scene-path.md))**:
+  redirect RT0 to an owned A16B16G16R16F target at the latching Clear, keep the
+  game's depth and the motion/depth MRTs, run TAA on HDR before tonemapping
+  (reversible luminance weighting), AgX + adapted exposure at the scene-end
+  hook into the game's 8-bit target so the game's glow and GUI stay unchanged
+  in stage 1. The game is a gamma-space renderer (no sRGB state observed on
+  762 draws), so decoding is a documented approximation.
+
+**Installed (2026-09-12, after review 21):** `build/d3d9.dll` from the
+engine-boundary checkpoint, SHA-256 `9cd7d7d85cac213edda739611f3f477e621d0b9513776fd44d403ca8f7545993`, through `tools/manage.py install`.
+
 **Installed (2026-09-12, after review 20):** `build/d3d9.dll` from the camera
 reprojection checkpoint, SHA-256 `27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a`, through `tools/manage.py install`.
 
@@ -313,10 +345,11 @@ recover projection) so background and effects stop crawling when turning.
    functions with `X3ProfileSymbols.java`, then choose between the negative
    lookup cache, adjacency replacement, catalogue handle retention and engine
    patches per [loading orchestration](reverse-engineering/loading-orchestration.md).
-4. Engine boundary hooks from the [assessment](architecture/assessment-2026-09-12.md):
-   `SetRenderState` shadow, frame-routine scene-end hook, pass field in the
-   history key.
-5. Establish the FP16 scene path and HDR presentation; continue the roadmap.
+4. Confirm the scene-end hook in gameplay (`--scene-hook` run: the
+   `scene_end_check` and `draws_after_hook` distributions), then make it the
+   default resolve point.
+5. Implement the [FP16 HDR scene path](architecture/hdr-scene-path.md) stage
+   by stage behind `X3M_HDR`; continue the roadmap.
 6. Loading-time gap and alt-tab cursor remain tracked.
 
 ## Replay/admission line (reference only, superseded 2026-09-12)

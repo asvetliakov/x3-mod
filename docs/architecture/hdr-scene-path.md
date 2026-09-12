@@ -1,0 +1,526 @@
+# FP16 HDR scene path, exposure and AgX
+
+Design record, 2026-09-12. Roadmap stage 4, specified as an increment on the
+live motion route, not a new renderer. It assumes the engine scene-end hook at
+the `CALL 0x004c4750` callsite `0x004721b1` exists (shape and register contract
+in [camera-state-and-frame-routine.md](../reverse-engineering/camera-state-and-frame-routine.md)
+§8) and that the temporal resolve has moved there from the game's bloom
+`StretchRect`. The motion ABI, history key, camera read and sentinel policy are
+unchanged. Default off: with `X3M_HDR=0` no target is created, no call is
+redirected, and the presented frame is bit-identical to today.
+
+## 1. Target topology per frame
+
+**Redirection point.** The route already latches the frame's main colour/depth
+pair at the selector's first full colour+depth `Clear` (`scene_boundary.h`
+step 1, issued by `0x004bb280` right after view activation, i.e. after
+`BeginScene 0x004720c8`), creates RT1/RT2 there and advances the jitter. That
+latch is also the right redirect point: inside the scene, before the 393
+SM1/SM2 background draws, and the `Clear` then clears *our* target so no extra
+clear draw is needed.
+
+- At the latching `Clear`, before forwarding: create/reuse an owned
+  `D3DFMT_A16B16G16R16F` render-target **texture** at the latched dimensions
+  (`D3DPOOL_DEFAULT`, 1 level, no MSAA — every capture is single-sampled) and
+  `SetRenderTarget(0, scene_surface)` through a native slot.
+- **Depth/stencil stays the game's D24X8, untouched.** D3D9 constrains only
+  size and multisample type, not format. RESZ, the depth epochs and the
+  scene-depth machinery keep working because depth is never rebound.
+- Application `SetRenderTarget(0, main)` during the scene phase is redirected
+  the same way; binds of any *other* surface are forwarded verbatim, so the six
+  env-map cube faces of `0x0047e820` between `EndScene 0x00472201` and
+  `BeginScene 0x0047223d` are never redirected.
+- Every consumer that models application state — `GetRenderTarget(0)`, the
+  RT/constant shadow, `SceneBoundarySelector`, `describe_surface`, the state
+  block path, the ownership wrapper — must keep seeing the **application's**
+  logical binding (the latched A8R8G8B8 surface), exactly as the route's own
+  calls are already kept out of the selector's event stream. Otherwise the
+  selector rejects every frame on format.
+
+**MRT slots** (D3D9 gives four; the scene phase now uses three):
+
+| Slot | Content | Format | B/px |
+| --- | --- | --- | ---: |
+| RT0 | owned HDR scene | `A16B16G16R16F` | 8 |
+| RT1 | motion (prev UV / prev z,w / validity) | `A32B32G32R32F` | 16 |
+| RT2 | current device depth `z/w`, −1 sentinel | `R32F` | 4 |
+| RT3 | free — normals, stage 7 | — | — |
+
+RT1/RT2 binding, `COLORWRITEENABLE1/2` and restoration are unchanged. The
+existing three-format MRT self test (`A8R8G8B8` + `A32B32G32R32F` + `R32F`,
+passing on Preview) becomes a four-format one with FP16 in slot 0. Normals later
+want RT3 *and* bandwidth, which is why §6 makes the compact motion encoding a
+stage-7 prerequisite rather than a stage-4 one.
+
+**Write-back.** At the scene-end hook, before the original `0x004c4750` runs,
+one tonemap draw writes the display-encoded 8-bit result into the *game's* main
+surface as RT0, RT1–3 unbound, depth off, blending off, `COLORWRITEENABLE=15`,
+`SRGBWRITEENABLE=FALSE`. Output alpha is the **scene alpha, carried through
+unchanged**: the original highlight program `1c90e79667bdaddf` multiplies
+sampled RGB by the sampled *alpha* and derives its mask from
+`1 − saturate(alpha)`, so writing alpha 1 would silently change the glow mask.
+(The resolve hit this exact bug; `temporal-integration.md`, "Findings while
+wiring".)
+
+Redirection is a **must-unwind** operation, unlike the resolve. Any failure
+after the redirect still writes back, degrading in order: AgX with the last good
+exposure → identity tonemap → `StretchRect(scene → main, POINT)` (which needs
+the `CheckDeviceFormatConversion` gate the TAA copies already use). Reaching
+`EndScene 0x00472574` or `Present` still redirected is a bug, not a degradation:
+log it and disable the feature for the device.
+
+**What the game's bloom sees.** *Stage 1*: `0x004c4750` runs unmodified, so its
+`StretchRect` copies the **LDR, AgX-tonemapped, display-encoded** image and the
+four bloom passes, GUI and text at `0x0047253f` behave exactly as today. Visible
+consequence: `g_HighlightThreshold` now selects highlights from a
+tone-compressed image, so glow is weaker than vanilla. *Stage 2*: an HDR bloom
+chain over the resolved FP16 image (5–6 half-res `A16B16G16R16F` levels, 13-tap
+down, tent up) is inserted before the tonemap and the hook **skips** the
+original call — the compositor's only full-screen output is its final glow
+composite into main RT0, which our tonemap draw replaces. Gate the skip on the
+player's glow setting; that gate is the open RE item (§9).
+
+## 2. Shader implications
+
+**Who writes colour in the scene** ([iteration-06.md](../verification/iteration-06.md),
+20,076 main-scene draws / 68 frames): `vs_3_0/ps_3_0` 18,605 (92.7%) — the
+169-row transformable population; `vs_1_1`/*null* 915 (`z_only.fb` depth
+prepass, **no colour**); `vs_2_0/ps_2_0` 306 and `vs_1_1/ps_1_1` 250, all
+transparent or additive (`effects`, `engine`, `adeffects`, `particles`,
+`stardust`). Every sub-SM3 colour writer fails gate 4 (blend on or Z-write off),
+which is why it carries the sentinel today; it will write ordinary 0..1 values
+into the FP16 target through ordinary blending. Acceptable in stage 1. The
+background phase (393 draws, all SM1/SM2) is in the FP16 target; the 948
+post-bloom overlay draws are not (they run after the write-back).
+
+**What an SM3 material pixel output means.**
+[material-radiance.md](../reverse-engineering/material-radiance.md): the SM3
+material VS accumulates the point-light loop RGB plus emissive into `COLOR0`,
+and the PS clamps that interpolated value with `mov_sat_pp rN.xyz, v0` before
+material mixing. There is **no saturate on `oC0`** — the clamp is on a temporary
+(destination tokens `80370005`/`80370004`/`80370001`: temp register, `.xyz`
+mask, `_SAT|_PP`), and nothing re-clamps the combined RGB afterwards. Alpha is
+untouched by all eight sites.
+[vertex-color-hdr.md](../verification/vertex-color-hdr.md) proves on this
+backend that `vs_3_0 → ps_3_0 COLOR0` carries >1 through interpolation into FP16
+while `vs_2_0 → ps_2_0 COLOR0` clips per vertex *before* interpolation: the SM3
+population is the HDR population, SM2 needs a varying change (stage 6).
+
+**Transformer extension.** The clamp removal already exists in production with
+the same shape as the motion fragment: `src/renderer/material_radiance.{h,cpp}`
++ `material_radiance_profiles_inc.h`, five reviewed profiles, replacing the
+three-DWORD `02000001 <dst> 90e40000` span with the four-DWORD
+`0300000b <dst & ~0x00100000> 90e40000 <encoded local zero>`, i.e.
+`mov_sat_pp t.xyz, v0` → `max_pp t.xyz, v0, <shader-local DEF zero>`; lower
+bound and partial precision survive. GPU-verified (42 structural checks, 192
+numeric samples across a Reset: 4 → 4.0, 16 → 16.0).
+
+Stage 4 adds **coverage**, generated like the 169-row motion table: extend
+`tools/analysis/inspect_material_radiance.py` into an archive-wide sweep over
+the 108 pixel programs the motion table names, plus the candidates
+`shader-family-review.md` flags by hand (glass `a66fb1981ba755b2`, asteroid,
+Boron, Paranid, Split, Terran, the shared Khaak/Teladi/Xenon program, damage,
+terraformer); emit a generated header with the pinned-digest discipline of
+`generate_shader_profiles.py`; keep the registry's rejection rules (unknown
+fingerprint, wrong word count, site inside a COMMENT/DEF payload, non-zero
+literal, wrong write mask → reject, original kept). Two rules the sweep must
+enforce: only the **interpolated-`COLOR0` RGB** clamp qualifies (the 36 other
+saturations in the five reviewed programs, and the bloom threshold saturations,
+are semantics, not range clamps); and a profile is a *shader* fact, not a *pass*
+fact — application stays gated by the route's per-draw scene gates, because
+program sharing is real (`0a523f33ac47ae05` is `gui2d` and `stardust`;
+`6109cf64c03529dd` is `gui2d` and `nebula`). Switch `X3M_HDR_RADIANCE=1`,
+independent of `X3M_HDR`, so the topology lands and proves bit-exact first.
+
+**Blending in FP16.** Single-RT blending into `A16B16G16R16F` needs
+`CheckDeviceFormat(..., D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING, ...)`; WineD3D
+reports FP16 RT/filter/blend support ([platform.md](platform.md)). MRT blending
+needs `D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING`, but only matters if RT1/RT2 are
+ever bound across *blended* draws — gate 4 excludes them, so in `perdraw` mode a
+blended draw has one target bound and only the single-RT cap applies. The
+assessment's phase-level MRT binding would make the MRT cap load-bearing; gate
+it there and fall back to `perdraw` without it. Additive (`ONE`/`ONE`) stacks
+now accumulate past 1 instead of saturating — the point, but also a behaviour
+change for *unmodified* shaders. `X3M_HDR_CLAMP=<float>` (default off) clamps
+the tonemap input as a blunt firefly guard.
+
+**sRGB — answered from capture evidence.** Queried over
+`verification/results/game-turning-capture-summary.json`: `D3DRS_SRGBWRITEENABLE`
+(state 194) = 0 on **762 of 762** draws; `D3DSAMP_SRGBTEXTURE` (sampler state
+11) = 0 on **12,192 of 12,192** stage observations. The engine never asks for a
+hardware sRGB decode or encode: textures are sampled as stored gamma-encoded
+code values, lighting runs on those, the result is written raw to A8R8G8B8 and
+presented. **X3 is a gamma-space renderer.** Both fields are already recorded by
+`capture.cpp` (`state id=194`, `sampler stage=N state=11`), so no new capture
+work is needed.
+
+Working space, therefore: the FP16 target holds **engine space** — the game's
+own values, unclamped and unquantized. The display transform is
+
+```
+linear  = decode(engine)          // X3M_HDR_DECODE: gamma2.2 (default) | srgb | none
+graded  = AgX(exposure * linear)  // AgX consumes Rec.709 scene-linear
+oC0.rgb = graded                  // already display-encoded, see §3
+oC0.a   = engine.a
+```
+
+with `decode(x) = pow(max(x,0), 2.2)`, extended above 1 by the same power so it
+stays monotone. Documented caveat, required in the shader header and the first
+run report: **the game's blending happened in gamma space**, so decoding at the
+tonemap input is not physically exact (a blend of two encoded values is not the
+encoding of the blend). The exact fix — sampler `SRGBTEXTURE=TRUE` plus
+linear-space material shaders — is stage 6. `X3M_HDR_DECODE=none` exists so the
+A/B is measured, not argued.
+
+## 3. Tonemap and exposure
+
+**AgX.** Input Rec.709 scene-linear. The constants below are the "minimal AgX"
+form (Troy Sobotka's AgX as reduced in Benjamin Wrensch's *Minimal AgX
+Implementation*, also used by Godot 4.3 and Blender 4.x). They are reproduced
+from knowledge; the generator that emits the shader header must pin them against
+the cited source, as `tools/shaders/generate_rigid_motion_pixel.py` pins the
+motion and depth fragments.
+
+Input (inset) matrix, row-major, acting on a column vector; and its inverse
+(outset). Both are row-stochastic to 1e-4, so white maps to white.
+
+```
+M_in                                            M_out
+ 0.842479062  0.078433600  0.079223745           1.196879005 -0.098020881 -0.099029744
+ 0.042328242  0.878468636  0.079166127          -0.052896852  1.151903130 -0.098961177
+ 0.042375655  0.078433600  0.879142974          -0.052971636 -0.098043450  1.151073673
+
+min_ev = -12.47393 ;  max_ev = 4.026069
+
+agx(v):   v = M_in * v
+          v = clamp(log2(max(v, 1e-10)), min_ev, max_ev)
+          v = (v - min_ev) / (max_ev - min_ev)     // 0..1 log encoding
+          v = contrast(v)
+
+contrast(x):  x2 = x*x ; x4 = x2*x2                // 6th-order sigmoid fit
+          = 15.5*x4*x2 - 40.14*x4*x + 31.96*x4 - 6.868*x2*x
+            + 0.4298*x2 + 0.1191*x - 0.00232
+
+look(v):  luma = dot(v, (0.2126, 0.7152, 0.0722))  // default identity:
+          v = pow(v*slope + offset, power)         //   offset 0 slope 1 power 1 sat 1
+          v = luma + sat*(v - luma)
+
+output(v): return saturate(M_out * v)              // ALREADY display-encoded;
+                                                   // do NOT pow(v, 2.2) here
+```
+
+That last line is the standard integration bug and matters here: the target is a
+plain A8R8G8B8 surface with `SRGBWRITEENABLE=FALSE`, presented as-is, so AgX's
+output transform already produces the value to store. Looks are exposed as
+`X3M_HDR_LOOK=none|golden|punchy` with the published slope/power/sat triples,
+default `none` — a black space background is the worst case for a punchy look.
+One `ps_3_0` fragment embedded like `temporal_resolve_program_inc.h`; `log2`,
+`exp2` and `pow` are single-slot SM3 instructions, well under 512 slots.
+Matrices and coefficients live in constant registers so host reference and
+shader consume identical numbers.
+
+**Exposure** is metered on the **resolved** HDR image (after TAA): that is what
+is displayed, and TAA has already removed the per-frame sampling noise, so the
+meter does not chase the jitter sequence. The tonemap of frame *n* consumes the
+EV adapted at frame *n−1*, which removes the serial dependency between the
+reduction chain and the tonemap draw at the cost of a lag that is invisible
+against 0.4–1.2 s time constants.
+
+Method: mip-style log-luminance reduction, **not** a histogram. D3D9 SM3 has no
+compute and no scatter; a histogram would need CPU readback (a banned stall) or
+vertex-texture-fetch point scatter. Chain, 4× per axis per level — at 1280×768
+six draws (1280→320→80→20→5→2→1):
+
+```
+level 0:      L = dot(decode(scene.rgb), (0.2126, 0.7152, 0.0722))
+            out = log2(clamp(L, 1e-4, Lmeter_clip))   // Lmeter_clip default 64
+levels 1..n:  out = mean of the 16 taps        -> avgLogL in a 1x1 R32F
+```
+
+`Lmeter_clip` is the cheap substitute for a percentile: it stops a sun or a
+weapon flash from dragging the geometric mean. A centre-weighted mask
+(`X3M_HDR_METER_CENTER`) is a one-line extension of level 0.
+
+```
+EV_target   = clamp(log2(K) - avgLogL + EV_offset, EV_min, EV_max)  // K = 0.18
+tau         = (EV_target < EV_adapted) ? tau_down : tau_up          // 1.2 s / 0.4 s
+EV_adapted += (EV_target - EV_adapted) * (1 - exp2(-dt/(tau*ln2)))
+exposure    = exp2(EV_adapted)
+```
+
+`dt` is QPC between consecutive boundary hits, clamped to [1/240 s, 1/5 s] so a
+hitch or a loading pause cannot step the exposure. The adaptation state is an
+`R32F` 1×1 ping-pong written by a 1×1 draw — nothing is read back per frame; a
+4-byte lagged readback every `X3M_HDR_LOG` frames (default 300) feeds the
+diagnostic line only. Switches: `X3M_HDR_EXPOSURE=auto|manual`, `X3M_HDR_EV`
+(forces `EV_adapted` and skips the chain — deterministic, what the fixtures
+use), `X3M_HDR_EV_OFFSET`, `X3M_HDR_KEY`, `X3M_HDR_EV_MIN/MAX`,
+`X3M_HDR_ADAPT_UP/DOWN`. The adaptation step is a pure function of
+`(EV_adapted, EV_target, dt, taus, clamps)` and belongs in
+`src/renderer/exposure.h` as host-testable arithmetic mirrored by the shader,
+exactly as `camera_reprojection.h` mirrors the resolve.
+
+**TAA on HDR or LDR — recommendation: HDR, pre-tonemap, with Karis-style
+reversible tonemap weighting inside the resolve.** Reasons specific to this
+engine:
+
+1. The pass is already FP16 end to end — history `A16B16G16R16F` ×2 plus `R32F`
+   ×2, `FrameInputs::color` documented as a "scene-linear FP16 texture",
+   `rejection[2] = 65000.f` already an HDR limit, and `temporal_pass.cpp:233`
+   already taking the texture path with an `A16B16G16R16F` format check. Moving
+   to HDR needs **no format change**, only handing `in.color` instead of
+   `in.color_surface`.
+2. It deletes the 8-bit→FP16 input `StretchRect` and its
+   `CheckDeviceFormatConversion` gate — the single biggest unverified
+   native-Windows dependency in the current resolve
+   ([platform-portability.md](platform-portability.md)). `ensure_scratch` and
+   the `ticks_copy_color` phase disappear.
+3. TAA after AgX bakes the exposure of the moment into the history; adaptation
+   then makes the whole history wrong by a multiplicative factor the
+   neighbourhood clip cannot distinguish from motion. Keeping history in
+   absolute engine-space radiance removes the problem: exposure is applied after
+   the blend.
+4. Stage 2 needs an HDR image *after* TAA to build bloom from; TAA on LDR would
+   leave the only HDR image before the resolve.
+
+The real cost is that variance clipping is scale-dependent — 1.25σ around a mean
+of 40 is not the same tolerance as around 0.4 — and bright sub-pixel features
+become fireflies the clip cannot suppress. Fix, preserving the tuning
+[iteration-08.md](../verification/iteration-08.md) established: in
+`src/temporal/resolve.hlsl` weight every current tap and the history tap by
+`w = 1/(1 + k·luma)` before the 3×3 mean/σ and before the blend, and invert with
+`c/(1 − k·luma)` after. `k` is uploaded as the adapted `exposure`, so the
+weighting tracks scene brightness while the **stored history stays absolute** —
+no rescaling on exposure change. Everything else in the resolve is unchanged
+(mean ± 1.25σ within the min/max box, weight 0.9, closest-depth dilation,
+one-sided depth disocclusion test, Catmull-Rom history, sentinel policy 2 and
+the far-plane `clip_to_previous`). With `k = 0` the weighting is the identity,
+which is also the migration test.
+
+## 4. Pass order at the scene-end hook
+
+Inside the hook at `0x004721b1`, between `BeginScene 0x004720c8` and
+`EndScene 0x00472574`, so draws are legal; ESI/EDI/EBX/EBP preserved per the
+callsite contract; all device calls through native slots so neither shadow nor
+selector observes them.
+
+```
+ 0. save state (the pass's cached D3DSBT_ALL block), unbind RT1/RT2, depth off
+ 1. [stage 7+] GTAO / SSR read RT2 (+ RESZ depth), modulate the FP16 scene
+ 2. TAA resolve   in.color = scene FP16 texture (no scratch copy)
+                  in.current_depth = RT2, in.motion = RT1
+                  clip_to_previous / sentinel_camera unchanged
+                  -> Output::color, an FP16 history texture
+ 3. [stage 2] HDR bloom chain over Output::color into an FP16 scratch
+ 4. AgX tonemap draw: source = (3) or (2); exposure = EV_adapted from frame n-1
+                  target = the GAME's main A8R8G8B8 surface as RT0
+                  oC0.rgb = AgX(exposure * decode(scene)) ; oC0.a = scene.a
+ 5. exposure reduction chain over the same FP16 source -> 1x1 R32F adaptation
+ 6. restore the state block; the redirect is off for the rest of the frame
+ 7. return -> compositor 0x004c4750 (stage 1) or skipped (stage 2)
+          -> game bloom / GUI / text 0x0047253f -> EndScene -> Present
+```
+
+**History format change: none.** `A16B16G16R16F` ×2 and `R32F` ×2 already. What
+changes is content (unbounded instead of 8-bit-quantized `v/255`), the
+disappearance of the input scratch copy, and the `k·luma` constant. The
+sentinel/camera reprojection path, the far-plane `clip_to_previous` builder,
+`camera_sentinel_policy`, the cut detector and `X3M_TAA_SENTINEL` are untouched.
+
+## 5. Platform
+
+**CrossOver Preview / WineD3D** (the path the game actually takes; DXMT is the
+D3D11 implementation and belongs to the stage-5 presentation decision). FP16
+render targets, filtering and blending are reported supported and FP16
+allocation succeeds ([platform.md](platform.md)). The three-format MRT self test
+(`A8R8G8B8` + `A32B32G32R32F` + `R32F`, `D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS`)
+passes on this backend (`color_errors=0 motion_errors=0 depth_errors=0
+targets=3`, [motion-output.md](../verification/motion-output.md)). FP16 point
+copies of the 8-bit main target already run every frame —
+`TemporalPass::run` does `StretchRect(color_surface → scratch, D3DTEXF_POINT)`
+and the route copies back with `StretchRect(out.color_surface → main, POINT)`;
+all 768 RGB codes land within one FP16 ulp of `v/255` with no gamma curve
+([temporal-resolve.md](../verification/temporal-resolve.md)). The HDR path
+removes the first copy and turns the second into a draw. Backend quirk to carry
+forward: a full `Clear` is deferred and its colour is encoded with the
+sRGB-write state of the first following draw (found by the coverage oracle);
+with an FP16 target the encoding question disappears, but the deferral means a
+fixture must not assume residency immediately after `Clear`.
+
+**Native Windows caps to check at runtime**, through the factory the proxy
+already holds, cached at attach: `CheckDeviceFormat(..., D3DUSAGE_RENDERTARGET,
+D3DRTYPE_TEXTURE, D3DFMT_A16B16G16R16F)`; the same with
+`D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING` (blending) and `D3DUSAGE_QUERY_FILTER`
+(bloom upsample only); `caps.NumSimultaneousRTs >= 3` and
+`D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS`; `D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING`
+only for phase-level MRT binding; `CheckDeviceFormatConversion(A16B16G16R16F →
+A8R8G8B8/X8R8G8B8)` for the emergency unwind; plus the live four-format 4×4 self
+test.
+
+**Fail-closed.** Any failed cap or self test disables `X3M_HDR` for the device
+with one `hdr_device` line giving the reason, and the frame proceeds exactly as
+with `X3M_HDR=0`. `X3M_HDR_RADIANCE` without `X3M_HDR` is refused (unclamped
+radiance into an 8-bit target is just clipping). Reset releases the scene target
+with RT1/RT2 before the native call and recreates it lazily at the next latch; a
+dimension change invalidates exposure state and TAA history. On native Windows
+all of this compiles and is gated, and none of it is verified.
+
+## 6. Cost model
+
+Pixels: 1280×768 = 983,040; 5120×1440 = 7,372,800 (7.5×). Default-pool memory:
+
+| Resource | B/px | 1280×768 | 5120×1440 |
+| --- | ---: | ---: | ---: |
+| motion RT1 `A32B32G32R32F` | 16 | 15.7 MB | 118 MB |
+| depth RT2 `R32F` | 4 | 3.9 MB | 29.5 MB |
+| **scene RT0 `A16B16G16R16F`** (new) | 8 | **7.9 MB** | **59 MB** |
+| TAA colour history ×2 | 16 | 15.7 MB | 118 MB |
+| TAA depth history ×2 | 8 | 7.9 MB | 59 MB |
+| FP16 input scratch (**removed**) | 8 | −7.9 MB | −59 MB |
+| stage-2 bloom chain (≈⅓ of RT0) | ~2.7 | +2.6 MB | +20 MB |
+| **total, stage 1 / stage 2** | | 43.2 / 45.8 MB | **324 / 344 MB** |
+
+Compact motion is the obvious lever: a *velocity delta* plus validity in
+`A16B16G16R16F` instead of an absolute previous UV in `A32B32G32R32F` halves RT1
+to 59 MB and halves its bandwidth. FP16 is adequate for a delta (±512 px resolves
+to 0.5 px at the extreme, 0.03 px at 32 px of motion) but **not** for an absolute
+UV (2⁻¹¹ relative ≈ 2.5 px at 5120 width), so the encoding change is mandatory
+rather than cosmetic and it invalidates the resolve's RG convention and the
+readback analyzer. **Not a prerequisite for stage 4** — 324 MB of default-pool
+textures is tolerable in this 32-bit process. Make it a prerequisite for stage 7
+(normals want RT3 plus another 29–59 MB) and re-evaluate if the first
+5120×1440 HDR run shows allocation pressure.
+
+Boundary work added per frame (scene draws also write 8 B/px instead of 4 into
+RT0: +12 MB/frame at 1280×768 and +88 MB at 5120×1440 at ~3× overdraw):
+
+| Pass | 1280×768 | 5120×1440 |
+| --- | ---: | ---: |
+| removed 8-bit→FP16 scratch copy | −11.8 MB | −88 MB |
+| AgX tonemap (read 8, write 4) | 11.8 MB | 88 MB |
+| exposure chain (≈1.33× level-0 read) | 10.5 MB | 78 MB |
+| stage-2 bloom chain | 25 MB | 189 MB |
+
+Against the measured boundary of **0.738 / 2.243 ms** (resolve on,
+CPU-inclusive fixture bench, `motion-output.md` camera-reprojection rerun; the
+resolve alone is 0.387 / 1.756 ms), stage 1 should add roughly **+0.2…0.4 ms at
+1280×768 and +0.8…1.6 ms at 5120×1440** — a boundary of about 0.9–1.2 and
+3.0–3.9 ms — partly offset by the removed input copy; stage 2's bloom roughly
+doubles the increment at 5120×1440. These are estimates; the fixture's
+`bench WxH` mode already produces exactly this number and must be re-run per
+step. Nothing is added per draw except one `SetRenderTarget(0)` per frame.
+
+## 7. Verification without the game
+
+**Fixture cases** — extend the motion-output fixture (it already has the
+hostile-state harness, coverage oracle, seam export, reference `TemporalPass` on
+a second device, Reset, and the ownership-wrapper environments):
+
+1. **Redirect + write-back identity.** `X3M_HDR=1`, `X3M_HDR_RADIANCE=0`,
+   `X3M_HDR_EXPOSURE=manual`, `X3M_HDR_EV=0`, `X3M_HDR_DECODE=none`,
+   `X3M_HDR_TONEMAP=identity`: the presented 8-bit main target must be
+   **bit-identical** to the `X3M_HDR=0` run in every frame, alpha included,
+   plain and through the wrapper. This single comparison proves redirection, the
+   `Clear` retarget, state restoration, write-back and the alpha carry.
+2. **HDR through blending.** `ONE`/`ONE` additive of a shader emitting 4.0 and
+   16.0 → 20.0 in the FP16 target, not 1.0; repeat with
+   `SRCALPHA`/`INVSRCALPHA` and after a Reset. Exercises the FP16 blend cap for
+   real, not by HRESULT.
+3. **Four-format MRT** on DXMT/Preview: `A16B16G16R16F` + `A32B32G32R32F` +
+   `R32F` self test and a routed draw writing all three, against the CPU oracle;
+   plus the cap forced absent (existing fault injection) to prove the feature
+   disables itself rather than binding a partial set.
+4. **Must-unwind.** Inject a failure at each step after the redirect and require
+   a non-black, written-back main target every time, with exactly one log line.
+5. **Radiance variants** in the live route against a redirected RT0: 4 and 16
+   reach the FP16 target where the original clamped to 1, alpha unchanged, an
+   unprofiled program refused.
+6. **TAA on HDR.** The seam's byte-for-byte comparison against the reference
+   `TemporalPass` repeated with `in.color` (FP16 texture): `k = 0` must
+   reproduce the current LDR results exactly; `k > 0` gets new expectations.
+
+**Host references.** `tools/analysis/agx_reference.py` plus a pytest: matrices,
+log encoding, polynomial, look and output transform in double precision,
+compared against the compiled `ps_3_0` fragment over a ramp (per channel
+2⁻¹⁴…2⁶, the neutral axis and the primaries, ≥ 4,096 samples) through the
+existing render-a-ramp-and-read-back pattern; tolerance 1/512 of an 8-bit code,
+which bounds both the FP16 intermediate and SM3 `log2`/`exp2` precision. The
+reference also emits the constant header the shader uses, so the two cannot
+drift. Exposure unit tests over `src/renderer/exposure.h`: monotone convergence;
+`tau_up`/`tau_down` asymmetry; invariance under `dt` subdivision (one 32 ms step
+equals two 16 ms steps to 1e-6); `EV_min`/`EV_max` clamping; `dt` clamping
+across a simulated 3 s hitch; manual override bypassing the chain; and the
+reduction chain checked against a NumPy geometric mean on a synthetic image with
+a saturated sun disc, proving `Lmeter_clip` bounds its influence.
+
+**First gameplay run — capture fields.** A bounded `hdr_frame` line (capture
+frames and every `X3M_HDR_LOG`): `hdr`, `hdr_redirected`, `hdr_written_back`,
+`hdr_unwind`, `hdr_result`, `hdr_target_create`, `ev_target`, `ev_adapted`,
+`avg_log_l`, `meter_clipped_fraction`, `scene_max_rgb`, `scene_p99_rgb` (from a
+coarse reduction level, not a full readback), `radiance_variants`,
+`radiance_draws`, `decode_mode`, `look`, `tonemap_ms`, `exposure_ms`,
+`boundary_ms`. Acceptance: (a) `hdr_redirected == hdr_written_back` in 100% of
+frames with `hdr_unwind = 0`; (b) with `X3M_HDR_RADIANCE=0`, fixed EV and an
+identity tonemap, frames bit-identical to an `X3M_HDR=0` run of the same scene —
+the criterion-6 colour-identity gate iteration 6 left unmet; (c)
+`scene_max_rgb > 1` in at least one flight frame with `X3M_HDR_RADIANCE=1`, the
+first actual evidence that the game has HDR content to preserve; (d)
+`ev_adapted` settles within 2 s of a sector change without oscillating; (e)
+boundary cost within the §6 estimate; (f) existing TAA acceptance unchanged.
+
+## 8. Work breakdown
+
+| # | Step | Switch | Files | Fixture | Review gate |
+| --- | --- | --- | --- | --- | --- |
+| 1 | **Topology**: own FP16 target, redirect at the latching `Clear`, logical-binding shim, write-back with identity tonemap, must-unwind ladder, four-format caps + self test | `X3M_HDR` | `src/proxy/motion_output.{h,cpp}`, `capture.cpp`, new `src/renderer/hdr_pass.{h,cpp}` | cases 1, 3, 4 | bit-identical presented frames, plain and wrapped; zero final device references; Reset/dimension change clean |
+| 2 | **AgX + exposure**: tonemap fragment and generator, decode modes, reduction chain, 1×1 adaptation, `exposure.h` | `X3M_HDR_TONEMAP`, `X3M_HDR_EXPOSURE`, `X3M_HDR_EV*`, `X3M_HDR_DECODE`, `X3M_HDR_LOOK` | `src/temporal/agx.hlsl`, `src/renderer/{hdr_pass,exposure}.*`, `tools/shaders/`, `tools/analysis/agx_reference.py` | AgX ramp, exposure unit tests, case 4 | ≤ 1/512 shader-vs-reference; exposure tests green; manual EV deterministic; bench recorded |
+| 3 | **TAA on HDR**: `in.color` texture path, drop the input scratch and its conversion gate, `k·luma` weighting, regenerate bytecode | `X3M_TAA` (unchanged) | `src/renderer/temporal_pass.{h,cpp}`, `src/temporal/resolve.hlsl`, `motion_output.cpp` | case 6, full temporal-resolve suite | `k = 0` reproduces every current expectation byte for byte; negative controls intact; seam reference re-run |
+| 4 | **HDR radiance**: archive-wide clamp-site sweep, generated table, live application behind the route's gates | `X3M_HDR_RADIANCE` | `tools/analysis/inspect_material_radiance.py`, `src/renderer/material_radiance*`, `motion_output.cpp` | case 5 + the material-radiance GPU fixture over the new table | reversing each patch reproduces original bytes; mutated/unknown programs reject; no non-`COLOR0` saturation touched |
+| 5 | **HDR bloom** replacing `0x004c4750`, gated on the glow option | `X3M_HDR_BLOOM` | `src/renderer/hdr_pass.*`, the scene-end hook | new bloom case + energy check | glow-off reproduces stage-1 output; skipping the original leaves no state residue; boundary cost measured |
+
+Risks, ranked:
+
+1. **The logical-binding shim.** Every consumer that queries RT0 must see the
+   application's surface while the device holds ours — selector, RT/constant
+   shadow, `describe_surface`, state blocks, `GetRenderTarget(Data)`, the
+   ownership wrapper's accounting. Miss one and either the selector kills every
+   frame or the wrapper's references drift. Case 1 catches the first, the
+   wrapper environments the second.
+2. **Must-unwind.** A frame that redirects and fails to write back is a black
+   screen. This is the first feature whose failure mode is worse than "no
+   feature"; case 4 must be in every step's gate, not only step 1.
+3. **Blending semantics change even with unmodified shaders**: additive stacks
+   that used to clip at white now accumulate, so the look differs from vanilla
+   before a shader byte is touched. Mitigations: `X3M_HDR_CLAMP`, the
+   `X3M_HDR_DECODE=none` A/B, and saying so in the run report.
+4. **Gamma-space blending under a linear display transform** — documented
+   caveat, not fixable at this stage; the reason mid-tones may look flatter than
+   expected.
+5. **Native Windows**: FP16 RT + FP16 blending + four-format independent-bit-depth
+   MRT is a stack no native driver has been tested against here. Gated,
+   fail-closed, unverified.
+6. **5120×1440 memory**: 324 MB of default-pool textures before bloom, in a
+   32-bit process. The compact motion encoding is the prepared lever.
+
+## 9. Reverse-engineering gap
+
+One function, one pass: **`0x004c4750`** (original bloom/compositor, called from
+`0x004721b1`). [ghidra-render-map.md](../reverse-engineering/ghidra-render-map.md)
+records only that it "requires several non-null globals in the range
+`0x00608a64` through `0x00608a74` and rendering option checks before running".
+The option word is known from elsewhere —
+[constant-uploads.md](../reverse-engineering/constant-uploads.md) shows the
+per-view clear `0x004bb280` testing view flags "against render options at
+`*0x00606f34 + 0xfc`" — but **which bit the compositor tests, and whether the
+effect parameter `g_EnableGlow` is driven by the same bit, is not established**.
+Stage 5 (skip the game's bloom, substitute an HDR one, only when the player has
+glow enabled) cannot be gated correctly without it.
+
+Requested: decompile `0x004c4750`'s prologue and the tests guarding its first
+effect pass; identify the exact option load (offset within `*0x00606f34`, bit
+mask) and whether any of `0x00608a64..0x00608a74` is the created bloom effect
+rather than an option; record it in the render map. Read-only Ghidra pass on the
+pinned image
+(`fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab`) with the
+existing `X3DecompileFunctions.java` recipe; no new tooling. Stages 1–4 above do
+not depend on it.

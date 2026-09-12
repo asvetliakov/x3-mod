@@ -64,6 +64,32 @@ target changes with their own Clear, view and draws, BeginScene) between
 routed frames, before the scene's depth Clear and before the initial Clear:
 nothing of those frames routes, the scene camera is never read, the resolve
 does not run, and the history is dropped.
+Render-state shadow (X3M_STATE_SHADOW, default on; six runs with it off): the
+route answers its per-draw render-state queries from a shadow fed by the
+SetRenderState hook instead of GetRenderState. The regular script on both
+DLLs, the seam with TAA and in lazy mode, and the burst script in both binding
+modes repeat with the shadow off and must equal their shadow-on twins in
+colour, readback files, per-draw route decisions, checks and restorations;
+the DLL's per-frame counters must show zero route GetRenderState calls with
+the shadow on (every query a hit, outside the frames with a state block
+Apply/EndStateBlock resynchronization, where each shadowed state is read once
+more) and one per query with it off. The regular script also writes a state
+through a state block Apply and records one between BeginStateBlock and
+EndStateBlock (never applied); the burst script writes and reads back
+COLORWRITEENABLE1 between routed draws in lazy mode (the lazy-mode hole).
+Engine scene-end hook (X3M_SCENE_HOOK, seam, TAA; the "hook" script): the
+fixture builds a frame-routine stub whose five-byte E8 callsite the seam DLL
+patches through the same install path as the game's 0x004721b1 -> 0x004c4750
+patch (identity gate bypassed); a fake compositor stands in for the glow pass.
+With the patch installed the DLL must refuse a CALL to another target and a
+site that is not a CALL without touching a byte, patch the verified site to
+its own trampoline, signal exactly once per callsite call before the
+compositor with ESI/EDI/EBX/EBP preserved, resolve at the hook in glow-on and
+glow-off frames (byte for byte the reference resolve), fall back to the copy
+path when the only signal arrives outside the Scene phase (a logged
+disagreement) and restore the original bytes at shutdown; the same script
+unpatched (X3M_SCENE_HOOK=0) resolves at the copy only, so its glow-off frames
+skip and the colour of the frames both runs resolve is identical.
 Reviewed shader bytes are read from local files and never enter the repository
 or the reports.
 """
@@ -107,9 +133,10 @@ VARIANTS = {
     'ownership': dict(X3M_OWNERSHIP='1'),
     'depth': dict(X3M_OWNERSHIP='1', X3M_DEPTH_COPY='1', X3M_SCENE_DEPTH_CAPTURE='1'),
     'admission': dict(X3M_OWNERSHIP='1', X3M_ADMISSION='1')}
-def case(name, mode, variant='plain', enabled='1', jitter=False, taa=False, bench=None, lazy=False, burst=False, camera=False, sentinel=None, envmap=False):
+def case(name, mode, variant='plain', enabled='1', jitter=False, taa=False, bench=None, lazy=False, burst=False, camera=False, sentinel=None, envmap=False,
+         hook=None, shadow=True):
     return dict(name=name, mode=mode, variant=variant, enabled=enabled, jitter=jitter, taa=taa, bench=bench, lazy=lazy, burst=burst,
-                camera=camera, sentinel=sentinel, envmap=envmap)
+                camera=camera, sentinel=sentinel, envmap=envmap, hook=hook, shadow=shadow)
 
 
 CASES = [case(f'{dll}-{state}' if variant == 'plain' else f'{dll}-{variant}-{state}', dll, variant, enabled)
@@ -134,6 +161,34 @@ CASES += [case('seam-taa-camera-on', 'seam', jitter=True, taa=True, camera=True)
           case('seam-taa-camera-sentinel2-on', 'seam', jitter=True, taa=True, camera=True, sentinel='2'),
           case('seam-taa-sentinel2-nocamera-on', 'seam', jitter=True, taa=True, sentinel='2'),
           case('seam-taa-envmap', 'seam', jitter=True, taa=True, camera=True, envmap=True)]
+# Render-state shadow A/B (X3M_STATE_SHADOW=0): twins of shadow-on runs.
+SHADOW_TWINS = {'production-shadow-off': 'production-on', 'seam-shadow-off': 'seam-on', 'seam-taa-shadow-off': 'seam-taa-on',
+                'seam-lazy-shadow-off': 'seam-lazy-on', 'seam-burst-perdraw-shadow-off': 'seam-burst-perdraw', 'seam-burst-lazy-shadow-off': 'seam-burst-lazy'}
+CASES += [case('production-shadow-off', 'production', shadow=False), case('seam-shadow-off', 'seam', shadow=False),
+          case('seam-taa-shadow-off', 'seam', jitter=True, taa=True, shadow=False), case('seam-lazy-shadow-off', 'seam', lazy=True, shadow=False),
+          case('seam-burst-perdraw-shadow-off', 'seam', burst=True, shadow=False), case('seam-burst-lazy-shadow-off', 'seam', lazy=True, burst=True, shadow=False)]
+# Engine scene-end hook script (seam, TAA): the callsite patched and unpatched.
+CASES += [case('seam-taa-hook-on', 'seam', jitter=True, taa=True, hook='1'), case('seam-taa-hook-unpatched', 'seam', jitter=True, taa=True, hook='0')]
+# Render-state shadow: native GetRenderState calls the route issues per frame
+# besides shadow misses (the sentinel fill's touched-state save), the number
+# of shadowed states (the most misses one resynchronization can cause) and the
+# regular script's resynchronizations per frame (frame 7: two state block
+# Applies; frame 8: EndStateBlock).
+RS_FILL_GETS = 14
+RS_SHADOW_STATES = 8
+SEAM_RESYNCS = {7: 2, 8: 1}
+# Hook script: seven frames (glow on, outside-Scene signal, glow off) and the
+# per-frame expectations with the patch installed / unpatched.
+HOOK_FRAMES = 7
+HOOK_SCRIPT = {0: dict(glow=1, outside=0), 1: dict(glow=1, outside=0), 2: dict(glow=1, outside=1), 3: dict(glow=1, outside=0),
+               4: dict(glow=0, outside=0), 5: dict(glow=0, outside=0), 6: dict(glow=1, outside=0)}
+HOOK_SOURCE = {True: {0: 'hook', 1: 'hook', 2: 'stretchrect', 3: 'hook', 4: 'hook', 5: 'hook', 6: 'hook'},
+               False: {0: 'stretchrect', 1: 'stretchrect', 2: 'stretchrect', 3: 'stretchrect', 4: 'none', 5: 'none', 6: 'stretchrect'}}
+HOOK_HISTORY = {True: {1, 2, 3, 4, 5, 6}, False: {1, 2, 3}}
+HOOK_SKIPPED = {True: set(), False: {4, 5}}
+# SceneEndCheck (motion_output.h): 1 Agree, 2 HookOnly, 3 StretchOnly, 4 Disagree.
+HOOK_CHECK = {True: {0: '1', 1: '1', 2: '4', 3: '1', 4: '2', 5: '2', 6: '1'}, False: {0: '3', 1: '3', 2: '3', 3: '3', 4: '0', 5: '0', 6: '3'}}
+HOOK_CHECKS = {True: 134, False: 119}
 # Frames whose keyed draws are matched but whose camera turned 31 degrees: a
 # camera cut (auto and strict), so no history; frame 7 of the camera script.
 CAMERA_CUT_FRAMES = {7}
@@ -345,7 +400,7 @@ def check_camera_log(name, trace, expects, camera, sentinel, frames_logged):
     return {f: {'policy': int(s['policy']), 'reason': int(s['reason']), 'cut': int(s['camera_cut']), 'rotation_deg': float(s['rotation_deg'])} for f, s in states.items()}
 
 
-def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None):
+def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True):
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
     assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
@@ -359,7 +414,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     assert mode_line == {'seam': str(int(seam)), 'enabled': str(int(enabled)), 'jitter': str(int(jitter)),
                          'jitter_samples': str(JITTER_SAMPLES), 'taa': str(int(taa)), 'bench': '0', 'width': '64', 'height': '64',
                          'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode, 'camera': str(int(camera)), 'sentinel': sentinel_mode,
-                         'envmap': '0'}, (name, mode_line)
+                         'envmap': '0', 'hook': '0', 'state_shadow': str(int(shadow))}, (name, mode_line)
     # The camera script: the 31-degree jump at frame 7 is a cut unless the
     # switch is off; strict mode without a camera skips every frame.
     strict_skip = sentinel == '2' and not camera
@@ -373,8 +428,9 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     # plus the script totals (history frames, skipped frames, reference
     # frames); seam adds the reference device, the byte-exact comparison and
     # the FP16 file per resolved frame and the reference teardown, one check
-    # per skipped frame; the camera adds the pose validation per frame.
-    expected_checks = 30 + (60 if live else 0)
+    # per skipped frame; the camera adds the pose validation per frame. Frame
+    # 8 checks that a recorded render-state write never reached the device.
+    expected_checks = 31 + (60 if live else 0)
     if taa:
         expected_checks += 12 * 2 + (12 - len(history_frames) if live else 12) + 4 + skipped + (1 + 2 * (12 - skipped) + 2 if live else 0) + (12 if camera else 0)
     assert int(terminal['checks']) == expected_checks, (name, terminal, expected_checks)
@@ -463,6 +519,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
     assert modes[0]['jitter'] == str(int(jitter)) and modes[0]['jitter_samples'] == str(JITTER_SAMPLES), (name, modes)
     assert modes[0]['rt_mode'] == rt_mode and modes[0]['frame_log'] == '60', (name, modes)
+    assert modes[0]['state_shadow'] == str(int(shadow)) and modes[0]['scene_hook'] == '0', (name, modes)
     taa_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_taa_readback ')}
     color_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_color_readback ')}
     taa_lines_log = [fields(l) for l in tl if l.startswith('motion_output_taa ')]
@@ -473,6 +530,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         return result
     assert len(devices) == 1 and devices[0]['enabled'] == '1' and devices[0]['reason'] == 'ok', (name, devices)
     assert devices[0]['rt_mode'] == rt_mode, (name, devices)
+    assert devices[0]['state_shadow'] == str(int(shadow)) and devices[0]['scene_hook'] == '0', (name, devices)
     assert devices[0]['history_available'] == '0', 'synthetic process must not claim game observers'
     # Three-format self test (A8R8G8B8 + A32B32G32R32F + R32F) on this backend.
     assert devices[0]['depth'] == '1' and devices[0]['depth_reason'] == 'ok' and devices[0]['r32f'] == '00000000', (name, devices)
@@ -500,6 +558,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     assert not any(l.startswith(('motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed')) for l in tl)
     assert sorted(frames) == list(range(0, 9)), (name, sorted(frames))  # frame 0 via telemetry, 1..8 via capture
     assert sorted(cuts) == list(range(1, 9)), (name, sorted(cuts))
+    render_state = {}
     for frame, summary in frames.items():
         assert summary['latched'] == summary['filled'] == '1' and summary['fill_result'] == summary['fill_restore'] == '00000000'
         assert summary['apply_failures'] == summary['restore_failures'] == '0' and summary['committed'] == '1'
@@ -514,6 +573,16 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         assert int(summary['lazy_flushes']) == (int(summary['routed']) if lazy else 0), (name, frame, summary)
         assert int(summary['jitter_writes']) == 2 * int(summary['jittered']), (name, frame, summary)
         assert int(summary['readbacks']) == (0 if frame == 0 else 4 if taa and not strict_skip else 2), (name, frame, summary)
+        # Render-state shadow: every route query is a shadow hit except after a
+        # resynchronization (at most one native read per shadowed state); the
+        # native reads are those misses plus the fill's touched-state save. Off:
+        # no hits, one native read per query.
+        rs = check_render_state(name, frame, summary, shadow, SEAM_RESYNCS.get(frame, 0))
+        render_state[frame] = rs
+        # No engine hook in this process: the scene end comes from the copy
+        # (TAA runs; StretchOnly is not a disagreement without the patch) or nowhere.
+        assert (summary['scene_hook'], summary['hook_signals'], summary['hook_outside_scene'], summary['draws_after_hook']) == ('0', '0', '0', '0'), (name, frame, summary)
+        assert (summary['scene_end_source'], summary['scene_end_check'], summary['bloom_copy_seen']) == (('stretchrect', '3', '1') if taa else ('none', '0', '0')), (name, frame, summary)
         cost_fields = ('gate_us', 'route_draw_us', 'set_rt_us', 'lazy_flush_us', 'jitter_us', 'fill_us', 'taa_run_us', 'taa_capture_us',
                        'taa_copy_color_us', 'taa_copy_depth_us', 'taa_draw_us', 'taa_apply_us', 'taa_copy_back_us', 'readback_us')
         costs = {k: float(summary[k]) for k in cost_fields}
@@ -649,8 +718,22 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         # (which assume no live routing) still name each scene draw once.
         assert all(r['matched'] == '0' and r['routed'] == str(int(r['gate'] == '5')) and r['result'] == '00000000' for r in routes), f'{name}: production routes must be sentinel-only'
         assert {(r['frame'], r['index']) for r in routes} == {(e['frame'], e['index']) for e in expects}, f'{name}: production routes must cover the scene draws'
-    result.update(variants=len(variants), frames_logged=len(frames), readbacks=len(readbacks), routes=len(routes))
+    result.update(variants=len(variants), frames_logged=len(frames), readbacks=len(readbacks), routes=len(routes), render_state=render_state,
+                  route_decisions=[(r['frame'], r['index'], r['gate'], r['routed'], r['matched']) for r in routes])
     return result
+
+
+def check_render_state(name, frame, summary, shadow, resyncs):
+    """The DLL's per-frame render-state counters against the shadow switch."""
+    assert summary['state_shadow'] == str(int(shadow)), (name, frame, summary)
+    q, h, g, r = (int(summary[k]) for k in ('rs_queries', 'rs_hits', 'rs_gets', 'rs_resyncs'))
+    assert r == resyncs and q >= 2 * int(summary['draws']), (name, frame, q, h, g, r)
+    assert g == RS_FILL_GETS + q - h, (name, frame, q, h, g)
+    if shadow:
+        assert h == q if not r else 0 < q - h <= RS_SHADOW_STATES * r, (name, frame, q, h, r)
+    else:
+        assert h == 0, (name, frame, q, h)
+    return {'queries': q, 'hits': h, 'gets': g, 'resyncs': r}
 
 
 def validate_envmap(name, text, trace, directory):
@@ -705,14 +788,14 @@ def validate_envmap(name, text, trace, directory):
             'color_hashes': {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}}
 
 
-def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None):
-    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel)
+def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True):
+    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow)
     result['variant'] = variant
     result['ownership'] = validate_ownership(name, variant, enabled, trace)
     return result
 
 
-def validate_burst(name, mode, lazy, text, trace, directory):
+def validate_burst(name, mode, lazy, text, trace, directory, shadow=True):
     """Burst script (see the module docstring): per-frame counters of the DLL,
     the fixture's own restoration and oracle verdicts, and the signatures the
     cross-mode comparison in main() uses."""
@@ -724,11 +807,13 @@ def validate_burst(name, mode, lazy, text, trace, directory):
     rt_mode = 'lazy' if lazy else 'perdraw'
     mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
     assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '0', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
-                         'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '1', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0'}, (name, mode_line)
+                         'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '1', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0',
+                         'hook': '0', 'state_shadow': str(int(shadow))}, (name, mode_line)
     # Per frame: the fill and the burst restoration comparisons, the coverage
-    # oracle (both DLLs) and, seam, the motion/depth oracle.
+    # oracle (both DLLs), the COLORWRITEENABLE1 read-back between routed draws
+    # and, seam, the motion/depth oracle.
     assert int(terminal['frames']) == BURST_FRAMES and int(terminal['restorations']) == 2 * BURST_FRAMES, (name, terminal)
-    assert int(terminal['checks']) == (68 if seam else 23), (name, terminal)
+    assert int(terminal['checks']) == (77 if seam else 32), (name, terminal)
     restores = [fields(l) for l in lines if l.startswith('RESTORE ')]
     assert len(restores) == 2 * BURST_FRAMES and all(r['differences'] == '0' for r in restores), f'{name}: restoration differences'
     assert [r['label'] for r in restores] == ['fill', 'burst'] * BURST_FRAMES, (name, [r['label'] for r in restores])
@@ -749,14 +834,17 @@ def validate_burst(name, mode, lazy, text, trace, directory):
     assert len(expects) == 8 * BURST_FRAMES and all(e['matched'] == '0' and e['jittered'] == '0' for e in expects), (name, len(expects))
     tl = trace.splitlines()
     modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
-    assert len(modes) == 1 and modes[0]['rt_mode'] == rt_mode and modes[0]['frame_log'] == '1', (name, modes)
+    assert len(modes) == 1 and modes[0]['rt_mode'] == rt_mode and modes[0]['frame_log'] == '1' and modes[0]['state_shadow'] == str(int(shadow)), (name, modes)
     devices = [fields(l) for l in tl if l.startswith('motion_output_device ')]
     assert len(devices) == 1 and devices[0]['enabled'] == '1' and devices[0]['rt_mode'] == rt_mode and devices[0]['depth'] == '1', (name, devices)
+    assert devices[0]['state_shadow'] == str(int(shadow)) and devices[0]['scene_hook'] == '0', (name, devices)
     assert not any(l.startswith(('motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed', 'motion_output_taa_failed')) for l in tl), name
     frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
     assert sorted(frames) == list(range(BURST_FRAMES)), (name, sorted(frames))  # X3M_MOTION_FRAME_LOG=1
-    set_rt, flushes, costs = {}, {}, {}
+    set_rt, flushes, costs, render_state = {}, {}, {}, {}
     for frame, summary in frames.items():
+        render_state[frame] = check_render_state(name, frame, summary, shadow, 0)
+        assert (summary['scene_hook'], summary['hook_signals'], summary['scene_end_source'], summary['scene_end_check']) == ('0', '0', 'none', '0'), (name, frame, summary)
         got = {k: int(summary[k]) for k in BURST_EXPECT}
         assert got == BURST_EXPECT, (name, frame, got)
         # The application SetRenderTarget (even frames) or depth Clear (odd)
@@ -789,7 +877,83 @@ def validate_burst(name, mode, lazy, text, trace, directory):
     return {'mode': mode, 'burst': True, 'lazy': lazy, 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
             'frames': BURST_FRAMES, 'color_hashes': colors, 'state_hashes': states, 'motion_hashes': motion_hashes,
             'readback_sha256': files, 'set_rt_per_frame': set_rt, 'lazy_flushes_per_frame': flushes, 'costs_us_per_frame': costs,
-            'coverage_pixels': int(terminal['coverage_pixels']), 'depth_written_pixels': int(terminal['depth_written'])}
+            'coverage_pixels': int(terminal['coverage_pixels']), 'depth_written_pixels': int(terminal['depth_written']), 'render_state': render_state,
+            'route_decisions': [(r['frame'], r['index'], r['gate'], r['routed'], r['matched']) for r in routes]}
+
+
+def validate_hook(name, installed, text, trace, directory):
+    """Hook script: the patch discipline (refusals, bytes, restore), the trampoline
+    contract (one signal per call, before the compositor, registers preserved)
+    and the resolve at the hook are the fixture's checks; the DLL's per-frame
+    lines must name the resolve point and the cross-check verdict per frame."""
+    lines = text.splitlines()
+    assert lines and lines[-1].startswith('RESULT PASS ') and 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: fixture did not pass'
+    terminal = fields(lines[-1])
+    mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
+    assert (mode_line['seam'], mode_line['enabled'], mode_line['taa'], mode_line['hook'], mode_line['state_shadow'], mode_line['camera']) == ('1', '1', '1', '1', '1', '0'), (name, mode_line)
+    hook_line = fields([l for l in lines if l.startswith('HOOK ')][0])
+    # The last refused install (a site that is not a CALL) leaves its status when nothing is installed.
+    assert (hook_line['installed'], hook_line['status']) == (('1', 'active') if installed else ('0', 'callsite_mismatch')), (name, hook_line)
+    history, skipped = HOOK_HISTORY[installed], HOOK_SKIPPED[installed]
+    assert (int(terminal['checks']), int(terminal['restorations']), int(terminal['frames'])) == (HOOK_CHECKS[installed], 4 * HOOK_FRAMES, HOOK_FRAMES), (name, terminal)
+    assert (terminal['taa'], terminal['taa_frames'], terminal['taa_history_frames'], terminal['taa_reference_frames'], terminal['taa_skipped_frames']) == \
+           ('1', str(HOOK_FRAMES), str(len(history)), str(HOOK_FRAMES - len(skipped)), str(len(skipped))), (name, terminal)
+    restores = [fields(l) for l in lines if l.startswith('RESTORE ')]
+    assert len(restores) == 4 * HOOK_FRAMES and all(r['differences'] == '0' for r in restores), f'{name}: restoration differences'
+    assert [r['label'] for r in restores] == ['fill', 'draw', 'draw', 'hook'] * HOOK_FRAMES, (name, [r['label'] for r in restores])
+    taa_lines = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('TAA ')}
+    assert sorted(taa_lines) == list(range(HOOK_FRAMES)), (name, sorted(taa_lines))
+    for frame, t in taa_lines.items():
+        e = HOOK_SCRIPT[frame]
+        assert (int(t['glow']), int(t['outside'])) == (e['glow'], e['outside']) and t['source'] == HOOK_SOURCE[installed][frame], (name, frame, t)
+        assert (t['history'], t['skipped'], t['policy']) == (str(int(frame in history)), str(int(frame in skipped)), '1'), (name, frame, t)
+        assert (t['changed'] != '0') == (frame in history), (name, frame, t)
+    colors = {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}
+    before = {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR_BEFORE ')}
+    assert sorted(colors) == sorted(before) == list(range(HOOK_FRAMES)), (name, sorted(colors))
+    motion = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('MOTION ')}
+    assert sorted(motion) == list(range(HOOK_FRAMES)) and all(m['mismatches'] == '0' and m['depth_mismatches'] == '0' for m in motion.values()), (name, motion)
+    tl = trace.splitlines()
+    # The production install path in this process: the switch parsed, the
+    # exact-executable gate refusing (never a patch of the fixture from the
+    # loader); the seam export installed the fixture's site afterwards.
+    loader = [fields(l) for l in tl if l.startswith('scene_hook active=')]
+    assert loader and all((l['active'], l['status']) == ('0', 'executable_mismatch' if installed else 'disabled') for l in loader), (name, loader)
+    modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
+    assert len(modes) == 1 and (modes[0]['scene_hook'], modes[0]['taa'], modes[0]['state_shadow']) == (str(int(installed)), '1', '1'), (name, modes)
+    devices = [fields(l) for l in tl if l.startswith('motion_output_device ')]
+    assert len(devices) == 1 and devices[0]['enabled'] == '1' and devices[0]['taa'] == '1' and devices[0]['scene_hook'] == '0', (name, devices)
+    frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
+    assert sorted(frames) == list(range(HOOK_FRAMES)), (name, sorted(frames))
+    disagreements = [fields(l) for l in tl if l.startswith('motion_output_scene_hook_disagreement ')]
+    for frame, f in frames.items():
+        e = HOOK_SCRIPT[frame]
+        outside = installed and e['outside']
+        assert (f['scene_hook'], f['latched'], f['filled'], f['taa']) == (str(int(installed)), '1', '1', '1'), (name, frame, f)
+        assert (f['hook_signals'], f['hook_outside_scene'], f['hook_state']) == ((str(int(installed)), str(int(outside)), '1' if outside else '0')), (name, frame, f)
+        assert (f['scene_end_source'], f['scene_end_check'], f['bloom_copy_seen'], f['draws_after_hook']) == (HOOK_SOURCE[installed][frame], HOOK_CHECK[installed][frame], str(e['glow']), '0'), (name, frame, f)
+        attempted = frame not in skipped
+        assert (f['taa_attempted'], f['taa_resolved'], f['taa_history'], f['taa_skip']) == (str(int(attempted)), str(int(attempted)), str(int(frame in history)), '0' if attempted else '2'), (name, frame, f)
+        # Glow on: the fixture's depth rebind after the copy rejects the selector (9); off: the frame ends inside the Scene phase (2).
+        assert f['selector_state'] == ('9' if e['glow'] else '2'), (name, frame, f)
+        assert f['apply_failures'] == f['restore_failures'] == '0' and f['present'] == '00000000', (name, frame, f)
+        assert (f['routed'], f['matched']) == ('2', '2' if frame else '0'), (name, frame, f)
+        check_render_state(name, frame, f, True, 0)
+    assert [(d['frame'], d['installed'], d['signals'], d['outside_scene'], d['selector_state'], d['bloom_copy_seen'], d['hook_scene_end']) for d in disagreements] == \
+           ([('2', '1', '1', '1', '1', '1', '0')] if installed else []), (name, disagreements)
+    assert not any(l.startswith(('motion_output_taa_failed', 'motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed')) for l in tl), name
+    # Debug readbacks of the captured frames 1-6: the DLL's FP16 image equals the reference resolve on every resolved frame.
+    taa_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_taa_readback ')}
+    assert sorted(taa_readbacks) == [f for f in range(1, HOOK_FRAMES) if f not in skipped], (name, sorted(taa_readbacks))
+    for frame, t in taa_readbacks.items():
+        resolved = (directory / 'x3-modern-captures' / t['file']).read_bytes()
+        assert t['result'] == '00000000' and resolved == (directory / f'reference_taa_{frame}.rgba16f').read_bytes(), f'{name}: frame {frame} FP16 image differs from the reference'
+    assert sum(l.startswith('motion_output_release ') for l in tl) == 1, name
+    return {'mode': 'hook', 'installed': installed, 'frames': HOOK_FRAMES, 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
+            'hook_status': hook_line['status'], 'sources': {f: t['source'] for f, t in taa_lines.items()}, 'history_frames': sorted(history), 'skipped_frames': sorted(skipped),
+            'scene_end_check': {f: int(frames[f]['scene_end_check']) for f in sorted(frames)}, 'disagreements': len(disagreements),
+            'color_hashes': colors, 'color_hashes_before_boundary': before, 'taa_changed_pixels': {f: int(t['changed']) for f, t in taa_lines.items()},
+            'matched_pixels': int(terminal['matched_pixels']), 'motion_pixels': int(terminal['motion_pixels'])}
 
 
 def main():
@@ -827,7 +991,7 @@ def main():
         wine_log = (RESULTS / 'motion-output-wine.log').open('w')
         result['bench'] = {}
         for entry in CASES:
-            name, mode, variant, enabled, jitter, taa, bench, lazy, burst, camera, sentinel, envmap = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst', 'camera', 'sentinel', 'envmap'))
+            name, mode, variant, enabled, jitter, taa, bench, lazy, burst, camera, sentinel, envmap, hook, shadow = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst', 'camera', 'sentinel', 'envmap', 'hook', 'shadow'))
             if only and name not in only:
                 continue
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
@@ -840,11 +1004,12 @@ def main():
                        X3M_CAPTURE_FRAMES='1' if bench else str(len(BURST_CAPTURE)) if burst else str(len(ENVMAP_CAPTURE)) if envmap else '8', X3M_TELEMETRY='1',
                        X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto',
                        X3M_MOTION_RT_MODE='lazy' if lazy else 'perdraw', X3M_MOTION_FRAME_LOG='1' if burst else '60',
+                       X3M_STATE_SHADOW='1' if shadow else '0', X3M_SCENE_HOOK=hook or '0',
                        X3M_OWNERSHIP='0', X3M_DEPTH_COPY='0', X3M_SCENE_DEPTH_CAPTURE='0', X3M_OBJECT_TRACE='0', X3M_OBJECT_LIFETIME='0',
                        X3M_MESH_CACHE='0', X3M_ADMISSION='0', X3M_FINITE_POSITIONS='0', X3M_MOTION_CAPTURE='0')
             env.update(VARIANTS[variant])
             command = [str(WINE), '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=n,b', '--workdir', str(directory),
-                       str(directory / EXE.name)] + ['Z:' + str(p) for p in RAW] + ['burst' if burst else 'envmap' if envmap else mode] + ([bench] if bench else [])
+                       str(directory / EXE.name)] + ['Z:' + str(p) for p in RAW] + ['hook' if hook is not None else 'burst' if burst else 'envmap' if envmap else mode] + ([bench] if bench else [])
             no_game()
             wine_log.write(f'==== {name}\n'); wine_log.flush()
             completed = subprocess.run(command, env=env, stdout=subprocess.PIPE, stderr=wine_log, text=True, timeout=360)
@@ -869,8 +1034,17 @@ def main():
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} rejected={case["rejected_frames"]}', flush=True)
                 continue
+            if hook is not None:
+                case = validate_hook(name, hook == '1', text, trace, directory)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} hook_status={case["hook_status"]} sources={case["sources"]}', flush=True)
+                continue
             if burst:
-                case = validate_burst(name, mode, lazy, text, trace, directory)
+                case = validate_burst(name, mode, lazy, text, trace, directory, shadow)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
@@ -878,7 +1052,7 @@ def main():
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} set_rt={case["set_rt_per_frame"]}', flush=True)
                 continue
-            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel)
+            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow)
             case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                         dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
             if enabled == '1':
@@ -980,6 +1154,44 @@ def main():
         assert result['cases']['seam-taa-camera-sentinel2-on']['color_hashes'] == camera_on, 'strict mode with a camera differs from auto'
         result['camera'] = {'frames_changed_by_camera_path': camera_changed, 'switch_off_equals_no_camera': True, 'strict_without_camera_never_resolves': True,
                             'envmap': {k: result['cases']['seam-taa-envmap'][k] for k in ('rejected_frames', 'routed_per_frame', 'camera_valid_per_frame')}}
+        # Render-state shadow A/B: every shadow-off run equals its twin in every
+        # observable (colour, pre-boundary colour, readback files, per-draw
+        # route decisions, checks, restorations, cost-free counters), and the
+        # counters show the shadow answering every route query.
+        shadow_report = {}
+        for off_name, twin in SHADOW_TWINS.items():
+            a, b = result['cases'][off_name], result['cases'][twin]
+            assert a['color_hashes'] == b['color_hashes'], f'{off_name}: colour differs from {twin}'
+            assert a['route_decisions'] == b['route_decisions'], f'{off_name}: route decisions differ from {twin}'
+            assert (a['checks'], a['restorations'], a['motion_pixels'] if 'motion_pixels' in a else None, a['depth_written_pixels']) == \
+                   (b['checks'], b['restorations'], b['motion_pixels'] if 'motion_pixels' in b else None, b['depth_written_pixels']), (off_name, twin)
+            for key in ('color_hashes_before_boundary', 'state_hashes', 'motion_hashes', 'readback_sha256', 'set_rt_per_frame', 'lazy_flushes_per_frame', 'taa_history_frames'):
+                if key in b:
+                    assert a[key] == b[key], f'{off_name}: {key} differs from {twin}'
+            if not b.get('burst'):
+                files_a, files_b = readback_files(off_name), readback_files(twin)
+                assert files_a and files_a == files_b, f'{off_name}: readback files differ from {twin}'
+            gets_off = sum(v['gets'] for v in a['render_state'].values()); gets_on = sum(v['gets'] for v in b['render_state'].values())
+            queries = sum(v['queries'] for v in b['render_state'].values())
+            assert sum(v['hits'] for v in a['render_state'].values()) == 0 and gets_off == queries + RS_FILL_GETS * len(a['render_state']), off_name
+            shadow_report[off_name] = {'twin': twin, 'identical': True, 'frames': len(b['render_state']), 'route_queries': queries,
+                                       'native_gets_shadow_off': gets_off, 'native_gets_shadow_on': gets_on,
+                                       'shadow_hits': sum(v['hits'] for v in b['render_state'].values()), 'resyncs': sum(v['resyncs'] for v in b['render_state'].values())}
+        result['state_shadow'] = shadow_report
+        # Engine scene-end hook: the frames both runs resolve (glow on with the
+        # signal in the Scene phase, and the outside-Scene frame the copy path
+        # resolves in both) are bit-identical between the patched and the
+        # unpatched run: the resolve at the hook equals the resolve at the copy.
+        # The pre-boundary raster is identical in every frame; the glow-off
+        # frames and the frame after them differ (resolved with history at
+        # the hook, left raw/without history at the copy).
+        on, off = result['cases']['seam-taa-hook-on'], result['cases']['seam-taa-hook-unpatched']
+        assert on['color_hashes_before_boundary'] == off['color_hashes_before_boundary'], 'hook script: pre-boundary raster differs'
+        same = [f for f in range(HOOK_FRAMES) if on['color_hashes'][f] == off['color_hashes'][f]]
+        assert same == [0, 1, 2, 3], f'hook script: identical frames {same}, expected 0-3'
+        result['scene_hook'] = {'identical_frames_hook_vs_copy': same, 'frames_only_the_hook_resolves': [4, 5], 'frames_differing_afterwards': [6],
+                                'installed': {k: on[k] for k in ('hook_status', 'sources', 'scene_end_check', 'disagreements', 'checks')},
+                                'unpatched': {k: off[k] for k in ('hook_status', 'sources', 'scene_end_check', 'disagreements', 'checks')}}
         result['color_identical_off_vs_on'] = True
         result['color_identical_across_variants'] = True
         result['jitter_changes_color'] = True
@@ -995,6 +1207,7 @@ def main():
                             'Bench timings are CPU-inclusive wall-clock times of the boundary StretchRect with EVENT synchronization on the Preview backend, not GPU timestamps.',
                             'Ownership modes wrap the synthetic device; the game observers stay inactive, so wrapper interaction is proven for fill, routing, Reset and release, not for object history.',
                             'Object scope is injected through the fixture seam; the game observers are not exercised here.',
+                            'The engine scene-end hook is exercised on the fixture\'s own callsite through the seam; the game\'s 0x004721b1 patch is verified only for its bytes and identity gate here, not in gameplay.',
                             'CrossOver Preview builtin D3D9 only; Windows is cross-compiled, not verified.']
         result['passed'] = True; result['status'] = 'PASS'
     except BaseException as error:

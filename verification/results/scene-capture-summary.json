@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T06:55:50.275671+00:00",
+  "started_utc": "2026-09-12T08:33:51.826705+00:00",
   "source_sha256": {
     "verification/probe/scene_capture_fixture.cpp": "0787fae64ef8eb341e88532ed78a7a2b82c1b8c01a03ba74b8f95ae19b03abab",
     "verification/probe/build_scene_capture.sh": "668637625afc590898fce8f9ac65df35b05a10ff82d92c649df8ce1c359baa8f",
@@ -23,7 +23,7 @@
     "src/proxy/scene_capture.h": "26f04fb5fe2de7636e547424d40b00e5edf95d395e32a468343dd65f00030183",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
-    "src/proxy/capture.h": "1dc87985e7039fa7d2d8463aa3e62e55c472cddca5c0f738dea240c7dde3f164",
+    "src/proxy/capture.h": "e573832e0771ad93c76d58dfc8ddc9b33aec5c7db5d4a6ca526797bb5736cf31",
     "src/renderer/scene_boundary.h": "6d2504e4b568e6fc0d24d2bd6a0d9437a5ccd54fe9e003905dfb46535256303e",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5"
   },
@@ -42,7 +42,7 @@
     "C:\\X3\\d3dx9_37.dll",
     "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl"
   ],
-  "executable_sha256": "10d1637d1edb907387a9a01b9f38266d98d0b5b1c7fb347e42c66b8534b4e1f3",
+  "executable_sha256": "19b57898cf32def1b5479340448b22066b92047c2b5f6af8f100dd18e0eba950",
   "exit_code": 0,
   "checks": 4908,
   "samples": 16,

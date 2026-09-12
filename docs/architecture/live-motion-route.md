@@ -194,11 +194,12 @@ TAA run is user-managed.
 | `src/renderer/material_motion.{h,cpp}` | Table-driven transformer, `material_motion_vertex_variant` / `material_motion_pixel_variant` (each stage is created separately by the game); the pair function remains for the detached fixtures; `material_motion_reviewed_pairs` is the profile table |
 | `src/renderer/motion_output_profiles.h` + `motion_output_profiles_inc.h` | Row struct, class enum and the generated 169-row archive-wide table (classes A, B and C, each row with its current-depth registers) with compile-time consistency checks; see [material-motion-prototype.md](material-motion-prototype.md) |
 | `src/temporal/current_depth_ps.hlsl` + `src/renderer/current_depth_pixel_program{,_inc}.h` | Authored depth fragment (`oC2 = z/w`), compiled by `tools/shaders/generate_rigid_motion_pixel.py` like the motion fragment |
-| `src/proxy/capture.cpp` | Hook installation, state block and query wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT`, `X3M_MOTION_JITTER[_SAMPLES]`, `X3M_MOTION_CUT_*`, `X3M_TAA`, `X3M_TAA_DEBUG`, `X3M_MOTION_RT_MODE` and `X3M_MOTION_FRAME_LOG` parsing; the lazy mode's restore points and `GetRenderTarget`/`GetRenderTargetData` hooks |
+| `src/proxy/capture.cpp` | Hook installation, state block and query wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT`, `X3M_MOTION_JITTER[_SAMPLES]`, `X3M_MOTION_CUT_*`, `X3M_TAA`, `X3M_TAA_DEBUG`, `X3M_MOTION_RT_MODE`, `X3M_MOTION_FRAME_LOG` and `X3M_STATE_SHADOW` parsing; the lazy mode's restore points and `GetRenderTarget`/`GetRenderTargetData`/`GetRenderState` hooks; the light `SetRenderState` hook feeding the render-state shadow; `scene_end_signal`, the engine hook's listener |
+| `src/proxy/scene_hook.{h,cpp}` | Engine scene-end boundary (`X3M_SCENE_HOOK=1`): the five-byte callsite patch of `CALL 0x004c4750` at `0x004721b1` behind the exact-executable gate, its trampoline and restore; fixture seam for the runner's own callsite (section "Engine boundaries and state shadow") |
 | `src/renderer/temporal_pass.{h,cpp}` + `temporal_resolve_program{,_inc}.h` | The resolve the route runs (native-slot calls, cached state block) and its embedded `ps_3_0` bytecode |
 | `src/proxy/scene_capture.{h,cpp}` | `describe_surface` shared with the route |
 | `src/proxy/camera_state.{h,cpp}` + `src/renderer/camera_reprojection.h` | Live engine camera read at the selector's Clear events behind the exact-executable gate (no patch), the far-plane `clip_to_previous` builder and the sentinel policy decision (`X3M_TAA_SENTINEL`, `X3M_CAMERA_CUT_DEG`, `X3M_CAMERA_LOG`); see [temporal-integration.md](temporal-integration.md#camera-reprojection-for-sentinel-pixels-2026-09-12) |
-| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug`, `--taa-sentinel auto|1|2`, `--camera-cut-deg`, `--camera-log` |
+| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug`, `--taa-sentinel auto|1|2`, `--camera-cut-deg`, `--camera-log`, `--state-shadow on|off`, `--scene-hook` |
 
 `X3M_MOTION_OUTPUT=1` enables the route. Without `X3M_OBJECT_TRACE=1` and
 `X3M_OBJECT_LIFETIME=1` gate 5 never passes and every eligible draw writes the
@@ -227,9 +228,17 @@ current-only (the previous behaviour), `2` is strict and skips the resolve
 on a frame whose camera cannot be read. `X3M_CAMERA_LOG=<n>` (default 300)
 is the cadence of the `camera_state` diagnostic line (capture frames always
 log it). The camera read needs the exact executable (the object-trace
-identity gate) and `X3M_TAA=1`; it patches nothing. With `X3M_TELEMETRY=1` the route reports
+identity gate) and `X3M_TAA=1`; it patches nothing. `X3M_STATE_SHADOW=0`
+(default on, `--state-shadow off`) turns the render-state shadow off, so
+every per-draw state query is a native `GetRenderState` again (A/B only).
+`X3M_SCENE_HOOK=1` (default off, `--scene-hook`; requires
+`X3M_MOTION_OUTPUT=1`) patches the frame routine's compositing callsite so
+the route learns the scene end from the engine and, with `X3M_TAA=1`,
+resolves there instead of at the bloom copy (section "Engine boundaries and
+state shadow" below). With `X3M_TELEMETRY=1` the route reports
 its CPU cost per call and per frame (gate, apply/undo, `SetRenderTarget`
-count, jitter writes, fill, the resolve's phases, copy-back, readbacks).
+count, jitter writes, fill, the resolve's phases, copy-back, readbacks,
+render-state shadow hits/misses, engine-hook signals and the cross-check verdict).
 
 ### Current depth target (temporal step 1)
 
@@ -339,6 +348,88 @@ line carries `taa`, `taa_attempted`, `taa_resolved`, `taa_history`,
 `taa_skip` (`TaaSkip`), `taa_result`, `taa_restore`, `taa_copy`,
 `scene_open`, `active_queries` and `taa_references`.
 
+### Engine boundaries and state shadow (2026-09-12)
+
+Two of the assessment's recommendations
+([assessment-2026-09-12.md](assessment-2026-09-12.md), 1–3) are implemented
+behind their own switches, plus the pass field the third asked for.
+
+**Render-state shadow (`X3M_STATE_SHADOW`, default on).** `SetRenderState`
+(slot 57) is hooked with the light boundary of the other hot setters and
+stores the application's value of every render state the route reads per
+draw: `ZENABLE`, `ZWRITEENABLE` (the selector's z states, every draw while
+tracking), `ALPHATESTENABLE`, `ALPHABLENDENABLE`, `COLORWRITEENABLE`,
+`SRGBWRITEENABLE` (the gate-4 opaque-draw checks) and `COLORWRITEENABLE1/2`
+(saved around RT1/RT2). Rules: the shadow starts unknown and each state
+fills with one native `GetRenderState` on its first query; a recorded write
+(between `BeginStateBlock` and `EndStateBlock`) never reaches the device and
+is ignored; `EndStateBlock`, every state block `Apply` and `Reset` drop the
+shadow (the existing `resync_shadow`), as does a failed restoration of the
+route's own state changes (the fill, a routed draw, the resolve), after
+which the next queries read again. The route's own writes (`COLORWRITEENABLE1/2`
+= 15 around a routed draw, the fill's and the resolve's touched states) go
+through the native slot and are restored, so the shadow keeps the
+application's values. Routed-draw evaluation therefore issues **zero**
+`GetRenderState` calls once filled; the remaining native reads per frame are
+the sentinel fill's 14-state save. In lazy RT mode the same hook closes the
+`COLORWRITEENABLE1/2` hole: an application write to a mask the route holds
+first flushes the binding (quietly: no logging or telemetry record on the
+light path; the metric and any failure line are deferred to the next heavy
+call), and the application's `GetRenderState` (slot 58, lazy mode only)
+restores before the native read; both are installed in lazy mode with the
+shadow off too. Counters per frame: `rs_queries`, `rs_hits`, `rs_gets`
+(native reads: misses plus the fill's save), `rs_resyncs`.
+
+**Engine scene-end boundary (`X3M_SCENE_HOOK=1`, default off).** At backend
+load, behind the object-trace identity gate (exact X3AP.exe only),
+`scene_hook::initialize` reads the five bytes at `0x004721b1`, requires
+exactly `E8 9A 25 05 00` (`CALL 0x004c4750`; rel32 = `0x004c4750 −
+0x004721b6`) and, only then, rewrites the rel32 to its trampoline with the
+same protect/flush/rollback discipline as the object-trace patch. The
+trampoline (`pushfl; pushal; call x3m_scene_end_signal; popal; popfl;
+jmp *original`) leaves every general register, the flags and the return
+address (`0x004721b6`) as the frame routine expects; the callee is
+`void(void)` with no stack cleanup. The signal wraps the listener in the full
+CPU boundary of `cpu_state.h` (FNSAVE/FRSTOR, MXCSR, last error; once per
+frame): the listener runs the resolve, telemetry and the log formatter,
+which execute x87 code (int64-to-double conversions, the CRT's float
+formatting), so the light MXCSR-only contract of the setter hooks does not
+apply here (review 21). The listener,
+`capture.cpp::scene_end_signal`, takes the capture mutex and calls
+`MotionOutput::scene_end_hook` on every hooked device. In the selector's
+Scene phase that is the frame's scene end: the lazy bindings flush, the cut
+verdict is finished, routing and jitter stop for the frame (`scene_bound`
+refuses later draws: compositing and HUD draws are never routed or jittered)
+and, with TAA on, the resolve runs on the bound RT0 (which must be the
+latched main target, else skip reason 10 `Target`) while the depth surface
+is still bound; RT2 holds the current depth, so nothing reads D24X8. The
+bloom copy that `0x004c4750` may then issue (glow on) copies the resolved
+image and its `StretchRect` path skips the resolve for the frame; with glow
+off no copy follows and the frame is resolved all the same, which is the
+failure mode the assessment recorded (the resolve point was a video
+option). A signal outside the Scene phase (menu, rejected or environment-map
+frame) or a second signal ends nothing and the copy path stays the fallback.
+The bytes are restored when the last device is released (`scene_hook_shutdown`
+line) and re-installed if a device is created afterwards; a mismatch at any
+step refuses the install with a status (`executable_mismatch`,
+`callsite_mismatch`, `target_mismatch`, `protect_failed`, `patch_rolled_back`).
+Per frame the route logs `scene_end_source=none|hook|stretchrect` (where the
+one resolve attempt ran) and `scene_end_check` (1 Agree: hook in Scene then
+the bloom copy with no scene draw between; 2 HookOnly: glow off; 3
+StretchOnly: no patch; 4 Disagree: a signal outside Scene, more than one
+signal, scene draws between the hook and the copy, or a copy without a signal
+while patched), with a `motion_output_scene_hook_disagreement` line for the
+last case. `tools/manage.py launch --scene-hook` sets it; it stays off by
+default until a gameplay run confirms the boundary.
+
+**Pass field.** `RigidDrawKey::pass` (`MotionPass` in
+`src/renderer/motion_history.h`: 1 main scene, 2 depth-only, 3 shadow, 4
+environment map reserved; 0 unknown never keys) is hashed and compared with
+the rest of the key and set to `PassMainScene` by gate 2, which established
+the Scene phase on the latched main pair; the analyzer's K1 carries the same
+constant (`render_pass`). Matching on the existing fixtures is unchanged
+([motion-history-key.md](../reverse-engineering/motion-history-key.md#pass-field-2026-09-12)).
+
 ### Cut detector (temporal step 1)
 
 For every matched draw the route records the screen displacement of the
@@ -412,6 +503,8 @@ against the SDK layout in `verification/probe/abi_check.cpp`.
 | 30 / 31 / 34 / 35 / 39 / 115 / 116 | UpdateSurface, UpdateTexture, StretchRect, ColorFill, SetDepthStencilSurface, patches | complete selector event stream (previously only with scene-depth capture); StretchRect also runs the resolve before the application's bloom copy (step 3) |
 | 41 / 42 | BeginScene / EndScene | scene state for the resolve's caller contract (step 3) |
 | 118 | CreateQuery | query objects get a private vtable (slots 2 Release, 6 Issue) so the route counts queries between BEGIN and END; the resolve never draws while one is open (step 3) |
+| 57 | SetRenderState | render-state shadow (`X3M_STATE_SHADOW`, default on; light boundary) and, in lazy RT mode, the flush of a held write mask before the application's write (installed in lazy mode with the shadow off too) |
+| 58 | GetRenderState | lazy RT mode only: the application's read of a write mask restores the bindings first |
 
 Native slots the route calls itself (never the hooked table): 1, 2, 6, 8, 9,
 23, 28, 32, 34, 36, 37, 38, 39, 40, 41, 42, 47, 48, 57, 58, 75, 76, 83, 87, 88,
@@ -420,7 +513,7 @@ release hook's reference-count probe and the route's pass accounting use
 native 1 and 2 (AddRef/Release). The pass adds 7, 59, 65, 69, 102 and 104
 through the same table.
 
-The hot setter hooks (shaders, the three constant setters, viewport) use
+The hot setter hooks (shaders, the three constant setters, viewport, render state) use
 `LightCallBoundary` (MXCSR and last error only) with a plain lock: their own
 code on both sides of the native call is integer/SSE memory work, so the
 legacy caller's x87 state is untouched by construction, and
@@ -435,10 +528,13 @@ and FVF hooks (foreign getters) and the state block hooks keep
 The route owns its own `SceneBoundarySelector`, fed from the shadow rather than
 from `SceneCapture`, because the capture adapter runs only in requested frames
 with the ownership wrapper and hashes shader bytecode per draw. Per ordinary
-draw the route costs two `GetRenderState` calls (Z enable/write) while the
+draw the route queries two render states (Z enable/write) while the
 selector is in Background or Scene; a candidate draw (gates 1–3 passed) adds
-four render-state getters, one stream-frequency getter, the object observers
-and one history lookup. No getter fetches shader bytecode or shader objects on
+four render-state queries, one stream-frequency getter, the object observers
+and one history lookup. With the render-state shadow on (default) every one
+of those state queries is answered from the shadow (zero `GetRenderState`
+per draw after the first fill); with it off each is a native getter, the
+previous behaviour. No getter fetches shader bytecode or shader objects on
 the routed path, no heap allocation occurs per draw (the history reserves its
 tables once), and no state block is created.
 

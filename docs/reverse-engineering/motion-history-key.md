@@ -274,6 +274,31 @@ carried across that gap, and the key folds both epochs in, so it cannot be.
    per-profile insertion work for the other four dominant SM3 vertex programs
    determines how much of the frame gets real motion.
 
+## Pass field (2026-09-12)
+
+`RigidDrawKey` gained a `pass` field (`MotionPass` in
+`src/renderer/motion_history.h`: `PassMainScene = 1`; `PassDepthOnly = 2`,
+`PassShadow = 3` and `PassEnvironmentMap = 4` reserved; `PassUnknown = 0`
+never keys — `key_valid` rejects it). It is hashed and compared like every
+other field. The live route sets it to `PassMainScene` at gate 2, which has
+already established the selector's Scene phase on the latched main
+color/depth pair; environment-map faces are never keyed because the selector
+rejects those frames before any draw reaches the gate. The analyzer's K1
+carries the same constant as `render_pass` (`PASS_MAIN_SCENE = 1` in
+`tools/analysis/analyze_motion_history_key.py`): every draw it keys lies
+inside the Scene-phase bracket of section "Scene-phase bracket", which is the
+main scene pass by definition; the capture format itself has no pass field,
+so a future capture of a depth-only or shadow pass must bracket those draws
+separately before they can be keyed apart. K2/K2b/K3 are derived from K1 and
+inherit the field. A constant field changes no match: the 33 analyzer tests
+pass unchanged, and the live fixtures' matched pixels are the values recorded
+before the field existed (10,261 regular, 10,348 jittered/TAA, 14,906 in the
+hook script) with the row-history unit fixture (`motion_row_history.cpp`)
+setting `pass = PassMainScene` on every key. The field exists so a second
+pass drawing the same node/buffers/range in one frame (a depth prepass or a
+shadow pass, the assessment's "no pass discriminator" finding) can be keyed
+apart before it exists, rather than after.
+
 ## What remains unproven
 
 Vertex and index contents are still not captured, so a unique key match cannot

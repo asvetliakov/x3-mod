@@ -9,6 +9,15 @@
 namespace x3m::renderer {
 using SubmittedMatrix = std::array<float, 16>; // Exact shader-register rows.
 
+// Pass identifier of RigidDrawKey::pass. The live route produces PassMainScene
+// only (the selector's Scene phase on the latched main color/depth pair, ended
+// by the engine scene-end hook or the bloom copy); the other values are
+// reserved so a second pass drawing the same node/buffers/range in one frame
+// (a depth prepass or a shadow pass) can be keyed apart before it exists.
+// Environment-map faces are never keyed (the selector rejects those frames).
+// PassUnknown never keys the live route; the capture/replay path leaves it 0.
+enum MotionPass : std::uint32_t { PassUnknown = 0, PassMainScene = 1, PassDepthOnly = 2, PassShadow = 3, PassEnvironmentMap = 4 };
+
 struct RigidDrawKey {
     // Lifetimes must come from a verified lifecycle producer, not pointer values,
     // draw order, observed handle equality, or the object-trace hook session.
@@ -26,6 +35,7 @@ struct RigidDrawKey {
     std::int32_t base_vertex = 0;
     std::uint32_t min_vertex = 0, vertex_count = 0, index_format = 0;
     bool indexed = false;
+    std::uint32_t pass = PassUnknown; // MotionPass, from the route's boundary state.
 };
 
 enum RigidProof : std::uint32_t {

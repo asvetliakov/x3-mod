@@ -18,9 +18,11 @@ DEFINES="-DWIN32_LEAN_AND_MEAN -DNOMINMAX -DX3M_MOTION_OUTPUT_FIXTURE"
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/capture.cpp -o build/motion-output-seam/capture.o
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/motion_output.cpp -o build/motion-output-seam/motion_output.o
 i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/camera_state.cpp -o build/motion-output-seam/camera_state.o
-SHARED=$(find "$OBJECTS" -name '*.obj' ! -name 'capture.cpp.obj' ! -name 'motion_output.cpp.obj' ! -name 'camera_state.cpp.obj' | sort)
+i686-w64-mingw32-g++ $FLAGS -g $DEFINES -c ../../src/proxy/scene_hook.cpp -o build/motion-output-seam/scene_hook.o
+SHARED=$(find "$OBJECTS" -name '*.obj' ! -name 'capture.cpp.obj' ! -name 'motion_output.cpp.obj' ! -name 'camera_state.cpp.obj' ! -name 'scene_hook.cpp.obj' | sort)
 i686-w64-mingw32-g++ -shared -static -static-libgcc -static-libstdc++ -Wl,--kill-at -Wl,--enable-stdcall-fixup \
-  -o build/motion-output-seam/d3d9.dll build/motion-output-seam/capture.o build/motion-output-seam/motion_output.o build/motion-output-seam/camera_state.o $SHARED \
+  -o build/motion-output-seam/d3d9.dll build/motion-output-seam/capture.o build/motion-output-seam/motion_output.o build/motion-output-seam/camera_state.o build/motion-output-seam/scene_hook.o $SHARED \
   ../../src/proxy/d3d9.def -ldxguid -ladvapi32
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_motion_output_fixture_configure
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_camera_state_fixture_install
+i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_scene_hook_fixture_install

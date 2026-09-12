@@ -11,7 +11,7 @@ auto fields(const RigidDrawKey& k) noexcept {
         k.vertex_buffer, k.vertex_revision, k.index_buffer, k.index_revision,
         k.declaration, k.position_program, k.stream_offset, k.stride,
         k.position_offset, k.position_type, k.topology, k.first, k.primitives, k.base_vertex,
-        k.min_vertex, k.vertex_count, k.index_format, k.indexed);
+        k.min_vertex, k.vertex_count, k.index_format, k.indexed, k.pass);
 }
 bool finite(const SubmittedMatrix& rows) noexcept {
     for (float v : rows) if (!std::isfinite(v) || std::fabs(v) > 1e15f) return false;
@@ -34,7 +34,7 @@ bool MotionRowHistory::key_valid(const RigidDrawKey& k) noexcept {
     // Lifetimes and epochs come from the verified observer; geometry identity
     // from the shadowed bindings. Zero anywhere means an unknown component.
     if (!k.object_lifetime || !k.camera_lifetime || !k.draw_domain || !k.node || !k.camera ||
-        !k.vertex_buffer || !k.declaration || !k.position_program || !k.stride || !k.primitives)
+        !k.vertex_buffer || !k.declaration || !k.position_program || !k.stride || !k.primitives || !k.pass)
         return false;
     if (k.indexed && !k.index_buffer) return false;
     return true;

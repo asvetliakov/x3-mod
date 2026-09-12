@@ -1,34 +1,35 @@
 motion_capture_mode requested=0 enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0
-motion_output_mode requested=0 scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=0 taa=0 taa_debug=0 jitter=0 jitter_samples=8 cut_median_px=48.000 cut_missing=0.250 rt_mode=perdraw frame_log=60 sentinel=auto camera_cut_deg=20.00 camera_log=300
+motion_output_mode requested=0 scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=0 taa=0 taa_debug=0 jitter=0 jitter_samples=8 cut_median_px=48.000 cut_missing=0.250 rt_mode=perdraw frame_log=60 sentinel=auto camera_cut_deg=20.00 camera_log=300 state_shadow=1 scene_hook=0
 x3-modern-renderer version=0.4 schema=2 capture_start=1 capture_frames=5 pointer_bits=32
-telemetry_start schema=1 qpc_frequency=10000000 qpc=9255630614457 anchor=proxy_initialize cpu_only=1
+telemetry_start schema=1 qpc_frequency=10000000 qpc=9314457528436 anchor=proxy_initialize cpu_only=1
 application_admission_mode requested=0 enabled=0 live_replay=0 coverage_complete=0
 ownership_mode requested=1 depth_copy_requested=0 depth_copy_enabled=0 scope=normal9 fallback=native
 finite_upload_mode requested=1 enabled=1 scope=verified_managed_uploads payload_retained=0
-telemetry_span name=backend_load qpc_begin=9255630619812 qpc_end=9255630619908 thread=2944 success=1 error=203
+telemetry_span name=backend_load qpc_begin=9314457533959 qpc_end=9314457534053 thread=72 success=1 error=203
 backend path=C:\windows\system32\d3d9.dll
 object_trace active=0 status=disabled recovery_required=0
 camera_state active=0 status=disabled
+scene_hook active=0 status=disabled
 object_lifetime active=0 status=disabled recovery_required=0 baseline_complete=0 baseline_entries=0
-telemetry_span name=direct3d_create9 qpc_begin=9255630621633 qpc_end=9255631529459 thread=2944 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9314457537666 qpc_end=9314458452419 thread=72 success=1
 ownership_factory mode=wrapped native=0011c778 public=00117d70 result=00000000
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_presentation phase=create_before device=0 thread=2944 focus_window=04d60142 device_window=04d60142 width=160 height=120 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=72 focus_window=05b60142 device_window=05b60142 width=160 height=120 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000042 width=160 height=120 format=0 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2944 focus_window=04d60142 device_window=04d60142 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=72 focus_window=05b60142 device_window=05b60142 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
-device_hooked ptr=0011dd68 device=1 ex=0
+device_hooked ptr=0011de18 device=1 ex=0
 ownership_copy_depth phase=create_after device=1 frame=0 result=00000000 status=00000001 requested=0 available=0 source_bound=0 copy_valid=0 generation=0 source_epoch=0 copy_epoch=0 source_width=0 source_height=0 source_format=0 source_type=0 source_usage=0 source_pool=0 source_msaa=0 source_quality=0
-telemetry_first_present device=1 frame=0 qpc=9255632278135 since_start_us=166367.800 capture=0 reset_count=0
-telemetry_window_context device=1 frame=0 render_thread=2944 window_thread=2944 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
-telemetry_window device=1 frame=0 qpc=9255632284191 window=04d60142 foreground=00000000 thread_focus=00000000 iconic=0 visible=1 style=14cf0000 exstyle=00000100 window_rect=80,80,260,240 client_rect=0,0,172,126
-telemetry_cursor_poll device=1 frame=0 qpc=9255632284191 flags=1 cursor=00000000 x=2583 y=707
-telemetry_present_window device=1 frame=0 override=00000000 device_window=04d60142 result=00000000
+telemetry_first_present device=1 frame=0 qpc=9314459208044 since_start_us=167960.800 capture=0 reset_count=0
+telemetry_window_context device=1 frame=0 render_thread=72 window_thread=72 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
+telemetry_window device=1 frame=0 qpc=9314459214639 window=05b60142 foreground=00000000 thread_focus=00000000 iconic=0 visible=1 style=14cf0000 exstyle=00000100 window_rect=80,80,260,240 client_rect=0,0,172,126
+telemetry_cursor_poll device=1 frame=0 qpc=9314459214639 flags=1 cursor=00000000 x=2583 y=707
+telemetry_present_window device=1 frame=0 override=00000000 device_window=05b60142 result=00000000
 frame_end device=1 frame=0 draws=1 capture=0 present=00000000
-finite_upload_metric device=1 frame=0 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=493 qualifier_ticks=1524 queries=0 query_ticks=0 query_cache_hits=0 position_components=0
+finite_upload_metric device=1 frame=0 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=505 qualifier_ticks=1669 queries=0 query_ticks=0 query_cache_hits=0 position_components=0
 frame_begin device=1 frame=1
-capture_event device=1 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9255632310838
+capture_event device=1 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9314459228953
 clear flags=1 color=ff314159 z=0.75 stencil=123 rect_count=1 rect_ptr=0032f670
 clear_rects recorded=1 omitted=0
 clear_rect index=0 left=1 top=2 right=9 bottom=10
@@ -36,13 +37,13 @@ resource identity=1 ptr=0011c958 type=3
 resource identity=2 ptr=0011c988 type=1
 surface role=clear_rt0 ptr=0011c988 identity=2 width=160 height=120 format=21 usage=1 msaa=0 container=1 container_type=3 container_result=00000000
 clear_viewport result=00000000 x=0 y=0 w=160 h=120 minz=0 maxz=1
-capture_event device=1 frame=1 seq=2 after_draw=0 op=clear result=8876086c qpc=9255632326579
+capture_event device=1 frame=1 seq=2 after_draw=0 op=clear result=8876086c qpc=9314459256320
 clear flags=2 color=ff314159 z=0.75 stencil=123 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=0011c988 identity=2 width=160 height=120 format=21 usage=1 msaa=0 container=1 container_type=3 container_result=00000000
 clear_viewport result=00000000 x=0 y=0 w=160 h=120 minz=0 maxz=1
 resource identity=3 ptr=0011c868 type=6
 resource identity=4 ptr=0011c8f8 type=7
-capture_event device=1 frame=1 seq=3 after_draw=0 op=draw_begin result=00000000 qpc=9255632358327
+capture_event device=1 frame=1 seq=3 after_draw=0 op=draw_begin result=00000000 qpc=9314459286040
 draw device=1 frame=1 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -269,10 +270,10 @@ motion_input device=1 frame=1 index=1 blockers=00000bc7 proofs=16 position_path=
 motion_geometry device=1 frame=1 index=1 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=1 index_requested=1 index_known=1 index_range_verified=1 index_exact=1 index_min=0 index_max=2 index_reason=0 index_status=00000000 index_generation=1 index_revision=1
 draw_result device=1 frame=1 index=1 result=00000000
 frame_end device=1 frame=1 draws=1 capture=1 present=00000000
-finite_upload_metric device=1 frame=1 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=493 qualifier_ticks=1531 queries=1 query_ticks=3390 query_cache_hits=0 position_components=0
+finite_upload_metric device=1 frame=1 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=505 qualifier_ticks=1681 queries=1 query_ticks=1787 query_cache_hits=0 position_components=0
 finite_upload_reason device=1 frame=1 phase=present reason=0 name=none count=1
 frame_begin device=1 frame=2
-capture_event device=1 frame=2 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9255632388272
+capture_event device=1 frame=2 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9314459316771
 draw device=1 frame=2 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -498,10 +499,10 @@ motion_input device=1 frame=2 index=1 blockers=00000bc7 proofs=16 position_path=
 motion_geometry device=1 frame=2 index=1 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=1 index_requested=1 index_known=1 index_range_verified=1 index_exact=1 index_min=0 index_max=2 index_reason=0 index_status=00000000 index_generation=1 index_revision=1
 draw_result device=1 frame=2 index=1 result=00000000
 frame_end device=1 frame=2 draws=1 capture=1 present=00000000
-finite_upload_metric device=1 frame=2 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=493 qualifier_ticks=1534 queries=2 query_ticks=3405 query_cache_hits=0 position_components=0
+finite_upload_metric device=1 frame=2 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=505 qualifier_ticks=1686 queries=2 query_ticks=1806 query_cache_hits=0 position_components=0
 finite_upload_reason device=1 frame=2 phase=present reason=0 name=none count=2
 frame_begin device=1 frame=3
-capture_event device=1 frame=3 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9255632397935
+capture_event device=1 frame=3 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9314459327047
 draw device=1 frame=3 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -726,7 +727,7 @@ draw_args base_vertex=0 min_vertex=0 num_vertices=3 start_index=0
 motion_input device=1 frame=3 index=1 blockers=00000bc7 proofs=16 position_path=0 vs=0000000000000000 ps=0000000000000000 declaration=0000000000000000 rows_hash=b9b23f3a46fd0825 color=0 depth=0 width=0 height=0 cull=1 vb=3 vb_revision=1 ib=4 ib_revision=1 position_offset=0 position_type=0 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=3 index=1 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=1 index_requested=1 index_known=1 index_range_verified=1 index_exact=1 index_min=0 index_max=2 index_reason=0 index_status=00000000 index_generation=1 index_revision=1
 draw_result device=1 frame=3 index=1 result=00000000
-capture_event device=1 frame=3 seq=2 after_draw=1 op=draw_begin result=00000000 qpc=9255632405811
+capture_event device=1 frame=3 seq=2 after_draw=1 op=draw_begin result=00000000 qpc=9314459335451
 draw device=1 frame=3 index=2 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -950,11 +951,11 @@ motion_input device=1 frame=3 index=2 blockers=00001bff proofs=0 position_path=0
 motion_geometry device=1 frame=3 index=2 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=1 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=3 index=2 result=8876086c
 frame_end device=1 frame=3 draws=2 capture=1 present=00000000
-finite_upload_metric device=1 frame=3 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=493 qualifier_ticks=1537 queries=3 query_ticks=3417 query_cache_hits=0 position_components=0
+finite_upload_metric device=1 frame=3 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=505 qualifier_ticks=1689 queries=3 query_ticks=1819 query_cache_hits=0 position_components=0
 finite_upload_reason device=1 frame=3 phase=present reason=0 name=none count=3
 frame_begin device=1 frame=4
 resource identity=6 ptr=0011cb68 type=6
-capture_event device=1 frame=4 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9255632468262
+capture_event device=1 frame=4 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9314459420609
 draw device=1 frame=4 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=6 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -1180,10 +1181,10 @@ motion_input device=1 frame=4 index=1 blockers=00000bc7 proofs=16 position_path=
 motion_geometry device=1 frame=4 index=1 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=1 index_requested=1 index_known=1 index_range_verified=1 index_exact=1 index_min=0 index_max=2 index_reason=0 index_status=00000000 index_generation=1 index_revision=1
 draw_result device=1 frame=4 index=1 result=00000000
 frame_end device=1 frame=4 draws=1 capture=1 present=00000000
-finite_upload_metric device=1 frame=4 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=20 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=497 qualifier_ticks=1575 queries=4 query_ticks=3436 query_cache_hits=0 position_components=0
+finite_upload_metric device=1 frame=4 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=20 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=511 qualifier_ticks=1741 queries=4 query_ticks=1843 query_cache_hits=0 position_components=0
 finite_upload_reason device=1 frame=4 phase=present reason=0 name=none count=4
 frame_begin device=1 frame=5
-capture_event device=1 frame=5 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9255632479735
+capture_event device=1 frame=5 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9314459433972
 draw device=1 frame=5 index=1 kind=indexed_up topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=user_memory
 surface role=rt0 ptr=0011c988 identity=2 width=160 height=120 format=21 usage=1 msaa=0 container=1 container_type=3 container_result=00000000
@@ -1388,66 +1389,66 @@ motion_input device=1 frame=5 index=1 blockers=00000fc7 proofs=16 position_path=
 motion_geometry device=1 frame=5 index=1 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=5 index=1 result=00000000
 frame_end device=1 frame=5 draws=1 capture=1 present=00000000
-finite_upload_metric device=1 frame=5 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=20 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=497 qualifier_ticks=1575 queries=4 query_ticks=3436 query_cache_hits=0 position_components=0
+finite_upload_metric device=1 frame=5 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=20 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=511 qualifier_ticks=1741 queries=4 query_ticks=1843 query_cache_hits=0 position_components=0
 finite_upload_reason device=1 frame=5 phase=present reason=0 name=none count=4
-telemetry_presentation phase=reset_before device=1 thread=2944 focus_window=04d60142 device_window=04d60142 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
-reset_begin ptr=0011dd68 device=1
-finite_upload_metric device=1 frame=6 phase=reset_before result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=0 peak_payload_bytes=20 sidecars=0 metadata_bytes=8192 global_payload_bytes=0 global_sidecars=0 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=497 qualifier_ticks=1575 queries=4 query_ticks=3436 query_cache_hits=0 position_components=0
+telemetry_presentation phase=reset_before device=1 thread=72 focus_window=05b60142 device_window=05b60142 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+reset_begin ptr=0011de18 device=1
+finite_upload_metric device=1 frame=6 phase=reset_before result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=0 peak_payload_bytes=20 sidecars=0 metadata_bytes=8192 global_payload_bytes=0 global_sidecars=0 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=511 qualifier_ticks=1741 queries=4 query_ticks=1843 query_cache_hits=0 position_components=0
 finite_upload_reason device=1 frame=6 phase=reset_before reason=0 name=none count=4
-telemetry_presentation phase=reset_after device=1 thread=2944 focus_window=04d60142 device_window=04d60142 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=reset_after device=1 thread=72 focus_window=05b60142 device_window=05b60142 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 ownership_copy_depth phase=reset_after device=1 frame=6 result=00000000 status=00000001 requested=0 available=0 source_bound=0 copy_valid=0 generation=0 source_epoch=0 copy_epoch=0 source_width=0 source_height=0 source_format=0 source_type=0 source_usage=0 source_pool=0 source_msaa=0 source_quality=0
-finite_upload_metric device=1 frame=6 phase=reset_after result=00000000 status=00000000 requested=1 active=1 generation=2 payload_bytes=0 peak_payload_bytes=20 sidecars=0 metadata_bytes=8192 global_payload_bytes=0 global_sidecars=0 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=497 qualifier_ticks=1575 queries=4 query_ticks=3436 query_cache_hits=0 position_components=0
+finite_upload_metric device=1 frame=6 phase=reset_after result=00000000 status=00000000 requested=1 active=1 generation=2 payload_bytes=0 peak_payload_bytes=20 sidecars=0 metadata_bytes=8192 global_payload_bytes=0 global_sidecars=0 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=511 qualifier_ticks=1741 queries=4 query_ticks=1843 query_cache_hits=0 position_components=0
 finite_upload_reason device=1 frame=6 phase=reset_after reason=0 name=none count=4
-telemetry_summary device=1 frame=6 reason=reset qpc=9255632601250 since_start_us=198679.300 interval_us=41593.400 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=325.300 min_us=325.300 max_us=325.300 bytes=0 buckets=0,0,1,0,0,0
-telemetry_metric device=1 name=present_capture count=5 failures=0 total_us=2656.100 min_us=3.600 max_us=2639.800 bytes=0 buckets=4,0,0,1,0,0
-telemetry_metric device=1 name=frame_capture count=5 failures=0 total_us=22482.700 min_us=1777.100 max_us=9899.800 bytes=0 buckets=0,0,0,5,0,0
-telemetry_metric device=1 name=draw_backend count=7 failures=1 total_us=4874.100 min_us=0.600 max_us=2830.400 bytes=0 buckets=2,1,2,2,0,0
-telemetry_metric device=1 name=capture_cpu count=8 failures=0 total_us=8199.200 min_us=48.300 max_us=3987.500 bytes=0 buckets=0,1,5,2,0,0
-telemetry_metric device=1 name=snapshot count=6 failures=0 total_us=4342.600 min_us=503.700 max_us=1608.400 bytes=0 buckets=0,0,5,1,0,0
-telemetry_metric device=1 name=texture count=2 failures=0 total_us=290.600 min_us=2.000 max_us=288.600 bytes=0 buckets=1,0,1,0,0,0
-telemetry_metric device=1 name=vertex_buffer count=2 failures=0 total_us=753.600 min_us=12.600 max_us=741.000 bytes=152 buckets=0,1,1,0,0,0
-telemetry_metric device=1 name=index_buffer count=1 failures=0 total_us=262.300 min_us=262.300 max_us=262.300 bytes=6 buckets=0,0,1,0,0,0
-telemetry_metric device=1 name=reset count=1 failures=0 total_us=9238.200 min_us=9238.200 max_us=9238.200 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=1 name=log_flush count=6 failures=0 total_us=87.400 min_us=0.100 max_us=86.100 bytes=0 buckets=5,1,0,0,0,0
+telemetry_summary device=1 frame=6 reason=reset qpc=9314459553996 since_start_us=202556.000 interval_us=44237.000 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=729.200 min_us=729.200 max_us=729.200 bytes=0 buckets=0,0,1,0,0,0
+telemetry_metric device=1 name=present_capture count=5 failures=0 total_us=5003.900 min_us=3.600 max_us=4977.300 bytes=0 buckets=4,0,0,1,0,0
+telemetry_metric device=1 name=frame_capture count=5 failures=0 total_us=25057.600 min_us=1879.000 max_us=9683.000 bytes=0 buckets=0,0,0,5,0,0
+telemetry_metric device=1 name=draw_backend count=7 failures=1 total_us=4741.900 min_us=0.700 max_us=2568.400 bytes=0 buckets=2,2,1,2,0,0
+telemetry_metric device=1 name=capture_cpu count=8 failures=0 total_us=9128.100 min_us=23.800 max_us=3772.400 bytes=0 buckets=0,1,5,2,0,0
+telemetry_metric device=1 name=snapshot count=6 failures=0 total_us=4375.600 min_us=505.400 max_us=1662.800 bytes=0 buckets=0,0,5,1,0,0
+telemetry_metric device=1 name=texture count=2 failures=0 total_us=265.600 min_us=1.900 max_us=263.700 bytes=0 buckets=1,0,1,0,0,0
+telemetry_metric device=1 name=vertex_buffer count=2 failures=0 total_us=769.000 min_us=14.500 max_us=754.500 bytes=152 buckets=0,1,1,0,0,0
+telemetry_metric device=1 name=index_buffer count=1 failures=0 total_us=268.700 min_us=268.700 max_us=268.700 bytes=6 buckets=0,0,1,0,0,0
+telemetry_metric device=1 name=reset count=1 failures=0 total_us=8619.800 min_us=8619.800 max_us=8619.800 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=1 name=log_flush count=6 failures=0 total_us=223.700 min_us=0.200 max_us=222.000 bytes=0 buckets=5,0,1,0,0,0
 reset_end device=1 result=00000000
-telemetry_summary device=1 frame=6 reason=device_destroy qpc=9255632632978 since_start_us=201852.100 interval_us=3172.800 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=1 name=log_flush count=1 failures=0 total_us=5.600 min_us=5.600 max_us=5.600 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=6 reason=device_destroy qpc=9255632633274 since_start_us=201881.700 interval_us=201881.700 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=46 failures=0 total_us=11.300 min_us=0.100 max_us=1.500 bytes=0 buckets=46,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=51583.800 min_us=51583.800 max_us=51583.800 bytes=0 buckets=0,0,0,0,1,0
-device_destroy ptr=0011dd68 device=1
+telemetry_summary device=1 frame=6 reason=device_destroy qpc=9314459585715 since_start_us=205727.900 interval_us=3171.900 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=log_flush count=1 failures=0 total_us=7.800 min_us=7.800 max_us=7.800 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=6 reason=device_destroy qpc=9314459585970 since_start_us=205753.400 interval_us=205753.400 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=46 failures=0 total_us=11.500 min_us=0.000 max_us=1.700 bytes=0 buckets=46,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=52256.300 min_us=52256.300 max_us=52256.300 bytes=0 buckets=0,0,0,0,1,0
+device_destroy ptr=0011de18 device=1
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
-telemetry_presentation phase=create_before device=0 thread=2944 focus_window=04d60142 device_window=04d60142 width=160 height=120 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=72 focus_window=05b60142 device_window=05b60142 width=160 height=120 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000052 width=160 height=120 format=0 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=2944 focus_window=04d60142 device_window=04d60142 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=72 focus_window=05b60142 device_window=05b60142 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
-device_hooked ptr=00de08b0 device=2 ex=0
+device_hooked ptr=00defda8 device=2 ex=0
 ownership_copy_depth phase=create_after device=2 frame=0 result=00000000 status=00000001 requested=0 available=0 source_bound=0 copy_valid=0 generation=0 source_epoch=0 copy_epoch=0 source_width=0 source_height=0 source_format=0 source_type=0 source_usage=0 source_pool=0 source_msaa=0 source_quality=0
-telemetry_first_present device=2 frame=0 qpc=9255632678397 since_start_us=206394.000 capture=0 reset_count=0
-telemetry_window_context device=2 frame=0 render_thread=2944 window_thread=2944 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
-telemetry_window device=2 frame=0 qpc=9255632678530 window=04d60142 foreground=00000000 thread_focus=00000000 iconic=0 visible=1 style=14cf0000 exstyle=00000100 window_rect=80,80,260,240 client_rect=0,0,172,126
-telemetry_cursor_poll device=2 frame=0 qpc=9255632678530 flags=1 cursor=00000000 x=2583 y=707
-telemetry_present_window device=2 frame=0 override=00000000 device_window=04d60142 result=00000000
+telemetry_first_present device=2 frame=0 qpc=9314459633342 since_start_us=210490.600 capture=0 reset_count=0
+telemetry_window_context device=2 frame=0 render_thread=72 window_thread=72 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
+telemetry_window device=2 frame=0 qpc=9314459633476 window=05b60142 foreground=00000000 thread_focus=00000000 iconic=0 visible=1 style=14cf0000 exstyle=00000100 window_rect=80,80,260,240 client_rect=0,0,172,126
+telemetry_cursor_poll device=2 frame=0 qpc=9314459633476 flags=1 cursor=00000000 x=2583 y=707
+telemetry_present_window device=2 frame=0 override=00000000 device_window=05b60142 result=00000000
 frame_end device=2 frame=0 draws=1 capture=0 present=00000000
-finite_upload_metric device=2 frame=0 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=6 qualifier_ticks=81 queries=0 query_ticks=0 query_cache_hits=0 position_components=0
+finite_upload_metric device=2 frame=0 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=8 qualifier_ticks=75 queries=0 query_ticks=0 query_cache_hits=0 position_components=0
 frame_begin device=2 frame=1
-capture_event device=2 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9255632680669
+capture_event device=2 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9314459635483
 clear flags=1 color=ff314159 z=0.75 stencil=123 rect_count=1 rect_ptr=0032f670
 clear_rects recorded=1 omitted=0
 clear_rect index=0 left=1 top=2 right=9 bottom=10
-resource identity=7 ptr=01739cd0 type=3
-resource identity=8 ptr=01739d00 type=1
-surface role=clear_rt0 ptr=01739d00 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
+resource identity=7 ptr=01739d38 type=3
+resource identity=8 ptr=01739d68 type=1
+surface role=clear_rt0 ptr=01739d68 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
 clear_viewport result=00000000 x=0 y=0 w=160 h=120 minz=0 maxz=1
-capture_event device=2 frame=1 seq=2 after_draw=0 op=clear result=8876086c qpc=9255632684414
+capture_event device=2 frame=1 seq=2 after_draw=0 op=clear result=8876086c qpc=9314459639286
 clear flags=2 color=ff314159 z=0.75 stencil=123 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=01739d00 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
+surface role=clear_rt0 ptr=01739d68 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
 clear_viewport result=00000000 x=0 y=0 w=160 h=120 minz=0 maxz=1
-resource identity=9 ptr=01739be0 type=6
-resource identity=10 ptr=01739c70 type=7
-capture_event device=2 frame=1 seq=3 after_draw=0 op=draw_begin result=00000000 qpc=9255632688740
+resource identity=9 ptr=01739c48 type=6
+resource identity=10 ptr=01739cd8 type=7
+capture_event device=2 frame=1 seq=3 after_draw=0 op=draw_begin result=00000000 qpc=9314459643865
 draw device=2 frame=1 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=9 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -1471,7 +1472,7 @@ stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=10
 index_buffer identity=10 bytes=6 usage=0 pool=1 format=101
 buffer_content kind=index identity=10 result=00000000 status=00000000 requested=1 known=1 ambiguous=0 revision=1 pending=0 flags=00000000
-surface role=rt0 ptr=01739d00 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
+surface role=rt0 ptr=01739d68 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
 state id=7 value=0
 state id=14 value=1
 state id=23 value=4
@@ -1500,8 +1501,8 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-resource identity=11 ptr=01739ca0 type=3
-texture stage=0 ptr=01739ca0 type=3 identity=11
+resource identity=11 ptr=01739d08 type=3
+texture stage=0 ptr=01739d08 type=3 identity=11
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
@@ -1674,10 +1675,10 @@ motion_input device=2 frame=1 index=1 blockers=00000bc7 proofs=16 position_path=
 motion_geometry device=2 frame=1 index=1 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=1 index_requested=1 index_known=1 index_range_verified=1 index_exact=1 index_min=0 index_max=2 index_reason=0 index_status=00000000 index_generation=1 index_revision=1
 draw_result device=2 frame=1 index=1 result=00000000
 frame_end device=2 frame=1 draws=1 capture=1 present=00000000
-finite_upload_metric device=2 frame=1 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=6 qualifier_ticks=83 queries=1 query_ticks=23 query_cache_hits=0 position_components=0
+finite_upload_metric device=2 frame=1 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=8 qualifier_ticks=78 queries=1 query_ticks=19 query_cache_hits=0 position_components=0
 finite_upload_reason device=2 frame=1 phase=present reason=0 name=none count=1
 frame_begin device=2 frame=2
-capture_event device=2 frame=2 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9255632698638
+capture_event device=2 frame=2 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9314459654110
 draw device=2 frame=2 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=9 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -1701,7 +1702,7 @@ stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=10
 index_buffer identity=10 bytes=6 usage=0 pool=1 format=101
 buffer_content kind=index identity=10 result=00000000 status=00000000 requested=1 known=1 ambiguous=0 revision=1 pending=0 flags=00000000
-surface role=rt0 ptr=01739d00 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
+surface role=rt0 ptr=01739d68 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
 state id=7 value=0
 state id=14 value=1
 state id=23 value=4
@@ -1730,7 +1731,7 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=01739ca0 type=3 identity=11
+texture stage=0 ptr=01739d08 type=3 identity=11
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
@@ -1903,10 +1904,10 @@ motion_input device=2 frame=2 index=1 blockers=00000bc7 proofs=16 position_path=
 motion_geometry device=2 frame=2 index=1 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=1 index_requested=1 index_known=1 index_range_verified=1 index_exact=1 index_min=0 index_max=2 index_reason=0 index_status=00000000 index_generation=1 index_revision=1
 draw_result device=2 frame=2 index=1 result=00000000
 frame_end device=2 frame=2 draws=1 capture=1 present=00000000
-finite_upload_metric device=2 frame=2 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=6 qualifier_ticks=85 queries=2 query_ticks=34 query_cache_hits=0 position_components=0
+finite_upload_metric device=2 frame=2 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=8 qualifier_ticks=81 queries=2 query_ticks=31 query_cache_hits=0 position_components=0
 finite_upload_reason device=2 frame=2 phase=present reason=0 name=none count=2
 frame_begin device=2 frame=3
-capture_event device=2 frame=3 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9255632708480
+capture_event device=2 frame=3 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9314459663948
 draw device=2 frame=3 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=9 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -1930,7 +1931,7 @@ stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=10
 index_buffer identity=10 bytes=6 usage=0 pool=1 format=101
 buffer_content kind=index identity=10 result=00000000 status=00000000 requested=1 known=1 ambiguous=0 revision=1 pending=0 flags=00000000
-surface role=rt0 ptr=01739d00 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
+surface role=rt0 ptr=01739d68 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
 state id=7 value=0
 state id=14 value=1
 state id=23 value=4
@@ -1959,7 +1960,7 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=01739ca0 type=3 identity=11
+texture stage=0 ptr=01739d08 type=3 identity=11
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
@@ -2131,7 +2132,7 @@ draw_args base_vertex=0 min_vertex=0 num_vertices=3 start_index=0
 motion_input device=2 frame=3 index=1 blockers=00000bc7 proofs=16 position_path=0 vs=0000000000000000 ps=0000000000000000 declaration=0000000000000000 rows_hash=b9b23f3a46fd0825 color=0 depth=0 width=0 height=0 cull=1 vb=9 vb_revision=1 ib=10 ib_revision=1 position_offset=0 position_type=0 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=2 frame=3 index=1 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=1 index_requested=1 index_known=1 index_range_verified=1 index_exact=1 index_min=0 index_max=2 index_reason=0 index_status=00000000 index_generation=1 index_revision=1
 draw_result device=2 frame=3 index=1 result=00000000
-capture_event device=2 frame=3 seq=2 after_draw=1 op=draw_begin result=00000000 qpc=9255632716095
+capture_event device=2 frame=3 seq=2 after_draw=1 op=draw_begin result=00000000 qpc=9314459671609
 draw device=2 frame=3 index=2 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=9 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -2153,7 +2154,7 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=01739d00 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
+surface role=rt0 ptr=01739d68 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
 state id=7 value=0
 state id=14 value=1
 state id=23 value=4
@@ -2182,7 +2183,7 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=01739ca0 type=3 identity=11
+texture stage=0 ptr=01739d08 type=3 identity=11
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
@@ -2355,11 +2356,11 @@ motion_input device=2 frame=3 index=2 blockers=00001bff proofs=0 position_path=0
 motion_geometry device=2 frame=3 index=2 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=1 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=2 frame=3 index=2 result=8876086c
 frame_end device=2 frame=3 draws=2 capture=1 present=00000000
-finite_upload_metric device=2 frame=3 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=6 qualifier_ticks=88 queries=3 query_ticks=45 query_cache_hits=0 position_components=0
+finite_upload_metric device=2 frame=3 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=10 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=2 publications=2 invalidations=0 allocation_failures=0 scans=2 classified_bytes=66 scan_ticks=8 qualifier_ticks=84 queries=3 query_ticks=42 query_cache_hits=0 position_components=0
 finite_upload_reason device=2 frame=3 phase=present reason=0 name=none count=3
 frame_begin device=2 frame=4
-resource identity=12 ptr=01739ee0 type=6
-capture_event device=2 frame=4 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9255632729923
+resource identity=12 ptr=01739f48 type=6
+capture_event device=2 frame=4 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9314459685940
 draw device=2 frame=4 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=12 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -2383,7 +2384,7 @@ stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=10
 index_buffer identity=10 bytes=6 usage=0 pool=1 format=101
 buffer_content kind=index identity=10 result=00000000 status=00000000 requested=1 known=1 ambiguous=0 revision=1 pending=0 flags=00000000
-surface role=rt0 ptr=01739d00 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
+surface role=rt0 ptr=01739d68 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
 state id=7 value=0
 state id=14 value=1
 state id=23 value=4
@@ -2412,7 +2413,7 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=01739ca0 type=3 identity=11
+texture stage=0 ptr=01739d08 type=3 identity=11
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
@@ -2585,13 +2586,13 @@ motion_input device=2 frame=4 index=1 blockers=00000bc7 proofs=16 position_path=
 motion_geometry device=2 frame=4 index=1 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=1 index_requested=1 index_known=1 index_range_verified=1 index_exact=1 index_min=0 index_max=2 index_reason=0 index_status=00000000 index_generation=1 index_revision=1
 draw_result device=2 frame=4 index=1 result=00000000
 frame_end device=2 frame=4 draws=1 capture=1 present=00000000
-finite_upload_metric device=2 frame=4 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=20 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=9 qualifier_ticks=131 queries=4 query_ticks=60 query_cache_hits=0 position_components=0
+finite_upload_metric device=2 frame=4 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=20 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=12 qualifier_ticks=129 queries=4 query_ticks=54 query_cache_hits=0 position_components=0
 finite_upload_reason device=2 frame=4 phase=present reason=0 name=none count=4
 frame_begin device=2 frame=5
-capture_event device=2 frame=5 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9255632737217
+capture_event device=2 frame=5 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9314459693418
 draw device=2 frame=5 index=1 kind=indexed_up topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=user_memory
-surface role=rt0 ptr=01739d00 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
+surface role=rt0 ptr=01739d68 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
 state id=7 value=0
 state id=14 value=1
 state id=23 value=4
@@ -2620,7 +2621,7 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=01739ca0 type=3 identity=11
+texture stage=0 ptr=01739d08 type=3 identity=11
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
@@ -2793,35 +2794,35 @@ motion_input device=2 frame=5 index=1 blockers=00000fc7 proofs=16 position_path=
 motion_geometry device=2 frame=5 index=1 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=2 frame=5 index=1 result=00000000
 frame_end device=2 frame=5 draws=1 capture=1 present=00000000
-finite_upload_metric device=2 frame=5 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=20 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=9 qualifier_ticks=131 queries=4 query_ticks=60 query_cache_hits=0 position_components=0
+finite_upload_metric device=2 frame=5 phase=present result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=10 peak_payload_bytes=20 sidecars=2 metadata_bytes=8752 global_payload_bytes=10 global_sidecars=2 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=12 qualifier_ticks=129 queries=4 query_ticks=54 query_cache_hits=0 position_components=0
 finite_upload_reason device=2 frame=5 phase=present reason=0 name=none count=4
-telemetry_presentation phase=reset_before device=2 thread=2944 focus_window=04d60142 device_window=04d60142 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
-reset_begin ptr=00de08b0 device=2
-finite_upload_metric device=2 frame=6 phase=reset_before result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=0 peak_payload_bytes=20 sidecars=0 metadata_bytes=8192 global_payload_bytes=0 global_sidecars=0 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=9 qualifier_ticks=131 queries=4 query_ticks=60 query_cache_hits=0 position_components=0
+telemetry_presentation phase=reset_before device=2 thread=72 focus_window=05b60142 device_window=05b60142 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+reset_begin ptr=00defda8 device=2
+finite_upload_metric device=2 frame=6 phase=reset_before result=00000000 status=00000000 requested=1 active=1 generation=1 payload_bytes=0 peak_payload_bytes=20 sidecars=0 metadata_bytes=8192 global_payload_bytes=0 global_sidecars=0 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=12 qualifier_ticks=129 queries=4 query_ticks=54 query_cache_hits=0 position_components=0
 finite_upload_reason device=2 frame=6 phase=reset_before reason=0 name=none count=4
-telemetry_presentation phase=reset_after device=2 thread=2944 focus_window=04d60142 device_window=04d60142 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=reset_after device=2 thread=72 focus_window=05b60142 device_window=05b60142 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 ownership_copy_depth phase=reset_after device=2 frame=6 result=00000000 status=00000001 requested=0 available=0 source_bound=0 copy_valid=0 generation=0 source_epoch=0 copy_epoch=0 source_width=0 source_height=0 source_format=0 source_type=0 source_usage=0 source_pool=0 source_msaa=0 source_quality=0
-finite_upload_metric device=2 frame=6 phase=reset_after result=00000000 status=00000000 requested=1 active=1 generation=2 payload_bytes=0 peak_payload_bytes=20 sidecars=0 metadata_bytes=8192 global_payload_bytes=0 global_sidecars=0 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=9 qualifier_ticks=131 queries=4 query_ticks=60 query_cache_hits=0 position_components=0
+finite_upload_metric device=2 frame=6 phase=reset_after result=00000000 status=00000000 requested=1 active=1 generation=2 payload_bytes=0 peak_payload_bytes=20 sidecars=0 metadata_bytes=8192 global_payload_bytes=0 global_sidecars=0 uploads=3 publications=3 invalidations=0 allocation_failures=0 scans=3 classified_bytes=126 scan_ticks=12 qualifier_ticks=129 queries=4 query_ticks=54 query_cache_hits=0 position_components=0
 finite_upload_reason device=2 frame=6 phase=reset_after reason=0 name=none count=4
-telemetry_summary device=2 frame=6 reason=reset qpc=9255632800650 since_start_us=218619.300 interval_us=13492.700 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=2 name=present_normal count=1 failures=0 total_us=35.000 min_us=35.000 max_us=35.000 bytes=0 buckets=0,1,0,0,0,0
-telemetry_metric device=2 name=present_capture count=5 failures=0 total_us=17.500 min_us=1.500 max_us=5.200 bytes=0 buckets=5,0,0,0,0,0
-telemetry_metric device=2 name=frame_capture count=5 failures=0 total_us=7018.700 min_us=1005.300 max_us=1813.700 bytes=0 buckets=0,0,0,5,0,0
-telemetry_metric device=2 name=draw_backend count=7 failures=1 total_us=547.800 min_us=0.300 max_us=493.800 bytes=0 buckets=3,3,1,0,0,0
-telemetry_metric device=2 name=capture_cpu count=8 failures=0 total_us=3395.400 min_us=15.500 max_us=583.900 bytes=0 buckets=0,2,6,0,0,0
-telemetry_metric device=2 name=snapshot count=6 failures=0 total_us=3112.200 min_us=480.500 max_us=550.400 bytes=0 buckets=0,0,6,0,0,0
-telemetry_metric device=2 name=texture count=2 failures=0 total_us=6.300 min_us=1.000 max_us=5.300 bytes=0 buckets=2,0,0,0,0,0
-telemetry_metric device=2 name=vertex_buffer count=2 failures=0 total_us=15.000 min_us=5.800 max_us=9.200 bytes=152 buckets=2,0,0,0,0,0
-telemetry_metric device=2 name=index_buffer count=1 failures=0 total_us=6.900 min_us=6.900 max_us=6.900 bytes=6 buckets=1,0,0,0,0,0
-telemetry_metric device=2 name=reset count=1 failures=0 total_us=4894.500 min_us=4894.500 max_us=4894.500 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=2 name=log_flush count=6 failures=0 total_us=1.000 min_us=0.100 max_us=0.300 bytes=0 buckets=6,0,0,0,0,0
+telemetry_summary device=2 frame=6 reason=reset qpc=9314459750915 since_start_us=222247.900 interval_us=12951.600 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=2 name=present_normal count=1 failures=0 total_us=41.500 min_us=41.500 max_us=41.500 bytes=0 buckets=0,1,0,0,0,0
+telemetry_metric device=2 name=present_capture count=5 failures=0 total_us=15.900 min_us=1.700 max_us=4.900 bytes=0 buckets=5,0,0,0,0,0
+telemetry_metric device=2 name=frame_capture count=5 failures=0 total_us=7107.300 min_us=1028.100 max_us=1814.200 bytes=0 buckets=0,0,0,5,0,0
+telemetry_metric device=2 name=draw_backend count=7 failures=1 total_us=537.300 min_us=0.200 max_us=479.600 bytes=0 buckets=3,3,1,0,0,0
+telemetry_metric device=2 name=capture_cpu count=8 failures=0 total_us=3460.500 min_us=16.600 max_us=592.100 bytes=0 buckets=0,2,6,0,0,0
+telemetry_metric device=2 name=snapshot count=6 failures=0 total_us=3177.400 min_us=501.400 max_us=561.100 bytes=0 buckets=0,0,6,0,0,0
+telemetry_metric device=2 name=texture count=2 failures=0 total_us=6.300 min_us=1.100 max_us=5.200 bytes=0 buckets=2,0,0,0,0,0
+telemetry_metric device=2 name=vertex_buffer count=2 failures=0 total_us=15.100 min_us=5.800 max_us=9.300 bytes=152 buckets=2,0,0,0,0,0
+telemetry_metric device=2 name=index_buffer count=1 failures=0 total_us=5.800 min_us=5.800 max_us=5.800 bytes=6 buckets=1,0,0,0,0,0
+telemetry_metric device=2 name=reset count=1 failures=0 total_us=4363.300 min_us=4363.300 max_us=4363.300 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=2 name=log_flush count=6 failures=0 total_us=1.500 min_us=0.200 max_us=0.300 bytes=0 buckets=6,0,0,0,0,0
 reset_end device=2 result=00000000
-telemetry_summary device=2 frame=6 reason=device_destroy qpc=9255632820147 since_start_us=220569.000 interval_us=1949.700 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=2 name=log_flush count=1 failures=0 total_us=0.300 min_us=0.300 max_us=0.300 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=6 reason=device_destroy qpc=9255632820393 since_start_us=220593.600 interval_us=18711.900 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=46 failures=0 total_us=6.900 min_us=0.100 max_us=0.300 bytes=0 buckets=46,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2629.600 min_us=2629.600 max_us=2629.600 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
-device_destroy ptr=00de08b0 device=2
+telemetry_summary device=2 frame=6 reason=device_destroy qpc=9314459769363 since_start_us=224092.700 interval_us=1844.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=2 name=log_flush count=1 failures=0 total_us=0.200 min_us=0.200 max_us=0.200 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=6 reason=device_destroy qpc=9314459769619 since_start_us=224118.300 interval_us=18364.900 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=46 failures=0 total_us=6.900 min_us=0.000 max_us=0.300 bytes=0 buckets=46,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2846.800 min_us=2846.800 max_us=2846.800 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.300 min_us=0.300 max_us=0.300 bytes=0 buckets=1,0,0,0,0,0
+device_destroy ptr=00defda8 device=2
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0

@@ -2,6 +2,7 @@
 #include "telemetry.h"
 #include "object_trace.h"
 #include "camera_state.h"
+#include "scene_hook.h"
 #include "object_lifetime.h"
 #include "../ownership/d3d9_ownership.h"
 #include "../ownership/application_admission_abi.h"
@@ -55,6 +56,10 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
         x3m::object_lifetime::initialize();
         x3m::camera_state::initialize(); // X3M_MOTION_OUTPUT=1 X3M_TAA=1; reads only, no patch
         x3m::log("camera_state active=%u status=%s",x3m::camera_state::available(),x3m::camera_state::status());
+        // X3M_SCENE_HOOK=1: the frame routine's compositing callsite, exact
+        // executable and exact bytes only; restored when the last device goes.
+        x3m::scene_hook::initialize(&x3m::scene_end_signal);
+        x3m::log("scene_hook active=%u status=%s",x3m::scene_hook::active(),x3m::scene_hook::status());
         const auto lifetime_stats=x3m::object_lifetime::stats();
         x3m::log("object_lifetime active=%u status=%s recovery_required=%u baseline_complete=%u baseline_entries=%lu",
             x3m::object_lifetime::active(),x3m::object_lifetime::status(),x3m::object_lifetime::recovery_required(),

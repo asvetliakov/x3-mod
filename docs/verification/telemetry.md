@@ -105,7 +105,12 @@ Per-frame totals are appended to `motion_output_frame` (fields after
 `readbacks`, and the microsecond totals `gate_us`, `route_draw_us`,
 `set_rt_us`, `lazy_flush_us`, `jitter_us`, `fill_us`, `taa_run_us`,
 `taa_capture_us`, `taa_copy_color_us`, `taa_copy_depth_us`, `taa_draw_us`,
-`taa_apply_us`, `taa_copy_back_us`, `readback_us`. The line is written in
+`taa_apply_us`, `taa_copy_back_us`, `readback_us`; after them (2026-09-12)
+the render-state shadow counters `state_shadow`, `rs_queries`, `rs_hits`,
+`rs_gets`, `rs_resyncs` and the engine-hook fields `scene_hook`,
+`scene_end_source=none|hook|stretchrect`, `scene_end_check`, `hook_signals`,
+`hook_outside_scene`, `hook_state`, `draws_after_hook`, `bloom_copy_seen`
+([live-motion-route.md](../architecture/live-motion-route.md#engine-boundaries-and-state-shadow-2026-09-12)). The line is written in
 every capture frame and, with telemetry on, every `X3M_MOTION_FRAME_LOG`
 frames (default 60). `readbacks > 0` identifies a capture frame:
 `tools/analysis/summarize_telemetry.py` aggregates the lines per device,
@@ -119,8 +124,11 @@ application call that could observe or depend on them (a draw that does
 not route, `SetRenderTarget`, `GetRenderTarget`, `Clear`, `StretchRect`,
 `ColorFill`, `UpdateSurface/Texture`, patch draws, state block
 create/begin/end/apply, query `Issue`, `EndScene`, `Present`, `Reset`,
-`GetRenderTargetData`, the final device Release) and when the selector
-leaves the scene phase. Capture frames additionally restore before each
+`GetRenderTargetData`, an application `SetRenderState` of a held
+`COLORWRITEENABLE1/2` (the light hook flushes quietly; its metric sample
+and any failure line are deferred to the next heavy call), an application
+`GetRenderState`, the engine scene-end signal, the final device Release)
+and when the selector leaves the scene phase. Capture frames additionally restore before each
 draw's diagnostics (they read the application's bindings), so the
 `set_rt` count of a capture frame equals the per-draw mode's; compare
 periodic frame lines. Not intercepted: an application write or read of

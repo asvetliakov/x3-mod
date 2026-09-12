@@ -13,7 +13,7 @@ RigidDrawKey key(std::uint64_t node_serial, std::uint32_t first = 0) {
     RigidDrawKey k{};
     k.object_lifetime = node_serial; k.camera_lifetime = 21; k.draw_domain = 5; k.node = 0x1000 + node_serial; k.camera = 0x2000;
     k.vertex_buffer = 7; k.declaration = 9; k.position_program = 0x53a0a641107ed76cull; k.stride = 24; k.primitives = 1;
-    k.first = first; k.topology = 4;
+    k.first = first; k.topology = 4; k.pass = PassMainScene;
     return k;
 }
 SubmittedMatrix rows(float t) { SubmittedMatrix m{}; m[0] = m[5] = m[10] = m[15] = 1; m[3] = t; return m; }
