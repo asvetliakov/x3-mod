@@ -1,5 +1,11 @@
 # X3 Modern Renderer: staged implementation and acceptance gates
 
+The user-added [modern chase camera](chase-camera.md) is goal 17. The
+existing prototype `7f4b251` is integrated, reviewed/fixed and fixture-qualified; install before its
+first user run. It replaces only the engine's external back view and remains
+off by default; gameplay feel, menu behavior, aiming, TAA cuts and cost remain
+acceptance items. This integration precedes HDR bloom implementation.
+
 ## Scope and ordering
 
 Target **X3AP.exe**, 32-bit, on native Windows/Direct3D and **CrossOver Preview**

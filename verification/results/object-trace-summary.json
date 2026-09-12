@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T19:32:09.147232+00:00",
+  "started_utc": "2026-09-12T23:30:40.967032+00:00",
   "game_launched": false,
   "bottle": {
     "name": "Steam",
@@ -30,7 +30,7 @@
     "verification/probe/run_object_trace.py": "612305fe7f0671e5e988c7744bfe3a5807dc095eba11f5b8950eea83b50582e3"
   },
   "passed": true,
-  "executable_sha256": "81431ddeadcd93244015b8a036f2a51fae786e5fa07a1e52b96382a072fa73da",
+  "executable_sha256": "72eb6ba1fb919084d501f3bef59049315caef03dd30ff6e1a3429e1c6c8a7dc2",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -41,7 +41,7 @@
     "/Users/asvetl/x3-mod/verification/probe/build/object_trace.exe"
   ],
   "exit_code": 0,
-  "executable_sha256_after_run": "81431ddeadcd93244015b8a036f2a51fae786e5fa07a1e52b96382a072fa73da",
+  "executable_sha256_after_run": "72eb6ba1fb919084d501f3bef59049315caef03dd30ff6e1a3429e1c6c8a7dc2",
   "sources_after_run": {
     "src/proxy/object_trace.cpp": "c0d83fe7c88f4966d9e417b4a3e43f99fc192556fba728a728879bf9a5a0a956",
     "src/proxy/object_trace.h": "fc9168feeb59630bdb11550e9c6a3c6b42c1ea471add2ad96f182e6af36bbb0b",
@@ -51,7 +51,7 @@
     "verification/probe/build_object_trace.sh": "9649143e84b2d7d0fad03157583681304dc21327543d96f0309470976269c7a0",
     "verification/probe/run_object_trace.py": "612305fe7f0671e5e988c7744bfe3a5807dc095eba11f5b8950eea83b50582e3"
   },
-  "report_sha256": "fcff0037e27f29044092973e2548e8062c7570ec2aa6b0fa637c272c0c87c848",
+  "report_sha256": "09e07357b736bd314513b4d764119958fcfd0d8864364e8819c6ebb71a102efd",
   "checks": 166,
   "failures": 0,
   "backend_calls": 120017,
@@ -59,22 +59,22 @@
     "timing": [
       {
         "mode": "rpm",
-        "baseline_us": "0.035",
-        "route_us": "3.304",
-        "capture_us": "7.482",
-        "route_read_us": "3.269",
-        "capture_read_us": "7.448",
+        "baseline_us": "0.034",
+        "route_us": "3.330",
+        "capture_us": "7.601",
+        "route_read_us": "3.295",
+        "capture_read_us": "7.566",
         "route_queries_per_call": "0.0000",
         "route_syscalls_per_call": "4.00",
         "capture_syscalls_per_call": "12.00"
       },
       {
         "mode": "direct",
-        "baseline_us": "0.033",
-        "route_us": "1.321",
-        "capture_us": "1.690",
-        "route_read_us": "1.287",
-        "capture_read_us": "1.657",
+        "baseline_us": "0.034",
+        "route_us": "1.334",
+        "capture_us": "1.684",
+        "route_read_us": "1.300",
+        "capture_read_us": "1.650",
         "route_queries_per_call": "0.0040",
         "route_syscalls_per_call": "0.00",
         "capture_syscalls_per_call": "0.00"

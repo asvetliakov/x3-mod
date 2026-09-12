@@ -40,7 +40,12 @@ EXE = BUILD / 'd3d9_exports_fixture.exe'
 DLL = ROOT / 'build/d3d9.dll'
 WINE = Path(bottle.WINE)
 SOURCES = ['src/proxy/loader.cpp', 'src/proxy/d3d9.def', 'src/proxy/capture.cpp', 'verification/probe/d3d9_exports_fixture.cpp',
-           'verification/probe/build_d3d9_exports.sh', 'verification/probe/run_d3d9_exports.py', 'tools/analysis/pe_exports.py']
+           'verification/probe/build_d3d9_exports.sh', 'verification/probe/run_d3d9_exports.py', 'tools/analysis/pe_exports.py',
+           'CMakeLists.txt', 'cmake/mingw-i686.cmake']
+# The real DLL links every production module, including the opt-in chase camera.
+SOURCES = sorted(set(SOURCES) | {str(p.relative_to(ROOT))
+    for folder in ('src/proxy', 'src/renderer', 'src/ownership', 'src/temporal')
+    for p in (ROOT / folder).glob('*') if p.suffix in ('.cpp', '.h', '.hlsl', '.def')})
 
 
 def sha(path):
@@ -73,7 +78,7 @@ def run_case(name, readonly, report):
     if readonly:
         directory.chmod(stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
     command = [str(WINE), *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(directory), str(directory / EXE.name)] + (['readonly'] if readonly else [])
-    env = dict(os.environ, WINEDLLOVERRIDES='d3d9=n,b', X3M_TELEMETRY='0')
+    env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', WINEDLLOVERRIDES='d3d9=n,b', X3M_TELEMETRY='0')
     try:
         completed = subprocess.run(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=180)
     finally:

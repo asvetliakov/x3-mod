@@ -18,19 +18,19 @@
   "terminal_inventory": "exact-full",
   "sources": {
     "src/proxy/resource_reader.h": "873a3899269496d39cac43be32d376b3ea897a86dcc103d955545e9a85db6cb6",
-    "src/proxy/resource_reader.cpp": "e3d38b15f96d1d421691192d8f57d597806bf8d3c8449feb1b122e1ffba5b86a",
+    "src/proxy/resource_reader.cpp": "d62e5c3c444055a4f617f6c0e7fe74b187a5c9968fba9c6c751af1e927d3c61b",
     "src/proxy/resource_reader_core.cpp": "43eaf23f72236c569a4c5316ae06ab2d1ad186833453c43e84997882ca48437e",
-    "src/proxy/engine_patch.h": "163b0a0789adc75ddca115389a1f7426cbeadf158f092626aa4976238e95fab1",
-    "src/proxy/engine_patch.cpp": "5a0f59ccb0d47c6be6ccab62e3bcfc873ff1a61633e1cc3c875fddef21962d67",
+    "src/proxy/engine_patch.h": "aa010cbe864ddae916e0cf9b840bc0da84c1177c87247fc0dd4100e2d914e707",
+    "src/proxy/engine_patch.cpp": "a0d5e26079fbe831059921f92b4cdf8c9ab5c9006403407d257157615b6eefc7",
     "src/proxy/loading_probes.h": "92a4bf1383c6752e5d8a888231bd9b1873224603704b7354e0878d982ac2b482",
-    "src/proxy/loading_probes.cpp": "49630c0bd9f4706b7ec7c6836d4e6963fa7ae0fae8df81131988d44b606818db",
+    "src/proxy/loading_probes.cpp": "5ab9a604d03ebb82e80c67a0b98cce55cf6544252b07bf64db806b92a8969b77",
     "src/proxy/loading_trace_light.h": "d233da9be49a47953ce82fe330e0e863c4ab5464c08d8b066602a690d7115aed",
     "src/proxy/loading_trace_light.cpp": "074a26fc2c6772082c38c28902c44247ea4a5b8b3a71e2460de10c5501ef8241",
     "src/proxy/loading_trace.h": "6f7cb50dc11f98cf32fb7eac1ed23a9da14a8214dda8c8cd8f170fe7c4680097",
-    "verification/probe/resource_reader_fixture.cpp": "d0b7ef4cdf0420553121aa37e916f7000ca422d18c92f0c2ea126db9be49976d",
+    "verification/probe/resource_reader_fixture.cpp": "9b5c9bb07e4d87bb0ccfab617c8e16c500671f0f75dd519b67b739bc781a1d4e",
     "verification/probe/build_resource_reader.sh": "d0795d783d6afa55db902435cf751c30d27dff429c47dc53329253c3e4e62896",
     "verification/probe/build_loading_light.sh": "33864e3b506b0e0091e2c699a1770fb3c129fc0ad04c3a19ca3ed9d9365cdab9",
-    "verification/probe/run_resource_reader.py": "28884cfb3fcce680633a0237e5826d1274ca6e3271c0f13c8cb647d189ef7a2c",
+    "verification/probe/run_resource_reader.py": "986378c7699191df06638af29fa93d49c8a51751e796440ffbc55050900045d3",
     "src/proxy/capture.h": "c9029e5297939f57e165626033a785eada38c5932850b3f8d8ca9dbfbe4747db",
     "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
     "src/proxy/object_trace.h": "fc9168feeb59630bdb11550e9c6a3c6b42c1ea471add2ad96f182e6af36bbb0b",
@@ -40,9 +40,9 @@
     "verification/analysis/test_resource_reader.py": "06a324a7b7ada4ba34e58e1edb2d13f88263a4a8419a02d63b3560dba673dbf8"
   },
   "zlib1_sha256_before": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
-  "executable_sha256": "7bf746d206535796602bdc9ac46da12813abbdc986f5b9773c83c3addc80d5d0",
+  "executable_sha256": "3f53b94d2bfdfd51f44b2b96d0b8c3e5580222ec4bd63301cc21b10bcc122df3",
   "zlib1_sha256_copied": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
-  "stdout_sha256": "df14b2cf96bf9f6787daea9719e17fb60331e4d2ef6c975942fe23879d5a76b9",
+  "stdout_sha256": "ce470f957ffabac57729b63aef792fc97b99ff15bd9623c7e7efa99cc840cf3f",
   "wine_log_sha256": "06bb0bf4cb250155ea8c208eb08f13662e526c8f474265eac9a41e565eafaf31",
   "exit_code": 0,
   "report": {
@@ -118,32 +118,32 @@
       "verify_mismatched": 0,
       "bytes_in": 4044806,
       "bytes_out": 6162400,
-      "our_us": 65863.0,
-      "original_us": 68212.6
+      "our_us": 65783.1,
+      "original_us": 66895.0
     },
     "timing": {
       "large": {
         "name": "large",
         "bytes": 3000000,
         "rounds": 5,
-        "fast_us": 28458.3,
-        "reference_us": 31703.4,
-        "ratio": 1.11
+        "fast_us": 27758.9,
+        "reference_us": 31124.1,
+        "ratio": 1.12
       },
       "medium": {
         "name": "medium",
         "bytes": 31000,
         "rounds": 400,
-        "fast_us": 312.3,
-        "reference_us": 346.1,
+        "fast_us": 309.6,
+        "reference_us": 342.8,
         "ratio": 1.11
       },
       "large_record": {
         "name": "large_record",
         "bytes": 3000000,
         "rounds": 5,
-        "fast_us": 28154.4,
-        "reference_us": 31431.0,
+        "fast_us": 27788.7,
+        "reference_us": 31062.6,
         "ratio": 1.12
       }
     },
@@ -151,29 +151,29 @@
       "large": {
         "name": "large",
         "extent": 1971063,
-        "read_us": 519.3,
-        "scan_us": 69.1,
-        "alloc_us": 10.5,
-        "inflate_us": 27714.0,
-        "total_us": 28458.3
+        "read_us": 465.7,
+        "scan_us": 69.2,
+        "alloc_us": 8.4,
+        "inflate_us": 27091.4,
+        "total_us": 27758.9
       },
       "medium": {
         "name": "medium",
         "extent": 19654,
-        "read_us": 7.7,
+        "read_us": 7.3,
         "scan_us": 0.1,
         "alloc_us": 0.2,
-        "inflate_us": 298.3,
-        "total_us": 312.3
+        "inflate_us": 296.3,
+        "total_us": 309.6
       },
       "large_record": {
         "name": "large_record",
         "extent": 1971063,
-        "read_us": 524.7,
-        "scan_us": 134.6,
-        "alloc_us": 11.0,
-        "inflate_us": 27349.6,
-        "total_us": 28154.4
+        "read_us": 487.3,
+        "scan_us": 134.8,
+        "alloc_us": 7.8,
+        "inflate_us": 27037.9,
+        "total_us": 27788.7
       }
     },
     "cursor_statistics": {
@@ -199,8 +199,8 @@
       "expected_position": 20113,
       "catalogue": 1,
       "scrambled": 1,
-      "our_us": 326.6,
-      "original_us": 365.6
+      "our_us": 335.4,
+      "original_us": 350.9
     },
     "checks": 4721,
     "failures": 0,
@@ -208,19 +208,19 @@
   },
   "sources_after": {
     "src/proxy/resource_reader.h": "873a3899269496d39cac43be32d376b3ea897a86dcc103d955545e9a85db6cb6",
-    "src/proxy/resource_reader.cpp": "e3d38b15f96d1d421691192d8f57d597806bf8d3c8449feb1b122e1ffba5b86a",
+    "src/proxy/resource_reader.cpp": "d62e5c3c444055a4f617f6c0e7fe74b187a5c9968fba9c6c751af1e927d3c61b",
     "src/proxy/resource_reader_core.cpp": "43eaf23f72236c569a4c5316ae06ab2d1ad186833453c43e84997882ca48437e",
-    "src/proxy/engine_patch.h": "163b0a0789adc75ddca115389a1f7426cbeadf158f092626aa4976238e95fab1",
-    "src/proxy/engine_patch.cpp": "5a0f59ccb0d47c6be6ccab62e3bcfc873ff1a61633e1cc3c875fddef21962d67",
+    "src/proxy/engine_patch.h": "aa010cbe864ddae916e0cf9b840bc0da84c1177c87247fc0dd4100e2d914e707",
+    "src/proxy/engine_patch.cpp": "a0d5e26079fbe831059921f92b4cdf8c9ab5c9006403407d257157615b6eefc7",
     "src/proxy/loading_probes.h": "92a4bf1383c6752e5d8a888231bd9b1873224603704b7354e0878d982ac2b482",
-    "src/proxy/loading_probes.cpp": "49630c0bd9f4706b7ec7c6836d4e6963fa7ae0fae8df81131988d44b606818db",
+    "src/proxy/loading_probes.cpp": "5ab9a604d03ebb82e80c67a0b98cce55cf6544252b07bf64db806b92a8969b77",
     "src/proxy/loading_trace_light.h": "d233da9be49a47953ce82fe330e0e863c4ab5464c08d8b066602a690d7115aed",
     "src/proxy/loading_trace_light.cpp": "074a26fc2c6772082c38c28902c44247ea4a5b8b3a71e2460de10c5501ef8241",
     "src/proxy/loading_trace.h": "6f7cb50dc11f98cf32fb7eac1ed23a9da14a8214dda8c8cd8f170fe7c4680097",
-    "verification/probe/resource_reader_fixture.cpp": "d0b7ef4cdf0420553121aa37e916f7000ca422d18c92f0c2ea126db9be49976d",
+    "verification/probe/resource_reader_fixture.cpp": "9b5c9bb07e4d87bb0ccfab617c8e16c500671f0f75dd519b67b739bc781a1d4e",
     "verification/probe/build_resource_reader.sh": "d0795d783d6afa55db902435cf751c30d27dff429c47dc53329253c3e4e62896",
     "verification/probe/build_loading_light.sh": "33864e3b506b0e0091e2c699a1770fb3c129fc0ad04c3a19ca3ed9d9365cdab9",
-    "verification/probe/run_resource_reader.py": "28884cfb3fcce680633a0237e5826d1274ca6e3271c0f13c8cb647d189ef7a2c",
+    "verification/probe/run_resource_reader.py": "986378c7699191df06638af29fa93d49c8a51751e796440ffbc55050900045d3",
     "src/proxy/capture.h": "c9029e5297939f57e165626033a785eada38c5932850b3f8d8ca9dbfbe4747db",
     "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
     "src/proxy/object_trace.h": "fc9168feeb59630bdb11550e9c6a3c6b42c1ea471add2ad96f182e6af36bbb0b",
@@ -230,5 +230,5 @@
     "verification/analysis/test_resource_reader.py": "06a324a7b7ada4ba34e58e1edb2d13f88263a4a8419a02d63b3560dba673dbf8"
   },
   "zlib1_sha256_copied_after": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
-  "executable_sha256_after": "7bf746d206535796602bdc9ac46da12813abbdc986f5b9773c83c3addc80d5d0"
+  "executable_sha256_after": "3f53b94d2bfdfd51f44b2b96d0b8c3e5580222ec4bd63301cc21b10bcc122df3"
 }

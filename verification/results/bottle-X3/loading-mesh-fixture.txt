@@ -23,15 +23,15 @@ loading_hook name=gzgetc installed=0
 loading_hook name=gztell installed=0
 loading_hook name=gzclose installed=0
 loading_hook name=gzwrite installed=0
-loading_trace coverage_begin=9808645164572 frequency=10000000 hooks=2 module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=1 probes=0 crypt_cache=0
+loading_trace coverage_begin=9854142894760 frequency=10000000 hooks=2 module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=1 probes=0 crypt_cache=0
 mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=8 objects_retained=0
 mesh_hook table=0 installed=0 owned_slots=0 scope=shared_native_vtable
 mesh_hook table=0 installed=1 owned_slots=3 scope=shared_native_vtable
-MESH_COUNT op=14 count=1 failures=0 inclusive=3763 max=3763
-MESH_COUNT op=15 count=1 failures=0 inclusive=292 max=292
-MESH_COUNT op=41 count=1 failures=0 inclusive=239 max=239
-MESH_COUNT op=42 count=2 failures=0 inclusive=764 max=390
-MESH_COUNT op=43 count=2 failures=1 inclusive=2975 max=2966
+MESH_COUNT op=14 count=1 failures=0 inclusive=3634 max=3634
+MESH_COUNT op=15 count=1 failures=0 inclusive=304 max=304
+MESH_COUNT op=41 count=1 failures=0 inclusive=217 max=217
+MESH_COUNT op=42 count=2 failures=0 inclusive=606 max=360
+MESH_COUNT op=43 count=2 failures=1 inclusive=2712 max=2702
 mesh_hook table=0 restored_slots=0 foreign_slots=1 remaining_owned_slots=0
 loading_hook name=D3DXCreateMesh restored=0 owned=1
 loading_hook name=D3DXCleanMesh restored=0 owned=1

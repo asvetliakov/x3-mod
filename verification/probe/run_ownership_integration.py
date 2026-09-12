@@ -108,7 +108,7 @@ def main():
                 directory.mkdir(parents=True)
                 shutil.copy(probe / exe, directory)
                 shutil.copy(dll, directory / 'd3d9.dll')
-                env = dict(os.environ, X3M_TELEMETRY='1', X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES=frames,
+                env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_TELEMETRY='1', X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES=frames,
                            X3M_DEPTH_COPY='1' if mode in ('depth_only', 'copy_depth', 'scene_depth', 'motion_requested') else '0',
                            X3M_SCENE_DEPTH_CAPTURE='1' if mode in ('scene_depth', 'scene_only', 'motion_requested') else '0',
                            X3M_OBJECT_TRACE='1' if mode in ('object_requested', 'motion_requested') else '0',

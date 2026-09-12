@@ -1,5 +1,6 @@
 // Tests main-module import patching and exact forwarded results, without X3.
 #include "../../src/proxy/loading_trace.h"
+#include "../../src/proxy/engine_patch.h"
 #include <d3dx9.h>
 #include <cstdio>
 #include <cstdarg>
@@ -36,6 +37,52 @@ static PVOID* import_slot(const char* wanted) {
 static decltype(&ReadFile) fixture_raw_read=nullptr;
 static BOOL WINAPI other_interceptor(HANDLE f,void* b,DWORD n,DWORD* r,OVERLAPPED* o){return fixture_raw_read(f,b,n,r,o);}
 __attribute__((noinline)) static BOOL read_fresh_import(HANDLE file,void* data,DWORD* read){return ReadFile(file,data,4,read,nullptr);}
+// Execute both edges of a displaced near Jcc. This is the chase camera's new
+// engine_patch contract, exercised on original synthetic code, never X3 code.
+// Both site addresses cross an aligned qword so claim takes its plain-copy
+// install-window path. Negative displacement is tested separately.
+static void relocation_cases() {
+    using namespace x3m::engine_patch;
+    const unsigned before_checks=checks,before_failures=failures;
+    auto* page=static_cast<unsigned char*>(VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));
+    check(page!=nullptr,"rel32_storage");if(!page)return;
+    for(unsigned backward=0;backward<2;++backward){
+        DWORD previous=0;
+        check(VirtualProtect(page,4096,PAGE_READWRITE,&previous)!=FALSE,"rel32_write_code");
+        std::memset(page,0xcc,64);
+        const unsigned entry=backward?8:2, site_offset=entry+4, target=backward?0:21;
+        const unsigned char load_arg[]={0x8b,0x44,0x24,0x04}; // mov eax,[esp+4]
+        const unsigned char branch[]={0x83,0xf8,0x00,0x0f,0x84,0,0,0,0}; // cmp eax,0; jz rel32
+        const unsigned char no[]={0xb8,11,0,0,0,0xc3}, yes[]={0xb8,22,0,0,0,0xc3};
+        std::memcpy(page+entry,load_arg,sizeof load_arg);
+        std::memcpy(page+site_offset,branch,sizeof branch);
+        const uint32_t displacement=uint32_t(target-(site_offset+sizeof branch));
+        std::memcpy(page+site_offset+5,&displacement,4);
+        std::memcpy(page+site_offset+sizeof branch,no,sizeof no);std::memcpy(page+target,yes,sizeof yes);
+        check(VirtualProtect(page,4096,PAGE_EXECUTE_READ,&previous)!=FALSE,"rel32_executable");
+        check(FlushInstructionCache(GetCurrentProcess(),page,64)!=FALSE,"rel32_flush");
+        using Fn=int(__cdecl*)(int);const auto fn=reinterpret_cast<Fn>(page+entry);
+        check(fn(0)==22&&fn(1)==11,"rel32_native_edges");
+        SiteSpec spec{"synthetic_jcc",reinterpret_cast<uintptr_t>(page+site_offset),{},9,0,5};
+        std::memcpy(spec.expected,page+site_offset,9);
+        Site invalid;auto bad=spec;bad.rel32_offset=~0u;
+        check(!claim(invalid,bad)&&std::strcmp(invalid.status,"invalid_spec")==0,"rel32_overflow_rejected");
+        Site site;const bool claimed=claim(site,spec);check(claimed,"rel32_claim");
+        if(claimed){
+            check(!site.atomic_write,"rel32_cross_qword_plain_copy");
+            check(fn(0)==22,"rel32_relocated_taken");check(fn(1)==11,"rel32_relocated_fallthrough");
+            check(restore(site),"rel32_restore");
+            check(verify_bytes(spec.address,spec.expected,spec.length),"rel32_restored_bytes");
+            check(fn(0)==22&&fn(1)==11,"rel32_restored_edges");
+        }
+    }
+    close_install_window("fixture_complete");
+    Site late;SiteSpec spec{"late_jcc",reinterpret_cast<uintptr_t>(page+12),{},9,0,5};
+    std::memcpy(spec.expected,page+12,9);
+    check(!claim(late,spec)&&std::strcmp(late.status,"late_claim")==0,"rel32_late_claim_rejected");
+    VirtualFree(page,0,MEM_RELEASE);
+    printf("engine_patch_rel32 checks=%u failures=%u directions=2 edges=4 late_claim=1\n",checks-before_checks,failures-before_failures);
+}
 int main(){
     HMODULE self=GetModuleHandleW(nullptr);
     SetEnvironmentVariableW(L"X3M_TELEMETRY",nullptr);
@@ -249,5 +296,6 @@ int main(){
     check(sample(take_snapshot(),Operation::FileRead).count==0,"restored_import_not_intercepted");
     CloseHandle(file);
     if(!loading_admission_witness())++failures;
+    relocation_cases();
     printf("loading_fixture checks=%u failures=%u\n",checks,failures);return failures?1:0;
 }

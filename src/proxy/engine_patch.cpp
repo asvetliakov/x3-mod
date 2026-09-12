@@ -93,11 +93,24 @@ bool claim(Site& site,const SiteSpec& spec) {
     if(!spec.address||spec.length<5||spec.length>max_prologue){site.status="invalid_spec";return false;}
     if(!read_code(spec.address,site.original,spec.length)){site.status="unreadable";return false;}
     if(std::memcmp(site.original,spec.expected,spec.length)){site.status="bytes_mismatch";return false;}
-    // Tail: displaced prologue, jmp back. Entry word. Dispatcher: jmp [entry].
+    // Subtraction avoids an overflowing offset+4 admitting an out-of-bounds
+    // relocation field; every caller declares the displacement, not opcode.
+    if(spec.rel32_offset&&spec.rel32_offset>spec.length-4){site.status="invalid_spec";return false;}
+    // Tail: displaced prologue (one declared rel32 re-based so its absolute
+    // target is unchanged), jmp back. Entry word. Dispatcher: jmp [entry].
     {
         Emitter e(spec.length+5+4+6+8);
         if(!e.ok()){site.status="arena_full";return false;}
-        site.tail=e.here();e.bytes(site.original,spec.length);e.byte(0xe9);e.rel32(reinterpret_cast<const void*>(spec.address+spec.length));
+        unsigned char displaced[max_prologue];std::memcpy(displaced,site.original,spec.length);
+        site.tail=e.here();
+        if(spec.rel32_offset){
+            uint32_t original_rel=0;std::memcpy(&original_rel,displaced+spec.rel32_offset,4);
+            const uintptr_t target=spec.address+spec.rel32_offset+4+original_rel;
+            const uintptr_t next=reinterpret_cast<uintptr_t>(site.tail)+spec.rel32_offset+4;
+            const uint32_t rebased=uint32_t(target-next);
+            std::memcpy(displaced+spec.rel32_offset,&rebased,4);
+        }
+        e.bytes(displaced,spec.length);e.byte(0xe9);e.rel32(reinterpret_cast<const void*>(spec.address+spec.length));
         while(reinterpret_cast<uintptr_t>(e.here())&3)e.byte(0xcc);
         site.entry=static_cast<void**>(e.here());e.dword(uint32_t(reinterpret_cast<uintptr_t>(site.tail)));
         site.dispatcher=e.here();e.byte(0xff);e.byte(0x25);e.dword(uint32_t(reinterpret_cast<uintptr_t>(site.entry)));

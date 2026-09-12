@@ -41,10 +41,10 @@ loading_hook name=MoveFileExA installed=0
 loading_hook name=WriteFile installed=1
 loading_hook name=GetFileType installed=0
 loading_hook name=CloseHandle installed=1
-loading_trace coverage_begin=9808614540766 frequency=10000000 hooks=21 module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=1 probes=1 crypt_cache=0
+loading_trace coverage_begin=9854108633217 frequency=10000000 hooks=21 module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=1 probes=1 crypt_cache=0
 loading_probes requested=1 installed=0 status=executable_mismatch
 mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=8 objects_retained=0
-loading_benchmark synthetic=1 calls=20000 raw_us_per_call=0.003280 hooked_us_per_call=0.354710
+loading_benchmark synthetic=1 calls=20000 raw_us_per_call=0.002995 hooked_us_per_call=0.368725
 loading_hook name=CreateFileA restored=1 owned=1
 loading_hook name=ReadFile restored=0 owned=0
 loading_hook name=SetFilePointer restored=1 owned=1
@@ -68,4 +68,5 @@ loading_hook name=WriteFile restored=1 owned=1
 loading_hook name=CloseHandle restored=1 owned=1
 loading_trace disabled=reinitialization_not_supported
 ADMISSION_WITNESS requested=0 enabled=0 active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 valid=1
-loading_fixture checks=86 failures=0
+engine_patch_rel32 checks=26 failures=0 directions=2 edges=4 late_claim=1
+loading_fixture checks=112 failures=0

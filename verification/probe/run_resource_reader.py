@@ -160,7 +160,7 @@ def main():
         report['phase'] = 'running'
         summary.write_text(json.dumps(report, indent=2) + '\n')
         with (results / 'resource-reader-fixture.txt').open('w') as out, (results / 'resource-reader-fixture-wine.log').open('w') as err:
-            run = subprocess.run(command, env=dict(os.environ, WINEDLLOVERRIDES=override), stdout=out, stderr=err, timeout=args.timeout)
+            run = subprocess.run(command, env=dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', WINEDLLOVERRIDES=override), stdout=out, stderr=err, timeout=args.timeout)
         report['stdout_sha256'] = sha(results / 'resource-reader-fixture.txt')
         report['wine_log_sha256'] = sha(results / 'resource-reader-fixture-wine.log')
         text = (results / 'resource-reader-fixture.txt').read_text(errors='replace')

@@ -118,7 +118,7 @@ bool initialize() {
         else{
             engine_patch::Site* target=loading_probes::resource_read_site();
             if(!target){
-                engine_patch::SiteSpec spec{"resource_read",reader_va,{},6,0};std::memcpy(spec.expected,reader_bytes,6);
+                engine_patch::SiteSpec spec{"resource_read",reader_va,{},6,0,0};std::memcpy(spec.expected,reader_bytes,6);
                 if(engine_patch::claim(own_site,spec))target=&own_site;else status_=own_site.status;
             }
             if(target)install_stub(*target,env,mode_);
@@ -176,7 +176,7 @@ void fixture_bind(const Environment& env,Mode mode) { core_bind(env,mode,next_sl
 void fixture_pool_bind(const PoolEnvironment& env) { pool_bind(env); }
 bool fixture_install(uintptr_t site_address,const unsigned char* expected,unsigned length) {
     LARGE_INTEGER f{};QueryPerformanceFrequency(&f);frequency=f.QuadPart>0?uint64_t(f.QuadPart):1;
-    engine_patch::SiteSpec spec{"resource_read",site_address,{},length,0};std::memcpy(spec.expected,expected,length);
+    engine_patch::SiteSpec spec{"resource_read",site_address,{},length,0,0};std::memcpy(spec.expected,expected,length);
     engine_patch::Site* target=loading_probes::resource_read_site();
     if(!target){if(!engine_patch::claim(own_site,spec)){status_=own_site.status;return false;}target=&own_site;}
     Environment env;return install_stub(*target,env,mode_);

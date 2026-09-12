@@ -1,0 +1,684 @@
+{
+  "final_candidate": {
+    "bytes": 11587494,
+    "matches_x3_motion_summary": true,
+    "path": "/tmp/x3-chase-integration-verification/candidate-after-x3-motion/d3d9.dll",
+    "sha256": "47f1452e09351bb306d0c5225134665aa9bf7c8cc5c46609fa67604db82027ad"
+  },
+  "game_launched": false,
+  "host_verification": {
+    "camera_and_site_tests": 42,
+    "fresh_result_modules": {
+      "note": "unittest passed; enclosing zsh bookkeeping used reserved variable status and returned 1 afterward",
+      "path": "/tmp/x3-chase-integration-verification/result-dependent-host-tests.log",
+      "seconds": 0.053,
+      "sha256": "f36ecc2b704062e33d505bfa3c2fb8093365b9d12db9d7bd957fa8966f67b432",
+      "tests": 21
+    },
+    "full_discovery": {
+      "path": "/tmp/x3-chase-all-host-tests.log",
+      "seconds": 43.694,
+      "sha256": "a3394bf0099fd2f9fb9e051a860c97479a9908774af6c0efaed82665c366b504",
+      "tests": 907
+    },
+    "initial_no_x87": {
+      "reachable_functions": 211,
+      "violations": 0
+    },
+    "site_probe_checks": 9
+  },
+  "independent_final_artifact_audit": {
+    "exports": 17,
+    "motion_sources": 144,
+    "no_x87_reachable_functions": 211,
+    "no_x87_violations": 0,
+    "path": "verification/results/chase-final-artifact-audit.json",
+    "production_objects": 41,
+    "sha256": "b19e63bd26648077b7606c757d46baeb03fa67941abcdf289a862c32d4a1f55f",
+    "status": "PASS"
+  },
+  "local_driver_revisions": {
+    "path": "/tmp/x3-chase-integration-verification/driver-revisions.json",
+    "sha256": "1da0378ff02f9805f0648a0210e8b166aed1d374ae8c817b394cba097eb7100f"
+  },
+  "pre_run_preservation": {
+    "manifest": {
+      "path": "/tmp/x3-chase-integration-verification/pre-run/tracked-results-manifest.json",
+      "sha256": "275d27e82440e21ff67eece8176904890abc9c53fce598fcd43e22be337792d3"
+    },
+    "tracked_result_files": 336
+  },
+  "recorded_date": "2026-09-13",
+  "schema": 1,
+  "scope": "Frozen-source chase-camera integration regression; synthetic fixtures only",
+  "source_binding": {
+    "all_suites_equal_frozen_source": true,
+    "files": 440,
+    "frozen_manifest": {
+      "path": "/tmp/x3-chase-integration-verification/pre-run/source-frozen.json",
+      "sha256": "ca0d4c299a38f1e9059c18b17940813f4691694eb3a0645d67f3c4b45490845a"
+    }
+  },
+  "status": "PASS",
+  "suites": [
+    {
+      "bottle": "Steam",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf",
+        "environment": {
+          "WINEMSYNC": "1"
+        },
+        "name": "Steam",
+        "wine_arch": "win64"
+      },
+      "counts": {
+        "benchmark_processes": 16,
+        "benchmark_result_entries": 26,
+        "functional_case_checks": 9738,
+        "functional_cases": 98,
+        "retained_process_directories": 114
+      },
+      "driver_sha256": "d12da5fc792ef63546f042d219e83947986f586642d33a96cd549ebfdd7910da",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/steam-motion/manifest.json",
+        "sha256": "bcb08cd9fb1b704d40ac084eabbc84b96d0ae79ecff0b7a03730ab1fdb978124"
+      },
+      "name": "steam-motion",
+      "retained_artifacts": {
+        "build/d3d9.dll": "a8b769948e19bbf548c406511e0fa80c8db4e4a2b8eac4daffa4f048cd468295",
+        "verification/probe/build/motion-output-seam/d3d9.dll": "25c5f25ca8a7ac4b3dbdb9a17d6b9b2015fcce1dabde57680af251e31faf58f1",
+        "verification/probe/build/motion_output_fixture.exe": "6ae5da35473e2cd047d8a84e174f049b28694c57df5995e6cb206f2be5ac8fbf"
+      },
+      "retained_results": 97,
+      "runner_result": {
+        "path": "verification/results/motion-output-summary.json",
+        "sha256": "605df509177d5f9f0df208c4620e3a7878325a61bad5c7b423dc21aea7a22189"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "Steam",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf",
+        "environment": {
+          "WINEMSYNC": "1"
+        },
+        "name": "Steam",
+        "wine_arch": "win64"
+      },
+      "counts": {
+        "generations": 2,
+        "numerical_checks": 508,
+        "samples": 386,
+        "state_restorations": 278
+      },
+      "driver_sha256": "d12da5fc792ef63546f042d219e83947986f586642d33a96cd549ebfdd7910da",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/steam-temporal-pass/manifest.json",
+        "sha256": "b86408128b0b892b1ec74dd8c26fbb4ec3d14cf6794638f8440949500c390e69"
+      },
+      "name": "steam-temporal-pass",
+      "retained_artifacts": {
+        "verification/probe/build/temporal_pass_fixture.exe": "f079958a3b8c8bcfc9ee7dffb915c9b3640e54404367fa11ea615dc379bfb47d"
+      },
+      "retained_results": 7,
+      "runner_result": {
+        "path": "verification/results/temporal-pass-summary.json",
+        "sha256": "96669726a235e3376c9a2feb4210dae5c6415262aec74c3944be4d211aaed6a9"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "Steam",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf",
+        "environment": {
+          "WINEMSYNC": "1"
+        },
+        "name": "Steam",
+        "wine_arch": "win64"
+      },
+      "counts": {
+        "device_generations": 2,
+        "passed_sample_checks": 78,
+        "reset_passed": true,
+        "sample_checks": 78
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/steam-temporal-resolve/manifest.json",
+        "sha256": "770a4d653036fb8c45c789447a19ad1e8232ada4d4cb1821f3cd2d321cb048a3"
+      },
+      "name": "steam-temporal-resolve",
+      "retained_artifacts": {
+        "verification/probe/build/temporal_resolve.exe": "2a1a6011bd534d5551ab02eb8eb97d7d94c53046b5c6308b2a9132202c99c32e"
+      },
+      "retained_results": 4,
+      "runner_result": {
+        "path": "verification/results/temporal-resolve-summary.json",
+        "sha256": "f45038bf88579459daf6435f08c22e865ea62f8b285261b7c0410a50d9899659"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "Steam",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf",
+        "environment": {
+          "WINEMSYNC": "1"
+        },
+        "name": "Steam",
+        "wine_arch": "win64"
+      },
+      "counts": {
+        "cases": 26,
+        "passing_exit_zero": 26
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/steam-ownership/manifest.json",
+        "sha256": "1fc149a4296db47fed17f065988b3de6078fc38fbf6cfea5a924da40fe87062f"
+      },
+      "name": "steam-ownership",
+      "retained_artifacts": {
+        "build-ownership/d3d9.dll": "a43d430d3ebd96730c97996bb823ad0eed5db61e2dbabed02d3e27c34ca38f8f",
+        "verification/probe/build/capture_state_fixture.exe": "c2f2e039da819721e780dd460388ec68cb1f37f1d402b51441cb88e2214c1255",
+        "verification/probe/build/d3d9_smoke.exe": "d5616489e88cea618921bb82e8920c87213240b58f2d229c1d021ece0a2cc2fa",
+        "verification/probe/build/ownership_integration_auto_depth.exe": "2d7ffbdf4994323498a83534bcd8e4a0ca7d76fd4ed2c0c19f1ae955e9dead3b",
+        "verification/probe/build/ownership_integration_baseline.exe": "9f604ec54c24e980c3d17059f4b6383790b8c840dc86ea7ef4cd541cb8c4d560",
+        "verification/probe/build/ownership_integration_lifetime.exe": "72e44b5b76d764dba0bb22316db7e343c211991b75f9cebe796210e2135299af"
+      },
+      "retained_results": 90,
+      "runner_result": {
+        "path": "verification/results/ownership-integration-build.json",
+        "sha256": "bf7c68b51290731f741fd457085b92c7aa369399cdc66b450f840a498337c906"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "Steam",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf",
+        "environment": {
+          "WINEMSYNC": "1"
+        },
+        "name": "Steam",
+        "wine_arch": "win64"
+      },
+      "counts": {
+        "cases": 1,
+        "installed": false,
+        "native_fallback": true
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/steam-ownership-fallback/manifest.json",
+        "sha256": "10ed06664d4de3bdbb10c8102aa0cf6c6e5bda71c01edbd83828e492e6539665"
+      },
+      "name": "steam-ownership-fallback",
+      "retained_artifacts": {
+        "build-ownership/d3d9.dll": "a43d430d3ebd96730c97996bb823ad0eed5db61e2dbabed02d3e27c34ca38f8f",
+        "verification/probe/build/d3d9_smoke.exe": "d5616489e88cea618921bb82e8920c87213240b58f2d229c1d021ece0a2cc2fa"
+      },
+      "retained_results": 4,
+      "runner_result": {
+        "path": "verification/results/ownership-integration-fallback.json",
+        "sha256": "df7da1104e586f496d9610ec034f3961048998c90e5a763cdcaafc1310a4159a"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "Steam",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf",
+        "environment": {
+          "WINEMSYNC": "1"
+        },
+        "name": "Steam",
+        "wine_arch": "win64"
+      },
+      "counts": {
+        "checks": 4908,
+        "samples": 16,
+        "scenarios": 36
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/steam-scene/manifest.json",
+        "sha256": "5934d75fc30aa5f0678540cb9cad95ffe0d2807421de05c77a31c1957a6d4866"
+      },
+      "name": "steam-scene",
+      "retained_artifacts": {
+        "verification/probe/build/scene_capture_fixture.exe": "e1b68fede88cd2e6a819b99a8f114be591271de9eb316fd1e26fbfdb054a2cf4"
+      },
+      "retained_results": 3,
+      "runner_result": {
+        "path": "verification/results/scene-capture-summary.json",
+        "sha256": "3d1cf7d33faea956087b414d80608df41302ceb5492fa702b1ec669177da18f1"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "Steam",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf",
+        "environment": {
+          "WINEMSYNC": "1"
+        },
+        "name": "Steam",
+        "wine_arch": "win64"
+      },
+      "counts": {
+        "case_checks": {
+          "loading-mesh": 123,
+          "loading-trace": 112,
+          "mesh-adjacency-cache-off": 36093,
+          "mesh-adjacency-cache-on": 36150
+        },
+        "checks_total": 72478
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/steam-loading/manifest.json",
+        "sha256": "d615aad50aae081648f6e37243d622fab50db2df04626ca7034a7f35781703c3"
+      },
+      "name": "steam-loading",
+      "retained_artifacts": {
+        "verification/probe/build/loading_mesh/loading_mesh_fixture.exe": "48e41ccc0b27501b0ae853ae201b0dda3d486240640cae53c883e5a5581ab3f6",
+        "verification/probe/build/loading_trace/loading_trace_fixture.exe": "36dde887074901bce23486f7e815cc7ab97fd077b2892f978062de76ee8a5f37",
+        "verification/probe/build/mesh_adjacency_fast/mesh_adjacency_fast_fixture.exe": "89484d99bcba7947558572f618a54f8c5182b777f227dd69fd18f559cc5ba91e"
+      },
+      "retained_results": 19,
+      "runner_result": {
+        "path": "verification/results/loading-trace-mesh-summary.json",
+        "sha256": "41865e80ba0ed733419fb7776f0e9a6b361274dc7437471c171f22b8d078834d"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "Steam",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf",
+        "environment": {
+          "WINEMSYNC": "1"
+        },
+        "name": "Steam",
+        "wine_arch": "win64"
+      },
+      "counts": {
+        "cases": 2,
+        "checks": 16,
+        "exports": 17
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/steam-exports/manifest.json",
+        "sha256": "4074932b0f1890e1e68133bef33d265f33109136a75c2726dc7693c7138b9a4d"
+      },
+      "name": "steam-exports",
+      "retained_artifacts": {
+        "build/d3d9.dll": "a8b769948e19bbf548c406511e0fa80c8db4e4a2b8eac4daffa4f048cd468295",
+        "verification/probe/build/d3d9_exports_fixture.exe": "93938dbbeee94cb006081ceb3e0f4dbfdb49d4023c8b4c607ccc70e15a6a03d2"
+      },
+      "retained_results": 7,
+      "runner_result": {
+        "path": "verification/results/d3d9-exports-summary.json",
+        "sha256": "0b2e086972c1a6aaf8ba6695973067462483c26861281630cb6e708973e9dafc"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "Steam",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf",
+        "environment": {
+          "WINEMSYNC": "1"
+        },
+        "name": "Steam",
+        "wine_arch": "win64"
+      },
+      "counts": {
+        "backend_calls": 80,
+        "checks": 574,
+        "failures": 0
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/steam-lifetime/manifest.json",
+        "sha256": "178efbefc18d902b1b8c997f159918e643eb63a2bb3a11c8f2966422a1d29908"
+      },
+      "name": "steam-lifetime",
+      "retained_artifacts": {
+        "verification/probe/build/object_lifetime.exe": "1b1b8ec3291c9ea5eee131917f7b67ce9bd96091f51264d69c561bfa3cb26341"
+      },
+      "retained_results": 5,
+      "runner_result": {
+        "path": "verification/results/object-lifetime-summary.json",
+        "sha256": "bdfb46147751c8fbbad6249621913f7feadb5b5cd1226fe8a00073ddd5763fc5"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "Steam",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf",
+        "environment": {
+          "WINEMSYNC": "1"
+        },
+        "name": "Steam",
+        "wine_arch": "win64"
+      },
+      "counts": {
+        "backend_calls": 120017,
+        "checks": 166,
+        "failures": 0
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/steam-object-trace/manifest.json",
+        "sha256": "26abeaf098644ab061d4146ad8bcad8a363eac0988e23e2defcc017af88db9bd"
+      },
+      "name": "steam-object-trace",
+      "retained_artifacts": {
+        "verification/probe/build/object_trace.exe": "72eb6ba1fb919084d501f3bef59049315caef03dd30ff6e1a3429e1c6c8a7dc2"
+      },
+      "retained_results": 4,
+      "runner_result": {
+        "path": "verification/results/object-trace-summary.json",
+        "sha256": "872e4e75e4e0fa6dac450951daaa93a3c8bf27eac40357650fe0b75e0b4c198b"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "Steam",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf",
+        "environment": {
+          "WINEMSYNC": "1"
+        },
+        "name": "Steam",
+        "wine_arch": "win64"
+      },
+      "counts": {
+        "checks": 770
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/steam-adjacency-cache/manifest.json",
+        "sha256": "fc6a03ab1e6a2f90a9b3ec688d3bafb67eea9141ee3159f2da7f89d419e2e2b2"
+      },
+      "name": "steam-adjacency-cache",
+      "retained_artifacts": {
+        "verification/probe/build/mesh_adjacency_cache_fixture.exe": "40da897631caf2a944e594fe667acfd2413069aeda77d7c3055eab394a00bab4"
+      },
+      "retained_results": 7,
+      "runner_result": {
+        "path": "verification/results/mesh-adjacency-cache-summary.json",
+        "sha256": "5b8fc4ad4931b3c5c05e1f4493ad49cfe5f9e03a148ab4b4053ff65ec5505c87"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "Steam",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf",
+        "environment": {
+          "WINEMSYNC": "1"
+        },
+        "name": "Steam",
+        "wine_arch": "win64"
+      },
+      "counts": {
+        "cases": 6,
+        "checks": 13271
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/steam-mesh-hook/manifest.json",
+        "sha256": "b87ad834f3268268c46f0f1fe05247e81a3ed340174466c01a40e4f6346ba78c"
+      },
+      "name": "steam-mesh-hook",
+      "retained_artifacts": {
+        "verification/probe/build/mesh_cache_hook/mesh_cache_hook_fixture.exe": "df9b3ecac0a7953635fcdec705f0b94c683e79979424b66a77f8109abb0059d1"
+      },
+      "retained_results": 42,
+      "runner_result": {
+        "path": "verification/results/mesh-cache-hook-summary.json",
+        "sha256": "9a330b0cc69a5ada804b37cb94ee8c7b689025fe7e90a2ed42ff6f962c4af91d"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": null,
+      "bottle_metadata": null,
+      "counts": {
+        "check": true,
+        "programs": 10
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/shaders/manifest.json",
+        "sha256": "df7cf53c074f3eca7fc37f7dbd8d1f91501b2ed03085b1440bb7649988df094c"
+      },
+      "name": "shaders",
+      "retained_artifacts": {},
+      "retained_results": 10,
+      "runner_result": {
+        "path": "/tmp/x3-chase-integration-verification/suites/shaders/stdout.log",
+        "sha256": "c280321a90300c160cf91483fcea4c484a6785da7c376f4001f15fe0fb7d7f7d"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "X3",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "name": "X3",
+        "wine_arch": "arm64"
+      },
+      "counts": {
+        "case_checks": {
+          "loading-mesh": 123,
+          "loading-trace": 112,
+          "mesh-adjacency-cache-off": 36093,
+          "mesh-adjacency-cache-on": 36150
+        },
+        "checks_total": 72478
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/x3-loading/manifest.json",
+        "sha256": "81dfbd50d9ef972f8c9ec6d17353755e82344071f09c9c50b056bb72f16e99d0"
+      },
+      "name": "x3-loading",
+      "retained_artifacts": {
+        "verification/probe/build/loading_mesh/loading_mesh_fixture.exe": "ddb61e2c425afbef3a6cdeeabfef2aef6f4799b7caff6242499d20cdfadd9e46",
+        "verification/probe/build/loading_trace/loading_trace_fixture.exe": "564c23dc5967afb4a8c1305f5cc665fca37f366b00ada21c431021882f9156c5",
+        "verification/probe/build/mesh_adjacency_fast/mesh_adjacency_fast_fixture.exe": "7cac21b3e0e7286636d5c3431c5bf6eb4570ba3d28a71037cf9d75d406d2d701"
+      },
+      "retained_results": 9,
+      "runner_result": {
+        "path": "verification/results/bottle-X3/loading-trace-mesh-summary.json",
+        "sha256": "8d244bab02d94bf3768442abb0c763124ac366492d7e40562ed27a8a716a00ac"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "X3",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "name": "X3",
+        "wine_arch": "arm64"
+      },
+      "counts": {
+        "checks": 735876,
+        "failures": 0,
+        "timing_calls": 10000000
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/x3-gz/manifest.json",
+        "sha256": "167a0875c68098e6b4a3d685ba3163a92b4e8f4807aea83a7dfb97cfaedb2f2b"
+      },
+      "name": "x3-gz",
+      "retained_artifacts": {
+        "verification/probe/build/gz_buffer/gz_buffer_fixture.exe": "2a233e0e66d6caae63a90022a179e0cad7a88e279a1d4315d172797a74a5bc95"
+      },
+      "retained_results": 3,
+      "runner_result": {
+        "path": "verification/results/bottle-X3/gz-buffer-summary.json",
+        "sha256": "7752fc447e55b4faa1cf95ba18ed28e8621965058eebc482e396bbb4303159c4"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "X3",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "name": "X3",
+        "wine_arch": "arm64"
+      },
+      "counts": {
+        "checks": 4721,
+        "failures": 0,
+        "quick": false
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/x3-reader/manifest.json",
+        "sha256": "c6f9c67890a31c7691bd79cbeaa906678b80d7929c433a441be0438c3c33cbaa"
+      },
+      "name": "x3-reader",
+      "retained_artifacts": {
+        "verification/probe/build/resource_reader/resource_reader_fixture.exe": "3f53b94d2bfdfd51f44b2b96d0b8c3e5580222ec4bd63301cc21b10bcc122df3"
+      },
+      "retained_results": 3,
+      "runner_result": {
+        "path": "verification/results/bottle-X3/resource-reader-summary.json",
+        "sha256": "b4609e36f2a8e3990a6653e6adb3d73dea1e362f8dabe2215337c6c31aeaff4a"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "X3",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "name": "X3",
+        "wine_arch": "arm64"
+      },
+      "counts": {
+        "benchmark_processes": 16,
+        "benchmark_result_entries": 26,
+        "functional_case_checks": 9738,
+        "functional_cases": 98,
+        "retained_process_directories": 114
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/x3-motion/manifest.json",
+        "sha256": "96b18257cd13a601e123b6f885773db640d3388ba2db97d76ec6606c1f2c370b"
+      },
+      "name": "x3-motion",
+      "retained_artifacts": {
+        "build/d3d9.dll": "47f1452e09351bb306d0c5225134665aa9bf7c8cc5c46609fa67604db82027ad",
+        "verification/probe/build/motion-output-seam/d3d9.dll": "654d8f2c73d772f2c3c94238a7f964e0df168db97bef8c6eb9b348499f7d0705",
+        "verification/probe/build/motion_output_fixture.exe": "e45d09017491c272cc9cde610bfdf7649b03afe6391b06155a0f87c774e32c25"
+      },
+      "retained_results": 96,
+      "runner_result": {
+        "path": "verification/results/bottle-X3/motion-output-summary.json",
+        "sha256": "d575acbaac3630dc70f6c4dc6cfb97261291ff1e05c3e63249e2960ea10a9a02"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "bottle": "X3",
+      "bottle_metadata": {
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "name": "X3",
+        "wine_arch": "arm64"
+      },
+      "counts": {
+        "checks": 572,
+        "control_and_hook_checks": 335,
+        "fixture_checks": 237,
+        "processes": 12
+      },
+      "driver_sha256": "c61ba93a3259734a049e1e828234441d5dc3c387c6091826f9e392a91bef65d2",
+      "exit_code": 0,
+      "local_evidence_manifest": {
+        "path": "/tmp/x3-chase-integration-verification/suites/x3-crypto/manifest.json",
+        "sha256": "6458cba987aeda732f8dcb1b4677a21d8bf661b26527bb2b8e603f1df38306f2"
+      },
+      "name": "x3-crypto",
+      "retained_artifacts": {
+        "verification/probe/build/crypt_cache/crypt_cache_controls.exe": "be138fcd8cb2d60466933ebf91ade0ac5a6dcd14838ed623d0abe8d615e20572",
+        "verification/probe/build/crypt_cache/crypt_cache_fixture.exe": "f87e16290fc079a92b4e1b0da01e75aacb39c7d41d1c3bc117eea0ca59c7e768",
+        "verification/probe/build/crypt_cache/crypt_cache_hook_fixture.exe": "2a7ab66420b2fd8f34da299337a39bf072b92e7bf8c1e1814ae0c3f119670e6a"
+      },
+      "retained_results": 25,
+      "runner_result": {
+        "path": "verification/results/bottle-X3/crypt-cache-summary.json",
+        "sha256": "46cb0ef97b6b528e3732554638eec38b387eda9543d49a64723bc667f4c3c41c"
+      },
+      "source_unchanged": true,
+      "status": "PASS"
+    }
+  ],
+  "wine_lock_holder": "chase-regression",
+  "wine_wrapper_count": 18
+}

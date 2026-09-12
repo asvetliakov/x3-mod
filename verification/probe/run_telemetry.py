@@ -14,7 +14,7 @@ for mode in ('baseline','off','on'):
     directory=probe/('telemetry-'+datetime.datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+mode)
     directory.mkdir(parents=True)
     shutil.copy(probe/'telemetry_fixture.exe',directory)
-    env=dict(os.environ,X3M_TELEMETRY='1' if mode=='on' else '0',X3M_CAPTURE_START='1',X3M_CAPTURE_FRAMES='1')
+    env=dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0',X3M_TELEMETRY='1' if mode=='on' else '0',X3M_CAPTURE_START='1',X3M_CAPTURE_FRAMES='1')
     command=[wine,'--bottle',bottle.BOTTLE,'--no-update','--workdir',str(directory)]
     if mode!='baseline':
         shutil.copy(root/'build/d3d9.dll',directory)

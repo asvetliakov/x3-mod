@@ -7,6 +7,7 @@
 #include "object_lifetime.h"
 #include "engine_memory.h"
 #include "camera_state.h"
+#include "chase_camera.h"
 #include "../renderer/material_motion.h"
 #include "../renderer/temporal_pass.h"
 #include "../renderer/temporal_resolve_program.h"
@@ -694,7 +695,15 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             in.previous_jitter[0] = jitter_previous_[0]; in.previous_jitter[1] = jitter_previous_[1];
             in.motion_policy = renderer::MotionPolicy::PerPixel;
             in.reactive_policy = renderer::ReactivePolicy::DerivedFromDepthSentinel;
-            in.history_allowed = true; in.cut = counters_.cut || decision.cut;
+            // A chase-camera snap (X3M_CAMERA=chase) is a cut too: the smoothed
+            // view is discontinuous there even when the rotation stays under
+            // the bound (a gate jump keeps the orientation and moves the world).
+            // Each device observes the broadcast independently. A failed run
+            // below invalidates this history, so submitting the cut here may
+            // advance its cursor even if no resolved image is published.
+            const bool chase_snap = chase_snap_cursor_.observe(chase_camera::snap_generation());
+            in.history_allowed = true; in.cut = counters_.cut || decision.cut || chase_snap;
+            if (chase_snap) t.camera_cut = true;
             in.caller_scene_open = scene_open_; in.caller_stateblock_recording = shadow_.recording;
             in.caller_queries_idle = active_queries_ == 0;
             // Phase timing of the run (telemetry only): the pass stamps its own

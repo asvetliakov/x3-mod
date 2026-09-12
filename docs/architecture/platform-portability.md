@@ -18,6 +18,12 @@ Recording runtime hashes in test reports remains useful provenance.
 
 ## Current gaps
 
+- The opt-in [chase camera](chase-camera.md) modifies validated game structures
+  through an x86 trampoline and uses public Win32 memory, protection and timing
+  APIs. No Wine-private interface is required. It cross-compiles with the
+  production SSE2/stack contract; native-Windows behavior and the first
+  CrossOver gameplay acceptance remain unverified during integration.
+
 - The finite-position observer now uses public descriptors, readable managed
   backing and observed wrapper Lock/Unlock transactions. The former exact-Wine
   qualifier is historical verification code only. The portable source still

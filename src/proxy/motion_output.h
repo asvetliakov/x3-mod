@@ -24,6 +24,7 @@
 #include <map>
 #include <memory>
 #include <vector>
+#include "chase_camera.h"
 #include "../renderer/scene_boundary.h"
 #include "../renderer/motion_history.h"
 #include "../renderer/motion_row_history.h"
@@ -646,6 +647,7 @@ private:
     // the history) and the raw read diagnostics of the scene read.
     renderer::CameraState camera_scene_{}, camera_background_{}, camera_previous_{};
     std::uint64_t camera_previous_frame_ = 0;
+    chase_camera::SnapCursor chase_snap_cursor_{}; // independent cut observation for this device's history
     std::uintptr_t camera_projection_address_ = 0, camera_view_address_ = 0;
     renderer::SentinelMode sentinel_mode_ = renderer::SentinelMode::Auto;
     float camera_cut_degrees_ = 20.f;

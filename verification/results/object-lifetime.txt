@@ -1,4 +1,4 @@
-TIMING mode=rpm snapshot_us=6.919 reads_per_call=0.00 queries_per_call=0.0000 syscalls_per_call=12.00
-TIMING mode=direct snapshot_us=0.690 reads_per_call=12.00 queries_per_call=0.0237 syscalls_per_call=0.00
+TIMING mode=rpm snapshot_us=6.973 reads_per_call=0.00 queries_per_call=0.0000 syscalls_per_call=12.00
+TIMING mode=direct snapshot_us=0.698 reads_per_call=12.00 queries_per_call=0.0237 syscalls_per_call=0.00
 IDENTITY rpm=853bfaca11e07f83 direct=853bfaca11e07f83 equal=1
 RESULT PASS checks=574 failures=0 backend_calls=80

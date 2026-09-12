@@ -4,6 +4,7 @@ from pathlib import Path
 import datetime
 import json
 import os
+import re
 import shutil
 import subprocess
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
@@ -17,10 +18,12 @@ assert manifest['result']=='PASS' and manifest['sources']==sources(),'Run fresh-
 assert manifest['binaries_at_end']==binaries(),'Integration binaries changed'
 object_root=root/'build-ownership/CMakeFiles/d3d9.dir'
 objects=sorted(p for p in (object_root/'src').rglob('*.obj') if 'ownership' not in p.parts or p.name in ('execution_state.cpp.obj', 'application_admission.cpp.obj', 'application_admission_abi.cpp.obj'))
-expected={'src/proxy/'+name+'.cpp.obj' for name in ('loader','capture','motion_capture','capture_state','scene_capture','object_trace','telemetry','loading_trace','draw_input','object_lifetime','mesh_adjacency_cache','motion_output','sampling_profiler')}
-expected.update('src/renderer/'+name+'.cpp.obj' for name in
-                ('temporal_pass','material_radiance','motion_history','rigid_position','rigid_motion','rigid_replay_program','material_motion','motion_row_history'))
-expected.update('src/ownership/'+name+'.cpp.obj' for name in ('execution_state', 'application_admission', 'application_admission_abi'))
+# Reconcile the linked set with the actual production target, retaining the
+# existing ownership test-double boundary. Hard-coding an old source list hid
+# newly linked camera/loading/HDR objects from this fallback qualification.
+production_target = re.search(r'add_library\(d3d9 SHARED(.*?)\)', (root/'CMakeLists.txt').read_text(), re.S).group(1)
+expected={name+'.obj' for name in re.findall(r'src/[\w/]+\.cpp', production_target)
+          if '/ownership/' not in name or Path(name).name in ('execution_state.cpp', 'application_admission.cpp', 'application_admission_abi.cpp')}
 assert {str(p.relative_to(object_root)) for p in objects}==expected,'Build all current production components first'
 object_hashes={str(p.relative_to(root)):sha(p) for p in objects}
 directory=probe/('ownership-integration-fallback-'+datetime.datetime.now().strftime('%Y%m%d-%H%M%S'));directory.mkdir(parents=True)
@@ -29,7 +32,7 @@ subprocess.run(command,check=True)
 shutil.copy(probe/'d3d9_smoke.exe',directory)
 local_hashes={name:sha(directory/name) for name in ('d3d9.dll','d3d9_smoke.exe')}
 assert local_hashes['d3d9_smoke.exe']==manifest['binaries_at_end']['verification/probe/build/d3d9_smoke.exe']
-env=dict(os.environ,X3M_OWNERSHIP='1',X3M_ADMISSION='1',X3M_DEPTH_COPY='0',X3M_SCENE_DEPTH_CAPTURE='1',X3M_OBJECT_TRACE='0',X3M_OBJECT_LIFETIME='0',X3M_MESH_CACHE='0',X3M_FINITE_POSITIONS='1',X3M_MOTION_CAPTURE='1',X3M_TELEMETRY='1',X3M_CAPTURE_START='1',X3M_CAPTURE_FRAMES='1')
+env=dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0',X3M_OWNERSHIP='1',X3M_ADMISSION='1',X3M_DEPTH_COPY='0',X3M_SCENE_DEPTH_CAPTURE='1',X3M_OBJECT_TRACE='0',X3M_OBJECT_LIFETIME='0',X3M_MESH_CACHE='0',X3M_FINITE_POSITIONS='1',X3M_MOTION_CAPTURE='1',X3M_TELEMETRY='1',X3M_CAPTURE_START='1',X3M_CAPTURE_FRAMES='1')
 wine='/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
 stdout_path=results/'ownership-integration-fallback.txt'
 with stdout_path.open('w') as stdout,(results/'ownership-integration-fallback-wine.log').open('w') as stderr:

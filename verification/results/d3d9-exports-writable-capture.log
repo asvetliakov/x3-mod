@@ -1,4 +1,4 @@
-capture_dir=Y:\x3-mod\verification\probe\build\d3d9-exports-writable-20260913-004958-450919\x3-modern-captures source=game
+capture_dir=Y:\x3-mod\verification\probe\build\d3d9-exports-writable-20260913-033007-441425\x3-modern-captures source=game
 motion_capture_mode requested=0 enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0
 motion_output_mode requested=0 scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=0 taa=0 taa_debug=0 jitter=0 jitter_samples=8 cut_median_px=48.000 cut_missing=0.250 rt_mode=perdraw frame_log=60 sentinel=auto camera_cut_deg=20.00 camera_log=300 state_shadow=1 scene_hook=0 hdr=0 taa_k=-1.00000 mip_bias=0 taa_sharpen=0.000
 x3-modern-renderer version=0.4 schema=2 capture_start=120 capture_frames=1 pointer_bits=32

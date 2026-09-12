@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T19:32:06.505731+00:00",
+  "started_utc": "2026-09-12T23:30:32.943787+00:00",
   "game_launched": false,
   "bottle": {
     "name": "Steam",
@@ -30,7 +30,7 @@
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
     "verification/probe/run_object_lifetime.py": "8f2617641e1a4678138332cb818edeb1bc0789dd519311b6a77c661b4a80f121"
   },
-  "executable_sha256": "73ee484c0251c7ac177be4277d2cc72a7d019e84d643d633a979b2fae28b0c87",
+  "executable_sha256": "1b1b8ec3291c9ea5eee131917f7b67ce9bd96091f51264d69c561bfa3cb26341",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -41,7 +41,7 @@
     "/Users/asvetl/x3-mod/verification/probe/build/object_lifetime.exe"
   ],
   "exit_code": 0,
-  "executable_sha256_after_run": "73ee484c0251c7ac177be4277d2cc72a7d019e84d643d633a979b2fae28b0c87",
+  "executable_sha256_after_run": "1b1b8ec3291c9ea5eee131917f7b67ce9bd96091f51264d69c561bfa3cb26341",
   "sources_after_run": {
     "src/proxy/object_lifetime.cpp": "4b14f47cc7b024274bd4c85ed7337092cb85dc5d3b6b5c148834256591747e07",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
@@ -51,7 +51,7 @@
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
     "verification/probe/run_object_lifetime.py": "8f2617641e1a4678138332cb818edeb1bc0789dd519311b6a77c661b4a80f121"
   },
-  "report_sha256": "11e8055874f62d3fb3fce9c365b5941691c5c3e5d912a7d9b7316587971ba9ae",
+  "report_sha256": "23f096914eddec293c8945b85b7f7b8f7fc786aebfe175a70fe3d6499e1cec12",
   "checks": 574,
   "failures": 0,
   "backend_calls": 80,
@@ -59,14 +59,14 @@
     "timing": [
       {
         "mode": "rpm",
-        "snapshot_us": "6.919",
+        "snapshot_us": "6.973",
         "reads_per_call": "0.00",
         "queries_per_call": "0.0000",
         "syscalls_per_call": "12.00"
       },
       {
         "mode": "direct",
-        "snapshot_us": "0.690",
+        "snapshot_us": "0.698",
         "reads_per_call": "12.00",
         "queries_per_call": "0.0237",
         "syscalls_per_call": "0.00"

@@ -154,7 +154,7 @@ def main():
         command = [bottle.WINE] + bottle.wine_args() + ['--workdir', str(build), str(binary), str(args.iterations)]
         report['phase'] = 'running'
         with (results / 'crypt-cache-fixture.txt').open('w') as out, (results / 'crypt-cache-fixture-wine.log').open('w') as err:
-            run = subprocess.run(command, env=dict(os.environ), stdout=out, stderr=err, timeout=args.timeout)
+            run = subprocess.run(command, env=dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0'), stdout=out, stderr=err, timeout=args.timeout)
         text = (results / 'crypt-cache-fixture.txt').read_text(errors='replace')
         report['report_sha256'] = sha(results / 'crypt-cache-fixture.txt')
         report['stderr_sha256'] = sha(results / 'crypt-cache-fixture-wine.log')
@@ -171,7 +171,7 @@ def main():
             executable_hash = sha(executable)
             args_tail = [] if mode == 'controls' else [mode]
             command = [bottle.WINE] + bottle.wine_args() + ['--workdir', str(build), str(executable), *args_tail]
-            control = subprocess.run(command, env=dict(os.environ), capture_output=True, text=True, timeout=60)
+            control = subprocess.run(command, env=dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0'), capture_output=True, text=True, timeout=60)
             raw = results / f'crypt-cache-{mode}.txt'
             errors = results / f'crypt-cache-{mode}-wine.log'
             raw.write_text(control.stdout)

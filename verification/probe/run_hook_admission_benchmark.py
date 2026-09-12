@@ -134,6 +134,7 @@ def main():
                 shutil.copyfile(frozen / (variant + '.dll'), directory / 'd3d9.dll')
             override = 'd3d9=n,b' if variant else 'd3d9=b'
             env = {k: v for k, v in os.environ.items() if not k.startswith('X3M_')}
+            env.update(X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0')
             env.update(WINEDLLOVERRIDES=override, X3M_OWNERSHIP=str(ownership), X3M_ADMISSION=str(admission),
                        X3M_TELEMETRY='0', X3M_CAPTURE_START='0', X3M_CAPTURE_FRAMES='0',
                        X3M_DEPTH_COPY='0', X3M_SCENE_DEPTH_CAPTURE='0', X3M_OBJECT_TRACE='0',

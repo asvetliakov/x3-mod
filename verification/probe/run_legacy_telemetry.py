@@ -16,7 +16,7 @@ for name,exe,frames in [('d3d9-smoke-v3','d3d9_smoke.exe','1'),('capture-state-v
     directory=probe/(name+'-'+datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
     directory.mkdir(parents=True)
     shutil.copy(probe/exe,directory);shutil.copy(root/'build/d3d9.dll',directory)
-    env=dict(os.environ,X3M_TELEMETRY='1',X3M_CAPTURE_START='1',X3M_CAPTURE_FRAMES=frames)
+    env=dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0',X3M_TELEMETRY='1',X3M_CAPTURE_START='1',X3M_CAPTURE_FRAMES=frames)
     command=[wine,'--bottle',bottle.BOTTLE,'--no-update','--dll','d3d9=n,b','--workdir',str(directory),str(directory/exe)]
     with (results/(name+'.txt')).open('w') as stdout,(results/(name+'-wine.log')).open('w') as stderr:
         result=subprocess.run(command,env=env,stdout=stdout,stderr=stderr,timeout=90)

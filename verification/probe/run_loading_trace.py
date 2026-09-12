@@ -30,14 +30,16 @@ try:
         dlls={p.name:sha(p) for p in directory.glob('*.dll')}
         command=['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine','--bottle',bottle.BOTTLE,'--no-update','--dll',override,'--workdir',str(directory),str(binary)]+arguments
         with (results/(case+suffix+'-fixture.txt')).open('w') as out,(results/(case+suffix+'-fixture-wine.log')).open('w') as err:
-            run=subprocess.run(command,env=dict(os.environ, X3M_ADMISSION=admission,WINEDLLOVERRIDES=override,X3M_MESH_CACHE='0'),stdout=out,stderr=err,timeout=timeout)
+            run=subprocess.run(command,env=dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_ADMISSION=admission,WINEDLLOVERRIDES=override,X3M_MESH_CACHE='0'),stdout=out,stderr=err,timeout=timeout)
         text=(results/(case+suffix+'-fixture.txt')).read_text()
         witnesses=re.findall(r'^ADMISSION_WITNESS requested=(\d+) enabled=(\d+) active_roots=(\d+) waiting_roots=(\d+) admitted_roots=(\d+) promotions=(\d+) vetoes=(\d+) valid=(\d+)\r?$',text,re.M)
         assert len(witnesses)==1 and witnesses[0][0:2]==(admission,admission) and witnesses[0][2:4]==('0','0') and witnesses[0][5]=='0' and witnesses[0][7]=='1','Admission mode/root witness failed'
         assert int(witnesses[0][4])>0 if admission=='1' else int(witnesses[0][4])==0,'Admission root count'
-        expected_checks={'loading-trace':86,'loading-mesh':123,'mesh-adjacency-cache-off':MESH_ADJACENCY_CHECKS[0],'mesh-adjacency-cache-on':MESH_ADJACENCY_CHECKS[1]}[case]
-        terminal={'loading-trace':'loading_fixture checks=86 failures=0','loading-mesh':'LOADING MESH RESULT checks=123 failures=0'}.get(case,'MESH ADJACENCY RESULT cache=%s checks=%d failures=0'%(arguments[0] if arguments else '0',expected_checks))
+        expected_checks={'loading-trace':112,'loading-mesh':123,'mesh-adjacency-cache-off':MESH_ADJACENCY_CHECKS[0],'mesh-adjacency-cache-on':MESH_ADJACENCY_CHECKS[1]}[case]
+        terminal={'loading-trace':'loading_fixture checks=112 failures=0','loading-mesh':'LOADING MESH RESULT checks=123 failures=0'}.get(case,'MESH ADJACENCY RESULT cache=%s checks=%d failures=0'%(arguments[0] if arguments else '0',expected_checks))
         assert text.rstrip().endswith(terminal) and text.count(terminal)==1,'Incomplete exact case inventory: '+text.rstrip().splitlines()[-1]
+        if case=='loading-trace':
+            assert len(re.findall(r'^engine_patch_rel32 checks=26 failures=0 directions=2 edges=4 late_claim=1\r?$',text,re.M))==1,'Missing executable Jcc relocation controls'
         report['cases'][case]={'admission_witness':witnesses[0],'checks':expected_checks,'wine_log_sha256':sha(results/(case+suffix+'-fixture-wine.log')),'exit_code' :run.returncode,'executable_sha256':before,'dll_sha256':dlls,'report_sha256':sha(results/(case+suffix+'-fixture.txt'))}
         if case.startswith('mesh-adjacency'):
             admission_control=re.findall(r'^ADJACENCY_ADMISSION requested_domains=13 distinct_runtime_domains=(12|13) canonicalized_domains=(0|1) registry=8 checks=109 untouched=1 incoming_preserved=1 diagnostic_refused=1\r?$',text,re.M)

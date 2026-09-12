@@ -9,7 +9,8 @@
     "docs/reverse-engineering/loading-profile-bottle-x3.md",
     "docs/reverse-engineering/constant-uploads.md",
     "docs/reverse-engineering/savegame-gz-stream.md",
-    "docs/reverse-engineering/script-xml-load-stall.md"
+    "docs/reverse-engineering/script-xml-load-stall.md",
+    "docs/reverse-engineering/external-camera.md"
   ],
   "labels": {
     "0x00402710": {
@@ -21,8 +22,8 @@
       "source": "loading-orchestration.md"
     },
     "0x00403840": {
-      "label": "main/menu loop",
-      "source": "loading-orchestration.md"
+      "label": "main/menu loop; main/menu loop; per iteration: object update 0x00416750, cockpit update loop 0x0041cde0 (0x00403f2f), then the frame routine 0x00471f50 (0x00403f34)",
+      "source": "loading-orchestration.md; external-camera.md"
     },
     "0x00403a70": {
       "label": "main loop message pump site",
@@ -36,9 +37,29 @@
         "gzread"
       ]
     },
+    "0x00406de0": {
+      "label": "input handler (writes the cursor coordinates 0x00607cec/0x00607cf0)",
+      "source": "external-camera.md"
+    },
     "0x0040e710": {
       "label": "fabsf helper (x87 ABS)",
       "source": "loading-profile-run1.md"
+    },
+    "0x0040e720": {
+      "label": "vector add (EAX = out, ECX/[ESP] = operands; 16.16)",
+      "source": "external-camera.md"
+    },
+    "0x0040e880": {
+      "label": "current cockpit-scene camera accessor (cockpit+8 via the registry *0x00608504)",
+      "source": "external-camera.md"
+    },
+    "0x0040e8c0": {
+      "label": "mouse-steering axis input from the cursor offset with an FOV-scaled dead zone (camera+0x298)",
+      "source": "external-camera.md"
+    },
+    "0x0040fec0": {
+      "label": "flight input accumulation (yaw/pitch/roll into 0x00608e74..; calls 0x0040e8c0)",
+      "source": "external-camera.md"
     },
     "0x00412440": {
       "label": "sqrtf helper (15 bytes, x87 SQRT)",
@@ -47,6 +68,70 @@
     "0x00412d00": {
       "label": "universe teardown/reset candidate (103 bytes)",
       "source": "loading-orchestration.md"
+    },
+    "0x0041c8f0": {
+      "label": "registers the INS_ command module (dispatcher 0x0042d340, name table 0x0057aef0)",
+      "source": "external-camera.md"
+    },
+    "0x0041cd20": {
+      "label": "registry lookup by handle (EAX = map, EDX = handle)",
+      "source": "external-camera.md"
+    },
+    "0x0041cde0": {
+      "label": "cockpit update loop: 0x004205e0 for every registered cockpit (*0x00608504)",
+      "source": "external-camera.md"
+    },
+    "0x0041f8d0": {
+      "label": "cockpit object constructor (0x810 bytes)",
+      "source": "external-camera.md"
+    },
+    "0x00420260": {
+      "label": "cockpit scene + layer-0 camera creation (\"Cockpit Scene\", 16 display nodes)",
+      "source": "external-camera.md"
+    },
+    "0x00420480": {
+      "label": "cockpit view matrix helper before picking (identity without a cockpit body)",
+      "source": "external-camera.md"
+    },
+    "0x004205e0": {
+      "label": "per-frame cockpit update: view transitions, view-relative basis cockpit+0xf0, sector camera (+0x58) pose at 0x00420b27..0x00420e03 (chase camera hook site 0x00420e06), camera-relative object coordinates, overlay, zoom/FOV, fog, galaxy/dust camera copies",
+      "source": "external-camera.md"
+    },
+    "0x004216e0": {
+      "label": "cockpit display-node update (copies node +0xf0 coordinates into the display nodes)",
+      "source": "external-camera.md"
+    },
+    "0x004218b0": {
+      "label": "cockpit view transition: interpolates view position +0x130 and angles +0x90.. over +0x1b8 game ms per connect mode",
+      "source": "external-camera.md"
+    },
+    "0x00422ca0": {
+      "label": "INS_CockpitChangeView apply: view angles +0x90.. = targets +0xa8..",
+      "source": "external-camera.md"
+    },
+    "0x00422cd0": {
+      "label": "INS_CockpitSetViewConnectMode: +0x1c0 and the per-mode start state (random angles, timestamps)",
+      "source": "external-camera.md"
+    },
+    "0x00422f40": {
+      "label": "INS_CockpitLockView: angles from targets, lock object +0x120",
+      "source": "external-camera.md"
+    },
+    "0x00425410": {
+      "label": "INS_CockpitGetCursorAim: object under the cursor from the target-overlay icons (cockpit+0x3ac)",
+      "source": "external-camera.md"
+    },
+    "0x00426360": {
+      "label": "cockpit body (internal view model) management",
+      "source": "external-camera.md"
+    },
+    "0x0042a2d0": {
+      "label": "target overlay update (cockpit+0x3ac; projects through the sector camera cockpit+0x58)",
+      "source": "external-camera.md"
+    },
+    "0x0042d340": {
+      "label": "INS_ script command dispatcher (switch over the INS_Cockpit*/INS_* index; cases inline the cockpit fields)",
+      "source": "external-camera.md"
     },
     "0x00434e40": {
       "label": "type-table load (addon\\types\\*, TBullets..TShipsWrecks; O(n^2) scan at 0x004381c2)",
@@ -75,6 +160,10 @@
       "label": "universe construction callee of 0x0043f420",
       "source": "loading-orchestration.md"
     },
+    "0x00445170": {
+      "label": "player ship fire control: mouse-aim ray = 0x00489780(cursor, sector camera) x cockpit+0xf0 x gun mount x ship basis",
+      "source": "external-camera.md"
+    },
     "0x0044aab0": {
       "label": "universe construction callee of 0x0043f420",
       "source": "loading-orchestration.md"
@@ -86,6 +175,10 @@
     "0x0044ccc0": {
       "label": "orientation/rotation math variant (fsin/fcos/fpatan; from 0x0042fb20)",
       "source": "loading-profile-bottle-x3.md"
+    },
+    "0x00469e80": {
+      "label": "registers the B3D_ command module (name table 0x0057a420)",
+      "source": "external-camera.md"
     },
     "0x0046df60": {
       "label": "body name lookup",
@@ -177,6 +270,18 @@
     "0x00488c70": {
       "label": "camera allocator (0x790 bytes)",
       "source": "object-identity.md"
+    },
+    "0x00489070": {
+      "label": "B3D scene allocation",
+      "source": "external-camera.md"
+    },
+    "0x00489780": {
+      "label": "camera screen-to-camera-space unprojection (ESI = camera; FOV +0x298, view plane +0x300/+0x304, viewport +0x288.., screen size)",
+      "source": "external-camera.md"
+    },
+    "0x004899f0": {
+      "label": "INS_CockpitProjectPosition worker (0x00489780 with the sector camera, plus camera position)",
+      "source": "external-camera.md"
     },
     "0x00489bf0": {
       "label": "scene attach path (triggers 0x004bd830)",
@@ -335,6 +440,10 @@
     "0x004cf460": {
       "label": "DirectShow movie playback setup (CoCreateInstance of the X MPEG filter graph, Data\\mov\\%s, %05d.dat)",
       "source": "loading-profile-bottle-x3.md"
+    },
+    "0x004d1df0": {
+      "label": "clock advance: QPC -> real ms (*0x00606f34+0x720) and SETA-scaled game ms (+0x718 via +0xcc, +0xd0)",
+      "source": "external-camera.md"
     },
     "0x004d2950": {
       "label": "__findfirst64i32 wrapper",
@@ -542,6 +651,18 @@
     "0x004efd30": {
       "label": "handle map remove",
       "source": "object-identity.md"
+    },
+    "0x004f0270": {
+      "label": "rotation matrix from three binary angles (ESI = destination, 16.16)",
+      "source": "external-camera.md"
+    },
+    "0x004f0da0": {
+      "label": "vector x matrix (ECX = matrix, ESI = vector, EDI = out; 16.16)",
+      "source": "external-camera.md"
+    },
+    "0x004f17f0": {
+      "label": "matrix product dest = A x B (EAX = A, ECX = B, [ESP] = dest; 16.16)",
+      "source": "external-camera.md"
     },
     "0x004f22c0": {
       "label": "fpatan angle helper",
