@@ -801,9 +801,15 @@ after the write-back exactly as in stage 1.
 | `X3M_HDR_LOOK` | `none` \| `golden` \| `punchy` | `none` | §3 triples through `agx.h::set_look` |
 | `X3M_HDR_CLAMP` | float > 0 | off (65504 uploaded) | §2 firefly guard, `min` on the decoded input |
 | `X3M_HDR_EXPOSURE` | `auto` \| `manual` | `auto` | manual without an EV is EV 0 |
-| `X3M_HDR_EV_MANUAL` | EV in [−16, 16] | unset | forces `manual` with that EV, clamped to [`X3M_HDR_EV_MIN`, `X3M_HDR_EV_MAX`] (±8 by default) so `exp2(EV)` stays inside the constant block's range; the `hdr_tonemap` line prints the requested value, `hdr_frame … ev=` the effective one; the chain does not run (deterministic; the fixtures) |
+| `X3M_HDR_EV_MANUAL` | EV in [−16, 16] | unset | forces `manual` with that EV, clamped to [`X3M_HDR_EV_MIN`, `X3M_HDR_EV_MAX`] (−3..+2 by default since the space-aware meter) so `exp2(EV)` stays inside the constant block's range; the `hdr_tonemap` line prints the requested value, `hdr_frame … ev=` the effective one; the chain does not run (deterministic; the fixtures) |
 | `X3M_HDR_EV` (alias `X3M_HDR_EV_OFFSET`) | EV in [−16, 16] | 0 | the offset added to the auto target. **Deviation from the §3 text**, where `X3M_HDR_EV` forced the EV: the orchestrator's stage-2 brief names `X3M_HDR_EV` as the offset and `X3M_HDR_EV_MANUAL` as the override, and that is what is implemented; the design's `X3M_HDR_EV_OFFSET` remains accepted as the alias |
-| `X3M_HDR_KEY`, `X3M_HDR_EV_MIN/MAX`, `X3M_HDR_ADAPT_UP/DOWN` | floats | 0.18, −8/+8, 0.4 s/1.2 s | `exposure_reference.py` defaults |
+| `X3M_HDR_KEY`, `X3M_HDR_EV_MIN/MAX`, `X3M_HDR_ADAPT_UP/DOWN` | floats | 0.18, **−3/+2**, 0.4 s/1.2 s | `exposure_reference.py` defaults; the EV range was ±8 until the space-aware meter (2026-09-13): a conservative policy bounds the lift to two stops and the pull to three on the game's 8-bit-authored content |
+| `X3M_HDR_METER_BG` | scene-linear luminance in [1e-4, 64] | 1/512 | tiles whose geometric-mean luminance is below it are the black sky: excluded from the key rule (`--hdr-meter-bg`) |
+| `X3M_HDR_METER_MIN_LIT` | fraction in [0, 1] | 0.01 | fewer lit tiles than this fraction of the tile image: the target is neutral (EV 0 plus the offset) |
+| `X3M_HDR_WHITE_TARGET` | fraction in [0, 4] | 0.9 | the highlight limit: the brightest 1 % of tiles (the p99 tile maximum) may reach this fraction of the AgX white (`exp2(4.026069)` = 16.29 scene units); 0 disables the limit (`--hdr-white-target`) |
+| `X3M_HDR_KEY_PULL` | fraction in [0, 1] | 0.25 | how much of the key rule applies when the lit median is *brighter* than the key: a white full frame is pulled down to −0.62 EV, not to mid-grey; 1 is the classic rule both ways (`--hdr-key-pull`) |
+| `X3M_HDR_EV_DEADBAND` | EV in [0, 8] | 0.25 | the held target moves only when the freshly metered target differs from it by more than this; 0 disables the band (`--hdr-ev-deadband`) |
+| `X3M_HDR_METER_EDGE_WEIGHT` | weight in [0, 1] | 0.35 | the lit statistic's tile weight at the frame corners, 1 at the centre (a raised cosine of the distance from the centre); 1 is unweighted (`--hdr-edge-weight`) |
 | `X3M_HDR_DT_MS` | ms in (0, 1000] | 0 (QPC) | a fixed adaptation step; fixtures and A/B only |
 
 ### Files
@@ -811,9 +817,9 @@ after the write-back exactly as in stage 1.
 | File | Role |
 | --- | --- |
 | `src/temporal/agx.hlsl` → `src/renderer/hdr_tonemap_program{,_inc}.h` | the AgX write-back (`ps_3_0`, s0 the FP16 scene, c8..c21 the `AgxConstants` block, alpha carried); the only change from the stage-2 preparation is a `1e-10` floor under the decode's `pow` (SM3 `log` of an exact zero), applied to the gamma and sRGB branches only so `decode=none` passes the raw value through, negatives included, as the reference does (review 23); compiled and pinned by `generate_rigid_motion_pixel.py --shader hdr_tonemap` (`verification/results/hdr-tonemap-program.json`, 414 words) |
-| `src/temporal/hdr_meter_level0_ps.hlsl`, `hdr_meter_reduce_ps.hlsl` → `src/renderer/hdr_meter_program.h` + `hdr_meter_{level0,reduce}_program_inc.h` | the meter chain: level 0 folds `log2(clamp(luma(decode(scene)), 1e-4, 64))` into the first 4×4 reduction (one FP16 read per scene pixel, no full-resolution level-0 write), `reduce` averages 16 taps of the previous R32F level; taps are clamped by the CLAMP sampler exactly as `exposure_reference.reduce_chain` clamps its coordinates (1929 / 392 words) |
-| `src/renderer/exposure.{h,cpp}` | the mechanical port of `exposure_reference.py`: `decode_channel`, `luma`, `meter_level0`, `meter_clipped`, `reduce_mean`, `reduce_chain`, `ev_target`, `clamp_dt`, `adapt_rate`, `adapt`, `exposure_multiplier`, `resolve_ev`, `taa_k`, `luma_weight`, `weight_color`, `unweight_color`, `ExposureParams` (the defaults) and `ExposureState` (`step` = the loop body of `simulate`); no D3D types; `verification/analysis/test_exposure_port.py` compiles it natively and replays the reference on its output (23 cases) |
-| `src/renderer/hdr_pass.{h,cpp}` | `HdrConfig`, the stage-2 gates in `attach` and the self test, the meter chain resources and draw (`ensure_chain`, `meter_chain`), the lagged readback and adaptation at the latch (`begin_frame`), the constants (`prepare_constants`), the extended ladder in `write_back`, the c0..c21 save/restore, `references()` |
+| `src/temporal/hdr_meter_level0_ps.hlsl`, `hdr_meter_reduce_ps.hlsl` → `src/renderer/hdr_meter_program.h` + `hdr_meter_{level0,reduce}_program_inc.h` | the meter chain: level 0 folds `v = log2(clamp(luma(decode(scene)), 1e-4, 64))` into the first 4×4 reduction (one FP16 read per scene pixel, no full-resolution level-0 write) and writes `.r` = the mean of the 16 taps, `.g` = their maximum; `reduce` averages `.r` and maximises `.g` over 16 taps of the previous two-channel level; taps are clamped by the CLAMP sampler exactly as `exposure_reference.reduce_tiles` clamps its coordinates (1996 / 462 words since the space-aware meter) |
+| `src/renderer/exposure.{h,cpp}` | the mechanical port of `exposure_reference.py`: `decode_channel`, `luma`, `meter_level0`, `meter_clipped`, `reduce_mean`, `reduce_chain` (both channels, to a tile image or 1×1), `tile_weights`, `meter_statistics`, `ev_key`, `ev_limit`, `exposure_target`, `apply_deadband`, `ev_target`, `clamp_dt`, `adapt_rate`, `adapt`, `exposure_multiplier`, `resolve_ev`, `taa_k`, `luma_weight`, `weight_color`, `unweight_color`, `ExposureParams` (the defaults), `MeterStatistics` and `ExposureState` (`step` = the loop body of `simulate`); no D3D types; `verification/analysis/test_exposure_port.py` compiles it natively and replays the reference on its output |
+| `src/renderer/hdr_pass.{h,cpp}` | `HdrConfig`, the stage-2 gates in `attach` and the self test, the meter chain resources and draw (`ensure_chain`, `meter_chain`: levels down to the tile image, the tile-image ring and readback surfaces, the host tile copies and centre weights), the lagged readback, the host statistic and the adaptation at the latch (`begin_frame`), the constants (`prepare_constants`), the extended ladder in `write_back`, the c0..c21 save/restore, `references()` |
 | `src/proxy/motion_output.{h,cpp}`, `capture.cpp`, `telemetry.{h,cpp}` | switch parsing (`HdrConfig`), `begin_frame` at the latch, the `hdr_tonemap` attach line, the `hdr_frame` fields, `hdr_tonemap_disabled`, the metrics `hdr_meter` and `hdr_meter_readback`, the exported `hdr_taa_k()` (stage 3 consumes it; nothing does yet), the fixture export `x3m_hdr_fixture_exposure` |
 
 ### Gates (attach, inside the enabled feature)
@@ -822,53 +828,172 @@ Neither the tonemap nor the meter can refuse `X3M_HDR`; each demotes itself
 to the stage-1 behaviour with a reason on the `hdr_tonemap` line. Tonemap:
 `CreatePixelShader(agx)` (`reason=shader`), then in the self test a tonemap
 draw of the 4×4 additive sum must succeed with one code on every pixel and
-alpha 0.5 carried (`reason=self_test`). Meter (auto exposure only):
-`CheckDeviceFormat(RENDERTARGET, TEXTURE, R32F)` and sampling
-(`r32f_target`, `r32f_sampling`), the two meter programs (`shader`), then in
-the self test a one-level chain on the 4×4 sum through a temporary 1×1 ring
-slot must read back the host's `meter_level0((4, 16, 1))` to 1e-4 — exactly
-6.0 with the gamma or sRGB decode (322 clipped to 64), 3.628 with `none`
-(`meter_errors`, `meter_value`, `meter_expected` on the self-test detail).
-The chain levels are created with the target at the latched size
-(`hdr_target … chain_levels= chain_bytes=`); a failed creation disables the
-meter for the device (`meter_reason=chain`). Manual exposure or the identity
-tonemap never create a chain.
+alpha 0.5 carried (`reason=self_test`). Meter (auto exposure only): a
+two-channel float render-target texture format that is also samplable —
+`CheckDeviceFormat(RENDERTARGET, TEXTURE, …)` and usage 0 on `G32R32F`, else
+on `A32B32G32R32F` (`chain_target`, `chain_sampling`, `chain_format` on the
+`hdr_tonemap` line; the RGBA32F fallback is the self test's motion format,
+so the feature already required it), the two meter programs (`shader`), then
+in the self test a one-level chain on the 4×4 sum through a temporary 1×1
+tile-image ring slot must read back the host's `meter_level0((4, 16, 1))` in
+both channels (the mean and the maximum of a uniform block) to 1e-4 —
+exactly 6.0 with the gamma or sRGB decode (322 clipped to 64), 3.628 with
+`none` (`meter_errors`, `meter_value`, `meter_max`, `meter_expected` on the
+self-test detail). The chain levels are created with the target at the
+latched size (`hdr_target … chain_levels= chain_bytes=`); a failed creation
+disables the meter for the device (`meter_reason=chain`). Manual exposure or
+the identity tonemap never create a chain.
 
 ### Exposure: meter on the GPU, adaptation on the host (a documented deviation)
 
 §3 keeps the adaptation state in a 1×1 R32F ping-pong written by a 1×1
 draw with nothing read back per frame. Stage 2 runs the **chain** on the
-GPU and the **adaptation** on the host: the last chain draw lands in one of
-two 1×1 R32F ring targets; **at the next frame's latch**
-(`HdrPass::begin_frame`) `GetRenderTargetData` copies that target into its
-system-memory surface and `LockRect` reads the four bytes, so the download
-waits on work submitted a Present earlier, never on the current frame
-(measured: issuing the copy right after the chain, inside the write-back,
-cost ~0.7 ms per frame on WineD3D at every size — the backend waits for
-the queued frame there — whereas the deferred copy plus lock costs 30–80 µs);
-the value feeds `ExposureState::step(avg_log_l, dt)` with `dt` the QPC
-interval between the two latches (clamped to [1/240, 1/5] s in the step;
-`X3M_HDR_DT_MS` replaces it for the fixtures) and `prepare_constants`
-uploads `exp2(EV)` as c8.x for that frame's write-back. The ring keeps the
-value intact while the current frame's chain writes the other slot. The tonemap of frame *n* therefore
-consumes the EV adapted from frame *n−1*'s meter, as §3 specifies. Reasons
-for the deviation: the prepared fragment already takes the exposure as a
-constant (c8.x, pinned by the reference test); the host state is what the
-`hdr_frame` line, the fixtures (`≤ 1e-3 EV` against `simulate`) and the
-stage-3 `k` upload need, and it costs one `LockRect` of four bytes per frame
-(`readback_us` on the frame line). A GPU-side adaptation draw can still be
-added behind the same `ExposureState` interface. Pass order inside one
-write-back bracket (§4 with the chain before the tonemap, one state
-save/restore): unbind texture 0 and RT1.., depth off, fixed FVF/sampler/render
-state, the chain (RT0 = level *i*, viewport, program, c0..c3, texture = level
-*i−1*, the −0.5 quad; 64×64 → 16 → 4 → 1: three draws; 1280×768 → 320×192 →
-80×48 → 20×12 → 5×3 → 2×1 → 1×1: six, the last into the ring slot), then
-RT0 = the game's main target, the AgX program with c8..c21, texture = the
-scene, the quad; restore c0..c21 with the rest. A flush mid-frame runs
-the chain too and its later end overwrites the same ring slot; the meter's
-failure is reported (`meter=` HRESULT) and never fails the image. A
-dimension change resets the state to EV 0 (§5); a Reset at the same size
-keeps it.
+GPU and the **statistic and adaptation** on the host: the last chain draw
+lands in one of two **tile-image** ring targets (two-channel float, no axis
+above 128 texels: 80×48 at 1280×768, 80×23 at 5120×1440, 16×16 in the
+64×64 fixtures); **at the next frame's latch** (`HdrPass::begin_frame`)
+`GetRenderTargetData` copies that target into its system-memory surface,
+`LockRect` reads the tiles into two host arrays (8 or 16 bytes per texel by
+the chain format; 30 KB at 1280×768), so the download waits on work
+submitted a Present earlier, never on the current frame (measured for the
+1×1 form: issuing the copy right after the chain, inside the write-back,
+cost ~0.7 ms per frame on WineD3D at every size — the backend waits for the
+queued frame there — whereas the deferred copy plus lock costs 30–80 µs);
+`meter_statistics` reduces the tiles to the space-aware statistic (below)
+and it feeds `ExposureState::step(statistic, dt)` with `dt` the QPC interval
+between the two latches (clamped to [1/240, 1/5] s in the step;
+`X3M_HDR_DT_MS` replaces it for the fixtures); `prepare_constants` uploads
+`exp2(EV)` as c8.x for that frame's write-back. The ring keeps the tile
+image intact while the current frame's chain writes the other slot. The
+tonemap of frame *n* therefore consumes the EV adapted from frame *n−1*'s
+meter, as §3 specifies. Reasons for the deviation: the prepared fragment
+already takes the exposure as a constant (c8.x, pinned by the reference
+test); the host state is what the `hdr_frame` line, the fixtures (`≤ 1e-3
+EV` against `simulate`) and the stage-3 `k` upload need; and the statistic
+(a weighted median and a percentile) has no cheap SM3 form, whereas on the
+host it is a sort of at most 16 K floats per frame (`readback_us` on the
+frame line covers the copy, the lock and the statistic). Pass order inside
+one write-back bracket (§4 with the chain before the tonemap, one state
+save/restore): unbind texture 0 and RT1.., depth off, fixed
+FVF/sampler/render state, the chain (RT0 = level *i*, viewport, program,
+c0..c3, texture = level *i−1*, the −0.5 quad; 64×64 → 16×16: one draw
+straight into the ring slot; 1280×768 → 320×192 → 80×48: two; 5120×1440 →
+1280×360 → 320×90 → 80×23: three, the last into the ring slot), then RT0 =
+the game's main target, the AgX program with c8..c21, texture = the scene,
+the quad; restore c0..c21 with the rest. A flush mid-frame runs the chain
+too and its later end overwrites the same ring slot; the meter's failure is
+reported (`meter=` HRESULT) and never fails the image. A dimension change
+resets the state to EV 0 (§5); a Reset at the same size keeps it.
+
+### The space-aware meter (2026-09-13)
+
+**Why.** The first tonemapped game run (bottle X3, run 15, 1280×768: 133
+redirected frames, 132 metered) showed the plain §3 rule — the geometric
+mean of the whole frame mapped to the key — is wrong for space: the frame is
+mostly black, its log mean sat at the meter floor (`luma_mean` median
+0.0017, min 0.00014, max 0.0103 over the metered frames; the 1.0 on frame 0
+is the unmetered initial state), `ev_target` median +6.8 and `ev` +6.85
+with the +8 clamp reached, and the lit station, nebula and stars were blown
+out while the menu (never metered: it is not redirected) looked fine. The
+meter must follow lit content and limit the lift when broad bright regions
+would approach the tonemapper's white.
+
+**Statistic** (`exposure.h`, mirrored by `exposure_reference.py`), on the
+tile image the chain leaves (each tile: the mean and the maximum of the
+log2 luminance of its pixels, clamped to [1e-4, 64] per pixel):
+
+```
+weight      w = edge + (1 - edge) * (1 + cos(pi * r / r_corner)) / 2   // r: distance from the frame centre; edge 0.35
+lit         tile.mean >= log2(meter_bg)                 // meter_bg 1/512: the black sky is excluded
+neutral     lit < meter_min_lit * tiles                  // 1 %: nothing to meter, the target is EV 0 (+ offset)
+d           = log2(key) - weighted median(lit tile means)
+ev_key      = (d >= 0 ? d : d * key_pull) + ev_offset    // the lift in full, the pull down at a quarter
+ev_limit    = log2(white_target * 16.29) - p99(tile max) // unweighted: limit broad highlights regardless of position
+ev_fresh    = clamp(min(ev_key, ev_limit), ev_min, ev_max)   // -3 .. +2
+ev_target   = |ev_fresh - ev_target| > ev_deadband ? ev_fresh : ev_target   // 0.25 EV; held otherwise
+```
+
+then the §3 adaptation (τ 0.4 s up / 1.2 s down, the dt clamp) towards the
+held target, and `exp2(EV)` to the tonemap. The weighted median is the
+first tile of the ascending order at which the cumulative weight reaches
+half the lit weight; the p99 is the element at index `tiles·99/100` of the
+ascending tile maxima; both are exact selections (a sort of the lit tiles,
+`nth_element` of the maxima). The host port and reference use the same
+selection rule; their floating-point weights and arithmetic are compared
+within the fixture's tolerances. `avg_log_l`/`luma_mean` (the old statistic, the
+mean of every tile mean) stay on the log line for continuity.
+
+**Rationale, per term.** *Background exclusion:* the sky's floor tiles
+carry no exposure information, and a log mean over them is a measure of how
+much sky is in view, not of how bright the ship is. A tile counts as lit
+when its geometric mean is above 1/512 of white — a tile half covered by a
+hull at code 128 (decoded 0.22) qualifies; a tile with a few star pixels
+does not. *Neutral fallback:* with under 1 % of the tiles lit (a distant
+station, a few stars) there is nothing to expose for and the picture stays
+as authored (EV 0), which is also what the game shows without HDR. *Key
+rule on the median, not the mean:* the median of the lit tiles is robust
+to a few very bright or very dark tiles (a sun sprite, an engine glow); the
+lift towards the key is applied in full (a dark hull at decoded 0.05 is
+lifted +1.85 EV), but the pull down is scaled by `key_pull` = 0.25: the
+classic rule would take a white menu or a bright planet to mid-grey (−2.47
+EV), which the orchestrator's acceptance for a bright full frame ("EV near
+0 or slightly negative") rules out; at 0.25 the white frame lands at −0.62
+EV and AgX still renders 1.0 × 0.65 as 0.73 display. *Highlight limit:*
+the brightest 1 % of tiles may reach 0.9 of the AgX white (16.29 scene
+units, where the sigmoid saturates); on this game's 8-bit-authored content
+(decoded white = 1.0) the limit sits at +3.87 EV and only engages for
+content above 3.7 (sun sprites through bloom, weapon flashes, the fixture's
+100-valued blocks: the meter clip 64 then gives −2.13 EV), so it is the
+guard, not the driver. This is a percentile limit on the fresh target, not
+a hard bound on every pixel: the brightest tail may exceed it, a tile maximum
+is not a pixel percentile, the meter clips at 64, and adaptation/deadband can
+temporarily retain a higher exposure. *EV range −3..+2:* the chosen policy
+allows a two-stop lift (a hull at decoded 0.045 reaches the key at +2) and
+at most three stops of pull. Darker lit content can ask for more than two
+stops and is deliberately capped; the old ±8 allowed a whole-frame mean
+near the floor to drive a much larger lift. *Centre weighting* (orchestrator addition): a large emitter at the
+edge — a sun, a planet limb, a nebula — should not drive the exposure down
+and darken the ship the player looks at, so the lit tiles are weighted by a
+raised cosine of their distance from the frame centre, 1 at the centre,
+0.35 at the corners, 0.51 at the edge midpoints; the shape was chosen so a
+centre object of a quarter of the frame (64 of 256 tiles, weight 56.3)
+outweighs a white emitter covering the whole left half (96 tiles, weight
+53.4) — a linear falloff would not (52.8 against 56.6). The lit count, the
+neutral test and the highlight limit stay unweighted: percentile highlights
+at the edge have the same influence as those at the centre. *Dead band* (orchestrator addition): small
+scene changes while turning — a tile row of nebula entering, a star field
+— must not drift the exposure, so the held target moves only when the fresh
+one differs from it by more than 0.25 EV. The band is measured against the
+**held target**, which equals the adapted EV once the state has settled;
+measuring it against the adapted EV mid-adaptation would stop every
+adaptation 0.25 EV short of its target, whereas the held target lets the
+adaptation converge exactly and ignores the wobble around it afterwards. A
+slow drift crosses the band eventually and steps the target once, smoothed
+by τ. The first step after attach or a Reset takes the fresh target.
+
+**Run 15 replayed offline.** The per-frame log carries only the whole-frame
+mean, so the tile statistic cannot be rebuilt; what the rule would have
+produced: the menu, had it been metered (`luma_mean` 1.0, every tile lit at
+log2 0), gives `ev_key` = 0.25 × log2(0.18) = **−0.62 EV** and `ev_limit`
++3.87, so a target of −0.62 (the old rule: −2.47). The space scene: the
+lit tiles are the station hull and the nebula — 8-bit codes 20–140 decode
+to 0.0036–0.2, so the lit median gives `ev_key` between −0.04 and the +2
+clamp, the expected range **0..+2 EV** against the +6.8..+8 the run logged;
+with the p99 tile maximum at most 1.0 (no content above white in an
+8-bit-authored frame without bloom) the limit stays at +3.87 and never
+engages; frames with under 1 % of the tiles lit (a station far away) stay at
+EV 0. The next game run records `lit_fraction`, `luma_lit`, `luma_p99`,
+`ev_key`, `ev_limit` and `ev_fresh` per frame so the range can be checked.
+
+**Cost.** The chain is now two draws at 1280×768 and three at 5120×1440
+(against six and seven for the 1×1 chain: the reduction stops at the tile
+image), the readback is a 30 KB (1280×768, 80×48 × 8 B) or 15 KB
+(5120×1440, 80×23) copy plus a sort of the lit tiles; the levels are
+two-channel (8 B per texel with `G32R32F`, 16 with the RGBA32F fallback),
+so `chain_bytes` grows from 0.26 MB to 0.6 MB at 1280×768 and from 1.97 MB
+to 3.9 MB at 5120×1440. Run 15's `meter_us` 8.4 ms was frame 0 only (the
+first use of the programs); the steady median was 167 µs. The bench numbers
+are in the verification record.
 
 ### Must-unwind ladder, extended
 
@@ -887,15 +1012,21 @@ fallback's rung is proven at attach whenever the tonemap is.
 ### Telemetry
 
 `hdr_tonemap` once per device (both verdicts and every switch in force,
-including the derived time constants); `hdr_target` gains `chain_levels`,
-`chain_bytes`, `meter`, `meter_reason`; `hdr_frame` gains `tonemap`
-(the program in force), `tonemapped` (the last write-back's image is AgX),
-`look`, `decode`, `clamp`, `exposure`, `ev` (consumed), `ev_adapted`,
-`ev_target`, `avg_log_l`, `luma_mean` (`exp2(avg_log_l)`), `dt_ms`,
-`stepped`, `steps`, `meter`, `readback`, `tonemap_draw`, `fallback`,
-`meter_us` (the chain inside the draw bracket), `readback_us` (the lock at
-the latch), `k`, `chain_bytes`; metrics `hdr_meter`, `hdr_meter_readback`
-under `X3M_TELEMETRY=1`.
+including the derived time constants, the meter's `meter_bg`,
+`meter_min_lit`, `white_target`, `key_pull`, `ev_deadband`, `edge_weight`,
+`tile_max` and the `chain_format` with its two gates); `hdr_target` gains
+`chain_levels`, `chain_bytes`, `meter`, `meter_reason`; `hdr_frame` gains
+`tonemap` (the program in force), `tonemapped` (the last write-back's image
+is AgX), `look`, `decode`, `clamp`, `exposure`, `ev` (consumed),
+`ev_adapted`, `ev_target` (the held target), `avg_log_l`, `luma_mean`
+(`exp2(avg_log_l)`, the old whole-frame statistic), `lit_fraction`,
+`luma_lit` (`exp2` of the weighted lit median), `luma_p99` (`exp2` of the
+p99 tile maximum), `ev_key`, `ev_limit`, `ev_fresh` (this step's target
+before the dead band), `tiles`, `lit`, `dt_ms`, `stepped`, `steps`, `meter`,
+`readback`, `tonemap_draw`, `fallback`, `meter_us` (the chain inside the
+draw bracket), `readback_us` (the copy, the lock and the statistic at the
+latch), `k`, `chain_bytes`; metrics `hdr_meter`, `hdr_meter_readback` under
+`X3M_TELEMETRY=1`.
 
 ### Verification (summary; numbers in the verification record)
 
@@ -913,7 +1044,13 @@ meters (≤ 1e-3 EV; the end-to-end error recorded), the up/down direction,
 the clip's effect on the sun frames, the presented blocks against the
 reference at the consumed EV (≤ 1 code); once more with an EV offset and
 other time constants, and once through the ownership wrapper (the chain's
-references at teardown). `hdrtonemapfault`: the ladder above frame by frame
+references at teardown). Since the space-aware meter the script continues
+with the synthetic space scenes (a black sky with a lit patch, a white
+frame, mid-grey with super-bright sparks, uniform grey, the dead-band
+sequence of small then large changes, a white edge emitter against a
+centre object; 120 frames) and the DLL's tile statistic, its target terms
+and its held target are checked against the reference on every
+deterministic frame. `hdrtonemapfault`: the ladder above frame by frame
 against the FP16 readback, and the program forced absent at attach (fault
 12). Bench: the stage-1 bench with the tonemap and the meter on. Cost
 finding: the AgX draw itself is free against the identity draw within the

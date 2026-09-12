@@ -1,0 +1,8 @@
+{
+  "path": "tools/analysis/exposure_reference.py",
+  "before_sha256": "0b36ec8a127a055058e1000fae4d33316d0aee4ee2c9c5b36ad1cae145f177de",
+  "after_sha256": "f683a1a4daa0455aaa546803382fb202f200ae4cb2c9b6633496bc659796af9d",
+  "only_module_docstring_changed": true,
+  "executable_ast_equal": true,
+  "timing": "after complete Steam/X3 motion-output PASS; no GPU rerun required for wording"
+}

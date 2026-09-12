@@ -1,0 +1,7 @@
+CASE width=80 height=48 dense=0 tiles=3840 lit=384 batches=41 repetitions=40 warmup=20 median_us=8.200000 p95_us=8.400000 min_us=8.125000 witness=-2393.007568
+CASE width=80 height=48 dense=1 tiles=3840 lit=3840 batches=41 repetitions=40 warmup=20 median_us=42.900000 p95_us=50.050000 min_us=41.250000 witness=-2228.042725
+CASE width=80 height=23 dense=0 tiles=1840 lit=184 batches=41 repetitions=40 warmup=20 median_us=4.550000 p95_us=4.750000 min_us=4.325000 witness=-2085.496826
+CASE width=80 height=23 dense=1 tiles=1840 lit=1840 batches=41 repetitions=40 warmup=20 median_us=19.175000 p95_us=21.225000 min_us=17.775000 witness=-1931.074341
+CASE width=128 height=128 dense=0 tiles=16384 lit=1639 batches=41 repetitions=40 warmup=20 median_us=36.400000 p95_us=39.150000 min_us=35.475000 witness=-1870.130859
+CASE width=128 height=128 dense=1 tiles=16384 lit=16384 batches=41 repetitions=40 warmup=20 median_us=427.775000 p95_us=500.975000 min_us=393.925000 witness=-2343.958496
+RESULT PASS cases=6

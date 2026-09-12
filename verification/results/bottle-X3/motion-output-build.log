@@ -1,9 +1,9 @@
--- Configuring done (0.1s)
+-- Configuring done (0.0s)
 -- Generating done (0.0s)
--- Build files have been written to: /Users/asvetl/x3-mod/build
+-- Build files have been written to: /Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/build
 [  7%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
-[  7%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
 [  7%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/motion_capture.cpp.obj
+[  7%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
 [ 10%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj
 [ 12%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/execution_state.cpp.obj
 [ 15%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/application_admission.cpp.obj
@@ -28,7 +28,7 @@
 [ 62%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/draw_input.cpp.obj
 [ 65%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/object_lifetime.cpp.obj
 [ 67%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/mesh_adjacency_cache.cpp.obj
-[ 72%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/mesh_adjacency_fast.cpp.obj
+[ 70%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/mesh_adjacency_fast.cpp.obj
 [ 72%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/temporal_pass.cpp.obj
 [ 75%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/hdr_pass.cpp.obj
 [ 77%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/exposure.cpp.obj

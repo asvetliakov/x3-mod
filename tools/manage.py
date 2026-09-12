@@ -64,11 +64,18 @@ def main():
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
     parser.add_argument('--scene-hook', nargs='?', const='on', default=None, choices=['on', 'off'], help='Engine scene-end hook (X3M_SCENE_HOOK): patch the frame routine\'s compositing callsite (0x004721b1, exact executable and bytes only, otherwise it fails closed to the bloom-copy/selector boundary) so the route learns the scene end from the engine and, with --taa, resolves there before the glow pass. Default on with --motion-output since review 26 (iteration 10: 214/214 agreement); "--scene-hook" alone means on; "--scene-hook off" keeps the copy/selector boundary')
     parser.add_argument('--hdr', action='store_true', help='FP16 HDR scene path (X3M_HDR=1; requires --motion-output): the scene renders into an owned A16B16G16R16F target bound as RT0 at the latching Clear and is written back into the game\'s 8-bit main target at the scene end (--scene-hook, else the bloom copy, else EndScene/Present); fails closed on the capability gate and self test. Without --hdr-tonemap the write-back is the stage-1 identity copy and presented frames equal the non-HDR frames to within one 8-bit code (docs/architecture/hdr-scene-path.md, "Stage 1 implementation")')
-    parser.add_argument('--hdr-tonemap', action='store_true', help='Stage 2 (X3M_HDR_TONEMAP=agx; requires --hdr): the write-back is the AgX tonemap of the FP16 scene (decode, clamp, exposure, look; alpha carried), auto exposure metered by the log-luminance reduction chain over the FP16 target and adapted on the host (tau 0.4 s up / 1.2 s down); the presented image is still LDR to the game\'s bloom and GUI, and the decode of a gamma-space scene is a documented approximation ("Stage 2 implementation"); default off: identity write-back')
+    parser.add_argument('--hdr-tonemap', action='store_true', help='Stage 2 (X3M_HDR_TONEMAP=agx; requires --hdr): the write-back is the AgX tonemap of the FP16 scene (decode, clamp, exposure, look; alpha carried), auto exposure metered by the space-aware statistic of a log-luminance tile image reduced over the FP16 target (the black sky excluded, the lit tiles\' median mapped to the key, the brightest 1 %% of tiles held under white, EV -3..+2) and adapted on the host (tau 0.4 s up / 1.2 s down); the presented image is still LDR to the game\'s bloom and GUI, and the decode of a gamma-space scene is a documented approximation ("Stage 2 implementation"); default off: identity write-back')
     parser.add_argument('--hdr-look', choices=['none', 'golden', 'punchy'], default='none', help='AgX look (X3M_HDR_LOOK; requires --hdr-tonemap; default none)')
     parser.add_argument('--hdr-decode', choices=['gamma2.2', 'pow22', 'srgb', 'none'], default='gamma2.2', help='Engine-space decode before the tonemap and the meter (X3M_HDR_DECODE; requires --hdr-tonemap): gamma2.2 (default; pow22 is the same curve), srgb, or none for the A/B against the decoded transform')
     parser.add_argument('--hdr-ev', type=float, default=0.0, help='Exposure offset in EV added to the auto-exposure target (X3M_HDR_EV; requires --hdr-tonemap; default 0)')
-    parser.add_argument('--hdr-ev-manual', type=float, default=None, help='Fixed EV instead of auto exposure (X3M_HDR_EV_MANUAL; requires --hdr-tonemap): the meter chain does not run; deterministic; clamped to the EV range (X3M_HDR_EV_MIN/MAX, -8..8 by default)')
+    parser.add_argument('--hdr-ev-manual', type=float, default=None, help='Fixed EV instead of auto exposure (X3M_HDR_EV_MANUAL; requires --hdr-tonemap): the meter chain does not run; deterministic; clamped to the EV range (--hdr-ev-min/--hdr-ev-max, -3..+2 by default)')
+    parser.add_argument('--hdr-ev-min', type=float, default=-3.0, help='Lower clamp of the auto-exposure EV (X3M_HDR_EV_MIN; requires --hdr-tonemap; default -3)')
+    parser.add_argument('--hdr-ev-max', type=float, default=2.0, help='Upper clamp of the auto-exposure EV (X3M_HDR_EV_MAX; requires --hdr-tonemap; default 2)')
+    parser.add_argument('--hdr-meter-bg', type=float, default=1.0 / 512.0, help='Tile background floor of the meter in scene-linear units (X3M_HDR_METER_BG; requires --hdr-tonemap): tiles whose geometric-mean luminance is below it are the black sky and excluded from the key rule; default 1/512')
+    parser.add_argument('--hdr-white-target', type=float, default=0.9, help='Fraction of the tonemapper\'s white the brightest 1 %% of tiles may reach, the highlight limit of the auto exposure (X3M_HDR_WHITE_TARGET; requires --hdr-tonemap; default 0.9; 0 = no limit)')
+    parser.add_argument('--hdr-ev-deadband', type=float, default=0.25, help='Dead band of the auto exposure in EV (X3M_HDR_EV_DEADBAND; requires --hdr-tonemap): the held target moves only when the freshly metered target differs from it by more, so small scene changes while turning do not drift the exposure; default 0.25; 0 = off')
+    parser.add_argument('--hdr-edge-weight', type=float, default=0.35, help='Centre weighting of the lit-content statistic (X3M_HDR_METER_EDGE_WEIGHT; requires --hdr-tonemap): the tile weight at the frame corners, 1 at the centre (a raised cosine), so a bright emitter at the edge does not darken what the player looks at; the highlight limit stays unweighted; default 0.35; 1 = unweighted')
+    parser.add_argument('--hdr-key-pull', type=float, default=0.25, help='Fraction of the key rule applied when the lit median is brighter than the key, so a bright full frame is pulled down gently instead of to mid-grey (X3M_HDR_KEY_PULL; requires --hdr-tonemap; default 0.25; 1 = the full key rule both ways)')
     parser.add_argument('--hdr-clamp', type=float, default=0.0, help='Clamp of the decoded scene value before the tonemap, the blunt firefly guard (X3M_HDR_CLAMP; requires --hdr-tonemap; default 0 = off)')
     parser.add_argument('--state-shadow', choices=['on', 'off'], default='on', help='Render-state shadow of the route (X3M_STATE_SHADOW): on (default) hooks SetRenderState and answers the per-draw state queries from the shadow; off issues GetRenderState per query (A/B; requires --motion-output)')
     parser.add_argument('--motion-rt-mode', choices=['perdraw', 'lazy'], default='perdraw', help='RT1/RT2 binding policy of the route: perdraw (default) rebinds around every routed draw; lazy keeps the bindings across consecutive routed draws (A/B experiment, requires --motion-output)')
@@ -128,10 +135,15 @@ def main():
         parser.error('--hdr requires --motion-output.')
     if args.hdr_tonemap and not args.hdr:
         parser.error('--hdr-tonemap requires --hdr.')
-    if not args.hdr_tonemap and (args.hdr_look != 'none' or args.hdr_decode != 'gamma2.2' or args.hdr_ev != 0.0 or args.hdr_ev_manual is not None or args.hdr_clamp != 0.0):
-        parser.error('--hdr-look, --hdr-decode, --hdr-ev, --hdr-ev-manual and --hdr-clamp require --hdr-tonemap.')
+    if not args.hdr_tonemap and (args.hdr_look != 'none' or args.hdr_decode != 'gamma2.2' or args.hdr_ev != 0.0 or args.hdr_ev_manual is not None or args.hdr_clamp != 0.0
+                                 or args.hdr_ev_min != -3.0 or args.hdr_ev_max != 2.0 or args.hdr_meter_bg != 1.0 / 512.0 or args.hdr_white_target != 0.9 or args.hdr_key_pull != 0.25
+                                 or args.hdr_ev_deadband != 0.25 or args.hdr_edge_weight != 0.35):
+        parser.error('--hdr-look, --hdr-decode, --hdr-ev, --hdr-ev-manual, --hdr-clamp, --hdr-ev-min/max, --hdr-meter-bg, --hdr-white-target, --hdr-key-pull, --hdr-ev-deadband and --hdr-edge-weight require --hdr-tonemap.')
     if not -16.0 <= args.hdr_ev <= 16.0 or (args.hdr_ev_manual is not None and not -16.0 <= args.hdr_ev_manual <= 16.0) or not 0.0 <= args.hdr_clamp <= 65504.0:
         parser.error('--hdr-ev and --hdr-ev-manual must be within [-16, 16], --hdr-clamp within [0, 65504].')
+    if not -16.0 <= args.hdr_ev_min <= args.hdr_ev_max <= 16.0 or not 1e-4 <= args.hdr_meter_bg <= 64.0 or not 0.0 <= args.hdr_white_target <= 4.0 or not 0.0 <= args.hdr_key_pull <= 1.0 \
+            or not 0.0 <= args.hdr_ev_deadband <= 8.0 or not 0.0 <= args.hdr_edge_weight <= 1.0:
+        parser.error('--hdr-ev-min <= --hdr-ev-max within [-16, 16], --hdr-meter-bg within [1e-4, 64], --hdr-white-target within [0, 4], --hdr-key-pull, --hdr-edge-weight within [0, 1], --hdr-ev-deadband within [0, 8].')
     if args.state_shadow != 'on' and not args.motion_output:
         parser.error('--state-shadow requires --motion-output.')
     if not 100 <= args.profile_interval_us <= 1000000:
@@ -223,6 +235,13 @@ def main():
         env['X3M_HDR_EV'] = repr(args.hdr_ev)
         env['X3M_HDR_EV_MANUAL'] = '' if args.hdr_ev_manual is None else repr(args.hdr_ev_manual)
         env['X3M_HDR_CLAMP'] = repr(args.hdr_clamp)
+        env['X3M_HDR_EV_MIN'] = repr(args.hdr_ev_min)
+        env['X3M_HDR_EV_MAX'] = repr(args.hdr_ev_max)
+        env['X3M_HDR_METER_BG'] = repr(args.hdr_meter_bg)
+        env['X3M_HDR_WHITE_TARGET'] = repr(args.hdr_white_target)
+        env['X3M_HDR_KEY_PULL'] = repr(args.hdr_key_pull)
+        env['X3M_HDR_EV_DEADBAND'] = repr(args.hdr_ev_deadband)
+        env['X3M_HDR_METER_EDGE_WEIGHT'] = repr(args.hdr_edge_weight)
         env['X3M_STATE_SHADOW'] = '1' if args.state_shadow == 'on' else '0'
         env['X3M_GZ_BUFFER'] = '1' if args.gz_buffer else '0'
         env['X3M_GZ_BUFFER_KB'] = str(args.gz_buffer_kb)

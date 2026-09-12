@@ -10,8 +10,8 @@ reference and are no longer a prerequisite for any visual feature. See the
 AgX is implemented, was seen at fixed exposure, and is retained. FP16 scene
 redirection exists, but the lighting is still the game's gamma-space output
 decoded into FP16: scene-referred HDR and HDR display output are not complete.
-The whole-scene auto-exposure meter is wrong for space; its replacement is
-pending branch review and game validation. Loading is down from 87 s to about
+The whole-scene auto-exposure meter is wrong for space; its replacement has
+passed branch review and awaits integrated installation and game validation. Loading is down from 87 s to about
 34–38 s in the recorded X3 runs. See the reconciled [goal checklist](goals.md),
 [full user objective](user-objective.md) and [roadmap](architecture/roadmap.md).
 Native Windows/Direct3D remains a required target alongside CrossOver Preview;
@@ -19,8 +19,9 @@ tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
 
 Current work: review 30 is committed and installed; crypto is reviewed and
-merged, exposure fixture validation is in progress, and adjacency/reader fixes
-remain to be completed and verified. Then
+merged, the reviewed exposure branch is merged, and the reader has
+passed 4,721 checks plus independent artifact review. Adjacency qualification
+remains in progress. Then
 install the integrated build and request
 the [controlled run groups](verification/next-runs-2026-09-13.md) from handoff
 section 5. **Current install:** review-30 checkpoint `3124e0b`, SHA-256
@@ -63,6 +64,23 @@ crypto module. Merged loading/capture sources pass the production-flag syntax
 check; CLI dry-run and six crypto host controls pass. Full integrated fixture
 qualification follows the adjacency/reader work before installation. The
 approximately 4× signature-fixture speedup is not a measured game load saving.
+
+## Space-aware exposure checkpoint (2026-09-13; merged, not installed)
+
+Branch `e897011` passed [review 32](verification/review-32-exposure.md):
+98 motion/HDR cases on each bottle, supporting temporal/scene/ownership suites,
+strict configuration and readback-failure controls. The meter uses a lit-tile
+statistic, a highlight limit, target dead band and −3…+2 EV bounds. Its visual
+quality still requires the user's game capture; the FP16 input remains decoded
+gamma-space lighting. Dense CPU statistics cost about 43 µs at 80×48 tiles on
+X3/FEX; this excludes GPU download and is not a game-FPS result.
+
+The merge retains complete branch result artifacts rather than mixing reports
+from different runs. Review-30 reports remain available at their checkpoint.
+The branch's numerical-helper hashes were recorded after its runs, with that
+limitation explicit; final integration expands the before/after source manifest
+and reruns selected combined paths. See [review 34](verification/review-34-integration.md).
+This checkpoint does not change the installed review-30 DLL.
 
 ## Review 29 record — loading branch, adjacency parity and present readback merged (2026-09-12 night)
 
