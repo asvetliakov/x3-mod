@@ -360,6 +360,35 @@ install`, and the next user run: TAA on, then proxy with route off
 camera reprojection for non-routed pixels (shadow view-inverse rows c34–36,
 recover projection) so background and effects stop crawling when turning.
 
+## Next user-managed runs (2026-09-12, installed build 4f46feee…)
+
+All runs use the installed build; logs land in the game's `x3-modern-captures`
+folder as `session-<date>-<pid>.log` (no overwrite). Analysis commands follow
+each run.
+
+1. **Run 1 — loading profile, TAA quality, camera reprojection**:
+   `python3 tools/manage.py launch --direct --ownership --object-trace
+   --object-lifetime --motion-output --taa --telemetry --profile
+   --capture-start 999999 --capture-frames 4`. Start → main menu → load the
+   usual save → fly, then turn the ship through a full circle while
+   stationary, then a sector change. Take three capture bursts (stationary,
+   turning, moving). Analysis: `tools/analysis/analyze_loading_profile.py
+   <log> --output verification/results/loading-profile-run1 --ghidra`,
+   `analyze_camera_state.py`, `analyze_iteration08_taa.py` (rerun the class
+   split), plus the `camera_policy` / `camera_cut` / `selector_state=9`
+   distributions.
+2. **Run 2 — engine hook and adjacency cache**: same command plus
+   `--scene-hook --mesh-cache`. Watch for any crash at the first frame (the
+   hook patches `0x004721b1`) and read `scene_end_check`, `draws_after_hook`,
+   the cache hit rate and the loading gaps against run 1.
+3. **Run 3 — route-cost baseline**: `python3 tools/manage.py launch --direct
+   --telemetry`, same save and scene as run 1, for the route-on/off frame time
+   comparison (`summarize_telemetry.py` route_costs).
+4. **Run 4 — HDR stage 1 identity check**: run 1's command plus `--hdr`
+   (and `--scene-hook` if run 2 was clean). The image must look identical;
+   read `hdr_device`, the `hdr_frame` end distribution, any `hdr_unwind` /
+   `hdr_recheck`, and check the alt-tab cursor.
+
 ## Concrete next work
 
 1. Verify camera reprojection on the next run: `analyze_camera_state.py`
