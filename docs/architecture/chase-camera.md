@@ -28,7 +28,7 @@ remain the in-game switch. Default off: without `X3M_CAMERA=chase`
 | Expected bytes | `83 7b 54 00 0f 84 09 02 00 00` (`cmp dword ptr [ebx+0x54],0` ; `jz 0x00421019`), length 10 |
 | Relocation | `engine_patch::claim` with `rel32_offset = 6`: the tail holds the two instructions with the `jz` re-based to the same absolute target, then `jmp 0x00420e10`; the site's first five bytes become `jmp dispatcher`; no other branch in the function targets the interior of the span (probe check) |
 | Atomic write | the five bytes straddle the qword at `0x00420e08`: plain copy, protected by the install window (claimed on the backend-load path before the device exists, `late_claim` afterwards) |
-| Live registers | EBX = cockpit object; the stub saves flags, all general registers and XMM0–7 and passes the `pushad` block; the handler runs under the full CPU boundary (`PreserveCpuState`: x87 state, MXCSR, last error) because the log formatter it may reach is x87 code |
+| Live registers | EBX = cockpit object; the stub saves flags, all general registers and XMM0–7 and passes the `pushad` block; the handler runs under the full CPU boundary (`PreserveCpuState`: x87 state, MXCSR, last error) because the libm transcendentals and the log formatter it may reach are x87 code. `PreserveCpuState` restores the caller's x87 stack after saving it, and this is a mid-function site rather than a call boundary, so the handler executes `fninit` after the save: our x87 code starts from an empty, fully masked, round-to-nearest FPU and the destructor's `FRSTOR` puts the game's state back before the relocated `cmp`/`jz` runs |
 | Stub | `pushfd; pushad; sub esp,0x80; movups [esp+16i],xmm_i; lea eax,[esp+0x80]; push eax; call x3m_chase_camera_enter; add esp,4; movups xmm_i,[esp+16i]; add esp,0x80; popad; popfd; jmp [next]` (arena, `engine_patch::Emitter`); `next` = the tail, chained with `push_front` like the loading probes |
 | Fail closed | exact executable (`object_trace::executable_verified`: SHA-256 `fdbf3418…`, size, base), exact bytes, install window, valid tunables, QPC available; any refusal logs `chase_camera requested=1 installed=0 status=<reason>` and leaves the vanilla camera |
 | Restore | `chase_camera::shutdown()` when the last device is released (with the scene hook); `restore_not_owned` if the bytes are not ours |
@@ -36,7 +36,11 @@ remain the in-game switch. Default off: without `X3M_CAMERA=chase`
 ## Engine reads and writes per frame
 
 All reads go through `engine_memory::read` (validated, bounded; direct mode
-with the per-frame region cache). Pointers must be non-null and 4-aligned.
+with the per-frame region cache). Pointers must be non-null and 4-aligned
+(cockpit, sector camera, ref object, render node). The registry walk calls the
+cockpit update once per cockpit object, and one pipeline state belongs to one
+cockpit: a change of the cockpit pointer between invocations is a gap, so the
+next frame snaps rather than mixing two cockpits' poses and dt into one spring.
 
 | Read | Bytes | Use |
 | --- | --- | --- |
@@ -102,9 +106,9 @@ next applied frame snaps.
 | Variable | Flag | Default | Range | Meaning |
 | --- | --- | --- | --- | --- |
 | `X3M_CAMERA` | `--camera chase` | vanilla | `chase` | install the hook |
-| `X3M_CAMERA_ROT_TAU` | `--camera-rot-tau` | 0.20 s | (0, 10] | orientation spring time constant (63 % of a step in ~1.7τ, 95 % in ~4.7τ for the critically damped form) |
+| `X3M_CAMERA_ROT_TAU` | `--camera-rot-tau` | 0.20 s | (0, 10] | orientation spring time constant (for the critically damped form 63 % of a step is done in ~2.15τ and 95 % in ~4.75τ) |
 | `X3M_CAMERA_POS_TAU` | `--camera-pos-tau` | 0.30 s | (0, 10] | boom spring time constant |
-| `X3M_CAMERA_OFFSET_Y` | `--camera-offset-y` | 0.12 | [−1, 1] | ship below centre, fraction of the half screen height |
+| `X3M_CAMERA_OFFSET_Y` | `--camera-offset-y` | 0.12 | [−1, 1] | ship below centre, fraction of the half screen height (negative = above centre) |
 | `X3M_CAMERA_DISTANCE_SCALE` | `--camera-distance-scale` | 1.0 | (0, 10] | multiplies the vanilla boom (the scripts already size it per ship class) |
 | `X3M_CAMERA_LAG_CLAMP_DEG` | `--camera-lag-clamp-deg` | 10° | [0, 90] | orientation lag clamp = the screen window |
 | `X3M_CAMERA_POS_LAG_CLAMP` | – | 0.20 | [0, 1] | boom lag clamp as a fraction of the boom |

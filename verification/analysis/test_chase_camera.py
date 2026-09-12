@@ -72,6 +72,16 @@ class Driver:
     def reset(self):
         self.send('R')
 
+    def long_run(self, steps, dt, yaw_rate, roll_rate):
+        out = self.send(f'L {steps} {dt!r} {yaw_rate!r} {roll_rate!r}')
+        assert out[0] == 'L', out
+        return dict(applied=int(out[1]), refused=int(out[2]), snaps=int(out[3]), max_ortho=float(out[4]),
+                    max_lag_deg=float(out[5]), max_identity=float(out[6]), lag_deg=float(out[7]))
+
+    def exp_log(self, v):
+        out = self.send('X ' + ' '.join(map(repr, v)))
+        return [float(x) for x in out[1:4]], float(out[4])
+
     def frame(self, dt, ship_pos=(0, 0, 0), ship=IDENTITY, boom=(0, 40, -200), view_rel=IDENTITY, mode=2, connect=0, ref=1, sector=1, half_vfov_tan=0.75):
         line = ' '.join(['F', repr(dt), str(mode), str(connect), str(ref), str(sector), *map(repr, ship_pos), *map(repr, ship), *map(repr, boom), *map(repr, view_rel), repr(half_vfov_tan)])
         out = self.send(line)
@@ -317,6 +327,80 @@ class ChaseCameraPipeline(unittest.TestCase):
             self.assertLess(float(out[4]), 1e-12)
             self.assertEqual(out[5], '1')
             self.assertLessEqual(float(out[6]), 0.5 / 65536 + 1e-12)
+
+    def test_rotation_vector_at_pi_takes_the_diagonal_axis_branch(self):
+        # |r| = pi makes the matrix symmetric, so log_rotation's antisymmetric
+        # part vanishes and it must recover the axis from the diagonal. The sign
+        # is genuinely ambiguous there: r and -r are the same rotation.
+        for axis in ([1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 2, -3]):
+            norm = math.sqrt(sum(x * x for x in axis))
+            for angle in (math.pi, math.pi - 1e-9, math.pi - 1e-4):
+                v = [x * angle / norm for x in axis]
+                back, ortho = self.d.exp_log(v)
+                self.assertLess(ortho, 1e-12, (axis, angle))
+                self.assertAlmostEqual(math.sqrt(sum(x * x for x in back)), angle, places=6, msg=(axis, angle))
+                parallel = sum(a * b for a, b in zip(back, v)) / (angle * angle)
+                self.assertAlmostEqual(abs(parallel), 1.0, places=6, msg=(axis, angle, back))
+
+    def test_rotation_vector_beyond_pi_comes_back_the_short_way(self):
+        # exp of a 200 deg rotation is the same matrix as -160 deg about -k;
+        # log must return the shorter one, so nothing can accumulate past pi.
+        v = [0.0, math.radians(200), 0.0]
+        back, ortho = self.d.exp_log(v)
+        self.assertLess(ortho, 1e-12)
+        self.assertAlmostEqual(math.degrees(math.sqrt(sum(x * x for x in back))), 160.0, places=6)
+        self.assertLess(sum(a * b for a, b in zip(back, v)), 0)
+
+    def test_half_turn_of_the_ship_stays_within_the_clamp_and_converges(self):
+        self.d.tunables(lag_clamp_deg=45)
+        self.d.frame(1 / 60)
+        r = self.d.frame(1 / 60, ship=yaw(math.radians(179)))
+        self.assertEqual(r['verdict'], 0)
+        self.assertLessEqual(r['lag_deg'], 45 + 1e-9)
+        self.assertLess(r['ortho_error'], 1e-9)
+        for _ in range(600):
+            r = self.d.frame(1 / 60, ship=yaw(math.radians(179)))
+        self.assertLess(r['lag_deg'], 1e-6)
+        self.assertLess(rotation_angle_deg(r['basis'], yaw(math.radians(179))), 1e-6)
+
+    # --- dt edges -----------------------------------------------------------
+    def test_negative_dt_is_treated_as_no_time(self):
+        self.d.frame(1 / 60)
+        target = yaw(math.radians(10))
+        a = self.d.frame(1 / 60, ship=target)['lag_deg']
+        b = self.d.frame(-0.5, ship=target)['lag_deg']
+        self.assertAlmostEqual(a, b, places=12)
+
+    def test_pause_then_resume_clamps_the_first_step_and_keeps_tracking(self):
+        # A menu/alt-tab gap: the handler keeps running, dt is huge. The step is
+        # clamped to max_dt (no snap, no NaN) and the spring keeps converging.
+        self.d.tunables(max_dt=0.1, rot_tau=0.2)
+        self.d.frame(1 / 60)
+        self.d.frame(1 / 60, ship=yaw(math.radians(40)))
+        r = self.d.frame(30.0, ship=yaw(math.radians(40)))
+        self.assertEqual(r['verdict'], 0)
+        self.assertFalse(r['snapped'])
+        self.assertGreater(r['lag_deg'], 0)
+        self.assertLess(r['ortho_error'], 1e-9)
+        for _ in range(600):
+            r = self.d.frame(1 / 60, ship=yaw(math.radians(40)))
+        self.assertLess(r['lag_deg'], 1e-6)
+
+    # --- long run -----------------------------------------------------------
+    def test_orthonormality_and_the_identity_hold_over_100k_steps(self):
+        # The basis is rebuilt each frame as target * exp(x) from freshly read
+        # engine state, so nothing can drift; 10^5 frames (~28 min at 60 Hz) of
+        # continuous yaw and roll must leave it a proper rotation and keep
+        # camera = view_rel * ship exact for the mouse-aim ray.
+        self.d.tunables(lag_clamp_deg=10, rot_tau=0.2, pos_tau=0.3, pos_lag_clamp=0.2)
+        run = self.d.long_run(100000, 1 / 60, 0.7, 0.3)
+        self.assertEqual(run['refused'], 0)
+        self.assertEqual(run['snaps'], 1)  # only the first frame
+        self.assertEqual(run['applied'], 100000)
+        self.assertLess(run['max_ortho'], 1e-9)
+        self.assertLessEqual(run['max_lag_deg'], 10 + 1e-9)
+        self.assertGreater(run['max_lag_deg'], 1.0)  # the ship really is turning
+        self.assertLess(run['max_identity'], 1e-9)
 
 
 if __name__ == '__main__':

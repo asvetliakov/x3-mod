@@ -8,6 +8,11 @@
 //   F dt mode connect ref sector ship_x ship_y ship_z ship_basis(9) boom_local_x boom_local_y boom_local_z view_rel(9) half_vfov_tan
 //       (the vanilla camera is built as view_rel * ship_basis at ship + boom_local * ship_basis, as the engine does)
 //   R   reset the state (as after a refused frame / hook gap)
+//   L steps dt yaw_rate roll_rate
+//       long run in-process (the pipe would dominate 10^5 frames): a ship
+//       turning at yaw_rate rad/s and rolling at roll_rate rad/s while flying
+//       forward. Prints: L applied refused snaps max_ortho_error max_lag_deg
+//       max_identity_error final_lag_deg  (identity error = |camera - view_rel * ship|).
 // Each F prints: verdict snapped snap_reason lag_deg pos_lag distance pos(3) basis(9) view_rel(9) ortho_error
 #include "../../src/proxy/chase_camera_math.h"
 #include <cstdio>
@@ -63,6 +68,32 @@ int main() {
             std::int32_t fixed[12] = {}; const bool ok = to_fixed(w, fixed); const Mat3 again = from_fixed(fixed);
             double err = 0; for (int i = 0; i < 3; ++i) for (int j = 0; j < 3; ++j) err = std::fmax(err, std::fabs(again.m[i][j] - w.m[i][j]));
             std::printf("X %.17g %.17g %.17g %.3g %d %.3g\n", back.x, back.y, back.z, orthonormality_error(w), int(ok), err);
+        } else if (op == 'L') {
+            double steps_d = 0, dt = 0, yaw_rate = 0, roll_rate = 0;
+            ss >> steps_d >> dt >> yaw_rate >> roll_rate;
+            double max_ortho = 0, max_lag = 0, max_identity = 0, last_lag = 0;
+            unsigned long long applied = 0, refused = 0, snaps = 0;
+            Vec3 flown; // integrated along the ship's own forward axis, as a ship flies
+            for (long long n = 0; n < static_cast<long long>(steps_d); ++n) {
+                const double time = double(n) * dt, a = yaw_rate * time, b = roll_rate * time;
+                Mat3 yaw; yaw.m[0][0] = std::cos(a); yaw.m[0][2] = -std::sin(a); yaw.m[2][0] = std::sin(a); yaw.m[2][2] = std::cos(a);
+                Mat3 rl; rl.m[0][0] = std::cos(b); rl.m[0][1] = std::sin(b); rl.m[1][0] = -std::sin(b); rl.m[1][1] = std::cos(b);
+                const Mat3 ship = mul(rl, yaw);
+                flown = flown + row(ship, 2) * (200.0 * dt); // 200 units/s forward
+                Input in; in.ship_pos = flown;
+                in.view_rel = Mat3{}; in.vanilla_cam = mul(in.view_rel, ship);
+                in.vanilla_pos = in.ship_pos + mul(Vec3{0, 40, -200}, ship);
+                in.view_mode = 2; in.ref_object = 1; in.sector = 1;
+                Pose pose; const Step r = step(s, in, dt, t, &pose);
+                if (r.verdict != Verdict::Applied) { ++refused; continue; }
+                ++applied; if (r.snapped) ++snaps;
+                last_lag = r.lag_deg;
+                max_ortho = std::fmax(max_ortho, orthonormality_error(pose.basis));
+                max_lag = std::fmax(max_lag, r.lag_deg);
+                const Mat3 recomposed = mul(pose.view_rel, ship);
+                for (int i = 0; i < 3; ++i) for (int j = 0; j < 3; ++j) max_identity = std::fmax(max_identity, std::fabs(recomposed.m[i][j] - pose.basis.m[i][j]));
+            }
+            std::printf("L %llu %llu %llu %.3g %.17g %.3g %.17g\n", applied, refused, snaps, max_ortho, max_lag, max_identity, last_lag);
         } else if (op == 'S') {
             // spring step response: x0 v0 tau dt steps
             Spring sp; double tau, dt; int steps; ss >> sp.x.x >> sp.v.x >> tau >> dt >> steps;

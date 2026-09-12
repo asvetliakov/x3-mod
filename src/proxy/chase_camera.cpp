@@ -75,9 +75,15 @@ void handle(uint32_t* regs) {
     auto u32 = [](const unsigned char* p, unsigned off) { uint32_t v; std::memcpy(&v, p + off, 4); return v; };
     auto i32 = [](const unsigned char* p, unsigned off) { int32_t v; std::memcpy(&v, p + off, 4); return v; };
     auto rows = [&](const unsigned char* p, unsigned off, int32_t* out) { std::memcpy(out, p + off, 48); };
+    // One pipeline state for one cockpit: the registry walk (0x0041cde0) calls
+    // FUN_004205e0 for every cockpit object, so a second cockpit would otherwise
+    // interleave its poses and its dt into the same springs. A change of the
+    // cockpit pointer is a gap, so the next frame of either snaps instead.
+    static uintptr_t last_cockpit = 0;
+    if (cockpit != last_cockpit) { last_cockpit = cockpit; chase::note_gap(pipeline); }
     bool ok = (cockpit & 3) == 0 && engine_memory::read(cockpit, cockpit_bytes, cockpit_block);
     uintptr_t camera = 0, ref_object = 0, node = 0;
-    if (ok) { camera = u32(cockpit_bytes, cockpit_camera); ref_object = u32(cockpit_bytes, cockpit_ref_object); ok = camera && ref_object && (camera & 3) == 0; }
+    if (ok) { camera = u32(cockpit_bytes, cockpit_camera); ref_object = u32(cockpit_bytes, cockpit_ref_object); ok = camera && ref_object && ((camera | ref_object) & 3) == 0; }
     if (ok) ok = engine_memory::read(camera, camera_bytes, camera_block);
     if (ok) ok = engine_memory::read(ref_object + object_node, &node, 4) && node && (node & 3) == 0;
     if (ok) ok = engine_memory::read(node + node_position, node_bytes, node_block);
@@ -155,6 +161,15 @@ extern "C" {
 // reached from here are x87 code (cpu_state.h).
 __attribute__((force_align_arg_pointer)) void __cdecl x3m_chase_camera_enter(uint32_t* regs) {
     x3m::PreserveCpuState cpu;
+    // PreserveCpuState saves with FNSAVE and immediately FRSTORs, so the x87
+    // stack our code inherits is the game's. This is a mid-function site, not a
+    // call boundary, so nothing guarantees the stack is empty, and the libm
+    // transcendentals the pipeline reaches (exp/acos/atan/tan) are x87 code that
+    // would push onto it. Start from a clean, fully masked, round-to-nearest FPU;
+    // the destructor's FRSTOR puts the game's control word, tags and registers
+    // back before the relocated cmp/jz runs. (Checked: the instructions reaching
+    // 0x00420e06 are an integer copy, so this is defence in depth.)
+    asm volatile("fninit" ::: "memory");
     x3m::chase_camera::handle(regs);
 }
 }
@@ -182,7 +197,7 @@ void* emit_stub(void*** next_out) {
     unsigned char* jmp = static_cast<unsigned char*>(e.here());
     uintptr_t next = reinterpret_cast<uintptr_t>(jmp) + 6; next = (next + 3) & ~uintptr_t(3);
     e.byte(0xff); e.byte(0x25); e.dword(uint32_t(next));
-    while (reinterpret_cast<uintptr_t>(e.here()) < next) e.byte(0xcc);
+    while (e.ok() && reinterpret_cast<uintptr_t>(e.here()) < next) e.byte(0xcc); // e.ok(): an exhausted emitter reports here() == nullptr
     *next_out = reinterpret_cast<void**>(next); e.dword(0);
     return e.finish() ? start : nullptr;
 }
