@@ -302,6 +302,67 @@ resolve quad (`matrix routing` sampled 0.25 instead of 0.625); the counts
 are unchanged at 154/158 and the state comparison (texture stage states of
 stages 0-7 and `D3DTS_TEXTURE0`) proves the hostile values come back.
 
+### Camera reprojection (sentinel policy 2, 2026-09-12)
+
+The route now builds the resolve's `clip_to_previous` from the live engine
+camera and runs sentinel pixels under policy 2
+([temporal-integration.md](../architecture/temporal-integration.md#camera-reprojection-for-sentinel-pixels-2026-09-12)).
+`run_temporal_pass.py` covers the resolve side; the builder itself is
+unit-tested on the host (`verification/analysis/test_camera_reprojection.py`,
+9 tests: the header compiled natively, identity to identity, yaw/pitch/roll
+and FOV/off-center changes against an oracle written from camera basis
+vectors, translation ignored, a direction behind the previous camera has
+`w <= 0`, every validation failure code, the switch and the rotation cut).
+
+**Shader fix and its fixture.** Policy 2 expected motion alpha 0 on
+far-plane pixels; the route's fill writes -1. The resolve now keeps the
+camera path for a far-plane pixel that is its own correspondence (no closer
+neighbor won the dilation) with alpha exactly -1. The edge cases gained the
+mode `sentinel-camera-fill` (background depth -1, alpha -1, policy 2): its
+thin-line and silhouette metrics equal the alpha-0 mode's to the printed
+digits (1-px line interior delta 0, centroid drift 0.003 px, coverage error
+0.03; silhouette ring variance ratio 178.32, ghost 0, revealed background
+clean). Bytecode 3,840 words (3,794 before).
+
+**Camera cases** (`camera_cases`, per generation). A sky at infinity is
+rendered from a camera state by the fixture's own shader — raster pixel `p`
+at NDC `2(p - j)/S - 1`, the resolve's raster convention, through the same
+row-vector, left-handed convention as the builder, coloured by a smooth
+angular pattern (12 cycles per radian: period 8.4 px at the centre of the
+90-degree view) — with the route's sentinel ABI (RT2 -1, RT1 alpha -1), and
+the resolve runs 48 frames under the route's Halton jitter with
+`camera_sentinel_policy(auto)` deciding policy and matrix from consecutive
+`(P, V)` pairs. Drift is the sub-pixel shift of the accumulated output
+against the unjittered render of the same camera, from the phase of the
+pattern's fundamental (a least-squares fit against a bilinearly shifted
+reference matched the resampling blur of a moving history with a fractional
+offset and reported 0.5 px on a correct run); the recency-weighted mean of
+the Halton set (about -0.03/-0.04 px, phase dependent) is removed by
+subtracting the same-frame shift of a static control run. Measured (both
+generations identical):
+
+| case | drift px | mean abs error | note |
+| --- | ---: | ---: | --- |
+| static control (jittered, identity transform) | 0.069 raw | 0.0075 | the jitter set's own bias; bound 0.15 |
+| yaw 0.5 deg/frame, jittered | 0.124 | 0.015 | against the static control; bound 0.2 |
+| pitch 0.5 deg/frame, jittered | 0.176 | 0.016 | bound 0.2 |
+| yaw unjittered, 90 deg view | 0.062 | 0.006 | bound 0.1: the resampling of the accumulated history plus the perspective chirp |
+| yaw unjittered, 28 deg view (pattern uniform in pixels) | 0.026 | 0.008 | bound 0.05 |
+| five chained reprojections of one render (weight 1), yaw / pitch | 0.033 / 0.029 | 0.004 / 0.003 | bound 0.05: 0.007 px per lookup |
+| identity matrix under policy 2 (the route before the camera read) | 0.862 | 0.076 | must be at least 0.5: the crawl this work removes |
+| swapped rotation convention | 1.051 | 0.087 | must be at least 0.5 |
+| 25-degree jump at frame 16 | cut, policy 1, frame equals its render exactly (max difference 0) | | history resumes: 0.100 after the cut, bound 0.2 |
+
+The per-lookup error does not scale with the rotation (0.5, 1 and 2
+degrees per frame gave 0.062, 0.055 and 0.049 px accumulated) and flips
+sign with the fractional pixel velocity: it is the Catmull-Rom resampling
+of the sampled pattern, not a reprojection bias. The reported rotation per
+frame is 0.4998 degrees (bound 1e-3) and 25.5 degrees at the jump. Totals
+after the additions: 416 numerical / 164 state checks, 386 samples per
+run, negative controls of the jitter convention intact
+(`run_temporal_pass.py` asserts the exact counts and records the camera
+metrics under `camera` in `temporal-pass-summary.json`).
+
 ## Reproduce
 
 ```sh

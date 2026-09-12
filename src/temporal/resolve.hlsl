@@ -88,17 +88,21 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // Depth-sentinel policy (options.w): a negative current depth marks a pixel
     // no routed opaque draw wrote (background, particles, unknown programs).
     // Policy 1 keeps it current-only: with the identity matrix the route
-    // uploads today, camera reprojection would accumulate a moving
-    // background in place. Policy 2 reprojects it through the camera path at
-    // the far plane, for a route that supplies clip_to_previous and marks such
-    // pixels with motion alpha 0 (the fill's -1 still rejects on the motion
-    // path). Sentinel HISTORY taps are never a rejection reason: they are the
-    // background behind a silhouette (see the disocclusion test below).
+    // uploaded before the camera read, camera reprojection would accumulate a
+    // moving background in place. Policy 2 reprojects it through the camera
+    // path at the far plane, for a route that supplies a real far-plane
+    // clip_to_previous (the route's camera reprojection); such a pixel keeps
+    // the camera path whether its motion alpha is 0 or the route's fill
+    // sentinel -1 (see the motion block). Sentinel HISTORY taps are never a
+    // rejection reason: they are the background behind a silhouette (see the
+    // disocclusion test below).
     // (<= -0.5 rather than < 0: a NaN depth must fail this test and reach
     // validDepth below, never become a far-plane pixel under policy 2.)
+    bool farPlane = false;
     if (options.w > 0.5 && depth <= -0.5) {
         if (options.w < 1.5) return float4(color, alpha);
         depth = 1;
+        farPlane = true;
     }
     if (history.w < 0.5 || history.z <= 0 || !finiteColor(raw) || !validDepth(depth))
         return float4(color, alpha);
@@ -156,7 +160,16 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
             previousUV = motion.xy + sizeJitter.zw;
             expectedDepth = motion.z;
             valid = all(motion == motion) && all(abs(motion) <= 1e20);
-        } else if (motion.w != 0) valid = false;
+        } else if (motion.w != 0) {
+            // The route fills every unrouted pixel of RT1 with alpha -1 and
+            // RT2 with the depth sentinel in one draw, so a far-plane pixel
+            // that is its own correspondence (no closer neighbor won the
+            // dilation) carries exactly that pair: under policy 2 it keeps
+            // the camera path. A dilated neighbor with alpha -1 is a routed
+            // draw without history (mode 0) and still rejects; any other
+            // alpha rejects as before. (>= -1 && <= -1: exactly -1, NaN-safe.)
+            if (!(farPlane && all(dilate == 0) && motion.w >= -1 && motion.w <= -1)) valid = false;
+        }
     }
     // The dilated pixel's velocity, applied to this pixel.
     previousUV -= dilate * sizeJitter.xy;

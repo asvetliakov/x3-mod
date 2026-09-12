@@ -32,3 +32,8 @@
 ==== production-burst-lazy
 ==== seam-burst-perdraw
 ==== seam-burst-lazy
+==== seam-taa-camera-on
+==== seam-taa-camera-sentinel1-on
+==== seam-taa-camera-sentinel2-on
+==== seam-taa-sentinel2-nocamera-on
+==== seam-taa-envmap

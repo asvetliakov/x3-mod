@@ -197,7 +197,8 @@ TAA run is user-managed.
 | `src/proxy/capture.cpp` | Hook installation, state block and query wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT`, `X3M_MOTION_JITTER[_SAMPLES]`, `X3M_MOTION_CUT_*`, `X3M_TAA`, `X3M_TAA_DEBUG`, `X3M_MOTION_RT_MODE` and `X3M_MOTION_FRAME_LOG` parsing; the lazy mode's restore points and `GetRenderTarget`/`GetRenderTargetData` hooks |
 | `src/renderer/temporal_pass.{h,cpp}` + `temporal_resolve_program{,_inc}.h` | The resolve the route runs (native-slot calls, cached state block) and its embedded `ps_3_0` bytecode |
 | `src/proxy/scene_capture.{h,cpp}` | `describe_surface` shared with the route |
-| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug` |
+| `src/proxy/camera_state.{h,cpp}` + `src/renderer/camera_reprojection.h` | Live engine camera read at the selector's Clear events behind the exact-executable gate (no patch), the far-plane `clip_to_previous` builder and the sentinel policy decision (`X3M_TAA_SENTINEL`, `X3M_CAMERA_CUT_DEG`, `X3M_CAMERA_LOG`); see [temporal-integration.md](temporal-integration.md#camera-reprojection-for-sentinel-pixels-2026-09-12) |
+| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug`, `--taa-sentinel auto|1|2`, `--camera-cut-deg`, `--camera-log` |
 
 `X3M_MOTION_OUTPUT=1` enables the route. Without `X3M_OBJECT_TRACE=1` and
 `X3M_OBJECT_LIFETIME=1` gate 5 never passes and every eligible draw writes the
@@ -216,7 +217,17 @@ observe them (an A/B experiment; equivalence and the restore points are in
 [motion-output.md](../verification/motion-output.md#lazy-rt-binding-equivalence-x3m_motion_rt_mode)
 and [telemetry.md](../verification/telemetry.md#route-and-boundary-cost)).
 `X3M_MOTION_FRAME_LOG=<n>` sets the periodic `motion_output_frame` cadence
-with telemetry on (default 60). With `X3M_TELEMETRY=1` the route reports
+with telemetry on (default 60). `X3M_TAA_SENTINEL=auto|1|2` (default
+`auto`) selects the resolve's depth-sentinel policy: `auto` reprojects the
+unrouted (sentinel) pixels through the live engine camera at the far plane
+whenever the camera read of this frame and of the history's frame both
+validate and the rotation between them is at or below `X3M_CAMERA_CUT_DEG`
+degrees (default 20; above it the frame is a cut), `1` keeps them
+current-only (the previous behaviour), `2` is strict and skips the resolve
+on a frame whose camera cannot be read. `X3M_CAMERA_LOG=<n>` (default 300)
+is the cadence of the `camera_state` diagnostic line (capture frames always
+log it). The camera read needs the exact executable (the object-trace
+identity gate) and `X3M_TAA=1`; it patches nothing. With `X3M_TELEMETRY=1` the route reports
 its CPU cost per call and per frame (gate, apply/undo, `SetRenderTarget`
 count, jitter writes, fill, the resolve's phases, copy-back, readbacks).
 

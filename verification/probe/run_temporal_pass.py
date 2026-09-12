@@ -28,7 +28,8 @@ try:
     match=re.search(r'RESULT PASS numerical=(\d+) state_restorations=(\d+) generations=(\d+)',text)
     report['state_restorations']=int(match[2]) if match else 0
     report['generations']=int(match[3]) if match else 0
-    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(318,164,2) and report['samples']==292 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    report['camera']={m.group(1):dict(drift_px=float(m.group(2)),error=float(m.group(3))) for m in re.finditer(r'CAMERA label=(\S+) frames=\d+ from=\d+ drift_px=([0-9.]+) error=([0-9.]+)',text)}
+    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(416,164,2) and report['samples']==386 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
     assert report['source_unchanged'] and report['binary_unchanged'] and report['compiler_unchanged'],'Provenance changed during run'
     # Negative controls for the jitter convention: the stationary scene must
     # reject the plausible wrong lookups. Each variant mutates the two history

@@ -24,6 +24,17 @@
 // interleaved with non-routed draws and an application SetRenderTarget or
 // depth Clear, and prints per-frame colour, state-signature and (seam)
 // RT1/RT2 hashes so the runner can prove the lazy binding mode equivalent.
+// X3M_FIXTURE_CAMERA=rotate (seam) installs the fixture's own projection and
+// view buffers as the engine camera globals (x3m_camera_state_fixture_install):
+// the camera yaws one degree per frame with a 30-degree jump at frame 7, the
+// reference resolve is driven by the same far-plane builder and the DLL's
+// resolved image must still equal it byte for byte (X3M_TAA_SENTINEL selects
+// the policy; 2 is strict and skips the resolve on frames without a
+// transform). "envmap" (seam, TAA, camera) runs the environment-map sequence
+// of the frame routine (mid-frame EndScene, six cube-face target changes with
+// their own Clear, view and draws, BeginScene) between routed frames, before
+// the scene's depth Clear and before the initial Clear, and prints per-frame
+// expectations for the runner (nothing routed, camera state unread, no resolve).
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <d3d9.h>
@@ -43,9 +54,28 @@
 
 using Words = std::vector<std::uint32_t>;
 namespace {
+// Fake engine camera globals: the seam DLL reads the projection and view
+// buffers through these two pointer slots exactly as it reads *0x00608a38 and
+// *0x00608a40 in the game (camera_state::fixture_install takes the slots).
+float fake_projection[16]{}, fake_view[16]{};
+const float* fake_projection_slot = fake_projection;
+const float* fake_view_slot = fake_view;
+constexpr double PI = 3.14159265358979323846;
+// Row-vector, left-handed view (V's columns are the camera basis) yawed about
+// +Y, and the game's projection terms (m00 0.8, m11 4/3, m23 1).
+x3m::renderer::CameraState fake_camera_pose(double yaw_degrees) {
+    const double a = yaw_degrees * PI / 180, right[3] = {std::cos(a), 0, -std::sin(a)}, up[3] = {0, 1, 0}, forward[3] = {std::sin(a), 0, std::cos(a)};
+    float view[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}, projection[16]{};
+    for (unsigned i = 0; i < 3; ++i) { view[i * 4] = float(right[i]); view[i * 4 + 1] = float(up[i]); view[i * 4 + 2] = float(forward[i]); }
+    view[12] = 12.5f; view[13] = -3.f; view[14] = 1000.f; // translation: ignored by the far-plane transform
+    projection[0] = .8f; projection[5] = 4.f / 3.f; projection[10] = 1.000003f; projection[11] = 1.f; projection[14] = -6.0000184f;
+    std::memcpy(fake_projection, projection, sizeof projection); std::memcpy(fake_view, view, sizeof view);
+    x3m::renderer::CameraState state; x3m::renderer::camera_state_from_matrices(projection, view, state);
+    return state;
+}
 unsigned checks = 0, restorations = 0, motion_checked = 0, motion_matched = 0, frames_verified = 0;
 unsigned depth_checked = 0, depth_written = 0, coverage_checked = 0, coverage_ambiguous = 0, coverage_frames = 0;
-unsigned taa_frames = 0, taa_history_frames = 0, taa_reference_frames = 0, taa_changed_pixels = 0;
+unsigned taa_frames = 0, taa_history_frames = 0, taa_reference_frames = 0, taa_changed_pixels = 0, taa_skipped_frames = 0;
 double max_uv_pixels = 0, max_depth_error = 0, max_current_depth_error = 0;
 // Halton(2,3) sample `index` (1-based) centred on zero; the route's sequence.
 double halton(unsigned index, unsigned base) { double f = 1, r = 0; while (index) { f /= base; r += f * (index % base); index /= base; } return r; }
@@ -179,11 +209,13 @@ struct Reference {
     }
     // Runs one frame exactly as the route does and returns the copied-back
     // 8-bit image; `half` receives the FP16 output bytes.
-    x3m::renderer::Output run(double jx, double jy, double pjx, double pjy, bool cut, std::vector<DWORD>& image8, std::vector<unsigned char>& half) {
+    x3m::renderer::Output run(double jx, double jy, double pjx, double pjy, bool cut, const float* clip_to_previous, bool sentinel_camera,
+                              std::vector<DWORD>& image8, std::vector<unsigned char>& half) {
         x3m::renderer::FrameInputs in{};
         in.color_surface = color.p; in.current_depth = depth.p; in.motion = motion.p;
         in.width = W; in.height = H; in.epoch = epoch;
-        std::memcpy(in.clip_to_previous, identity, sizeof identity);
+        std::memcpy(in.clip_to_previous, clip_to_previous, 16 * sizeof(float));
+        in.sentinel_camera = sentinel_camera;
         in.current_jitter[0] = float(jx); in.current_jitter[1] = float(jy); in.previous_jitter[0] = float(pjx); in.previous_jitter[1] = float(pjy);
         in.motion_policy = x3m::renderer::MotionPolicy::PerPixel; in.reactive_policy = x3m::renderer::ReactivePolicy::DerivedFromDepthSentinel;
         in.history_allowed = true; in.cut = cut; in.caller_scene_open = false; in.caller_queries_idle = true;
@@ -220,10 +252,21 @@ struct Fixture {
     HRESULT (*readback)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*readback_depth)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*last_pixel_abi)(IDirect3DDevice9*, float*, unsigned) = nullptr;
-    bool seam = false, enabled = false, jitter = false, taa = false, bench = false, burst = false, lazy = false;
+    bool seam = false, enabled = false, jitter = false, taa = false, bench = false, burst = false, lazy = false, envmap = false;
     unsigned jitter_samples = 8;
+    // Camera: the fake engine globals installed (X3M_FIXTURE_CAMERA=rotate),
+    // the policy switch (X3M_TAA_SENTINEL: 0 auto, 1, 2 strict), this frame's
+    // scene view, the view of the last frame that resolved (the history's) and
+    // the decision the route must have taken at this frame's boundary.
+    void (*camera_install)(const float* const*, const float* const*) = nullptr;
+    bool camera = false; unsigned sentinel = 0;
+    x3m::renderer::CameraState camera_current, camera_history;
+    x3m::renderer::SentinelDecision decision;
+    bool resolve_expected = true; // false on frames the route cannot resolve (environment map, strict mode without a camera)
+    bool scene_rejected = false;  // the selector rejected this frame before its scene draws: the route neither routes nor jitters them
+    Com<IDirect3DCubeTexture9> face_cube; Com<IDirect3DSurface9> face_depth, faces[6];
     Reference reference; bool reference_ready = false;
-    std::uint64_t frames_since_reset = 0;
+    std::uint64_t frames_since_reset = 0, latches = 0; // the route advances its Halton sequence once per latched frame
     std::vector<double> bench_ms;
     // This frame's and the previous frame's route jitter in raster pixels.
     double jx = 0, jy = 0, pjx = 0, pjy = 0;
@@ -424,12 +467,13 @@ struct Fixture {
         return h;
     }
     void frame_begin() {
-        records.clear(); draw_index = 0;
+        records.clear(); draw_index = 0; scene_rejected = false;
         // The route advances its Halton sequence at every latching Clear; every
-        // fixture frame latches, so frame f uses sample (f % samples) + 1.
+        // regular fixture frame latches, so the n-th latch uses sample (n % samples) + 1.
         pjx = jx; pjy = jy;
-        if (jitter) { const unsigned index = unsigned(frame % jitter_samples) + 1; jx = halton(index, 2) - .5; jy = halton(index, 3) - .5; }
+        if (jitter) { const unsigned index = unsigned(latches % jitter_samples) + 1; jx = halton(index, 2) - .5; jy = halton(index, 3) - .5; }
         else jx = jy = 0;
+        ++latches;
         hostile_states();
         api(d->SetStreamSource(0, vb_a.p, 0, 24), "SetStreamSource"); api(d->SetVertexDeclaration(declaration.p), "SetVertexDeclaration");
         api(d->SetVertexShader(vs.p), "SetVertexShader"); api(d->SetPixelShader(flat.p), "SetPixelShader flat");
@@ -443,7 +487,26 @@ struct Fixture {
         api(d->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1), "DrawPrimitive background"); ++draw_index;
         compare(before, snapshot(), "fill");
         scene_states(); material_state();
+        set_camera(frame);
         api(d->Clear(0, nullptr, D3DCLEAR_ZBUFFER, 0, 1, 0), "Clear depth");
+    }
+    // The scene view of this frame: one degree of yaw per frame with a
+    // 30-degree jump at frame 7 (a camera cut under the 20-degree bound).
+    // Written before the depth-only Clear, where the route reads it.
+    void set_camera(unsigned long long f) {
+        if (!camera) { camera_current = {}; return; }
+        camera_current = fake_camera_pose(double(f) + (f >= 7 ? 30. : 0.));
+        require(camera_current.valid, "fake camera pose validates");
+    }
+    // The route's policy decision for this frame's resolve, from the same builder.
+    void decide() {
+        const auto mode = sentinel == 1 ? x3m::renderer::SentinelMode::CurrentOnly : sentinel == 2 ? x3m::renderer::SentinelMode::Camera : x3m::renderer::SentinelMode::Auto;
+        decision = x3m::renderer::camera_sentinel_policy(mode, camera_current, camera_history, 20.f);
+        if (sentinel == 2 && (decision.reason == x3m::renderer::SentinelReason::CurrentInvalid || decision.reason == x3m::renderer::SentinelReason::TransformFailed)) resolve_expected = false;
+        std::printf("CAMERA_EXPECT frame=%llu installed=%u policy=%u reason=%u cut=%u rotation_deg=%.4f p00=%.7g p11=%.7g r00=%.7g r01=%.7g r02=%.7g r10=%.7g r11=%.7g r12=%.7g r20=%.7g r21=%.7g r22=%.7g resolve=%u\n",
+                    frame, camera, decision.policy, unsigned(decision.reason), decision.cut, decision.rotation_degrees, camera_current.m00, camera_current.m11,
+                    camera_current.r[0], camera_current.r[1], camera_current.r[2], camera_current.r[3], camera_current.r[4], camera_current.r[5],
+                    camera_current.r[6], camera_current.r[7], camera_current.r[8], resolve_expected);
     }
     // One scene draw. `routed`/`matched` are the fixture's expectations from the
     // script; the DLL's own per-draw log is cross-checked by the runner.
@@ -467,8 +530,9 @@ struct Fixture {
         }
         if (alter == Alter::Blend) api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE), "blend off");
         const bool live = enabled && seam;
-        records.push_back({&o, t, p, zo, live && routed, live && matched, o.rt, o.rp, o.rzo, alter == Alter::FlatPixel, enabled && jitter, live && routed && known});
-        std::printf("EXPECT frame=%llu index=%u object=%s routed=%u matched=%u jittered=%u\n", frame, draw_index, o.name, live && routed, live && matched, enabled && jitter);
+        const bool jittered = enabled && jitter && !scene_rejected;
+        records.push_back({&o, t, p, zo, live && routed, live && matched, o.rt, o.rp, o.rzo, alter == Alter::FlatPixel, jittered, live && routed && known});
+        std::printf("EXPECT frame=%llu index=%u object=%s routed=%u matched=%u jittered=%u\n", frame, draw_index, o.name, live && routed, live && matched, jittered);
         if (live && routed && known) { o.recorded = true; o.rt = t; o.rp = p; o.rzo = zo; }
     }
     void write_reserved() {
@@ -638,12 +702,13 @@ struct Fixture {
     bool expected_cut() const {
         unsigned keyed = 0, matched = 0;
         for (const auto& r : records) { keyed += r.keyed; matched += r.keyed && r.matched; }
-        return keyed && float(keyed - matched) / float(keyed) > .25f;
+        return (keyed && float(keyed - matched) / float(keyed) > .25f) || (taa && decision.cut);
     }
     // The game's pre-bloom boundary inside the scene: depth unbound, then the
     // main target copied into the bloom source. The route resolves inside the
     // StretchRect hook; the fixture reads the main target on both sides.
     void boundary() {
+        decide();
         api(d->SetDepthStencilSurface(nullptr), "SetDepthStencilSurface null");
         const auto before_image = color_image();
         const Snapshot before = snapshot();
@@ -655,7 +720,12 @@ struct Fixture {
         for (std::size_t i = 0; i < after_image.size(); ++i) if (after_image[i] != before_image[i]) { if (++changed <= 4) std::printf("CHANGED frame=%llu x=%u y=%u before=%08lx after=%08lx\n", frame, unsigned(i % W), unsigned(i / W), before_image[i], after_image[i]); }
         const bool live = enabled && seam;
         bool history = false;
-        if (live) {
+        if (!resolve_expected) {
+            // The route skipped the resolve (strict policy without a transform,
+            // or a rejected environment-map frame): the copy carries the raster.
+            require(!changed, "a frame the route cannot resolve leaves the 8-bit main target untouched");
+            ++taa_skipped_frames;
+        } else if (live) {
             // Reference resolve from the DLL's own inputs: RT1/RT2 read back
             // through the seam, the 8-bit main target read back before the copy.
             std::vector<float> motion_data(std::size_t(W) * H * 4), depth_data(std::size_t(W) * H); unsigned w = 0, h = 0;
@@ -663,7 +733,7 @@ struct Fixture {
             api(readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h), "reference depth readback");
             reference.upload(before_image, motion_data, depth_data);
             std::vector<DWORD> expected; std::vector<unsigned char> half;
-            const auto out = reference.run(jx, jy, pjx, pjy, expected_cut(), expected, half);
+            const auto out = reference.run(jx, jy, pjx, pjy, expected_cut(), decision.matrix, decision.policy == 2, expected, half);
             history = out.used_history;
             unsigned mismatches = 0;
             for (std::size_t i = 0; i < expected.size(); ++i) if (expected[i] != after_image[i]) { if (++mismatches <= 4) std::printf("TAA_DIFF frame=%llu index=%u actual=%08lx reference=%08lx\n", frame, unsigned(i), after_image[i], expected[i]); }
@@ -677,11 +747,16 @@ struct Fixture {
             // correspondence), so the resolve is current-only everywhere.
             history = false;
         }
-        const bool expect_history = live && frames_since_reset > 0 && !expected_cut();
+        const bool expect_history = live && resolve_expected && frames_since_reset > 0 && !expected_cut();
         require(history == expect_history, "history use follows the script (first frame, Reset and cut frames run current-only)");
         if (!history) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
-        std::printf("TAA frame=%llu history=%u cut=%u changed=%u\n", frame, history, expected_cut(), changed);
+        std::printf("TAA frame=%llu history=%u cut=%u changed=%u policy=%u skipped=%u\n", frame, history, expected_cut(), changed, decision.policy, !resolve_expected);
         ++taa_frames; taa_history_frames += history; taa_changed_pixels += changed;
+        // The history now holds this frame's scene view (the route records it
+        // after a successful resolve); a frame that did not resolve drops the
+        // history and its view (the route's invalidate_taa).
+        camera_history = resolve_expected ? camera_current : x3m::renderer::CameraState{};
+        resolve_expected = true;
         std::printf("COLOR_BEFORE frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(before_image)));
         verify_coverage(before_image);
     }
@@ -707,6 +782,7 @@ struct Fixture {
         acquire_swapchain_surfaces();
         a.recorded = b.recorded = false;
         frames_since_reset = 0;
+        camera_history = {};
         if (reference_ready) reference.reset();
     }
     // EVENT-synchronized wall-clock time of the boundary StretchRect (the
@@ -782,6 +858,79 @@ struct Fixture {
         }
         require(!(enabled && seam) || frames_verified == frames, "every live burst frame verified against the oracle");
     }
+    // Environment-map sequence of the frame routine (camera-state-and-frame-
+    // routine.md section 7): mid-frame EndScene, six cube-face target changes
+    // each with its own Clear(TARGET|ZBUFFER), a per-face view written to the
+    // camera globals and a full material draw, then BeginScene. `before_initial`
+    // places it before the frame's first Clear (the marker on the first view),
+    // otherwise between the background draw and the scene's depth Clear.
+    void env_faces() {
+        api(d->EndScene(), "EndScene before the environment map");
+        for (UINT face = 0; face < 6; ++face) {
+            api(d->SetRenderTarget(0, faces[face].p), "SetRenderTarget face");
+            api(d->SetDepthStencilSurface(face_depth.p), "SetDepthStencilSurface face");
+            api(d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1, 0), "Clear face");
+            fake_camera_pose(90. * face); // the per-face view must never reach the route's camera state
+            scope(&a); api(d->SetStreamSource(0, a.vb, 0, 24), "SetStreamSource face"); api(d->SetVertexShader(vs.p), "SetVertexShader face"); api(d->SetPixelShader(ps.p), "SetPixelShader face");
+            rows(.75f, 0, 0);
+            api(d->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1), "DrawPrimitive face"); ++draw_index;
+            std::printf("EXPECT frame=%llu index=%u object=A routed=0 matched=0 jittered=0 face=%u\n", frame, draw_index, face);
+        }
+        api(d->SetRenderTarget(0, back.p), "SetRenderTarget main"); api(d->SetDepthStencilSurface(depth.p), "SetDepthStencilSurface main");
+        api(d->BeginScene(), "BeginScene after the environment map");
+    }
+    void frame_begin_envmap(bool before_initial) {
+        records.clear(); draw_index = 0; scene_rejected = true;
+        // A frame whose environment map precedes the initial Clear never latches:
+        // the route's jitter sequence (and its previous-jitter record) stay put.
+        if (!before_initial) {
+            pjx = jx; pjy = jy;
+            if (jitter) { const unsigned index = unsigned(latches % jitter_samples) + 1; jx = halton(index, 2) - .5; jy = halton(index, 3) - .5; }
+            else jx = jy = 0;
+            ++latches;
+        }
+        hostile_states();
+        api(d->SetStreamSource(0, vb_a.p, 0, 24), "SetStreamSource"); api(d->SetVertexDeclaration(declaration.p), "SetVertexDeclaration");
+        api(d->SetVertexShader(vs.p), "SetVertexShader"); api(d->SetPixelShader(flat.p), "SetPixelShader flat");
+        rows(0, 0, 0);
+        api(d->BeginScene(), "BeginScene");
+        if (before_initial) env_faces();
+        api(d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0xff203040, 1, 0), "Clear initial");
+        scope(nullptr);
+        api(d->SetPixelShader(flat.p), "SetPixelShader flat");
+        api(d->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1), "DrawPrimitive background"); ++draw_index;
+        if (!before_initial) env_faces();
+        scene_states(); material_state();
+        set_camera(frame);
+        api(d->Clear(0, nullptr, D3DCLEAR_ZBUFFER, 0, 1, 0), "Clear depth");
+    }
+    void run_envmap() {
+        require(enabled && seam && taa && camera, "envmap needs the seam, TAA and the camera");
+        api(d->CreateCubeTexture(16, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &face_cube.p, nullptr), "CreateCubeTexture faces");
+        for (UINT face = 0; face < 6; ++face) api(face_cube->GetCubeMapSurface(D3DCUBEMAP_FACES(face), 0, &faces[face].p), "GetCubeMapSurface");
+        api(d->CreateDepthStencilSurface(16, 16, D3DFMT_D24X8, D3DMULTISAMPLE_NONE, 0, TRUE, &face_depth.p, nullptr), "CreateDepthStencilSurface face");
+        // f0: routed. f1: environment map between background and depth Clear;
+        // its scene draws are not routed (the selector rejected the frame).
+        // f2: routed again, a cut (f1 recorded no rows). f3: environment map
+        // before the initial Clear. f4: routed, a cut again.
+        frame_begin(); draw(a, .75f, 0, 0, true, true, false); draw(b, 0, 0, 0, true, true, false); frame_end();
+        for (unsigned variant = 0; variant < 2; ++variant) {
+            frame_begin_envmap(variant == 1);
+            resolve_expected = false;
+            draw(a, .8f, .125f, 0, true, false, false); draw(b, -.05f, 0, .1f, true, false, false);
+            if (taa) boundary();
+            api(d->EndScene(), "EndScene");
+            const auto image = color_image();
+            std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
+            api(d->SetDepthStencilSurface(depth.p), "SetDepthStencilSurface rebind");
+            api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
+            ++frame; ++frames_since_reset;
+            frame_begin(); draw(a, .75f, 0, 0, true, true, false); draw(b, 0, 0, 0, true, true, false); frame_end();
+        }
+        require(taa_frames == 5 && taa_skipped_frames == 2 && taa_history_frames == 0, "environment-map script: two rejected frames, no history anywhere");
+        for (auto& f : faces) f.reset();
+        face_depth.reset(); face_cube.reset();
+    }
     void stateblock_case() {
         // A state block Apply rebinding the flat PS must be seen by the route:
         // the draw is not routed and the flat PS is still bound afterwards.
@@ -832,8 +981,11 @@ struct Fixture {
             require(taa_frames == 12, "every frame ran the boundary");
             // Seam: history on frames 1, 2, 4, 7, 10, 11 (frames 3, 5, 6, 8 are
             // cuts; 0 and 9 have no history); production: never (sentinel only).
-            require(taa_history_frames == (live ? 6u : 0u), "history frames follow the script");
-            require(!live || taa_reference_frames == 12, "every seam frame compared against the reference resolve");
+            // The camera script adds a cut at frame 7 (30 degrees); strict mode
+            // skips frames 0, 7 and 9 (no transform: no previous view, a cut, Reset).
+            require(taa_history_frames == (live && !(sentinel == 2 && !camera) ? (camera && sentinel != 1 ? 5u : 6u) : 0u), "history frames follow the script");
+            require(taa_skipped_frames == (sentinel == 2 && !camera ? 12u : 0u), "strict mode skips exactly the frames whose camera cannot be read");
+            require(!live || taa_reference_frames + taa_skipped_frames == 12, "every seam frame compared against the reference resolve");
         }
     }
 };
@@ -853,6 +1005,7 @@ int main(int argc, char** argv) {
         const std::string mode = argv[3];
         f.bench = mode == "bench";
         f.burst = mode == "burst";
+        f.envmap = mode == "envmap";
         if (f.bench) {
             unsigned w = 0, h = 0;
             if (argc != 5 || std::sscanf(argv[4], "%ux%u", &w, &h) != 2 || !w || !h || w > 8192 || h > 8192) throw std::runtime_error("bench needs WxH");
@@ -862,8 +1015,9 @@ int main(int argc, char** argv) {
         f.readback = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_motion_output_fixture_readback", false);
         f.readback_depth = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_motion_output_fixture_readback_depth", false);
         f.last_pixel_abi = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned)>(runtime, "x3m_motion_output_fixture_last_pixel_abi", false);
-        f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi;
-        require(f.bench || f.burst || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        f.camera_install = symbol<void (*)(const float* const*, const float* const*)>(runtime, "x3m_camera_state_fixture_install", false);
+        f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
+        require(f.bench || f.burst || f.envmap || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.taa = f.enabled && GetEnvironmentVariableA("X3M_TAA", setting, sizeof setting) == 1 && setting[0] == '1';
         // The DLL implies the jitter with the resolve on.
@@ -871,8 +1025,11 @@ int main(int argc, char** argv) {
         if (f.bench) f.taa = true; // The bench always runs the game-like boundary; the resolve follows X3M_TAA.
         if (GetEnvironmentVariableA("X3M_MOTION_JITTER_SAMPLES", setting, sizeof setting) > 0) { const unsigned n = unsigned(std::atoi(setting)); if (n >= 2 && n <= 64) f.jitter_samples = n; }
         char rt_mode[8]{}; f.lazy = GetEnvironmentVariableA("X3M_MOTION_RT_MODE", rt_mode, sizeof rt_mode) == 4 && !std::strcmp(rt_mode, "lazy");
+        char camera_mode[8]{}; f.camera = f.seam && GetEnvironmentVariableA("X3M_FIXTURE_CAMERA", camera_mode, sizeof camera_mode) == 6 && !std::strcmp(camera_mode, "rotate");
+        if (GetEnvironmentVariableA("X3M_TAA_SENTINEL", setting, sizeof setting) > 0) f.sentinel = !std::strcmp(setting, "1") ? 1 : !std::strcmp(setting, "2") ? 2 : 0;
+        if (f.camera) { fake_camera_pose(0); f.camera_install(&fake_projection_slot, &fake_view_slot); }
         char path[MAX_PATH]{}; GetModuleFileNameA(runtime, path, MAX_PATH);
-        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw");
+        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s camera=%u sentinel=%u envmap=%u\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw", f.camera, f.sentinel, f.envmap);
         f.vs_words = load(argv[1]); f.ps_words = load(argv[2]);
         f.vs_hash = fnv(f.vs_words.data(), f.vs_words.size() * 4); f.ps_hash = fnv(f.ps_words.data(), f.ps_words.size() * 4);
         f.flat_hash = fnv(flat_program, sizeof flat_program);
@@ -888,7 +1045,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if (f.taa && f.enabled && f.seam && !f.bench) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else f.run();
+        if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.envmap) f.run_envmap(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }
         // Teardown: every fixture object released, then the device must reach zero.
         f.back.reset(); f.depth.reset(); f.bloom_surface.reset(); f.bloom.reset();
@@ -900,8 +1057,8 @@ int main(int argc, char** argv) {
         require(device_refs == 0, "device final Release reaches zero with the route's objects released");
         const ULONG api_refs = f.factory.p->Release(); f.factory.p = nullptr;
         require(api_refs == 0, "factory final Release reaches zero");
-        std::printf("RESULT PASS checks=%u restorations=%u frames=%llu motion_pixels=%u matched_pixels=%u max_uv_pixels=%.9g max_depth_error=%.9g depth_pixels=%u depth_written=%u max_current_depth_error=%.9g coverage_frames=%u coverage_pixels=%u coverage_ambiguous=%u jitter=%u taa=%u taa_frames=%u taa_history_frames=%u taa_reference_frames=%u taa_changed_pixels=%u\n",
-                    checks, restorations, f.frame, motion_checked, motion_matched, max_uv_pixels, max_depth_error, depth_checked, depth_written, max_current_depth_error, coverage_frames, coverage_checked, coverage_ambiguous, f.jitter, f.taa, taa_frames, taa_history_frames, taa_reference_frames, taa_changed_pixels);
+        std::printf("RESULT PASS checks=%u restorations=%u frames=%llu motion_pixels=%u matched_pixels=%u max_uv_pixels=%.9g max_depth_error=%.9g depth_pixels=%u depth_written=%u max_current_depth_error=%.9g coverage_frames=%u coverage_pixels=%u coverage_ambiguous=%u jitter=%u taa=%u taa_frames=%u taa_history_frames=%u taa_reference_frames=%u taa_changed_pixels=%u taa_skipped_frames=%u\n",
+                    checks, restorations, f.frame, motion_checked, motion_matched, max_uv_pixels, max_depth_error, depth_checked, depth_written, max_current_depth_error, coverage_frames, coverage_checked, coverage_ambiguous, f.jitter, f.taa, taa_frames, taa_history_frames, taa_reference_frames, taa_changed_pixels, taa_skipped_frames);
         exit_code = 0;
     } catch (const std::exception& e) { std::printf("RESULT FAIL %s\n", e.what()); }
     if (runtime) FreeLibrary(runtime);

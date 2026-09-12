@@ -10,8 +10,10 @@
 // Reset/release, one-time capability self-test, per-frame sentinel fill,
 // per-draw gate evaluation with variant substitution and exact restoration,
 // per-draw sub-pixel jitter (X3M_MOTION_JITTER=1), previous-row history, the
-// cut detector, the temporal resolve at the bloom copy (X3M_TAA=1, owning one
-// TemporalPass per device) and capture-frame diagnostics.
+// cut detector, the live camera state read at the scene Clear (the far-plane
+// reprojection of sentinel pixels, X3M_TAA_SENTINEL), the temporal resolve at
+// the bloom copy (X3M_TAA=1, owning one TemporalPass per device) and
+// capture-frame diagnostics.
 // See docs/architecture/live-motion-route.md (Implementation section) and
 // docs/architecture/temporal-integration.md (steps 1 and 3).
 #include <d3d9.h>
@@ -23,6 +25,7 @@
 #include "../renderer/scene_boundary.h"
 #include "../renderer/motion_history.h"
 #include "../renderer/motion_row_history.h"
+#include "../renderer/camera_reprojection.h"
 namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
 namespace x3m::telemetry { struct State; }
 namespace x3m {
@@ -62,14 +65,20 @@ struct MotionRoute {
 // Why the temporal resolve did not run at this frame's bloom copy (X3M_TAA=1).
 // None: it ran (see taa_result/taa_copy). NotReached: the selector never
 // presented the AwaitCopy event (menu, rejected or unrecognized frame).
+// CameraState: X3M_TAA_SENTINEL=2 (strict) and no far-plane transform this frame.
 enum class TaaSkip : unsigned { None = 0, Disabled = 1, NotReached = 2, NoJitter = 3, NotFilled = 4,
-                                Recording = 5, Queries = 6, Initialize = 7, Container = 8 };
+                                Recording = 5, Queries = 6, Initialize = 7, Container = 8, CameraState = 9 };
 struct MotionTaaCounters {
     bool attempted = false;      // The main-target bloom copy was recognized this frame.
     bool resolved = false;       // run() and the copy-back both succeeded: the main target holds the resolved image.
     bool used_history = false;   // The resolve blended the previous frame (false on the first frame, cuts, Reset).
     std::uint32_t skip = 0;      // TaaSkip
     HRESULT result = S_FALSE, restore = S_OK, copy = S_FALSE;
+    // Depth-sentinel policy the resolve ran with (renderer::SentinelDecision):
+    // 2 reprojects sentinel pixels through the camera at the far plane.
+    std::uint32_t camera_policy = 1, camera_reason = 1;
+    bool camera_cut = false;     // rotation since the previous resolved frame exceeded X3M_CAMERA_CUT_DEG
+    float camera_rotation_deg = 0;
 };
 struct MotionFrameCounters {
     std::uint32_t draws = 0, routed = 0, matched = 0, gates[7]{};
@@ -90,6 +99,12 @@ struct MotionFrameCounters {
     // for a frame whose verdict is set.
     bool cut = false;
     std::uint32_t displacement_samples = 0, keyed = 0, missing = 0;
+    // Live camera reads at the latching Clear (background view) and at the
+    // depth-only Clear that starts the scene phase (scene view; the one the
+    // far-plane reprojection uses). Failure codes: camera_state::ReadFailure
+    // and renderer::CameraFailure of the scene read.
+    bool camera_scene_valid = false, camera_background_valid = false;
+    std::uint32_t camera_reads = 0, camera_read_failure = 0, camera_failure = 0;
     float cut_median_px = 0, cut_missing_fraction = 0, cut_median_bound_px = 0, cut_missing_bound = 0;
     MotionTaaCounters taa;
     // Per-frame cost totals (docs/verification/telemetry.md, "Route and
@@ -152,6 +167,11 @@ public:
     // 8-bit color in capture frames (X3M_TAA_DEBUG). Effective at attach.
     void configure_taa(bool requested, bool debug) noexcept;
     bool taa_enabled() const noexcept { return taa_enabled_; }
+    // Depth-sentinel policy of the resolve (X3M_TAA_SENTINEL: auto | 1 | 2),
+    // the camera rotation bound that declares a cut (X3M_CAMERA_CUT_DEG) and
+    // the cadence of the camera_state line (X3M_CAMERA_LOG frames; capture
+    // frames always log). Effective immediately.
+    void configure_sentinel(renderer::SentinelMode mode, float cut_degrees, unsigned log_frames) noexcept;
     // RT1/RT2 binding policy (X3M_MOTION_RT_MODE). perdraw (default): each
     // routed draw binds RT1/RT2 and COLORWRITEENABLE1/2 and after_draw puts
     // the application's values back. lazy (experiment): the bindings stay
@@ -295,6 +315,9 @@ private:
     std::uint64_t stamp() const noexcept;
     void record(unsigned metric, std::uint64_t ticks, bool failed = false, std::uint64_t bytes = 0) noexcept;
     void finish_cut_detector() noexcept;
+    // Reads the engine camera into the background (latch) or scene slot.
+    void read_camera(bool scene) noexcept;
+    void log_camera_state() noexcept;
     bool ensure_taa() noexcept;
     HRESULT resolve(IDirect3DSurface9* main_surface) noexcept;
     void invalidate_taa() noexcept;
@@ -343,6 +366,16 @@ private:
     std::vector<float> displacements_;
     float cut_median_bound_ = 48.f, cut_missing_bound_ = .25f;
     bool cut_finished_ = false; // Verdict computed for this frame (end of scene phase or before Present).
+    // Camera state: the scene view of this frame (read at the depth-only
+    // Clear), the background view (diagnostics only), the scene view of the
+    // last frame that completed a resolve (the history's camera; cleared with
+    // the history) and the raw read diagnostics of the scene read.
+    renderer::CameraState camera_scene_{}, camera_background_{}, camera_previous_{};
+    std::uint64_t camera_previous_frame_ = 0;
+    std::uintptr_t camera_projection_address_ = 0, camera_view_address_ = 0;
+    renderer::SentinelMode sentinel_mode_ = renderer::SentinelMode::Auto;
+    float camera_cut_degrees_ = 20.f;
+    unsigned camera_log_interval_ = 300;
     // Temporal resolve: requested switch, capability verdict at attach, lazy
     // initialization state, device references the pass holds (probed), the
     // application's scene state and active BEGIN/END queries.

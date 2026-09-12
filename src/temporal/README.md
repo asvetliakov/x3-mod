@@ -134,14 +134,20 @@ Per output pixel `p` (unjittered grid), in this order:
    the sentinel policy below all return the current color.
 2. **Depth-sentinel policy** (`c7.w`): 0 off; 1 a current pixel whose depth is
    the -1 sentinel (nothing routed wrote it) is current-only; 2 such a pixel
-   is reprojected through the camera path at the far plane (depth 1). The
-   route uploads the identity matrix and fills the motion target with alpha
-   -1 today, so it must keep policy 1 (`prepare(..., sentinel_camera=false)`);
-   policy 2 is for a route that supplies `clip_to_previous` and marks those
-   pixels with motion alpha 0. Under policy 1 a jittered edge against the
-   sentinel background is wiped on every phase that uncovers it (see the
-   thin-line fixture, "sentinel-current-only": a 1-px line keeps 14% of its
-   coverage); under policy 2 it converges like any other edge.
+   is reprojected through the camera path at the far plane (depth 1) with
+   the `clip_to_previous` the route builds from the live engine camera
+   (docs/architecture/temporal-integration.md, "Camera reprojection for
+   sentinel pixels"). Such a pixel keeps the camera path whether its motion
+   alpha is 0 or the route's fill sentinel -1 (the far-plane pixel is its own
+   correspondence when no closer neighbor won the dilation); a dilated
+   neighbor with alpha -1 is a routed draw without history and rejects.
+   The route selects 2 only with a valid transform (`X3M_TAA_SENTINEL`),
+   else 1 with the identity matrix, which the resolve then never applies.
+   Under policy 1 a jittered edge against the sentinel background is wiped
+   on every phase that uncovers it (see the thin-line fixture,
+   "sentinel-current-only": a 1-px line keeps 14% of its coverage); under
+   policy 2 it converges like any other edge (modes "sentinel-camera" and
+   "sentinel-camera-fill" of the fixture).
 3. **Closest-depth dilation.** The closest valid depth of the current 3×3
    (center wins ties) selects the pixel whose correspondence is used: its
    camera reprojection (or its motion RG/B when `c7.x` is set and alpha is
@@ -186,8 +192,8 @@ per-phase ripple of a toggling edge sample is (1-w)·contrast, convergence
 takes about 2/(1-w) frames, and a larger weight holds clamp-bounded ghosts
 longer. Cost per pixel: 10 current color, 9 current depth, 1 motion, 4 history
 depth and 1 or 16 history color fetches (20 before; plus 1 + 1/16 mask
-fetches under the mask policy); the compiled program is 3,794 words (1,695
-before).
+fetches under the mask policy); the compiled program is 3,840 words (3,794
+before the far-plane fill-sentinel fix, 1,695 before the Catmull-Rom history).
 
 ## Rejection and history lifecycle
 

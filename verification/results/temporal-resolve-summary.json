@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T04:55:40.391074+00:00",
+  "started_utc": "2026-09-12T06:53:58.294326+00:00",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -18,11 +18,11 @@
     "verification/probe/temporal_build.sh": "46d38add5f799bc5ba039988306bc97988a11a9d054c18e8419846af433e5259",
     "verification/probe/temporal_run.py": "69fdb7d4b213134b5f9c8d3437d323f21f70d18cc1474a17ba8308583d7fc233",
     "src/temporal/resolve.h": "c2ef21f3d21d43ce5b396d4cb03cc593715562df9b38a568f46abec734291ea3",
-    "src/temporal/resolve.hlsl": "5319da34a6f7731f49c21a50d5bbe380a840f357762918e2f6ff684fa933261d"
+    "src/temporal/resolve.hlsl": "ca73a7e28acf8fa873ec6e90b0f0c0a1313b5bfb8f4e26bef1698862f9ba6fc9"
   },
   "freshly_built": true,
   "build_exit_code": 0,
-  "executable_sha256": "81b9efda3417fdb7ee3d3f92dcf9a69fb7d0aa795607fd684a92d4ac94cf0f21",
+  "executable_sha256": "04091e8ce76deb2b590a53a8c54293547088ce79d038740dcc8330890ebf7d45",
   "exit_code": 0,
   "sample_checks": 78,
   "passed_sample_checks": 78,

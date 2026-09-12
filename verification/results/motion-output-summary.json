@@ -67,10 +67,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-off-20260912-090133-235221",
-      "trace_sha256": "700d78d1ff354d713e2e3430d40b676fa163ff9525428852e18c3d49ab1b74cc",
-      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-production-off-20260912-104913-265410",
+      "trace_sha256": "44e3a9cd368ae3c6156de116a767df5a788ac8fa594aa59ae9620a23ac2b2d8f",
+      "dll_sha256": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "production-on": {
       "mode": "production",
@@ -166,10 +166,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-on-20260912-090136-117676",
-      "trace_sha256": "96fc2020bb4f5b8e65db560dac62fdab7ce0eac7f2cdab29cd4a6e785ff7f1cb",
-      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-production-on-20260912-104915-055361",
+      "trace_sha256": "4ceb40d3503652416bd34450565849a773d5ed6240d1988c3abeab152669b748",
+      "dll_sha256": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-off": {
       "mode": "seam",
@@ -219,10 +219,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-off-20260912-090137-937000",
-      "trace_sha256": "bc67191df5677e250ef1d7ea7c20b00ba3af86971e4e1db968ab26133fdcc284",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-seam-off-20260912-104916-988292",
+      "trace_sha256": "f108f62362db7d7d3544b529899db3fbc7fee847b993b50c96da67edb39cdb17",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-on": {
       "mode": "seam",
@@ -318,10 +318,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-on-20260912-090139-543191",
-      "trace_sha256": "9f10e2a5ac97e7487cd94d55592f1ff45af60a98bed8c7e0a39c151773788dce",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-seam-on-20260912-104918-608788",
+      "trace_sha256": "ae32cba8f9bc1d2ffd0c83a0eff077ebaed2f25489a14279ca71d206001d4d4e",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "production-ownership-off": {
       "mode": "production",
@@ -371,10 +371,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-ownership-off-20260912-090141-248467",
-      "trace_sha256": "16263915846a45e44c0f7b77e4aa61abee3a129f88a71ac9f5c42995b02607e4",
-      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-production-ownership-off-20260912-104920-297869",
+      "trace_sha256": "149d2dadea0dc2ad4eee5c1b825e571f0676ffc1b267f87ffb875eeda159f8fd",
+      "dll_sha256": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "production-ownership-on": {
       "mode": "production",
@@ -480,10 +480,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-ownership-on-20260912-090142-849120",
-      "trace_sha256": "214967bd701ec5e31d445bde67706cf6aef4b0eb2d1a01d32764f2fe34a17451",
-      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-production-ownership-on-20260912-104921-924427",
+      "trace_sha256": "a4ce8c5c801ff787f7e7c2a02b759832dad889d94e3d85ad74b139cefc448e20",
+      "dll_sha256": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-ownership-off": {
       "mode": "seam",
@@ -533,10 +533,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-off-20260912-090144-820713",
-      "trace_sha256": "0609dd9c3595ccbd99f6b4cba958dba40cd84aa9aafd1dc18473f3495b8951ab",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-seam-ownership-off-20260912-104923-624145",
+      "trace_sha256": "34eca5d59c0bd762a3de700a4fa1f889805d936a72443cd28673e2d372dfcd44",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-ownership-on": {
       "mode": "seam",
@@ -642,10 +642,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-on-20260912-090146-474623",
-      "trace_sha256": "5cd49d54e15cc7ae7f6f181c44c4d52f26675b4972cb66674df0cf79c56444ca",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-seam-ownership-on-20260912-104925-248200",
+      "trace_sha256": "49557a4cc750c9c974792597ece8bc702ce045e85d0833f801b2adff35ec61ad",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "production-depth-off": {
       "mode": "production",
@@ -699,10 +699,10 @@
         ]
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-depth-off-20260912-090148-214723",
-      "trace_sha256": "257be9df6cc0e8155db4413f98e6e4472d6c84e23bd4f9c527039c8f38f54329",
-      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-production-depth-off-20260912-104926-976716",
+      "trace_sha256": "9bb3d13ec730dc0b9732841ca59499b19e25f35c1e0734ce94059744b2095eea",
+      "dll_sha256": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "production-depth-on": {
       "mode": "production",
@@ -812,10 +812,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-depth-on-20260912-090149-891048",
-      "trace_sha256": "ceb1f3fe86b81440e9561a368bffdb2f8f485b5422bacff7a08ee70d59a26771",
-      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-production-depth-on-20260912-104928-606590",
+      "trace_sha256": "db52c0d493e3ad80af32da049a32ba88e16b84faecd3c235786bc5e4c49e5cd4",
+      "dll_sha256": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-depth-off": {
       "mode": "seam",
@@ -869,10 +869,10 @@
         ]
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-depth-off-20260912-090151-571242",
-      "trace_sha256": "dee28f19ca27069eae2f611ee5acb8f6fbdd88c4d643a56cca62460d0b1e10e1",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-seam-depth-off-20260912-104930-479067",
+      "trace_sha256": "cdcd567d2ace8753bce94106b3fc24dcb440e5ff3462eff90e27fced2caac284",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-depth-on": {
       "mode": "seam",
@@ -982,10 +982,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-depth-on-20260912-090153-218679",
-      "trace_sha256": "c40f3f28a3e8f6adf76909ad21d110d7cc823bbb4818f218551a41a173338e0b",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-seam-depth-on-20260912-104932-111075",
+      "trace_sha256": "52da00ff86afc143065a8f899abfb1455d8e53b97c9d387ab7a47b4725ae0a4a",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "production-admission-off": {
       "mode": "production",
@@ -1035,10 +1035,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-admission-off-20260912-090155-023462",
-      "trace_sha256": "fbb46440d6c59d47ec3e9448c029c613d62de5a34b201bbd79946744b9ce5571",
-      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-production-admission-off-20260912-104933-884202",
+      "trace_sha256": "5c6b758a451918ee9a184b5b9c5c0ebad8c525c75b68a88fc4e68250a7410831",
+      "dll_sha256": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "production-admission-on": {
       "mode": "production",
@@ -1144,10 +1144,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-admission-on-20260912-090156-651708",
-      "trace_sha256": "78ef08ea43e8d6d72b258d72e489c339ae8a617c7e0edb7c3040ec41966af416",
-      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-production-admission-on-20260912-104935-523932",
+      "trace_sha256": "03ed03417ecea1171557b4107d29c0d770247114eb0f04dd8c614a8a9ae2c418",
+      "dll_sha256": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-admission-off": {
       "mode": "seam",
@@ -1197,10 +1197,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-admission-off-20260912-090158-391000",
-      "trace_sha256": "e9846a62ca7225b3773e182cca0cdc92144392e78d044189835c6a838273f84b",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-seam-admission-off-20260912-104937-413764",
+      "trace_sha256": "b502cb2d2d4ed4c66b31cd9ae2dc4d2c555e809487720f619332ad7468a57235",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-admission-on": {
       "mode": "seam",
@@ -1306,10 +1306,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-admission-on-20260912-090200-004432",
-      "trace_sha256": "e3a2a0d54262f798a4db561703abadd1b1c343db64ef1ac11ee3491a4d7a4af1",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-seam-admission-on-20260912-104939-064013",
+      "trace_sha256": "a5ff75c5010d0b6cc0b0f3b8e01995a30c6590c4fc58b377d5de4c9d90a2da58",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "production-jitter-on": {
       "mode": "production",
@@ -1405,10 +1405,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-jitter-on-20260912-090201-999313",
-      "trace_sha256": "f076271c98c48edfb9b231c24f8bdd19ba5d19c5df1d0285cfb517fee3cf15de",
-      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523",
+      "directory": "verification/probe/build/motion-output-production-jitter-on-20260912-104940-729110",
+      "trace_sha256": "c752765d9df82b3dc34cbc24888e14839545e926b946e710b7030e04e53d97e3",
+      "dll_sha256": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e",
       "frames_differing_from_unjittered": [
         0,
         1,
@@ -1518,10 +1518,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-jitter-on-20260912-090203-934409",
-      "trace_sha256": "c71dac82b8d696261c05565ce87320497e8cc656f2dc405d0a7d06f47d7196b9",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523",
+      "directory": "verification/probe/build/motion-output-seam-jitter-on-20260912-104942-398271",
+      "trace_sha256": "bdb548683aa252389fa04df828af8d4ec3e72e1d91e7718629dc7ebd305cfde5",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e",
       "frames_differing_from_unjittered": [
         0,
         1,
@@ -1543,7 +1543,7 @@
       "jitter": true,
       "taa": true,
       "lazy": false,
-      "checks": 69,
+      "checks": 70,
       "restorations": 51,
       "frames": 12,
       "color_hashes": {
@@ -1571,6 +1571,20 @@
       "coverage_pixels": 48957,
       "coverage_ambiguous_pixels": 195,
       "taa_history_frames": [],
+      "camera_policy": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1
+      },
       "taa_changed_pixels": {
         "0": 0,
         "1": 0,
@@ -1641,6 +1655,62 @@
           "max": 0.6000000238418579
         }
       },
+      "camera_log": {
+        "0": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "1": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "2": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "3": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "4": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "5": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "6": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "7": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "8": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        }
+      },
       "taa_image": {
         "differing_fraction": {
           "1": 0.0,
@@ -1682,10 +1752,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-taa-on-20260912-090205-644033",
-      "trace_sha256": "77ed6a28edb05a45a90cd66e0dbd720f4454417311c7ee2e97c992971439a865",
-      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-production-taa-on-20260912-104944-079773",
+      "trace_sha256": "b3cae1d0880d5546a3ac412bbcfa8132c12f5d5026987bc33a0cdf5159c10265",
+      "dll_sha256": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-taa-on": {
       "mode": "seam",
@@ -1693,7 +1763,7 @@
       "jitter": true,
       "taa": true,
       "lazy": false,
-      "checks": 150,
+      "checks": 151,
       "restorations": 51,
       "frames": 12,
       "color_hashes": {
@@ -1728,6 +1798,20 @@
         10,
         11
       ],
+      "camera_policy": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1
+      },
       "taa_changed_pixels": {
         "0": 0,
         "1": 211,
@@ -1798,6 +1882,62 @@
           "max": 0.6000000238418579
         }
       },
+      "camera_log": {
+        "0": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "1": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "2": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "3": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "4": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "5": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "6": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "7": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "8": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        }
+      },
       "taa_image": {
         "differing_fraction": {
           "1": 0.007080078125,
@@ -1839,10 +1979,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-taa-on-20260912-090207-723798",
-      "trace_sha256": "e94e197b81536db1f969f98e159c8a88e9925d6c01578f09f4efd8ab1bc0dbf4",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523",
+      "directory": "verification/probe/build/motion-output-seam-taa-on-20260912-104945-841642",
+      "trace_sha256": "cc700dcbc7f700e0a0fda03f52ea6b3b0eb4b8ffe958bb0087b5962fa605309f",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e",
       "frames_changed_by_history": [
         1,
         4,
@@ -1857,7 +1997,7 @@
       "jitter": true,
       "taa": true,
       "lazy": false,
-      "checks": 69,
+      "checks": 70,
       "restorations": 51,
       "frames": 12,
       "color_hashes": {
@@ -1885,6 +2025,20 @@
       "coverage_pixels": 48957,
       "coverage_ambiguous_pixels": 195,
       "taa_history_frames": [],
+      "camera_policy": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1
+      },
       "taa_changed_pixels": {
         "0": 0,
         "1": 0,
@@ -1955,6 +2109,62 @@
           "max": 0.6000000238418579
         }
       },
+      "camera_log": {
+        "0": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "1": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "2": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "3": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "4": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "5": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "6": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "7": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "8": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        }
+      },
       "taa_image": {
         "differing_fraction": {
           "1": 0.0,
@@ -2006,10 +2216,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-ownership-taa-on-20260912-090209-859703",
-      "trace_sha256": "ef803dc7d81f308a3e45cdcf87d69290ec2f022f83863de51cf3dd8bc2c3c487",
-      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-production-ownership-taa-on-20260912-104947-769557",
+      "trace_sha256": "80d7d3f4843e21e20aa56762696aafc9219558cb2338c67fde2a97ee5f2a6a5e",
+      "dll_sha256": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-ownership-taa-on": {
       "mode": "seam",
@@ -2017,7 +2227,7 @@
       "jitter": true,
       "taa": true,
       "lazy": false,
-      "checks": 150,
+      "checks": 151,
       "restorations": 51,
       "frames": 12,
       "color_hashes": {
@@ -2052,6 +2262,20 @@
         10,
         11
       ],
+      "camera_policy": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1
+      },
       "taa_changed_pixels": {
         "0": 0,
         "1": 211,
@@ -2122,6 +2346,62 @@
           "max": 0.6000000238418579
         }
       },
+      "camera_log": {
+        "0": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "1": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "2": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "3": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "4": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "5": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "6": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "7": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "8": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        }
+      },
       "taa_image": {
         "differing_fraction": {
           "1": 0.007080078125,
@@ -2173,10 +2453,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-taa-on-20260912-090211-830248",
-      "trace_sha256": "4832fba2f51bec717a8bdfb1341c740d730df2747a2ce2385281c17b973c639d",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523",
+      "directory": "verification/probe/build/motion-output-seam-ownership-taa-on-20260912-104949-533352",
+      "trace_sha256": "a2bb787789f558e337e20ac32d5c9e31d099eb1ed8f88fdd25e6e24d16d1dd25",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e",
       "frames_changed_by_history": [
         1,
         4,
@@ -2279,10 +2559,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-lazy-on-20260912-090220-423634",
-      "trace_sha256": "5df78af1780826eba3d5978a40ad6a68edf257facba9a12647e5668b1c79d7e0",
-      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-production-lazy-on-20260912-104958-156112",
+      "trace_sha256": "2cbd48694e7067a1c8e461b36e5867e4f7acc849983c035de51b56ebdb4d7f18",
+      "dll_sha256": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-lazy-on": {
       "mode": "seam",
@@ -2378,10 +2658,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-lazy-on-20260912-090222-390168",
-      "trace_sha256": "378c39f8c6a85bf8928e9360d12360df99b4d1949e15e40250e6947ce80d8dc5",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-seam-lazy-on-20260912-104959-859723",
+      "trace_sha256": "2a4e4d810d1a0e2537306684931845c748c6e71d42c4999b11cd0cf7755e1256",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-ownership-lazy-on": {
       "mode": "seam",
@@ -2487,10 +2767,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-lazy-on-20260912-090224-222373",
-      "trace_sha256": "1b6fad72a0ce00c8349a20c944f1cee1d613d3ae2cd9aaa6e76f091e94610177",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-seam-ownership-lazy-on-20260912-105001-572535",
+      "trace_sha256": "a33d9e1505f6d9ac742381c8a4858cd14b014cb353d2a2e69d5a1df8bbd9c033",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-taa-lazy-on": {
       "mode": "seam",
@@ -2498,7 +2778,7 @@
       "jitter": true,
       "taa": true,
       "lazy": true,
-      "checks": 150,
+      "checks": 151,
       "restorations": 51,
       "frames": 12,
       "color_hashes": {
@@ -2533,6 +2813,20 @@
         10,
         11
       ],
+      "camera_policy": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1
+      },
       "taa_changed_pixels": {
         "0": 0,
         "1": 211,
@@ -2603,6 +2897,62 @@
           "max": 0.6000000238418579
         }
       },
+      "camera_log": {
+        "0": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "1": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "2": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "3": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "4": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "5": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "6": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "7": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "8": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        }
+      },
       "taa_image": {
         "differing_fraction": {
           "1": 0.007080078125,
@@ -2644,10 +2994,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-taa-lazy-on-20260912-090226-101182",
-      "trace_sha256": "844822922b029a88d8bd7a3d1913aa4c31b4b68bda5ad499c9ffca08646870f2",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-seam-taa-lazy-on-20260912-105003-244263",
+      "trace_sha256": "b2973d2de4f256439d7e9bef4f7d0139f9020264ae40293452b980b8d9fd2ccb",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "production-burst-perdraw": {
       "mode": "production",
@@ -2713,85 +3063,85 @@
       },
       "costs_us_per_frame": {
         "0": {
-          "gate_us": 512.1,
-          "route_draw_us": 136.0,
-          "set_rt_us": 8.6,
+          "gate_us": 529.8,
+          "route_draw_us": 132.0,
+          "set_rt_us": 6.8,
           "lazy_flush_us": 0.0,
-          "fill_us": 121.4,
+          "fill_us": 110.7,
           "readback_us": 0.0
         },
         "1": {
-          "gate_us": 9.6,
-          "route_draw_us": 22.0,
-          "set_rt_us": 9.3,
+          "gate_us": 8.2,
+          "route_draw_us": 20.5,
+          "set_rt_us": 8.7,
           "lazy_flush_us": 0.0,
-          "fill_us": 48.5,
+          "fill_us": 45.4,
           "readback_us": 0.0
         },
         "2": {
-          "gate_us": 7.2,
-          "route_draw_us": 24.8,
-          "set_rt_us": 10.8,
+          "gate_us": 7.4,
+          "route_draw_us": 24.2,
+          "set_rt_us": 11.5,
           "lazy_flush_us": 0.0,
-          "fill_us": 43.5,
+          "fill_us": 27.2,
           "readback_us": 0.0
         },
         "3": {
-          "gate_us": 6.5,
-          "route_draw_us": 25.5,
-          "set_rt_us": 11.5,
+          "gate_us": 5.8,
+          "route_draw_us": 20.4,
+          "set_rt_us": 8.8,
           "lazy_flush_us": 0.0,
-          "fill_us": 43.0,
+          "fill_us": 54.6,
           "readback_us": 0.0
         },
         "4": {
-          "gate_us": 5.5,
-          "route_draw_us": 23.1,
-          "set_rt_us": 10.9,
-          "lazy_flush_us": 0.0,
-          "fill_us": 18.5,
-          "readback_us": 0.0
-        },
-        "5": {
-          "gate_us": 6.4,
-          "route_draw_us": 25.8,
-          "set_rt_us": 13.1,
+          "gate_us": 6.2,
+          "route_draw_us": 21.6,
+          "set_rt_us": 9.8,
           "lazy_flush_us": 0.0,
           "fill_us": 27.6,
           "readback_us": 0.0
         },
-        "6": {
-          "gate_us": 5.6,
-          "route_draw_us": 24.8,
-          "set_rt_us": 12.0,
+        "5": {
+          "gate_us": 5.8,
+          "route_draw_us": 24.2,
+          "set_rt_us": 8.4,
           "lazy_flush_us": 0.0,
-          "fill_us": 20.7,
+          "fill_us": 19.2,
+          "readback_us": 0.0
+        },
+        "6": {
+          "gate_us": 4.7,
+          "route_draw_us": 24.6,
+          "set_rt_us": 13.6,
+          "lazy_flush_us": 0.0,
+          "fill_us": 22.9,
           "readback_us": 0.0
         },
         "7": {
-          "gate_us": 6.3,
-          "route_draw_us": 26.5,
-          "set_rt_us": 14.0,
+          "gate_us": 7.5,
+          "route_draw_us": 26.0,
+          "set_rt_us": 13.4,
           "lazy_flush_us": 0.0,
-          "fill_us": 30.7,
-          "readback_us": 2062.4
+          "fill_us": 31.7,
+          "readback_us": 2000.9
         },
         "8": {
-          "gate_us": 6.7,
-          "route_draw_us": 26.8,
-          "set_rt_us": 13.5,
+          "gate_us": 6.8,
+          "route_draw_us": 26.3,
+          "set_rt_us": 13.8,
           "lazy_flush_us": 0.0,
-          "fill_us": 28.2,
-          "readback_us": 2090.5
+          "fill_us": 38.1,
+          "readback_us": 1566.1
         }
       },
       "coverage_pixels": 35505,
       "depth_written_pixels": 0,
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-burst-perdraw-20260912-090228-079542",
-      "trace_sha256": "caed3c600a895f8a25f47aa4047c034bdcddc90ac6f682ecfd9d7fc40503fd53",
-      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-production-burst-perdraw-20260912-105005-155868",
+      "trace_sha256": "dfc7069b92721e8a21e8d60dd9d065762904d2e38c227ad9f1f7e2819a3a21a3",
+      "dll_sha256": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "production-burst-lazy": {
       "mode": "production",
@@ -2857,85 +3207,85 @@
       },
       "costs_us_per_frame": {
         "0": {
-          "gate_us": 498.6,
-          "route_draw_us": 123.7,
-          "set_rt_us": 4.9,
-          "lazy_flush_us": 5.2,
-          "fill_us": 137.5,
+          "gate_us": 510.0,
+          "route_draw_us": 100.2,
+          "set_rt_us": 5.3,
+          "lazy_flush_us": 5.9,
+          "fill_us": 92.3,
           "readback_us": 0.0
         },
         "1": {
-          "gate_us": 9.3,
-          "route_draw_us": 10.8,
-          "set_rt_us": 12.3,
-          "lazy_flush_us": 12.8,
-          "fill_us": 39.9,
+          "gate_us": 9.8,
+          "route_draw_us": 11.3,
+          "set_rt_us": 10.7,
+          "lazy_flush_us": 10.0,
+          "fill_us": 46.6,
           "readback_us": 0.0
         },
         "2": {
-          "gate_us": 6.7,
-          "route_draw_us": 12.5,
-          "set_rt_us": 11.9,
-          "lazy_flush_us": 9.2,
-          "fill_us": 31.8,
+          "gate_us": 9.4,
+          "route_draw_us": 11.3,
+          "set_rt_us": 11.0,
+          "lazy_flush_us": 9.0,
+          "fill_us": 51.2,
           "readback_us": 0.0
         },
         "3": {
-          "gate_us": 6.4,
-          "route_draw_us": 11.9,
-          "set_rt_us": 11.3,
+          "gate_us": 7.5,
+          "route_draw_us": 13.6,
+          "set_rt_us": 11.5,
           "lazy_flush_us": 9.0,
-          "fill_us": 41.3,
+          "fill_us": 28.8,
           "readback_us": 0.0
         },
         "4": {
-          "gate_us": 5.2,
-          "route_draw_us": 10.4,
-          "set_rt_us": 9.7,
-          "lazy_flush_us": 6.8,
-          "fill_us": 26.8,
+          "gate_us": 7.0,
+          "route_draw_us": 10.6,
+          "set_rt_us": 10.7,
+          "lazy_flush_us": 9.9,
+          "fill_us": 25.5,
           "readback_us": 0.0
         },
         "5": {
-          "gate_us": 6.9,
-          "route_draw_us": 12.5,
-          "set_rt_us": 11.9,
-          "lazy_flush_us": 8.8,
-          "fill_us": 18.4,
+          "gate_us": 6.7,
+          "route_draw_us": 11.2,
+          "set_rt_us": 9.9,
+          "lazy_flush_us": 7.9,
+          "fill_us": 23.3,
           "readback_us": 0.0
         },
         "6": {
           "gate_us": 6.2,
-          "route_draw_us": 11.5,
-          "set_rt_us": 11.1,
+          "route_draw_us": 11.1,
+          "set_rt_us": 11.0,
           "lazy_flush_us": 9.0,
-          "fill_us": 24.1,
+          "fill_us": 18.2,
           "readback_us": 0.0
         },
         "7": {
-          "gate_us": 7.0,
-          "route_draw_us": 20.5,
-          "set_rt_us": 20.3,
-          "lazy_flush_us": 14.1,
-          "fill_us": 32.5,
-          "readback_us": 2597.4
+          "gate_us": 6.9,
+          "route_draw_us": 19.2,
+          "set_rt_us": 19.0,
+          "lazy_flush_us": 13.8,
+          "fill_us": 32.2,
+          "readback_us": 2277.3
         },
         "8": {
-          "gate_us": 6.3,
-          "route_draw_us": 18.6,
-          "set_rt_us": 20.1,
-          "lazy_flush_us": 14.9,
-          "fill_us": 30.5,
-          "readback_us": 2125.5
+          "gate_us": 7.6,
+          "route_draw_us": 20.7,
+          "set_rt_us": 19.7,
+          "lazy_flush_us": 13.2,
+          "fill_us": 33.0,
+          "readback_us": 2371.7
         }
       },
       "coverage_pixels": 35505,
       "depth_written_pixels": 0,
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-burst-lazy-20260912-090229-673958",
-      "trace_sha256": "cf17553d9f0279e9e76e6049bff5da21121ca95c2a7fee89219ed9c03973fe10",
-      "dll_sha256": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-production-burst-lazy-20260912-105006-746414",
+      "trace_sha256": "4ef48499d1b2248ee9b33ed5738f5b2775ac6fe745ae3d3e2c1eb1a9b72a5b8e",
+      "dll_sha256": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-burst-perdraw": {
       "mode": "seam",
@@ -3038,85 +3388,85 @@
       },
       "costs_us_per_frame": {
         "0": {
-          "gate_us": 483.3,
-          "route_draw_us": 129.0,
-          "set_rt_us": 9.1,
+          "gate_us": 509.3,
+          "route_draw_us": 154.6,
+          "set_rt_us": 21.4,
           "lazy_flush_us": 0.0,
-          "fill_us": 96.2,
+          "fill_us": 111.1,
           "readback_us": 0.0
         },
         "1": {
-          "gate_us": 8.1,
-          "route_draw_us": 22.1,
-          "set_rt_us": 9.4,
+          "gate_us": 9.5,
+          "route_draw_us": 26.1,
+          "set_rt_us": 12.5,
           "lazy_flush_us": 0.0,
-          "fill_us": 40.2,
+          "fill_us": 41.3,
           "readback_us": 0.0
         },
         "2": {
-          "gate_us": 7.8,
-          "route_draw_us": 21.6,
-          "set_rt_us": 10.1,
+          "gate_us": 7.9,
+          "route_draw_us": 24.4,
+          "set_rt_us": 11.7,
           "lazy_flush_us": 0.0,
-          "fill_us": 34.1,
+          "fill_us": 37.8,
           "readback_us": 0.0
         },
         "3": {
-          "gate_us": 8.5,
-          "route_draw_us": 28.6,
-          "set_rt_us": 14.8,
+          "gate_us": 5.3,
+          "route_draw_us": 20.2,
+          "set_rt_us": 9.5,
           "lazy_flush_us": 0.0,
-          "fill_us": 21.9,
+          "fill_us": 23.6,
           "readback_us": 0.0
         },
         "4": {
-          "gate_us": 5.5,
-          "route_draw_us": 22.9,
-          "set_rt_us": 11.9,
+          "gate_us": 6.3,
+          "route_draw_us": 24.9,
+          "set_rt_us": 12.3,
           "lazy_flush_us": 0.0,
           "fill_us": 23.8,
           "readback_us": 0.0
         },
         "5": {
-          "gate_us": 5.8,
-          "route_draw_us": 19.8,
-          "set_rt_us": 9.4,
+          "gate_us": 5.7,
+          "route_draw_us": 21.3,
+          "set_rt_us": 9.6,
           "lazy_flush_us": 0.0,
-          "fill_us": 30.3,
+          "fill_us": 30.0,
           "readback_us": 0.0
         },
         "6": {
-          "gate_us": 5.9,
-          "route_draw_us": 21.6,
-          "set_rt_us": 11.0,
+          "gate_us": 5.8,
+          "route_draw_us": 23.7,
+          "set_rt_us": 12.3,
           "lazy_flush_us": 0.0,
-          "fill_us": 29.6,
+          "fill_us": 26.3,
           "readback_us": 0.0
         },
         "7": {
-          "gate_us": 7.6,
-          "route_draw_us": 28.2,
-          "set_rt_us": 13.8,
+          "gate_us": 7.0,
+          "route_draw_us": 30.0,
+          "set_rt_us": 16.0,
           "lazy_flush_us": 0.0,
-          "fill_us": 32.1,
-          "readback_us": 2703.8
+          "fill_us": 37.5,
+          "readback_us": 1745.4
         },
         "8": {
-          "gate_us": 7.6,
-          "route_draw_us": 30.2,
-          "set_rt_us": 15.4,
+          "gate_us": 7.7,
+          "route_draw_us": 28.4,
+          "set_rt_us": 14.5,
           "lazy_flush_us": 0.0,
-          "fill_us": 31.6,
-          "readback_us": 2220.4
+          "fill_us": 40.2,
+          "readback_us": 2338.9
         }
       },
       "coverage_pixels": 35505,
       "depth_written_pixels": 21447,
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-burst-perdraw-20260912-090231-308802",
-      "trace_sha256": "0c445f85542f6467c276ffc836aaa7a11afc915e7c112cc72267e943f4303052",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-seam-burst-perdraw-20260912-105008-592521",
+      "trace_sha256": "3c60060354714b58e9b7fe43c722b0d52e83888affe18fcb97b5238782a6ff0a",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     },
     "seam-burst-lazy": {
       "mode": "seam",
@@ -3219,85 +3569,998 @@
       },
       "costs_us_per_frame": {
         "0": {
-          "gate_us": 578.2,
-          "route_draw_us": 120.0,
-          "set_rt_us": 5.2,
-          "lazy_flush_us": 38.4,
-          "fill_us": 96.9,
+          "gate_us": 492.9,
+          "route_draw_us": 133.6,
+          "set_rt_us": 17.0,
+          "lazy_flush_us": 4.9,
+          "fill_us": 280.7,
           "readback_us": 0.0
         },
         "1": {
-          "gate_us": 8.8,
-          "route_draw_us": 8.6,
-          "set_rt_us": 9.4,
-          "lazy_flush_us": 10.7,
-          "fill_us": 44.8,
+          "gate_us": 8.6,
+          "route_draw_us": 12.2,
+          "set_rt_us": 7.5,
+          "lazy_flush_us": 5.1,
+          "fill_us": 43.2,
           "readback_us": 0.0
         },
         "2": {
-          "gate_us": 9.2,
-          "route_draw_us": 11.2,
-          "set_rt_us": 10.4,
-          "lazy_flush_us": 9.0,
-          "fill_us": 66.9,
+          "gate_us": 6.1,
+          "route_draw_us": 11.1,
+          "set_rt_us": 11.6,
+          "lazy_flush_us": 9.2,
+          "fill_us": 26.2,
           "readback_us": 0.0
         },
         "3": {
-          "gate_us": 7.5,
-          "route_draw_us": 14.0,
-          "set_rt_us": 12.8,
-          "lazy_flush_us": 9.0,
-          "fill_us": 22.9,
+          "gate_us": 6.4,
+          "route_draw_us": 11.6,
+          "set_rt_us": 10.7,
+          "lazy_flush_us": 8.8,
+          "fill_us": 25.5,
           "readback_us": 0.0
         },
         "4": {
-          "gate_us": 7.6,
-          "route_draw_us": 11.9,
-          "set_rt_us": 11.8,
-          "lazy_flush_us": 9.1,
-          "fill_us": 22.3,
+          "gate_us": 7.3,
+          "route_draw_us": 12.0,
+          "set_rt_us": 11.5,
+          "lazy_flush_us": 10.1,
+          "fill_us": 30.9,
           "readback_us": 0.0
         },
         "5": {
-          "gate_us": 7.2,
-          "route_draw_us": 10.4,
-          "set_rt_us": 11.1,
-          "lazy_flush_us": 9.5,
-          "fill_us": 23.1,
+          "gate_us": 7.5,
+          "route_draw_us": 13.9,
+          "set_rt_us": 11.3,
+          "lazy_flush_us": 8.4,
+          "fill_us": 25.0,
           "readback_us": 0.0
         },
         "6": {
-          "gate_us": 7.2,
-          "route_draw_us": 11.1,
-          "set_rt_us": 11.5,
-          "lazy_flush_us": 8.8,
-          "fill_us": 19.0,
+          "gate_us": 6.5,
+          "route_draw_us": 10.2,
+          "set_rt_us": 11.4,
+          "lazy_flush_us": 11.2,
+          "fill_us": 19.3,
           "readback_us": 0.0
         },
         "7": {
-          "gate_us": 7.5,
-          "route_draw_us": 19.7,
-          "set_rt_us": 21.0,
-          "lazy_flush_us": 15.1,
-          "fill_us": 33.7,
-          "readback_us": 2517.5
+          "gate_us": 7.1,
+          "route_draw_us": 19.5,
+          "set_rt_us": 20.0,
+          "lazy_flush_us": 15.0,
+          "fill_us": 29.4,
+          "readback_us": 5084.6
         },
         "8": {
-          "gate_us": 6.9,
-          "route_draw_us": 20.7,
-          "set_rt_us": 20.8,
-          "lazy_flush_us": 13.7,
-          "fill_us": 32.8,
-          "readback_us": 2198.8
+          "gate_us": 7.0,
+          "route_draw_us": 24.3,
+          "set_rt_us": 24.6,
+          "lazy_flush_us": 14.2,
+          "fill_us": 31.5,
+          "readback_us": 2381.7
         }
       },
       "coverage_pixels": 35505,
       "depth_written_pixels": 21447,
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-burst-lazy-20260912-090232-927218",
-      "trace_sha256": "e1afe7e0ce9bfe67f17e3d60d7939308b69228d81e96614f28ca11f94d431035",
-      "dll_sha256": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-      "exe_sha256": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523"
+      "directory": "verification/probe/build/motion-output-seam-burst-lazy-20260912-105010-252313",
+      "trace_sha256": "cf6407a98678f1ec86ba7a6bede3c706bddccc7806d2e05074528d6fa6523e4b",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
+    },
+    "seam-taa-camera-on": {
+      "mode": "seam",
+      "enabled": true,
+      "jitter": true,
+      "taa": true,
+      "lazy": false,
+      "checks": 164,
+      "restorations": 51,
+      "frames": 12,
+      "color_hashes": {
+        "0": "7780633dafe6b5fa",
+        "1": "a2499c06b255363a",
+        "2": "47059dc8e751a751",
+        "3": "35942d847a659ef3",
+        "4": "403a1ff89ea0f8db",
+        "5": "0554c1e31f1e7738",
+        "6": "d8dbde26c9cf0b5d",
+        "7": "ae0b3498446c57df",
+        "8": "48e1c7ad26e4fdc1",
+        "9": "4fccb6c7391e6b2d",
+        "10": "332b6a65322718bb",
+        "11": "11fc8bcc9362dee9"
+      },
+      "motion_pixels": 44279,
+      "matched_pixels": 10348,
+      "max_uv_error_pixels": 0.00191186365,
+      "max_previous_depth_error": 7.21407726e-08,
+      "depth_pixels": 44279,
+      "depth_written_pixels": 27293,
+      "max_current_depth_error": 3.74090846e-06,
+      "coverage_frames": 12,
+      "coverage_pixels": 48957,
+      "coverage_ambiguous_pixels": 195,
+      "taa_history_frames": [
+        1,
+        2,
+        4,
+        10,
+        11
+      ],
+      "camera_policy": {
+        "0": 1,
+        "1": 2,
+        "2": 2,
+        "3": 2,
+        "4": 2,
+        "5": 2,
+        "6": 2,
+        "7": 1,
+        "8": 2,
+        "9": 1,
+        "10": 2,
+        "11": 2
+      },
+      "taa_changed_pixels": {
+        "0": 0,
+        "1": 298,
+        "2": 0,
+        "3": 0,
+        "4": 237,
+        "5": 0,
+        "6": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0,
+        "10": 347,
+        "11": 356
+      },
+      "color_hashes_before_boundary": {
+        "0": "7780633dafe6b5fa",
+        "1": "9d598f52bb65c0a6",
+        "2": "47059dc8e751a751",
+        "3": "35942d847a659ef3",
+        "4": "c9c5e220baccde15",
+        "5": "0554c1e31f1e7738",
+        "6": "d8dbde26c9cf0b5d",
+        "7": "ae0b3498446c57df",
+        "8": "48e1c7ad26e4fdc1",
+        "9": "4fccb6c7391e6b2d",
+        "10": "750cdfe97753849e",
+        "11": "245a6dd4042eff8d"
+      },
+      "depth_readbacks": {
+        "1": {
+          "written": 2660,
+          "min": 0.4877398908138275,
+          "max": 0.6000000238418579
+        },
+        "2": {
+          "written": 2683,
+          "min": 0.4888249635696411,
+          "max": 0.6000000238418579
+        },
+        "3": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "4": {
+          "written": 2677,
+          "min": 0.4885537326335907,
+          "max": 0.6000000238418579
+        },
+        "5": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "6": {
+          "written": 2616,
+          "min": 0.4890962541103363,
+          "max": 0.6000000238418579
+        },
+        "7": {
+          "written": 190,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "8": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.6000000238418579
+        }
+      },
+      "camera_log": {
+        "0": {
+          "policy": 1,
+          "reason": 3,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "1": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 1.0
+        },
+        "2": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 0.9999
+        },
+        "3": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 1.0
+        },
+        "4": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 1.0
+        },
+        "5": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 0.9998
+        },
+        "6": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 0.9999
+        },
+        "7": {
+          "policy": 1,
+          "reason": 4,
+          "cut": 1,
+          "rotation_deg": 31.0
+        },
+        "8": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 0.9999
+        }
+      },
+      "taa_image": {
+        "differing_fraction": {
+          "1": 0.02783203125,
+          "2": 0.0,
+          "3": 0.0,
+          "4": 0.04931640625,
+          "5": 0.0,
+          "6": 0.0,
+          "7": 0.0,
+          "8": 0.0
+        },
+        "max_difference": {
+          "1": 0.18707658356311274,
+          "2": 0.00023360906862746056,
+          "3": 0.00023360906862746056,
+          "4": 0.44848249846813726,
+          "5": 0.00023360906862746056,
+          "6": 0.00023360906862746056,
+          "7": 0.0004844515931372584,
+          "8": 0.00023360906862746056
+        }
+      },
+      "variants": 4,
+      "frames_logged": 9,
+      "readbacks": 8,
+      "routes": 19,
+      "variant": "plain",
+      "ownership": {
+        "wrapped": false,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-taa-camera-on-20260912-105011-879679",
+      "trace_sha256": "07d34a4c4e0fa4b9f3767990d5532098668fa87780cac8253010e603c7d8bb4a",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
+    },
+    "seam-taa-camera-sentinel1-on": {
+      "mode": "seam",
+      "enabled": true,
+      "jitter": true,
+      "taa": true,
+      "lazy": false,
+      "checks": 163,
+      "restorations": 51,
+      "frames": 12,
+      "color_hashes": {
+        "0": "7780633dafe6b5fa",
+        "1": "fe5cc8b35cd801ca",
+        "2": "47059dc8e751a751",
+        "3": "35942d847a659ef3",
+        "4": "c558fba5771359a1",
+        "5": "0554c1e31f1e7738",
+        "6": "d8dbde26c9cf0b5d",
+        "7": "b90efd03c4e2713e",
+        "8": "48e1c7ad26e4fdc1",
+        "9": "4fccb6c7391e6b2d",
+        "10": "52dc6a7ccf7dd9e8",
+        "11": "e65aedcbf0499533"
+      },
+      "motion_pixels": 44279,
+      "matched_pixels": 10348,
+      "max_uv_error_pixels": 0.00191186365,
+      "max_previous_depth_error": 7.21407726e-08,
+      "depth_pixels": 44279,
+      "depth_written_pixels": 27293,
+      "max_current_depth_error": 3.74090846e-06,
+      "coverage_frames": 12,
+      "coverage_pixels": 48957,
+      "coverage_ambiguous_pixels": 195,
+      "taa_history_frames": [
+        1,
+        2,
+        4,
+        7,
+        10,
+        11
+      ],
+      "camera_policy": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1
+      },
+      "taa_changed_pixels": {
+        "0": 0,
+        "1": 211,
+        "2": 0,
+        "3": 0,
+        "4": 146,
+        "5": 0,
+        "6": 0,
+        "7": 61,
+        "8": 0,
+        "9": 0,
+        "10": 253,
+        "11": 243
+      },
+      "color_hashes_before_boundary": {
+        "0": "7780633dafe6b5fa",
+        "1": "9d598f52bb65c0a6",
+        "2": "47059dc8e751a751",
+        "3": "35942d847a659ef3",
+        "4": "c9c5e220baccde15",
+        "5": "0554c1e31f1e7738",
+        "6": "d8dbde26c9cf0b5d",
+        "7": "ae0b3498446c57df",
+        "8": "48e1c7ad26e4fdc1",
+        "9": "4fccb6c7391e6b2d",
+        "10": "750cdfe97753849e",
+        "11": "245a6dd4042eff8d"
+      },
+      "depth_readbacks": {
+        "1": {
+          "written": 2660,
+          "min": 0.4877398908138275,
+          "max": 0.6000000238418579
+        },
+        "2": {
+          "written": 2683,
+          "min": 0.4888249635696411,
+          "max": 0.6000000238418579
+        },
+        "3": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "4": {
+          "written": 2677,
+          "min": 0.4885537326335907,
+          "max": 0.6000000238418579
+        },
+        "5": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "6": {
+          "written": 2616,
+          "min": 0.4890962541103363,
+          "max": 0.6000000238418579
+        },
+        "7": {
+          "written": 190,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "8": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.6000000238418579
+        }
+      },
+      "camera_log": {
+        "0": {
+          "policy": 1,
+          "reason": 1,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "1": {
+          "policy": 1,
+          "reason": 1,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "2": {
+          "policy": 1,
+          "reason": 1,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "3": {
+          "policy": 1,
+          "reason": 1,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "4": {
+          "policy": 1,
+          "reason": 1,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "5": {
+          "policy": 1,
+          "reason": 1,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "6": {
+          "policy": 1,
+          "reason": 1,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "7": {
+          "policy": 1,
+          "reason": 1,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "8": {
+          "policy": 1,
+          "reason": 1,
+          "cut": 0,
+          "rotation_deg": 0.0
+        }
+      },
+      "taa_image": {
+        "differing_fraction": {
+          "1": 0.007080078125,
+          "2": 0.0,
+          "3": 0.0,
+          "4": 0.027587890625,
+          "5": 0.0,
+          "6": 0.0,
+          "7": 0.009521484375,
+          "8": 0.0
+        },
+        "max_difference": {
+          "1": 0.07002192478553922,
+          "2": 0.00023360906862746056,
+          "3": 0.00023360906862746056,
+          "4": 0.44848249846813726,
+          "5": 0.00023360906862746056,
+          "6": 0.00023360906862746056,
+          "7": 0.1417992685355392,
+          "8": 0.00023360906862746056
+        }
+      },
+      "variants": 4,
+      "frames_logged": 9,
+      "readbacks": 8,
+      "routes": 19,
+      "variant": "plain",
+      "ownership": {
+        "wrapped": false,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-taa-camera-sentinel1-on-20260912-105013-951044",
+      "trace_sha256": "bc306979bdf5e861a4d24305506038f7b5449b2cab74f8cd22c74e8d44b72255",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
+    },
+    "seam-taa-camera-sentinel2-on": {
+      "mode": "seam",
+      "enabled": true,
+      "jitter": true,
+      "taa": true,
+      "lazy": false,
+      "checks": 164,
+      "restorations": 51,
+      "frames": 12,
+      "color_hashes": {
+        "0": "7780633dafe6b5fa",
+        "1": "a2499c06b255363a",
+        "2": "47059dc8e751a751",
+        "3": "35942d847a659ef3",
+        "4": "403a1ff89ea0f8db",
+        "5": "0554c1e31f1e7738",
+        "6": "d8dbde26c9cf0b5d",
+        "7": "ae0b3498446c57df",
+        "8": "48e1c7ad26e4fdc1",
+        "9": "4fccb6c7391e6b2d",
+        "10": "332b6a65322718bb",
+        "11": "11fc8bcc9362dee9"
+      },
+      "motion_pixels": 44279,
+      "matched_pixels": 10348,
+      "max_uv_error_pixels": 0.00191186365,
+      "max_previous_depth_error": 7.21407726e-08,
+      "depth_pixels": 44279,
+      "depth_written_pixels": 27293,
+      "max_current_depth_error": 3.74090846e-06,
+      "coverage_frames": 12,
+      "coverage_pixels": 48957,
+      "coverage_ambiguous_pixels": 195,
+      "taa_history_frames": [
+        1,
+        2,
+        4,
+        10,
+        11
+      ],
+      "camera_policy": {
+        "0": 1,
+        "1": 2,
+        "2": 2,
+        "3": 2,
+        "4": 2,
+        "5": 2,
+        "6": 2,
+        "7": 1,
+        "8": 2,
+        "9": 1,
+        "10": 2,
+        "11": 2
+      },
+      "taa_changed_pixels": {
+        "0": 0,
+        "1": 298,
+        "2": 0,
+        "3": 0,
+        "4": 237,
+        "5": 0,
+        "6": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0,
+        "10": 347,
+        "11": 356
+      },
+      "color_hashes_before_boundary": {
+        "0": "7780633dafe6b5fa",
+        "1": "9d598f52bb65c0a6",
+        "2": "47059dc8e751a751",
+        "3": "35942d847a659ef3",
+        "4": "c9c5e220baccde15",
+        "5": "0554c1e31f1e7738",
+        "6": "d8dbde26c9cf0b5d",
+        "7": "ae0b3498446c57df",
+        "8": "48e1c7ad26e4fdc1",
+        "9": "4fccb6c7391e6b2d",
+        "10": "750cdfe97753849e",
+        "11": "245a6dd4042eff8d"
+      },
+      "depth_readbacks": {
+        "1": {
+          "written": 2660,
+          "min": 0.4877398908138275,
+          "max": 0.6000000238418579
+        },
+        "2": {
+          "written": 2683,
+          "min": 0.4888249635696411,
+          "max": 0.6000000238418579
+        },
+        "3": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "4": {
+          "written": 2677,
+          "min": 0.4885537326335907,
+          "max": 0.6000000238418579
+        },
+        "5": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "6": {
+          "written": 2616,
+          "min": 0.4890962541103363,
+          "max": 0.6000000238418579
+        },
+        "7": {
+          "written": 190,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "8": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.6000000238418579
+        }
+      },
+      "camera_log": {
+        "0": {
+          "policy": 1,
+          "reason": 3,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "1": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 1.0
+        },
+        "2": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 0.9999
+        },
+        "3": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 1.0
+        },
+        "4": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 1.0
+        },
+        "5": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 0.9998
+        },
+        "6": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 0.9999
+        },
+        "7": {
+          "policy": 1,
+          "reason": 4,
+          "cut": 1,
+          "rotation_deg": 31.0
+        },
+        "8": {
+          "policy": 2,
+          "reason": 0,
+          "cut": 0,
+          "rotation_deg": 0.9999
+        }
+      },
+      "taa_image": {
+        "differing_fraction": {
+          "1": 0.02783203125,
+          "2": 0.0,
+          "3": 0.0,
+          "4": 0.04931640625,
+          "5": 0.0,
+          "6": 0.0,
+          "7": 0.0,
+          "8": 0.0
+        },
+        "max_difference": {
+          "1": 0.18707658356311274,
+          "2": 0.00023360906862746056,
+          "3": 0.00023360906862746056,
+          "4": 0.44848249846813726,
+          "5": 0.00023360906862746056,
+          "6": 0.00023360906862746056,
+          "7": 0.0004844515931372584,
+          "8": 0.00023360906862746056
+        }
+      },
+      "variants": 4,
+      "frames_logged": 9,
+      "readbacks": 8,
+      "routes": 19,
+      "variant": "plain",
+      "ownership": {
+        "wrapped": false,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-taa-camera-sentinel2-on-20260912-105016-066123",
+      "trace_sha256": "ad51512097f7ba6d799d378e2b5075259361040b94a5afa4c7540c1366c7a269",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
+    },
+    "seam-taa-sentinel2-nocamera-on": {
+      "mode": "seam",
+      "enabled": true,
+      "jitter": true,
+      "taa": true,
+      "lazy": false,
+      "checks": 145,
+      "restorations": 51,
+      "frames": 12,
+      "color_hashes": {
+        "0": "7780633dafe6b5fa",
+        "1": "9d598f52bb65c0a6",
+        "2": "47059dc8e751a751",
+        "3": "35942d847a659ef3",
+        "4": "c9c5e220baccde15",
+        "5": "0554c1e31f1e7738",
+        "6": "d8dbde26c9cf0b5d",
+        "7": "ae0b3498446c57df",
+        "8": "48e1c7ad26e4fdc1",
+        "9": "4fccb6c7391e6b2d",
+        "10": "750cdfe97753849e",
+        "11": "245a6dd4042eff8d"
+      },
+      "motion_pixels": 44279,
+      "matched_pixels": 10348,
+      "max_uv_error_pixels": 0.00191186365,
+      "max_previous_depth_error": 7.21407726e-08,
+      "depth_pixels": 44279,
+      "depth_written_pixels": 27293,
+      "max_current_depth_error": 3.74090846e-06,
+      "coverage_frames": 12,
+      "coverage_pixels": 48957,
+      "coverage_ambiguous_pixels": 195,
+      "taa_history_frames": [],
+      "camera_policy": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1
+      },
+      "taa_changed_pixels": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+        "6": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0,
+        "10": 0,
+        "11": 0
+      },
+      "color_hashes_before_boundary": {
+        "0": "7780633dafe6b5fa",
+        "1": "9d598f52bb65c0a6",
+        "2": "47059dc8e751a751",
+        "3": "35942d847a659ef3",
+        "4": "c9c5e220baccde15",
+        "5": "0554c1e31f1e7738",
+        "6": "d8dbde26c9cf0b5d",
+        "7": "ae0b3498446c57df",
+        "8": "48e1c7ad26e4fdc1",
+        "9": "4fccb6c7391e6b2d",
+        "10": "750cdfe97753849e",
+        "11": "245a6dd4042eff8d"
+      },
+      "depth_readbacks": {
+        "1": {
+          "written": 2660,
+          "min": 0.4877398908138275,
+          "max": 0.6000000238418579
+        },
+        "2": {
+          "written": 2683,
+          "min": 0.4888249635696411,
+          "max": 0.6000000238418579
+        },
+        "3": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "4": {
+          "written": 2677,
+          "min": 0.4885537326335907,
+          "max": 0.6000000238418579
+        },
+        "5": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "6": {
+          "written": 2616,
+          "min": 0.4890962541103363,
+          "max": 0.6000000238418579
+        },
+        "7": {
+          "written": 190,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "8": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.6000000238418579
+        }
+      },
+      "camera_log": {
+        "0": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "1": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "2": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "3": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "4": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "5": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "6": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "7": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "8": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        }
+      },
+      "variants": 4,
+      "frames_logged": 9,
+      "readbacks": 8,
+      "routes": 19,
+      "variant": "plain",
+      "ownership": {
+        "wrapped": false,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-taa-sentinel2-nocamera-on-20260912-105018-181352",
+      "trace_sha256": "6470627349544472ad6fc59796bc62bc33f71f329ef993660b7787a25e777648",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
+    },
+    "seam-taa-envmap": {
+      "mode": "envmap",
+      "frames": 5,
+      "checks": 62,
+      "restorations": 18,
+      "rejected_frames": [
+        1,
+        3
+      ],
+      "routed_per_frame": {
+        "0": 2,
+        "1": 0,
+        "2": 2,
+        "3": 0,
+        "4": 2
+      },
+      "camera_valid_per_frame": {
+        "0": 1,
+        "1": 0,
+        "2": 1,
+        "3": 0,
+        "4": 1
+      },
+      "color_hashes": {
+        "0": "7780633dafe6b5fa",
+        "1": "8b2e5709a9312512",
+        "2": "53bbe9a993320c8b",
+        "3": "8b2e5709a9312512",
+        "4": "35942d847a659ef3"
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-taa-envmap-20260912-105019-990016",
+      "trace_sha256": "81d207a3a11f97655b7f6add003e299bfc1bf0a44be84c8bff154ec404ea2710",
+      "dll_sha256": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+      "exe_sha256": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e"
     }
   },
   "local_inputs": {
@@ -3305,7 +4568,7 @@
     "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
   },
   "sources_before_build": {
-    "CMakeLists.txt": "463428e02eef0b440fd1580d7fece87e3e73355b99e0ff65cf37eaeb05b41f7b",
+    "CMakeLists.txt": "d89a470fd7aec14dd476608b13f1038323d1464b7ba4516b57428a7a7cb374eb",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
@@ -3321,7 +4584,9 @@
     "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
     "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
-    "src/proxy/capture.cpp": "36f53e8c4fcec8914892d733746aa3401736d50429d958c7190ff0bc9dcc2a7e",
+    "src/proxy/camera_state.cpp": "393ebb75ccf89b6012329199c465dce9bf806980e7a1e4a77e1b1ea17e5dc3e3",
+    "src/proxy/camera_state.h": "b3d6c32f0f2258aebb3606280bae2e3f6d3f2c7a6708b4ebd000db010bbc9b3d",
+    "src/proxy/capture.cpp": "2beecfd2f0333edc443b893f9b513e79fae7f9e0704955ed35da4bf56e2f557a",
     "src/proxy/capture.h": "1dc87985e7039fa7d2d8463aa3e62e55c472cddca5c0f738dea240c7dde3f164",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
@@ -3329,25 +4594,26 @@
     "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
     "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
     "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
-    "src/proxy/loader.cpp": "aa2dede12db2e7f810bac277e8b6cb02858572056b149fce47b0b689620fcca0",
+    "src/proxy/loader.cpp": "f1bbfd4a11d4d86af173de5531479fc51ea83bd63c6ccd44ecb4312a1ed99eaa",
     "src/proxy/loading_trace.cpp": "89fc26125e85b458ebe4e5a9dd440799f2a9af14ddd0bcfeb71eb626e69c4e87",
     "src/proxy/loading_trace.h": "b4da3176c9852f3c9628c9a0d096400527d858360dcecae2d8a83a24a79032b0",
     "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
     "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
     "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
     "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
-    "src/proxy/motion_output.cpp": "974c201de5e4609280da7630e20d84b055467643b1970084b2727810a76fb863",
-    "src/proxy/motion_output.h": "66b5108000f1e2724d18ac87c8b2ea78321252db348866887f76e6bc4b72efdc",
+    "src/proxy/motion_output.cpp": "f9730a47e9877372195a1529b4e59fe1906a4c5b5e70162466d7a24c2d4d3035",
+    "src/proxy/motion_output.h": "3f3722f1baf0e3e1704bcfab4ffde89c305f5b872d55600b8974523bb6e4bb3a",
     "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
-    "src/proxy/object_trace.cpp": "22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba",
-    "src/proxy/object_trace.h": "d09401eaa04830281dab30b7031fbae0c53f204ca4bfd0c9b3ea998185cdbde6",
-    "src/proxy/sampling_profiler.cpp": "1e26071844478f513a4af6fc85e4421e7d213399f014a1d20e10710f1f5e609b",
+    "src/proxy/object_trace.cpp": "24500df408d5bfcabf80ba1760805820777aabce9b198af25462980a4797c712",
+    "src/proxy/object_trace.h": "968e7d0ca478a73d65a41b0bf86d60515c18c69c34ed476f493d3cb649634bc9",
+    "src/proxy/sampling_profiler.cpp": "a58979029c532538265e0aacf3a03e3cbb4bd88db2cd6833b53d460afbf4ea2d",
     "src/proxy/sampling_profiler.h": "4dd65e4adce63b06eb8342b023403a8eba627aa355d53af26701f90588463d6f",
     "src/proxy/scene_capture.cpp": "a91007b084984bd0b27f2827b2b4c3e06e5c54cf10fe1fd1002e6920bc061712",
     "src/proxy/scene_capture.h": "26f04fb5fe2de7636e547424d40b00e5edf95d395e32a468343dd65f00030183",
     "src/proxy/telemetry.cpp": "5f0c64759d18a0a80f978eac066b3b68de44e992bd3797cb2a4ccad483ba86f5",
     "src/proxy/telemetry.h": "863e64d4a819f8b5c1ee9077d7952778dd510e04b836ecd54921061ef1981a7a",
+    "src/renderer/camera_reprojection.h": "455c2ea1288fc29079c59bff356d0561c2168b03f8639a7e58aa53ffa9727d9b",
     "src/renderer/current_depth_pixel_program.h": "fd8ebaaf7ea379cfcda1423170e15fbe8a23347cbec5dba62f9e7b444c8b8553",
     "src/renderer/current_depth_pixel_program_inc.h": "3ca1fc61affdc38b5e67ffe9302c27997df47de377b6a874f497927c35ab4311",
     "src/renderer/material_motion.cpp": "1a0f10a2aa6857b81475eaf2047960283c65c92c8a52b5ba196a8eeb5208dddb",
@@ -3376,17 +4642,17 @@
     "src/renderer/temporal_pass.cpp": "40047c19f605e9b009fc82e9ba0a75bce0895d7227f6b71a24b24ad1b3e01e46",
     "src/renderer/temporal_pass.h": "5b686cd56dd2a5159fe56d63d5bd54a8da170d0eb11874fa7be8d7197eb0c5a9",
     "src/renderer/temporal_resolve_program.h": "1001b182ae52ad2b212ce567790224e4971146892952895c79807cbd4ebaa103",
-    "src/renderer/temporal_resolve_program_inc.h": "b51909c2a80f4957efd372e5ef2bfbff29937b2fac73a92202bcf9c1679fa243",
+    "src/renderer/temporal_resolve_program_inc.h": "db25e1f12aeac8a6b9c5c5ac8f6692d55c55b03d68953a24620f633d2e46b4fd",
     "src/temporal/current_depth_ps.hlsl": "e58fdb561b1f1cf32b04339e0d3d47e014f9e1f00989eba98d04ea262bed27e5",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
     "src/temporal/resolve.h": "c2ef21f3d21d43ce5b396d4cb03cc593715562df9b38a568f46abec734291ea3",
-    "src/temporal/resolve.hlsl": "5319da34a6f7731f49c21a50d5bbe380a840f357762918e2f6ff684fa933261d",
+    "src/temporal/resolve.hlsl": "ca73a7e28acf8fa873ec6e90b0f0c0a1313b5bfb8f4e26bef1698862f9ba6fc9",
     "src/temporal/rigid_motion_ps.hlsl": "9fad8bc470ca04dfa164da929c0343c14d3656cf6d7ba781643d8c55e8e66539",
     "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
     "verification/probe/abi_check.cpp": "8b8602dbc7bcd1326ea51727f019dd689d767a20be62daace7a5e58714fb7df3",
-    "verification/probe/build_motion_output.sh": "7006bdb6fa1e900f14e0e2d01061e07c3430f71851bfcd730091a5cc8892bbdb",
-    "verification/probe/motion_output_fixture.cpp": "b9c549c8a7182bb32a38eebf863e0b226c689aa3129e75d6715617913700398e",
-    "verification/probe/run_motion_output.py": "642c2cf40b86c35614de2dd858622f1e9a12bafca69125a1cc6c1c5f427a8e97"
+    "verification/probe/build_motion_output.sh": "3c8bf31716673b35902e2df30219efa97956e3d7cb30a5e4da6d26c624f3b296",
+    "verification/probe/motion_output_fixture.cpp": "1c1975014a708c663587344ff3ece4aa8881345216781de614a136e75b8bc3d6",
+    "verification/probe/run_motion_output.py": "b37dc419776bea1ef9f04bfe63a7b31349f50652382a7afc61cb0aff60c0d4f2"
   },
   "build_commands": [
     [
@@ -3421,9 +4687,9 @@
     ]
   ],
   "binaries": {
-    "verification/probe/build/motion_output_fixture.exe": "43f197d7c40a5fea809486f376dfc1af46e0e7fb36f7e80fb9cfc026865c6523",
-    "verification/probe/build/motion-output-seam/d3d9.dll": "4fb49ac13f459ff4fd8e7a5e0f73a1f0ff12fe9b8855d5ef98edf5c9141c9689",
-    "build/d3d9.dll": "599352d2d3ea658a812ae40a85ae974bce9ef527bb93729b11c235ba93a68d64"
+    "verification/probe/build/motion_output_fixture.exe": "fe5d83cda103113aa98a7d980afbbe7728878e81342adfe5741cd0f5f89ef56e",
+    "verification/probe/build/motion-output-seam/d3d9.dll": "9b17bdeb633e06c4c03276b432a9b494c3c09b0c4c0d7c1f39ec445afa81a875",
+    "build/d3d9.dll": "27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a"
   },
   "bench": {
     "bench-1280x768-taa-off": {
@@ -3433,40 +4699,40 @@
       "height": 768,
       "frames_timed": 20,
       "boundary_ms": {
-        "min": 0.2408,
-        "median": 0.3624,
-        "max": 0.6586
+        "min": 0.3435,
+        "median": 0.3595,
+        "max": 0.4842
       },
       "samples_ms": [
-        1.5189,
-        0.6576,
-        0.7702,
-        0.6378,
-        0.6586,
-        0.365,
-        0.3716,
-        0.2408,
-        0.3603,
-        0.3624,
-        0.3658,
-        0.3631,
+        1.7219,
+        0.6638,
+        0.3616,
+        0.3884,
+        0.3595,
         0.3532,
-        0.3819,
-        0.3638,
-        0.3702,
-        0.3427,
+        0.3535,
+        0.3746,
+        0.4842,
         0.3583,
-        0.3525,
-        0.3465,
-        0.3543,
-        0.354,
-        0.3898,
-        0.2483
+        0.3799,
+        0.3818,
+        0.3607,
+        0.3527,
+        0.3435,
+        0.3595,
+        0.3629,
+        0.3598,
+        0.3578,
+        0.375,
+        0.3577,
+        0.3485,
+        0.3524,
+        0.3786
       ],
       "timing": "cpu_inclusive_event_synchronized",
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-bench-1280x768-taa-off-20260912-090213-898789",
-      "trace_sha256": "949f5161ad0d05a8c318184e68d8f20c0f815a4ba94f6bea0fc228c649d3495b"
+      "directory": "verification/probe/build/motion-output-bench-1280x768-taa-off-20260912-104951-502173",
+      "trace_sha256": "5205cda98d4960f6fc2b999741f6c17b4f857dee74687982524a800e6985b34b"
     },
     "bench-1280x768-taa-on": {
       "mode": "bench",
@@ -3475,40 +4741,40 @@
       "height": 768,
       "frames_timed": 20,
       "boundary_ms": {
-        "min": 0.6464,
-        "median": 0.6826,
-        "max": 1.0494
+        "min": 0.6687,
+        "median": 0.7928,
+        "max": 1.1488
       },
       "samples_ms": [
-        25.1638,
-        1.5327,
-        1.1509,
-        1.1413,
-        0.7202,
-        1.0494,
-        0.6991,
-        0.6777,
-        0.6464,
-        0.7369,
-        0.703,
-        0.6523,
-        0.664,
+        25.5602,
+        1.3961,
+        1.4949,
+        1.1447,
+        1.1488,
+        1.0933,
+        1.0822,
+        0.8593,
+        0.7239,
+        0.6757,
+        0.875,
+        0.8073,
+        0.8207,
+        0.6687,
+        0.7928,
+        0.7259,
+        0.6888,
+        0.8079,
+        0.8022,
+        0.7276,
+        0.6804,
         0.6733,
-        0.7338,
-        0.6636,
-        0.6823,
-        0.6737,
-        0.686,
-        0.6718,
-        0.6666,
-        0.7853,
-        0.6826,
-        0.726
+        0.69,
+        0.7203
       ],
       "timing": "cpu_inclusive_event_synchronized",
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-bench-1280x768-taa-on-20260912-090215-480378",
-      "trace_sha256": "1f8e12860cdb6e898d6fbee669c8da15c3b501c5f36897de2802578b54d9644c"
+      "directory": "verification/probe/build/motion-output-bench-1280x768-taa-on-20260912-104953-129507",
+      "trace_sha256": "73ed47c5ff63b2c31b96909cac6377e979fa85a9bf2dba5dac85b2312657c9e3"
     },
     "bench-5120x1440-taa-off": {
       "mode": "bench",
@@ -3517,40 +4783,40 @@
       "height": 1440,
       "frames_timed": 20,
       "boundary_ms": {
-        "min": 0.6049,
-        "median": 0.6168,
-        "max": 0.9143
+        "min": 0.4741,
+        "median": 0.5027,
+        "max": 0.6585
       },
       "samples_ms": [
-        2.7657,
-        1.0386,
-        1.0125,
-        0.6333,
-        0.9143,
-        0.6452,
-        0.7388,
-        0.6161,
-        0.6419,
-        0.6093,
+        9.3747,
+        0.9703,
+        1.0368,
+        0.6417,
+        0.6585,
+        0.6446,
+        0.6186,
+        0.6277,
+        0.6237,
+        0.643,
         0.6185,
-        0.613,
-        0.6133,
-        0.6049,
-        0.6062,
-        0.6057,
-        0.6168,
-        0.6232,
-        0.6304,
-        0.6066,
-        0.6145,
-        0.6191,
-        0.6348,
-        0.6094
+        0.6162,
+        0.4894,
+        0.4864,
+        0.4937,
+        0.4831,
+        0.6445,
+        0.5027,
+        0.4953,
+        0.4773,
+        0.4842,
+        0.4795,
+        0.4741,
+        0.4785
       ],
       "timing": "cpu_inclusive_event_synchronized",
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-bench-5120x1440-taa-off-20260912-090217-120970",
-      "trace_sha256": "a989879d700b1a6b54bf56a37ee164c490e850a5a830c116f362134c82479ac7"
+      "directory": "verification/probe/build/motion-output-bench-5120x1440-taa-off-20260912-104954-818198",
+      "trace_sha256": "fd6e539f4cf645183eb1cf870c62d888c1a6629ad5b7910c8854f2a906c3107a"
     },
     "bench-5120x1440-taa-on": {
       "mode": "bench",
@@ -3559,52 +4825,52 @@
       "height": 1440,
       "frames_timed": 20,
       "boundary_ms": {
-        "min": 2.1683,
-        "median": 2.2393,
-        "max": 2.4449
+        "min": 2.1913,
+        "median": 2.271,
+        "max": 2.9835
       },
       "samples_ms": [
-        30.6218,
-        5.5547,
-        2.9419,
-        2.9001,
-        2.4449,
-        2.2999,
-        2.2733,
-        2.2393,
-        2.2348,
-        2.2339,
-        2.2762,
-        2.2301,
-        2.254,
-        2.2536,
-        2.2097,
-        2.215,
-        2.2367,
-        2.1833,
-        2.2424,
-        2.1683,
-        2.2342,
-        2.2611,
-        2.2322,
-        2.2805
+        55.7282,
+        9.3662,
+        3.464,
+        3.3057,
+        2.9835,
+        2.4188,
+        2.2419,
+        2.2597,
+        2.3142,
+        2.3493,
+        2.271,
+        2.2963,
+        2.3884,
+        2.3788,
+        2.3315,
+        2.2563,
+        2.2318,
+        2.2437,
+        2.2429,
+        2.2215,
+        2.3416,
+        2.228,
+        2.1913,
+        2.2359
       ],
       "timing": "cpu_inclusive_event_synchronized",
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-bench-5120x1440-taa-on-20260912-090218-747318",
-      "trace_sha256": "7f270f41ad8e2d13615325421484d4dfa03cb1ae219d9d387843d793dd9e60dc"
+      "directory": "verification/probe/build/motion-output-bench-5120x1440-taa-on-20260912-104956-434074",
+      "trace_sha256": "1940bb57dd47066604a5916346e22c7ee82eded29865aac35b2fdfe6f48be6d2"
     },
     "resolve-1280x768": {
-      "median_ms": 0.3202,
-      "min_ms": 0.40559999999999996,
-      "boundary_off_median_ms": 0.3624,
-      "boundary_on_median_ms": 0.6826
+      "median_ms": 0.43329999999999996,
+      "min_ms": 0.32519999999999993,
+      "boundary_off_median_ms": 0.3595,
+      "boundary_on_median_ms": 0.7928
     },
     "resolve-5120x1440": {
-      "median_ms": 1.6225,
-      "min_ms": 1.5634,
-      "boundary_off_median_ms": 0.6168,
-      "boundary_on_median_ms": 2.2393
+      "median_ms": 1.7683,
+      "min_ms": 1.7172,
+      "boundary_off_median_ms": 0.5027,
+      "boundary_on_median_ms": 2.271
     }
   },
   "lazy_equivalence": {
@@ -3725,12 +4991,42 @@
       }
     }
   },
+  "camera": {
+    "frames_changed_by_camera_path": [
+      1,
+      4,
+      10,
+      11
+    ],
+    "switch_off_equals_no_camera": true,
+    "strict_without_camera_never_resolves": true,
+    "envmap": {
+      "rejected_frames": [
+        1,
+        3
+      ],
+      "routed_per_frame": {
+        "0": 2,
+        "1": 0,
+        "2": 2,
+        "3": 0,
+        "4": 2
+      },
+      "camera_valid_per_frame": {
+        "0": 1,
+        "1": 0,
+        "2": 1,
+        "3": 0,
+        "4": 1
+      }
+    }
+  },
   "color_identical_off_vs_on": true,
   "color_identical_across_variants": true,
   "jitter_changes_color": true,
-  "report_sha256": "56ecd4aa15cf7281a8507f8af18bf02172c77f5daec6b516ed9c13fdcc038191",
+  "report_sha256": "016218ca570e578a28857f97471ec132713c37d2c2cc0dddd36af080797b7d44",
   "sources_after_run": {
-    "CMakeLists.txt": "463428e02eef0b440fd1580d7fece87e3e73355b99e0ff65cf37eaeb05b41f7b",
+    "CMakeLists.txt": "d89a470fd7aec14dd476608b13f1038323d1464b7ba4516b57428a7a7cb374eb",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
@@ -3746,7 +5042,9 @@
     "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
     "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
-    "src/proxy/capture.cpp": "36f53e8c4fcec8914892d733746aa3401736d50429d958c7190ff0bc9dcc2a7e",
+    "src/proxy/camera_state.cpp": "393ebb75ccf89b6012329199c465dce9bf806980e7a1e4a77e1b1ea17e5dc3e3",
+    "src/proxy/camera_state.h": "b3d6c32f0f2258aebb3606280bae2e3f6d3f2c7a6708b4ebd000db010bbc9b3d",
+    "src/proxy/capture.cpp": "2beecfd2f0333edc443b893f9b513e79fae7f9e0704955ed35da4bf56e2f557a",
     "src/proxy/capture.h": "1dc87985e7039fa7d2d8463aa3e62e55c472cddca5c0f738dea240c7dde3f164",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
@@ -3754,25 +5052,26 @@
     "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
     "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
     "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
-    "src/proxy/loader.cpp": "aa2dede12db2e7f810bac277e8b6cb02858572056b149fce47b0b689620fcca0",
+    "src/proxy/loader.cpp": "f1bbfd4a11d4d86af173de5531479fc51ea83bd63c6ccd44ecb4312a1ed99eaa",
     "src/proxy/loading_trace.cpp": "89fc26125e85b458ebe4e5a9dd440799f2a9af14ddd0bcfeb71eb626e69c4e87",
     "src/proxy/loading_trace.h": "b4da3176c9852f3c9628c9a0d096400527d858360dcecae2d8a83a24a79032b0",
     "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
     "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
     "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
     "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
-    "src/proxy/motion_output.cpp": "974c201de5e4609280da7630e20d84b055467643b1970084b2727810a76fb863",
-    "src/proxy/motion_output.h": "66b5108000f1e2724d18ac87c8b2ea78321252db348866887f76e6bc4b72efdc",
+    "src/proxy/motion_output.cpp": "f9730a47e9877372195a1529b4e59fe1906a4c5b5e70162466d7a24c2d4d3035",
+    "src/proxy/motion_output.h": "3f3722f1baf0e3e1704bcfab4ffde89c305f5b872d55600b8974523bb6e4bb3a",
     "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
-    "src/proxy/object_trace.cpp": "22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba",
-    "src/proxy/object_trace.h": "d09401eaa04830281dab30b7031fbae0c53f204ca4bfd0c9b3ea998185cdbde6",
-    "src/proxy/sampling_profiler.cpp": "1e26071844478f513a4af6fc85e4421e7d213399f014a1d20e10710f1f5e609b",
+    "src/proxy/object_trace.cpp": "24500df408d5bfcabf80ba1760805820777aabce9b198af25462980a4797c712",
+    "src/proxy/object_trace.h": "968e7d0ca478a73d65a41b0bf86d60515c18c69c34ed476f493d3cb649634bc9",
+    "src/proxy/sampling_profiler.cpp": "a58979029c532538265e0aacf3a03e3cbb4bd88db2cd6833b53d460afbf4ea2d",
     "src/proxy/sampling_profiler.h": "4dd65e4adce63b06eb8342b023403a8eba627aa355d53af26701f90588463d6f",
     "src/proxy/scene_capture.cpp": "a91007b084984bd0b27f2827b2b4c3e06e5c54cf10fe1fd1002e6920bc061712",
     "src/proxy/scene_capture.h": "26f04fb5fe2de7636e547424d40b00e5edf95d395e32a468343dd65f00030183",
     "src/proxy/telemetry.cpp": "5f0c64759d18a0a80f978eac066b3b68de44e992bd3797cb2a4ccad483ba86f5",
     "src/proxy/telemetry.h": "863e64d4a819f8b5c1ee9077d7952778dd510e04b836ecd54921061ef1981a7a",
+    "src/renderer/camera_reprojection.h": "455c2ea1288fc29079c59bff356d0561c2168b03f8639a7e58aa53ffa9727d9b",
     "src/renderer/current_depth_pixel_program.h": "fd8ebaaf7ea379cfcda1423170e15fbe8a23347cbec5dba62f9e7b444c8b8553",
     "src/renderer/current_depth_pixel_program_inc.h": "3ca1fc61affdc38b5e67ffe9302c27997df47de377b6a874f497927c35ab4311",
     "src/renderer/material_motion.cpp": "1a0f10a2aa6857b81475eaf2047960283c65c92c8a52b5ba196a8eeb5208dddb",
@@ -3801,17 +5100,17 @@
     "src/renderer/temporal_pass.cpp": "40047c19f605e9b009fc82e9ba0a75bce0895d7227f6b71a24b24ad1b3e01e46",
     "src/renderer/temporal_pass.h": "5b686cd56dd2a5159fe56d63d5bd54a8da170d0eb11874fa7be8d7197eb0c5a9",
     "src/renderer/temporal_resolve_program.h": "1001b182ae52ad2b212ce567790224e4971146892952895c79807cbd4ebaa103",
-    "src/renderer/temporal_resolve_program_inc.h": "b51909c2a80f4957efd372e5ef2bfbff29937b2fac73a92202bcf9c1679fa243",
+    "src/renderer/temporal_resolve_program_inc.h": "db25e1f12aeac8a6b9c5c5ac8f6692d55c55b03d68953a24620f633d2e46b4fd",
     "src/temporal/current_depth_ps.hlsl": "e58fdb561b1f1cf32b04339e0d3d47e014f9e1f00989eba98d04ea262bed27e5",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
     "src/temporal/resolve.h": "c2ef21f3d21d43ce5b396d4cb03cc593715562df9b38a568f46abec734291ea3",
-    "src/temporal/resolve.hlsl": "5319da34a6f7731f49c21a50d5bbe380a840f357762918e2f6ff684fa933261d",
+    "src/temporal/resolve.hlsl": "ca73a7e28acf8fa873ec6e90b0f0c0a1313b5bfb8f4e26bef1698862f9ba6fc9",
     "src/temporal/rigid_motion_ps.hlsl": "9fad8bc470ca04dfa164da929c0343c14d3656cf6d7ba781643d8c55e8e66539",
     "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
     "verification/probe/abi_check.cpp": "8b8602dbc7bcd1326ea51727f019dd689d767a20be62daace7a5e58714fb7df3",
-    "verification/probe/build_motion_output.sh": "7006bdb6fa1e900f14e0e2d01061e07c3430f71851bfcd730091a5cc8892bbdb",
-    "verification/probe/motion_output_fixture.cpp": "b9c549c8a7182bb32a38eebf863e0b226c689aa3129e75d6715617913700398e",
-    "verification/probe/run_motion_output.py": "642c2cf40b86c35614de2dd858622f1e9a12bafca69125a1cc6c1c5f427a8e97"
+    "verification/probe/build_motion_output.sh": "3c8bf31716673b35902e2df30219efa97956e3d7cb30a5e4da6d26c624f3b296",
+    "verification/probe/motion_output_fixture.cpp": "1c1975014a708c663587344ff3ece4aa8881345216781de614a136e75b8bc3d6",
+    "verification/probe/run_motion_output.py": "b37dc419776bea1ef9f04bfe63a7b31349f50652382a7afc61cb0aff60c0d4f2"
   },
   "limits": [
     "Synthetic device program; not gameplay validation or temporal image quality.",

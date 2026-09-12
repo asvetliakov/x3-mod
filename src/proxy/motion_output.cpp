@@ -5,6 +5,7 @@
 #include "telemetry.h"
 #include "object_trace.h"
 #include "object_lifetime.h"
+#include "camera_state.h"
 #include "../renderer/material_motion.h"
 #include "../renderer/temporal_pass.h"
 #include "../renderer/temporal_resolve_program.h"
@@ -254,6 +255,11 @@ void MotionOutput::configure_cut_bounds(float median_px_at_1280, float missing_f
     if (std::isfinite(missing_fraction) && missing_fraction > 0 && missing_fraction <= 1) cut_missing_bound_ = missing_fraction;
 }
 void MotionOutput::configure_taa(bool requested, bool debug) noexcept { taa_requested_ = requested; taa_debug_ = debug; }
+void MotionOutput::configure_sentinel(renderer::SentinelMode mode, float cut_degrees, unsigned log_frames) noexcept {
+    sentinel_mode_ = mode;
+    camera_cut_degrees_ = std::isfinite(cut_degrees) && cut_degrees > 0 ? cut_degrees : 20.f;
+    camera_log_interval_ = log_frames ? log_frames : 300u;
+}
 
 // ---- cost telemetry --------------------------------------------------------
 
@@ -352,7 +358,7 @@ template<typename Fn> void MotionOutput::taa_call(Fn&& fn) noexcept {
     taa_references_ = unsigned(long(taa_references_) + (long(after) - long(before)));
     taa_busy_ = false;
 }
-void MotionOutput::invalidate_taa() noexcept { if (taa_) taa_->invalidate(); }
+void MotionOutput::invalidate_taa() noexcept { if (taa_) taa_->invalidate(); camera_previous_ = renderer::CameraState{}; }
 // Lazily creates the pass and its resolve shader (one device reference) the
 // first time a frame reaches the copy with the route able to resolve.
 bool MotionOutput::ensure_taa() noexcept {
@@ -387,16 +393,23 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface) noexcept {
             in.color_surface = main_surface; in.current_depth = depth; in.motion = motion;
             in.width = main_.width; in.height = main_.height;
             in.epoch = generation_; // Dimension changes are compared by the pass itself.
-            // The camera path is never taken: the route's RT1 alpha is 1 (per-pixel
-            // correspondence) or -1 (sentinel, current only), so the matrix only
-            // has to be finite.
-            static const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
-            std::memcpy(in.clip_to_previous, identity, sizeof identity);
+            // Depth-sentinel policy: sentinel pixels (RT2 -1, RT1 alpha -1) are
+            // reprojected at the far plane through the camera transform built
+            // from this frame's scene view and the view of the frame the history
+            // came from (policy 2); without a valid pair, or with the switch
+            // off, they stay current-only (policy 1) and the matrix is the
+            // identity, which the resolve then never applies (docs/architecture/
+            // temporal-integration.md, "Camera reprojection for sentinel pixels").
+            const auto decision = renderer::camera_sentinel_policy(sentinel_mode_, camera_scene_, camera_previous_, camera_cut_degrees_);
+            t.camera_policy = decision.policy; t.camera_reason = unsigned(decision.reason);
+            t.camera_cut = decision.cut; t.camera_rotation_deg = decision.rotation_degrees;
+            std::memcpy(in.clip_to_previous, decision.matrix, sizeof decision.matrix);
+            in.sentinel_camera = decision.policy == 2;
             in.current_jitter[0] = jitter_[0]; in.current_jitter[1] = jitter_[1];
             in.previous_jitter[0] = jitter_previous_[0]; in.previous_jitter[1] = jitter_previous_[1];
             in.motion_policy = renderer::MotionPolicy::PerPixel;
             in.reactive_policy = renderer::ReactivePolicy::DerivedFromDepthSentinel;
-            in.history_allowed = true; in.cut = counters_.cut;
+            in.history_allowed = true; in.cut = counters_.cut || decision.cut;
             in.caller_scene_open = scene_open_; in.caller_stateblock_recording = shadow_.recording;
             in.caller_queries_idle = active_queries_ == 0;
             // Phase timing of the run (telemetry only): the pass stamps its own
@@ -430,7 +443,12 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface) noexcept {
                 record(unsigned(telemetry::Metric::TaaCopyBack), copy_ticks, FAILED(hr));
                 t.copy = hr;
                 if (FAILED(hr)) invalidate_taa();
-                else { t.resolved = true; t.used_history = out.used_history; }
+                else {
+                    t.resolved = true; t.used_history = out.used_history;
+                    // The history now holds this frame: its scene view is the
+                    // previous view of the next resolve (invalid when unread).
+                    camera_previous_ = camera_scene_; camera_previous_frame_ = frame_;
+                }
             }
         }
         release(depth); release(motion);
@@ -467,6 +485,20 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
     if (shadow_.recording) return skip(TaaSkip::Recording);
     if (active_queries_) return skip(TaaSkip::Queries);
     if (!ensure_taa()) return skip(TaaSkip::Initialize);
+    // Strict mode (X3M_TAA_SENTINEL=2): a frame whose scene camera could not
+    // be read, or whose transform failed, skips the resolve instead of
+    // resolving current-only, so a broken camera read shows in gameplay and
+    // in the log (skip 9) rather than degrading silently. A frame without a
+    // previous view (the first one, after a cut or a Reset) still resolves:
+    // that is how the history and its view are established.
+    if (sentinel_mode_ == renderer::SentinelMode::Camera) {
+        const auto decision = renderer::camera_sentinel_policy(sentinel_mode_, camera_scene_, camera_previous_, camera_cut_degrees_);
+        if (decision.reason == renderer::SentinelReason::CurrentInvalid || decision.reason == renderer::SentinelReason::TransformFailed) {
+            t.camera_policy = decision.policy; t.camera_reason = unsigned(decision.reason);
+            t.camera_cut = decision.cut; t.camera_rotation_deg = decision.rotation_degrees;
+            return skip(TaaSkip::CameraState);
+        }
+    }
     resolve(source);
 }
 void MotionOutput::after_begin_scene(HRESULT result) noexcept { if (enabled_ && SUCCEEDED(result)) scene_open_ = true; }
@@ -613,12 +645,13 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     }
     taa_enabled_ = taa_requested_ && !std::strcmp(taa_reason, "ok");
     scene_open_ = false; active_queries_ = 0;
-    log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u taa=%u taa_reason=%s taa_format=%08lx taa_debug=%u rt_mode=%s",
+    log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u taa=%u taa_reason=%s taa_format=%08lx taa_debug=%u rt_mode=%s camera=%s sentinel=%u camera_cut_deg=%.2f camera_log=%u",
         id_, enabled_, reason, detail[0] ? detail : "-", caps.NumSimultaneousRTs, caps.MaxVertexShaderConst,
         caps.PrimitiveMiscCaps, caps.VertexShaderVersion, caps.PixelShaderVersion, format_result,
         history_available_, unsigned(history_.stats().capacity), depth_enabled_, depth_reason,
         depth_detail[0] ? depth_detail : "-", depth_format_result, jitter_requested_, jitter_samples_,
-        taa_enabled_, taa_reason, taa_format_result, taa_debug_, lazy_mode_ ? "lazy" : "perdraw");
+        taa_enabled_, taa_reason, taa_format_result, taa_debug_, lazy_mode_ ? "lazy" : "perdraw",
+        camera_state::status(), unsigned(sentinel_mode_), camera_cut_degrees_, camera_log_interval_);
 }
 
 // One actual mixed-format MRT draw into a 4x4 A8R8G8B8 + A32B32G32R32F pair
@@ -808,6 +841,7 @@ void MotionOutput::before_reset() noexcept {
     selector_.invalidate();
     fill_pending_ = false; pending_valid_ = false;
     main_ = {}; main_depth_ = {};
+    camera_state::reset(); camera_previous_ = renderer::CameraState{};
 }
 void MotionOutput::after_reset(HRESULT result) noexcept {
     ++generation_;
@@ -1069,6 +1103,8 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     counters_.cut_median_bound_px = cut_median_bound_; counters_.cut_missing_bound = cut_missing_bound_;
     sequence_ = 0; pending_valid_ = false; fill_pending_ = false; jitter_active_ = false; cut_finished_ = false;
     displacements_.clear();
+    camera_scene_ = camera_background_ = renderer::CameraState{};
+    camera_projection_address_ = camera_view_address_ = 0;
     if (!enabled_) return;
     selector_ = renderer::SceneBoundarySelector{signatures()};
     selector_.begin_frame(id_, generation_, frame + 1);
@@ -1088,7 +1124,12 @@ void MotionOutput::after_clear(HRESULT result) noexcept {
     pending_valid_ = false;
     const auto before = selector_.state();
     observe(pending_, result);
+    // The scene view's camera is final at the depth-only Clear that starts the
+    // scene phase (the view activation issues that Clear right after building
+    // the matrices); the background view's at the latching Clear (diagnostics).
+    if (before == renderer::BoundaryState::Background && selector_.state() == renderer::BoundaryState::Scene) read_camera(true);
     if (before == renderer::BoundaryState::AwaitInitialClear && selector_.state() == renderer::BoundaryState::Background) {
+        read_camera(false);
         // The frame's main color/depth pair is latched: own a matching motion
         // target and schedule the sentinel fill for the next draw.
         main_ = pending_.rt; main_depth_ = pending_.depth;
@@ -1479,6 +1520,45 @@ void MotionOutput::readback() noexcept {
         readback_surface(depth_surface_, D3DFMT_R32F, 4, L"depth", L"r32f", "motion_output_depth_readback", "r32f_row_major");
 }
 
+// One read of the engine's projection and view buffers (camera_state.cpp:
+// two validated 64-byte copies) into the scene or the background slot.
+void MotionOutput::read_camera(bool scene) noexcept {
+    if (!taa_enabled_ || !camera_state::available()) return;
+    camera_state::Sample sample{};
+    const bool valid = camera_state::read(&sample);
+    ++counters_.camera_reads;
+    if (scene) {
+        camera_scene_ = sample.state;
+        counters_.camera_scene_valid = valid;
+        counters_.camera_read_failure = sample.read_failure; counters_.camera_failure = unsigned(sample.failure);
+        camera_projection_address_ = sample.projection; camera_view_address_ = sample.view;
+    } else {
+        camera_background_ = sample.state;
+        counters_.camera_background_valid = valid;
+    }
+}
+// Bounded diagnostics: the scene view's stable projection terms, rotation and
+// translation, the background view's deviation from it, the view the history
+// holds after this frame (this frame's when it resolved) and the decision of
+// this frame's resolve. Capture frames and every X3M_CAMERA_LOG frames.
+void MotionOutput::log_camera_state() noexcept {
+    const auto& c = camera_scene_;
+    const auto& b = camera_background_;
+    const auto& t = counters_.taa;
+    const float background_rotation = c.valid && b.valid ? renderer::camera_rotation_degrees(c, b) : 0.f;
+    log("camera_state device=%llu frame=%llu status=%s reads=%lu valid=%u read_failure=%lu failure=%lu projection=%p view=%p"
+        " p00=%.7g p11=%.7g p20=%.7g p21=%.7g r00=%.7g r01=%.7g r02=%.7g r10=%.7g r11=%.7g r12=%.7g r20=%.7g r21=%.7g r22=%.7g t=%.7g,%.7g,%.7g"
+        " background_valid=%u background_p00=%.7g background_p11=%.7g background_rotation_deg=%.4f"
+        " history_view_valid=%u history_view_frame=%llu rotation_deg=%.4f policy=%lu reason=%lu camera_cut=%u mode=%u cut_deg=%.2f",
+        id_, frame_, camera_state::status(), static_cast<unsigned long>(counters_.camera_reads), c.valid,
+        static_cast<unsigned long>(counters_.camera_read_failure), static_cast<unsigned long>(counters_.camera_failure),
+        reinterpret_cast<void*>(camera_projection_address_), reinterpret_cast<void*>(camera_view_address_),
+        c.m00, c.m11, c.m20, c.m21, c.r[0], c.r[1], c.r[2], c.r[3], c.r[4], c.r[5], c.r[6], c.r[7], c.r[8], c.t[0], c.t[1], c.t[2],
+        b.valid, b.m00, b.m11, background_rotation,
+        camera_previous_.valid, camera_previous_frame_, t.camera_rotation_deg, static_cast<unsigned long>(t.camera_policy),
+        static_cast<unsigned long>(t.camera_reason), t.camera_cut, unsigned(sentinel_mode_), camera_cut_degrees_);
+}
+
 // End of the frame's scene phase (consumed by the resolve at the copy): the median of the
 // matched draws' projected-origin displacements and the fraction of keyed
 // routed draws whose key the previous frame lacked, against the bounds. Runs
@@ -1533,6 +1613,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         const auto& c = counters_;
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
         log("motion_output_frame device=%llu frame=%llu latched=%u filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx scene_open=%u active_queries=%lu taa_references=%u"
+            " camera_valid=%u camera_background_valid=%u camera_reads=%lu camera_policy=%lu camera_reason=%lu camera_cut=%u camera_rotation_deg=%.4f"
             " rt_mode=%s timing=%s set_rt=%lu lazy_flushes=%lu jitter_writes=%lu readbacks=%lu gate_us=%.1f route_draw_us=%.1f set_rt_us=%.1f lazy_flush_us=%.1f jitter_us=%.1f fill_us=%.1f taa_run_us=%.1f taa_capture_us=%.1f taa_copy_color_us=%.1f taa_copy_depth_us=%.1f taa_draw_us=%.1f taa_apply_us=%.1f taa_copy_back_us=%.1f readback_us=%.1f",
             id_, frame_, counters_.latched, counters_.filled, counters_.fill_result, counters_.fill_restore,
             static_cast<unsigned long>(counters_.draws), static_cast<unsigned long>(counters_.routed), static_cast<unsigned long>(counters_.matched),
@@ -1546,12 +1627,16 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             static_cast<unsigned long>(counters_.displacement_samples), taa_enabled_, counters_.taa.attempted, counters_.taa.resolved,
             counters_.taa.used_history, static_cast<unsigned long>(counters_.taa.skip), counters_.taa.result, counters_.taa.restore,
             counters_.taa.copy, scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,
+            counters_.camera_scene_valid, counters_.camera_background_valid, static_cast<unsigned long>(counters_.camera_reads),
+            static_cast<unsigned long>(counters_.taa.camera_policy), static_cast<unsigned long>(counters_.taa.camera_reason),
+            counters_.taa.camera_cut, counters_.taa.camera_rotation_deg,
             lazy_mode_ ? "lazy" : "perdraw", telemetry_ ? "cpu_qpc" : "off",
             static_cast<unsigned long>(c.set_rt), static_cast<unsigned long>(c.lazy_flushes), static_cast<unsigned long>(c.jitter_writes),
             static_cast<unsigned long>(c.readbacks), us(c.gate_ticks), us(c.route_draw_ticks), us(c.set_rt_ticks), us(c.lazy_flush_ticks),
             us(c.jitter_ticks), us(c.fill_ticks), us(c.taa_run_ticks), us(c.taa_capture_ticks), us(c.taa_copy_color_ticks),
             us(c.taa_copy_depth_ticks), us(c.taa_draw_ticks), us(c.taa_apply_ticks), us(c.taa_copy_back_ticks), us(c.readback_ticks));
     }
+    if (taa_enabled_ && (capture_ || frame_ % camera_log_interval_ == 0)) log_camera_state();
 }
 
 #ifdef X3M_MOTION_OUTPUT_FIXTURE

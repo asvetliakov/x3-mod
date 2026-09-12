@@ -5,6 +5,7 @@
 #include "sampling_profiler.h"
 #include "scene_capture.h"
 #include "object_trace.h"
+#include "camera_state.h"
 #include "object_lifetime.h"
 #include "draw_input.h"
 #include "motion_capture.h"
@@ -42,6 +43,14 @@ bool taa_requested = false, taa_debug_requested = false;
 // periodic motion_output_frame cadence with telemetry on (default 60).
 bool motion_rt_lazy = false;
 unsigned motion_frame_log = 60;
+// X3M_TAA_SENTINEL=auto|1|2 selects the resolve's depth-sentinel policy
+// (auto: far-plane camera reprojection whenever the live camera read yields a
+// transform; 1: current-only; 2: strict, skip the resolve without one);
+// X3M_CAMERA_CUT_DEG bounds the camera rotation per frame before a cut is
+// declared (default 20); X3M_CAMERA_LOG is the camera_state line cadence (300).
+x3m::renderer::SentinelMode taa_sentinel_mode = x3m::renderer::SentinelMode::Auto;
+float camera_cut_degrees = 20.f;
+unsigned camera_log_frames = 300;
 unsigned motion_jitter_samples = 8;
 float motion_cut_median_px = 48.f, motion_cut_missing = .25f;
 // Component fixtures serialize every write and replay. The live capture mutex
@@ -1082,6 +1091,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_taa(taa_requested,taa_debug_requested);
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
+    hooked.motion_output.configure_sentinel(taa_sentinel_mode,camera_cut_degrees,camera_log_frames);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
     if(hooked.motion_output.enabled()){
         // The route needs the complete selector event stream plus setter
@@ -1173,8 +1183,16 @@ void initialize_log(HMODULE module) {
     taa_debug_requested=taa_requested && GetEnvironmentVariableW(L"X3M_TAA_DEBUG",setting,32)>0 && wcstoul(setting,nullptr,10)>0;
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
     if(GetEnvironmentVariableW(L"X3M_MOTION_FRAME_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=100000)motion_frame_log=unsigned(n);}
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u",
-        motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log);
+    if(GetEnvironmentVariableW(L"X3M_TAA_SENTINEL",setting,32)>0){
+        if(!wcscmp(setting,L"1"))taa_sentinel_mode=x3m::renderer::SentinelMode::CurrentOnly;
+        else if(!wcscmp(setting,L"2"))taa_sentinel_mode=x3m::renderer::SentinelMode::Camera;
+        else taa_sentinel_mode=x3m::renderer::SentinelMode::Auto;
+    }
+    if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
+    if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s camera_cut_deg=%.2f camera_log=%u",
+        motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log,
+        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames);
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     if(telemetry::enabled())loading_trace::initialize();
@@ -1224,6 +1242,12 @@ extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback_targ
 // Compatibility spellings: RT1 (motion, 4 floats per pixel) and RT2 (depth, 1 float per pixel).
 extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback(IDirect3DDevice9* device,float* out,unsigned floats,unsigned* width,unsigned* height) {
     return x3m_motion_output_fixture_readback_target(device,1,out,floats,width,height);
+}
+// The fixture executable's own camera pointer slots stand in for the engine
+// globals (camera_state::fixture_install); the identity gate is bypassed.
+extern "C" __declspec(dllexport) void x3m_camera_state_fixture_install(const float* const* projection_slot,const float* const* view_slot) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    x3m::camera_state::fixture_install(projection_slot,view_slot);
 }
 extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_last_pixel_abi(IDirect3DDevice9* device,float* out,unsigned floats) {
     std::lock_guard<std::recursive_mutex> lock(x3m::mutex);

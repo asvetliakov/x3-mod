@@ -47,6 +47,9 @@ def main():
     parser.add_argument('--motion-jitter', action='store_true', help='Per-draw sub-pixel jitter of every scene draw with a table VS (requires --motion-output; Halton 2,3 sequence, temporal step 1)')
     parser.add_argument('--taa', action='store_true', help='Run the temporal resolve at the bloom copy and present the resolved image (requires --motion-output; implies --motion-jitter; temporal step 3)')
     parser.add_argument('--taa-debug', action='store_true', help='Write the resolved FP16 image and the pre-resolve color in capture frames (requires --taa)')
+    parser.add_argument('--taa-sentinel', choices=['auto', '1', '2'], default='auto', help='Depth-sentinel policy of the resolve (requires --taa): auto reprojects unrouted (background) pixels through the live camera at the far plane whenever the engine camera read yields a transform, 1 keeps them current-only, 2 is strict (skips the resolve on frames without a transform)')
+    parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
+    parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
     parser.add_argument('--motion-rt-mode', choices=['perdraw', 'lazy'], default='perdraw', help='RT1/RT2 binding policy of the route: perdraw (default) rebinds around every routed draw; lazy keeps the bindings across consecutive routed draws (A/B experiment, requires --motion-output)')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
@@ -74,6 +77,10 @@ def main():
         parser.error('--taa requires --object-trace and --object-lifetime: without history every routed draw carries the sentinel, the resolve stays current-only and the jitter only moves the image.')
     if args.taa_debug and not args.taa:
         parser.error('--taa-debug requires --taa.')
+    if not args.taa and (args.taa_sentinel != 'auto' or args.camera_cut_deg != 20.0 or args.camera_log != 300):
+        parser.error('--taa-sentinel, --camera-cut-deg and --camera-log require --taa.')
+    if not 0 < args.camera_cut_deg <= 180 or not 1 <= args.camera_log <= 1000000:
+        parser.error('--camera-cut-deg must be in (0, 180] and --camera-log in [1, 1000000].')
     if args.motion_rt_mode != 'perdraw' and not args.motion_output:
         parser.error('--motion-rt-mode requires --motion-output.')
     if not 100 <= args.profile_interval_us <= 1000000:
@@ -135,6 +142,9 @@ def main():
         env['X3M_MOTION_JITTER'] = '1' if args.motion_jitter else '0'
         env['X3M_TAA'] = '1' if args.taa else '0'
         env['X3M_TAA_DEBUG'] = '1' if args.taa_debug else '0'
+        env['X3M_TAA_SENTINEL'] = args.taa_sentinel
+        env['X3M_CAMERA_CUT_DEG'] = repr(args.camera_cut_deg)
+        env['X3M_CAMERA_LOG'] = str(args.camera_log)
         env['X3M_MOTION_RT_MODE'] = args.motion_rt_mode
         env['X3M_PROFILE'] = '1' if args.profile else '0'
         env['X3M_PROFILE_INTERVAL_US'] = str(args.profile_interval_us)

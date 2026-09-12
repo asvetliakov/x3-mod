@@ -4,6 +4,7 @@
 #include <d3d9.h>
 #include <d3dx9shader.h>
 #include "../../src/renderer/temporal_pass.h"
+#include "../../src/renderer/camera_reprojection.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -761,12 +762,14 @@ void edge_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const
     // Jittered edges stay at least 0.03 px from every sample center (no fill-rule ties) for the fractional positions used below.
     {double margin=1;for(unsigned i=1;i<=EdgeScene::P;++i){const double jx=halton(i,2)-.5,jy=halton(i,3)-.5;for(double e:{6.37,7.37,14.59,16.59,10.37,16.37}){const double v=e+jy;margin=std::min(margin,std::fabs(v-std::floor(v)-.5));}for(double e:{12.28,13.28,10.28,16.28}){const double v=e+jx;margin=std::min(margin,std::fabs(v-std::floor(v)-.5));}}
         std::printf("EDGE_MARGIN %.4f\n",margin);require(margin>=.029,"edge geometry keeps jittered edges off the sample centers");}
-    const EdgeBackground farBackground{.25f,.9f,1},sentinelUnknown{.25f,-1.f,-1},sentinelCamera{.25f,-1.f,0};
+    // sentinelFill is the route's actual ABI for unrouted pixels (RT1 alpha -1,
+    // RT2 -1): under policy 2 it must behave exactly like the alpha-0 marking.
+    const EdgeBackground farBackground{.25f,.9f,1},sentinelUnknown{.25f,-1.f,-1},sentinelCamera{.25f,-1.f,0},sentinelFill{.25f,-1.f,-1};
     // (a) Thin lines: a 1-px and a 2-px horizontal line and a 1-px vertical line at fractional positions, static, 64 frames.
     auto lines=[](unsigned){return std::vector<EdgeObject>{{3,6.37,29,7.37,1,.5f},{3,14.59,29,16.59,1,.5f},{12.28,20,13.28,30,1,.5f}};};
     const LineSpec specs[]={{"1px horizontal",true,6.37,1,5,8,6,26},{"2px horizontal",true,14.59,2,13,17,6,26},{"1px vertical",false,12.28,1,11,14,22,28}};
     struct Mode{const char* name;EdgeBackground bg;bool camera,perPixel,assert;};
-    const Mode modes[]={{"far-background",farBackground,false,true,true},{"sentinel-camera",sentinelCamera,true,true,true},{"sentinel-current-only",sentinelUnknown,false,true,false}};
+    const Mode modes[]={{"far-background",farBackground,false,true,true},{"sentinel-camera",sentinelCamera,true,true,true},{"sentinel-camera-fill",sentinelFill,true,true,true},{"sentinel-current-only",sentinelUnknown,false,true,false}};
     for(auto& m:modes){auto run=edge_sequence(s,decoder,resolver,lines,m.bg,64,m.camera,m.perPixel,"thin lines");for(auto& L:specs)thin_line_metrics(run,L,m.assert,m.name);}
     // (b) Silhouette: a 6x6 square at a fractional position, static for 32 frames, then moving +1 px/frame for 12 frames.
     const double sl=10.28,st=10.37;auto square=[&](unsigned n){const double l=sl+(n>=32?n-31:0);return std::vector<EdgeObject>{{l,st,l+6,st+6,1,.5f,n>=32?1.:0.,0}};};
@@ -783,6 +786,191 @@ void edge_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const
     metric("scrolling wave: shader matches the Catmull-Rom CPU model",oracle,0,.01);
     metric("scrolling wave: period-8 amplitude of the output over the input (Catmull-Rom)",std::min(shader/input,1.),1,.1);
     metric("scrolling wave: Catmull-Rom keeps more amplitude than the previous bilinear filter",std::min(shader/input-bilinearModel/input,1.),1,.9);
+    if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
+}
+// ---- camera reprojection of the far background (sentinel policy 2) ----------
+// A background at infinity rendered from a camera state (the fixture's own sky
+// shader: the world direction of each unjittered sample, raster pixel p at
+// NDC 2(p - j)/S - 1 exactly as the resolve's camera path assumes, through the
+// same row-vector, left-handed convention camera_reprojection.h documents,
+// coloured by a smooth angular pattern) with the route's sentinel ABI (RT2 -1,
+// RT1 alpha -1). The resolve runs under policy 2 with the far-plane matrix the
+// builder makes from consecutive (P, V) pairs; the accumulated output must
+// track the current render (no crawl) while the camera turns.
+struct CameraSky {
+    EdgeScene& s; Com<IDirect3DPixelShader9> sky;
+    CameraSky(EdgeScene& scene,Compiler compiler):s(scene){
+        Com<ID3DXBuffer> code;
+        compile(compiler,
+            "float4 j:register(c0);float4 p:register(c1);float4 r0:register(c2);float4 r1:register(c3);float4 r2:register(c4);float4 k:register(c5);"
+            "float4 main(float2 vpos:VPOS):COLOR0{float2 q=(vpos-j.xy)*j.z;float2 ndc=float2(q.x*2-1,1-q.y*2);"
+            "float3 d=float3((ndc.x-p.z)*p.x,(ndc.y-p.w)*p.y,1);float3 w=float3(dot(r0.xyz,d),dot(r1.xyz,d),dot(r2.xyz,d));"
+            "float phi=atan2(w.x,w.z);float theta=atan2(w.y,length(w.xz));float v=k.z+k.y*(sin(k.x*phi)+sin(k.x*theta));return float4(v,v,v,1);}",
+            "ps_3_0",&code.p);
+        check("sky PS",s.d->CreatePixelShader(static_cast<DWORD*>(code->GetBufferPointer()),&sky.p));
+    }
+    // Sentinel motion/depth for the whole frame, then the sky over the colour target.
+    float frequency=12; // pattern cycles per radian; period 8.38 px at the centre of the 90-degree view
+    void render(const x3m::renderer::CameraState& c,double jx,double jy){
+        constexpr UINT S=EdgeScene::S;
+        s.render({},EdgeBackground{.25f,-1.f,-1},jx,jy);
+        s.target(s.colorSurface.p);check("sky Begin",s.d->BeginScene());check("sky bind",s.d->SetPixelShader(sky.p));
+        s.constant(float(jx),float(jy),1.f/S,0,0);s.constant(1.f/c.m00,1.f/c.m11,c.m20,c.m21,1);
+        s.constant(c.r[0],c.r[1],c.r[2],0,2);s.constant(c.r[3],c.r[4],c.r[5],0,3);s.constant(c.r[6],c.r[7],c.r[8],0,4);
+        s.constant(frequency,.2f,.5f,0,5);
+        s.quad(0,0,S,S,0,0);check("sky End",s.d->EndScene());
+    }
+};
+// Camera basis from yaw (about +Y) and pitch (about the camera's right axis), row-vector view with V's columns the basis.
+x3m::renderer::CameraState camera_pose(double yaw,double pitch,float m00=1,float m11=1){
+    const double right[3]={std::cos(yaw),0,-std::sin(yaw)};
+    const double f0[3]={std::sin(yaw),0,std::cos(yaw)};
+    const double up0[3]={0,1,0};
+    const double cp=std::cos(pitch),sp=std::sin(pitch);
+    double up[3],forward[3];
+    for(unsigned i=0;i<3;++i){up[i]=up0[i]*cp-f0[i]*sp;forward[i]=f0[i]*cp+up0[i]*sp;}
+    float projection[16]={},view[16]={1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+    projection[0]=m00;projection[5]=m11;projection[10]=1.000003f;projection[11]=1;projection[14]=-6.0000184f;
+    for(unsigned i=0;i<3;++i){view[i*4]=float(right[i]);view[i*4+1]=float(up[i]);view[i*4+2]=float(forward[i]);}
+    x3m::renderer::CameraState c;require(x3m::renderer::camera_state_from_matrices(projection,view,c),"camera pose validates");return c;
+}
+enum class CameraControl { Builder, Identity, Swapped };
+struct CameraRun { std::vector<std::vector<float>> current,reference,output; std::vector<x3m::renderer::SentinelDecision> decisions; std::vector<bool> used; };
+template<class Pose> CameraRun camera_sequence(EdgeScene& s,CameraSky& sky,const DWORD* decoder,const DWORD* resolver,Pose pose,unsigned frames,CameraControl control,float cutDegrees,const char* label,bool jitter=true,float weight=.9f){
+    constexpr UINT S=EdgeScene::S,P=EdgeScene::P;TemporalPass pass;check("camera initialize",pass.initialize(s.d,decoder,resolver));CameraRun run;
+    x3m::renderer::CameraState previous;
+    for(unsigned n=0;n<frames;++n){
+        const unsigned index=n%P+1;const double jx=jitter?halton(index,2)-.5:0,jy=jitter?halton(index,3)-.5:0;
+        const x3m::renderer::CameraState c=pose(n);
+        sky.render(c,jx,jy);run.current.push_back(s.read(s.color.p));
+        // The route's decision (X3M_TAA_SENTINEL=auto) or a negative control that forces policy 2 with the wrong matrix.
+        auto d=x3m::renderer::camera_sentinel_policy(x3m::renderer::SentinelMode::Auto,c,previous,cutDegrees);
+        if(control!=CameraControl::Builder&&c.valid&&previous.valid&&!d.cut){
+            d.policy=2;d.transform=true;
+            if(control==CameraControl::Identity)std::copy(identity,identity+16,d.matrix);
+            else require(x3m::renderer::camera_far_plane_reprojection(previous,c,d.matrix),"swapped control builds");
+        }
+        run.decisions.push_back(d);
+        FrameInputs in;in.color=s.color.p;in.current_depth=s.depth32.p;in.motion=s.motion.p;in.width=S;in.height=S;in.epoch=1;
+        std::copy(d.matrix,d.matrix+16,in.clip_to_previous);
+        in.current_jitter[0]=float(jx);in.current_jitter[1]=float(jy);in.weight=weight;in.motion_policy=MotionPolicy::PerPixel;
+        in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.sentinel_camera=d.policy==2;in.cut=d.cut;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=true;
+        Output out;check("camera Begin resolve",s.d->BeginScene());check(label,pass.run(in,&out));check("camera End resolve",s.d->EndScene());
+        require(out.color&&pass.diagnostics().history_valid,"camera sequence keeps a history");
+        run.used.push_back(out.used_history);run.output.push_back(s.read(out.color));
+        // The unjittered render of the same camera: what the accumulated output represents.
+        sky.render(c,0,0);run.reference.push_back(s.read(s.color.p));
+        previous=c; // The history now holds this frame (the route does the same after a successful resolve).
+    }
+    return run;
+}
+// Sub-pixel shift of the accumulated output against the UNJITTERED render of
+// the same camera, per axis, from the phase of the pattern's fundamental
+// (period 8.38 px at the centre of the 90-degree view; Hann-windowed DFT over
+// the interior lines, phases combined by magnitude). A phase estimate is
+// invariant to the symmetric resampling blur a moving history accumulates,
+// which a least-squares fit against a bilinearly shifted reference is not
+// (it matched the blur with a fractional offset). `error` is the mean
+// absolute difference at zero shift.
+double camera_phase_shift(const std::vector<float>& a,const std::vector<float>& b,bool horizontal){
+    constexpr UINT S=EdgeScene::S;constexpr UINT lo=6,hi=S-6;const double period=8.38,pi=3.14159265358979;
+    double re=0,im=0;
+    for(UINT line=lo;line<hi;++line){
+        double ma=0,mb=0;for(UINT t=lo;t<hi;++t){ma+=horizontal?px(a,t,line):px(a,line,t);mb+=horizontal?px(b,t,line):px(b,line,t);}
+        ma/=hi-lo;mb/=hi-lo;
+        double ar=0,ai=0,br=0,bi=0;
+        for(UINT t=lo;t<hi;++t){const double w=.5-.5*std::cos(2*pi*(t-lo+.5)/(hi-lo));const double c=std::cos(2*pi*t/period),sn=-std::sin(2*pi*t/period);
+            const double va=(horizontal?px(a,t,line):px(a,line,t))-ma,vb=(horizontal?px(b,t,line):px(b,line,t))-mb;
+            ar+=w*va*c;ai+=w*va*sn;br+=w*vb*c;bi+=w*vb*sn;}
+        re+=ar*br+ai*bi;im+=ai*br-ar*bi; // a * conj(b)
+    }
+    return -std::atan2(im,re)*period/(2*pi);
+}
+void camera_drift(const std::vector<float>& output,const std::vector<float>& reference,double& drift,double& error,double& sx,double& sy){
+    constexpr UINT S=EdgeScene::S;constexpr UINT lo=6,hi=S-6;
+    sx=camera_phase_shift(output,reference,true);sy=camera_phase_shift(output,reference,false);
+    drift=std::max(std::fabs(sx),std::fabs(sy));
+    error=0;unsigned count=0;
+    for(UINT y=lo;y<hi;++y)for(UINT x=lo;x<hi;++x){error+=std::fabs(px(output,x,y)-px(reference,x,y));++count;}
+    error/=count;
+}
+void camera_metrics(const CameraRun& run,const CameraRun* baseline,unsigned from,const char* label,double& drift,double& error){
+    drift=0;error=0;
+    for(unsigned n=from;n<run.output.size();++n){double d=0,e=0,sx=0,sy=0,bx=0,by=0;
+        camera_drift(run.output[n],run.reference[n],d,e,sx,sy);
+        if(baseline){double bd=0,be=0;camera_drift(baseline->output[n],baseline->reference[n],bd,be,bx,by);d=std::max(std::fabs(sx-bx),std::fabs(sy-by));}
+        drift=std::max(drift,d);error=std::max(error,e);
+        if(n%8==0||run.output.size()<=8)std::printf("CAMERA_FRAME label=%s frame=%u shift_px=%.3f,%.3f baseline_px=%.3f,%.3f drift_px=%.4f error=%.5f used=%u policy=%u\n",label,n,sx,sy,bx,by,d,e,unsigned(run.used[n]),run.decisions[n].policy);}
+    std::printf("CAMERA label=%s frames=%u from=%u drift_px=%.4f error=%.5f baseline=%u\n",label,unsigned(run.output.size()),from,drift,error,baseline!=nullptr);
+}
+void camera_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const DWORD* resolver){
+    std::puts("CAMERA_CASES");EdgeScene s(d,compiler);CameraSky sky(s,compiler);
+    struct Defer{Defer(){deferMetrics=true;deferredFailures.clear();}~Defer(){deferMetrics=false;}} defer;
+    const double step=.5*3.14159265358979/180;   // 0.5 degrees per frame: 0.14 px at the centre of the 90-degree view, 0.56 px of the 28-degree one
+    const auto yaw=[&](unsigned n){return camera_pose(n*step,0);};
+    const auto pitch=[&](unsigned n){return camera_pose(0,n*step);};
+    const auto still=[&](unsigned){return camera_pose(0,0);};
+    CameraRun run;double drift=0,error=0;
+    // (0) Static control: the same sky, jitter and policy with a still camera. Its
+    // shift against the unjittered render is the recency-weighted mean of the
+    // Halton set (the sequence's own bias, about -0.03/-0.04 px), the baseline
+    // of every moving case below.
+    const CameraRun still_run=camera_sequence(s,sky,decoder,resolver,still,48,CameraControl::Builder,20,"camera static");
+    camera_metrics(still_run,nullptr,16,"static-builder",drift,error);
+    metric("camera static: jitter-set bias of the accumulated output against the unjittered render (px)",drift,0,.15);
+    metric("camera static: mean absolute error against the unjittered render",error,0,.02);
+    // (a) Yaw and pitch under the route's jitter: the far background accumulates in place of the current render.
+    run=camera_sequence(s,sky,decoder,resolver,yaw,48,CameraControl::Builder,20,"camera yaw");
+    require(std::all_of(run.decisions.begin()+1,run.decisions.end(),[](const x3m::renderer::SentinelDecision& d){return d.policy==2&&!d.cut;}),"yaw frames take the camera path");
+    require(!run.used[0]&&std::all_of(run.used.begin()+1,run.used.end(),[](bool u){return u;}),"yaw frames use history after the first");
+    camera_metrics(run,&still_run,16,"yaw-builder",drift,error);
+    metric("camera yaw: resolved background tracks the current render (drift px against the static control)",drift,0,.2);
+    metric("camera yaw: mean absolute error against the unjittered render",error,0,.03);
+    run=camera_sequence(s,sky,decoder,resolver,pitch,48,CameraControl::Builder,20,"camera pitch");
+    camera_metrics(run,&still_run,16,"pitch-builder",drift,error);
+    metric("camera pitch: resolved background tracks the current render (drift px against the static control)",drift,0,.2);
+    metric("camera pitch: mean absolute error against the unjittered render",error,0,.03);
+    // (b) Without jitter the remaining error is the resampling of the accumulated
+    // history (Catmull-Rom of the sampled pattern at the fractional velocity) plus,
+    // at 90 degrees, the perspective chirp of the pattern; the narrow view isolates the former.
+    run=camera_sequence(s,sky,decoder,resolver,yaw,48,CameraControl::Builder,20,"camera yaw unjittered",false);
+    camera_metrics(run,nullptr,16,"yaw-builder-unjittered",drift,error);
+    metric("camera yaw unjittered: drift px against the unjittered render",drift,0,.1);
+    sky.frequency=48;
+    run=camera_sequence(s,sky,decoder,resolver,[&](unsigned n){return camera_pose(n*step,0,4,4);},48,CameraControl::Builder,20,"camera narrow yaw unjittered",false);
+    camera_metrics(run,nullptr,16,"narrow-yaw-builder-unjittered",drift,error);
+    metric("camera narrow yaw unjittered: drift px against the unjittered render",drift,0,.05);
+    sky.frequency=12;
+    // (c) One reprojection step at a time: history weight 1 makes the output the
+    // reprojected history alone, so frame n is n chained lookups of frame 0.
+    run=camera_sequence(s,sky,decoder,resolver,yaw,6,CameraControl::Builder,20,"camera yaw single step",false,1.f);
+    camera_metrics(run,nullptr,1,"yaw-single-step",drift,error);
+    metric("camera yaw: five chained reprojections of one render (drift px)",drift,0,.05);
+    run=camera_sequence(s,sky,decoder,resolver,pitch,6,CameraControl::Builder,20,"camera pitch single step",false,1.f);
+    camera_metrics(run,nullptr,1,"pitch-single-step",drift,error);
+    metric("camera pitch: five chained reprojections of one render (drift px)",drift,0,.05);
+    // (d) Negative controls under policy 2: the identity matrix (the route before the camera read) crawls, the swapped convention drifts the other way.
+    double identityDrift=0,identityError=0,swappedDrift=0,swappedError=0;
+    run=camera_sequence(s,sky,decoder,resolver,yaw,48,CameraControl::Identity,20,"camera identity control");
+    camera_metrics(run,&still_run,16,"yaw-identity",identityDrift,identityError);
+    run=camera_sequence(s,sky,decoder,resolver,yaw,48,CameraControl::Swapped,20,"camera swapped control");
+    camera_metrics(run,&still_run,16,"yaw-swapped",swappedDrift,swappedError);
+    metric("camera yaw: identity matrix under policy 2 crawls (drift px, at least 0.5)",std::min(identityDrift,1.),1,.5);
+    metric("camera yaw: identity matrix under policy 2 crawls (mean absolute error, at least 0.05)",std::min(identityError,.1),.1,.05);
+    metric("camera yaw: swapped rotation convention drifts (drift px, at least 0.5)",std::min(swappedDrift,1.),1,.5);
+    // (e) Cut: a 25-degree jump exceeds the 20-degree bound; the decision falls back to policy 1 with a cut, the frame is
+    // bit-identical to its render (no ghost), and the sequence accumulates again afterwards.
+    const auto jump=[&](unsigned n){return camera_pose(n*step+(n>=16?25*3.14159265358979/180:0),0);};
+    run=camera_sequence(s,sky,decoder,resolver,jump,40,CameraControl::Builder,20,"camera cut");
+    require(run.decisions[16].cut&&run.decisions[16].policy==1&&!run.decisions[16].transform&&run.decisions[15].policy==2&&run.decisions[17].policy==2,"a 25-degree rotation is a cut and the policy falls back to 1 for that frame only");
+    require(!run.used[16]&&run.used[15]&&run.used[17],"the cut frame runs current-only and history resumes");
+    double ghost=0;for(UINT i=0;i<run.output[16].size();++i)ghost=std::max(ghost,double(std::fabs(run.output[16][i]-run.current[16][i])));
+    metric("camera cut: the cut frame equals its render exactly (no ghost)",ghost,0,0);
+    camera_metrics(run,&still_run,26,"yaw-cut-resumed",drift,error);
+    metric("camera cut: tracking resumes after the cut (drift px against the static control)",drift,0,.2);
+    // (f) Rotation angle reported by the decision matches the pose step.
+    metric("camera yaw: reported rotation per frame (degrees)",run.decisions[5].rotation_degrees,.5,1e-3);
+    metric("camera cut: reported rotation of the jump (degrees)",run.decisions[16].rotation_degrees,25.5,1e-2);
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
 }
 void reset_continuity(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS& pp,Compiler compiler,const DWORD* decoder,const DWORD* resolver){
@@ -802,6 +990,6 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
     const bool stationaryOnly=argc==5&&std::strcmp(argv[4],"stationary-only")==0;
     try{if((argc!=4&&!stationaryOnly)||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> [stationary-only]");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);compile(compiler,file(argv[3]),"ps_3_0",&rc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
         if(stationaryOnly){stationary_cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("RESULT PASS numerical=%u stationary_only=1\n",numeric_checks);result=0;}
-        else for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);stationary_cases(d.p,compiler,decoder,resolver);edge_cases(d.p,compiler,decoder,resolver);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
+        else for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);stationary_cases(d.p,compiler,decoder,resolver);edge_cases(d.p,compiler,decoder,resolver);camera_cases(d.p,compiler,decoder,resolver);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
         if(!stationaryOnly){std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);result=0;}
     }catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());}if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);return result;}

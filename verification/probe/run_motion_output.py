@@ -49,6 +49,21 @@ the modes, the final state must equal the pre-burst state, and the DLL's
 per-frame SetRenderTarget count must drop from 20 to 12 in the lazy
 frames without capture diagnostics (capture frames restore before every
 draw's diagnostics and count 20 in both modes).
+Camera reprojection of sentinel pixels (X3M_TAA_SENTINEL, seam only): four
+runs install the fixture's own projection/view buffers as the engine camera
+globals (X3M_FIXTURE_CAMERA=rotate: one degree of yaw per frame, a 30-degree
+jump at frame 7). With the switch on (auto) the DLL must reproject the
+background through the camera on every frame with a previous view, declare the
+camera cut at frame 7 and still equal the reference resolve byte for byte;
+with X3M_TAA_SENTINEL=1 the colour must equal the run without a camera (the
+switch off changes nothing); the strict mode (2) must skip the resolve on every
+frame without a readable camera and nothing else; the DLL's camera_state lines
+must carry the fixture's matrices and decisions. One "envmap" run inserts the
+frame routine's environment-map sequence (mid-frame EndScene, six cube-face
+target changes with their own Clear, view and draws, BeginScene) between
+routed frames, before the scene's depth Clear and before the initial Clear:
+nothing of those frames routes, the scene camera is never read, the resolve
+does not run, and the history is dropped.
 Reviewed shader bytes are read from local files and never enter the repository
 or the reports.
 """
@@ -92,8 +107,9 @@ VARIANTS = {
     'ownership': dict(X3M_OWNERSHIP='1'),
     'depth': dict(X3M_OWNERSHIP='1', X3M_DEPTH_COPY='1', X3M_SCENE_DEPTH_CAPTURE='1'),
     'admission': dict(X3M_OWNERSHIP='1', X3M_ADMISSION='1')}
-def case(name, mode, variant='plain', enabled='1', jitter=False, taa=False, bench=None, lazy=False, burst=False):
-    return dict(name=name, mode=mode, variant=variant, enabled=enabled, jitter=jitter, taa=taa, bench=bench, lazy=lazy, burst=burst)
+def case(name, mode, variant='plain', enabled='1', jitter=False, taa=False, bench=None, lazy=False, burst=False, camera=False, sentinel=None, envmap=False):
+    return dict(name=name, mode=mode, variant=variant, enabled=enabled, jitter=jitter, taa=taa, bench=bench, lazy=lazy, burst=burst,
+                camera=camera, sentinel=sentinel, envmap=envmap)
 
 
 CASES = [case(f'{dll}-{state}' if variant == 'plain' else f'{dll}-{variant}-{state}', dll, variant, enabled)
@@ -110,6 +126,20 @@ CASES += [case(f'bench-{size}-taa-{state}', 'bench', jitter=True, taa=state == '
 CASES += [case(f'{dll}-lazy-on', dll, lazy=True) for dll in ('production', 'seam')]
 CASES += [case('seam-ownership-lazy-on', 'seam', 'ownership', lazy=True), case('seam-taa-lazy-on', 'seam', jitter=True, taa=True, lazy=True)]
 CASES += [case(f'{dll}-burst-{rt}', dll, lazy=rt == 'lazy', burst=True) for dll in ('production', 'seam') for rt in ('perdraw', 'lazy')]
+# Camera reprojection of sentinel pixels (seam): the switch in its three
+# positions with the fixture's rotating camera, the strict mode without a
+# camera, and the environment-map exclusion script.
+CASES += [case('seam-taa-camera-on', 'seam', jitter=True, taa=True, camera=True),
+          case('seam-taa-camera-sentinel1-on', 'seam', jitter=True, taa=True, camera=True, sentinel='1'),
+          case('seam-taa-camera-sentinel2-on', 'seam', jitter=True, taa=True, camera=True, sentinel='2'),
+          case('seam-taa-sentinel2-nocamera-on', 'seam', jitter=True, taa=True, sentinel='2'),
+          case('seam-taa-envmap', 'seam', jitter=True, taa=True, camera=True, envmap=True)]
+# Frames whose keyed draws are matched but whose camera turned 31 degrees: a
+# camera cut (auto and strict), so no history; frame 7 of the camera script.
+CAMERA_CUT_FRAMES = {7}
+CAMERA_M00, CAMERA_M11 = 0.8, 4 / 3
+ENVMAP_FRAMES = 5
+ENVMAP_CAPTURE = (1, 2, 3, 4)
 # Burst script: nine frames, capture in frames 7-8 only (capture diagnostics
 # restore the lazy binding before every draw), the frame line every frame.
 BURST_FRAMES = 9
@@ -282,7 +312,40 @@ def validate_bench(name, taa, size, text, trace):
             'samples_ms': samples, 'timing': summary['timing']}
 
 
-def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False):
+def camera_expectations(lines):
+    """The fixture's per-frame camera decision (CAMERA_EXPECT lines), keyed by frame."""
+    return {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('CAMERA_EXPECT ')}
+
+
+def check_camera_log(name, trace, expects, camera, sentinel, frames_logged):
+    """The DLL's camera_state lines carry the fixture's matrices and decisions."""
+    tl = trace.splitlines()
+    # The loader's `camera_state active=.. status=..` line carries no frame.
+    states = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('camera_state ') and 'frame=' in l}
+    assert sorted(states) == sorted(frames_logged), (name, sorted(states))
+    mode = {None: '0', 'auto': '0', '1': '1', '2': '2'}[sentinel]
+    for frame, state in states.items():
+        e = expects[frame]
+        assert state['status'] == ('fixture' if camera else 'executable_mismatch') and state['mode'] == mode and state['cut_deg'] == '20.00', (name, frame, state)
+        assert state['valid'] == e['installed'] and state['background_valid'] == e['installed'], (name, frame, state)
+        assert (state['policy'], state['reason'], state['camera_cut']) == (e['policy'], e['reason'], e['cut']), (name, frame, state, e)
+        assert abs(float(state['rotation_deg']) - float(e['rotation_deg'])) <= 1e-3, (name, frame, state, e)
+        if camera:
+            for key in ('p00', 'p11', 'r00', 'r01', 'r02', 'r10', 'r11', 'r12', 'r20', 'r21', 'r22'):
+                assert abs(float(state[key]) - float(e[key])) <= 1e-6, (name, frame, key, state[key], e[key])
+            assert (state['p20'], state['p21'], state['t']) == ('0', '0', '12.5,-3,1000'), (name, frame, state)
+            assert state['read_failure'] == state['failure'] == '0' and state['reads'] == '2', (name, frame, state)
+            # The background view is the same pose (read at the latch, before the frame's yaw): its rotation
+            # against the scene view is the per-frame step (one degree, 31 at the jump, 0 on the first).
+            if e['reason'] in ('0', '4'):  # the decision reports a rotation only when it compared two views
+                assert abs(float(state['background_rotation_deg']) - float(e['rotation_deg'])) <= 1e-3, (name, frame, state)
+            assert state['history_view_valid'] == e['resolve'], (name, frame, state, e)
+        else:  # no camera available: the route never attempts a read
+            assert state['read_failure'] == '0' and state['reads'] == '0' and state['history_view_valid'] == '0', (name, frame, state)
+    return {f: {'policy': int(s['policy']), 'reason': int(s['reason']), 'cut': int(s['camera_cut']), 'rotation_deg': float(s['rotation_deg'])} for f, s in states.items()}
+
+
+def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None):
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
     assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
@@ -291,18 +354,29 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     live = seam and enabled
     rt_mode = 'lazy' if lazy else 'perdraw'
     mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
+    sentinel_switch = sentinel  # the readback loop below reuses the name `sentinel` for a pixel count
+    sentinel_mode = {None: '0', 'auto': '0', '1': '1', '2': '2'}[sentinel]
     assert mode_line == {'seam': str(int(seam)), 'enabled': str(int(enabled)), 'jitter': str(int(jitter)),
                          'jitter_samples': str(JITTER_SAMPLES), 'taa': str(int(taa)), 'bench': '0', 'width': '64', 'height': '64',
-                         'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode}, (name, mode_line)
+                         'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode, 'camera': str(int(camera)), 'sentinel': sentinel_mode,
+                         'envmap': '0'}, (name, mode_line)
+    # The camera script: the 31-degree jump at frame 7 is a cut unless the
+    # switch is off; strict mode without a camera skips every frame.
+    strict_skip = sentinel == '2' and not camera
+    camera_cuts = CAMERA_CUT_FRAMES if camera and sentinel != '1' else set()
+    history_frames = set() if strict_skip else SEAM_TAA_HISTORY - camera_cuts
+    skipped = 12 if strict_skip else 0
     # Per frame: the coverage oracle's background sample and verdict (every
     # case) plus, live, motion/depth dimensions, the pixel-ABI upload, the
     # motion oracle and the depth oracle. TAA: per frame the bloom copy, the
     # history verdict and (frames without history) the bit-identical color,
-    # plus the script totals; seam adds the reference device, the byte-exact
-    # comparison and the FP16 file per frame and the reference teardown.
+    # plus the script totals (history frames, skipped frames, reference
+    # frames); seam adds the reference device, the byte-exact comparison and
+    # the FP16 file per resolved frame and the reference teardown, one check
+    # per skipped frame; the camera adds the pose validation per frame.
     expected_checks = 30 + (60 if live else 0)
     if taa:
-        expected_checks += 12 * 2 + (12 - len(SEAM_TAA_HISTORY) if live else 12) + 3 + (1 + 24 + 2 if live else 0)
+        expected_checks += 12 * 2 + (12 - len(history_frames) if live else 12) + 4 + skipped + (1 + 2 * (12 - skipped) + 2 if live else 0) + (12 if camera else 0)
     assert int(terminal['checks']) == expected_checks, (name, terminal, expected_checks)
     restorations = 39 + (12 if taa else 0)
     assert int(terminal['restorations']) == restorations and int(terminal['frames']) == 12, (name, terminal)
@@ -340,10 +414,23 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         assert sorted(taa_lines) == list(range(12)), (name, sorted(taa_lines))
         history = {f for f, t in taa_lines.items() if t['history'] == '1'}
         cuts = {f for f, t in taa_lines.items() if t['cut'] == '1'}
-        assert history == (SEAM_TAA_HISTORY if live else set()) and cuts == (SEAM_TAA_CUTS if live else set()), (name, history, cuts)
+        assert history == (history_frames if live else set()) and cuts == ((SEAM_TAA_CUTS | camera_cuts) if live else set()), (name, history, cuts)
         assert all(t['changed'] == '0' for f, t in taa_lines.items() if f not in history), (name, 'no-history frame changed the color')
-        assert (terminal['taa'], terminal['taa_frames'], terminal['taa_history_frames'], terminal['taa_reference_frames']) == ('1', '12', str(len(history)), '12' if live else '0'), (name, terminal)
+        assert (terminal['taa'], terminal['taa_frames'], terminal['taa_history_frames'], terminal['taa_reference_frames'], terminal['taa_skipped_frames']) == \
+               ('1', '12', str(len(history)), str(12 - skipped) if live else '0', str(skipped)), (name, terminal)
+        # The fixture's decision per frame: policy 2 exactly on the frames with a previous view
+        # and no camera cut (auto and strict), never with the switch off or without a camera.
+        policies = {f: int(t['policy']) for f, t in taa_lines.items()}
+        expects = camera_expectations(lines)
+        assert sorted(expects) == list(range(12)) and all(policies[f] == int(expects[f]['policy']) for f in policies), (name, policies)
+        assert all(t['skipped'] == ('1' if strict_skip else '0') for t in taa_lines.values()), (name, 'skipped frames')
+        if camera and sentinel != '1':
+            assert {f for f, p in policies.items() if p == 2} == set(range(12)) - {0, 9} - CAMERA_CUT_FRAMES, (name, policies)
+            assert all(expects[f]['cut'] == str(int(f in CAMERA_CUT_FRAMES)) for f in expects), (name, expects)
+        else:
+            assert all(p == 1 for p in policies.values()), (name, policies)
         result['taa_history_frames'] = sorted(history)
+        result['camera_policy'] = policies
         result['taa_changed_pixels'] = {f: int(t['changed']) for f, t in taa_lines.items()}
         result['color_hashes_before_boundary'] = {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR_BEFORE ')}
     else:
@@ -392,6 +479,11 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     assert devices[0]['detail'] == 'stage=compare' and 'color_errors=0 motion_errors=0 depth_errors=0 targets=3' in trace
     assert devices[0]['jitter'] == str(int(jitter)) and devices[0]['jitter_samples'] == str(JITTER_SAMPLES)
     assert devices[0]['taa'] == str(int(taa)) and devices[0]['taa_reason'] == ('ok' if taa else 'off') and devices[0]['taa_debug'] == str(int(taa)), (name, devices)
+    # The camera read is gated on the exact executable (never this synthetic
+    # process) unless the seam installed the fixture's globals; the switch is parsed.
+    assert devices[0]['camera'] == ('fixture' if camera else 'executable_mismatch' if taa else 'disabled'), (name, devices)
+    assert (devices[0]['sentinel'], devices[0]['camera_cut_deg'], devices[0]['camera_log']) == (sentinel_mode, '20.00', '300'), (name, devices)
+    assert (modes[0]['sentinel'], modes[0]['camera_cut_deg'], modes[0]['camera_log']) == ({'0': 'auto', '1': '1', '2': '2'}[sentinel_mode], '20.00', '300'), (name, modes)
     assert [(v['kind'], v['transform'], v['create'], v['depth']) for v in variants] == [('vs', '0', '00000000', '1'), ('ps', '0', '00000000', '1')] * 2, (name, variants)
     assert all(v['original'] in ('53a0a641107ed76c', '8759c7838bbc86c2') for v in variants)
     assert len(targets) == 2 and all('create=00000000 level=00000000 depth=1 depth_create=00000000 depth_level=00000000' in t for t in targets), 'targets created at first latch and after Reset'
@@ -421,13 +513,13 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         assert int(summary['set_rt']) == 4 * int(summary['routed']), (name, frame, summary)
         assert int(summary['lazy_flushes']) == (int(summary['routed']) if lazy else 0), (name, frame, summary)
         assert int(summary['jitter_writes']) == 2 * int(summary['jittered']), (name, frame, summary)
-        assert int(summary['readbacks']) == (0 if frame == 0 else 4 if taa else 2), (name, frame, summary)
+        assert int(summary['readbacks']) == (0 if frame == 0 else 4 if taa and not strict_skip else 2), (name, frame, summary)
         cost_fields = ('gate_us', 'route_draw_us', 'set_rt_us', 'lazy_flush_us', 'jitter_us', 'fill_us', 'taa_run_us', 'taa_capture_us',
                        'taa_copy_color_us', 'taa_copy_depth_us', 'taa_draw_us', 'taa_apply_us', 'taa_copy_back_us', 'readback_us')
         costs = {k: float(summary[k]) for k in cost_fields}
         assert all(v >= 0 for v in costs.values()) and costs['fill_us'] > 0 and costs['route_draw_us'] > 0, (name, frame, costs)
         # The five phases nest inside the run (0.1 us rounding per field).
-        assert (costs['taa_run_us'] > 0) == taa and costs['taa_run_us'] + 0.5 >= costs['taa_capture_us'] + costs['taa_copy_color_us'] + costs['taa_copy_depth_us'] + costs['taa_draw_us'] + costs['taa_apply_us'], (name, frame, costs)
+        assert (costs['taa_run_us'] > 0) == (taa and not strict_skip) and costs['taa_run_us'] + 0.5 >= costs['taa_capture_us'] + costs['taa_copy_color_us'] + costs['taa_copy_depth_us'] + costs['taa_draw_us'] + costs['taa_apply_us'], (name, frame, costs)
         assert (costs['readback_us'] > 0) == (frame > 0), (name, frame, costs)
         # The resolve ran at the boundary of every TAA frame (frame 0 included)
         # with the history use the fixture expects; the fixture's depth rebind
@@ -439,10 +531,21 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
             # script frames; the production DLL from frame 1 on (the sentinel
             # policy establishes history although every pixel resolves
             # current-only), except the first frame after Reset (9, not captured).
-            expect_history = int(frame in SEAM_TAA_HISTORY) if live else int(frame not in (0, 9))
-            assert (summary['taa_attempted'], summary['taa_resolved'], summary['taa_history'], summary['taa_skip']) == ('1', '1', str(expect_history), '0'), (name, frame, summary)
+            expect_history = int(frame in history_frames) if live else int(frame not in (0, 9))
+            if strict_skip:  # X3M_TAA_SENTINEL=2 without a readable camera: attempted, skipped (9), never resolved
+                assert (summary['taa_attempted'], summary['taa_resolved'], summary['taa_history'], summary['taa_skip']) == ('1', '0', '0', '9'), (name, frame, summary)
+            else:
+                assert (summary['taa_attempted'], summary['taa_resolved'], summary['taa_history'], summary['taa_skip']) == ('1', '1', str(expect_history), '0'), (name, frame, summary)
+            # The route's decision per frame equals the fixture's (same builder, same inputs).
+            e = expects[frame]
+            assert (summary['camera_policy'], summary['camera_reason'], summary['camera_cut']) == (e['policy'], e['reason'], e['cut']), (name, frame, summary, e)
+            assert abs(float(summary['camera_rotation_deg']) - float(e['rotation_deg'])) <= 1e-3, (name, frame, summary, e)
+            assert summary['camera_valid'] == summary['camera_background_valid'] == str(int(camera)) and summary['camera_reads'] == ('2' if camera else '0'), (name, frame, summary)
             # The frame line is written after Present, outside the application's scene.
-            assert summary['taa_result'] == summary['taa_restore'] == summary['taa_copy'] == '00000000' and summary['scene_open'] == '0', (name, frame, summary)
+            if strict_skip:  # nothing ran: the counters keep their S_FALSE defaults
+                assert (summary['taa_result'], summary['taa_restore'], summary['taa_copy'], summary['scene_open']) == ('00000001', '00000000', '00000001', '0'), (name, frame, summary)
+            else:
+                assert summary['taa_result'] == summary['taa_restore'] == summary['taa_copy'] == '00000000' and summary['scene_open'] == '0', (name, frame, summary)
             assert int(summary['taa_references']) >= 1, (name, frame, summary)
         else:
             assert (summary['taa_attempted'], summary['taa_resolved'], summary['taa_skip']) == ('0', '0', '1'), (name, frame, summary)
@@ -467,7 +570,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
             got = {k: int(summary[k]) for k in SEAM_FRAMES[frame]}
             assert got == SEAM_FRAMES[frame], (name, frame, got, SEAM_FRAMES[frame])
             assert summary['selector_state'] == ('9' if taa else '2'), 'seam frames end inside the Scene phase (rejected after the copy with the TAA boundary: the fixture rebinds depth without a bloom sequence)'
-            assert int(summary['cut']) == SEAM_CUTS[frame], (name, frame, summary)
+            assert int(summary['cut']) == SEAM_CUTS[frame], (name, frame, summary)  # the displacement/missing-key verdict alone; the camera cut is separate
             cut = cuts[frame]
             assert int(cut['cut']) == SEAM_CUTS[frame] and cut['samples'] == summary['cut_samples'] and abs(float(cut['bound_px']) - 2.4) < 1e-6 and cut['bound_missing'] == '0.250'
         elif not live:
@@ -505,6 +608,10 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         depth_stats[frame] = {'written': written, 'min': min(v for v in depth if v != -1.0), 'max': max(v for v in depth if v != -1.0)}
     result['depth_readbacks'] = depth_stats
     if taa:
+        result['camera_log'] = check_camera_log(name, trace, expects, camera, sentinel_switch, range(0, 9))
+    if taa and strict_skip:
+        assert not taa_readbacks and not color_readbacks, (name, 'skipped frames wrote debug readbacks')
+    elif taa:
         # X3M_TAA_DEBUG: the resolved FP16 image and the pre-resolve color of
         # frames 1-8. Seam: the FP16 bytes equal the reference pass's output.
         # Both: the analyzer's sanity signal loads them (finite; production is
@@ -546,8 +653,60 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     return result
 
 
-def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False):
-    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy)
+def validate_envmap(name, text, trace, directory):
+    """Environment-map exclusion: frames 1 and 3 carry the six-face sequence (before
+    the depth Clear, before the initial Clear); frames 0, 2 and 4 are routed."""
+    lines = text.splitlines()
+    assert lines and lines[-1].startswith('RESULT PASS ') and 'FAIL' not in text, f'{name}: fixture did not pass'
+    terminal = fields(lines[-1])
+    mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
+    assert (mode_line['seam'], mode_line['taa'], mode_line['camera'], mode_line['envmap'], mode_line['sentinel']) == ('1', '1', '1', '1', '0'), (name, mode_line)
+    assert (int(terminal['checks']), int(terminal['restorations']), int(terminal['frames'])) == (62, 18, ENVMAP_FRAMES), (name, terminal)
+    assert (terminal['taa_frames'], terminal['taa_history_frames'], terminal['taa_reference_frames'], terminal['taa_skipped_frames'], terminal['taa_changed_pixels']) == ('5', '0', '3', '2', '0'), (name, terminal)
+    taa_lines = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('TAA ')}
+    assert sorted(taa_lines) == list(range(ENVMAP_FRAMES)) and all(t['history'] == '0' and t['changed'] == '0' for t in taa_lines.values()), (name, taa_lines)
+    assert {f for f, t in taa_lines.items() if t['skipped'] == '1'} == {1, 3}, (name, taa_lines)
+    motion = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('MOTION ')}
+    assert sorted(motion) == [0, 2, 4] and all(m['mismatches'] == '0' and m['depth_mismatches'] == '0' and m['matched'] == '0' for m in motion.values()), (name, motion)
+    expects = [fields(l) for l in lines if l.startswith('EXPECT ')]
+    assert all(e['routed'] == '0' for e in expects if int(e['frame']) in (1, 3)) and sum('face' in e for e in expects) == 12, (name, 'env frames must expect no routing')
+    tl = trace.splitlines()
+    frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
+    states = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('camera_state ') and 'frame=' in l}
+    routes = [fields(l) for l in tl if l.startswith('motion_route ')]
+    readbacks = {int(fields(l)['frame']) for l in tl if l.startswith('motion_output_readback ')}
+    assert sorted(frames) == sorted(states) == list(range(ENVMAP_FRAMES)), (name, sorted(frames), sorted(states))
+    for frame in (1, 3):
+        f, s = frames[frame], states[frame]
+        # Nine draws (background, six faces, two scene draws) all stopped at gate 2:
+        # the selector rejected the frame at the first face's SetRenderTarget.
+        assert (f['routed'], f['gate2'], f['draws'], f['selector_state'], f['taa_attempted'], f['taa_resolved'], f['taa_skip']) == ('0', '9', '9', '9', '0', '0', '2'), (name, frame, f)
+        # The scene camera was never read (the depth-only Clear never advanced the
+        # selector); the frame before the initial Clear did not even latch.
+        assert (f['camera_valid'], f['camera_policy'], f['camera_reads'], f['latched'], f['filled']) == ('0', '1', '1' if frame == 1 else '0', '1' if frame == 1 else '0', '1' if frame == 1 else '0'), (name, frame, f)
+        assert (s['valid'], s['history_view_valid'], s['reads']) == ('0', '0', f['camera_reads']), (name, frame, s)
+        assert not any(r['frame'] == str(frame) for r in routes), (name, frame, 'a draw of an environment-map frame reached the scene gate')
+    for frame in (0, 2, 4):
+        f, s = frames[frame], states[frame]
+        assert (f['routed'], f['gate2'], f['selector_state'], f['taa_attempted'], f['taa_resolved'], f['taa_history'], f['taa_skip']) == ('2', '1', '9', '1', '1', '0', '0'), (name, frame, f)
+        # The history's view was dropped with the history: every routed frame starts without a previous view.
+        assert (f['camera_valid'], f['camera_policy'], f['camera_reason'], f['camera_reads']) == ('1', '1', '3', '2'), (name, frame, f)
+        assert (s['valid'], s['history_view_valid'], s['history_view_frame']) == ('1', '1', str(frame)), (name, frame, s)
+        if frame:
+            assert f['cut'] == '1' and f['cut_missing'] == '1.0000', (name, frame, f)  # the rejected frame recorded no rows
+    # Capture frames 1-4: the fill of frame 1 was read back (all sentinel, no routed draw); frame 3 never filled.
+    assert readbacks == {1, 2, 4}, (name, readbacks)
+    pixels = read_motion(directory / 'x3-modern-captures' / 'motion_1_1.rgba32f')
+    assert all(p == SENTINEL for p in pixels), f'{name}: the environment-map frame wrote motion'
+    assert not any(l.startswith(('motion_output_taa_failed', 'motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed')) for l in tl), name
+    return {'mode': 'envmap', 'frames': ENVMAP_FRAMES, 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
+            'rejected_frames': [1, 3], 'routed_per_frame': {f: int(frames[f]['routed']) for f in sorted(frames)},
+            'camera_valid_per_frame': {f: int(frames[f]['camera_valid']) for f in sorted(frames)},
+            'color_hashes': {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}}
+
+
+def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None):
+    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel)
     result['variant'] = variant
     result['ownership'] = validate_ownership(name, variant, enabled, trace)
     return result
@@ -565,7 +724,7 @@ def validate_burst(name, mode, lazy, text, trace, directory):
     rt_mode = 'lazy' if lazy else 'perdraw'
     mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
     assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '0', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
-                         'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '1', 'rt_mode': rt_mode}, (name, mode_line)
+                         'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '1', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0'}, (name, mode_line)
     # Per frame: the fill and the burst restoration comparisons, the coverage
     # oracle (both DLLs) and, seam, the motion/depth oracle.
     assert int(terminal['frames']) == BURST_FRAMES and int(terminal['restorations']) == 2 * BURST_FRAMES, (name, terminal)
@@ -635,8 +794,11 @@ def validate_burst(name, mode, lazy, text, trace, directory):
 
 def main():
     RESULTS.mkdir(exist_ok=True)
-    summary_path = RESULTS / 'motion-output-summary.json'
-    report_path = RESULTS / 'motion-output.txt'
+    # Development aid: case names on the command line run only those cases and
+    # write a partial summary (no cross-case comparisons); never a pass of the suite.
+    only = set(sys.argv[1:])
+    summary_path = RESULTS / ('motion-output-partial.json' if only else 'motion-output-summary.json')
+    report_path = RESULTS / ('motion-output-partial.txt' if only else 'motion-output.txt')
     result = {'passed': False, 'status': 'RUNNING', 'game_launched': False,
               'scope': 'Live same-draw route (checkpoint B1 + temporal steps 1 and 3: RT2 current depth, per-draw jitter, cut detector, the temporal resolve at the bloom copy with copy-back) through the actual proxy DLL with one original synthetic device program, plain and under the ownership wrapper (plus copy-depth and admission); seam DLL adds fixture scope injection, target readback and the reference resolve comparison. Bench runs time the boundary. Not gameplay validation.',
               'variants': VARIANTS,
@@ -665,7 +827,9 @@ def main():
         wine_log = (RESULTS / 'motion-output-wine.log').open('w')
         result['bench'] = {}
         for entry in CASES:
-            name, mode, variant, enabled, jitter, taa, bench, lazy, burst = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst'))
+            name, mode, variant, enabled, jitter, taa, bench, lazy, burst, camera, sentinel, envmap = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst', 'camera', 'sentinel', 'envmap'))
+            if only and name not in only:
+                continue
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(EXE, directory)
@@ -673,13 +837,14 @@ def main():
             env = dict(os.environ, X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
-                       X3M_CAPTURE_FRAMES='1' if bench else str(len(BURST_CAPTURE)) if burst else '8', X3M_TELEMETRY='1',
+                       X3M_CAPTURE_FRAMES='1' if bench else str(len(BURST_CAPTURE)) if burst else str(len(ENVMAP_CAPTURE)) if envmap else '8', X3M_TELEMETRY='1',
+                       X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto',
                        X3M_MOTION_RT_MODE='lazy' if lazy else 'perdraw', X3M_MOTION_FRAME_LOG='1' if burst else '60',
                        X3M_OWNERSHIP='0', X3M_DEPTH_COPY='0', X3M_SCENE_DEPTH_CAPTURE='0', X3M_OBJECT_TRACE='0', X3M_OBJECT_LIFETIME='0',
                        X3M_MESH_CACHE='0', X3M_ADMISSION='0', X3M_FINITE_POSITIONS='0', X3M_MOTION_CAPTURE='0')
             env.update(VARIANTS[variant])
             command = [str(WINE), '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=n,b', '--workdir', str(directory),
-                       str(directory / EXE.name)] + ['Z:' + str(p) for p in RAW] + ['burst' if burst else mode] + ([bench] if bench else [])
+                       str(directory / EXE.name)] + ['Z:' + str(p) for p in RAW] + ['burst' if burst else 'envmap' if envmap else mode] + ([bench] if bench else [])
             no_game()
             wine_log.write(f'==== {name}\n'); wine_log.flush()
             completed = subprocess.run(command, env=env, stdout=subprocess.PIPE, stderr=wine_log, text=True, timeout=360)
@@ -695,6 +860,15 @@ def main():
                 save()
                 print(f'{name}: exit={completed.returncode} boundary_ms={case["boundary_ms"]}', flush=True)
                 continue
+            if envmap:
+                case = validate_envmap(name, text, trace, directory)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} rejected={case["rejected_frames"]}', flush=True)
+                continue
             if burst:
                 case = validate_burst(name, mode, lazy, text, trace, directory)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
@@ -704,7 +878,7 @@ def main():
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} set_rt={case["set_rt_per_frame"]}', flush=True)
                 continue
-            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy)
+            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel)
             case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                         dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
             if enabled == '1':
@@ -713,6 +887,12 @@ def main():
             save()
             print(f'{name}: exit={completed.returncode} checks={case["checks"]} motion_pixels={case["motion_pixels"]}', flush=True)
         wine_log.close()
+        if only:
+            result['status'] = 'PARTIAL'
+            save()
+            report_path.write_text(''.join(report))
+            print('partial run: no cross-case comparisons, not a pass')
+            return
         # Resolve cost: the boundary with the switch on minus off, per size.
         for size in BENCH_SIZES:
             off, on = result['bench'][f'bench-{size}-taa-off']['boundary_ms'], result['bench'][f'bench-{size}-taa-on']['boundary_ms']
@@ -785,6 +965,21 @@ def main():
             assert blended, f'{prefix}: no history frame changed the colour'
             result['cases'][prefix]['frames_changed_by_history'] = blended
         assert result['cases']['seam-taa-on']['color_hashes'] == result['cases']['seam-ownership-taa-on']['color_hashes'], 'resolved colour differs through the wrapper'
+        # Camera reprojection: the switch off with a camera installed equals no
+        # camera at all (bit-identical colour, the pre-change behaviour); the
+        # strict mode without a camera never resolves (the jittered raster);
+        # the camera path changes the colour of history frames (the unrouted
+        # pixels now blend the reprojected previous frame) and of no other.
+        seam_taa, camera_on = result['cases']['seam-taa-on']['color_hashes'], result['cases']['seam-taa-camera-on']['color_hashes']
+        assert result['cases']['seam-taa-camera-sentinel1-on']['color_hashes'] == seam_taa, 'X3M_TAA_SENTINEL=1 with a camera differs from the run without a camera'
+        assert result['cases']['seam-taa-sentinel2-nocamera-on']['color_hashes'] == jittered, 'strict mode without a camera changed the colour'
+        assert all(camera_on[f] == seam_taa[f] for f in camera_on if f not in SEAM_TAA_HISTORY), 'camera path changed a frame without history'
+        camera_changed = [f for f in camera_on if f in SEAM_TAA_HISTORY - CAMERA_CUT_FRAMES and camera_on[f] != seam_taa[f]]
+        assert camera_changed, 'camera path changed no history frame'
+        assert camera_on[7] == jittered[7], 'the camera-cut frame is not the jittered raster'
+        assert result['cases']['seam-taa-camera-sentinel2-on']['color_hashes'] == camera_on, 'strict mode with a camera differs from auto'
+        result['camera'] = {'frames_changed_by_camera_path': camera_changed, 'switch_off_equals_no_camera': True, 'strict_without_camera_never_resolves': True,
+                            'envmap': {k: result['cases']['seam-taa-envmap'][k] for k in ('rejected_frames', 'routed_per_frame', 'camera_valid_per_frame')}}
         result['color_identical_off_vs_on'] = True
         result['color_identical_across_variants'] = True
         result['jitter_changes_color'] = True

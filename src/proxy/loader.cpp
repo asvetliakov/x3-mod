@@ -1,6 +1,7 @@
 #include "capture.h"
 #include "telemetry.h"
 #include "object_trace.h"
+#include "camera_state.h"
 #include "object_lifetime.h"
 #include "../ownership/d3d9_ownership.h"
 #include "../ownership/application_admission_abi.h"
@@ -52,6 +53,8 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
         x3m::object_trace::initialize();
         x3m::log("object_trace active=%u status=%s recovery_required=%u",x3m::object_trace::active(),x3m::object_trace::status(),x3m::object_trace::recovery_required());
         x3m::object_lifetime::initialize();
+        x3m::camera_state::initialize(); // X3M_MOTION_OUTPUT=1 X3M_TAA=1; reads only, no patch
+        x3m::log("camera_state active=%u status=%s",x3m::camera_state::available(),x3m::camera_state::status());
         const auto lifetime_stats=x3m::object_lifetime::stats();
         x3m::log("object_lifetime active=%u status=%s recovery_required=%u baseline_complete=%u baseline_entries=%lu",
             x3m::object_lifetime::active(),x3m::object_lifetime::status(),x3m::object_lifetime::recovery_required(),

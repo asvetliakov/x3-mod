@@ -231,6 +231,72 @@ resolve, its copies and the copy-back, CPU-inclusive. Details, hashes and
 the per-frame bench samples: `verification/results/motion-output-summary.json`
 (`cases` and `bench`), capture logs `motion-output-*-taa-on-capture.log`.
 
+### Camera reprojection cases
+
+Five seam runs cover the route's camera read, the sentinel policy switch
+and the environment-map exclusion
+([temporal-integration.md](../architecture/temporal-integration.md#camera-reprojection-for-sentinel-pixels-2026-09-12)).
+The fixture keeps its own projection and view buffers and, with
+`X3M_FIXTURE_CAMERA=rotate`, installs the two pointer slots as the engine
+camera globals through the seam export `x3m_camera_state_fixture_install`
+(the identity gate is bypassed; the production DLL and the seam without the
+install report `camera=executable_mismatch` and read nothing). The scene
+view yaws one degree per frame with a 30-degree jump at frame 7 (`m00` 0.8,
+`m11` 4/3, a translation of `(12.5, -3, 1000)` that the far-plane transform
+must ignore), written before the depth-only Clear where the route reads it.
+The reference resolve on the second device is driven by the same builder
+(`camera_sentinel_policy` from the fixture's current and history views), so
+the byte-for-byte comparison of the DLL's resolved image also proves the
+DLL read the buffers, validated them, built the same matrix and chose the
+same policy; the fixture prints its decision per frame (`CAMERA_EXPECT`) and
+the runner compares it with the DLL's `motion_output_frame` fields and
+`camera_state` lines (policy, reason, cut, rotation, `p00 p11`, `r00..r22`,
+`t`, read counts, the history's view).
+
+- `seam-taa-camera-on` (auto): policy 2 on every frame with a previous
+  view (1-6, 8, 10, 11), policy 1 on frame 0 (no previous view), frame 7
+  (rotation 31 degrees: a camera cut, `camera_cut=1`, current-only, the
+  raster unchanged) and frame 9 (after Reset); history on frames 1, 2, 4,
+  10, 11 (the script's cuts plus the camera cut); the resolved image equals
+  the reference on all 12 frames; the camera path changes the colour of
+  history frames only (unrouted pixels now blend the reprojected previous
+  frame). 164 fixture checks.
+- `seam-taa-camera-sentinel1-on` (switch off): policy 1 everywhere, no
+  camera cut (frame 7 keeps its history), and the colour of every frame is
+  bit-identical to `seam-taa-on` (no camera installed) — which itself is
+  bit-identical to the pre-change run (compared against the previous
+  `motion-output-summary.json` hashes during development). 163 checks.
+- `seam-taa-camera-sentinel2-on` (strict, camera readable): identical to
+  auto (nothing skipped). 164 checks.
+- `seam-taa-sentinel2-nocamera-on` (strict, no camera): every frame is
+  attempted and skipped (`taa_skip=9`, `taa_resolved=0`), no debug
+  readbacks, the colour equals the jittered raster. 145 checks.
+- `seam-taa-envmap` (mode `envmap`, camera, auto): five frames — routed,
+  environment map between the background draw and the depth Clear, routed,
+  environment map before the initial Clear, routed. The environment-map
+  frames show `routed=0 gate2=9 draws=9 selector_state=9 taa_skip=2
+  camera_valid=0` (the selector rejected at the first face's
+  `SetRenderTarget`, before any face Clear could latch; the second placement
+  does not even latch: `latched=0 filled=0 camera_reads=0`), no
+  `motion_route` line, RT1 all sentinel in the captured frame, and the
+  `camera_state` line with the scene view unread and the history's view
+  dropped; the routed frames after them resolve without history
+  (`cut=1 cut_missing=1.0000`: the rejected frame recorded no rows) and
+  start again without a previous view (`camera_reason=3`). 62 checks, 18
+  restorations.
+
+Bench with the 3,840-word resolve (policy 1 in the bench: the production
+DLL has no camera in the synthetic process, and the camera read adds two
+64-byte copies per frame at the Clear hooks, outside the boundary): boundary
+median 0.351 ms (resolve off) versus 0.738 ms (on) at 1280x768 and 0.487
+versus 2.243 ms at 5120x1440, i.e. **0.387 ms** and **1.756 ms** for the
+resolve, its copies and the copy-back, CPU-inclusive (previous program:
+0.320 / 1.623 ms from boundaries of 0.683 / 2.239 ms; the 1280x768 delta
+moved with the off-side median, 0.362 to 0.351 ms, within the run-to-run
+spread of these EVENT-synchronized samples). Per-case results, the camera
+decisions per frame and the environment-map counters:
+`verification/results/motion-output-summary.json` (`cases`, `camera`).
+
 ## Ownership wrapper interaction
 
 With `X3M_OWNERSHIP=1` the loader wraps the factory, `CreateDevice` returns

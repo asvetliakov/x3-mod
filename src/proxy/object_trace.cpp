@@ -134,17 +134,34 @@ bool fingerprint(HMODULE module) {
     if(provider)CryptReleaseContext(provider,0);
     CloseHandle(file);return ok;
 }
+// The exact-executable identity: preferred base, PE headers of the expected
+// image extent and the SHA-256 of the file on disk. Evaluated once per process
+// (the hash reads 2 MB); shared with every module that reads engine globals.
+bool verified_image() {
+    static int cached=-1;
+    if(cached>=0)return cached==1;
+    HMODULE module=GetModuleHandleW(nullptr);
+    IMAGE_DOS_HEADER dos{};IMAGE_NT_HEADERS32 nt{};
+    const uintptr_t base=reinterpret_cast<uintptr_t>(module);
+    const bool valid=base==0x400000&&read_memory(base,&dos,sizeof dos)&&dos.e_magic==IMAGE_DOS_SIGNATURE&&dos.e_lfanew>0&&dos.e_lfanew<0x1000&&
+        read_memory(base+dos.e_lfanew,&nt,sizeof nt)&&nt.Signature==IMAGE_NT_SIGNATURE&&nt.FileHeader.Machine==IMAGE_FILE_MACHINE_I386&&nt.OptionalHeader.Magic==IMAGE_NT_OPTIONAL_HDR32_MAGIC&&nt.OptionalHeader.SizeOfImage>0x208b40&&fingerprint(module);
+    cached=valid?1:0;
+    return valid;
+}
+}
+bool executable_verified() {
+    const DWORD error=GetLastError();
+    const bool valid=verified_image();
+    SetLastError(error);
+    return valid;
 }
 bool initialize() {
     const DWORD error=GetLastError();
     if(installed){const bool enabled=observation.load();SetLastError(error);return enabled;}
     wchar_t setting[4]{};
     if(GetEnvironmentVariableW(L"X3M_OBJECT_TRACE",setting,4)!=1||setting[0]!=L'1'){state="disabled";SetLastError(error);return false;}
-    HMODULE module=GetModuleHandleW(nullptr);
-    IMAGE_DOS_HEADER dos{};IMAGE_NT_HEADERS32 nt{};
-    const uintptr_t base=reinterpret_cast<uintptr_t>(module);
-    bool valid=base==0x400000&&read_memory(base,&dos,sizeof dos)&&dos.e_magic==IMAGE_DOS_SIGNATURE&&dos.e_lfanew>0&&dos.e_lfanew<0x1000&&
-        read_memory(base+dos.e_lfanew,&nt,sizeof nt)&&nt.Signature==IMAGE_NT_SIGNATURE&&nt.FileHeader.Machine==IMAGE_FILE_MACHINE_I386&&nt.OptionalHeader.Magic==IMAGE_NT_OPTIONAL_HDR32_MAGIC&&nt.OptionalHeader.SizeOfImage>0x208b40&&fingerprint(module);
+    const uintptr_t base=0x400000;
+    bool valid=verified_image();
     static constexpr unsigned char expected[]={0xe8,0x23,0xaf,0xff,0xff};
     unsigned char call[5]{};
     valid=valid&&read_memory(base+0xc5228,call,5)&&!std::memcmp(call,expected,5);

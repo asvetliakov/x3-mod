@@ -209,3 +209,13 @@ functions, scan false positives, cost) and the synthetic Wine verification are
 in [docs/verification/sampling-profiler.md](../verification/sampling-profiler.md).
 No game session has been profiled yet; the next user-run loading session with
 `--telemetry --profile --mesh-cache` provides the first attribution.
+
+`tools/analysis/analyze_loading_profile.py <session.log> --output <dir> --ghidra`
+runs that chain in one command: every presentation gap over 2 s and every
+report stall inside it gets the hooked operation table next to the sampled
+per-thread module split, the leaf samples aggregated by containing function
+(symbolized headless with Ghidra, labelled from
+`tools/analysis/x3ap_function_labels.json`), the caller pairs and a mechanical
+candidates paragraph. On the iteration-08 run-A log (no `profile_*` lines) it
+renders the three gaps and their five stalls with a "No profile data" note in
+1.6 s, so the first profiled session needs no further tooling to be read.

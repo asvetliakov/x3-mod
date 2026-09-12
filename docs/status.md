@@ -95,6 +95,28 @@ Evidence at this checkpoint (details in the linked documents):
   runs, ownership 26, fallback, temporal pass 318/164, temporal 78/78, scene
   capture 4,908 checks, no-x87, 503 analysis tests.
 
+- **Camera reprojection for sentinel pixels** ([design](architecture/temporal-integration.md)
+  "Camera reprojection for sentinel pixels", [review 20](verification/review-20.md)):
+  the route reads the engine's projection and view buffers at the scene's
+  depth Clear behind the verified-executable gate, builds the far-plane
+  transform (rotation only, translation ignored) once per frame and runs
+  sentinel policy 2 automatically when both frames are valid and the rotation
+  is below `X3M_CAMERA_CUT_DEG` (20°; larger rotations reset history). Fixture:
+  background drift under 90° yaw 0.06 px unjittered / 0.12–0.18 px jittered,
+  versus 0.86–1.05 px crawl without it; a 25° jump produces an exact cut; the
+  environment-map frame is rejected by the selector and drops history and
+  camera state. Colour is bit-identical with the switch at 1. Resolve program
+  3,840 words; boundary 0.74 ms at 1280×768, 2.24 ms at 5120×1440.
+  `tools/analysis/analyze_camera_state.py` cross-checks the read matrices
+  against the shadowed constant rows on the next run.
+- **Loading attribution pipeline**: `tools/analysis/analyze_loading_profile.py`
+  turns a `--telemetry --profile` log into per-gap tables (hooked time next to
+  sampled attribution by function, symbolized through Ghidra); dry run on the
+  iteration-8 log reproduces the gap figures in 1.6 s.
+
+**Installed (2026-09-12, after review 20):** `build/d3d9.dll` from the camera
+reprojection checkpoint, SHA-256 `27f693429e2c85692db8437efdf7b8010410aba1336387f0b76bb05e4892638a`, through `tools/manage.py install`.
+
 **Installed (2026-09-12, after review 19):** `build/d3d9.dll` from commit
 `459ddfa`, SHA-256
 `4380a720be5d2e786b502d338e507af750515654177ba4174cf9b346975266ca`, through
@@ -102,8 +124,7 @@ Evidence at this checkpoint (details in the linked documents):
 installed build (commit `162b2f7`, `200aefff…`) is superseded; rollbacks stay
 in `artifacts/rollback/`.
 
-Next (in order): camera reprojection for sentinel pixels from the live camera
-globals (policy 2), the env-map exclusion, then the user runs: TAA on with
+Next (in order): the user runs: TAA on with
 `--profile --mesh-cache` for loading attribution and quality, and a proxy run
 with the route off for the cost baseline.
 
@@ -281,10 +302,9 @@ recover projection) so background and effects stop crawling when turning.
 
 ## Concrete next work
 
-1. Camera reprojection for sentinel pixels: read the projection and view
-   globals at the per-view Clear, build `clip_to_previous`, enable sentinel
-   policy 2, exclude the environment-map render from history; verify against
-   the c34–36 constant rows in capture frames.
+1. Verify camera reprojection on the next run: `analyze_camera_state.py`
+   against the shadowed constant rows, policy/cut distributions, and the
+   `selector_state=9` (environment-map) frequency.
 2. User runs with the next installed build: TAA on with
    `--telemetry --profile --mesh-cache` (loading attribution, adjacency-cache
    hit rate, edge/thin-feature quality), then the same scene with

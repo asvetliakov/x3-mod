@@ -680,6 +680,98 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
+THINLINE mode=sentinel-camera-fill line=1px horizontal interior_delta=0.000000 edge_delta=0.055664 sum_delta=0.000244 drift_px=0.003499 wobble_px=0.051525 centroid=6.8113 analytic_center=6.8700 total_coverage=0.9948 width=1 coverage_error=0.0603
+SAMPLE thin line sentinel-camera-fill 1px horizontal: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera-fill 1px horizontal: edge max delta between consecutive phases actual=0.055664062 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px horizontal: cross-section brightness delta between consecutive phases actual=0.000244141 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera-fill 1px horizontal: centroid drift between consecutive periods (px) actual=0.003499387 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px horizontal: centroid wobble across phases (px) actual=0.051524591 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px horizontal: centroid at the analytic line center (px) actual=6.811341381 expected=6.869999981 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px horizontal: total coverage within 20% of the line width actual=0.994832357 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px horizontal: per-row coverage converges to the analytic coverage actual=0.060266927 expected=0.000000000 tolerance=0.100000000 PASS
+THINLINE mode=sentinel-camera-fill line=2px horizontal interior_delta=0.000000 edge_delta=0.047363 sum_delta=0.000000 drift_px=0.006652 wobble_px=0.071947 centroid=15.5616 analytic_center=15.5900 total_coverage=1.9941 width=2 coverage_error=0.0315
+SAMPLE thin line sentinel-camera-fill 2px horizontal: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera-fill 2px horizontal: edge max delta between consecutive phases actual=0.047363281 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line sentinel-camera-fill 2px horizontal: cross-section brightness delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera-fill 2px horizontal: centroid drift between consecutive periods (px) actual=0.006651975 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line sentinel-camera-fill 2px horizontal: centroid wobble across phases (px) actual=0.071947437 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera-fill 2px horizontal: centroid at the analytic line center (px) actual=15.561581783 expected=15.590000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera-fill 2px horizontal: total coverage within 20% of the line width actual=0.997070312 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line sentinel-camera-fill 2px horizontal: per-row coverage converges to the analytic coverage actual=0.031528320 expected=0.000000000 tolerance=0.100000000 PASS
+THINLINE mode=sentinel-camera-fill line=1px vertical interior_delta=0.000000 edge_delta=0.059326 sum_delta=0.000244 drift_px=0.003007 wobble_px=0.041353 centroid=12.7488 analytic_center=12.7800 total_coverage=0.9956 width=1 coverage_error=0.0322
+SAMPLE thin line sentinel-camera-fill 1px vertical: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera-fill 1px vertical: edge max delta between consecutive phases actual=0.059326172 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px vertical: cross-section brightness delta between consecutive phases actual=0.000244141 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera-fill 1px vertical: centroid drift between consecutive periods (px) actual=0.003006844 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px vertical: centroid wobble across phases (px) actual=0.041352785 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px vertical: centroid at the analytic line center (px) actual=12.748843293 expected=12.780000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px vertical: total coverage within 20% of the line width actual=0.995646159 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px vertical: per-row coverage converges to the analytic coverage actual=0.032237956 expected=0.000000000 tolerance=0.100000000 PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
 THINLINE mode=sentinel-current-only line=1px horizontal interior_delta=0.000000 edge_delta=0.202881 sum_delta=0.127930 drift_px=0.000000 wobble_px=0.687500 centroid=6.8125 analytic_center=6.8700 total_coverage=0.1387 width=1 coverage_error=0.5226
 THINLINE mode=sentinel-current-only line=2px horizontal interior_delta=0.000000 edge_delta=0.189453 sum_delta=0.062256 drift_px=0.000000 wobble_px=0.226871 centroid=15.5252 analytic_center=15.5900 total_coverage=1.1903 width=2 coverage_error=0.4790
 THINLINE mode=sentinel-current-only line=1px vertical interior_delta=0.000000 edge_delta=0.202881 sum_delta=0.127930 drift_px=0.000000 wobble_px=0.750000 centroid=12.7500 analytic_center=12.7800 total_coverage=0.1650 width=1 coverage_error=0.5799
@@ -858,6 +950,71 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
+SILRING mode=sentinel-camera-fill x=11 y=10 resolved=0.6920 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000553
+SILRING mode=sentinel-camera-fill x=12 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=sentinel-camera-fill x=13 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=sentinel-camera-fill x=14 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=sentinel-camera-fill x=15 y=10 resolved=0.6851 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000517
+SILRING mode=sentinel-camera-fill x=10 y=11 resolved=0.7275 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.000613
+SILRING mode=sentinel-camera-fill x=10 y=15 resolved=0.7168 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.000633
+SILRING mode=sentinel-camera-fill x=16 y=15 resolved=0.2262 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.000598
+SILRING mode=sentinel-camera-fill x=11 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera-fill x=12 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera-fill x=13 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera-fill x=14 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera-fill x=15 y=16 resolved=0.2861 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000697
+SILHOUETTE mode=sentinel-camera-fill ring=24 raw_variance=0.109497 resolved_variance=0.000614 ratio=178.32 dc_error=0.0332 coverage_error=0.0839 interior_delta=0.000000 ghost_max=0.000000 moving_interior_min=1.0000
+SAMPLE silhouette sentinel-camera-fill: edge variance across phases reduced at least 4x actual=100.000000000 expected=100.000000000 tolerance=96.000000000 PASS
+SAMPLE silhouette sentinel-camera-fill: edge coverage equals the jitter-sampled coverage within the variance-clip bias actual=0.033203125 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE silhouette sentinel-camera-fill: edge coverage converges to the analytic coverage actual=0.083948568 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE silhouette sentinel-camera-fill: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE silhouette sentinel-camera-fill: revealed background carries no square color beyond the clamp actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE silhouette sentinel-camera-fill: moving square interior stays bright actual=1.000000000 expected=1.000000000 tolerance=0.100000000 PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
 SILRING mode=sentinel-current-only x=10 y=10 resolved=0.0668 sampled=0.5000 analytic=0.4536 raw_variance=0.1406 resolved_variance=0.003043
 SILRING mode=sentinel-current-only x=11 y=10 resolved=0.1323 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.005727
 SILRING mode=sentinel-current-only x=12 y=10 resolved=0.1524 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.006973
@@ -952,6 +1109,900 @@ BLUR velocity=0.25 input_amplitude=0.3599 shader_ratio=0.9296 catmull_rom_model_
 SAMPLE scrolling wave: shader matches the Catmull-Rom CPU model actual=0.003417969 expected=0.000000000 tolerance=0.010000000 PASS
 SAMPLE scrolling wave: period-8 amplitude of the output over the input (Catmull-Rom) actual=0.929624727 expected=1.000000000 tolerance=0.100000000 PASS
 SAMPLE scrolling wave: Catmull-Rom keeps more amplitude than the previous bilinear filter actual=0.217421659 expected=1.000000000 tolerance=0.900000000 PASS
+CAMERA_CASES
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=static-builder frame=16 shift_px=-0.020,-0.058 baseline_px=0.000,0.000 drift_px=0.0579 error=0.00611 used=1 policy=2
+CAMERA_FRAME label=static-builder frame=24 shift_px=-0.032,-0.048 baseline_px=0.000,0.000 drift_px=0.0477 error=0.00590 used=1 policy=2
+CAMERA_FRAME label=static-builder frame=32 shift_px=-0.024,-0.041 baseline_px=0.000,0.000 drift_px=0.0409 error=0.00513 used=1 policy=2
+CAMERA_FRAME label=static-builder frame=40 shift_px=-0.033,-0.040 baseline_px=0.000,0.000 drift_px=0.0403 error=0.00562 used=1 policy=2
+CAMERA label=static-builder frames=48 from=16 drift_px=0.0686 error=0.00753 baseline=0
+SAMPLE camera static: jitter-set bias of the accumulated output against the unjittered render (px) actual=0.068632421 expected=0.000000000 tolerance=0.150000000 PASS
+SAMPLE camera static: mean absolute error against the unjittered render actual=0.007529602 expected=0.000000000 tolerance=0.020000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK yaw frames take the camera path PASS
+CHECK yaw frames use history after the first PASS
+CAMERA_FRAME label=yaw-builder frame=16 shift_px=-0.007,-0.064 baseline_px=-0.020,-0.058 drift_px=0.0123 error=0.01112 used=1 policy=2
+CAMERA_FRAME label=yaw-builder frame=24 shift_px=0.021,-0.017 baseline_px=-0.032,-0.048 drift_px=0.0526 error=0.00833 used=1 policy=2
+CAMERA_FRAME label=yaw-builder frame=32 shift_px=0.040,-0.017 baseline_px=-0.024,-0.041 drift_px=0.0639 error=0.01094 used=1 policy=2
+CAMERA_FRAME label=yaw-builder frame=40 shift_px=0.036,0.005 baseline_px=-0.033,-0.040 drift_px=0.0694 error=0.00933 used=1 policy=2
+CAMERA label=yaw-builder frames=48 from=16 drift_px=0.1243 error=0.01518 baseline=1
+SAMPLE camera yaw: resolved background tracks the current render (drift px against the static control) actual=0.124336705 expected=0.000000000 tolerance=0.200000000 PASS
+SAMPLE camera yaw: mean absolute error against the unjittered render actual=0.015180664 expected=0.000000000 tolerance=0.030000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=pitch-builder frame=16 shift_px=-0.018,-0.142 baseline_px=-0.020,-0.058 drift_px=0.0837 error=0.01361 used=1 policy=2
+CAMERA_FRAME label=pitch-builder frame=24 shift_px=-0.026,-0.224 baseline_px=-0.032,-0.048 drift_px=0.1764 error=0.01561 used=1 policy=2
+CAMERA_FRAME label=pitch-builder frame=32 shift_px=0.001,-0.148 baseline_px=-0.024,-0.041 drift_px=0.1072 error=0.01289 used=1 policy=2
+CAMERA_FRAME label=pitch-builder frame=40 shift_px=-0.066,-0.082 baseline_px=-0.033,-0.040 drift_px=0.0419 error=0.01611 used=1 policy=2
+CAMERA label=pitch-builder frames=48 from=16 drift_px=0.1764 error=0.01611 baseline=1
+SAMPLE camera pitch: resolved background tracks the current render (drift px against the static control) actual=0.176362054 expected=0.000000000 tolerance=0.200000000 PASS
+SAMPLE camera pitch: mean absolute error against the unjittered render actual=0.016111298 expected=0.000000000 tolerance=0.030000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=yaw-builder-unjittered frame=16 shift_px=0.052,0.000 baseline_px=0.000,0.000 drift_px=0.0523 error=0.00500 used=1 policy=2
+CAMERA_FRAME label=yaw-builder-unjittered frame=24 shift_px=0.058,0.000 baseline_px=0.000,0.000 drift_px=0.0585 error=0.00518 used=1 policy=2
+CAMERA_FRAME label=yaw-builder-unjittered frame=32 shift_px=0.061,0.000 baseline_px=0.000,0.000 drift_px=0.0610 error=0.00567 used=1 policy=2
+CAMERA_FRAME label=yaw-builder-unjittered frame=40 shift_px=0.057,0.000 baseline_px=0.000,0.000 drift_px=0.0572 error=0.00545 used=1 policy=2
+CAMERA label=yaw-builder-unjittered frames=48 from=16 drift_px=0.0619 error=0.00578 baseline=0
+SAMPLE camera yaw unjittered: drift px against the unjittered render actual=0.061917235 expected=0.000000000 tolerance=0.100000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=16 shift_px=-0.020,-0.000 baseline_px=0.000,0.000 drift_px=0.0201 error=0.00602 used=1 policy=2
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=24 shift_px=-0.023,0.000 baseline_px=0.000,0.000 drift_px=0.0225 error=0.00656 used=1 policy=2
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=32 shift_px=-0.025,-0.000 baseline_px=0.000,0.000 drift_px=0.0253 error=0.00738 used=1 policy=2
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=40 shift_px=-0.026,-0.000 baseline_px=0.000,0.000 drift_px=0.0258 error=0.00731 used=1 policy=2
+CAMERA label=narrow-yaw-builder-unjittered frames=48 from=16 drift_px=0.0263 error=0.00807 baseline=0
+SAMPLE camera narrow yaw unjittered: drift px against the unjittered render actual=0.026322441 expected=0.000000000 tolerance=0.050000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=yaw-single-step frame=1 shift_px=0.007,-0.000 baseline_px=0.000,0.000 drift_px=0.0069 error=0.00088 used=1 policy=2
+CAMERA_FRAME label=yaw-single-step frame=2 shift_px=0.015,-0.000 baseline_px=0.000,0.000 drift_px=0.0146 error=0.00166 used=1 policy=2
+CAMERA_FRAME label=yaw-single-step frame=3 shift_px=0.020,-0.000 baseline_px=0.000,0.000 drift_px=0.0198 error=0.00227 used=1 policy=2
+CAMERA_FRAME label=yaw-single-step frame=4 shift_px=0.027,0.000 baseline_px=0.000,0.000 drift_px=0.0265 error=0.00298 used=1 policy=2
+CAMERA_FRAME label=yaw-single-step frame=5 shift_px=0.033,0.000 baseline_px=0.000,0.000 drift_px=0.0334 error=0.00367 used=1 policy=2
+CAMERA label=yaw-single-step frames=6 from=1 drift_px=0.0334 error=0.00367 baseline=0
+SAMPLE camera yaw: five chained reprojections of one render (drift px) actual=0.033427860 expected=0.000000000 tolerance=0.050000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=pitch-single-step frame=1 shift_px=0.000,-0.006 baseline_px=0.000,0.000 drift_px=0.0064 error=0.00079 used=1 policy=2
+CAMERA_FRAME label=pitch-single-step frame=2 shift_px=0.000,-0.013 baseline_px=0.000,0.000 drift_px=0.0130 error=0.00143 used=1 policy=2
+CAMERA_FRAME label=pitch-single-step frame=3 shift_px=0.000,-0.018 baseline_px=0.000,0.000 drift_px=0.0175 error=0.00198 used=1 policy=2
+CAMERA_FRAME label=pitch-single-step frame=4 shift_px=0.000,-0.023 baseline_px=0.000,0.000 drift_px=0.0234 error=0.00258 used=1 policy=2
+CAMERA_FRAME label=pitch-single-step frame=5 shift_px=0.000,-0.029 baseline_px=0.000,0.000 drift_px=0.0292 error=0.00314 used=1 policy=2
+CAMERA label=pitch-single-step frames=6 from=1 drift_px=0.0292 error=0.00314 baseline=0
+SAMPLE camera pitch: five chained reprojections of one render (drift px) actual=0.029160553 expected=0.000000000 tolerance=0.050000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=yaw-identity frame=16 shift_px=0.709,-0.020 baseline_px=-0.020,-0.058 drift_px=0.7291 error=0.06511 used=1 policy=2
+CAMERA_FRAME label=yaw-identity frame=24 shift_px=0.658,0.032 baseline_px=-0.032,-0.048 drift_px=0.6896 error=0.05867 used=1 policy=2
+CAMERA_FRAME label=yaw-identity frame=32 shift_px=0.676,-0.004 baseline_px=-0.024,-0.041 drift_px=0.6996 error=0.06392 used=1 policy=2
+CAMERA_FRAME label=yaw-identity frame=40 shift_px=0.651,0.039 baseline_px=-0.033,-0.040 drift_px=0.6841 error=0.06225 used=1 policy=2
+CAMERA label=yaw-identity frames=48 from=16 drift_px=0.8621 error=0.07596 baseline=1
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=yaw-swapped frame=16 shift_px=0.703,-0.012 baseline_px=-0.020,-0.058 drift_px=0.7223 error=0.06880 used=1 policy=2
+CAMERA_FRAME label=yaw-swapped frame=24 shift_px=0.678,-0.024 baseline_px=-0.032,-0.048 drift_px=0.7104 error=0.06308 used=1 policy=2
+CAMERA_FRAME label=yaw-swapped frame=32 shift_px=0.699,-0.012 baseline_px=-0.024,-0.041 drift_px=0.7221 error=0.06802 used=1 policy=2
+CAMERA_FRAME label=yaw-swapped frame=40 shift_px=0.560,0.005 baseline_px=-0.033,-0.040 drift_px=0.5933 error=0.06364 used=1 policy=2
+CAMERA label=yaw-swapped frames=48 from=16 drift_px=1.0506 error=0.08649 baseline=1
+SAMPLE camera yaw: identity matrix under policy 2 crawls (drift px, at least 0.5) actual=0.862084327 expected=1.000000000 tolerance=0.500000000 PASS
+SAMPLE camera yaw: identity matrix under policy 2 crawls (mean absolute error, at least 0.05) actual=0.075955658 expected=0.100000000 tolerance=0.050000000 PASS
+SAMPLE camera yaw: swapped rotation convention drifts (drift px, at least 0.5) actual=1.000000000 expected=1.000000000 tolerance=0.500000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK a 25-degree rotation is a cut and the policy falls back to 1 for that frame only PASS
+CHECK the cut frame runs current-only and history resumes PASS
+SAMPLE camera cut: the cut frame equals its render exactly (no ghost) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CAMERA_FRAME label=yaw-cut-resumed frame=32 shift_px=-0.058,-0.036 baseline_px=-0.024,-0.041 drift_px=0.0344 error=0.01026 used=1 policy=2
+CAMERA label=yaw-cut-resumed frames=40 from=26 drift_px=0.1004 error=0.01353 baseline=1
+SAMPLE camera cut: tracking resumes after the cut (drift px against the static control) actual=0.100373547 expected=0.000000000 tolerance=0.200000000 PASS
+SAMPLE camera yaw: reported rotation per frame (degrees) actual=0.499836653 expected=0.500000000 tolerance=0.001000000 PASS
+SAMPLE camera cut: reported rotation of the jump (degrees) actual=25.500000000 expected=25.500000000 tolerance=0.010000000 PASS
 RESET_CONTINUITY
 CHECK before reset frame PASS
 CHECK atomic outputs valid PASS
@@ -1653,6 +2704,98 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
+THINLINE mode=sentinel-camera-fill line=1px horizontal interior_delta=0.000000 edge_delta=0.055664 sum_delta=0.000244 drift_px=0.003499 wobble_px=0.051525 centroid=6.8113 analytic_center=6.8700 total_coverage=0.9948 width=1 coverage_error=0.0603
+SAMPLE thin line sentinel-camera-fill 1px horizontal: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera-fill 1px horizontal: edge max delta between consecutive phases actual=0.055664062 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px horizontal: cross-section brightness delta between consecutive phases actual=0.000244141 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera-fill 1px horizontal: centroid drift between consecutive periods (px) actual=0.003499387 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px horizontal: centroid wobble across phases (px) actual=0.051524591 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px horizontal: centroid at the analytic line center (px) actual=6.811341381 expected=6.869999981 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px horizontal: total coverage within 20% of the line width actual=0.994832357 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px horizontal: per-row coverage converges to the analytic coverage actual=0.060266927 expected=0.000000000 tolerance=0.100000000 PASS
+THINLINE mode=sentinel-camera-fill line=2px horizontal interior_delta=0.000000 edge_delta=0.047363 sum_delta=0.000000 drift_px=0.006652 wobble_px=0.071947 centroid=15.5616 analytic_center=15.5900 total_coverage=1.9941 width=2 coverage_error=0.0315
+SAMPLE thin line sentinel-camera-fill 2px horizontal: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera-fill 2px horizontal: edge max delta between consecutive phases actual=0.047363281 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line sentinel-camera-fill 2px horizontal: cross-section brightness delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera-fill 2px horizontal: centroid drift between consecutive periods (px) actual=0.006651975 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line sentinel-camera-fill 2px horizontal: centroid wobble across phases (px) actual=0.071947437 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera-fill 2px horizontal: centroid at the analytic line center (px) actual=15.561581783 expected=15.590000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera-fill 2px horizontal: total coverage within 20% of the line width actual=0.997070312 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line sentinel-camera-fill 2px horizontal: per-row coverage converges to the analytic coverage actual=0.031528320 expected=0.000000000 tolerance=0.100000000 PASS
+THINLINE mode=sentinel-camera-fill line=1px vertical interior_delta=0.000000 edge_delta=0.059326 sum_delta=0.000244 drift_px=0.003007 wobble_px=0.041353 centroid=12.7488 analytic_center=12.7800 total_coverage=0.9956 width=1 coverage_error=0.0322
+SAMPLE thin line sentinel-camera-fill 1px vertical: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera-fill 1px vertical: edge max delta between consecutive phases actual=0.059326172 expected=0.000000000 tolerance=0.077000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px vertical: cross-section brightness delta between consecutive phases actual=0.000244141 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE thin line sentinel-camera-fill 1px vertical: centroid drift between consecutive periods (px) actual=0.003006844 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px vertical: centroid wobble across phases (px) actual=0.041352785 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px vertical: centroid at the analytic line center (px) actual=12.748843293 expected=12.780000000 tolerance=0.100000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px vertical: total coverage within 20% of the line width actual=0.995646159 expected=1.000000000 tolerance=0.200000000 PASS
+SAMPLE thin line sentinel-camera-fill 1px vertical: per-row coverage converges to the analytic coverage actual=0.032237956 expected=0.000000000 tolerance=0.100000000 PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
 THINLINE mode=sentinel-current-only line=1px horizontal interior_delta=0.000000 edge_delta=0.202881 sum_delta=0.127930 drift_px=0.000000 wobble_px=0.687500 centroid=6.8125 analytic_center=6.8700 total_coverage=0.1387 width=1 coverage_error=0.5226
 THINLINE mode=sentinel-current-only line=2px horizontal interior_delta=0.000000 edge_delta=0.189453 sum_delta=0.062256 drift_px=0.000000 wobble_px=0.226871 centroid=15.5252 analytic_center=15.5900 total_coverage=1.1903 width=2 coverage_error=0.4790
 THINLINE mode=sentinel-current-only line=1px vertical interior_delta=0.000000 edge_delta=0.202881 sum_delta=0.127930 drift_px=0.000000 wobble_px=0.750000 centroid=12.7500 analytic_center=12.7800 total_coverage=0.1650 width=1 coverage_error=0.5799
@@ -1831,6 +2974,71 @@ CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
 CHECK edge history follows the sequence PASS
+SILRING mode=sentinel-camera-fill x=11 y=10 resolved=0.6920 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000553
+SILRING mode=sentinel-camera-fill x=12 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=sentinel-camera-fill x=13 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=sentinel-camera-fill x=14 y=10 resolved=0.7022 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000644
+SILRING mode=sentinel-camera-fill x=15 y=10 resolved=0.6851 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.000517
+SILRING mode=sentinel-camera-fill x=10 y=11 resolved=0.7275 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.000613
+SILRING mode=sentinel-camera-fill x=10 y=15 resolved=0.7168 sampled=0.7500 analytic=0.7200 raw_variance=0.1055 resolved_variance=0.000633
+SILRING mode=sentinel-camera-fill x=16 y=15 resolved=0.2262 sampled=0.2500 analytic=0.2800 raw_variance=0.1055 resolved_variance=0.000598
+SILRING mode=sentinel-camera-fill x=11 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera-fill x=12 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera-fill x=13 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera-fill x=14 y=16 resolved=0.2934 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000629
+SILRING mode=sentinel-camera-fill x=15 y=16 resolved=0.2861 sampled=0.3125 analytic=0.3700 raw_variance=0.1208 resolved_variance=0.000697
+SILHOUETTE mode=sentinel-camera-fill ring=24 raw_variance=0.109497 resolved_variance=0.000614 ratio=178.32 dc_error=0.0332 coverage_error=0.0839 interior_delta=0.000000 ghost_max=0.000000 moving_interior_min=1.0000
+SAMPLE silhouette sentinel-camera-fill: edge variance across phases reduced at least 4x actual=100.000000000 expected=100.000000000 tolerance=96.000000000 PASS
+SAMPLE silhouette sentinel-camera-fill: edge coverage equals the jitter-sampled coverage within the variance-clip bias actual=0.033203125 expected=0.000000000 tolerance=0.050000000 PASS
+SAMPLE silhouette sentinel-camera-fill: edge coverage converges to the analytic coverage actual=0.083948568 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE silhouette sentinel-camera-fill: interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE silhouette sentinel-camera-fill: revealed background carries no square color beyond the clamp actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE silhouette sentinel-camera-fill: moving square interior stays bright actual=1.000000000 expected=1.000000000 tolerance=0.100000000 PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
 SILRING mode=sentinel-current-only x=10 y=10 resolved=0.0668 sampled=0.5000 analytic=0.4536 raw_variance=0.1406 resolved_variance=0.003043
 SILRING mode=sentinel-current-only x=11 y=10 resolved=0.1323 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.005727
 SILRING mode=sentinel-current-only x=12 y=10 resolved=0.1524 sampled=0.6875 analytic=0.6300 raw_variance=0.1208 resolved_variance=0.006973
@@ -1925,4 +3133,898 @@ BLUR velocity=0.25 input_amplitude=0.3599 shader_ratio=0.9296 catmull_rom_model_
 SAMPLE scrolling wave: shader matches the Catmull-Rom CPU model actual=0.003417969 expected=0.000000000 tolerance=0.010000000 PASS
 SAMPLE scrolling wave: period-8 amplitude of the output over the input (Catmull-Rom) actual=0.929624727 expected=1.000000000 tolerance=0.100000000 PASS
 SAMPLE scrolling wave: Catmull-Rom keeps more amplitude than the previous bilinear filter actual=0.217421659 expected=1.000000000 tolerance=0.900000000 PASS
-RESULT PASS numerical=318 state_restorations=164 generations=2
+CAMERA_CASES
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=static-builder frame=16 shift_px=-0.020,-0.058 baseline_px=0.000,0.000 drift_px=0.0579 error=0.00611 used=1 policy=2
+CAMERA_FRAME label=static-builder frame=24 shift_px=-0.032,-0.048 baseline_px=0.000,0.000 drift_px=0.0477 error=0.00590 used=1 policy=2
+CAMERA_FRAME label=static-builder frame=32 shift_px=-0.024,-0.041 baseline_px=0.000,0.000 drift_px=0.0409 error=0.00513 used=1 policy=2
+CAMERA_FRAME label=static-builder frame=40 shift_px=-0.033,-0.040 baseline_px=0.000,0.000 drift_px=0.0403 error=0.00562 used=1 policy=2
+CAMERA label=static-builder frames=48 from=16 drift_px=0.0686 error=0.00753 baseline=0
+SAMPLE camera static: jitter-set bias of the accumulated output against the unjittered render (px) actual=0.068632421 expected=0.000000000 tolerance=0.150000000 PASS
+SAMPLE camera static: mean absolute error against the unjittered render actual=0.007529602 expected=0.000000000 tolerance=0.020000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK yaw frames take the camera path PASS
+CHECK yaw frames use history after the first PASS
+CAMERA_FRAME label=yaw-builder frame=16 shift_px=-0.007,-0.064 baseline_px=-0.020,-0.058 drift_px=0.0123 error=0.01112 used=1 policy=2
+CAMERA_FRAME label=yaw-builder frame=24 shift_px=0.021,-0.017 baseline_px=-0.032,-0.048 drift_px=0.0526 error=0.00833 used=1 policy=2
+CAMERA_FRAME label=yaw-builder frame=32 shift_px=0.040,-0.017 baseline_px=-0.024,-0.041 drift_px=0.0639 error=0.01094 used=1 policy=2
+CAMERA_FRAME label=yaw-builder frame=40 shift_px=0.036,0.005 baseline_px=-0.033,-0.040 drift_px=0.0694 error=0.00933 used=1 policy=2
+CAMERA label=yaw-builder frames=48 from=16 drift_px=0.1243 error=0.01518 baseline=1
+SAMPLE camera yaw: resolved background tracks the current render (drift px against the static control) actual=0.124336705 expected=0.000000000 tolerance=0.200000000 PASS
+SAMPLE camera yaw: mean absolute error against the unjittered render actual=0.015180664 expected=0.000000000 tolerance=0.030000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=pitch-builder frame=16 shift_px=-0.018,-0.142 baseline_px=-0.020,-0.058 drift_px=0.0837 error=0.01361 used=1 policy=2
+CAMERA_FRAME label=pitch-builder frame=24 shift_px=-0.026,-0.224 baseline_px=-0.032,-0.048 drift_px=0.1764 error=0.01561 used=1 policy=2
+CAMERA_FRAME label=pitch-builder frame=32 shift_px=0.001,-0.148 baseline_px=-0.024,-0.041 drift_px=0.1072 error=0.01289 used=1 policy=2
+CAMERA_FRAME label=pitch-builder frame=40 shift_px=-0.066,-0.082 baseline_px=-0.033,-0.040 drift_px=0.0419 error=0.01611 used=1 policy=2
+CAMERA label=pitch-builder frames=48 from=16 drift_px=0.1764 error=0.01611 baseline=1
+SAMPLE camera pitch: resolved background tracks the current render (drift px against the static control) actual=0.176362054 expected=0.000000000 tolerance=0.200000000 PASS
+SAMPLE camera pitch: mean absolute error against the unjittered render actual=0.016111298 expected=0.000000000 tolerance=0.030000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=yaw-builder-unjittered frame=16 shift_px=0.052,0.000 baseline_px=0.000,0.000 drift_px=0.0523 error=0.00500 used=1 policy=2
+CAMERA_FRAME label=yaw-builder-unjittered frame=24 shift_px=0.058,0.000 baseline_px=0.000,0.000 drift_px=0.0585 error=0.00518 used=1 policy=2
+CAMERA_FRAME label=yaw-builder-unjittered frame=32 shift_px=0.061,0.000 baseline_px=0.000,0.000 drift_px=0.0610 error=0.00567 used=1 policy=2
+CAMERA_FRAME label=yaw-builder-unjittered frame=40 shift_px=0.057,0.000 baseline_px=0.000,0.000 drift_px=0.0572 error=0.00545 used=1 policy=2
+CAMERA label=yaw-builder-unjittered frames=48 from=16 drift_px=0.0619 error=0.00578 baseline=0
+SAMPLE camera yaw unjittered: drift px against the unjittered render actual=0.061917235 expected=0.000000000 tolerance=0.100000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=16 shift_px=-0.020,-0.000 baseline_px=0.000,0.000 drift_px=0.0201 error=0.00602 used=1 policy=2
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=24 shift_px=-0.023,0.000 baseline_px=0.000,0.000 drift_px=0.0225 error=0.00656 used=1 policy=2
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=32 shift_px=-0.025,-0.000 baseline_px=0.000,0.000 drift_px=0.0253 error=0.00738 used=1 policy=2
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=40 shift_px=-0.026,-0.000 baseline_px=0.000,0.000 drift_px=0.0258 error=0.00731 used=1 policy=2
+CAMERA label=narrow-yaw-builder-unjittered frames=48 from=16 drift_px=0.0263 error=0.00807 baseline=0
+SAMPLE camera narrow yaw unjittered: drift px against the unjittered render actual=0.026322441 expected=0.000000000 tolerance=0.050000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=yaw-single-step frame=1 shift_px=0.007,-0.000 baseline_px=0.000,0.000 drift_px=0.0069 error=0.00088 used=1 policy=2
+CAMERA_FRAME label=yaw-single-step frame=2 shift_px=0.015,-0.000 baseline_px=0.000,0.000 drift_px=0.0146 error=0.00166 used=1 policy=2
+CAMERA_FRAME label=yaw-single-step frame=3 shift_px=0.020,-0.000 baseline_px=0.000,0.000 drift_px=0.0198 error=0.00227 used=1 policy=2
+CAMERA_FRAME label=yaw-single-step frame=4 shift_px=0.027,0.000 baseline_px=0.000,0.000 drift_px=0.0265 error=0.00298 used=1 policy=2
+CAMERA_FRAME label=yaw-single-step frame=5 shift_px=0.033,0.000 baseline_px=0.000,0.000 drift_px=0.0334 error=0.00367 used=1 policy=2
+CAMERA label=yaw-single-step frames=6 from=1 drift_px=0.0334 error=0.00367 baseline=0
+SAMPLE camera yaw: five chained reprojections of one render (drift px) actual=0.033427860 expected=0.000000000 tolerance=0.050000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=pitch-single-step frame=1 shift_px=0.000,-0.006 baseline_px=0.000,0.000 drift_px=0.0064 error=0.00079 used=1 policy=2
+CAMERA_FRAME label=pitch-single-step frame=2 shift_px=0.000,-0.013 baseline_px=0.000,0.000 drift_px=0.0130 error=0.00143 used=1 policy=2
+CAMERA_FRAME label=pitch-single-step frame=3 shift_px=0.000,-0.018 baseline_px=0.000,0.000 drift_px=0.0175 error=0.00198 used=1 policy=2
+CAMERA_FRAME label=pitch-single-step frame=4 shift_px=0.000,-0.023 baseline_px=0.000,0.000 drift_px=0.0234 error=0.00258 used=1 policy=2
+CAMERA_FRAME label=pitch-single-step frame=5 shift_px=0.000,-0.029 baseline_px=0.000,0.000 drift_px=0.0292 error=0.00314 used=1 policy=2
+CAMERA label=pitch-single-step frames=6 from=1 drift_px=0.0292 error=0.00314 baseline=0
+SAMPLE camera pitch: five chained reprojections of one render (drift px) actual=0.029160553 expected=0.000000000 tolerance=0.050000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=yaw-identity frame=16 shift_px=0.709,-0.020 baseline_px=-0.020,-0.058 drift_px=0.7291 error=0.06511 used=1 policy=2
+CAMERA_FRAME label=yaw-identity frame=24 shift_px=0.658,0.032 baseline_px=-0.032,-0.048 drift_px=0.6896 error=0.05867 used=1 policy=2
+CAMERA_FRAME label=yaw-identity frame=32 shift_px=0.676,-0.004 baseline_px=-0.024,-0.041 drift_px=0.6996 error=0.06392 used=1 policy=2
+CAMERA_FRAME label=yaw-identity frame=40 shift_px=0.651,0.039 baseline_px=-0.033,-0.040 drift_px=0.6841 error=0.06225 used=1 policy=2
+CAMERA label=yaw-identity frames=48 from=16 drift_px=0.8621 error=0.07596 baseline=1
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK swapped control builds PASS
+CHECK camera sequence keeps a history PASS
+CAMERA_FRAME label=yaw-swapped frame=16 shift_px=0.703,-0.012 baseline_px=-0.020,-0.058 drift_px=0.7223 error=0.06880 used=1 policy=2
+CAMERA_FRAME label=yaw-swapped frame=24 shift_px=0.678,-0.024 baseline_px=-0.032,-0.048 drift_px=0.7104 error=0.06308 used=1 policy=2
+CAMERA_FRAME label=yaw-swapped frame=32 shift_px=0.699,-0.012 baseline_px=-0.024,-0.041 drift_px=0.7221 error=0.06802 used=1 policy=2
+CAMERA_FRAME label=yaw-swapped frame=40 shift_px=0.560,0.005 baseline_px=-0.033,-0.040 drift_px=0.5933 error=0.06364 used=1 policy=2
+CAMERA label=yaw-swapped frames=48 from=16 drift_px=1.0506 error=0.08649 baseline=1
+SAMPLE camera yaw: identity matrix under policy 2 crawls (drift px, at least 0.5) actual=0.862084327 expected=1.000000000 tolerance=0.500000000 PASS
+SAMPLE camera yaw: identity matrix under policy 2 crawls (mean absolute error, at least 0.05) actual=0.075955658 expected=0.100000000 tolerance=0.050000000 PASS
+SAMPLE camera yaw: swapped rotation convention drifts (drift px, at least 0.5) actual=1.000000000 expected=1.000000000 tolerance=0.500000000 PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK camera pose validates PASS
+CHECK camera sequence keeps a history PASS
+CHECK a 25-degree rotation is a cut and the policy falls back to 1 for that frame only PASS
+CHECK the cut frame runs current-only and history resumes PASS
+SAMPLE camera cut: the cut frame equals its render exactly (no ghost) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CAMERA_FRAME label=yaw-cut-resumed frame=32 shift_px=-0.058,-0.036 baseline_px=-0.024,-0.041 drift_px=0.0344 error=0.01026 used=1 policy=2
+CAMERA label=yaw-cut-resumed frames=40 from=26 drift_px=0.1004 error=0.01353 baseline=1
+SAMPLE camera cut: tracking resumes after the cut (drift px against the static control) actual=0.100373547 expected=0.000000000 tolerance=0.200000000 PASS
+SAMPLE camera yaw: reported rotation per frame (degrees) actual=0.499836653 expected=0.500000000 tolerance=0.001000000 PASS
+SAMPLE camera cut: reported rotation of the jump (degrees) actual=25.500000000 expected=25.500000000 tolerance=0.010000000 PASS
+RESULT PASS numerical=416 state_restorations=164 generations=2

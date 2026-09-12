@@ -451,15 +451,170 @@ shimmer against the space background.
 
 Open items:
 
-- Route: supply the camera reprojection (`clip_to_previous` from the view
-  and projection shadow) and alpha-0 fills, then enable
-  `sentinel_camera`; until then thin features against the sentinel
-  background stay current-only. A cut-detector-gated variant (policy 2 only
-  when the median displacement is near zero) would already fix the
-  camera-still case.
-- Rebenchmark the boundary cost with the 3,794-word program at 5120x1440.
+- Route: supply the camera reprojection and enable `sentinel_camera` —
+  done the same day, see [Camera reprojection for sentinel
+  pixels](#camera-reprojection-for-sentinel-pixels) below (the fill keeps
+  its alpha -1: the resolve's policy 2 accepts the fill sentinel as the
+  far-plane pixel's own correspondence instead of requiring alpha 0).
+- Rebenchmark the boundary cost at 5120x1440: done with the 3,840-word program
+  (resolve 1.756 ms, [motion-output.md](../verification/motion-output.md#camera-reprojection-cases)).
 - The seam TAA reference comparison of the motion-output suite shares the
   bytecode and has to be rerun by its owner.
 - Per-pixel ripple of a toggling edge sample is (1-w) * contrast per frame
   (0.05-0.06 measured); a longer Halton period or a higher weight trades it
   against convergence time and ghost duration.
+
+## Camera reprojection for sentinel pixels (2026-09-12)
+
+Sentinel pixels (RT2 depth -1: background, nebula, effects, everything the
+route does not write, 75-80% of a gameplay frame per
+[iteration-08.md](../verification/iteration-08.md)) resolved current-only
+under policy 1, so the background crawled whenever the camera turned. The
+route now reads the engine's live camera and hands the resolve a far-plane
+camera transform (policy 2), end to end:
+
+**Camera read** (`src/proxy/camera_state.{h,cpp}`). Per
+[camera-state-and-frame-routine.md](../reverse-engineering/camera-state-and-frame-routine.md)
+the projection buffer is `*0x00608a38` and the view buffer `*0x00608a40`
+(16 floats each, row-major, row-vector, left-handed; `view = world * V`,
+`m23 = 1`; `m22`/`m32` are per-submission scratch and are never read). The
+values are final at the per-view Clear the view activation issues right after
+building them, so the route reads them in its Clear hook: the scene view at
+the depth-only Clear that moves the selector from Background to Scene (the
+view every routed draw and the sentinel pixels of the scene phase belong
+to), and the background view at the latching Clear (diagnostics only: the
+`camera_state` line reports its rotation against the scene view and both
+projections, so the next gameplay run settles whether the sky view shares
+the scene view's FOV; the transform uses the scene view). The read is gated
+on the exact executable identity object_trace already verifies (SHA-256,
+base, PE headers; shared and cached in `object_trace::executable_verified`)
+and on `X3M_MOTION_OUTPUT=1 X3M_TAA=1`; no code is patched and no engine
+memory is read for a foreign executable. The two pointer slots live in the
+image's data section and are validated once with `VirtualQuery`; each
+buffer pointer is validated with `VirtualQuery` when its value changes and
+the verdict cached (the buffers are allocated once at renderer init), so a
+steady frame costs two 64-byte copies. Validation of the values
+(`renderer::camera_state_from_matrices`): all 32 floats finite,
+`m00, m11 > 0`, `m23 == 1`, the view's upper-left 3x3 orthonormal within
+1e-3 (camera-numerics measured 3.6e-5) and its elements 3/7/11/15 the
+identity template's 0/0/0/1. The state keeps `{m00, m11, m20, m21, R, t}`.
+
+**Transform** (`src/renderer/camera_reprojection.h`, pure arithmetic shared
+with the fixtures and the host unit test). For a current NDC direction at
+infinity `d_view = ((x - m20)/m00, (y - m21)/m11, 1)`, `d_world = d_view *
+R_cur^T`, `d_prev = d_world * R_prev`, previous NDC
+`(d_prev.x * m00_prev / d_prev.z + m20_prev, d_prev.y * m11_prev / d_prev.z +
+m21_prev)`, valid iff `d_prev.z > 0`. Translation is ignored: a background at
+infinity has no parallax; for a far but finite unrouted object (a distant
+station, a planet at a finite distance) the residual is its parallax, which
+the neighborhood clip bounds. The resolve's policy-2 path forms
+`currentClip = (2u - 1, 1 - 2v, depth = 1, 1)` in D3D NDC (y up) from the
+unjittered position, applies `clip_to_previous` as four rows dotted with that
+vector (column-vector multiplication, row-major storage), divides by `w`,
+flips y back and restores the half texel plus the current jitter — exactly
+the routed path's convention, so no shader convention had to change. The
+builder therefore emits the 4x4 with rows `(N00, N10, 0, N20)`, `(N01, N11,
+0, N21)`, `(N02, N12, 0, N22)`, `(N02, N12, 0, N22)` where `(x, y, 1) * N =
+(X, Y, W)` is the row-vector chain above: `x/w`, `y/w` are the previous NDC,
+`z/w = 1` (the far plane: the disocclusion test then accepts sentinel and
+far history and rejects a nearer occluder that moved away), the current `z`
+column is zero (the map depends on the direction only) and `w > 0` exactly
+when the direction is in front of the previous camera.
+
+**Shader fix.** The resolve expected far-plane pixels to carry motion alpha
+0, which the route's fill (RT1 alpha -1, RT2 -1 in one draw) never
+produces without changing the RGBA32F ABI. Under policy 2 a far-plane pixel
+that is its own correspondence (no closer neighbor won the dilation, motion
+alpha exactly -1) now keeps the camera path; a dilated neighbor with alpha
+-1 is a routed draw without history and still rejects, any other alpha
+rejects as before. The fixture's `sentinel-camera-fill` mode (the route's
+ABI) reproduces the alpha-0 mode's metrics exactly (thin line drift 0.003
+px, silhouette ratio 178x, no ghost). Bytecode 3,840 words (3,794).
+
+**Policy selection per frame** (`renderer::camera_sentinel_policy`,
+`X3M_TAA_SENTINEL`): `auto` (default, `--taa-sentinel auto`) takes policy 2
+when the scene view of this frame and the scene view of the frame the
+history came from (the last frame that completed a resolve on this device;
+cleared whenever the history is invalidated, by Reset, and when a frame does
+not resolve) are both valid, the rotation between them is at or below
+`X3M_CAMERA_CUT_DEG` (default 20, `--camera-cut-deg`) and the transform
+builds; otherwise policy 1 with the identity matrix, which the resolve never
+applies. A rotation above the bound is a **cut**: the route feeds it into the
+resolve's `cut` input beside the displacement/missing-key verdict (the frame
+line keeps `cut` as the displacement verdict and adds `camera_cut`), the
+frame resolves current-only and re-establishes the history and its view.
+`1` never reprojects (the previous behaviour, bit-identical: the seam suite
+proves the colour equal to the run without a camera). `2` is the strict
+diagnostic form of auto: a frame whose camera cannot be read or whose
+transform fails **skips the resolve** (`taa_skip` 9) instead of degrading to
+policy 1, so a broken camera read shows in gameplay and in the log; frames
+without a previous view still resolve (that is how the history bootstraps).
+
+**Diagnostics.** `motion_output_frame` gains `camera_valid
+camera_background_valid camera_reads camera_policy camera_reason camera_cut
+camera_rotation_deg`; a bounded `camera_state` line (capture frames and every
+`X3M_CAMERA_LOG` frames, default 300, `--camera-log`) carries the read status
+and failure codes, the buffer addresses, `p00 p11 p20 p21`, `r00..r22`, `t`,
+the background view's `p00 p11` and rotation against the scene view, the
+view the history holds after the frame and the decision. The device line
+reports the camera status (`active`, `executable_mismatch`, `disabled`,
+`fixture`) and the switch. `tools/analysis/analyze_camera_state.py` reads
+these lines and, for capture frames with per-draw constants, compares
+`inverse(g_mViewInverse)` (c34-36) and the recovered projection
+`P = WVP * W^-1 * C` with the read state, plus the object-trace
+`object_matrix role=view` rows bit-exactly; the iteration-08 log carries no
+`camera_state` lines (0 of 109 frames), so that check waits for the next run.
+
+**Environment-map exclusion.** The frame routine's second scene
+(`0x00472201`: mid-frame `EndScene`, six `ID3DXRenderToEnvMap::Face` target
+changes each with `Clear(TARGET|ZBUFFER)`, a per-face view written to the
+same globals and a full material traversal, then `BeginScene`) must reach
+neither the route nor the history nor the camera state. The existing gating
+guarantees it without new code: the selector rejects the frame at the first
+face's `SetRenderTarget` (a target change is not accepted in
+`AwaitInitialClear`, `Background` or `Scene`), after which no draw passes
+gate 2 (routing, jitter and row recording need the Scene phase), the
+Background-to-Scene Clear never happens (the scene camera is never read), the
+resolve is not reached (`taa_skip` 2) and the history and its view are
+dropped before Present. The motion-output fixture's `envmap` script proves
+both placements (before the scene's depth Clear, and before the initial
+Clear where the frame does not even latch): frames with the sequence show
+`routed=0 gate2=9 selector_state=9 taa_skip=2 camera_valid=0`, RT1 holds the
+fill alone, the `camera_state` line reports the scene view unread and the
+history's view dropped, and the routed frames around them resolve without
+history. The cost is the whole frame's TAA (and the following frame's,
+whose keyed draws all miss); a game situation that rendered environment maps
+every frame would show as `selector_state=9` on every frame line. The
+per-view Clear when `view[0x278] == 0` (no viewport) is the one activation
+this read does not observe; the callsite patch of
+camera-state-and-frame-routine.md section 8 remains the fallback.
+
+**Cost.** Two 64-byte copies per frame (plus two `VirtualQuery` calls when a
+buffer pointer changes), one 3x3 chain per frame at the resolve; no per-draw
+work. Boundary cost with the 3,840-word program: see
+[motion-output.md](../verification/motion-output.md#camera-reprojection-cases).
+
+**Verification.** Host unit test
+`verification/analysis/test_camera_reprojection.py` (the header compiled
+natively, yaw/pitch/roll/FOV/off-center/translation against a basis-vector
+oracle, behind-camera invalid, validation failures, the switch and cut);
+`run_temporal_pass.py` camera cases (a sky rendered from the camera state
+with the route's sentinel ABI: yaw and pitch track the render within 0.12
+and 0.18 px of the static control under the jitter, 0.06 px unjittered at 90
+degrees and 0.026 px at 28 degrees, five chained reprojections within 0.034
+px, the identity matrix and the swapped convention crawl 0.86 and 1.05 px,
+a 25-degree jump is a cut whose frame equals its render exactly);
+`run_motion_output.py` camera cases (fake engine globals through the seam,
+the DLL's resolve equal to the reference driven by the same builder byte
+for byte, the switch off bit-identical to no camera, the strict mode, the
+logged state and decisions, the environment-map script). Details in
+[temporal-resolve.md](../verification/temporal-resolve.md#camera-reprojection-sentinel-policy-2-2026-09-12)
+and [motion-output.md](../verification/motion-output.md#camera-reprojection-cases).
+
+**Limits.** Translation is ignored (finite unrouted objects keep their
+parallax); the transform is one rigid rotation per frame (no rolling-shutter
+or per-view differences: a sky view with a different FOV from the scene view
+would be reprojected with the scene FOV — the `camera_state` line reports
+both so the next run can tell); the read observes only views that issue a
+per-view Clear; the first frame, every cut and every Reset resolve
+current-only for one frame.

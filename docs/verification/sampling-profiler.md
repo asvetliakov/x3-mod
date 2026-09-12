@@ -211,3 +211,55 @@ Windows are seconds after proxy initialization, the same axis as
 `analyze_iteration08_loading.py`'s gap bounds; a delta block is attributed to a
 window by overlap of its report interval. Unit tests:
 `verification/analysis/test_profile_summary.py` (8 synthetic tests).
+
+### Loading attribution pipeline
+
+`tools/analysis/analyze_loading_profile.py` runs the whole chain on one log and
+writes a report that sets hooked time and sampled attribution side by side for
+every presentation gap over 2 s and every report stall inside it. For the next
+user-run session (`python3 tools/manage.py launch --direct --telemetry --profile
+--mesh-cache`, log under the session directory it prints):
+
+```
+JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \
+  python3 tools/analysis/analyze_loading_profile.py <session.log> \
+    --output verification/results/loading-profile-<label>/ --ghidra
+```
+
+The log is streamed once (262 MB in 1.6 s without Ghidra). `--ghidra` collects
+every main-module RVA that appears in a gap's leaf/frame/pair tables into
+`<dir>/rvas.txt`, runs `X3ProfileSymbols.java` headless on
+`/tmp/x3-ghidra-research` (`X3Render`, program `X3AP.exe`, read-only, ~5 s) and
+writes `<dir>/symbols.json`; `--symbols <json>` reuses an earlier run instead,
+and without either the tables stay at RVA level. `--ghidra-project`,
+`--ghidra-name` and `--ghidra-program` override the project location.
+
+What the report contains, per gap and per stall:
+
+* gap detection, phase label and hooked accounting exactly as
+  `analyze_iteration08_loading.py` computes them (labels are mechanical: a
+  `gzread`/successful `gzopen` inside the gap is a **save load**, ≥500
+  `GenerateAdjacency` calls with ≥200 MB of 2D texture-helper input is a
+  **menu load**, ≥100 adjacency calls after an earlier labelled phase is a
+  **sector change**, anything else is **unlabelled**; the evidence line
+  states the counts used);
+* header numbers: interval, hooked exclusive seconds, unexplained seconds,
+  delta blocks (inside/straddling), samples, covered seconds, samples/s,
+  ticks/s per thread, drops, sampler tick mean/max and busy share;
+* the hooked operations table and the per-thread leaf-module split;
+* the **top functions** table — leaf samples aggregated by *containing
+  function* (self), frame samples by function (inclusive-by-frame), the busiest
+  slot's share, the role label from `tools/analysis/x3ap_function_labels.json`
+  (addresses and short roles copied from the reverse-engineering notes) and,
+  when the function is a documented caller of a hooked import, that import's
+  calls and inclusive seconds in the same interval;
+* top caller pairs with both ends symbolized and labelled;
+* a purely mechanical candidates paragraph (shares, known/unknown routine).
+
+`loading-profile.json` additionally holds the top 40 leaf RVAs, frames and
+pairs per interval. A log without `profile_*` lines (or a gap no delta block
+overlaps) renders a **No profile data** note and the hooked half only, so the
+same command works on the iteration-08 logs. Unit tests:
+`verification/analysis/test_loading_profile.py` (11 synthetic tests: profile
+windows inside a gap, function aggregation, a block straddling the gap end,
+stall sub-intervals, missing profile lines, label rules, the Ghidra command).

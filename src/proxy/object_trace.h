@@ -16,6 +16,10 @@ struct Snapshot {
     uint32_t world[16]{}, world_basis[16]{}, view[16]{}, projection[16]{};
 };
 bool initialize(); // X3M_OBJECT_TRACE=1, exact executable SHA256 + code/site checks
+// Exact-executable identity alone (base 0x400000, PE headers, file SHA-256),
+// evaluated once per process and cached. Shared by every module that reads
+// engine globals; true never implies the callsite patch is installed.
+bool executable_verified();
 bool active(); // observation enabled; not synonymous with code ownership
 bool recovery_required(); // owned code/protection still needs quiescent restoration
 const char* status(); // static diagnostic string; initialize once, then read
