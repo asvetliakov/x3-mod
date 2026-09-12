@@ -16,4 +16,8 @@ const wchar_t* capture_directory();
 // thread before the frame routine's compositing call; forwards to every hooked
 // device's route under the capture mutex.
 void scene_end_signal();
+// QPC stamp taken in DllMain (DLL_PROCESS_ATTACH): the origin of the
+// frame_end elapsed_ms field, which exists in every mode so a plain --direct
+// run's load times can be read from the log without telemetry.
+extern unsigned long long dll_load_qpc;
 }

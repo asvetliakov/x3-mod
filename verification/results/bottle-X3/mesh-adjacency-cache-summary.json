@@ -1,0 +1,126 @@
+{
+  "started_utc": "2026-09-12T17:18:36.689700+00:00",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "passed": false,
+  "phase": "complete",
+  "fresh_build": true,
+  "timeout_seconds": 90,
+  "source_hashes_before_build": {
+    "src/proxy/mesh_adjacency_cache.h": "9ec016ca7b35df32e0316d4cc83c096cb70ec2c7e5c9e039724e22fd9415003e",
+    "src/proxy/mesh_adjacency_cache.cpp": "9e76ef433c8915a25a77a04e7a45c3487465fe720ba2f18cd089781a6f060d83",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "8b8b32fdd93a8f205a3dcfbee0df6f8ed2f288989f9597b1ebd2efd43b60f638",
+    "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
+    "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
+    "verification/probe/run_mesh_adjacency_cache.py": "9bdae9f10706c1b8af82f83ebe321e8dbc52d3f0b57bf7b6ffdfcca433177de3",
+    "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+  },
+  "source_hashes_after_build": {
+    "src/proxy/mesh_adjacency_cache.h": "9ec016ca7b35df32e0316d4cc83c096cb70ec2c7e5c9e039724e22fd9415003e",
+    "src/proxy/mesh_adjacency_cache.cpp": "9e76ef433c8915a25a77a04e7a45c3487465fe720ba2f18cd089781a6f060d83",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "8b8b32fdd93a8f205a3dcfbee0df6f8ed2f288989f9597b1ebd2efd43b60f638",
+    "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
+    "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
+    "verification/probe/run_mesh_adjacency_cache.py": "9bdae9f10706c1b8af82f83ebe321e8dbc52d3f0b57bf7b6ffdfcca433177de3",
+    "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+  },
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "X3",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a68201431d638fe21/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a68201431d638fe21/verification/probe/build/mesh_adjacency_cache_fixture.exe",
+    "C:\\X3\\d3dx9_37.dll"
+  ],
+  "hashes_before": {
+    "src/proxy/mesh_adjacency_cache.h": "9ec016ca7b35df32e0316d4cc83c096cb70ec2c7e5c9e039724e22fd9415003e",
+    "src/proxy/mesh_adjacency_cache.cpp": "9e76ef433c8915a25a77a04e7a45c3487465fe720ba2f18cd089781a6f060d83",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "8b8b32fdd93a8f205a3dcfbee0df6f8ed2f288989f9597b1ebd2efd43b60f638",
+    "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
+    "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
+    "verification/probe/run_mesh_adjacency_cache.py": "9bdae9f10706c1b8af82f83ebe321e8dbc52d3f0b57bf7b6ffdfcca433177de3",
+    "verification/probe/build/mesh_adjacency_cache_fixture.exe": "3acae20e6a7f4020114c5484776efcad3ace78d05ff28953f018030ffb04543b",
+    "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+  },
+  "exit_code": 1,
+  "hashes_after": {
+    "src/proxy/mesh_adjacency_cache.h": "9ec016ca7b35df32e0316d4cc83c096cb70ec2c7e5c9e039724e22fd9415003e",
+    "src/proxy/mesh_adjacency_cache.cpp": "9e76ef433c8915a25a77a04e7a45c3487465fe720ba2f18cd089781a6f060d83",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "8b8b32fdd93a8f205a3dcfbee0df6f8ed2f288989f9597b1ebd2efd43b60f638",
+    "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
+    "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
+    "verification/probe/run_mesh_adjacency_cache.py": "9bdae9f10706c1b8af82f83ebe321e8dbc52d3f0b57bf7b6ffdfcca433177de3",
+    "verification/probe/build/mesh_adjacency_cache_fixture.exe": "3acae20e6a7f4020114c5484776efcad3ace78d05ff28953f018030ffb04543b",
+    "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+  },
+  "report_sha256": "877553c8f74fb5e826f2d31f245701bbaf7a1f492e4be094bf96d21c6b25da84",
+  "results": {
+    "CASE": [
+      {
+        "name": "closed_manifold",
+        "adjacency_hr": "00000000",
+        "clean_hr": "00000000",
+        "optimize_hr": "00000000",
+        "cache_hit": "1",
+        "downstream_exact": "1"
+      },
+      {
+        "name": "duplicated_seam",
+        "adjacency_hr": "00000000",
+        "clean_hr": "00000000",
+        "optimize_hr": "00000000",
+        "cache_hit": "1",
+        "downstream_exact": "1"
+      },
+      {
+        "name": "epsilon_seam",
+        "adjacency_hr": "00000000",
+        "clean_hr": "00000000",
+        "optimize_hr": "00000000",
+        "cache_hit": "1",
+        "downstream_exact": "1"
+      },
+      {
+        "name": "disconnected",
+        "adjacency_hr": "00000000",
+        "clean_hr": "00000000",
+        "optimize_hr": "00000000",
+        "cache_hit": "1",
+        "downstream_exact": "1"
+      },
+      {
+        "name": "degenerate",
+        "adjacency_hr": "00000000",
+        "clean_hr": "88760b55",
+        "optimize_hr": "80004005",
+        "cache_hit": "1",
+        "downstream_exact": "1"
+      }
+    ],
+    "RESULT": [
+      {
+        "checks": "303",
+        "error": "native"
+      }
+    ]
+  },
+  "limits": [
+    "Detached core; no hooks, installation or game loading improvement.",
+    "Caller must pin implementation lifetime and serialize mesh/output mutation.",
+    "SYSTEMMEM non-writeonly/non-shared meshes only; dynamic additionally needs positive public readonly buffer contract.",
+    "Default masked FP computational controls only; unsupported controls forward unchanged.",
+    "FP instruction/data pointers and allocator side effects are not emulated.",
+    "Persistent acquisition unlock failure has distinct origin, permanently disables cache and does not call native.",
+    "Retained budget includes fixed metadata and HeapSize payload, excludes allocator bookkeeping and caller memory.",
+    "Synthetic alternating warm-runtime timing; output vector creation is common fixture overhead; no game hit-rate estimate."
+  ]
+}

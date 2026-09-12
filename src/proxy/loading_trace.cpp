@@ -6,6 +6,9 @@
 #include "../ownership/application_admission_abi.h"
 #include "cpu_state.h"
 #include "gz_buffer.h"
+#include "loading_trace_light.h"
+#include "loading_probes.h"
+#include "resource_reader.h"
 #include <new>
 #include <d3dx9.h>
 #include <algorithm>
@@ -16,11 +19,6 @@
 namespace x3m::loading_trace {
 namespace {
 constexpr unsigned count=static_cast<unsigned>(Operation::Count);
-struct Counter {
-    std::atomic<uint64_t> calls{0}, failures{0}, pending{0}, ambiguous{0}, bytes{0};
-    std::atomic<uint64_t> inclusive{0}, exclusive{0}, maximum{0}, overhead{0};
-};
-Counter counters[count];
 struct Hook { const char* dll; const char* name; PVOID replacement; PVOID original=nullptr; PVOID* slot=nullptr; };
 std::atomic<bool> installed{false};
 bool installation_started=false; // One installation generation; originals never rebound.
@@ -99,40 +97,14 @@ thread_local bool cache_reentry_once=false;
 #endif
 void observe_mesh(ID3DXMesh* mesh);
 void restore_mesh_hooks();
-uint64_t tick() { LARGE_INTEGER value{}; QueryPerformanceCounter(&value); return value.QuadPart; }
-
-// Thread-local nesting prevents double counting another loading hook's entire
-// inclusive interval. Other telemetry categories (e.g. backend CreateShader)
-// are not part of this tree: their totals must not be added to Effect/Texture.
-struct Span;
-thread_local Span* parent_span=nullptr;
+uint64_t tick() { return light::tick(); }
+// Timing span of the heavy (D3DX/mesh) rows: the accounting and the nesting
+// live in loading_trace_light.cpp (light::Span); this adapter keeps the former
+// call shape (finish after the CpuCallBoundary's after_original()).
 struct Span {
-    DWORD caller_error; Operation op; Span* parent; uint64_t begin, children=0;
-    explicit Span(Operation value):caller_error(GetLastError()),op(value),parent(parent_span),begin(tick()) {
-        parent_span=this;
-        SetLastError(caller_error);
-    }
-    void finish(uint64_t end,DWORD result_error,bool failed=false,uint64_t bytes=0,bool pending=false,bool ambiguous=false) {
-        auto& c=counters[static_cast<unsigned>(op)];
-        const uint64_t elapsed=end-begin;
-        c.calls.fetch_add(1,std::memory_order_relaxed);
-        c.failures.fetch_add(failed,std::memory_order_relaxed);
-        c.pending.fetch_add(pending,std::memory_order_relaxed);
-        c.ambiguous.fetch_add(ambiguous,std::memory_order_relaxed);
-        c.bytes.fetch_add(bytes,std::memory_order_relaxed);
-        c.inclusive.fetch_add(elapsed,std::memory_order_relaxed);
-        c.exclusive.fetch_add(elapsed>children ? elapsed-children : 0,std::memory_order_relaxed);
-        auto old=c.maximum.load(std::memory_order_relaxed);
-        while(old<elapsed&&!c.maximum.compare_exchange_weak(old,elapsed,std::memory_order_relaxed)) {}
-        parent_span=parent;
-        const uint64_t tail=tick();
-        // Own measured tail excludes the last accounting stores and SetLastError.
-        // Backend duration begins before the final caller-error restoration, so
-        // it contains that tiny wrapper entry cost; report this limitation.
-        c.overhead.fetch_add(tail-end,std::memory_order_relaxed);
-        if(parent)parent->children+=tail-begin;
-        SetLastError(result_error);
-    }
+    light::Span inner; Operation op;
+    explicit Span(Operation value):op(value){inner.begin(static_cast<unsigned>(value));inner.before_call();}
+    void finish(uint64_t,DWORD,bool failed=false,uint64_t bytes=0,bool pending=false,bool ambiguous=false){inner.finish(failed,bytes,pending,ambiguous);}
 };
 
 // Each bounded table has distinct trampolines. Dispatch therefore continues to
@@ -451,69 +423,79 @@ template<unsigned Index> HRESULT WINAPI mesh_optimize(ID3DXMesh* mesh,DWORD flag
 PVOID mesh_replacements[mesh_table_limit][3]={MESH_THUNKS(0),MESH_THUNKS(1),MESH_THUNKS(2),MESH_THUNKS(3),MESH_THUNKS(4),MESH_THUNKS(5),MESH_THUNKS(6),MESH_THUNKS(7)};
 #undef MESH_THUNKS
 
-HANDLE WINAPI file_open(LPCSTR,DWORD,DWORD,LPSECURITY_ATTRIBUTES,DWORD,DWORD,HANDLE);
-BOOL WINAPI file_read(HANDLE,LPVOID,DWORD,LPDWORD,LPOVERLAPPED);
-DWORD WINAPI file_seek(HANDLE,LONG,PLONG,DWORD);
+// The counting/timing forwarders live in loading_trace_light.cpp (no SSE, no
+// x87, no CpuCallBoundary); only the D3DX rows below, whose wrappers observe
+// meshes and log, keep the full boundary.
+namespace light=loading_trace::light;
 HRESULT WINAPI effect(IDirect3DDevice9*,const void*,UINT,const D3DXMACRO*,ID3DXInclude*,DWORD,ID3DXEffectPool*,ID3DXEffect**,ID3DXBuffer**);
 HRESULT WINAPI texture(IDirect3DDevice9*,const void*,UINT,UINT,UINT,UINT,DWORD,D3DFORMAT,D3DPOOL,DWORD,DWORD,D3DCOLOR,D3DXIMAGE_INFO*,PALETTEENTRY*,IDirect3DTexture9**);
 HRESULT WINAPI cube(IDirect3DDevice9*,const void*,UINT,UINT,UINT,DWORD,D3DFORMAT,D3DPOOL,DWORD,DWORD,D3DCOLOR,D3DXIMAGE_INFO*,PALETTEENTRY*,IDirect3DCubeTexture9**);
 HRESULT WINAPI surface(IDirect3DSurface9*,const PALETTEENTRY*,const RECT*,const void*,UINT,const RECT*,DWORD,D3DCOLOR,D3DXIMAGE_INFO*);
 HRESULT WINAPI mesh_create(DWORD,DWORD,DWORD,const D3DVERTEXELEMENT9*,IDirect3DDevice9*,ID3DXMesh**);
 HRESULT WINAPI mesh_clean(D3DXCLEANTYPE,ID3DXMesh*,const DWORD*,ID3DXMesh**,DWORD*,ID3DXBuffer**);
-HCURSOR WINAPI cursor_set(HCURSOR);
-BOOL WINAPI cursor_position(int,int);
-HANDLE WINAPI find_first(LPCSTR,LPWIN32_FIND_DATAA);
-BOOL WINAPI find_next(HANDLE,LPWIN32_FIND_DATAA);
-BOOL WINAPI find_close(HANDLE);
 // cdecl and argument widths corroborated by target callsites; local zlib/libxml
 // SDK prototypes supply semantics. Opaque pointers avoid importing struct layouts.
 using GzOpenFn=void* (__cdecl*)(const char*,const char*);
 using GzReadFn=int (__cdecl*)(void*,void*,unsigned);
 using GzSeekFn=LONG (__cdecl*)(void*,LONG,int);
-using InflateFn=int (__cdecl*)(void*,int);
-using XmlReadFn=void* (__cdecl*)(const char*,int,const char*,const char*,int);
 static_assert(sizeof(LONG)==4&&sizeof(int)==4&&sizeof(void*)==4);
 using GzTellFn=LONG (__cdecl*)(void*);
 using GzGetcFn=int (__cdecl*)(void*);
 using GzCloseFn=int (__cdecl*)(void*);
-using GzWriteFn=int (__cdecl*)(void*,const void*,unsigned);
 void* __cdecl gz_open(const char*,const char*);
 int __cdecl gz_read(void*,void*,unsigned);
 LONG __cdecl gz_seek(void*,LONG,int);
 int __cdecl gz_getc(void*);
 LONG __cdecl gz_tell(void*);
 int __cdecl gz_close(void*);
-int __cdecl gz_write(void*,const void*,unsigned);
-int __cdecl inflate_stream(void*,int);
-void* __cdecl xml_read(const char*,int,const char*,const char*,int);
 // X3M_GZ_BUFFER=1: the gz hooks route through gz_buffer (set before patching, never
 // cleared); its real functions are the traced wrappers with telemetry, else the originals.
 bool gz_buffer_active=false;
 Hook hooks[]={
-    {"KERNEL32.dll","CreateFileA",reinterpret_cast<PVOID>(file_open)},
-    {"KERNEL32.dll","ReadFile",reinterpret_cast<PVOID>(file_read)},
-    {"KERNEL32.dll","SetFilePointer",reinterpret_cast<PVOID>(file_seek)},
+    {"KERNEL32.dll","CreateFileA",reinterpret_cast<PVOID>(light::file_open)},
+    {"KERNEL32.dll","ReadFile",reinterpret_cast<PVOID>(light::file_read)},
+    {"KERNEL32.dll","SetFilePointer",reinterpret_cast<PVOID>(light::file_seek)},
     {"d3dx9_37.dll","D3DXCreateEffect",reinterpret_cast<PVOID>(effect)},
     {"d3dx9_37.dll","D3DXCreateTextureFromFileInMemoryEx",reinterpret_cast<PVOID>(texture)},
     {"d3dx9_37.dll","D3DXCreateCubeTextureFromFileInMemoryEx",reinterpret_cast<PVOID>(cube)},
     {"d3dx9_37.dll","D3DXLoadSurfaceFromFileInMemory",reinterpret_cast<PVOID>(surface)},
-    {"USER32.dll","SetCursor",reinterpret_cast<PVOID>(cursor_set)},
-    {"USER32.dll","SetCursorPos",reinterpret_cast<PVOID>(cursor_position)},
+    {"USER32.dll","SetCursor",reinterpret_cast<PVOID>(light::cursor_set)},
+    {"USER32.dll","SetCursorPos",reinterpret_cast<PVOID>(light::cursor_position)},
     {"zlib1.dll","gzopen",reinterpret_cast<PVOID>(gz_open)},
     {"zlib1.dll","gzread",reinterpret_cast<PVOID>(gz_read)},
     {"zlib1.dll","gzseek",reinterpret_cast<PVOID>(gz_seek)},
-    {"zlib1.dll","inflate",reinterpret_cast<PVOID>(inflate_stream)},
-    {"libxml2.dll","xmlReadMemory",reinterpret_cast<PVOID>(xml_read)},
+    {"zlib1.dll","inflate",reinterpret_cast<PVOID>(light::inflate_stream)},
+    {"libxml2.dll","xmlReadMemory",reinterpret_cast<PVOID>(light::xml_read)},
     {"d3dx9_37.dll","D3DXCreateMesh",reinterpret_cast<PVOID>(mesh_create)},
     {"d3dx9_37.dll","D3DXCleanMesh",reinterpret_cast<PVOID>(mesh_clean)},
-    {"KERNEL32.dll","FindFirstFileA",reinterpret_cast<PVOID>(find_first)},
-    {"KERNEL32.dll","FindNextFileA",reinterpret_cast<PVOID>(find_next)},
-    {"KERNEL32.dll","FindClose",reinterpret_cast<PVOID>(find_close)},
+    {"KERNEL32.dll","FindFirstFileA",reinterpret_cast<PVOID>(light::find_first)},
+    {"KERNEL32.dll","FindNextFileA",reinterpret_cast<PVOID>(light::find_next)},
+    {"KERNEL32.dll","FindClose",reinterpret_cast<PVOID>(light::find_close)},
     {"zlib1.dll","gzgetc",reinterpret_cast<PVOID>(gz_getc)},
     {"zlib1.dll","gztell",reinterpret_cast<PVOID>(gz_tell)},
     {"zlib1.dll","gzclose",reinterpret_cast<PVOID>(gz_close)},
-    {"zlib1.dll","gzwrite",reinterpret_cast<PVOID>(gz_write)}
+    {"zlib1.dll","gzwrite",reinterpret_cast<PVOID>(light::gz_write)},
+    // Probe batch 2 rows (patched only with X3M_LOADING_PROBES=1).
+    {"zlib1.dll","inflateInit2_",reinterpret_cast<PVOID>(light::inflate_init2)},
+    {"zlib1.dll","inflateEnd",reinterpret_cast<PVOID>(light::inflate_end)},
+    {"ADVAPI32.dll","CryptAcquireContextA",reinterpret_cast<PVOID>(light::crypt_acquire_context)},
+    {"ADVAPI32.dll","CryptReleaseContext",reinterpret_cast<PVOID>(light::crypt_release_context)},
+    {"ADVAPI32.dll","CryptImportKey",reinterpret_cast<PVOID>(light::crypt_import_key)},
+    {"ADVAPI32.dll","CryptCreateHash",reinterpret_cast<PVOID>(light::crypt_create_hash)},
+    {"ADVAPI32.dll","CryptHashData",reinterpret_cast<PVOID>(light::crypt_hash_data)},
+    {"ADVAPI32.dll","CryptVerifySignatureA",reinterpret_cast<PVOID>(light::crypt_verify_signature)},
+    {"ADVAPI32.dll","CryptGetHashParam",reinterpret_cast<PVOID>(light::crypt_get_hash_param)},
+    {"ADVAPI32.dll","CryptDestroyHash",reinterpret_cast<PVOID>(light::crypt_destroy_hash)},
+    {"ADVAPI32.dll","CryptDestroyKey",reinterpret_cast<PVOID>(light::crypt_destroy_key)},
+    {"KERNEL32.dll","CreateDirectoryA",reinterpret_cast<PVOID>(light::create_directory)},
+    {"KERNEL32.dll","DeleteFileA",reinterpret_cast<PVOID>(light::delete_file)},
+    {"KERNEL32.dll","MoveFileA",reinterpret_cast<PVOID>(light::move_file)},
+    {"KERNEL32.dll","MoveFileExA",reinterpret_cast<PVOID>(light::move_file_ex)},
+    {"KERNEL32.dll","WriteFile",reinterpret_cast<PVOID>(light::write_file)},
+    {"KERNEL32.dll","GetFileType",reinterpret_cast<PVOID>(light::get_file_type)},
+    {"KERNEL32.dll","CloseHandle",reinterpret_cast<PVOID>(light::close_handle)}
 };
+bool probe_row(unsigned index){return index>=probe_row_begin&&index<probe_row_end;}
 // Rows the read-ahead buffer needs; patched alone when telemetry is off.
 bool gz_buffer_row(const Hook& hook){
     return !std::strcmp(hook.dll,"zlib1.dll")&&std::strcmp(hook.name,"inflate")&&std::strcmp(hook.name,"gzwrite");
@@ -522,52 +504,28 @@ constexpr unsigned import_count=sizeof hooks/sizeof *hooks;
 static_assert(import_count==static_cast<unsigned>(Operation::MeshPointReps));
 const char* method_names[]={"ID3DXMesh::ConvertPointRepsToAdjacency","ID3DXMesh::GenerateAdjacency","ID3DXMesh::OptimizeInplace"};
 const char* operation_name(unsigned index){return index<import_count?hooks[index].name:method_names[index-import_count];}
-static_assert(std::is_same_v<decltype(&file_open),decltype(&CreateFileA)>);
-static_assert(std::is_same_v<decltype(&file_read),decltype(&ReadFile)>);
-static_assert(std::is_same_v<decltype(&file_seek),decltype(&SetFilePointer)>);
+static_assert(std::is_same_v<decltype(&light::file_open),decltype(&CreateFileA)>);
+static_assert(std::is_same_v<decltype(&light::file_read),decltype(&ReadFile)>);
+static_assert(std::is_same_v<decltype(&light::file_seek),decltype(&SetFilePointer)>);
 static_assert(std::is_same_v<decltype(&effect),decltype(&D3DXCreateEffect)>);
 static_assert(std::is_same_v<decltype(&texture),decltype(&D3DXCreateTextureFromFileInMemoryEx)>);
 static_assert(std::is_same_v<decltype(&cube),decltype(&D3DXCreateCubeTextureFromFileInMemoryEx)>);
 static_assert(std::is_same_v<decltype(&surface),decltype(&D3DXLoadSurfaceFromFileInMemory)>);
 static_assert(std::is_same_v<decltype(&mesh_create),decltype(&D3DXCreateMesh)>);
 static_assert(std::is_same_v<decltype(&mesh_clean),decltype(&D3DXCleanMesh)>);
-static_assert(std::is_same_v<decltype(&cursor_set),decltype(&SetCursor)>);
-static_assert(std::is_same_v<decltype(&cursor_position),decltype(&SetCursorPos)>);
-static_assert(std::is_same_v<decltype(&find_first),decltype(&FindFirstFileA)>);
-static_assert(std::is_same_v<decltype(&find_next),decltype(&FindNextFileA)>);
-static_assert(std::is_same_v<decltype(&find_close),decltype(&FindClose)>);
+static_assert(std::is_same_v<decltype(&light::cursor_set),decltype(&SetCursor)>);
+static_assert(std::is_same_v<decltype(&light::cursor_position),decltype(&SetCursorPos)>);
+static_assert(std::is_same_v<decltype(&light::find_first),decltype(&FindFirstFileA)>);
+static_assert(std::is_same_v<decltype(&light::find_next),decltype(&FindNextFileA)>);
+static_assert(std::is_same_v<decltype(&light::find_close),decltype(&FindClose)>);
+static_assert(std::is_same_v<decltype(&light::crypt_acquire_context),decltype(&CryptAcquireContextA)>);
+static_assert(std::is_same_v<decltype(&light::crypt_verify_signature),decltype(&CryptVerifySignatureA)>);
+static_assert(std::is_same_v<decltype(&light::create_directory),decltype(&CreateDirectoryA)>);
+static_assert(std::is_same_v<decltype(&light::move_file_ex),decltype(&MoveFileExA)>);
+static_assert(std::is_same_v<decltype(&light::write_file),decltype(&WriteFile)>);
+static_assert(std::is_same_v<decltype(&light::close_handle),decltype(&CloseHandle)>);
 template<typename T>T original(Operation op){return reinterpret_cast<T>(hooks[static_cast<unsigned>(op)].original);}
 
-HANDLE WINAPI file_open(LPCSTR name,DWORD access,DWORD share,LPSECURITY_ATTRIBUTES security,DWORD creation,DWORD flags,HANDLE templ) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::FileOpen);
-    cpu.before_original();
-    HANDLE result=original<decltype(&CreateFileA)>(span.op)(name,access,share,security,creation,flags,templ);cpu.after_original();
-    const DWORD error=GetLastError(); const auto end=tick();
-    span.finish(end,error,result==INVALID_HANDLE_VALUE);return result;
-}
-BOOL WINAPI file_read(HANDLE file,LPVOID buffer,DWORD requested,LPDWORD read,LPOVERLAPPED overlapped) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::FileRead);
-    cpu.before_original();
-    BOOL result=original<decltype(&ReadFile)>(span.op)(file,buffer,requested,read,overlapped);cpu.after_original();
-    const DWORD error=GetLastError(); const auto end=tick();
-    const bool pending=!result&&error==ERROR_IO_PENDING;
-    span.finish(end,error,!result&&!pending,result&&read?*read:0,pending);return result;
-}
-DWORD WINAPI file_seek(HANDLE file,LONG distance,PLONG high,DWORD method) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::FileSeek);
-    cpu.before_original();
-    DWORD result=original<decltype(&SetFilePointer)>(span.op)(file,distance,high,method);cpu.after_original();
-    const DWORD error=GetLastError(); const auto end=tick();
-    // The sentinel can be a successful offset. Preserve caller LastError rather
-    // than forcing it to zero just to make our failure classification convenient.
-    span.finish(end,error,false,0,false,result==INVALID_SET_FILE_POINTER&&error!=NO_ERROR);return result;
-}
 HRESULT WINAPI effect(IDirect3DDevice9* d,const void* data,UINT size,const D3DXMACRO* defines,ID3DXInclude* include,DWORD flags,ID3DXEffectPool* pool,ID3DXEffect** out,ID3DXBuffer** errors) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
@@ -623,132 +581,21 @@ HRESULT WINAPI mesh_clean(D3DXCLEANTYPE type,ID3DXMesh* input,const DWORD* adjac
     if(SUCCEEDED(result)&&output&&*output)observe_mesh(*output);
     span.finish(end,error,FAILED(result));return result;
 }
-HCURSOR WINAPI cursor_set(HCURSOR value) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::CursorSet);cpu.before_original();
-    HCURSOR result=original<decltype(&SetCursor)>(span.op)(value);cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error);return result;
-}
-BOOL WINAPI cursor_position(int x,int y) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::CursorPosition);cpu.before_original();
-    BOOL result=original<decltype(&SetCursorPos)>(span.op)(x,y);cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,!result);return result;
-}
 
-// Directory enumeration of the resource resolver (one FindFirstFileA per lookup,
-// no caching). A miss is the normal outcome of a loose-file probe: an invalid
-// handle with ERROR_FILE_NOT_FOUND or ERROR_NO_MORE_FILES, and FindNextFileA's
-// ERROR_NO_MORE_FILES termination, are ambiguous, not failures. Patterns are
-// never logged; bytes stay zero. LastError is restored exactly as elsewhere.
-HANDLE WINAPI find_first(LPCSTR pattern,LPWIN32_FIND_DATAA data) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::FindFirst);cpu.before_original();
-    HANDLE result=original<decltype(&FindFirstFileA)>(span.op)(pattern,data);cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();
-    const bool missing=result==INVALID_HANDLE_VALUE&&(error==ERROR_FILE_NOT_FOUND||error==ERROR_NO_MORE_FILES);
-    span.finish(end,error,result==INVALID_HANDLE_VALUE&&!missing,0,false,missing);return result;
-}
-BOOL WINAPI find_next(HANDLE find,LPWIN32_FIND_DATAA data) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::FindNext);cpu.before_original();
-    BOOL result=original<decltype(&FindNextFileA)>(span.op)(find,data);cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();
-    const bool exhausted=!result&&error==ERROR_NO_MORE_FILES;
-    span.finish(end,error,!result&&!exhausted,0,false,exhausted);return result;
-}
-BOOL WINAPI find_close(HANDLE find) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::FindClose);cpu.before_original();
-    BOOL result=original<decltype(&FindClose)>(span.op)(find);cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,!result);return result;
-}
 
-void* __cdecl gz_open_traced(const char* path,const char* mode) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::GzOpen);cpu.before_original();
-    void* result=original<GzOpenFn>(span.op)(path,mode);cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,!result);return result;
-}
-// With the buffer on, the GzRead metric counts the real (chunk) reads it issues;
-// the served calls are in the gz_buffer_file line of each close.
-int __cdecl gz_read_traced(void* file,void* data,unsigned size) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::GzRead);cpu.before_original();
-    int result=original<GzReadFn>(span.op)(file,data,size);cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,result<0,result>0?result:0);return result;
-}
-LONG __cdecl gz_seek_traced(void* file,LONG offset,int whence) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::GzSeek);cpu.before_original();
-    LONG result=original<GzSeekFn>(span.op)(file,offset,whence);cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,result<0);return result;
-}
-int __cdecl gz_getc_traced(void* file) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::GzGetc);cpu.before_original();
-    int result=original<GzGetcFn>(span.op)(file);cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,result<0,result>=0?1:0);return result;
-}
-LONG __cdecl gz_tell_traced(void* file) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::GzTell);cpu.before_original();
-    LONG result=original<GzTellFn>(span.op)(file);cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,result<0);return result;
-}
-int __cdecl gz_close_traced(void* file) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::GzClose);cpu.before_original();
-    int result=original<GzCloseFn>(span.op)(file);cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,result!=0);return result;
-}
-// The buffer never touches write handles; the row exists for the trace only.
-int __cdecl gz_write(void* file,const void* data,unsigned size) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::GzWrite);cpu.before_original();
-    int result=original<GzWriteFn>(span.op)(file,data,size);cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,result<=0&&size>0,result>0?result:0);return result;
-}
-// Import-slot entry points. With the buffer off these are the traced wrappers
-// (unchanged timing); with it on, the buffer's fast path runs with no boundary,
-// span or admission scope of its own (no x87 code, no allocation, no logging).
-void* __cdecl gz_open(const char* path,const char* mode){return gz_buffer_active?gz_buffer::open(path,mode):gz_open_traced(path,mode);}
-int __cdecl gz_read(void* file,void* data,unsigned size){return gz_buffer_active?gz_buffer::read(file,data,size):gz_read_traced(file,data,size);}
-LONG __cdecl gz_seek(void* file,LONG offset,int whence){return gz_buffer_active?gz_buffer::seek(file,offset,whence):gz_seek_traced(file,offset,whence);}
-int __cdecl gz_getc(void* file){return gz_buffer_active?gz_buffer::getc(file):gz_getc_traced(file);}
-LONG __cdecl gz_tell(void* file){return gz_buffer_active?gz_buffer::tell(file):gz_tell_traced(file);}
-int __cdecl gz_close(void* file){return gz_buffer_active?gz_buffer::close(file):gz_close_traced(file);}
-int __cdecl inflate_stream(void* stream,int flush) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::Inflate);cpu.before_original();
-    int result=original<InflateFn>(span.op)(stream,flush);cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();
-    // Z_BUF_ERROR (-5) is nonfatal no-progress, recorded as ambiguous instead of
-    // treating it as failed decompression. No z_stream member is dereferenced.
-    span.finish(end,error,result<0&&result!=-5,0,false,result==-5);return result;
-}
-void* __cdecl xml_read(const char* data,int size,const char* url,const char* encoding,int options) {
-    CpuCallBoundary cpu;
-    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    Span span(Operation::XmlRead);cpu.before_original();
-    void* result=original<XmlReadFn>(span.op)(data,size,url,encoding,options);cpu.after_original();
-    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,!result,size>0?size:0);return result;
-}
+// Import-slot entry points. With the buffer off these are the light traced
+// wrappers; with it on, the buffer's fast path runs with no span of its own.
+void* __cdecl gz_open(const char* path,const char* mode){return gz_buffer_active?gz_buffer::open(path,mode):light::gz_open_traced(path,mode);}
+int __cdecl gz_read(void* file,void* data,unsigned size){return gz_buffer_active?gz_buffer::read(file,data,size):light::gz_read_traced(file,data,size);}
+LONG __cdecl gz_seek(void* file,LONG offset,int whence){return gz_buffer_active?gz_buffer::seek(file,offset,whence):light::gz_seek_traced(file,offset,whence);}
+int __cdecl gz_getc(void* file){return gz_buffer_active?gz_buffer::getc(file):light::gz_getc_traced(file);}
+LONG __cdecl gz_tell(void* file){return gz_buffer_active?gz_buffer::tell(file):light::gz_tell_traced(file);}
+int __cdecl gz_close(void* file){return gz_buffer_active?gz_buffer::close(file):light::gz_close_traced(file);}
 
 bool requested() { wchar_t setting[8]{};return GetEnvironmentVariableW(L"X3M_TELEMETRY",setting,8)==1&&setting[0]==L'1'; }
+}
+bool probes_requested() { wchar_t setting[8]{};return GetEnvironmentVariableW(L"X3M_LOADING_PROBES",setting,8)==1&&setting[0]==L'1'; }
+namespace {
 bool readable(const void* address,size_t bytes,HMODULE owner=nullptr,bool executable=false);
 
 // Only validated module memory is traversed. Reject unterminated names, missing
@@ -1058,15 +905,16 @@ bool install(HMODULE target) {
     }
     bool found=false;for(auto* slot:slots)found|=slot!=nullptr;if(!found)return false;
     LARGE_INTEGER frequency{};if(!QueryPerformanceFrequency(&frequency)||frequency.QuadPart<=0)return false;
-    for(auto& hook:hooks){const auto i=&hook-hooks;hook.slot=slots[i];hook.original=originals[i];}
+    for(auto& hook:hooks){const auto i=&hook-hooks;hook.slot=slots[i];hook.original=originals[i];light::set_original(unsigned(i),originals[i]);}
+    const bool nesting=light::initialize();
     if(buffer) {
         gz_buffer::Originals real;
-        real.open=trace?gz_open_traced:original<GzOpenFn>(Operation::GzOpen);
-        real.read=trace?gz_read_traced:original<GzReadFn>(Operation::GzRead);
-        real.seek=trace?gz_seek_traced:original<GzSeekFn>(Operation::GzSeek);
-        real.getc=trace?gz_getc_traced:original<GzGetcFn>(Operation::GzGetc);
-        real.tell=trace?gz_tell_traced:original<GzTellFn>(Operation::GzTell);
-        real.close=trace?gz_close_traced:original<GzCloseFn>(Operation::GzClose);
+        real.open=trace?light::gz_open_traced:original<GzOpenFn>(Operation::GzOpen);
+        real.read=trace?light::gz_read_traced:original<GzReadFn>(Operation::GzRead);
+        real.seek=trace?light::gz_seek_traced:original<GzSeekFn>(Operation::GzSeek);
+        real.getc=trace?light::gz_getc_traced:original<GzGetcFn>(Operation::GzGetc);
+        real.tell=trace?light::gz_tell_traced:original<GzTellFn>(Operation::GzTell);
+        real.close=trace?light::gz_close_traced:original<GzCloseFn>(Operation::GzClose);
         bool imports=true;
         for(const auto& hook:hooks)if(gz_buffer_row(hook)&&!hook.slot)imports=false;
         if(imports){
@@ -1098,12 +946,15 @@ bool install(HMODULE target) {
     log("mesh_adjacency mode=%s scope=hook_service equivalence=d3dx_rules+exact_position_equality gate=public_systemmem_readonly+declaration_float3+no_attribute_table order=cache_lookup,compute,cache_store native_fallback=1 dump=%u rsqrt=%s",adjacency_mode_name(requested_mode),unsigned(adjacency_dump_requested.load(std::memory_order_relaxed)),adjacency_fast::rsqrt_implementation());
     clock_frequency=frequency.QuadPart;
     mesh_observation_enabled.store(true,std::memory_order_release);
+    const bool probes=probes_requested();
     for(auto& hook:hooks) {
+        if(probe_row(unsigned(&hook-hooks))&&!probes){hook.slot=nullptr;continue;}
         if(hook.slot&&patch(hook,false)){++hook_count;log("loading_hook name=%s installed=1",hook.name);}
         else {log("loading_hook name=%s installed=0",hook.name);if(hook.slot&&!has_protection_debt(hook.slot))hook.slot=nullptr;}
     }
     coverage_start=tick();installed.store(hook_count!=0);
-    log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=1 paths=0 qualification=named_pe32_imports",coverage_start,clock_frequency,hook_count);
+    log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=%u probes=%u",coverage_start,clock_frequency,hook_count,unsigned(nesting),unsigned(probes));
+    if(probes)loading_probes::initialize();
     return installed.load();
 }
 }
@@ -1112,11 +963,8 @@ bool initialize(){const DWORD error=GetLastError();bool result=install(GetModule
 bool active(){return installed.load()||mesh_owned_slots.load()||protection_debts.load();}
 Snapshot take_snapshot() {
     Snapshot result{};
-    for(unsigned i=0;i<count;++i){auto& c=counters[i];auto& s=result[i];
-        s.count=c.calls.exchange(0);s.failures=c.failures.exchange(0);s.pending=c.pending.exchange(0);s.ambiguous=c.ambiguous.exchange(0);
-        s.bytes=c.bytes.exchange(0);s.inclusive_ticks=c.inclusive.exchange(0);s.exclusive_ticks=c.exclusive.exchange(0);
-        s.maximum_ticks=c.maximum.exchange(0);s.overhead_ticks=c.overhead.exchange(0);
-    }return result;
+    for(unsigned i=0;i<count;++i)light::take(i,result[i]);
+    return result;
 }
 void report() {
     if(!active())return;
@@ -1125,10 +973,11 @@ void report() {
         log("loading_metric op=%s qpc=%llu count=%llu failures=%llu pending=%llu ambiguous=%llu bytes=%llu inclusive_ticks=%llu exclusive_ticks=%llu max_ticks=%llu wrapper_tail_ticks=%llu total_us=%.3f exclusive_us=%.3f max_us=%.3f wrapper_tail_us=%.3f",
             operation_name(i),end,s.count,s.failures,s.pending,s.ambiguous,s.bytes,s.inclusive_ticks,s.exclusive_ticks,s.maximum_ticks,s.overhead_ticks,
             double(s.inclusive_ticks)*1e6/clock_frequency,double(s.exclusive_ticks)*1e6/clock_frequency,double(s.maximum_ticks)*1e6/clock_frequency,double(s.overhead_ticks)*1e6/clock_frequency);
-    }cache_report();adjacency_report();restore_computational_state(fp);SetLastError(error);
+    }cache_report();adjacency_report();loading_probes::report();resource_reader::report();restore_computational_state(fp);SetLastError(error);
 }
 void shutdown() {
     const DWORD error=GetLastError();
+    loading_probes::shutdown();
     cache_enabled.store(false,std::memory_order_release);
     if(auto* instance=cache_instance.load(std::memory_order_acquire))instance->clear();
     restore_mesh_hooks();

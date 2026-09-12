@@ -14,6 +14,7 @@
 // usage: gz_buffer_fixture.exe [timing_calls] [case-name-substring]
 #include "../../src/proxy/gz_buffer.h"
 #include "../../src/proxy/cpu_state.h"
+#include "../../src/proxy/loading_trace_light.h"
 #include <windows.h>
 #include <cstdarg>
 #include <cstdio>
@@ -240,6 +241,36 @@ int main(int argc,char** argv){
       // The loading-trace hook's per-call envelope (CpuCallBoundary: fnsave/frstor twice, two
       // QueryPerformanceCounter reads, last-error transport) around the same raw call: what the
       // in-game "hooked" gzread interval of the loading profile contains besides zlib itself.
+      // The clock alone: the raw call plus the three QueryPerformanceCounter reads a
+      // span takes (begin, end, tail), nothing else. The light envelope minus this is
+      // the cost of the last-error transport, the TLS nesting slot and the accounting.
+      unsigned long long calls_qpc=0,sum_qpc=0;
+      { void* f=raw.open("gzb_timing.gz","rb");check(f!=nullptr,"timing_open_qpc");const ULONGLONG wall0=GetTickCount64();QueryPerformanceCounter(&t0);
+        LARGE_INTEGER a{},b{},c{};
+        for(unsigned long long i=0;i<timing_calls;++i){
+            QueryPerformanceCounter(&a);const int n=raw.read(f,three,3);QueryPerformanceCounter(&b);QueryPerformanceCounter(&c);
+            if(n!=3)break;
+            ++calls_qpc;sum_qpc+=three[0]+three[1]+three[2]+static_cast<unsigned>(c.QuadPart<a.QuadPart||b.QuadPart<a.QuadPart);}
+        QueryPerformanceCounter(&t1);const ULONGLONG wall1=GetTickCount64();raw.close(f);
+        const double seconds=double(t1.QuadPart-t0.QuadPart)/double(frequency.QuadPart);
+        printf("GZ_TIMING mode=qpc calls=%llu bytes=%llu seconds=%.3f ns_per_call=%.1f wall_ms=%llu\n",calls_qpc,calls_qpc*3,seconds,seconds*1e9/double(calls_qpc?calls_qpc:1),(unsigned long long)(wall1-wall0));
+        check(calls_qpc==timing_calls&&sum_qpc==sum_ref,"timing_qpc_bytes"); }
+      // The light envelope of the same row after loading_trace_light.cpp: the span's
+      // GetLastError/SetLastError pairs, three QueryPerformanceCounter reads, the
+      // TLS nesting slot and the lock cmpxchg8b accounting, no FNSAVE/FRSTOR.
+      unsigned long long calls_light=0,sum_light=0;
+      { x3m::loading_trace::light::initialize();
+        void* f=raw.open("gzb_timing.gz","rb");check(f!=nullptr,"timing_open_light");const ULONGLONG wall0=GetTickCount64();QueryPerformanceCounter(&t0);
+        for(unsigned long long i=0;i<timing_calls;++i){
+            x3m::loading_trace::light::Span span;span.begin(static_cast<unsigned>(x3m::loading_trace::Operation::GzRead));span.before_call();
+            const int n=raw.read(f,three,3);span.finish(n<0,n>0?unsigned(n):0);
+            if(n!=3)break;
+            ++calls_light;sum_light+=three[0]+three[1]+three[2];}
+        QueryPerformanceCounter(&t1);const ULONGLONG wall1=GetTickCount64();raw.close(f);
+        const double seconds=double(t1.QuadPart-t0.QuadPart)/double(frequency.QuadPart);
+        x3m::loading_trace::Sample row{};x3m::loading_trace::light::take(static_cast<unsigned>(x3m::loading_trace::Operation::GzRead),row);
+        printf("GZ_TIMING mode=light calls=%llu bytes=%llu seconds=%.3f ns_per_call=%.1f wall_ms=%llu row_count=%llu row_bytes=%llu nesting=%u\n",calls_light,calls_light*3,seconds,seconds*1e9/double(calls_light?calls_light:1),(unsigned long long)(wall1-wall0),row.count,row.bytes,unsigned(x3m::loading_trace::light::nesting_available()));
+        check(row.count==calls_light&&row.bytes==calls_light*3,"timing_light_row_counts"); }
       unsigned long long calls_hooked=0,sum_hooked=0;
       { void* f=raw.open("gzb_timing.gz","rb");check(f!=nullptr,"timing_open_hooked");const ULONGLONG wall0=GetTickCount64();QueryPerformanceCounter(&t0);
         for(unsigned long long i=0;i<timing_calls;++i){
@@ -257,6 +288,7 @@ int main(int argc,char** argv){
         const double seconds=double(t1.QuadPart-t0.QuadPart)/double(frequency.QuadPart);
         printf("GZ_TIMING mode=buffered calls=%llu bytes=%llu seconds=%.3f ns_per_call=%.1f wall_ms=%llu\n",calls_buf,calls_buf*3,seconds,seconds*1e9/double(calls_buf?calls_buf:1),(unsigned long long)(wall1-wall0)); }
       check(calls_ref==timing_calls&&calls_buf==timing_calls&&sum_ref==sum_buf,"timing_equal_bytes");
+      check(calls_light==timing_calls&&sum_light==sum_ref,"timing_light_bytes");
       check(calls_hooked==timing_calls&&sum_hooked-calls_hooked<=sum_ref&&sum_hooked>=sum_ref,"timing_hooked_bytes"); }
     end_case("timing",262144);
     }

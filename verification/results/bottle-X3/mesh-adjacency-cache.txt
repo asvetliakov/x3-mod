@@ -1,0 +1,6 @@
+CASE name=closed_manifold adjacency_hr=00000000 clean_hr=00000000 optimize_hr=00000000 cache_hit=1 downstream_exact=1
+CASE name=duplicated_seam adjacency_hr=00000000 clean_hr=00000000 optimize_hr=00000000 cache_hit=1 downstream_exact=1
+CASE name=epsilon_seam adjacency_hr=00000000 clean_hr=00000000 optimize_hr=00000000 cache_hit=1 downstream_exact=1
+CASE name=disconnected adjacency_hr=00000000 clean_hr=00000000 optimize_hr=00000000 cache_hit=1 downstream_exact=1
+CASE name=degenerate adjacency_hr=00000000 clean_hr=88760b55 optimize_hr=80004005 cache_hit=1 downstream_exact=1
+RESULT FAIL checks=303 error=native FP status changes observed

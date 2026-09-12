@@ -25,8 +25,20 @@ enum class Operation : unsigned {
     CursorSet, CursorPosition, GzOpen, GzRead, GzSeek, Inflate, XmlRead, MeshCreate, MeshClean,
     FindFirst, FindNext, FindClose, // resource resolver directory enumeration (loading-orchestration.md, section 2)
     GzGetc, GzTell, GzClose, GzWrite, // savegame stream rows (savegame-gz-stream.md); routed through gz_buffer when X3M_GZ_BUFFER=1
+    // Probe batch 2 (X3M_LOADING_PROBES=1, docs/reverse-engineering/loading-probes.md):
+    // patched only when requested; the CryptoAPI rows measure the script
+    // signature check 0x004cabc0, the write-side rows the negative-cache
+    // invalidation set, the last three the per-open Wine cost next to CreateFileA.
+    // (Names avoid the Win32 A/W API macros: CreateDirectory, DeleteFile, CryptAcquireContext... expand.)
+    InflateInit, InflateEnd,
+    CryptAcquire, CryptRelease, CryptImport, CryptHashCreate, CryptHash,
+    CryptVerify, CryptHashParam, CryptHashDestroy, CryptKeyDestroy,
+    DirectoryCreate, FileDelete, FileMove, FileMoveEx, FileWrite, FileType, HandleClose,
     MeshPointReps, MeshAdjacency, MeshOptimize, Count
 };
+constexpr unsigned probe_row_begin=static_cast<unsigned>(Operation::InflateInit);
+constexpr unsigned probe_row_end=static_cast<unsigned>(Operation::MeshPointReps);
+bool probes_requested(); // X3M_LOADING_PROBES=1 (read once at initialization; needs X3M_TELEMETRY=1)
 struct Sample {
     uint64_t count=0, failures=0, pending=0, ambiguous=0, bytes=0;
     uint64_t inclusive_ticks=0, exclusive_ticks=0, maximum_ticks=0;

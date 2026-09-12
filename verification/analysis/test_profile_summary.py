@@ -140,6 +140,36 @@ class ProfileSummaryTest(unittest.TestCase):
         result = summarize(self.log, [('gap', 14.9, 15.1)])
         self.assertEqual(result['windows'][0]['samples'], 300)
 
+    def test_frame_end_gaps_on_the_anchor_clock_become_windows(self):
+        frame_ends = ('frame_end device=1 frame=300 draws=1 capture=0 present=00000000 elapsed_ms=2000 dt_ms=0 qpc=12000\n'
+                      'frame_end device=1 frame=600 draws=1 capture=0 present=00000000 elapsed_ms=19000 dt_ms=17000 qpc=29000\n'
+                      'frame_end device=1 frame=601 draws=1 capture=1 present=00000000 elapsed_ms=19016 dt_ms=16 qpc=29016\n')
+        self.log.write_text(HEADER + frame_ends + BLOCK1 + BLOCK2)
+        parsed = parse(scan(self.log))
+        self.assertEqual(len(parsed['frame_ends']), 3)
+        from summarize_profile import frame_end_gaps
+        gaps = frame_end_gaps(parsed, 2.0)
+        self.assertEqual(len(gaps), 1)
+        self.assertEqual(gaps[0]['clock'], 'anchor')
+        self.assertAlmostEqual(gaps[0]['start_s'], 2.0)
+        self.assertAlmostEqual(gaps[0]['end_s'], 19.0)
+        self.assertEqual(gaps[0]['frames'], 300)
+        result = summarize(self.log, [('whole', None, None)], frame_gaps=True)
+        self.assertEqual(result['frame_end_lines'], 3)
+        self.assertEqual([w['label'] for w in result['windows']], ['whole', 'frame_gap_1'])
+        self.assertEqual(result['windows'][1]['blocks'], 2)   # block 1 [10, 15] inside; block 2 [15, 20] straddles the 19 s end
+        self.assertEqual(result['windows'][1]['samples'], 400)
+
+    def test_frame_end_gaps_without_any_anchor_are_dll_load_seconds(self):
+        self.log.write_text('frame_end device=1 frame=300 draws=1 capture=0 present=00000000 elapsed_ms=2000 dt_ms=0 qpc=12000\n'
+                            'frame_end device=1 frame=600 draws=1 capture=0 present=00000000 elapsed_ms=40000 dt_ms=38000 qpc=50000\n')
+        result = summarize(self.log, [('whole', None, None)], frame_gaps=True)
+        self.assertEqual(result['anchor_qpc'], None)
+        self.assertEqual(len(result['frame_end_gaps']), 1)
+        self.assertEqual(result['frame_end_gaps'][0]['clock'], 'dll_load')
+        self.assertAlmostEqual(result['frame_end_gaps'][0]['end_s'], 40.0)
+        self.assertEqual([w['label'] for w in result['windows']], ['whole'])   # no anchor: no window can be placed
+
     def test_missing_telemetry_anchor_uses_profile_start(self):
         text = HEADER.replace(f'telemetry_start schema=1 qpc_frequency={FREQ} qpc=10000 anchor=proxy_initialize cpu_only=1\n', '')
         self.log.write_text(text + BLOCK1)

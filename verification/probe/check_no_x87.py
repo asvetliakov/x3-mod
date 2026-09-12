@@ -28,6 +28,18 @@ LIGHT_HOOKS = ['set_vs', 'set_ps', 'set_vs_constant_f', 'set_vs_constant_i', 'se
 # src/proxy/gz_buffer.cpp) run with no boundary at all on their fast path, so the
 # same rule applies to them; the real zlib calls are indirect and stop the walk.
 GZ_HOOKS = ['gz_read', 'gz_getc', 'gz_tell', 'gz_seek']
+# Light loading-trace rows (src/proxy/loading_trace_light.cpp, no CpuCallBoundary),
+# the engine probe handlers and the resource reader's entry handler and .dat
+# pool (src/proxy/resource_reader_core.cpp): the same rule, walked from their
+# exact (namespace-qualified or extern "C") symbols.
+LIGHT_LOADING_ROWS = ['file_open', 'file_read', 'file_seek', 'cursor_set', 'cursor_position', 'find_first', 'find_next', 'find_close',
+                      'gz_open_traced', 'gz_read_traced', 'gz_seek_traced', 'gz_getc_traced', 'gz_tell_traced', 'gz_close_traced',
+                      'gz_write', 'inflate_stream', 'xml_read', 'inflate_init2', 'inflate_end', 'crypt_acquire_context',
+                      'crypt_release_context', 'crypt_import_key', 'crypt_create_hash', 'crypt_hash_data', 'crypt_verify_signature',
+                      'crypt_get_hash_param', 'crypt_destroy_hash', 'crypt_destroy_key', 'create_directory', 'delete_file',
+                      'move_file', 'move_file_ex', 'write_file', 'get_file_type', 'close_handle']
+LIGHT_NAMESPACE = '__ZN3x3m13loading_trace5light'   # x3m::loading_trace::light::<name> (i386 PE: leading underscore)
+EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry', '_x3m_pool_fopen', '_x3m_pool_fclose']
 ALLOWED = {'fnsave', 'frstor', 'stmxcsr', 'ldmxcsr', 'fwait'}
 FUNCTION = re.compile(r'^([0-9a-f]+) <(.+)>:$')
 INSTRUCTION = re.compile(r'^\s*[0-9a-f]+:\s+(?:[0-9a-f]{2} )+\s*([a-z][a-z0-9]*)\s*(.*)$')
@@ -98,6 +110,18 @@ def main():
             print(json.dumps({'result': 'FAIL', 'error': f'{hook}: {len(symbols)} symbols {symbols}'}))
             return 1
         roots[hook] = symbols[0]
+    for row in LIGHT_LOADING_ROWS:
+        prefix = f'{LIGHT_NAMESPACE}{len(row)}{row}E'
+        symbols = [n for n in functions if n.startswith(prefix)]
+        if len(symbols) != 1:
+            print(json.dumps({'result': 'FAIL', 'error': f'light::{row}: {len(symbols)} symbols {symbols}'}))
+            return 1
+        roots['light::' + row] = symbols[0]
+    for symbol in EXTERN_ROOTS:
+        if symbol not in functions:
+            print(json.dumps({'result': 'FAIL', 'error': f'{symbol}: not found'}))
+            return 1
+        roots[symbol] = symbol
     seen = walk(functions, roots.values())
     violations = {name: lines for name, lines in seen.items() if lines}
     summary = {'result': 'FAIL' if violations else 'PASS', 'dll': str(dll), 'roots': roots,

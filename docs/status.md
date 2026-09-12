@@ -67,6 +67,20 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   loads representative (removes ~16 s of instrumented stall) but the plain
   game gains ~0.5 s. The true X3 save-load time without telemetry is unknown —
   run 1 below measures it.
+- **Light loading hooks, probe batch 2, fast resource reader** (uncommitted
+  worktree, 2026-09-12 night; [loading-probes.md](verification/loading-probes.md),
+  [resource-reader.md](verification/resource-reader.md)). The counting/timing
+  import rows moved to a no-SSE unit without `CpuCallBoundary` (objdump: 0
+  xmm/x87 references; envelope 355 ns vs 1,215 ns under FEX, gz fixture);
+  `--loading-probes` adds 18 light import rows and 12 byte-verified
+  entry/exit trampolines on the engine's loading functions with per-gap
+  tables in `analyze_loading_profile.py`; `--resource-read verify|fast`
+  decodes gzip resources with one fread + one inflate into the game's
+  `_malloc` (no memset) with fallback to the original, `--dat-handles` pools
+  the catalogue `.dat` handles (both call sites are plain `E8` sites);
+  `frame_end` lines carry `elapsed_ms`/`dt_ms`/`qpc` in every mode. All three
+  gated, exact-executable only, fixture-verified against the real zlib; not yet
+  run in the game — the acceptance runs are listed in the two documents.
 - **Bottle X3 validation** ([bottles.md](verification/bottles.md)): four of
   five suites pass on X3 with comparable numbers; the sampling profiler cannot
   attribute samples under FEX (`GetThreadContext` returns creation-time

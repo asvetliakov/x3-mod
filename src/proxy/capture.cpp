@@ -3,6 +3,8 @@
 #include "telemetry.h"
 #include "loading_trace.h"
 #include "gz_buffer.h"
+#include "resource_reader.h"
+#include "engine_patch.h"
 #include "sampling_profiler.h"
 #include "scene_capture.h"
 #include "object_trace.h"
@@ -90,6 +92,9 @@ float motion_cut_median_px = 48.f, motion_cut_missing = .25f;
 constexpr bool motion_live_replay_available = false;
 std::set<uint64_t> dumped;
 uint64_t next_device_id = 1;
+}
+unsigned long long dll_load_qpc = 0; // stamped in DllMain (loader.cpp)
+namespace {
 
 // Each object owns a private copy of the backend vtable. We don't patch shared
 // executable pages, wrap resources, or change IUnknown identity. Ex tails are
@@ -115,6 +120,7 @@ struct Device : Hooks {
     uint64_t frame = 0;
     uint64_t draws = 0;
     uint64_t events = 0;
+    uint64_t frame_end_qpc = 0; // stamp of the previous frame_end line (dt_ms)
     telemetry::State stats;
     SceneCapture scene_depth;
     DrawInputReader draw_inputs;
@@ -449,6 +455,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         // The frame routine cannot run without a device: quiescent for the
         // callsite restore (the object-trace patch keeps its own lifetime).
         if(scene_hook::installed()){const bool restored=scene_hook::shutdown();log("scene_hook_shutdown restored=%u status=%s",restored,scene_hook::status());}
+        resource_reader::report(); // final summary without telemetry; the reader itself stays installed (loading continues without a device)
     }
     if(!refs){
         // A nested final factory Release can report this device root still
@@ -500,7 +507,22 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
         log("telemetry_present_window device=%llu frame=%llu override=%p device_window=%p result=%08lx",ctx.id,ctx.frame,w,ctx.stats.window,hr);
         ctx.stats.present_override_known=true;ctx.stats.present_override=w;
     }
-    if (ctx.capture || ctx.frame%300==0) log("frame_end device=%llu frame=%llu draws=%llu capture=%u present=%08lx",ctx.id,ctx.frame,ctx.draws,ctx.capture,hr);
+    // The first presented frame closes the trampoline install window: every
+    // engine_patch claim belongs to initialize_log (before the device existed);
+    // a later claim would write over code the loading threads may be executing.
+    if(engine_patch::install_window_open())engine_patch::close_install_window("first_present");
+    if (ctx.capture || ctx.frame%300==0) {
+        // One QPC per logged line (every 300 frames or a capture frame), in every
+        // mode: elapsed_ms since DllMain and dt_ms since the previous frame_end
+        // line make load times readable from a plain --direct log. Integer only.
+        static uint64_t frequency=0;
+        if(!frequency){LARGE_INTEGER f{};QueryPerformanceFrequency(&f);frequency=f.QuadPart>0?uint64_t(f.QuadPart):1;}
+        LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);const uint64_t now=uint64_t(stamp.QuadPart);
+        const uint64_t elapsed_ms=(now-dll_load_qpc)*1000ull/frequency;
+        const uint64_t dt_ms=ctx.frame_end_qpc?(now-ctx.frame_end_qpc)*1000ull/frequency:0;
+        ctx.frame_end_qpc=now;
+        log("frame_end device=%llu frame=%llu draws=%llu capture=%u present=%08lx elapsed_ms=%llu dt_ms=%llu qpc=%llu",ctx.id,ctx.frame,ctx.draws,ctx.capture,hr,elapsed_ms,dt_ms,now);
+    }
     if(ctx.capture||ctx.frame%300==0)finite_upload_metrics(d,ctx,"present");
     // With the route requested, log the wrapper's copy-depth epochs per capture
     // frame: source_epoch counts the application's depth clears that found the
@@ -1371,6 +1393,7 @@ void initialize_log(HMODULE module) {
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     if(telemetry::enabled()||gz_buffer::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 patches the gz rows alone
+    resource_reader::initialize(); // X3M_RESOURCE_READ=verify|fast, X3M_DAT_HANDLES=1; after the probes so its stub chains behind theirs
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists
 }
 const wchar_t* capture_directory() { return directory.c_str(); }

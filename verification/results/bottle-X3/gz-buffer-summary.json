@@ -15,15 +15,15 @@
   "zlib1_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/zlib1.dll",
   "sources": {
     "src/proxy/gz_buffer.h": "bacec1b06195c83f7007fe5ed4a9d18cd9ad79503d9cfbc8e6dbaa1390f2ec2d",
-    "src/proxy/gz_buffer.cpp": "b3b9c0fd8d381750f0900dc00ce985cfc5af71eabc704441d242637d8ed52fc0",
+    "src/proxy/gz_buffer.cpp": "1ec0c3b421e3505671040f18fc00e402bed23c1621d02c46863819cc8e592da3",
     "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
-    "src/proxy/capture.h": "e573832e0771ad93c76d58dfc8ddc9b33aec5c7db5d4a6ca526797bb5736cf31",
-    "verification/probe/gz_buffer_fixture.cpp": "eb6fab399e2195a370b592641fa4201cad7765447a9f0c7bd22abd4666055e63",
-    "verification/probe/build_gz_buffer.sh": "55f19ad8313a5a0633b75c3eb265b38c6482f18d81689c9dc763b6770c5ea74a",
-    "verification/probe/run_gz_buffer.py": "e0ae338c2226602b2af26b45fef2190746b62342797b10cfca4ff49372b0f71c"
+    "src/proxy/capture.h": "35a4350a1babdea3d61b7de88b6548669f9e7de19137e6cdebc2b018a591949b",
+    "verification/probe/gz_buffer_fixture.cpp": "1d55b2be0c705d8c18ba423c364868761c6dfabbe41ade8be466308960dd152a",
+    "verification/probe/build_gz_buffer.sh": "2a48c44e7e66b00fd7a88eeaa72dcee6a549c33f850706140858518d7e1aa765",
+    "verification/probe/run_gz_buffer.py": "65b8d18ac2e34f2b2aad537c3ad1aa6fc32b921e7921af75c2e19bf16844b956"
   },
   "zlib1_sha256_before": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
-  "executable_sha256": "b3eeb6e586ba827c9d033196c4eb4a22c228c0c4c5adb9b921d1fa97b011c759",
+  "executable_sha256": "131400db38e8d4beb8dfcae6b2d666a0dd2656fd445e734ddd8416ce1a93e96c",
   "zlib1_sha256_copied": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
   "exit_code": 0,
   "report": {
@@ -148,7 +148,7 @@
       "timing": {
         "capacity": 262144,
         "ops": 0,
-        "checks": 7,
+        "checks": 12,
         "failures": 0
       }
     },
@@ -156,23 +156,37 @@
       "unbuffered": {
         "calls": 10000000,
         "bytes": 30000000,
-        "seconds": 0.329,
-        "ns_per_call": 32.9,
-        "wall_ms": 320
+        "seconds": 0.346,
+        "ns_per_call": 34.6,
+        "wall_ms": 340
+      },
+      "qpc": {
+        "calls": 10000000,
+        "bytes": 30000000,
+        "seconds": 2.427,
+        "ns_per_call": 242.7,
+        "wall_ms": 2414
+      },
+      "light": {
+        "calls": 10000000,
+        "bytes": 30000000,
+        "seconds": 3.954,
+        "ns_per_call": 395.4,
+        "wall_ms": 3938
       },
       "hooked": {
         "calls": 10000000,
         "bytes": 30000000,
-        "seconds": 12.676,
-        "ns_per_call": 1267.6,
-        "wall_ms": 12662
+        "seconds": 12.255,
+        "ns_per_call": 1225.5,
+        "wall_ms": 12246
       },
       "buffered": {
         "calls": 10000000,
         "bytes": 30000000,
-        "seconds": 0.422,
-        "ns_per_call": 42.2,
-        "wall_ms": 407
+        "seconds": 0.43,
+        "ns_per_call": 43.0,
+        "wall_ms": 421
       }
     },
     "statistics": {
@@ -194,10 +208,14 @@
       "errors": 9
     },
     "file_lines": 58,
-    "checks": 735871,
+    "checks": 735876,
     "failures": 0,
     "fail_lines": [],
-    "hook_envelope_ratio": 38.52887537993921,
-    "speedup": 0.7796208530805688
+    "hook_envelope_ratio": 35.419075144508675,
+    "speedup": 0.8046511627906976,
+    "light_envelope_ratio": 11.427745664739886,
+    "light_envelope_ns": 360.79999999999995,
+    "hooked_envelope_ns": 1190.9,
+    "qpc_envelope_ns": 208.1
   }
 }

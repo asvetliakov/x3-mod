@@ -115,7 +115,7 @@ def instrumented(windows, start, end):
          else straddling).append(window)
     table = loading.totals(inside + straddling)
     return dict(windows=len(inside) + len(straddling), straddling_windows=len(straddling),
-                operations=table,
+                operations=table, probes=loading.probe_totals(inside + straddling),
                 exclusive_seconds=sum(item['exclusive_seconds'] for item in table.values()))
 
 
@@ -328,6 +328,11 @@ def analyze(path, threshold=2.0, hash_source=True, symbols=None, labels=None, to
     parsed = profile.parse(profile_lines)
     delta_blocks = [b for b in parsed['blocks'] if b['scope'] == 'delta']
     found = loading.gaps(present, threshold)
+    gap_source = 'present'
+    if clock is None:
+        # No telemetry at all (a plain --direct run): the frame_end lines bound the gaps.
+        gap_source = 'frame_end'
+        found = loading.frame_end_gaps(anchors['frame_ends'], threshold)
     accountings = [loading.attribute(gap, windows) for gap in found]
     gaps = []
     labels_so_far = []
@@ -335,11 +340,14 @@ def analyze(path, threshold=2.0, hash_source=True, symbols=None, labels=None, to
         label, evidence = label_gap(accounting['operations'], labels_so_far)
         labels_so_far.append(label)
         start, end = accounting['start_seconds'], accounting['end_seconds']
+        if gap_source == 'frame_end':
+            label, evidence = 'frame_end gap', (f"{gap['window_frames']} frames between two frame_end lines "
+                                                f"({gap['clock']} clock); no telemetry in this log")
         item = dict(index=index, label=label, evidence=evidence, gap_seconds=gap['gap_seconds'],
                     start_seconds=start, end_seconds=end, end_frame=gap['end_frame'],
                     hooked=dict(windows=accounting['windows'],
                                 straddling_windows=accounting['straddling_windows'],
-                                operations=accounting['operations'],
+                                operations=accounting['operations'], probes=accounting['probes'],
                                 exclusive_seconds=accounting['instrumented_exclusive_seconds']),
                     unexplained_seconds=accounting['unexplained_seconds'],
                     sampled=sampled(parsed, start, end) if delta_blocks else None,
@@ -356,9 +364,10 @@ def analyze(path, threshold=2.0, hash_source=True, symbols=None, labels=None, to
     intervals = gaps + [stall for gap in gaps for stall in gap['stalls']]
     start_fields = parsed['start'] or {}
     result = dict(
-        source=provenance, clock=clock, threshold_seconds=threshold,
+        source=provenance, clock=clock, threshold_seconds=threshold, gap_source=gap_source,
+        probe_sites=anchors['probe_sites'], frame_ends=len(anchors['frame_ends']),
         coverage_begin_seconds=(loading.seconds(anchors['coverage_begin_qpc'], clock)
-                                if anchors['coverage_begin_qpc'] else None),
+                                if anchors['coverage_begin_qpc'] and clock else None),
         hooks=anchors['hooks'], first_presents=anchors['first_presents'],
         last_present_seconds=present[-1]['seconds'] if present else 0.0,
         report_windows=len(windows),
@@ -407,6 +416,25 @@ def render_hooked(hooked, limit=12):
     for op, m in ops:
         lines.append(f"| `{op}` | {m['count']:,} | {m['inclusive_seconds']:.3f} | {m['exclusive_seconds']:.3f} "
                      f"| {m['mean_ms']:.3f} | {m['bytes']:,} |")
+    lines.append('')
+    return lines
+
+
+def render_probes(probes, sites, limit=16):
+    """Engine probe table for one interval (loading_probe deltas of the overlapping windows)."""
+    rows = sorted(probes.items(), key=lambda kv: -kv[1]['inclusive_seconds'])[:limit]
+    if not rows:
+        return []
+    lines = ['| Probe | Calls | Exits | Incl. s | Mean ms | Max ms | Bytes | Extras |', '| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |']
+    for site, m in rows:
+        names = sites.get(site, {}).get('extras', ['x0', 'x1', 'x2', 'x3'])
+        extras = ', '.join(f"{name}={m['x%d' % i]:,}" for i, name in enumerate(names) if name != '-' and m['x%d' % i])
+        if m['overflow'] or m['desync']:
+            extras = (extras + ', ' if extras else '') + f"overflow={m['overflow']}, desync={m['desync']}"
+        for caller, count in sorted(m.get('callers', {}).items(), key=lambda kv: -kv[1])[:4]:
+            extras = (extras + ', ' if extras else '') + f"caller {caller} {count:,}"
+        lines.append(f"| `{site}` | {m['calls']:,} | {m['exits']:,} | {m['inclusive_seconds']:.3f} | {m['mean_ms']:.3f} "
+                     f"| {m['max_seconds'] * 1000:.1f} | {m['bytes']:,} | {extras or '—'} |")
     lines.append('')
     return lines
 
@@ -490,7 +518,7 @@ def candidates(item, length, table):
     return ' '.join(sentences)
 
 
-def render_interval(item, length, heading, evidence=None):
+def render_interval(item, length, heading, evidence=None, sites=None):
     table = item['sampled']
     lines = [heading, '']
     if evidence:
@@ -508,6 +536,9 @@ def render_interval(item, length, heading, evidence=None):
         lines.append('**No profile data**: no `profile_report scope=delta` block overlaps this interval.')
     lines.append('')
     lines += ['**Hooked time**', ''] + render_hooked(item['hooked'])
+    probes = render_probes(item['hooked'].get('probes', {}), sites or {})
+    if probes:
+        lines += ['**Engine probes (loading_probe deltas of the overlapping windows)**', ''] + probes
     if table:
         lines += ['**Sampled attribution: per-thread module split**', ''] + render_threads(table)
         lines += ['**Top functions (leaf samples by containing function)**', ''] + render_functions(table)
@@ -520,11 +551,20 @@ def render_interval(item, length, heading, evidence=None):
 
 def render(result):
     source, prof = result['source'], result['profile']
+    clock_text = f"QPC {result['clock']['frequency']:,} Hz" if result.get('clock') else 'no telemetry clock (frame_end elapsed_ms since DllMain)'
     lines = [f"# Loading attribution: `{source['name']}`", '',
-             f"Source {source['bytes']:,} bytes, sha256 `{source['sha256']}`; QPC {result['clock']['frequency']:,} Hz; "
+             f"Source {source['bytes']:,} bytes, sha256 `{source['sha256']}`; {clock_text}; "
              f"{result['report_windows']} loading report windows; {result['hooks']} import hooks; "
              f"last Present at {result['last_present_seconds']:.3f} s.",
              '']
+    if result.get('gap_source') == 'frame_end':
+        lines.append(f"**Gaps come from the {result.get('frame_ends', 0)} `frame_end` lines** (every 300 frames or a capture frame): "
+                     'each gap is the interval between two lines whose dt_ms exceeds the threshold, so it also contains up to 300 ordinary frames.')
+        lines.append('')
+    if result.get('probe_sites'):
+        active = sorted(name for name, site in result['probe_sites'].items() if site.get('status') == 'active')
+        lines.append(f"Engine probes: {len(active)} of {len(result['probe_sites'])} sites active ({', '.join(active) or 'none'}).")
+        lines.append('')
     if prof['present']:
         lines.append(f"Profiler: {prof['delta_blocks']} delta blocks from {prof['first_report_s']:.3f} to {prof['last_report_s']:.3f} s, "
                      f"interval {prof['interval_us']} µs, report period {prof['report_s']} s, {prof['modules']} modules, main base {prof['main_base']}. "
@@ -548,10 +588,11 @@ def render(result):
     for gap in result['gaps']:
         lines += render_interval(gap, gap['gap_seconds'],
                                  f"## Gap {gap['index']}: {gap['label']} ({gap['gap_seconds']:.3f} s, ends at frame {gap['end_frame']})",
-                                 gap['evidence'])
+                                 gap['evidence'], result.get('probe_sites'))
         for stall in gap['stalls']:
             lines += render_interval(stall, stall['interval_seconds'],
-                                     f"### Gap {gap['index']} stall {stall['index']}: report stall {stall['interval_seconds']:.3f} s")
+                                     f"### Gap {gap['index']} stall {stall['index']}: report stall {stall['interval_seconds']:.3f} s",
+                                     None, result.get('probe_sites'))
     lines += ['## Limits', ''] + [f'- {limit}' for limit in result['limits']] + ['']
     return '\n'.join(lines)
 

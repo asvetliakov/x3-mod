@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T16:01:27.156748+00:00",
+  "started_utc": "2026-09-12T17:09:25.630097+00:00",
   "bottle": {
     "name": "Steam",
     "wine_arch": "win64",
@@ -14,10 +14,10 @@
     "Steam",
     "--no-update",
     "--workdir",
-    "/Users/asvetl/x3-mod/verification/probe/build",
-    "/Users/asvetl/x3-mod/verification/probe/build/temporal_resolve.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a68201431d638fe21/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a68201431d638fe21/verification/probe/build/temporal_resolve.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/src/temporal/resolve.hlsl"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a68201431d638fe21/src/temporal/resolve.hlsl"
   ],
   "process_local_override": "d3d9=b",
   "timeout_seconds": 60,
@@ -30,7 +30,7 @@
   },
   "freshly_built": true,
   "build_exit_code": 0,
-  "executable_sha256": "7ae939b048557683f546598c32ddc5193123e7ec471bd86dbc6c2207be7633bb",
+  "executable_sha256": "1e169357658560ad6c1d206467ab7498b5ef50ba376c354ee2aaadfe6fc6edf3",
   "exit_code": 0,
   "sample_checks": 78,
   "passed_sample_checks": 78,

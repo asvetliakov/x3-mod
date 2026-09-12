@@ -239,6 +239,20 @@ profile's 0.656 µs per hooked call is mostly the hook envelope under FEX, not
 zlib) and the expected in-game bound are in
 [docs/verification/gz-buffer.md](../verification/gz-buffer.md).
 
+## Light hooks, probe batch 2, fast resource reader
+
+The counting/timing import rows now run without `CpuCallBoundary` from a
+no-SSE unit (355 ns envelope instead of 1,215 ns under FEX); `X3M_LOADING_PROBES=1`
+adds the CryptoAPI/per-open import rows and twelve byte-verified
+entry-counting trampolines ([loading-probes.md](loading-probes.md),
+[docs/verification/loading-probes.md](../verification/loading-probes.md));
+`X3M_RESOURCE_READ=verify|fast` replaces the archive reader's per-kilobyte
+decode of `0x004e8880` and `X3M_DAT_HANDLES=1` keeps the catalogue `.dat`
+handles ([resource-reader.md](resource-reader.md),
+[docs/verification/resource-reader.md](../verification/resource-reader.md)).
+`frame_end` lines carry `elapsed_ms`/`dt_ms`/`qpc` in every mode, so a plain
+run's load times are readable from the log.
+
 `tools/analysis/analyze_loading_profile.py <session.log> --output <dir> --ghidra`
 runs that chain in one command: every presentation gap over 2 s and every
 report stall inside it gets the hooked operation table next to the sampled

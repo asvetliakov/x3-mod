@@ -85,6 +85,7 @@ int main(){
     check(baseline_result&&read==4,"baseline_read");rawSeek(file,0,nullptr,FILE_BEGIN);
     PVOID* read_slot=import_slot("ReadFile");MEMORY_BASIC_INFORMATION before{},after{};
     check(read_slot&&VirtualQuery(read_slot,&before,sizeof before),"iat_page_before");
+    SetEnvironmentVariableW(L"X3M_LOADING_PROBES",L"1"); // probe batch 2 rows the fixture imports (CloseHandle, WriteFile) install as light rows; the engine trampolines stay off (no verified executable)
     check(fixture_initialize(self)&&active(),"install_named_imports");
     check(VirtualQuery(read_slot,&after,sizeof after)&&before.Protect==after.Protect,"iat_protection_restored_after_install");
     // Complete module-lifetime setup before the exact steady counter window;
@@ -195,6 +196,7 @@ int main(){
     check(sample(data,Operation::GzSeek).count==2&&sample(data,Operation::GzSeek).failures==1,"gzseek_counters");
     check(sample(data,Operation::Inflate).count==3&&sample(data,Operation::Inflate).failures==1&&sample(data,Operation::Inflate).ambiguous==1,"inflate_counters");
     check(sample(data,Operation::XmlRead).count==2&&sample(data,Operation::XmlRead).failures==1&&sample(data,Operation::XmlRead).bytes==246,"xml_counters");
+    check(sample(data,Operation::HandleClose).count>=1&&sample(data,Operation::HandleClose).failures==0,"probe_row_close_handle_counted");
     check(sample(take_snapshot(),Operation::Effect).count==0,"snapshot_exchange");
     // Same-process synthetic overhead check; never a claim about game loading.
     auto rawInflate=reinterpret_cast<int (__cdecl*)(void*,int)>(GetProcAddress(GetModuleHandleW(L"zlib1.dll"),"inflate"));
