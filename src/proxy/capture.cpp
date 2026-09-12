@@ -458,7 +458,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         // The frame routine cannot run without a device: quiescent for the
         // callsite restore (the object-trace patch keeps its own lifetime).
         if(scene_hook::installed()){const bool restored=scene_hook::shutdown();log("scene_hook_shutdown restored=%u status=%s",restored,scene_hook::status());}
-        chase_camera::shutdown(); // the cockpit update needs the main loop; quiescent here too
+        chase_camera::note_last_device(); // kept for the process lifetime (review 31 A3): a recreated device could not re-claim the site
         resource_reader::report(); // final summary without telemetry; the reader itself stays installed (loading continues without a device)
         loading_trace::crypt_cache_report("session"); // cumulative totals; bounded native cache retained until process exit
     }

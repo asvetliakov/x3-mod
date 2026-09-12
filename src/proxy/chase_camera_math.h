@@ -147,22 +147,29 @@ inline bool clamp_spring(Spring& s, double limit) {
     return true;
 }
 
+// Defaults per review 31 (A7): a critically damped spring lags a constant
+// angular rate W by 2*tau*W, so at rot_tau 0.15 s a 60 deg/s fighter turn
+// reaches the 8 deg clamp and settles in ~0.6 s after the turn, a 5 deg/s
+// capital turn shows ~1.5 deg; the boom lag adds at most atan(0.10) ~ 5.7 deg
+// in the same direction, ~14 deg of ship excursion combined.
 struct Tunables {
-    double rot_tau = 0.20;          // s, orientation spring time constant (X3M_CAMERA_ROT_TAU)
-    double pos_tau = 0.30;          // s, boom-offset spring time constant (X3M_CAMERA_POS_TAU)
-    double offset_y = 0.12;         // fraction of the half screen height the ship sits below centre (X3M_CAMERA_OFFSET_Y)
-    double distance_scale = 1.0;    // multiplies the vanilla boom offset (X3M_CAMERA_DISTANCE_SCALE)
-    double lag_clamp_deg = 10.0;    // max orientation lag (X3M_CAMERA_LAG_CLAMP_DEG)
-    double pos_lag_clamp = 0.20;    // max |offset lag| as a fraction of the boom length
-    double combat_tightness = 0.0;  // 0..1, reserved: no readable target-lock state yet (X3M_CAMERA_COMBAT_TIGHTNESS)
-    double max_dt = 0.10;           // s, dt clamp after pauses/loads
+    double rot_tau = 0.15;          // s, orientation spring time constant (X3M_CHASE_ROT_TAU)
+    double pos_tau = 0.20;          // s, boom-offset spring time constant (X3M_CHASE_POS_TAU)
+    double offset_y = 0.12;         // fraction of the half screen height the ship sits below centre (X3M_CHASE_OFFSET_Y)
+    double distance_scale = 1.0;    // multiplies the vanilla boom offset (X3M_CHASE_DISTANCE_SCALE)
+    double lag_clamp_deg = 8.0;     // max orientation lag (X3M_CHASE_LAG_CLAMP_DEG)
+    double pos_lag_clamp = 0.10;    // max |offset lag| as a fraction of the boom length (X3M_CHASE_POS_LAG_CLAMP)
+    double combat_tightness = 0.0;  // 0..1: while a target is locked (Input::target_locked) both time constants are scaled by (1 - tightness); 1 = rigid follow (X3M_CHASE_COMBAT_TIGHTNESS)
+    double max_dt = 0.10;           // s, dt clamp after pauses/loads (X3M_CHASE_MAX_DT)
     double snap_ratio = 20.0;       // ship displacement per frame above snap_ratio * boom length = teleport
     double max_orthonormality_error = 0.02; // input basis rejection
+    unsigned snap_coalesce_frames = 3; // a sector-only snap within this many applied frames of the previous snap re-seats the springs but raises no second cut (A4: gate jump = teleport, then the sector follows a frame later)
 };
 inline bool valid(const Tunables& t) {
     return t.rot_tau > 0 && t.rot_tau <= 10 && t.pos_tau > 0 && t.pos_tau <= 10 && std::isfinite(t.offset_y) && std::fabs(t.offset_y) <= 1 &&
            t.distance_scale > 0 && t.distance_scale <= 10 && t.lag_clamp_deg >= 0 && t.lag_clamp_deg <= 90 && t.pos_lag_clamp >= 0 && t.pos_lag_clamp <= 1 &&
-           t.combat_tightness >= 0 && t.combat_tightness <= 1 && t.max_dt > 0 && t.max_dt <= 5 && t.snap_ratio >= 1 && t.max_orthonormality_error > 0;
+           t.combat_tightness >= 0 && t.combat_tightness <= 1 && t.max_dt > 0 && t.max_dt <= 5 && t.snap_ratio >= 1 && t.max_orthonormality_error > 0 &&
+           t.snap_coalesce_frames <= 60;
 }
 
 // One frame of engine state, already converted from the engine's integers.
@@ -173,21 +180,26 @@ struct Input {
     Mat3 view_rel;            // cockpit +0xf0: camera basis relative to the ship (vanilla_cam = view_rel * ship_basis)
     double half_vfov_tan = 0.75; // tan of half the vertical FOV (0.75 = the 73.74 deg default)
     std::uint32_t view_mode = 0, connect_mode = 0; // cockpit +0x150, +0x1c0
+    std::uint32_t flags_1a0 = 0;                    // cockpit +0x1a0: bit 2 makes the engine write the camera basis verbatim (A2)
     std::uintptr_t ref_object = 0, sector = 0;      // cockpit +0xc, +0x1fc
+    bool target_locked = false;                     // cockpit +0x1e4 tracking mode 1/4 with a valid +0x1e0 object (A9; unverified in game)
 };
 struct Pose { Vec3 pos; Mat3 basis; Mat3 view_rel; };
 enum class Verdict : std::uint32_t {
     Applied = 0,
     InternalView = 1,      // view mode 1: the cockpit
     NotBackView = 2,       // an external view that is not behind the ship
-    SpecialConnect = 3,    // connect mode 4/5/6/8/9: scripted/cinematic camera
+    SpecialConnect = 3,    // connect mode other than 0 (4/5/6/8/9 scripted/cinematic; 1/2/7 without study semantics pass through too)
     InvalidInput = 4,      // non-finite or non-orthonormal input
     Degenerate = 5,        // zero boom, or the derived ship basis failed
     NumericFailure = 6,    // state became non-finite (reset)
+    VerbatimBasis = 7,     // connect mode 3 or +0x1a0 & 4: the engine wrote camera.basis = +0xf0 verbatim, so the derived ship basis would be the identity (A2)
 };
 struct Step {
     Verdict verdict = Verdict::InvalidInput;
-    bool snapped = false;
+    bool snapped = false;      // the springs were re-seated and the frame is a cut
+    bool coalesced = false;    // re-seated within snap_coalesce_frames of the previous snap: no second cut (A4)
+    bool target_locked = false; // the combat-tightness scaling was in effect this frame
     double lag_deg = 0, pos_lag = 0, distance = 0, dt = 0;
     std::uint32_t snap_reason = 0; // bit set: 1 first, 2 ship/ref change, 4 sector, 8 mode, 16 teleport, 32 numeric
 };
@@ -199,19 +211,24 @@ struct State {
     Vec3 last_ship_pos;
     std::uintptr_t last_ref = 0, last_sector = 0;
     std::uint32_t last_mode = 0, last_connect = 0;
-    std::uint64_t snaps = 0, applied = 0, refused = 0, clamps = 0;
+    std::uint32_t applied_since_snap = 0;
+    std::uint64_t snaps = 0, coalesced = 0, applied = 0, refused = 0, clamps = 0;
 };
 
 // Geometric back-view test on the vanilla pose: the boom points behind the ship
 // (ship-frame z < 0, mostly along the axis) and the camera looks along the
 // ship's forward axis. The external views are script-defined (view position
-// and angles), so the mode integer alone cannot tell them apart.
-inline bool back_view(Vec3 boom_local, const Mat3& view_rel) {
+// and angles), so the mode integer alone cannot tell them apart. Hysteresis
+// (A6): a view enters at the tight thresholds and, once tracked, leaves only at
+// the wide ones, so a transition animating through the boundary cannot flip
+// the verdict every frame (each flip would refuse, and the return would snap).
+inline bool back_view(Vec3 boom_local, const Mat3& view_rel, bool tracked) {
+    const double side = tracked ? 0.8 : 0.6, above = tracked ? 2.0 : 1.5, forward = tracked ? 0.5 : 0.7;
     const double behind = -boom_local.z;
     if (!(behind > 0)) return false;
-    if (std::fabs(boom_local.x) > 0.6 * behind) return false;
-    if (std::fabs(boom_local.y) > 1.5 * behind) return false;
-    return view_rel.m[2][2] > 0.7; // forward axes aligned within ~45 deg
+    if (std::fabs(boom_local.x) > side * behind) return false;
+    if (std::fabs(boom_local.y) > above * behind) return false;
+    return view_rel.m[2][2] > forward; // forward axes aligned within ~45 deg (enter) / 60 deg (leave)
 }
 
 inline void reset(State& s) { s.tracking = false; s.rot = {}; s.pos = {}; }
@@ -226,7 +243,12 @@ inline Step step(State& s, const Input& in, double dt, const Tunables& t, Pose* 
     if (orthonormality_error(in.vanilla_cam) > t.max_orthonormality_error || orthonormality_error(in.view_rel) > t.max_orthonormality_error)
         return refuse(Verdict::InvalidInput);
     if (in.view_mode == 1) return refuse(Verdict::InternalView);
-    if (in.connect_mode == 4 || in.connect_mode == 5 || in.connect_mode == 6 || in.connect_mode == 8 || in.connect_mode == 9) return refuse(Verdict::SpecialConnect);
+    // A2: connect mode 3 and flag +0x1a0 & 4 make the engine write the basis
+    // verbatim (camera.basis = +0xf0 at 0x00420c0c), so ship = view_rel^T *
+    // camera below would be the identity and the back-view test would run in
+    // world axes. Every other non-zero connect mode is scripted or unstudied.
+    if (in.connect_mode == 3 || (in.flags_1a0 & 4)) return refuse(Verdict::VerbatimBasis);
+    if (in.connect_mode != 0) return refuse(Verdict::SpecialConnect);
     // Effective ship basis from the vanilla identity camera = view_rel * ship:
     // ship = view_rel^T * camera. (Docked/carried ships use a derived parent
     // basis in the engine; this keeps view_rel consistent whichever it was.)
@@ -236,7 +258,7 @@ inline Step step(State& s, const Input& in, double dt, const Tunables& t, Pose* 
     const double boom = length(boom_world);
     if (!(boom > 0)) return refuse(Verdict::Degenerate);
     const Vec3 boom_local = mul(boom_world, transpose(ship));
-    if (!back_view(boom_local, in.view_rel)) return refuse(Verdict::NotBackView);
+    if (!back_view(boom_local, in.view_rel, s.tracking)) return refuse(Verdict::NotBackView);
 
     // Snap conditions.
     std::uint32_t snap = 0;
@@ -248,6 +270,12 @@ inline Step step(State& s, const Input& in, double dt, const Tunables& t, Pose* 
         if (length(in.ship_pos - s.last_ship_pos) > t.snap_ratio * boom) snap |= 16;
     }
     s.last_ref = in.ref_object; s.last_sector = in.sector; s.last_mode = in.view_mode; s.last_connect = in.connect_mode; s.last_ship_pos = in.ship_pos;
+    // A4: a gate jump is a teleport snap (16) followed by the sector snap (4)
+    // one frame later, when +0x1fc catches up; that second, sector-only snap
+    // re-seats the springs (a fraction of a degree of lag at most that soon
+    // after a snap) but must not be a second TAA cut. Every other reason moves
+    // the world or the view and always cuts.
+    const bool coalesce = snap == 4 && s.tracking && s.applied_since_snap < t.snap_coalesce_frames;
     if (snap) reset(s);
 
     // Target orientation: the vanilla camera pitched up so the ship sits below centre.
@@ -259,14 +287,23 @@ inline Step step(State& s, const Input& in, double dt, const Tunables& t, Pose* 
     const double target_length = boom * t.distance_scale;
 
     const double step_dt = std::fmin(std::fmax(dt, 0.0), t.max_dt);
+    // A9: with a target locked both time constants shrink by (1 - tightness);
+    // tightness 1 gives tau 0, which spring_step treats as a rigid follow.
+    const double tight = in.target_locked ? 1.0 - t.combat_tightness : 1.0;
+    r.target_locked = in.target_locked;
     if (snap) {
         s.basis = target; s.offset = target_boom; s.rot = {}; s.pos = {};
-        s.tracking = true; ++s.snaps; r.snapped = true; r.snap_reason = snap;
+        s.tracking = true; ++s.snaps; r.snap_reason = snap; s.applied_since_snap = 0;
+        if (coalesce) { r.coalesced = true; ++s.coalesced; } else r.snapped = true;
     } else {
+        ++s.applied_since_snap;
         // Orientation: x = rotation vector from target to current (world frame),
         // current = target * exp(x). Re-measure against the new target, then relax.
+        // (O1: the velocity v is a world-frame vector that is not transported
+        // when the target rotates between frames; second order at the 8 deg
+        // clamp, so it is left as is.)
         s.rot.x = log_rotation(mul(transpose(target), s.basis));
-        spring_step(s.rot, t.rot_tau, step_dt);
+        spring_step(s.rot, t.rot_tau * tight, step_dt);
         if (clamp_spring(s.rot, t.lag_clamp_deg * pi / 180.0)) ++s.clamps;
         s.basis = mul(target, exp_rotation(s.rot.x));
         if (!orthonormalize(s.basis)) { r.snap_reason = 32; ++s.snaps; return refuse(Verdict::NumericFailure); }
@@ -274,7 +311,7 @@ inline Step step(State& s, const Input& in, double dt, const Tunables& t, Pose* 
         // constant ship velocity leaves no lag; turns and boom changes swing),
         // relaxes toward zero.
         s.pos.x = s.offset - target_boom;
-        spring_step(s.pos, t.pos_tau, step_dt);
+        spring_step(s.pos, t.pos_tau * tight, step_dt);
         if (clamp_spring(s.pos, t.pos_lag_clamp * target_length)) ++s.clamps;
         s.offset = target_boom + s.pos.x;
     }

@@ -4,8 +4,9 @@
 // frame and reads the pipeline's pose, verdict and diagnostics back.
 //
 // stdin, one command per line:
-//   T rot_tau pos_tau offset_y distance_scale lag_clamp_deg pos_lag_clamp max_dt snap_ratio
-//   F dt mode connect ref sector ship_x ship_y ship_z ship_basis(9) boom_local_x boom_local_y boom_local_z view_rel(9) half_vfov_tan
+//   T rot_tau pos_tau offset_y distance_scale lag_clamp_deg pos_lag_clamp max_dt snap_ratio [combat_tightness [snap_coalesce_frames]]
+//   D   print the compiled defaults: D rot_tau pos_tau offset_y distance_scale lag_clamp_deg pos_lag_clamp combat_tightness max_dt snap_ratio snap_coalesce_frames
+//   F dt mode connect ref sector ship_x ship_y ship_z ship_basis(9) boom_local_x boom_local_y boom_local_z view_rel(9) half_vfov_tan [flags_1a0 [locked]]
 //       (the vanilla camera is built as view_rel * ship_basis at ship + boom_local * ship_basis, as the engine does)
 //   R   reset the state (as after a refused frame / hook gap)
 //   L steps dt yaw_rate roll_rate
@@ -13,7 +14,7 @@
 //       turning at yaw_rate rad/s and rolling at roll_rate rad/s while flying
 //       forward. Prints: L applied refused snaps max_ortho_error max_lag_deg
 //       max_identity_error final_lag_deg  (identity error = |camera - view_rel * ship|).
-// Each F prints: verdict snapped snap_reason lag_deg pos_lag distance pos(3) basis(9) view_rel(9) ortho_error
+// Each F prints: verdict snapped coalesced locked snap_reason lag_deg pos_lag distance pos(3) basis(9) view_rel(9) ortho_error
 #include "../../src/proxy/chase_camera_math.h"
 #include <cstdio>
 #include <iostream>
@@ -39,7 +40,12 @@ int main() {
         char op = 0; ss >> op;
         if (op == 'T') {
             ss >> t.rot_tau >> t.pos_tau >> t.offset_y >> t.distance_scale >> t.lag_clamp_deg >> t.pos_lag_clamp >> t.max_dt >> t.snap_ratio;
+            double tightness = 0, coalesce = 3; ss >> tightness >> coalesce; // optional (0 / 3 when absent)
+            t.combat_tightness = tightness; t.snap_coalesce_frames = unsigned(coalesce);
             std::printf("T %d\n", int(valid(t)));
+        } else if (op == 'D') {
+            const Tunables d;
+            std::printf("D %.17g %.17g %.17g %.17g %.17g %.17g %.17g %.17g %.17g %u\n", d.rot_tau, d.pos_tau, d.offset_y, d.distance_scale, d.lag_clamp_deg, d.pos_lag_clamp, d.combat_tightness, d.max_dt, d.snap_ratio, d.snap_coalesce_frames);
         } else if (op == 'R') {
             note_gap(s); std::printf("R\n");
         } else if (op == 'F') {
@@ -49,11 +55,13 @@ int main() {
             ss >> boom_local.x >> boom_local.y >> boom_local.z;
             for (auto& r : in.view_rel.m) for (double& v : r) ss >> v;
             ss >> in.half_vfov_tan;
+            double flags = 0, locked = 0; ss >> flags >> locked; // optional
+            in.flags_1a0 = std::uint32_t(flags); in.target_locked = locked != 0;
             in.vanilla_cam = mul(in.view_rel, ship);
             in.vanilla_pos = in.ship_pos + mul(boom_local, ship);
             Pose pose;
             const Step r = step(s, in, dt, t, &pose);
-            std::printf("F %u %d %u %.17g %.17g %.17g", unsigned(r.verdict), int(r.snapped), r.snap_reason, r.lag_deg, r.pos_lag, r.distance);
+            std::printf("F %u %d %d %d %u %.17g %.17g %.17g", unsigned(r.verdict), int(r.snapped), int(r.coalesced), int(r.target_locked), r.snap_reason, r.lag_deg, r.pos_lag, r.distance);
             if (r.verdict == Verdict::Applied) {
                 std::printf(" %.17g %.17g %.17g", pose.pos.x, pose.pos.y, pose.pos.z);
                 for (auto& row : pose.basis.m) for (double v : row) std::printf(" %.17g", v);

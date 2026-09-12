@@ -65,7 +65,7 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
         x3m::log("scene_hook active=%u status=%s",x3m::scene_hook::active(),x3m::scene_hook::status());
         // X3M_CAMERA=chase: the cockpit-update trampoline (exact executable and
         // bytes, install window open here); unset or anything else leaves the
-        // vanilla camera and patches nothing. Restored with the last device.
+        // vanilla camera and patches nothing. Kept for the process lifetime.
         if(x3m::chase_camera::wanted())x3m::chase_camera::initialize();
         const auto lifetime_stats=x3m::object_lifetime::stats();
         x3m::log("object_lifetime active=%u status=%s recovery_required=%u baseline_complete=%u baseline_entries=%lu",

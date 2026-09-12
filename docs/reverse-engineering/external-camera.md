@@ -46,7 +46,7 @@ cockpit is found by handle through `0x0041cd20` (registry `*0x00608504`).
 | `+0x04` | cockpit scene (context; `+0x2c` float scale) | `0x00420260` |
 | `+0x08` | cockpit-scene camera (layer 0; HUD/cockpit-body scene, position 0, basis = `+0xf0` × a per-frame matrix at `0x00420787`) | `0x00420260`, `INS_CockpitGetCamera` (case 2 returns `*(+8)+0x28`), `0x0040e880` returns it for the mouse-steering dead zone (`0x0040e8c0`) |
 | `+0x0c` | **ref object** (`INS_CockpitSetRefObject`, case 0xc) — the object the camera follows | `0x004205e0` reads `+0xc` → `+0x70` (its render node) |
-| `+0x10` | ref view object (the player ship for the cockpit-body/zoom logic; type test `*(short*)(+0x54 … +0x48)`) | cases 0x28/0x2c, `0x004205e0` |
+| `+0x10` | ref view object (the player ship for the cockpit-body/zoom logic; type test `*(short*)(+0x54 … +0x48)`). **`+0x10 == +0xc` marks the active control cockpit**: the fire control `0x00445170` finds the cockpit by handle (`0x0041cd20`) and gates its aim branch on `*(cockpit+0x10) == this ship`; the registry `*0x00608504` walk (`0x0041cde0`) updates every cockpit, monitor cockpits (`INS_CockpitSetMonitorNumber`, cases 0x1b/0x1c, `+0x1dc`) and `INS_SetActiveControlCockpit` (case 0x48, registry `+0x10`, unconfirmed layout) included — the chase camera uses the `+0x10 == +0xc` predicate (review 31 A1) | cases 0x28/0x2c, `0x004205e0`, `dec:00445170`, `dec:0041cde0` |
 | `+0x58` | **sector camera** = the scene camera of the external/internal view (`INS_CockpitSetSectorCamera`, case 5) | FOV, fog (`+0x368..+0x370`), flag `0x10000`, the overlay and the aim ray all use it (§4, §5) |
 | `+0x5c`, `+0x60` | galaxy camera (case 6), dust camera (case 7); `+0x5c` receives a copy of `+0x58`'s pose at `0x00421533`.., `+0x60` follows through `0x0041efc0` | `0x004205e0` tail |
 | `+0x90/+0x94/+0x98` | view angles alpha/beta/gamma (`INS_CockpitGetViewAlpha/Beta/Gamma`, cases 0x3a–0x3c; binary angles) | `0x00422ca0` copies the targets `+0xa8/+0xac/+0xb0` into them |
@@ -58,6 +58,10 @@ cockpit is found by handle through `0x0041cd20` (registry `*0x00608504`).
 | `+0x140..` | view point position (case 0x5b) | |
 | **`+0x150`** | **view mode** (`INS_CockpitSetViewMode`, case 0x30). `1` = internal cockpit view: `0x004205e0` sets flag `8` on the ship's render node `+0x134` (hidden) when `+0x150 == 1`, clears it otherwise (`0x004216c0..`); every other value is an external view whose geometry the scripts define through `+0x130`/`+0x90..` | `CMP [EBX+0x150],1` sites at `0x004207bf`, `0x00421169`, `0x004216b0` |
 | `+0x160/+0x164/+0x168` | view camera offset (case 0x36): an extra offset applied after the pose (`0x00420c3d..0x00420e03`), with a nearest-object search when the ship type has flag `0x8000` | |
+| `+0x1a0` | flags; bit 2 (`& 4`) makes the position and the basis verbatim copies of `+0x130` / `+0xf0` (§3 step 5; tests at `0x004209f7`, `0x00420aaf`, `0x00420bb1`) — the chase camera passes such frames through (review 31 A2) | `0x004205e0` |
+| `+0x1d8` | aim gun index; the fire control's mouse-aim branch requires `+0x1d8 ≥ 0` | `dec:00445170` |
+| `+0x1e0` | tracked object (`INS_CockpitGetTracking`, case 0x26, returns `*(+0x1e0)+8`; the fire control takes `*(cockpit+0x1e0)` as the aim target) | `dec:0042d340`, `dec:00445170` |
+| `+0x1e4` | tracking mode (short): `INS_CockpitIsTracking` = `== 1` (case 0x24), `INS_CockpitIsEnemyTracking` = `== 4` (case 0x25); setter `0x00425a10` not decompiled. The chase camera's combat-tightness predicate is `+0x1e4 ∈ {1, 4}` with a readable `+0x1e0` (review 31 A9); **unverified in game** until the first run's `tracking=`/`locked=` fields are read against a selected target | `dec:0042d340` cases 0x22–0x27 |
 | `+0x1b8`, `+0x1c4`, `+0x1c8` | view transition duration (`INS_CockpitSetViewDuration`, case 0x52) and its start times in game ms | `0x004218b0` interpolates `+0x130`/`+0x90` over `+0x1b8` ms |
 | **`+0x1c0`** | **view connect mode** (`INS_CockpitSetViewConnectMode`, case 0x2c → `0x00422cd0`): `0` follow, `3` locked basis (`camera.basis = +0xf0` verbatim), `4/5/6/8/9` scripted/cinematic (random start angles, fixed positions), `6` also disables the `+0x160` offset | `0x00420b95..0x00420c0c` |
 | `+0x1fc` | current sector object (`GetCurrentObjectIDInSector` through the script VM, set after the pose) | `0x00421024` |
@@ -269,7 +273,10 @@ functions are the sole references to the tables' first entries).
 
 ## Uncertainty
 
-- Every claim is static. Which script sets which view mode/position for the
+- Every claim is static. The `+0x1e0`/`+0x1e4` tracking fields and the
+  `+0x10 == +0xc` active-cockpit predicate come from the dispatcher and the
+  fire control listings (review 31 A1/A9); the registry's own active-control
+  slot (`*0x00608504+0x10`) is not confirmed and not used. Which script sets which view mode/position for the
   "back" view is in the game's KC scripts, not in the executable; the chase
   camera detects the back view geometrically from the vanilla pose instead.
 - The gun-0 `+0xf0` multiply and the mount-matrix chain in `0x00445170` were

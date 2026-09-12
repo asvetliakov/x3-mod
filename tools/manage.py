@@ -73,12 +73,15 @@ def main():
     parser.add_argument('--state-shadow', choices=['on', 'off'], default='on', help='Render-state shadow of the route (X3M_STATE_SHADOW): on (default) hooks SetRenderState and answers the per-draw state queries from the shadow; off issues GetRenderState per query (A/B; requires --motion-output)')
     parser.add_argument('--motion-rt-mode', choices=['perdraw', 'lazy'], default='perdraw', help='RT1/RT2 binding policy of the route: perdraw (default) rebinds around every routed draw; lazy keeps the bindings across consecutive routed draws (A/B experiment, requires --motion-output)')
     parser.add_argument('--camera', choices=['vanilla', 'chase'], default='vanilla', help='External back view camera (X3M_CAMERA): vanilla (default) patches nothing; chase installs the byte-verified cockpit-update trampoline (0x00420e06, exact executable only, fails closed to vanilla) and replaces the external back view with the critically damped chase camera; internal/front/side views stay vanilla, so the game\'s view keys remain the switch (docs/architecture/chase-camera.md)')
-    parser.add_argument('--camera-rot-tau', type=float, default=None, help='Chase camera orientation spring time constant in seconds (X3M_CAMERA_ROT_TAU; default 0.20; requires --camera chase)')
-    parser.add_argument('--camera-pos-tau', type=float, default=None, help='Chase camera boom spring time constant in seconds (X3M_CAMERA_POS_TAU; default 0.30)')
-    parser.add_argument('--camera-offset-y', type=float, default=None, help='Fraction of the half screen height the ship sits below centre, -1..1 (X3M_CAMERA_OFFSET_Y; default 0.12; negative puts the ship above centre)')
-    parser.add_argument('--camera-distance-scale', type=float, default=None, help='Multiplier of the vanilla boom length (X3M_CAMERA_DISTANCE_SCALE; default 1.0)')
-    parser.add_argument('--camera-lag-clamp-deg', type=float, default=None, help='Maximum orientation lag in degrees, the ship-on-screen window (X3M_CAMERA_LAG_CLAMP_DEG; default 10)')
-    parser.add_argument('--camera-combat-tightness', type=float, default=None, help='Reserved 0..1 lag reduction while a target is locked (X3M_CAMERA_COMBAT_TIGHTNESS; parsed, inactive until a readable lock state exists)')
+    # Chase tunables are X3M_CHASE_* (review 31 O7): X3M_CAMERA_CUT_DEG / X3M_CAMERA_LOG above belong to the TAA camera read.
+    parser.add_argument('--chase-rot-tau', type=float, default=None, help='Chase camera orientation spring time constant in seconds (X3M_CHASE_ROT_TAU; default 0.15; requires --camera chase)')
+    parser.add_argument('--chase-pos-tau', type=float, default=None, help='Chase camera boom spring time constant in seconds (X3M_CHASE_POS_TAU; default 0.20)')
+    parser.add_argument('--chase-offset-y', type=float, default=None, help='Fraction of the half screen height the ship sits below centre, -1..1 (X3M_CHASE_OFFSET_Y; default 0.12; negative puts the ship above centre)')
+    parser.add_argument('--chase-distance-scale', type=float, default=None, help='Multiplier of the vanilla boom length (X3M_CHASE_DISTANCE_SCALE; default 1.0)')
+    parser.add_argument('--chase-lag-clamp-deg', type=float, default=None, help='Maximum orientation lag in degrees, the ship-on-screen window (X3M_CHASE_LAG_CLAMP_DEG; default 8)')
+    parser.add_argument('--chase-pos-lag-clamp', type=float, default=None, help='Maximum boom lag as a fraction of the boom length, 0..1 (X3M_CHASE_POS_LAG_CLAMP; default 0.10)')
+    parser.add_argument('--chase-combat-tightness', type=float, default=None, help='0..1: while the cockpit reports a target lock (+0x1e4 tracking mode 1/4 with a tracked object; unverified in game) both spring time constants are scaled by (1 - tightness) (X3M_CHASE_COMBAT_TIGHTNESS; default 0 = off)')
+    parser.add_argument('--chase-scene-fix', action='store_true', help='Also re-express the layer-0 cockpit-scene camera through the smoothed view each applied frame (X3M_CHASE_SCENE_FIX=1; default off until the first run shows an external-view HUD element rendered there; review 31 A5)')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
     if args.dry_run and args.action != 'launch':
@@ -141,19 +144,20 @@ def main():
         parser.error('--hdr-ev and --hdr-ev-manual must be within [-16, 16], --hdr-clamp within [0, 65504].')
     if args.state_shadow != 'on' and not args.motion_output:
         parser.error('--state-shadow requires --motion-output.')
-    camera_tunables = {'X3M_CAMERA_ROT_TAU': args.camera_rot_tau, 'X3M_CAMERA_POS_TAU': args.camera_pos_tau, 'X3M_CAMERA_OFFSET_Y': args.camera_offset_y,
-                       'X3M_CAMERA_DISTANCE_SCALE': args.camera_distance_scale, 'X3M_CAMERA_LAG_CLAMP_DEG': args.camera_lag_clamp_deg,
-                       'X3M_CAMERA_COMBAT_TIGHTNESS': args.camera_combat_tightness}
-    if args.camera != 'chase' and any(v is not None for v in camera_tunables.values()):
-        parser.error('--camera-rot-tau, --camera-pos-tau, --camera-offset-y, --camera-distance-scale, --camera-lag-clamp-deg and --camera-combat-tightness require --camera chase.')
+    chase_tunables = {'X3M_CHASE_ROT_TAU': args.chase_rot_tau, 'X3M_CHASE_POS_TAU': args.chase_pos_tau, 'X3M_CHASE_OFFSET_Y': args.chase_offset_y,
+                      'X3M_CHASE_DISTANCE_SCALE': args.chase_distance_scale, 'X3M_CHASE_LAG_CLAMP_DEG': args.chase_lag_clamp_deg,
+                      'X3M_CHASE_POS_LAG_CLAMP': args.chase_pos_lag_clamp, 'X3M_CHASE_COMBAT_TIGHTNESS': args.chase_combat_tightness}
+    if args.camera != 'chase' and (args.chase_scene_fix or any(v is not None for v in chase_tunables.values())):
+        parser.error('--chase-rot-tau, --chase-pos-tau, --chase-offset-y, --chase-distance-scale, --chase-lag-clamp-deg, --chase-pos-lag-clamp, --chase-combat-tightness and --chase-scene-fix require --camera chase.')
     # The same ranges chase::valid() enforces in the DLL (docs/architecture/
     # chase-camera.md, "Tunables"); offset_y is signed (negative puts the ship
     # above centre). A NaN fails every comparison and is refused here too.
-    camera_ranges = {'X3M_CAMERA_ROT_TAU': (0.0, 10.0, False), 'X3M_CAMERA_POS_TAU': (0.0, 10.0, False),
-                     'X3M_CAMERA_OFFSET_Y': (-1.0, 1.0, True), 'X3M_CAMERA_DISTANCE_SCALE': (0.0, 10.0, False),
-                     'X3M_CAMERA_LAG_CLAMP_DEG': (0.0, 90.0, True), 'X3M_CAMERA_COMBAT_TIGHTNESS': (0.0, 1.0, True)}
-    for name, value in camera_tunables.items():
-        low, high, low_inclusive = camera_ranges[name]
+    chase_ranges = {'X3M_CHASE_ROT_TAU': (0.0, 10.0, False), 'X3M_CHASE_POS_TAU': (0.0, 10.0, False),
+                    'X3M_CHASE_OFFSET_Y': (-1.0, 1.0, True), 'X3M_CHASE_DISTANCE_SCALE': (0.0, 10.0, False),
+                    'X3M_CHASE_LAG_CLAMP_DEG': (0.0, 90.0, True), 'X3M_CHASE_POS_LAG_CLAMP': (0.0, 1.0, True),
+                    'X3M_CHASE_COMBAT_TIGHTNESS': (0.0, 1.0, True)}
+    for name, value in chase_tunables.items():
+        low, high, low_inclusive = chase_ranges[name]
         if value is not None and not ((low <= value if low_inclusive else low < value) and value <= high):
             parser.error(f'{name} out of range: {value} (expected {"[" if low_inclusive else "("}{low}, {high}])')
     if not 100 <= args.profile_interval_us <= 1000000:
@@ -255,9 +259,11 @@ def main():
         env['X3M_PROFILE'] = '1' if args.profile else '0'
         env['X3M_PROFILE_INTERVAL_US'] = str(args.profile_interval_us)
         env['X3M_CAMERA'] = args.camera  # chase installs the trampoline; vanilla (or unset) patches nothing
-        for name, value in camera_tunables.items():
+        for name, value in chase_tunables.items():
             if value is not None:
                 env[name] = repr(value)
+        if args.chase_scene_fix:
+            env['X3M_CHASE_SCENE_FIX'] = '1'
         # --dll applies to this child only, preserving the user's other overrides.
         command = [str(WINE), '--bottle', args.bottle, '--no-update',
                    '--dll', 'd3d9=b' if args.vanilla else 'd3d9=n,b',

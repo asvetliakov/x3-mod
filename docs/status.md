@@ -917,17 +917,29 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
    approximately 4.0× (Steam) / 4.14× (X3) per check, excluding the probe envelope
    ([crypt-cache.md](verification/crypt-cache.md)). The 11–13 s loading estimate
    remains a hypothesis for the user's reviewed `--crypt-cache` run.
-8. **Chase camera (2026-09-13, worktree branch, pre-review, not run):**
+8. **Chase camera (2026-09-13, worktree branch, reviewed, not run):**
    `X3M_CAMERA=chase` / `launch --camera chase` replaces the external back
    view with a critically damped follow camera written into the engine's
    sector camera at the byte-verified cockpit-update site `0x00420e06`
-   ([design](architecture/chase-camera.md), [study](reverse-engineering/external-camera.md)):
+   ([design](architecture/chase-camera.md), [study](reverse-engineering/external-camera.md),
+   [review 31a](verification/review-31-chase-camera-architecture.md) /
+   [31b](verification/review-31-chase-camera-implementation.md) applied):
    scene, HUD overlay and the mouse-aim ray (which uses cockpit `+0xf0`, also
-   rewritten) stay one camera. Host tests 21 + 8 pass, DLL builds clean,
-   `check_no_x87.py` PASS, default runs patch nothing. First user run: the
-   `chase_camera` install/frame lines, HUD brackets and aim consistency in the
-   back view, a snap (`snap_reason` 16/4) on a gate jump, vanilla behaviour in
-   the other views; then tune `rot_tau`/`pos_tau`/`lag_clamp_deg`/`offset_y`.
+   rewritten) stay one camera. Review fixes: the handler acts only on the
+   active control cockpit (`+0x10 == +0xc`), verbatim-basis frames (connect 3,
+   `+0x1a0 & 4`) pass through, the site is kept for the process lifetime,
+   sector snaps after a teleport are coalesced (one TAA cut), back-view
+   hysteresis, defaults `rot_tau` 0.15 / clamp 8° / `pos_tau` 0.20 /
+   `pos_lag_clamp` 0.10, tunables renamed `X3M_CHASE_*` (`--chase-*`), combat
+   tightness behind `X3M_CHASE_COMBAT_TIGHTNESS` on the `+0x1e4` tracking
+   state (unverified), optional `X3M_CHASE_SCENE_FIX`. Host tests 32 + 8 pass,
+   DLL builds clean, `check_no_x87.py` PASS, default runs patch nothing. First
+   user run (`launch --direct --camera chase`): the acceptance list in review
+   31a — install line, the `first_applied` inferences, `applied` growing with
+   `refused`/`refused_inactive` flat and `cockpits_seen` stable in the back
+   view, HUD brackets and aim consistency, one `camera_cut` per gate jump
+   (`coalesced` +1), vanilla behaviour in the other views, chase kept across a
+   resolution change, `tracking`/`locked` plausible with a target selected.
 
 ## Replay/admission line (reference only, superseded 2026-09-12)
 
