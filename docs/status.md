@@ -173,6 +173,12 @@ the stage-2 build `db63e120…`).
     capture now logs `MIPMAPLODBIAS`/`MAXMIPLEVEL`. Fixture evidence in
     [taa-mip-bias.md](verification/taa-mip-bias.md); not yet seen in game.
 
+**Installed (2026-09-12 night, after review 29, bottle X3):** `build/d3d9.dll`
+from commit `a34c389` (adjacency parity, loading branch, present readback),
+SHA-256 `4abd56b3a77682594756c8805f6f1661c35f8f7b611a297f312bfec2d00855a8`,
+through `tools/manage.py install`. The native-Windows fixes (`20683cc`) are
+merged but not installed until review 30 passes.
+
 ## Pending review 30: native-Windows fixes D1–D3, W1, W3 (branch merged 2026-09-12 night, not yet installed)
 
 Implements every item of the paused
