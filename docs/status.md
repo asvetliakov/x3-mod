@@ -13,6 +13,15 @@ Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
 
+## Handoff (2026-09-13 early morning): read docs/handoff-2026-09-13.md first
+
+The orchestrating session ended at commit `1c8322e` (WIP checkpoint). The
+self-contained handoff for the next orchestrator — goal checklist with honest
+state, installed build, in-flight items with their notes, run plan, lessons —
+is [handoff-2026-09-13.md](handoff-2026-09-13.md). Unmerged branches:
+`worktree-agent-a157d2e7bd47eab9d` (crypto cache) and
+`worktree-agent-aea55d854948bd6a0` (space-aware exposure meter).
+
 ## Latest checkpoint: review 29 — loading branch, adjacency parity and present readback merged (2026-09-12 night)
 
 Reviews: [review-25.md](verification/review-25.md) (fast adjacency, engine
