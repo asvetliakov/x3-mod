@@ -80,3 +80,21 @@ from `verification/results/mesh-adjacency-cache-{off,on}-fixture.txt` and
   corner; the game run with `--mesh-adjacency verify` is the acceptance test.
 * The cache keys the service pointer, so verify-mode entries never serve fast
   mode (documented; modes do not switch at runtime in production).
+
+## Resumed 2026-09-12 (evening): suites run, performance pass done
+
+All three Wine suites pass through their runners (Steam bottle, under
+`wine_lock.py`): `run_loading_trace.py` 85 / 123 / 2179 / 2219;
+`run_mesh_adjacency_cache.py` 767; `run_mesh_cache_hook.py` 1,714 / 2,003 / 2,011 /
+2,189 / 2,673 / 2,681 (expectations updated in the runner, deltas derived in
+`mesh-cache-hook.md`). Fixes on the way: the loading-trace runner's default-policy
+assertion (computable cases only), the fixture build scripts link `gz_buffer.cpp`,
+the cache fixture's FP variant 9 follows the applied state (Rosetta keeps SSE
+exception masks set), the hook fixture's game-state case drives the state through
+`seed` and takes its reuse hit on a second mesh (wrapped-ownership tracker
+ambiguity after an admitting miss, recorded). Performance pass on the module:
+single thread-local arena, next-only edges, anchor slots, retired flags, lazy
+normal cache; numbers in `mesh-adjacency-fast.md`. DLL of the working tree
+`2d25ec114173d5947a68c52fb539b96eb6e05c259f5363f7b2d07df9b35d7d66`, not installed;
+nothing committed. Open: the near-tie normal selection (game run with `verify`).
+

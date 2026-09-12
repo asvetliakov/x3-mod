@@ -1,0 +1,104 @@
+GZ_ZLIB version=1.2.3 exports=1 rewind=1
+GZ_CASE_BEGIN name=big-cap4k
+gz_buffer_file slot=0 capacity=4096 calls=13063 small_calls=10149 served_bytes=56271529 real_reads=3986 real_bytes=70052260 direct_reads=751 getcs=3038 tells=2531 seeks=4406 seeks_served=330 seeks_real=4073 error=0 end=0 close=0
+GZ_CASE name=big-cap4k capacity=4096 ops=20000 checks=29526 failures=0
+GZ_CASE_BEGIN name=big-cap64k
+gz_buffer_file slot=0 capacity=65536 calls=13023 small_calls=10123 served_bytes=70725772 real_reads=3330 real_bytes=282917575 direct_reads=612 getcs=3071 tells=2614 seeks=4363 seeks_served=450 seeks_real=3868 error=0 end=0 close=0
+GZ_CASE name=big-cap64k capacity=65536 ops=20000 checks=29211 failures=0
+GZ_CASE_BEGIN name=big-cap256k-r
+gz_buffer_file slot=0 capacity=262144 calls=5169 small_calls=4053 served_bytes=678 real_reads=0 real_bytes=678 direct_reads=1 getcs=1214 tells=1020 seeks=1811 seeks_served=0 seeks_real=0 error=1 end=0 close=-3
+GZ_CASE name=big-cap256k-r capacity=262144 ops=8000 checks=8006 failures=0
+GZ_CASE_BEGIN name=small
+gz_buffer_file slot=0 capacity=4096 calls=2588 small_calls=2033 served_bytes=5535 real_reads=525 real_bytes=7704 direct_reads=81 getcs=578 tells=524 seeks=888 seeks_served=19 seeks_real=636 error=0 end=1 close=0
+GZ_CASE name=small capacity=4096 ops=4000 checks=4313 failures=0
+GZ_CASE_BEGIN name=empty
+gz_buffer_file slot=0 capacity=4096 calls=685 small_calls=541 served_bytes=0 real_reads=105 real_bytes=0 direct_reads=9 getcs=178 tells=122 seeks=193 seeks_served=3 seeks_real=143 error=0 end=1 close=0
+GZ_CASE name=empty capacity=4096 ops=1000 checks=1005 failures=0
+GZ_CASE_BEGIN name=truncated
+gz_buffer_file slot=0 capacity=4096 calls=3874 small_calls=2982 served_bytes=3819066 real_reads=1080 real_bytes=6004098 direct_reads=171 getcs=839 tells=773 seeks=1353 seeks_served=48 seeks_real=1303 error=0 end=0 close=0
+GZ_CASE name=truncated capacity=4096 ops=6000 checks=7660 failures=0
+GZ_CASE_BEGIN name=crc
+gz_buffer_file slot=0 capacity=4096 calls=3877 small_calls=2974 served_bytes=206517 real_reads=25 real_bytes=298103 direct_reads=5 getcs=853 tells=785 seeks=1338 seeks_served=2 seeks_real=24 error=1 end=0 close=-3
+GZ_CASE name=crc capacity=4096 ops=6000 checks=6075 failures=0
+GZ_CASE_BEGIN name=crc-cap64k
+gz_buffer_file slot=0 capacity=65536 calls=3874 small_calls=3021 served_bytes=4817 real_reads=5 real_bytes=502380 direct_reads=2 getcs=888 tells=795 seeks=1331 seeks_served=0 seeks_real=4 error=1 end=0 close=-3
+GZ_CASE name=crc-cap64k capacity=65536 ops=6000 checks=6019 failures=0
+GZ_CASE_BEGIN name=corrupt
+gz_buffer_file slot=0 capacity=4096 calls=3964 small_calls=3084 served_bytes=89788 real_reads=51 real_bytes=264213 direct_reads=8 getcs=883 tells=737 seeks=1299 seeks_served=6 seeks_real=53 error=1 end=0 close=-3
+GZ_CASE name=corrupt capacity=4096 ops=6000 checks=6124 failures=0
+GZ_CASE_BEGIN name=corrupt-cap64k
+gz_buffer_file slot=0 capacity=65536 calls=3936 small_calls=3037 served_bytes=439304 real_reads=2 real_bytes=501233 direct_reads=1 getcs=880 tells=771 seeks=1293 seeks_served=0 seeks_real=1 error=1 end=0 close=-3
+GZ_CASE name=corrupt-cap64k capacity=65536 ops=6000 checks=6015 failures=0
+GZ_CASE_BEGIN name=multiple
+gz_buffer_file slot=0 capacity=4096 calls=2592 small_calls=1996 served_bytes=1028208 real_reads=729 real_bytes=2143236 direct_reads=143 getcs=587 tells=528 seeks=880 seeks_served=90 seeks_real=744 error=0 end=0 close=0
+GZ_CASE name=multiple capacity=4096 ops=4000 checks=5371 failures=0
+GZ_CASE_BEGIN name=multiple-crc
+gz_buffer_file slot=0 capacity=4096 calls=2566 small_calls=1999 served_bytes=832090 real_reads=718 real_bytes=1957889 direct_reads=123 getcs=599 tells=524 seeks=910 seeks_served=111 seeks_real=772 error=0 end=0 close=0
+GZ_CASE name=multiple-crc capacity=4096 ops=4000 checks=5307 failures=0
+GZ_CASE_BEGIN name=multiple-crc-bad
+gz_buffer_file slot=0 capacity=4096 calls=3838 small_calls=2976 served_bytes=13428 real_reads=2 real_bytes=12288 direct_reads=1 getcs=924 tells=805 seeks=1357 seeks_served=2 seeks_real=0 error=1 end=0 close=-3
+GZ_CASE name=multiple-crc-bad capacity=4096 ops=6000 checks=6016 failures=0
+GZ_CASE_BEGIN name=transparent
+gz_buffer_file slot=0 capacity=4096 calls=2554 small_calls=1951 served_bytes=531051 real_reads=663 real_bytes=961747 direct_reads=107 getcs=570 tells=542 seeks=904 seeks_served=112 seeks_real=705 error=0 end=0 close=0
+GZ_CASE name=transparent capacity=4096 ops=4000 checks=5014 failures=0
+GZ_CASE_BEGIN name=concat
+gz_buffer_file slot=0 capacity=4096 calls=5177 small_calls=4033 served_bytes=28052108 real_reads=1570 real_bytes=33794676 direct_reads=345 getcs=1172 tells=1045 seeks=1778 seeks_served=137 seeks_real=1640 error=0 end=0 close=0
+GZ_CASE name=concat capacity=4096 ops=8000 checks=11742 failures=0
+GZ_CASE_BEGIN name=eof-error-paths
+gz_buffer_file slot=0 capacity=4096 calls=3 small_calls=3 served_bytes=0 real_reads=1 real_bytes=0 direct_reads=0 getcs=1 tells=1 seeks=3 seeks_served=1 seeks_real=1 error=0 end=0 close=0
+gz_buffer_file slot=0 capacity=4096 calls=400002 small_calls=400001 served_bytes=499530 real_reads=125 real_bytes=503616 direct_reads=0 getcs=0 tells=1 seeks=2 seeks_served=0 seeks_real=2 error=0 end=1 close=-5
+gz_buffer_file slot=0 capacity=4096 calls=5 small_calls=4 served_bytes=6 real_reads=2 real_bytes=1004098 direct_reads=1 getcs=0 tells=3 seeks=3 seeks_served=0 seeks_real=2 error=1 end=0 close=-3
+gz_buffer_file slot=0 capacity=4096 calls=3 small_calls=2 served_bytes=1000003 real_reads=0 real_bytes=1000003 direct_reads=1 getcs=1 tells=1 seeks=3 seeks_served=0 seeks_real=0 error=1 end=0 close=-3
+gz_buffer_file slot=0 capacity=4096 calls=4 small_calls=1 served_bytes=4096 real_reads=0 real_bytes=12288 direct_reads=3 getcs=0 tells=2 seeks=1 seeks_served=0 seeks_real=0 error=1 end=0 close=-3
+GZ_CASE name=eof-error-paths capacity=4096 ops=400037 checks=566580 failures=0
+GZ_CASE_BEGIN name=sequential-3byte
+gz_buffer_file slot=0 capacity=262144 calls=333338 small_calls=333338 served_bytes=1000003 real_reads=5 real_bytes=1000003 direct_reads=0 getcs=0 tells=1 seeks=0 seeks_served=0 seeks_real=0 error=0 end=1 close=0
+GZ_STATS opens=22 buffered=21 passthrough=0 closes=21 calls=804135 small=788301 served=164523529 real_reads=12924 real_bytes=402938088 direct=2365 getcs=16276 tells=14125 seeks=24116 seeks_served=1311 seeks_real=13971 errors=9
+GZ_CASE name=sequential-3byte capacity=262144 ops=333339 checks=8 failures=0
+GZ_CASE_BEGIN name=mixed-handles
+gz_buffer_file slot=0 capacity=4096 calls=3923 small_calls=3042 served_bytes=16048467 real_reads=1181 real_bytes=20184824 direct_reads=225 getcs=879 tells=718 seeks=1329 seeks_served=127 seeks_real=1202 error=0 end=0 close=0
+gz_buffer_file slot=1 capacity=4096 calls=3936 small_calls=3002 served_bytes=8090 real_reads=829 real_bytes=12110 direct_reads=120 getcs=907 tells=782 seeks=1338 seeks_served=20 seeks_real=989 error=0 end=0 close=0
+gz_buffer_file slot=2 capacity=4096 calls=3901 small_calls=3025 served_bytes=20287641 real_reads=1188 real_bytes=24353616 direct_reads=244 getcs=933 tells=830 seeks=1285 seeks_served=82 seeks_real=1203 error=0 end=0 close=0
+gz_buffer_file slot=3 capacity=4096 calls=3883 small_calls=3057 served_bytes=731511 real_reads=908 real_bytes=1327695 direct_reads=180 getcs=938 tells=768 seeks=1307 seeks_served=185 seeks_real=993 error=0 end=1 close=0
+GZ_CASE name=mixed-handles capacity=4096 ops=24000 checks=31592 failures=0
+GZ_CASE_BEGIN name=table-full
+gz_buffer_file slot=0 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=1 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=2 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=3 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=4 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=5 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=6 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=7 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=8 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=9 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=10 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=11 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=12 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=13 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=14 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=15 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=16 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=17 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=18 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=19 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=20 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=21 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=22 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=23 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=24 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=25 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=26 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=27 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=28 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=29 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=30 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+gz_buffer_file slot=31 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
+GZ_CASE name=table-full capacity=4096 ops=165 checks=268 failures=0
+GZ_CASE_BEGIN name=timing
+GZ_TIMING mode=unbuffered calls=10000000 bytes=30000000 seconds=0.329 ns_per_call=32.9 wall_ms=320
+GZ_TIMING mode=hooked calls=10000000 bytes=30000000 seconds=12.676 ns_per_call=1267.6 wall_ms=12662
+gz_buffer_file slot=0 capacity=262144 calls=10000000 small_calls=10000000 served_bytes=30000000 real_reads=115 real_bytes=30000000 direct_reads=0 getcs=0 tells=0 seeks=0 seeks_served=0 seeks_real=0 error=0 end=0 close=0
+GZ_TIMING mode=buffered calls=10000000 bytes=30000000 seconds=0.422 ns_per_call=42.2 wall_ms=407
+GZ_CASE name=timing capacity=262144 ops=0 checks=7 failures=0
+GZ BUFFER RESULT checks=735871 failures=0

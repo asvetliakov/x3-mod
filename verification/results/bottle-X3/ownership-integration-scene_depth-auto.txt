@@ -1,0 +1,17 @@
+create auto-depth device 00000000
+logical auto depth 00000000
+logical depth description 00000000
+logical format stays D24X8 PASS
+logical dimensions follow reset PASS
+clear target and depth 00000000
+present 00000000
+reset auto depth 00000000
+logical auto depth 00000000
+logical depth description 00000000
+logical format stays D24X8 PASS
+logical dimensions follow reset PASS
+clear target and depth 00000000
+present 00000000
+auto-depth device final zero PASS
+factory final zero PASS
+AUTO DEPTH INTEGRATION RESULT failures=0

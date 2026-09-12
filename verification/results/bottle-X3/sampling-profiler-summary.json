@@ -1,0 +1,182 @@
+{
+  "passed": false,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "phase": "complete",
+  "game_launched": false,
+  "sources": {
+    "src/proxy/sampling_profiler.h": "4dd65e4adce63b06eb8342b023403a8eba627aa355d53af26701f90588463d6f",
+    "src/proxy/sampling_profiler.cpp": "a58979029c532538265e0aacf3a03e3cbb4bd88db2cd6833b53d460afbf4ea2d",
+    "src/proxy/capture.h": "e573832e0771ad93c76d58dfc8ddc9b33aec5c7db5d4a6ca526797bb5736cf31",
+    "verification/probe/sampling_profiler_fixture.cpp": "4aaca0f592c67480db8b30235f3187b0055332fa4a5b1e49513629ee22e26347",
+    "verification/probe/sampling_profiler_fpo.cpp": "cd89b2c3268c118a31d1ae58580a7f112a2673a526b37f5834ae7e220b191c13",
+    "verification/probe/build_sampling_profiler.sh": "84de45862a0cf10e2ee3fdc8f4aa675adc5c73a0b65fc2911ef1dd49cf65d52b",
+    "verification/probe/run_sampling_profiler.py": "fd3763e96e6652ab8d1ef81e631b65c5f3c33e96acea5bc820802012d2df0ffa"
+  },
+  "executable_sha256": "9c8b5a08a31029b42abcb38b4697b4e368db9a6cfcb555bb989bf85fda536429",
+  "frame_pointer_usage": {
+    "spin_a": true,
+    "wait_b": true,
+    "fpo_leaf": false,
+    "fpo_spin": false
+  },
+  "runs": {
+    "0": {
+      "output": "verification/results/bottle-X3/sampling-profiler-off-fixture.txt",
+      "exit_code": 0,
+      "wall_s": 6.92,
+      "output_sha256": "d1f37d9f147736a5893b7bf7664d5f39909b604f2bb2f901f22cdb713167ba4a"
+    },
+    "1": {
+      "output": "verification/results/bottle-X3/sampling-profiler-on-fixture.txt",
+      "exit_code": 0,
+      "wall_s": 3.268,
+      "output_sha256": "0c01016b45196a22fc084f499066ee211ab586df60d0ee1e2c7c007b5c3489b6"
+    }
+  },
+  "checks": {
+    "on_completed": true,
+    "off_completed": true,
+    "off_silent": true,
+    "on_active": true,
+    "final_cumulative_report": true,
+    "fpo_provenance": true,
+    "threads_discovered": true,
+    "a_leaf_attribution": false,
+    "a_caller_pair": false,
+    "b_leaf_outside_exe": true,
+    "b_frame_wait_b": false,
+    "c_leaf_attribution": false,
+    "c_scan_caller_pair": false,
+    "a_samples_present": true,
+    "tick_cost_reported": true,
+    "no_drops": true,
+    "stop_bounded": true,
+    "overhead_within_bound": true,
+    "handles_released": true,
+    "threads_released": true,
+    "wait_completed": true,
+    "module_table_recorded": true
+  },
+  "notes": {
+    "a_leaf_in_spin_a": [
+      0.0,
+      0,
+      1172
+    ],
+    "a_pair_spin_a_caller_a": [
+      0.0,
+      0,
+      1172
+    ],
+    "b_leaf_outside_exe": [
+      1.0,
+      1173,
+      1173
+    ],
+    "b_leaf_kinds": {
+      "leaf_x3ap": 0,
+      "leaf_ntdll": 1173,
+      "leaf_wine": 0,
+      "leaf_other": 0,
+      "leaf_proxy": 0
+    },
+    "b_frame_in_wait_b": [
+      0.0,
+      0,
+      1173
+    ],
+    "c_leaf_in_fpo_leaf": [
+      0.0,
+      0,
+      1172
+    ],
+    "c_frame_in_fpo_leaf": [
+      0.0,
+      0,
+      1172
+    ],
+    "c_pair_fpo_leaf_fpo_spin": [
+      0.0,
+      0,
+      1172
+    ],
+    "c_pair_fpo_leaf_caller_c": [
+      0.0,
+      0,
+      1172
+    ],
+    "sampler_cost": {
+      "ticks": 1173,
+      "samples": 3092,
+      "dropped": 0,
+      "reports": 2,
+      "threads": 4,
+      "modules": 5,
+      "tick_us_mean": 282.24,
+      "tick_us_max": 10743.8,
+      "report_us": 2962.8,
+      "refresh_us": 10501.1
+    },
+    "overhead": {
+      "iterations_a": {
+        "off": 7229,
+        "on": 6948,
+        "overhead": 0.03887121316917974
+      },
+      "iterations_c": {
+        "off": 7232,
+        "on": 6968,
+        "overhead": 0.036504424778761035
+      },
+      "main_iterations": {
+        "off": 1123455,
+        "on": 1033818,
+        "overhead": 0.0797869073527645
+      }
+    },
+    "elapsed_ms": {
+      "off": 3020,
+      "on": 3021
+    }
+  },
+  "functions": {
+    "spin_a": [
+      "0x1550",
+      "0x15f0"
+    ],
+    "caller_a": [
+      "0x1600",
+      "0x1620"
+    ],
+    "wait_b": [
+      "0x1630",
+      "0x1660"
+    ],
+    "caller_c": [
+      "0x1670",
+      "0x1690"
+    ],
+    "fpo_leaf": [
+      "0x1980",
+      "0x19f0"
+    ],
+    "fpo_spin": [
+      "0x1a00",
+      "0x1a20"
+    ]
+  },
+  "slots": {
+    "a": 1,
+    "b": 2,
+    "c": 3
+  },
+  "sources_unchanged": true
+}

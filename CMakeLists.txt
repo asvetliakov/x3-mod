@@ -8,7 +8,7 @@ add_library(d3d9 SHARED
   src/proxy/motion_capture.cpp src/ownership/execution_state.cpp
   src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp
   src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/telemetry.cpp src/proxy/engine_memory.cpp
-  src/proxy/loading_trace.cpp src/proxy/sampling_profiler.cpp src/ownership/d3d9_ownership.cpp
+  src/proxy/loading_trace.cpp src/proxy/gz_buffer.cpp src/proxy/sampling_profiler.cpp src/ownership/d3d9_ownership.cpp
   src/ownership/finite_buffer_evidence.cpp src/ownership/portable_managed_upload.cpp
   src/proxy/draw_input.cpp src/proxy/object_lifetime.cpp src/proxy/mesh_adjacency_cache.cpp src/proxy/mesh_adjacency_fast.cpp
   src/renderer/temporal_pass.cpp src/renderer/hdr_pass.cpp src/renderer/exposure.cpp src/renderer/material_radiance.cpp
@@ -20,6 +20,11 @@ target_compile_features(d3d9 PRIVATE cxx_std_17)
 # The core and every other source retain their normal exception policy.
 set_source_files_properties(src/ownership/application_admission_abi.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The engine-memory reader runs inside the lifetime observer's mutation scopes
+# and the light hooks, which do not preserve XMM state: build it without SSE/MMX
+# (it has no floating-point arithmetic; check_no_x87.py proves no x87 either).
+set_source_files_properties(src/proxy/engine_memory.cpp
+  PROPERTIES COMPILE_OPTIONS "-mno-sse;-mno-mmx;-mfpmath=387")
 target_compile_definitions(d3d9 PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 # Our arithmetic uses SSE2 while preserving the game's i686 Windows ABI.
 # Legacy callers provide four-byte stack alignment; align SIMD locals internally.

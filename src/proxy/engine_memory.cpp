@@ -2,6 +2,16 @@
 #include <windows.h>
 #include <atomic>
 
+// This translation unit is compiled with -mno-sse -mno-mmx -mfpmath=387 (CMake
+// source property; the fixture build scripts compile it separately): the
+// lifetime observer's read path runs inside the game's own map mutations and
+// the light D3D hooks, which preserve no XMM state, so nothing here may touch
+// an XMM/MMX register (GCC otherwise zeroes and copies the structs below with
+// pxor/movups). It contains no floating-point arithmetic, so the x87 fpmath
+// setting emits no x87 instruction either (verification/probe/check_no_x87.py).
+// The frame epoch is 32-bit for the same reason: a 64-bit atomic load without
+// SSE would be an x87 fild/fistp pair.
+
 namespace x3m::engine_memory {
 namespace {
 constexpr unsigned region_count = 32;   // distinct heap/image regions touched per frame are a handful
@@ -9,10 +19,10 @@ constexpr DWORD max_age_ms = 100;       // staleness bound when no frame advance
 constexpr unsigned tick_every = 64;     // GetTickCount is itself a Wine dispatch; amortize it
 constexpr DWORD readable_protection = PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE |
                                       PAGE_WRITECOPY | PAGE_EXECUTE_WRITECOPY;
-struct Region { std::uintptr_t begin = 0, end = 0; std::uint64_t frame = 0; DWORD tick = 0; };
+struct Region { std::uintptr_t begin = 0, end = 0; std::uint32_t frame = 0; DWORD tick = 0; };
 Region regions[region_count];
 unsigned victim = 0;
-std::atomic<std::uint64_t> current_frame{1};
+std::atomic<std::uint32_t> current_frame{1};
 std::atomic<int> configured{0}; // 0 unknown, 1 direct, 2 rpm
 std::atomic_flag cache_lock = ATOMIC_FLAG_INIT;
 Stats counters;
@@ -44,7 +54,7 @@ bool query(std::uintptr_t address, Region& out) {
 }
 // Validates [address, end) piecewise: a cached region validated this frame and
 // recently enough covers its part; anything else is queried and cached.
-bool validated(std::uintptr_t address, std::uintptr_t end, std::uint64_t frame, DWORD tick) {
+bool validated(std::uintptr_t address, std::uintptr_t end, std::uint32_t frame, DWORD tick) {
     while (address < end) {
         Region* hit = nullptr;
         for (auto& r : regions)
@@ -89,7 +99,7 @@ bool read(std::uintptr_t address, void* out, std::size_t size) {
         Guard guard; ++counters.syscalls;
         return rpm(address, out, size);
     }
-    const std::uint64_t frame = current_frame.load(std::memory_order_relaxed);
+    const std::uint32_t frame = current_frame.load(std::memory_order_relaxed);
     {
         Guard guard;
         if ((++counters.reads % tick_every) == 1) last_tick = GetTickCount();

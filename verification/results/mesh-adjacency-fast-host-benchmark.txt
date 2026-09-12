@@ -1,0 +1,25 @@
+# Host benchmark of src/proxy/mesh_adjacency_fast.cpp (arm64 clang -O2, 20 repeated calls per mesh, steady_clock), 2026-09-12
+# before = tree at ca0d234 (13 mallocs per call, 24-byte Edge, key+head slots, chain unlinking); after = single thread-local arena, next-only edges, anchor+head slots, retired flags, lazy per-edge normal cache
+# mesh faces vertices before_min_us before_mean_us after_min_us after_mean_us speedup_min checksum_equal multi_candidates normal_selected
+grid-224x224-32 99458 50176 5392.1 5576.4 4458.8 4800.5 1.21 1 0 0
+split-150x150-32 44402 133206 2114.3 2254.8 1921.4 2072.3 1.10 1 0 0
+star-20000-32 20000 40000 1038.8 1177.4 899.1 989.5 1.16 1 0 0
+split-16 19602 58806 1032.5 1101.9 823.3 885.4 1.25 1 0 0
+fan-same-edge-2000 4000 2002 12604.4 12866.0 6250.4 6351.1 2.02 1 1999 46464
+fan-same-edge-8000 16000 8002 198784.4 203170.6 99320.7 103532.5 2.00 1 7999 345683
+unquantized-grid-150 44402 22500 6968.2 7102.8 6948.0 7158.4 1.00 1 0 0
+# hash-table linear-probe statistics (identical before/after; position table and directed-edge table at load factor <= 1/2)
+grid-224x224-32 positions: V=50176 distinct=298374 slots=1048576 mean_probes=1.198 max_probes=12
+grid-224x224-32 edges: E=298374 distinct=298374 slots=1048576 mean_probes=1.198 max_probes=12
+split-150x150-32 positions: V=133206 distinct=133206 slots=524288 mean_probes=1.173 max_probes=15
+split-150x150-32 edges: E=133206 distinct=133206 slots=524288 mean_probes=1.173 max_probes=15
+star-20000-32 positions: V=40000 distinct=60000 slots=131072 mean_probes=1.425 max_probes=25
+star-20000-32 edges: E=60000 distinct=60000 slots=131072 mean_probes=1.425 max_probes=25
+split-16 positions: V=58806 distinct=58806 slots=131072 mean_probes=1.406 max_probes=25
+split-16 edges: E=58806 distinct=58806 slots=131072 mean_probes=1.406 max_probes=25
+fan-same-edge-2000 positions: V=2002 distinct=8002 slots=32768 mean_probes=1.114 max_probes=8
+fan-same-edge-2000 edges: E=12000 distinct=8002 slots=32768 mean_probes=1.114 max_probes=8
+fan-same-edge-8000 positions: V=8002 distinct=32002 slots=131072 mean_probes=1.106 max_probes=10
+fan-same-edge-8000 edges: E=48000 distinct=32002 slots=131072 mean_probes=1.106 max_probes=10
+unquantized-grid-150 positions: V=22500 distinct=133206 slots=524288 mean_probes=1.174 max_probes=12
+unquantized-grid-150 edges: E=133206 distinct=133206 slots=524288 mean_probes=1.174 max_probes=12

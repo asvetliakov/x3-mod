@@ -1,193 +1,269 @@
-FIXTURE_BEGIN profile=1 pid=1660 tid=684 qpc_frequency=10000000 main_base=0x00400000
+FIXTURE_BEGIN profile=1 pid=244 tid=248 qpc_frequency=10000000 main_base=0x00400000
 FIXTURE_FUNCTION name=spin_a rva_begin=0x1550 rva_end=0x15f0
 FIXTURE_FUNCTION name=caller_a rva_begin=0x1600 rva_end=0x1620
 FIXTURE_FUNCTION name=wait_b rva_begin=0x1630 rva_end=0x1660
 FIXTURE_FUNCTION name=caller_c rva_begin=0x1670 rva_end=0x1690
 FIXTURE_FUNCTION name=fpo_leaf rva_begin=0x1980 rva_end=0x19f0
 FIXTURE_FUNCTION name=fpo_spin rva_begin=0x1a00 rva_end=0x1a20
-profile_start schema=1 enabled=1 qpc=9198746589164 frequency=10000000 interval_us=2000 report_s=1 sampler_tid=1164 init_tid=684 main_base=0x00400000 proxy_base=0x00400000 query_thread=1 chain_limit=32 scan_dwords=1024 threads_max=32 modules_max=128 tables=65536,65536,16384
+profile_start schema=1 enabled=1 qpc=9559167476857 frequency=10000000 interval_us=2000 report_s=1 sampler_tid=264 init_tid=248 main_base=0x00400000 proxy_base=0x00400000 query_thread=1 chain_limit=32 scan_dwords=1024 threads_max=32 modules_max=128 tables=65536,65536,16384
 FIXTURE_PROFILER requested=1 active=1
-FIXTURE_THREAD name=a tid=2728
-FIXTURE_THREAD name=b tid=2172
-FIXTURE_THREAD name=c tid=1656
+FIXTURE_THREAD name=a tid=268
+FIXTURE_THREAD name=b tid=272
+FIXTURE_THREAD name=c tid=276
 profile_module index=0 name=sampling_profiler_fixture.exe kind=x3ap base=0x00400000 size=0x44b000 text_rva=0x1000 text_size=0xf000 ranges=1 pinned=1
-profile_module index=1 name=ntdll.dll kind=ntdll base=0x7be00000 size=0xa4000 text_rva=0x1000 text_size=0x6b000 ranges=1 pinned=1
-profile_module index=2 name=kernel32.dll kind=wine base=0x7bd70000 size=0x5a000 text_rva=0x1000 text_size=0x2a000 ranges=1 pinned=1
-profile_module index=3 name=kernelbase.dll kind=wine base=0x7bac0000 size=0x297000 text_rva=0x1000 text_size=0x6b000 ranges=1 pinned=1
-profile_module index=4 name=ucrtbase.dll kind=wine base=0x7b700000 size=0xda000 text_rva=0x1000 text_size=0x95000 ranges=1 pinned=1
-profile_thread_seen slot=0 tid=684 teb=0x7ffda000 start_module=0 start_rva=0x1460 creation=134336640338534750
-profile_thread_seen slot=1 tid=2728 teb=0x7ffd2000 start_module=0 start_rva=0x16a0 creation=134336640339804540
-profile_thread_seen slot=2 tid=2172 teb=0x7ffce000 start_module=0 start_rva=0x16d0 creation=134336640339806000
-profile_thread_seen slot=3 tid=1656 teb=0x7ffca000 start_module=0 start_rva=0x1700 creation=134336640339807690
-FIXTURE_PROGRESS main_iterations=159880 bytes=329893490
-FIXTURE_PROGRESS main_iterations=313082 bytes=645333326
-profile_report scope=delta qpc=9198756908702 frequency=10000000 since_start_us=1031953.800 elapsed_us=1031436.800 interval_us=2000 samples=1288 threads=4 threads_unsampled=0 modules=5 ticks=322 tick_us_mean=566.147 tick_us_max=945.100 refresh_us=45771.400 dropped=0 table_used=11,10,10
-profile_thread scope=delta qpc=9198756908702 slot=0 tid=684 samples=322 total=322 leaf_x3ap=0 leaf_ntdll=320 leaf_wine=1 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=1 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x1460 retired=0
-profile_thread scope=delta qpc=9198756908702 slot=1 tid=2728 samples=322 total=322 leaf_x3ap=321 leaf_ntdll=1 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x16a0 retired=0
-profile_thread scope=delta qpc=9198756908702 slot=2 tid=2172 samples=322 total=322 leaf_x3ap=0 leaf_ntdll=322 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x16d0 retired=0
-profile_thread scope=delta qpc=9198756908702 slot=3 tid=1656 samples=322 total=322 leaf_x3ap=322 leaf_ntdll=0 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x1700 retired=0
-profile_leaf scope=delta qpc=9198756908702 slot=3 module=0 name=sampling_profiler_fixture.exe rva=0x19cc count=322
-profile_leaf scope=delta qpc=9198756908702 slot=2 module=1 name=ntdll.dll rva=0x4cb6c count=322
-profile_leaf scope=delta qpc=9198756908702 slot=1 module=0 name=sampling_profiler_fixture.exe rva=0x15cc count=321
-profile_leaf scope=delta qpc=9198756908702 slot=0 module=1 name=ntdll.dll rva=0x4cbac count=312
-profile_leaf scope=delta qpc=9198756908702 slot=0 module=1 name=ntdll.dll rva=0x4ce3c count=5
-profile_leaf scope=delta qpc=9198756908702 slot=0 module=1 name=ntdll.dll rva=0x21d18 count=1
-profile_leaf scope=delta qpc=9198756908702 slot=0 module=65535 name=- rva=0x7bde6000 count=1
-profile_leaf scope=delta qpc=9198756908702 slot=0 module=4 name=ucrtbase.dll rva=0x658a0 count=1
-profile_leaf scope=delta qpc=9198756908702 slot=0 module=1 name=ntdll.dll rva=0x4ce3a count=1
-profile_leaf scope=delta qpc=9198756908702 slot=0 module=1 name=ntdll.dll rva=0x2344f count=1
-profile_leaf scope=delta qpc=9198756908702 slot=1 module=1 name=ntdll.dll rva=0x4ce3c count=1
-profile_frame scope=delta qpc=9198756908702 slot=3 rva=0x19cc count=322
-profile_frame scope=delta qpc=9198756908702 slot=2 rva=0x164a count=322
-profile_frame scope=delta qpc=9198756908702 slot=1 rva=0x15cc count=321
-profile_frame scope=delta qpc=9198756908702 slot=0 rva=0xec1f count=312
-profile_frame scope=delta qpc=9198756908702 slot=0 rva=0xec68 count=4
-profile_frame scope=delta qpc=9198756908702 slot=0 rva=0xeb15 count=3
-profile_frame scope=delta qpc=9198756908702 slot=1 rva=0x1597 count=1
-profile_frame scope=delta qpc=9198756908702 slot=0 rva=0xebaa count=1
-profile_frame scope=delta qpc=9198756908702 slot=0 rva=0xebcd count=1
-profile_frame scope=delta qpc=9198756908702 slot=0 rva=0xeb8a count=1
-profile_pair scope=delta qpc=9198756908702 slot=3 rva=0x19cc caller=0x1a0f count=322
-profile_pair scope=delta qpc=9198756908702 slot=2 rva=0x164a caller=0x16e5 count=322
-profile_pair scope=delta qpc=9198756908702 slot=1 rva=0x15cc caller=0x1618 count=321
-profile_pair scope=delta qpc=9198756908702 slot=0 rva=0xec1f caller=0x10fc count=312
-profile_pair scope=delta qpc=9198756908702 slot=0 rva=0xec68 caller=0x10fc count=4
-profile_pair scope=delta qpc=9198756908702 slot=0 rva=0xeb15 caller=0x10fc count=3
-profile_pair scope=delta qpc=9198756908702 slot=0 rva=0xebaa caller=0x10fc count=1
-profile_pair scope=delta qpc=9198756908702 slot=0 rva=0xeb8a caller=0x10fc count=1
-profile_pair scope=delta qpc=9198756908702 slot=1 rva=0x1597 caller=0x1618 count=1
-profile_pair scope=delta qpc=9198756908702 slot=0 rva=0xebcd caller=0x10fc count=1
-profile_report_end qpc=9198756928530 report_us=1982.800
-FIXTURE_PROGRESS main_iterations=498168 bytes=1026685225
-FIXTURE_PROGRESS main_iterations=679891 bytes=1402224161
-profile_report scope=delta qpc=9198767200336 frequency=10000000 since_start_us=2061117.200 elapsed_us=1027180.600 interval_us=2000 samples=1248 threads=4 threads_unsampled=0 modules=5 ticks=312 tick_us_mean=519.156 tick_us_max=892.800 refresh_us=26904.000 dropped=0 table_used=11,9,9
-profile_thread scope=delta qpc=9198767200336 slot=0 tid=684 samples=312 total=634 leaf_x3ap=0 leaf_ntdll=310 leaf_wine=2 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x1460 retired=0
-profile_thread scope=delta qpc=9198767200336 slot=1 tid=2728 samples=312 total=634 leaf_x3ap=312 leaf_ntdll=0 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x16a0 retired=0
-profile_thread scope=delta qpc=9198767200336 slot=2 tid=2172 samples=312 total=634 leaf_x3ap=0 leaf_ntdll=312 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x16d0 retired=0
-profile_thread scope=delta qpc=9198767200336 slot=3 tid=1656 samples=312 total=634 leaf_x3ap=312 leaf_ntdll=0 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x1700 retired=0
-profile_leaf scope=delta qpc=9198767200336 slot=3 module=0 name=sampling_profiler_fixture.exe rva=0x19cc count=312
-profile_leaf scope=delta qpc=9198767200336 slot=1 module=0 name=sampling_profiler_fixture.exe rva=0x15cc count=312
-profile_leaf scope=delta qpc=9198767200336 slot=2 module=1 name=ntdll.dll rva=0x4cb6c count=312
-profile_leaf scope=delta qpc=9198767200336 slot=0 module=1 name=ntdll.dll rva=0x4cbac count=294
-profile_leaf scope=delta qpc=9198767200336 slot=0 module=1 name=ntdll.dll rva=0x4ce3c count=12
-profile_leaf scope=delta qpc=9198767200336 slot=0 module=2 name=kernel32.dll rva=0xdda4 count=1
-profile_leaf scope=delta qpc=9198767200336 slot=0 module=1 name=ntdll.dll rva=0x2208d count=1
-profile_leaf scope=delta qpc=9198767200336 slot=0 module=1 name=ntdll.dll rva=0x237f4 count=1
-profile_leaf scope=delta qpc=9198767200336 slot=0 module=1 name=ntdll.dll rva=0x2243d count=1
-profile_leaf scope=delta qpc=9198767200336 slot=0 module=1 name=ntdll.dll rva=0x5289a count=1
-profile_leaf scope=delta qpc=9198767200336 slot=0 module=4 name=ucrtbase.dll rva=0x658f4 count=1
-profile_frame scope=delta qpc=9198767200336 slot=3 rva=0x19cc count=312
-profile_frame scope=delta qpc=9198767200336 slot=2 rva=0x164a count=312
-profile_frame scope=delta qpc=9198767200336 slot=1 rva=0x15cc count=312
-profile_frame scope=delta qpc=9198767200336 slot=0 rva=0xec1f count=294
-profile_frame scope=delta qpc=9198767200336 slot=0 rva=0xeb15 count=7
-profile_frame scope=delta qpc=9198767200336 slot=0 rva=0xec68 count=5
-profile_frame scope=delta qpc=9198767200336 slot=0 rva=0xeb8a count=4
-profile_frame scope=delta qpc=9198767200336 slot=0 rva=0xebaa count=1
-profile_frame scope=delta qpc=9198767200336 slot=0 rva=0xebcd count=1
-profile_pair scope=delta qpc=9198767200336 slot=3 rva=0x19cc caller=0x1a0f count=312
-profile_pair scope=delta qpc=9198767200336 slot=1 rva=0x15cc caller=0x1618 count=312
-profile_pair scope=delta qpc=9198767200336 slot=2 rva=0x164a caller=0x16e5 count=312
-profile_pair scope=delta qpc=9198767200336 slot=0 rva=0xec1f caller=0x10fc count=294
-profile_pair scope=delta qpc=9198767200336 slot=0 rva=0xeb15 caller=0x10fc count=7
-profile_pair scope=delta qpc=9198767200336 slot=0 rva=0xec68 caller=0x10fc count=5
-profile_pair scope=delta qpc=9198767200336 slot=0 rva=0xeb8a caller=0x10fc count=4
-profile_pair scope=delta qpc=9198767200336 slot=0 rva=0xebaa caller=0x10fc count=1
-profile_pair scope=delta qpc=9198767200336 slot=0 rva=0xebcd caller=0x10fc count=1
-profile_report_end qpc=9198767206012 report_us=567.600
-FIXTURE_PROGRESS main_iterations=863558 bytes=1781235399
-FIXTURE_STATUS joined=0 ticks=940 samples=2536 dropped=0 reports=2 threads=4 modules=5 unsampled=0 tick_us_mean=558.441 tick_us_max=9143.800 report_us=2550.400 refresh_us=72675.400
-profile_report scope=delta qpc=9198776700173 frequency=10000000 since_start_us=3011100.900 elapsed_us=949416.100 interval_us=2000 samples=1222 threads=4 threads_unsampled=0 modules=5 ticks=306 tick_us_mean=590.386 tick_us_max=9143.800 refresh_us=0.000 dropped=0 table_used=13,10,10
-profile_thread scope=delta qpc=9198776700173 slot=0 tid=684 samples=306 total=940 leaf_x3ap=1 leaf_ntdll=303 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=2 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x1460 retired=0
-profile_thread scope=delta qpc=9198776700173 slot=1 tid=2728 samples=305 total=939 leaf_x3ap=305 leaf_ntdll=0 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=1 context_failures=0 start_module=0 start_rva=0x16a0 retired=0
-profile_thread scope=delta qpc=9198776700173 slot=2 tid=2172 samples=306 total=940 leaf_x3ap=0 leaf_ntdll=306 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x16d0 retired=0
-profile_thread scope=delta qpc=9198776700173 slot=3 tid=1656 samples=305 total=939 leaf_x3ap=305 leaf_ntdll=0 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=1 context_failures=0 start_module=0 start_rva=0x1700 retired=0
-profile_leaf scope=delta qpc=9198776700173 slot=2 module=1 name=ntdll.dll rva=0x4cb6c count=306
-profile_leaf scope=delta qpc=9198776700173 slot=3 module=0 name=sampling_profiler_fixture.exe rva=0x19cc count=305
-profile_leaf scope=delta qpc=9198776700173 slot=1 module=0 name=sampling_profiler_fixture.exe rva=0x15cc count=304
-profile_leaf scope=delta qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x4cbac count=289
-profile_leaf scope=delta qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x4ce3c count=9
-profile_leaf scope=delta qpc=9198776700173 slot=0 module=65535 name=- rva=0x7bde6000 count=2
-profile_leaf scope=delta qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x23243 count=1
-profile_leaf scope=delta qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x4cc1c count=1
-profile_leaf scope=delta qpc=9198776700173 slot=0 module=0 name=sampling_profiler_fixture.exe rva=0xeb8a count=1
-profile_leaf scope=delta qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x22bb4 count=1
-profile_leaf scope=delta qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x23bad count=1
-profile_leaf scope=delta qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x52982 count=1
-profile_leaf scope=delta qpc=9198776700173 slot=1 module=0 name=sampling_profiler_fixture.exe rva=0x15c0 count=1
-profile_frame scope=delta qpc=9198776700173 slot=2 rva=0x164a count=306
-profile_frame scope=delta qpc=9198776700173 slot=3 rva=0x19cc count=305
-profile_frame scope=delta qpc=9198776700173 slot=1 rva=0x15cc count=304
-profile_frame scope=delta qpc=9198776700173 slot=0 rva=0xec1f count=290
-profile_frame scope=delta qpc=9198776700173 slot=0 rva=0xeb15 count=5
-profile_frame scope=delta qpc=9198776700173 slot=0 rva=0xec68 count=5
-profile_frame scope=delta qpc=9198776700173 slot=0 rva=0xebaa count=3
-profile_frame scope=delta qpc=9198776700173 slot=0 rva=0xeb8a count=2
-profile_frame scope=delta qpc=9198776700173 slot=0 rva=0xed83 count=1
-profile_frame scope=delta qpc=9198776700173 slot=1 rva=0x15c0 count=1
-profile_pair scope=delta qpc=9198776700173 slot=2 rva=0x164a caller=0x16e5 count=306
-profile_pair scope=delta qpc=9198776700173 slot=3 rva=0x19cc caller=0x1a0f count=305
-profile_pair scope=delta qpc=9198776700173 slot=1 rva=0x15cc caller=0x1618 count=304
-profile_pair scope=delta qpc=9198776700173 slot=0 rva=0xec1f caller=0x10fc count=290
-profile_pair scope=delta qpc=9198776700173 slot=0 rva=0xec68 caller=0x10fc count=5
-profile_pair scope=delta qpc=9198776700173 slot=0 rva=0xeb15 caller=0x10fc count=5
-profile_pair scope=delta qpc=9198776700173 slot=0 rva=0xebaa caller=0x10fc count=3
-profile_pair scope=delta qpc=9198776700173 slot=0 rva=0xeb8a caller=0x10fc count=2
-profile_pair scope=delta qpc=9198776700173 slot=0 rva=0xed83 caller=0x10fc count=1
-profile_pair scope=delta qpc=9198776700173 slot=1 rva=0x15c0 caller=0x1618 count=1
-profile_report scope=cumulative qpc=9198776700173 frequency=10000000 since_start_us=3011100.900 samples=3758 ticks=940 tick_us_mean=558.441 tick_us_max=9143.800 refresh_us=72675.400 report_us=2550.400 dropped=0 cumulative_dropped=0 table_used=24,12,12 final=1
-profile_thread scope=cumulative qpc=9198776700173 slot=0 tid=684 samples=940 total=940 leaf_x3ap=1 leaf_ntdll=933 leaf_wine=3 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=3 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x1460 retired=0
-profile_thread scope=cumulative qpc=9198776700173 slot=1 tid=2728 samples=939 total=939 leaf_x3ap=938 leaf_ntdll=1 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=1 context_failures=0 start_module=0 start_rva=0x16a0 retired=0
-profile_thread scope=cumulative qpc=9198776700173 slot=2 tid=2172 samples=940 total=940 leaf_x3ap=0 leaf_ntdll=940 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x16d0 retired=0
-profile_thread scope=cumulative qpc=9198776700173 slot=3 tid=1656 samples=939 total=939 leaf_x3ap=939 leaf_ntdll=0 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=1 context_failures=0 start_module=0 start_rva=0x1700 retired=0
-profile_leaf scope=cumulative qpc=9198776700173 slot=2 module=1 name=ntdll.dll rva=0x4cb6c count=940
-profile_leaf scope=cumulative qpc=9198776700173 slot=3 module=0 name=sampling_profiler_fixture.exe rva=0x19cc count=939
-profile_leaf scope=cumulative qpc=9198776700173 slot=1 module=0 name=sampling_profiler_fixture.exe rva=0x15cc count=937
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x4cbac count=895
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x4ce3c count=26
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=65535 name=- rva=0x7bde6000 count=3
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x21d18 count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x23243 count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=2 name=kernel32.dll rva=0xdda4 count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x2208d count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x4cc1c count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=4 name=ucrtbase.dll rva=0x658a0 count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x237f4 count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=0 name=sampling_profiler_fixture.exe rva=0xeb8a count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x22bb4 count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x4ce3a count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x23bad count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x52982 count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x2243d count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x2344f count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=1 module=0 name=sampling_profiler_fixture.exe rva=0x15c0 count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=1 module=1 name=ntdll.dll rva=0x4ce3c count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=1 name=ntdll.dll rva=0x5289a count=1
-profile_leaf scope=cumulative qpc=9198776700173 slot=0 module=4 name=ucrtbase.dll rva=0x658f4 count=1
-profile_frame scope=cumulative qpc=9198776700173 slot=2 rva=0x164a count=940
-profile_frame scope=cumulative qpc=9198776700173 slot=3 rva=0x19cc count=939
-profile_frame scope=cumulative qpc=9198776700173 slot=1 rva=0x15cc count=937
-profile_frame scope=cumulative qpc=9198776700173 slot=0 rva=0xec1f count=896
-profile_frame scope=cumulative qpc=9198776700173 slot=0 rva=0xeb15 count=15
-profile_frame scope=cumulative qpc=9198776700173 slot=0 rva=0xec68 count=14
-profile_frame scope=cumulative qpc=9198776700173 slot=0 rva=0xeb8a count=7
-profile_frame scope=cumulative qpc=9198776700173 slot=0 rva=0xebaa count=5
-profile_frame scope=cumulative qpc=9198776700173 slot=0 rva=0xebcd count=2
-profile_frame scope=cumulative qpc=9198776700173 slot=0 rva=0xed83 count=1
-profile_frame scope=cumulative qpc=9198776700173 slot=1 rva=0x1597 count=1
-profile_frame scope=cumulative qpc=9198776700173 slot=1 rva=0x15c0 count=1
-profile_pair scope=cumulative qpc=9198776700173 slot=2 rva=0x164a caller=0x16e5 count=940
-profile_pair scope=cumulative qpc=9198776700173 slot=3 rva=0x19cc caller=0x1a0f count=939
-profile_pair scope=cumulative qpc=9198776700173 slot=1 rva=0x15cc caller=0x1618 count=937
-profile_pair scope=cumulative qpc=9198776700173 slot=0 rva=0xec1f caller=0x10fc count=896
-profile_pair scope=cumulative qpc=9198776700173 slot=0 rva=0xeb15 caller=0x10fc count=15
-profile_pair scope=cumulative qpc=9198776700173 slot=0 rva=0xec68 caller=0x10fc count=14
-profile_pair scope=cumulative qpc=9198776700173 slot=0 rva=0xeb8a caller=0x10fc count=7
-profile_pair scope=cumulative qpc=9198776700173 slot=0 rva=0xebaa caller=0x10fc count=5
-profile_pair scope=cumulative qpc=9198776700173 slot=0 rva=0xebcd caller=0x10fc count=2
-profile_pair scope=cumulative qpc=9198776700173 slot=1 rva=0x1597 caller=0x1618 count=1
-profile_pair scope=cumulative qpc=9198776700173 slot=0 rva=0xed83 caller=0x10fc count=1
-profile_pair scope=cumulative qpc=9198776700173 slot=1 rva=0x15c0 caller=0x1618 count=1
-profile_report_end qpc=9198776766207 report_us=6603.400
-profile_stop joined=1 qpc=9198776768457 stop_us=6970.500 handles_closed=4
-FIXTURE_END exit=0 elapsed_ms=3043 iterations_a=6962 iterations_c=6969 main_iterations=1045960 wait_result=1 handles_before=0 handles_after=0 threads_before=1 threads_after=1 active_after=0 stop_us=7052
+profile_module index=1 name=ntdll.dll kind=ntdll base=0x7bf40000 size=0xa4000 text_rva=0x1000 text_size=0x6b000 ranges=1 pinned=1
+profile_module index=2 name=kernel32.dll kind=wine base=0x7beb0000 size=0x5a000 text_rva=0x1000 text_size=0x2a000 ranges=1 pinned=1
+profile_module index=3 name=kernelbase.dll kind=wine base=0x7bc00000 size=0x297000 text_rva=0x1000 text_size=0x6b000 ranges=1 pinned=1
+profile_module index=4 name=ucrtbase.dll kind=wine base=0x7bb10000 size=0xda000 text_rva=0x1000 text_size=0x95000 ranges=1 pinned=1
+profile_thread_seen slot=0 tid=248 teb=0x7ffda000 start_module=0 start_rva=0x1460 creation=134337000762185140
+profile_thread_seen slot=1 tid=268 teb=0x7ffd2000 start_module=0 start_rva=0x16a0 creation=134337000763079470
+profile_thread_seen slot=2 tid=272 teb=0x7ffce000 start_module=0 start_rva=0x16d0 creation=134337000763082320
+profile_thread_seen slot=3 tid=276 teb=0x7ffca000 start_module=0 start_rva=0x1700 creation=134337000763085240
+FIXTURE_PROGRESS main_iterations=167532 bytes=345603983
+FIXTURE_PROGRESS main_iterations=335048 bytes=690573577
+profile_report scope=delta qpc=9559177534605 frequency=10000000 since_start_us=1005774.800 elapsed_us=1005339.800 interval_us=2000 samples=1460 threads=4 threads_unsampled=0 modules=5 ticks=365 tick_us_mean=252.696 tick_us_max=1933.500 refresh_us=8851.300 dropped=0 table_used=22,11,11
+profile_thread scope=delta qpc=9559177534605 slot=0 tid=248 samples=365 total=365 leaf_x3ap=2 leaf_ntdll=349 leaf_wine=10 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=4 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x1460 retired=0
+profile_thread scope=delta qpc=9559177534605 slot=1 tid=268 samples=365 total=365 leaf_x3ap=365 leaf_ntdll=0 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x16a0 retired=0
+profile_thread scope=delta qpc=9559177534605 slot=2 tid=272 samples=365 total=365 leaf_x3ap=0 leaf_ntdll=365 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x16d0 retired=0
+profile_thread scope=delta qpc=9559177534605 slot=3 tid=276 samples=365 total=365 leaf_x3ap=365 leaf_ntdll=0 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x1700 retired=0
+profile_leaf scope=delta qpc=9559177534605 slot=3 module=0 name=sampling_profiler_fixture.exe rva=0x19cc count=365
+profile_leaf scope=delta qpc=9559177534605 slot=1 module=0 name=sampling_profiler_fixture.exe rva=0x15cc count=365
+profile_leaf scope=delta qpc=9559177534605 slot=2 module=1 name=ntdll.dll rva=0x4cb6c count=365
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=1 name=ntdll.dll rva=0x4cbac count=308
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=1 name=ntdll.dll rva=0x4ce3c count=27
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=4 name=ucrtbase.dll rva=0x658f4 count=6
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=65535 name=- rva=0x7bf26000 count=4
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=1 name=ntdll.dll rva=0x227bc count=3
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=1 name=ntdll.dll rva=0x2344f count=3
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=1 name=ntdll.dll rva=0x21ca6 count=2
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=1 name=ntdll.dll rva=0x23999 count=1
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=0 name=sampling_profiler_fixture.exe rva=0xeb2a count=1
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=3 name=kernelbase.dll rva=0x1d7de count=1
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=1 name=ntdll.dll rva=0x22b96 count=1
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=3 name=kernelbase.dll rva=0x1d7e4 count=1
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=1 name=ntdll.dll rva=0x2324a count=1
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=4 name=ucrtbase.dll rva=0x65900 count=1
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=1 name=ntdll.dll rva=0x2343e count=1
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=1 name=ntdll.dll rva=0x227cb count=1
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=1 name=ntdll.dll rva=0x22933 count=1
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=0 name=sampling_profiler_fixture.exe rva=0xe300 count=1
+profile_leaf scope=delta qpc=9559177534605 slot=0 module=2 name=kernel32.dll rva=0xe72c count=1
+profile_frame scope=delta qpc=9559177534605 slot=3 rva=0x19cc count=365
+profile_frame scope=delta qpc=9559177534605 slot=2 rva=0x164a count=365
+profile_frame scope=delta qpc=9559177534605 slot=1 rva=0x15cc count=365
+profile_frame scope=delta qpc=9559177534605 slot=0 rva=0xec1f count=312
+profile_frame scope=delta qpc=9559177534605 slot=0 rva=0xeb15 count=16
+profile_frame scope=delta qpc=9559177534605 slot=0 rva=0xec68 count=14
+profile_frame scope=delta qpc=9559177534605 slot=0 rva=0xebaa count=8
+profile_frame scope=delta qpc=9559177534605 slot=0 rva=0xebcd count=7
+profile_frame scope=delta qpc=9559177534605 slot=0 rva=0xeb8a count=6
+profile_frame scope=delta qpc=9559177534605 slot=0 rva=0xeb2a count=1
+profile_frame scope=delta qpc=9559177534605 slot=0 rva=0xe300 count=1
+profile_pair scope=delta qpc=9559177534605 slot=3 rva=0x19cc caller=0x1a0f count=365
+profile_pair scope=delta qpc=9559177534605 slot=1 rva=0x15cc caller=0x1618 count=365
+profile_pair scope=delta qpc=9559177534605 slot=2 rva=0x164a caller=0x16e5 count=365
+profile_pair scope=delta qpc=9559177534605 slot=0 rva=0xec1f caller=0x10fc count=312
+profile_pair scope=delta qpc=9559177534605 slot=0 rva=0xeb15 caller=0x10fc count=16
+profile_pair scope=delta qpc=9559177534605 slot=0 rva=0xec68 caller=0x10fc count=14
+profile_pair scope=delta qpc=9559177534605 slot=0 rva=0xebaa caller=0x10fc count=8
+profile_pair scope=delta qpc=9559177534605 slot=0 rva=0xebcd caller=0x10fc count=7
+profile_pair scope=delta qpc=9559177534605 slot=0 rva=0xeb8a caller=0x10fc count=6
+profile_pair scope=delta qpc=9559177534605 slot=0 rva=0xe300 caller=0xebcd count=1
+profile_pair scope=delta qpc=9559177534605 slot=0 rva=0xeb2a caller=0x10fc count=1
+profile_report_end qpc=9559177555702 report_us=2109.700
+FIXTURE_PROGRESS main_iterations=515988 bytes=1063384812
+FIXTURE_PROGRESS main_iterations=693107 bytes=1429392423
+profile_report scope=delta qpc=9559187565699 frequency=10000000 since_start_us=2008884.200 elapsed_us=1000999.700 interval_us=2000 samples=1452 threads=4 threads_unsampled=0 modules=5 ticks=363 tick_us_mean=268.108 tick_us_max=1084.100 refresh_us=3413.100 dropped=0 table_used=22,10,10
+profile_thread scope=delta qpc=9559187565699 slot=0 tid=248 samples=363 total=728 leaf_x3ap=1 leaf_ntdll=351 leaf_wine=7 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=4 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x1460 retired=0
+profile_thread scope=delta qpc=9559187565699 slot=1 tid=268 samples=363 total=728 leaf_x3ap=363 leaf_ntdll=0 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x16a0 retired=0
+profile_thread scope=delta qpc=9559187565699 slot=2 tid=272 samples=363 total=728 leaf_x3ap=0 leaf_ntdll=363 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x16d0 retired=0
+profile_thread scope=delta qpc=9559187565699 slot=3 tid=276 samples=363 total=728 leaf_x3ap=363 leaf_ntdll=0 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x1700 retired=0
+profile_leaf scope=delta qpc=9559187565699 slot=3 module=0 name=sampling_profiler_fixture.exe rva=0x19cc count=363
+profile_leaf scope=delta qpc=9559187565699 slot=2 module=1 name=ntdll.dll rva=0x4cb6c count=363
+profile_leaf scope=delta qpc=9559187565699 slot=1 module=0 name=sampling_profiler_fixture.exe rva=0x15cc count=361
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=1 name=ntdll.dll rva=0x4cbac count=317
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=1 name=ntdll.dll rva=0x4ce3c count=24
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=65535 name=- rva=0x7bf26000 count=4
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=4 name=ucrtbase.dll rva=0x658f4 count=3
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=1 name=ntdll.dll rva=0x2343c count=2
+profile_leaf scope=delta qpc=9559187565699 slot=1 module=0 name=sampling_profiler_fixture.exe rva=0x15c0 count=2
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=4 name=ucrtbase.dll rva=0x658f9 count=1
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=0 name=sampling_profiler_fixture.exe rva=0xec1f count=1
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=1 name=ntdll.dll rva=0x21c31 count=1
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=1 name=ntdll.dll rva=0x22ae4 count=1
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=1 name=ntdll.dll rva=0x21c09 count=1
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=1 name=ntdll.dll rva=0x236b2 count=1
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=1 name=ntdll.dll rva=0x52a2b count=1
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=1 name=ntdll.dll rva=0x238e3 count=1
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=3 name=kernelbase.dll rva=0x1d87b count=1
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=4 name=ucrtbase.dll rva=0x65900 count=1
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=4 name=ucrtbase.dll rva=0x6589c count=1
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=1 name=ntdll.dll rva=0x23bad count=1
+profile_leaf scope=delta qpc=9559187565699 slot=0 module=1 name=ntdll.dll rva=0x21ca6 count=1
+profile_frame scope=delta qpc=9559187565699 slot=3 rva=0x19cc count=363
+profile_frame scope=delta qpc=9559187565699 slot=2 rva=0x164a count=363
+profile_frame scope=delta qpc=9559187565699 slot=1 rva=0x15cc count=361
+profile_frame scope=delta qpc=9559187565699 slot=0 rva=0xec1f count=321
+profile_frame scope=delta qpc=9559187565699 slot=0 rva=0xeb15 count=13
+profile_frame scope=delta qpc=9559187565699 slot=0 rva=0xec68 count=13
+profile_frame scope=delta qpc=9559187565699 slot=0 rva=0xebaa count=8
+profile_frame scope=delta qpc=9559187565699 slot=0 rva=0xebcd count=6
+profile_frame scope=delta qpc=9559187565699 slot=0 rva=0xeb8a count=2
+profile_frame scope=delta qpc=9559187565699 slot=1 rva=0x15c0 count=2
+profile_pair scope=delta qpc=9559187565699 slot=3 rva=0x19cc caller=0x1a0f count=363
+profile_pair scope=delta qpc=9559187565699 slot=2 rva=0x164a caller=0x16e5 count=363
+profile_pair scope=delta qpc=9559187565699 slot=1 rva=0x15cc caller=0x1618 count=361
+profile_pair scope=delta qpc=9559187565699 slot=0 rva=0xec1f caller=0x10fc count=321
+profile_pair scope=delta qpc=9559187565699 slot=0 rva=0xec68 caller=0x10fc count=13
+profile_pair scope=delta qpc=9559187565699 slot=0 rva=0xeb15 caller=0x10fc count=13
+profile_pair scope=delta qpc=9559187565699 slot=0 rva=0xebaa caller=0x10fc count=8
+profile_pair scope=delta qpc=9559187565699 slot=0 rva=0xebcd caller=0x10fc count=6
+profile_pair scope=delta qpc=9559187565699 slot=0 rva=0xeb8a caller=0x10fc count=2
+profile_pair scope=delta qpc=9559187565699 slot=1 rva=0x15c0 caller=0x1618 count=2
+profile_report_end qpc=9559187573237 report_us=753.800
+FIXTURE_PROGRESS main_iterations=873488 bytes=1801624485
+profile_report scope=delta qpc=9559197590150 frequency=10000000 since_start_us=3011329.300 elapsed_us=1001691.300 interval_us=2000 samples=1446 threads=4 threads_unsampled=0 modules=5 ticks=362 tick_us_mean=285.081 tick_us_max=7764.100 refresh_us=0.000 dropped=0 table_used=26,13,12
+profile_thread scope=delta qpc=9559197590150 slot=0 tid=248 samples=362 total=1090 leaf_x3ap=1 leaf_ntdll=349 leaf_wine=4 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=8 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x1460 retired=0
+profile_thread scope=delta qpc=9559197590150 slot=1 tid=268 samples=361 total=1089 leaf_x3ap=361 leaf_ntdll=0 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=1 context_failures=0 start_module=0 start_rva=0x16a0 retired=0
+profile_thread scope=delta qpc=9559197590150 slot=2 tid=272 samples=362 total=1090 leaf_x3ap=0 leaf_ntdll=362 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x16d0 retired=0
+FIXTURE_STATUS joined=0 ticks=1090 samples=2912 dropped=0 reports=2 threads=4 modules=5 unsampled=0 tick_us_mean=268.584 tick_us_max=7764.100 report_us=2863.500 refresh_us=12264.400
+profile_thread scope=delta qpc=9559197590150 slot=3 tid=276 samples=361 total=1089 leaf_x3ap=360 leaf_ntdll=1 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=1 context_failures=0 start_module=0 start_rva=0x1700 retired=0
+profile_leaf scope=delta qpc=9559197590150 slot=2 module=1 name=ntdll.dll rva=0x4cb6c count=362
+profile_leaf scope=delta qpc=9559197590150 slot=3 module=0 name=sampling_profiler_fixture.exe rva=0x19cc count=359
+profile_leaf scope=delta qpc=9559197590150 slot=1 module=0 name=sampling_profiler_fixture.exe rva=0x15cc count=359
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x4cbac count=311
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x4ce3c count=23
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=65535 name=- rva=0x7bf26000 count=8
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x22b96 count=2
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x2344f count=2
+profile_leaf scope=delta qpc=9559197590150 slot=1 module=0 name=sampling_profiler_fixture.exe rva=0x15c0 count=2
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=4 name=ucrtbase.dll rva=0x658f4 count=2
+profile_leaf scope=delta qpc=9559197590150 slot=3 module=1 name=ntdll.dll rva=0x54922 count=1
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x22df0 count=1
+profile_leaf scope=delta qpc=9559197590150 slot=3 module=0 name=sampling_profiler_fixture.exe rva=0x19c0 count=1
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x4dc10 count=1
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x4cc1c count=1
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x22d3f count=1
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x2343c count=1
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x4ce30 count=1
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=2 name=kernel32.dll rva=0xfa92 count=1
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=2 name=kernel32.dll rva=0xe732 count=1
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x23bad count=1
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x237ca count=1
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x52816 count=1
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x233f4 count=1
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=1 name=ntdll.dll rva=0x21c34 count=1
+profile_leaf scope=delta qpc=9559197590150 slot=0 module=0 name=sampling_profiler_fixture.exe rva=0xec68 count=1
+profile_frame scope=delta qpc=9559197590150 slot=2 rva=0x164a count=362
+profile_frame scope=delta qpc=9559197590150 slot=3 rva=0x19cc count=359
+profile_frame scope=delta qpc=9559197590150 slot=1 rva=0x15cc count=359
+profile_frame scope=delta qpc=9559197590150 slot=0 rva=0xec1f count=315
+profile_frame scope=delta qpc=9559197590150 slot=0 rva=0xec68 count=21
+profile_frame scope=delta qpc=9559197590150 slot=0 rva=0xeb15 count=11
+profile_frame scope=delta qpc=9559197590150 slot=0 rva=0xebaa count=10
+profile_frame scope=delta qpc=9559197590150 slot=0 rva=0xebcd count=2
+profile_frame scope=delta qpc=9559197590150 slot=0 rva=0xeb8a count=2
+profile_frame scope=delta qpc=9559197590150 slot=1 rva=0x15c0 count=2
+profile_frame scope=delta qpc=9559197590150 slot=3 rva=0x0 count=1
+profile_frame scope=delta qpc=9559197590150 slot=0 rva=0xed83 count=1
+profile_frame scope=delta qpc=9559197590150 slot=3 rva=0x19c0 count=1
+profile_pair scope=delta qpc=9559197590150 slot=2 rva=0x164a caller=0x16e5 count=362
+profile_pair scope=delta qpc=9559197590150 slot=3 rva=0x19cc caller=0x1a0f count=359
+profile_pair scope=delta qpc=9559197590150 slot=1 rva=0x15cc caller=0x1618 count=359
+profile_pair scope=delta qpc=9559197590150 slot=0 rva=0xec1f caller=0x10fc count=315
+profile_pair scope=delta qpc=9559197590150 slot=0 rva=0xec68 caller=0x10fc count=21
+profile_pair scope=delta qpc=9559197590150 slot=0 rva=0xeb15 caller=0x10fc count=11
+profile_pair scope=delta qpc=9559197590150 slot=0 rva=0xebaa caller=0x10fc count=10
+profile_pair scope=delta qpc=9559197590150 slot=0 rva=0xeb8a caller=0x10fc count=2
+profile_pair scope=delta qpc=9559197590150 slot=0 rva=0xebcd caller=0x10fc count=2
+profile_pair scope=delta qpc=9559197590150 slot=1 rva=0x15c0 caller=0x1618 count=2
+profile_pair scope=delta qpc=9559197590150 slot=0 rva=0xed83 caller=0x10fc count=1
+profile_pair scope=delta qpc=9559197590150 slot=3 rva=0x19c0 caller=0x1a0f count=1
+profile_report_end qpc=9559197675631 report_us=8548.100
+profile_report scope=delta qpc=9559197676760 frequency=10000000 since_start_us=3019990.300 elapsed_us=112.900 interval_us=2000 samples=0 threads=4 threads_unsampled=0 modules=5 ticks=0 tick_us_mean=0.000 tick_us_max=0.000 refresh_us=0.000 dropped=0 table_used=0,0,0
+profile_report scope=cumulative qpc=9559197676760 frequency=10000000 since_start_us=3019990.300 samples=4358 ticks=1090 tick_us_mean=268.584 tick_us_max=7764.100 refresh_us=12264.400 report_us=11411.600 dropped=0 cumulative_dropped=0 table_used=49,15,14 final=1
+profile_thread scope=cumulative qpc=9559197676760 slot=0 tid=248 samples=1090 total=1090 leaf_x3ap=4 leaf_ntdll=1049 leaf_wine=21 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=16 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x1460 retired=0
+profile_thread scope=cumulative qpc=9559197676760 slot=1 tid=268 samples=1089 total=1089 leaf_x3ap=1089 leaf_ntdll=0 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=1 context_failures=0 start_module=0 start_rva=0x16a0 retired=0
+profile_thread scope=cumulative qpc=9559197676760 slot=2 tid=272 samples=1090 total=1090 leaf_x3ap=0 leaf_ntdll=1090 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=0 context_failures=0 start_module=0 start_rva=0x16d0 retired=0
+profile_thread scope=cumulative qpc=9559197676760 slot=3 tid=276 samples=1089 total=1089 leaf_x3ap=1088 leaf_ntdll=1 leaf_wine=0 leaf_d3dx=0 leaf_zlib=0 leaf_xml=0 leaf_proxy=0 leaf_other=0 stack_unknown=0 suspend_failures=1 context_failures=0 start_module=0 start_rva=0x1700 retired=0
+profile_leaf scope=cumulative qpc=9559197676760 slot=2 module=1 name=ntdll.dll rva=0x4cb6c count=1090
+profile_leaf scope=cumulative qpc=9559197676760 slot=3 module=0 name=sampling_profiler_fixture.exe rva=0x19cc count=1087
+profile_leaf scope=cumulative qpc=9559197676760 slot=1 module=0 name=sampling_profiler_fixture.exe rva=0x15cc count=1085
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x4cbac count=936
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x4ce3c count=74
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=65535 name=- rva=0x7bf26000 count=16
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=4 name=ucrtbase.dll rva=0x658f4 count=11
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x2344f count=5
+profile_leaf scope=cumulative qpc=9559197676760 slot=1 module=0 name=sampling_profiler_fixture.exe rva=0x15c0 count=4
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x22b96 count=3
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x2343c count=3
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x21ca6 count=3
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x227bc count=3
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=4 name=ucrtbase.dll rva=0x65900 count=2
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x23bad count=2
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=4 name=ucrtbase.dll rva=0x658f9 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=0 name=sampling_profiler_fixture.exe rva=0xec1f count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x21c31 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=3 module=1 name=ntdll.dll rva=0x54922 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x23999 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=0 name=sampling_profiler_fixture.exe rva=0xeb2a count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x22df0 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x22ae4 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=3 module=0 name=sampling_profiler_fixture.exe rva=0x19c0 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x4dc10 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x4cc1c count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x22d3f count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=3 name=kernelbase.dll rva=0x1d7de count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x21c09 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=3 name=kernelbase.dll rva=0x1d7e4 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x236b2 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x2324a count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x52a2b count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x238e3 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=3 name=kernelbase.dll rva=0x1d87b count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x2343e count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x4ce30 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=2 name=kernel32.dll rva=0xfa92 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=2 name=kernel32.dll rva=0xe732 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=4 name=ucrtbase.dll rva=0x6589c count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x227cb count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x237ca count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x22933 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=0 name=sampling_profiler_fixture.exe rva=0xe300 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x52816 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x233f4 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=2 name=kernel32.dll rva=0xe72c count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=1 name=ntdll.dll rva=0x21c34 count=1
+profile_leaf scope=cumulative qpc=9559197676760 slot=0 module=0 name=sampling_profiler_fixture.exe rva=0xec68 count=1
+profile_frame scope=cumulative qpc=9559197676760 slot=2 rva=0x164a count=1090
+profile_frame scope=cumulative qpc=9559197676760 slot=3 rva=0x19cc count=1087
+profile_frame scope=cumulative qpc=9559197676760 slot=1 rva=0x15cc count=1085
+profile_frame scope=cumulative qpc=9559197676760 slot=0 rva=0xec1f count=948
+profile_frame scope=cumulative qpc=9559197676760 slot=0 rva=0xec68 count=48
+profile_frame scope=cumulative qpc=9559197676760 slot=0 rva=0xeb15 count=40
+profile_frame scope=cumulative qpc=9559197676760 slot=0 rva=0xebaa count=26
+profile_frame scope=cumulative qpc=9559197676760 slot=0 rva=0xebcd count=15
+profile_frame scope=cumulative qpc=9559197676760 slot=0 rva=0xeb8a count=10
+profile_frame scope=cumulative qpc=9559197676760 slot=1 rva=0x15c0 count=4
+profile_frame scope=cumulative qpc=9559197676760 slot=3 rva=0x0 count=1
+profile_frame scope=cumulative qpc=9559197676760 slot=0 rva=0xed83 count=1
+profile_frame scope=cumulative qpc=9559197676760 slot=0 rva=0xeb2a count=1
+profile_frame scope=cumulative qpc=9559197676760 slot=3 rva=0x19c0 count=1
+profile_frame scope=cumulative qpc=9559197676760 slot=0 rva=0xe300 count=1
+profile_pair scope=cumulative qpc=9559197676760 slot=2 rva=0x164a caller=0x16e5 count=1090
+profile_pair scope=cumulative qpc=9559197676760 slot=3 rva=0x19cc caller=0x1a0f count=1087
+profile_pair scope=cumulative qpc=9559197676760 slot=1 rva=0x15cc caller=0x1618 count=1085
+profile_pair scope=cumulative qpc=9559197676760 slot=0 rva=0xec1f caller=0x10fc count=948
+profile_pair scope=cumulative qpc=9559197676760 slot=0 rva=0xec68 caller=0x10fc count=48
+profile_pair scope=cumulative qpc=9559197676760 slot=0 rva=0xeb15 caller=0x10fc count=40
+profile_pair scope=cumulative qpc=9559197676760 slot=0 rva=0xebaa caller=0x10fc count=26
+profile_pair scope=cumulative qpc=9559197676760 slot=0 rva=0xebcd caller=0x10fc count=15
+profile_pair scope=cumulative qpc=9559197676760 slot=0 rva=0xeb8a caller=0x10fc count=10
+profile_pair scope=cumulative qpc=9559197676760 slot=1 rva=0x15c0 caller=0x1618 count=4
+profile_pair scope=cumulative qpc=9559197676760 slot=0 rva=0xe300 caller=0xebcd count=1
+profile_pair scope=cumulative qpc=9559197676760 slot=0 rva=0xed83 caller=0x10fc count=1
+profile_pair scope=cumulative qpc=9559197676760 slot=0 rva=0xeb2a caller=0x10fc count=1
+profile_pair scope=cumulative qpc=9559197676760 slot=3 rva=0x19c0 caller=0x1a0f count=1
+profile_report_end qpc=9559197683470 report_us=671.000
+profile_stop joined=1 qpc=9559197684851 stop_us=9011.900 handles_closed=4
+FIXTURE_END exit=0 elapsed_ms=3023 iterations_a=7186 iterations_c=7192 main_iterations=1074567 wait_result=1 handles_before=0 handles_after=0 threads_before=1 threads_after=1 active_after=0 stop_us=9090

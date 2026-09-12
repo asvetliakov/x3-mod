@@ -1,17 +1,25 @@
 {
   "passed": true,
+  "bottle": {
+    "name": "Steam",
+    "wine_arch": "win64",
+    "environment": {
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf"
+  },
   "phase": "complete",
   "game_launched": false,
   "sources": {
     "src/proxy/sampling_profiler.h": "4dd65e4adce63b06eb8342b023403a8eba627aa355d53af26701f90588463d6f",
     "src/proxy/sampling_profiler.cpp": "a58979029c532538265e0aacf3a03e3cbb4bd88db2cd6833b53d460afbf4ea2d",
-    "src/proxy/capture.h": "1dc87985e7039fa7d2d8463aa3e62e55c472cddca5c0f738dea240c7dde3f164",
+    "src/proxy/capture.h": "e573832e0771ad93c76d58dfc8ddc9b33aec5c7db5d4a6ca526797bb5736cf31",
     "verification/probe/sampling_profiler_fixture.cpp": "4aaca0f592c67480db8b30235f3187b0055332fa4a5b1e49513629ee22e26347",
     "verification/probe/sampling_profiler_fpo.cpp": "cd89b2c3268c118a31d1ae58580a7f112a2673a526b37f5834ae7e220b191c13",
     "verification/probe/build_sampling_profiler.sh": "84de45862a0cf10e2ee3fdc8f4aa675adc5c73a0b65fc2911ef1dd49cf65d52b",
-    "verification/probe/run_sampling_profiler.py": "18827c28b66af77492c32afe4b77e37bb882e7793ee5e0d8fc5e983ce98d5705"
+    "verification/probe/run_sampling_profiler.py": "fd3763e96e6652ab8d1ef81e631b65c5f3c33e96acea5bc820802012d2df0ffa"
   },
-  "executable_sha256": "e99e6eddfbb047a01040bdc60249df540af23fdbda3986e8a73aee02d9a66c89",
+  "executable_sha256": "63f33233892ef25e0307ee74a77d123052cc4dd924f3e4b1307e4464a4ad7493",
   "frame_pointer_usage": {
     "spin_a": true,
     "wait_b": true,
@@ -22,14 +30,14 @@
     "0": {
       "output": "verification/results/sampling-profiler-off-fixture.txt",
       "exit_code": 0,
-      "wall_s": 4.194,
-      "output_sha256": "d291c796216b2a3f5868feaa6e7cd6962e17892b1060760ab540f21e7e3e8efe"
+      "wall_s": 5.235,
+      "output_sha256": "6b1440ca023d5d9cd46e77723ef116314df450e0ec4fe73b0d564ec183046367"
     },
     "1": {
       "output": "verification/results/sampling-profiler-on-fixture.txt",
       "exit_code": 0,
-      "wall_s": 3.429,
-      "output_sha256": "a39487b5fd6d352c80e3b5773837373231aaabd036eac9b37162e5b22b82b0bd"
+      "wall_s": 3.335,
+      "output_sha256": "55c9cf090be87f5ba820abf2e91aecc83174cb98ccb0737cb858c9cec2c2b20f"
     }
   },
   "checks": {
@@ -58,84 +66,84 @@
   },
   "notes": {
     "a_leaf_in_spin_a": [
-      0.9989350372736954,
-      938,
-      939
+      1.0,
+      1089,
+      1089
     ],
     "a_pair_spin_a_caller_a": [
       1.0,
-      939,
-      939
+      1089,
+      1089
     ],
     "b_leaf_outside_exe": [
       1.0,
-      940,
-      940
+      1090,
+      1090
     ],
     "b_leaf_kinds": {
       "leaf_x3ap": 0,
-      "leaf_ntdll": 940,
+      "leaf_ntdll": 1090,
       "leaf_wine": 0,
       "leaf_other": 0,
       "leaf_proxy": 0
     },
     "b_frame_in_wait_b": [
       1.0,
-      940,
-      940
+      1090,
+      1090
     ],
     "c_leaf_in_fpo_leaf": [
-      1.0,
-      939,
-      939
+      0.9990817263544536,
+      1088,
+      1089
     ],
     "c_frame_in_fpo_leaf": [
-      1.0,
-      939,
-      939
+      0.9990817263544536,
+      1088,
+      1089
     ],
     "c_pair_fpo_leaf_fpo_spin": [
-      1.0,
-      939,
-      939
+      0.9990817263544536,
+      1088,
+      1089
     ],
     "c_pair_fpo_leaf_caller_c": [
       0.0,
       0,
-      939
+      1089
     ],
     "sampler_cost": {
-      "ticks": 940,
-      "samples": 2536,
+      "ticks": 1090,
+      "samples": 2912,
       "dropped": 0,
       "reports": 2,
       "threads": 4,
       "modules": 5,
-      "tick_us_mean": 558.441,
-      "tick_us_max": 9143.8,
-      "report_us": 2550.4,
-      "refresh_us": 72675.4
+      "tick_us_mean": 268.584,
+      "tick_us_max": 7764.1,
+      "report_us": 2863.5,
+      "refresh_us": 12264.4
     },
     "overhead": {
       "iterations_a": {
-        "off": 7777,
-        "on": 6962,
-        "overhead": 0.10479619390510475
+        "off": 7397,
+        "on": 7186,
+        "overhead": 0.02852507773421653
       },
       "iterations_c": {
-        "off": 7368,
-        "on": 6969,
-        "overhead": 0.054153094462540685
+        "off": 7404,
+        "on": 7192,
+        "overhead": 0.028633171258779067
       },
       "main_iterations": {
-        "off": 1055095,
-        "on": 1045960,
-        "overhead": 0.008657988143247808
+        "off": 1104053,
+        "on": 1074567,
+        "overhead": 0.02670705120134631
       }
     },
     "elapsed_ms": {
-      "off": 3041,
-      "on": 3043
+      "off": 3018,
+      "on": 3023
     }
   },
   "functions": {

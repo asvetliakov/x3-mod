@@ -13,7 +13,81 @@ Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
 
-## Latest checkpoint: TAA tremble fixed, resolve quality pass, loading attribution (2026-09-12)
+## Latest checkpoint: review 25 — fast adjacency, direct engine reads, gz buffer, bottle X3 (2026-09-12 night)
+
+Review: [review-25.md](verification/review-25.md) (three low findings fixed;
+full suite chain green on the Steam bottle after a clean rebuild). Nothing in
+this checkpoint is gameplay-verified yet; the next user runs below are the
+acceptance tests. The game and `tools/manage.py` default to the CrossOver
+bottle **X3** (arm64 Wine + FEX); fixtures default to Steam
+(`X3M_FIXTURE_BOTTLE=X3` switches them, see
+[bottles.md](verification/bottles.md)). Every Wine-executing command now runs
+under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
+
+- **Fast exact-match GenerateAdjacency** (`X3M_MESH_ADJACENCY=native|verify|fast`,
+  `--mesh-adjacency`; [mesh-adjacency-fast.md](verification/mesh-adjacency-fast.md)).
+  Byte-identical to d3dx9_37 on 35/35 computable fixture meshes (welding with
+  signed zero, head-insertion tie-breaks, degenerate rules, no double
+  adjacency); 111–447× faster in the Wine fixture; MXCSR pinned to 0x1f80 and
+  the caller's state restored; NaN/near-neighbour inputs fall back to native
+  behind a 2·ε gate. The cache's FP gate now keys precision/FTZ instead of
+  refusing them (`mesh_adjacency_cache` 767 checks, hook survey 13,271). Open:
+  near-tie normal selection SSE vs x87 (acceptance = verify mode with
+  `verify_mismatched=0`); the thread-local arena retains ≤16 MB per loader
+  thread for the process lifetime.
+- **Direct engine reads** (`X3M_ENGINE_READS=rpm` restores ReadProcessMemory;
+  [route-cost-run1.md](verification/route-cost-run1.md)). Reads are validated
+  against a 32-entry VirtualQuery region cache (trusted per frame or 100 ms),
+  copied with `rep movsb` from a translation unit compiled without SSE/MMX
+  (0 xmm/x87 references), so the engine-thread wrappers stay state-clean.
+  Fixture: object_lifetime `current` 6.9 → 0.70 µs, object_trace route reads
+  3.3 → 1.3 µs, capture 7.7 → 2.2 µs; identity hashes identical. Per-draw
+  telemetry stamps now need `X3M_TELEMETRY_DRAW=1`. Iteration 10 measured the
+  route at 31% of the FEX frame with the old path (`route_gate` ×1.19 slower
+  under FEX), so this is the main frame-time lever for the next run.
+- **gz read-ahead buffer** (`X3M_GZ_BUFFER=1`, `X3M_GZ_BUFFER_KB`, `--gz-buffer`;
+  [gz-buffer.md](verification/gz-buffer.md),
+  [savegame-gz-stream.md](reverse-engineering/savegame-gz-stream.md)).
+  Serves the savegame reader's ~3-byte `gzread` calls from a 256 KB buffer
+  with zlib 1.2.3 semantics (735,871 fixture checks against the bottle's real
+  zlib1.dll). Key finding: the 0.66 µs/call "zlib" cost in the profile was our
+  hook envelope under FEX (raw gzread 33 ns); the buffer makes instrumented
+  loads representative (removes ~16 s of instrumented stall) but the plain
+  game gains ~0.5 s. The true X3 save-load time without telemetry is unknown —
+  run 1 below measures it.
+- **Bottle X3 validation** ([bottles.md](verification/bottles.md)): four of
+  five suites pass on X3 with comparable numbers; the sampling profiler cannot
+  attribute samples under FEX (`GetThreadContext` returns creation-time
+  context, also seen once on Rosetta), and the FEX CRT prints NaN/Inf as huge
+  finite numbers (the exposure fixture must print bits). Loading attribution
+  on X3 therefore relies on hook/trampoline counters.
+- **Analyses**: [iteration-10.md](verification/iteration-10.md) (FEX health
+  clean, TAA no regression, frame time 24.1 → 8.4 ms route off, 34.2 → 16.9 ms
+  route on; hook agrees 214/214, `rs_resyncs` 24 on a latch-only screen);
+  [script-xml-load-stall.md](reverse-engineering/script-xml-load-stall.md)
+  (the second save-load stall is a mixed asset phase: per-resource re-opens of
+  the catalogue `.dat`, a redundant 22.5 MB memset, 1 KiB inflate chunks with a
+  byte XOR, locked `fgetc` header parsing, and an unhooked CryptoAPI signature
+  check at 0x004cabc0; CRT is static, so fixes are engine trampolines);
+  [sampler-states-and-mips.md](reverse-engineering/sampler-states-and-mips.md)
+  (the game shadows sampler state and never sets a mip bias);
+  [native-windows-audit-2026-09-12.md](architecture/native-windows-audit-2026-09-12.md)
+  (D1 format-converting StretchRect in-scene, D2 ps_3_0 with fixed-function
+  VS, D3 MSAA mismatch on RT1/RT2, W1 missing d3d9 exports, W3 log path).
+**Installed (2026-09-12 night, after review 25, bottle X3):** `build/d3d9.dll`
+SHA-256 `38562f3a7e2bbb03c6ffd1e746540b062dbf1ec9d184163407d771d5cbfbc1f8`,
+through `tools/manage.py install` (default bottle X3; the Steam bottle keeps
+the stage-2 build `db63e120…`).
+
+- **In worktrees, reviewed next (review 26)**: post-resolve RCAS-style sharpen
+  (`X3M_TAA_SHARPEN`, `--taa-sharpen`; 8-bit path replaces the copy-back draw
+  at no cost, HDR path after AgX +0.8 ms at 5120×1440; MTF50 0.262 → 0.298 c/px
+  at full strength, history never sharpened) and the mip bias
+  (`X3M_TAA_MIP_BIAS`, `--taa-mip-bias`; bias only on mip-mapped filtered
+  stages of routed draws, restored before every unrouted draw; capture now
+  logs MIPMAPLODBIAS/MAXMIPLEVEL).
+
+## Checkpoint: TAA tremble fixed, resolve quality pass, loading attribution (2026-09-12, superseded by the section above)
 
 Evidence at this checkpoint (details in the linked documents):
 
@@ -483,38 +557,35 @@ then post-resolve sharpen (RCAS-style, never fed to history, applied after
 tonemap on the HDR path), mip-bias instrumentation, and the scene hook as the
 default resolve point.
 
-## Next user-managed runs (2026-09-12, installed build 4f46feee…)
+## Next user-managed runs (2026-09-12 night, bottle X3)
 
-All runs use the installed build; logs land in the game's `x3-modern-captures`
-folder as `session-<date>-<pid>.log` (no overwrite). Analysis commands follow
-each run.
+All runs on the X3 bottle with the installed build (see "Installed" below);
+logs land in the game's `x3-modern-captures` folder as
+`session-<date>-<pid>.log`. Tell the orchestrator after each run; it snapshots
+the log to /tmp and analyses it. Same save and flight path as the earlier runs.
 
-1. **Run 1 — loading profile, TAA quality, camera reprojection**:
-   `python3 tools/manage.py launch --direct --ownership --object-trace
-   --object-lifetime --motion-output --taa --telemetry --profile
-   --capture-start 999999 --capture-frames 4`. Start → main menu → load the
-   usual save → fly, then turn the ship through a full circle while
-   stationary, then a sector change. Take three capture bursts (stationary,
-   turning, moving). Analysis: `tools/analysis/analyze_loading_profile.py
-   <log> --output verification/results/loading-profile-run1 --ghidra`,
-   `analyze_camera_state.py`, `analyze_iteration08_taa.py` (rerun the class
-   split), plus the `camera_policy` / `camera_cut` / `selector_state=9`
-   distributions.
-2. **Run 2 — engine hook and adjacency cache**: same command plus
-   `--scene-hook --mesh-cache`. Watch for any crash at the first frame (the
-   hook patches `0x004721b1`) and read `scene_end_check`, `draws_after_hook`,
-   the cache hit rate and the loading gaps against run 1.
-3. **Run 3 — route-cost baseline**: `python3 tools/manage.py launch --direct
-   --telemetry`, same save and scene as run 1, for the route-on/off frame time
-   comparison (`summarize_telemetry.py` route_costs).
-4. **Run 4 — HDR stage 1 identity check**: run 1's command plus `--hdr`
-   (and `--scene-hook` if run 2 was clean). The image must look identical;
-   read `hdr_device`, the `hdr_frame` end distribution, any `hdr_unwind` /
-   `hdr_recheck`, and check the alt-tab cursor.
-5. **Run 5 — first tonemapped look**: run 4 plus `--hdr-tonemap agx`
-   (optionally `--hdr-look golden`, `--hdr-ev -1`). Expect a different
-   contrast curve and adapting brightness; report what looks wrong. Read the
-   `hdr_frame` ev/luma fields and `hdr_tonemap`.
+1. **Run 1 — plain baseline (no telemetry)**: `python3 tools/manage.py launch
+   --direct`. Menu → load the save → fly → sector change → exit. Purpose: the
+   real X3 load times without hook overhead (the log's timestamps around the
+   loads are enough).
+2. **Run 2 — adjacency parity + gz gate**: `python3 tools/manage.py launch
+   --direct --telemetry --mesh-adjacency verify --gz-buffer`. Acceptance:
+   `verify_mismatched=0` in the mesh-adjacency summary and
+   `gz_buffer requested=1 enabled=1 imports=1` plus `gz_buffer_file` lines.
+3. **Run 3 — fast loading + engine reads**: `python3 tools/manage.py launch
+   --direct --ownership --object-trace --object-lifetime --motion-output --taa
+   --telemetry --mesh-adjacency fast --gz-buffer --scene-hook`. Compare load
+   times with run 1 and the route cost with iteration 10 (`gate_us` needs
+   `X3M_TELEMETRY_DRAW=1`, off by default; add it only if the per-draw
+   attribution is wanted, it costs QPC per draw).
+4. **Run 4 — TAA sharpness**: run 3 plus `--taa-sharpen 0.5 --taa-mip-bias
+   -0.5` (after review 26 lands). Look for over-sharpening halos, texture
+   shimmer on distant hulls (the mip bias) and fill-rate cost; take a
+   stationary capture burst for the MTF50/gradient comparison against run 2 of
+   iteration 9.
+5. **Run 5 — first tonemapped look**: run 4 plus `--hdr --hdr-tonemap`
+   (optionally `--hdr-look golden`, `--hdr-ev -1`). Report what looks wrong;
+   the orchestrator reads the `hdr_frame` ev/luma fields and `hdr_tonemap`.
 
 ## Concrete next work
 

@@ -1,0 +1,38 @@
+sampling profiler fixture (Wine, CrossOver Preview X3 bottle, WineArch=arm64, FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1), no game launch
+interval_us=2000 report_s=1 passed=False
+
+check on_completed=1
+check off_completed=1
+check off_silent=1
+check on_active=1
+check final_cumulative_report=1
+check fpo_provenance=1
+check threads_discovered=1
+check a_leaf_attribution=0
+check a_caller_pair=0
+check b_leaf_outside_exe=1
+check b_frame_wait_b=0
+check c_leaf_attribution=0
+check c_scan_caller_pair=0
+check a_samples_present=1
+check tick_cost_reported=1
+check no_drops=1
+check stop_bounded=1
+check overhead_within_bound=1
+check handles_released=1
+check threads_released=1
+check wait_completed=1
+check module_table_recorded=1
+
+a_leaf_in_spin_a=[0.0, 0, 1172]
+a_pair_spin_a_caller_a=[0.0, 0, 1172]
+b_leaf_outside_exe=[1.0, 1173, 1173]
+b_leaf_kinds={"leaf_x3ap": 0, "leaf_ntdll": 1173, "leaf_wine": 0, "leaf_other": 0, "leaf_proxy": 0}
+b_frame_in_wait_b=[0.0, 0, 1173]
+c_leaf_in_fpo_leaf=[0.0, 0, 1172]
+c_frame_in_fpo_leaf=[0.0, 0, 1172]
+c_pair_fpo_leaf_fpo_spin=[0.0, 0, 1172]
+c_pair_fpo_leaf_caller_c=[0.0, 0, 1172]
+sampler_cost={"ticks": 1173, "samples": 3092, "dropped": 0, "reports": 2, "threads": 4, "modules": 5, "tick_us_mean": 282.24, "tick_us_max": 10743.8, "report_us": 2962.8, "refresh_us": 10501.1}
+overhead={"iterations_a": {"off": 7229, "on": 6948, "overhead": 0.03887121316917974}, "iterations_c": {"off": 7232, "on": 6968, "overhead": 0.036504424778761035}, "main_iterations": {"off": 1123455, "on": 1033818, "overhead": 0.0797869073527645}}
+elapsed_ms={"off": 3020, "on": 3021}

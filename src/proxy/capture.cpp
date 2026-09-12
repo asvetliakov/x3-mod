@@ -2,6 +2,7 @@
 #include "capture_state.h"
 #include "telemetry.h"
 #include "loading_trace.h"
+#include "gz_buffer.h"
 #include "sampling_profiler.h"
 #include "scene_capture.h"
 #include "object_trace.h"
@@ -1308,7 +1309,7 @@ void initialize_log(HMODULE module) {
         taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames,motion_state_shadow,scene_hook_requested,hdr_requested,taa_k_override);
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
-    if(telemetry::enabled())loading_trace::initialize();
+    if(telemetry::enabled()||gz_buffer::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 patches the gz rows alone
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists
 }
 const wchar_t* capture_directory() { return directory.c_str(); }

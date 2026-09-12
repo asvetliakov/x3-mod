@@ -16,7 +16,7 @@ import re
 from pathlib import Path
 
 DEFAULT_BOTTLE = 'Steam'
-BOTTLE = os.environ.get('X3M_FIXTURE_BOTTLE', DEFAULT_BOTTLE)
+BOTTLE = os.environ.get('X3M_FIXTURE_BOTTLE') or DEFAULT_BOTTLE  # an empty value is the default, not a bottle named ''
 BOTTLES = Path.home() / 'Library/Application Support/CrossOver/Bottles'
 WINE = '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
 RECORDED_ENVIRONMENT = ('FEX_X87REDUCEDPRECISION', 'WINEMSYNC')

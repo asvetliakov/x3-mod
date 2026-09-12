@@ -23,6 +23,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 OBJDUMP = 'i686-w64-mingw32-objdump'
 LIGHT_HOOKS = ['set_vs', 'set_ps', 'set_vs_constant_f', 'set_vs_constant_i', 'set_ps_constant_f', 'set_viewport', 'set_render_state']
+# The gz read-ahead buffer's import entry points (src/proxy/loading_trace.cpp ->
+# src/proxy/gz_buffer.cpp) run with no boundary at all on their fast path, so the
+# same rule applies to them; the real zlib calls are indirect and stop the walk.
+GZ_HOOKS = ['gz_read', 'gz_getc', 'gz_tell', 'gz_seek']
 ALLOWED = {'fnsave', 'frstor', 'stmxcsr', 'ldmxcsr', 'fwait'}
 FUNCTION = re.compile(r'^([0-9a-f]+) <(.+)>:$')
 INSTRUCTION = re.compile(r'^\s*[0-9a-f]+:\s+(?:[0-9a-f]{2} )+\s*([a-z][a-z0-9]*)\s*(.*)$')
@@ -87,7 +91,7 @@ def main():
     dll = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'build/d3d9.dll'
     functions = disassemble(dll)
     roots = {}
-    for hook in LIGHT_HOOKS:
+    for hook in LIGHT_HOOKS + GZ_HOOKS:
         symbols = hook_symbol(functions, hook)
         if len(symbols) != 1:
             print(json.dumps({'result': 'FAIL', 'error': f'{hook}: {len(symbols)} symbols {symbols}'}))

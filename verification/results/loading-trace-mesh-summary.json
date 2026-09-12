@@ -1,8 +1,16 @@
 {
-  "passed": false,
-  "phase": "failed",
+  "passed": true,
+  "phase": "complete",
   "admission": 0,
   "game_launched": false,
+  "bottle": {
+    "name": "Steam",
+    "wine_arch": "win64",
+    "environment": {
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf"
+  },
   "cases": {
     "loading-trace": {
       "admission_witness": [
@@ -16,15 +24,15 @@
         "1"
       ],
       "checks": 85,
-      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "wine_log_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
       "exit_code": 0,
-      "executable_sha256": "2b0f17ddab9cb9183afb3ac837dc69c746aa18901682763bc5a717ce035a6d21",
+      "executable_sha256": "18c9006dafae14d9a1fb76dbb02f90eb6ae30fc953df55c4f223015620b28495",
       "dll_sha256": {
-        "d3dx9_37.dll": "d16c6fd66b90e143cdb8b25a80098fc730d0e1f094b1b043d2c83aeaf9e51dbe",
-        "zlib1.dll": "0fba94037f4593ad1cc2ffab44749f514f37df9501661357530aa6bb38ff79aa",
-        "libxml2.dll": "8ba1b4a95f519c13ab148776fb44c507b5b365fd86a0f1a4e5872df607c008db"
+        "d3dx9_37.dll": "71afc3fb3752424193b885b46d30ffffa94820ca51912d6e70a5ed480957be03",
+        "zlib1.dll": "fbb52a7a224c3ce545a9ad6b9bf34060c18ffd142e18398d4ba2804b2d02cf03",
+        "libxml2.dll": "4b4ebd855284ccf5a06137eb2c22f24611d4ceb8f47f996d3756ce9d37b9f85b"
       },
-      "report_sha256": "28233387ba03571bbff533914730705b4857265c43a39f216d714bae6c6dbbbe"
+      "report_sha256": "aa633004399f6d645a63da9c0f960e6eabe2d4b2fd7bfa4a967eb6811741baf3"
     },
     "loading-mesh": {
       "admission_witness": [
@@ -40,22 +48,4066 @@
       "checks": 123,
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "exit_code": 0,
-      "executable_sha256": "a373b5459c3122d7a80be1e8c613de9db101a9096f96294e8b5fdefd8f8e6bb5",
+      "executable_sha256": "37366189ad8cd3dabaeab0a512031fd121634327cdfcc1f78e473b8f35f92de7",
       "dll_sha256": {
         "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
       },
-      "report_sha256": "63a92821f572106407e77af16af4ef59d1cb3e4e736402ddb4703eb55759fafb"
+      "report_sha256": "674530abaa5963c11f4f28f637df142154201ec771ae8719684c1c2188b8f79a"
+    },
+    "mesh-adjacency-cache-off": {
+      "admission_witness": [
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "checks": 2179,
+      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "executable_sha256": "4b7e8e362743586e05df1a26625cc236de0faa3521690484cb54362cdf3ee404",
+      "dll_sha256": {
+        "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+      },
+      "report_sha256": "082ebd6d99091a749fa786c7943124185e9b2530e40a16ad973456d905623678",
+      "adjacency_cases": [
+        {
+          "name": "quad-16",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "358.900",
+          "fast_us": "462.500",
+          "speedup": "0.78",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "quad-32",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "32",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "218.800",
+          "fast_us": "1.900",
+          "speedup": "115.16",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "exact-duplicates",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "26.800",
+          "fast_us": "1.300",
+          "speedup": "20.62",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "grid-neighbours-6.1e-5",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "13.100",
+          "fast_us": "0.800",
+          "speedup": "16.38",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "signed-zero",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "12.900",
+          "fast_us": "0.700",
+          "speedup": "18.43",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "nan-position",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "non_finite",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "0",
+          "mismatches": "0",
+          "first": "0",
+          "native_us": "6.900",
+          "fast_us": "0.200",
+          "speedup": "34.50",
+          "quantized": "0",
+          "representatives": "0",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "0"
+        },
+        {
+          "name": "position-offset-8",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "16.500",
+          "fast_us": "1.200",
+          "speedup": "13.75",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "epsilon-zero",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "0",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "38.800",
+          "fast_us": "1.500",
+          "speedup": "25.87",
+          "quantized": "0",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "unquantized-far",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "8.800",
+          "fast_us": "46.200",
+          "speedup": "0.19",
+          "quantized": "0",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "epsilon_neighbour",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "0",
+          "mismatches": "0",
+          "first": "0",
+          "native_us": "8.200",
+          "fast_us": "1.700",
+          "speedup": "4.82",
+          "quantized": "0",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "231.400",
+          "fast_us": "29.700",
+          "speedup": "7.79",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "1",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "12.000",
+          "fast_us": "0.900",
+          "speedup": "13.33",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "19.900",
+          "fast_us": "1.000",
+          "speedup": "19.90",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "77.400",
+          "fast_us": "1.400",
+          "speedup": "55.29",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "1",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "9.200",
+          "fast_us": "0.800",
+          "speedup": "11.50",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-four",
+          "faces": "5",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "15",
+          "native_us": "58.400",
+          "fast_us": "2.000",
+          "speedup": "29.20",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "1",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "11"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "faces": "3",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "59.800",
+          "fast_us": "107.800",
+          "speedup": "0.55",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "2",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "9"
+        },
+        {
+          "name": "degenerate-lookup",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "18.100",
+          "fast_us": "0.600",
+          "speedup": "30.17",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "1",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "44.000",
+          "fast_us": "1.100",
+          "speedup": "40.00",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "47.800",
+          "fast_us": "6.300",
+          "speedup": "7.59",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "21.000",
+          "fast_us": "0.600",
+          "speedup": "35.00",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "32.400",
+          "fast_us": "1.300",
+          "speedup": "24.92",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "11.000",
+          "fast_us": "0.600",
+          "speedup": "18.33",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "17.300",
+          "fast_us": "0.600",
+          "speedup": "28.83",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "12.100",
+          "fast_us": "0.800",
+          "speedup": "15.12",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "faces": "3",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "43.700",
+          "fast_us": "1.000",
+          "speedup": "43.70",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "21.500",
+          "fast_us": "0.600",
+          "speedup": "35.83",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "34.400",
+          "fast_us": "0.600",
+          "speedup": "57.33",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "47.300",
+          "fast_us": "0.800",
+          "speedup": "59.12",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "24.600",
+          "fast_us": "1.100",
+          "speedup": "22.36",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "1",
+          "normal_selected": "1",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "duplicate-faces",
+          "faces": "3",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "7.900",
+          "fast_us": "1.000",
+          "speedup": "7.90",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "3",
+          "unmatched": "5"
+        },
+        {
+          "name": "double-adjacency-order",
+          "faces": "3",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "14.200",
+          "fast_us": "1.000",
+          "speedup": "14.20",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "2",
+          "unmatched": "7"
+        },
+        {
+          "name": "unreferenced-vertices",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "12.900",
+          "fast_us": "0.800",
+          "speedup": "16.12",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "grid-224x224-32",
+          "faces": "99458",
+          "vertices": "50176",
+          "bits": "32",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "298374",
+          "native_us": "1259330.500",
+          "fast_us": "10872.000",
+          "speedup": "115.83",
+          "quantized": "1",
+          "representatives": "50176",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "892"
+        },
+        {
+          "name": "split-150x150-32",
+          "faces": "44402",
+          "vertices": "133206",
+          "bits": "32",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "133206",
+          "native_us": "2312583.200",
+          "fast_us": "5010.600",
+          "speedup": "461.54",
+          "quantized": "1",
+          "representatives": "22500",
+          "welded": "110706",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "596"
+        },
+        {
+          "name": "star-20000-32",
+          "faces": "20000",
+          "vertices": "40000",
+          "bits": "32",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "60000",
+          "native_us": "799454.400",
+          "fast_us": "2569.600",
+          "speedup": "311.12",
+          "quantized": "1",
+          "representatives": "20001",
+          "welded": "19999",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "20000"
+        },
+        {
+          "name": "split-16",
+          "faces": "19602",
+          "vertices": "58806",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "58806",
+          "native_us": "668421.600",
+          "fast_us": "2460.300",
+          "speedup": "271.68",
+          "quantized": "1",
+          "representatives": "10000",
+          "welded": "48806",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "396"
+        }
+      ],
+      "policies": [
+        {
+          "name": "nan-position",
+          "variant": "default",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "double_adjacency",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "default",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "double_adjacency",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "5"
+        },
+        {
+          "name": "fan-four",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "double_adjacency",
+          "equal": "0",
+          "mismatches": "5"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "double_adjacency",
+          "equal": "0",
+          "mismatches": "4"
+        }
+      ],
+      "verify_stats": [
+        {
+          "calls": "37",
+          "computed": "35",
+          "fallbacks": "2",
+          "verify_meshes": "35",
+          "verify_equal": "35",
+          "verify_mismatched": "0",
+          "mismatch_entries": "0",
+          "quantized": "33",
+          "unquantized": "2",
+          "module_non_finite": "1",
+          "module_epsilon_neighbour": "1"
+        }
+      ],
+      "fast_stats": [
+        {
+          "cache": "0",
+          "calls": "74",
+          "computed": "70",
+          "fallbacks": "4",
+          "faults": "0",
+          "fast_ticks": "442206",
+          "cache_hits": "0",
+          "cache_misses": "0"
+        }
+      ],
+      "metrics": []
+    },
+    "mesh-adjacency-cache-on": {
+      "admission_witness": [
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "checks": 2219,
+      "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "executable_sha256": "4b7e8e362743586e05df1a26625cc236de0faa3521690484cb54362cdf3ee404",
+      "dll_sha256": {
+        "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+      },
+      "report_sha256": "585887e98764df3b48d470e96ecfe28bc0e730231564c61212ede1faad65d111",
+      "adjacency_cases": [
+        {
+          "name": "quad-16",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "375.400",
+          "fast_us": "497.000",
+          "speedup": "0.76",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "quad-32",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "32",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "234.800",
+          "fast_us": "2.300",
+          "speedup": "102.09",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "exact-duplicates",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "50.500",
+          "fast_us": "2.600",
+          "speedup": "19.42",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "grid-neighbours-6.1e-5",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "47.500",
+          "fast_us": "1.000",
+          "speedup": "47.50",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "signed-zero",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "33.700",
+          "fast_us": "1.300",
+          "speedup": "25.92",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "nan-position",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "non_finite",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "0",
+          "mismatches": "0",
+          "first": "0",
+          "native_us": "8.700",
+          "fast_us": "0.300",
+          "speedup": "29.00",
+          "quantized": "0",
+          "representatives": "0",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "0"
+        },
+        {
+          "name": "position-offset-8",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "14.900",
+          "fast_us": "1.000",
+          "speedup": "14.90",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "epsilon-zero",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "0",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "45.300",
+          "fast_us": "1.600",
+          "speedup": "28.31",
+          "quantized": "0",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "unquantized-far",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "12.000",
+          "fast_us": "44.800",
+          "speedup": "0.27",
+          "quantized": "0",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "epsilon_neighbour",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "0",
+          "mismatches": "0",
+          "first": "0",
+          "native_us": "6.900",
+          "fast_us": "1.800",
+          "speedup": "3.83",
+          "quantized": "0",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "253.500",
+          "fast_us": "27.500",
+          "speedup": "9.22",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "1",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "35.100",
+          "fast_us": "0.900",
+          "speedup": "39.00",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "10.600",
+          "fast_us": "0.800",
+          "speedup": "13.25",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "23.400",
+          "fast_us": "1.100",
+          "speedup": "21.27",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "1",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "9.800",
+          "fast_us": "0.800",
+          "speedup": "12.25",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "fan-four",
+          "faces": "5",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "15",
+          "native_us": "53.500",
+          "fast_us": "2.200",
+          "speedup": "24.32",
+          "quantized": "1",
+          "representatives": "6",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "1",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "11"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "faces": "3",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "82.700",
+          "fast_us": "106.300",
+          "speedup": "0.78",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "2",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "9"
+        },
+        {
+          "name": "degenerate-lookup",
+          "faces": "2",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "8.800",
+          "fast_us": "0.500",
+          "speedup": "17.60",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "1",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "11.100",
+          "fast_us": "0.900",
+          "speedup": "12.33",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "12.700",
+          "fast_us": "9.700",
+          "speedup": "1.31",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "26.700",
+          "fast_us": "0.800",
+          "speedup": "33.38",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "38.900",
+          "fast_us": "0.600",
+          "speedup": "64.83",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "10.300",
+          "fast_us": "0.600",
+          "speedup": "17.17",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "faces": "2",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "58.500",
+          "fast_us": "0.700",
+          "speedup": "83.57",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "14.700",
+          "fast_us": "0.900",
+          "speedup": "16.33",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "faces": "3",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "13.100",
+          "fast_us": "0.900",
+          "speedup": "14.56",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "13.500",
+          "fast_us": "0.600",
+          "speedup": "22.50",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "13.100",
+          "fast_us": "0.600",
+          "speedup": "21.83",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "2",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "6"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "20.100",
+          "fast_us": "0.900",
+          "speedup": "22.33",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "faces": "3",
+          "vertices": "5",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "24.800",
+          "fast_us": "1.000",
+          "speedup": "24.80",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "1",
+          "multi_candidates": "1",
+          "normal_selected": "1",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "1",
+          "dropped_edges": "2",
+          "repeated_neighbours": "0",
+          "unmatched": "7"
+        },
+        {
+          "name": "duplicate-faces",
+          "faces": "3",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "8.100",
+          "fast_us": "1.000",
+          "speedup": "8.10",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "3",
+          "unmatched": "5"
+        },
+        {
+          "name": "double-adjacency-order",
+          "faces": "3",
+          "vertices": "4",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "9",
+          "native_us": "25.800",
+          "fast_us": "1.100",
+          "speedup": "23.45",
+          "quantized": "1",
+          "representatives": "4",
+          "welded": "0",
+          "multi_candidates": "1",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "2",
+          "unmatched": "7"
+        },
+        {
+          "name": "unreferenced-vertices",
+          "faces": "2",
+          "vertices": "6",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "6",
+          "native_us": "11.800",
+          "fast_us": "0.700",
+          "speedup": "16.86",
+          "quantized": "1",
+          "representatives": "5",
+          "welded": "1",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "4"
+        },
+        {
+          "name": "grid-224x224-32",
+          "faces": "99458",
+          "vertices": "50176",
+          "bits": "32",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "298374",
+          "native_us": "1220224.200",
+          "fast_us": "11364.000",
+          "speedup": "107.38",
+          "quantized": "1",
+          "representatives": "50176",
+          "welded": "0",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "892"
+        },
+        {
+          "name": "split-150x150-32",
+          "faces": "44402",
+          "vertices": "133206",
+          "bits": "32",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "133206",
+          "native_us": "2247585.200",
+          "fast_us": "5000.700",
+          "speedup": "449.45",
+          "quantized": "1",
+          "representatives": "22500",
+          "welded": "110706",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "596"
+        },
+        {
+          "name": "star-20000-32",
+          "faces": "20000",
+          "vertices": "40000",
+          "bits": "32",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "60000",
+          "native_us": "749079.500",
+          "fast_us": "2488.400",
+          "speedup": "301.03",
+          "quantized": "1",
+          "representatives": "20001",
+          "welded": "19999",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "20000"
+        },
+        {
+          "name": "split-16",
+          "faces": "19602",
+          "vertices": "58806",
+          "bits": "16",
+          "epsilon": "1e-06",
+          "status": "ok",
+          "native_hr": "00000000",
+          "native_error": "00001357",
+          "equal": "1",
+          "mismatches": "0",
+          "first": "58806",
+          "native_us": "649119.800",
+          "fast_us": "2375.700",
+          "speedup": "273.23",
+          "quantized": "1",
+          "representatives": "10000",
+          "welded": "48806",
+          "multi_candidates": "0",
+          "normal_selected": "0",
+          "degenerate_faces": "0",
+          "welded_degenerate_faces": "0",
+          "dropped_edges": "0",
+          "repeated_neighbours": "0",
+          "unmatched": "396"
+        }
+      ],
+      "policies": [
+        {
+          "name": "nan-position",
+          "variant": "default",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "nan-position",
+          "variant": "double_adjacency",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "default",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "unquantized-near-1.5e-6",
+          "variant": "double_adjacency",
+          "equal": "0",
+          "mismatches": "6"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-abc",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-bac",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-tilted-cba",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-abc",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-coplanar-cba",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "5"
+        },
+        {
+          "name": "fan-four",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "fan-four",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-aba-aaa",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-lookup",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-041",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-041b",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-104b",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-401",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-410",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-451",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541a",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-541b",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-abb",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "no_normal_selection",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "rep_degenerate_skip",
+          "equal": "0",
+          "mismatches": "3"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "no_welded_corner_drop",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "degenerate-welded-second",
+          "variant": "double_adjacency",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "tail_insertion",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "duplicate-faces",
+          "variant": "double_adjacency",
+          "equal": "0",
+          "mismatches": "5"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "default",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "tail_insertion",
+          "equal": "0",
+          "mismatches": "2"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "no_normal_selection",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "no_raw_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "rep_degenerate_skip",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "no_welded_corner_drop",
+          "equal": "1",
+          "mismatches": "0"
+        },
+        {
+          "name": "double-adjacency-order",
+          "variant": "double_adjacency",
+          "equal": "0",
+          "mismatches": "4"
+        }
+      ],
+      "verify_stats": [
+        {
+          "calls": "37",
+          "computed": "35",
+          "fallbacks": "2",
+          "verify_meshes": "35",
+          "verify_equal": "35",
+          "verify_mismatched": "0",
+          "mismatch_entries": "0",
+          "quantized": "33",
+          "unquantized": "2",
+          "module_non_finite": "1",
+          "module_epsilon_neighbour": "1"
+        }
+      ],
+      "fast_stats": [
+        {
+          "cache": "1",
+          "calls": "74",
+          "computed": "70",
+          "fallbacks": "4",
+          "faults": "0",
+          "fast_ticks": "403510",
+          "cache_hits": "0",
+          "cache_misses": "37"
+        }
+      ],
+      "metrics": []
     }
   },
   "sources_before_build": {
     "src/proxy/capture.h": "e573832e0771ad93c76d58dfc8ddc9b33aec5c7db5d4a6ca526797bb5736cf31",
     "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
-    "src/proxy/loading_trace.h": "55bd9f79f0fdb302d2c8ebd893ee6757d26912a1cca98598aebd5f443230a22a",
-    "src/proxy/loading_trace.cpp": "9763ff62df49f3f7bd2a2dfbbaa4de0b40c01366f9ba9a4b6086d165c81919c3",
-    "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
-    "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
-    "src/proxy/mesh_adjacency_fast.h": "d0ab7c82482ef60564b12133a0b42ca6c0ac684da783586754bb221fcd74c0fb",
-    "src/proxy/mesh_adjacency_fast.cpp": "a1a8b272463300762851adf2fe63a9bd44b9371ac831033fa0325de2ce1b2c51",
+    "src/proxy/loading_trace.h": "98cce0e6f7616eda4a52e857eede7abc95783966a15ba74a04466f081f93ec8a",
+    "src/proxy/loading_trace.cpp": "4c69cf50d95da029c4b9da0b875122a2c14ac55c756a2bc1f629bd4066708235",
+    "src/proxy/mesh_adjacency_cache.h": "9ec016ca7b35df32e0316d4cc83c096cb70ec2c7e5c9e039724e22fd9415003e",
+    "src/proxy/mesh_adjacency_cache.cpp": "9e76ef433c8915a25a77a04e7a45c3487465fe720ba2f18cd089781a6f060d83",
+    "src/proxy/mesh_adjacency_fast.h": "a5f2601af29cabdf23f43b8fecd2b2bf7e1f964d85b91f7edb8fb4e2a6e504d3",
+    "src/proxy/mesh_adjacency_fast.cpp": "60dc6a3845cdac387020036480a3a9301885a6746be1d868ebd043442867c520",
     "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
     "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
@@ -76,11 +4128,46 @@
     "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
     "verification/probe/loading_codec_stub.cpp": "688dae30bb88f07cd79cab193dd9480b34e45e34544742df75255f254908a5ab",
     "verification/probe/loading_mesh_fixture.cpp": "e6949c1c5b66af9c5e702fa4434974bb84b59f0894a85598a78ad0894bc26067",
-    "verification/probe/mesh_adjacency_fast_fixture.cpp": "091b4ac8afa619cc5cec503e482ad2a631aff0aa424df78eb22c73a50445ca9d",
-    "verification/probe/build_loading_trace.sh": "cc242d175f97fb63b268aa11fe4ddb86b6b9109e2f0f1d73f9ba46952c5e9084",
+    "verification/probe/mesh_adjacency_fast_fixture.cpp": "88732fbf3628b2466db16b396d90904576ba4e9ac0006433705dc7f0d6b536fc",
+    "verification/probe/build_loading_trace.sh": "8eec869a2f0fe85f1cd1990a60c3bbf339b2974c00ce881a0744a61f56d4ffed",
     "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
-    "verification/probe/run_loading_trace.py": "f42b9803ed34524dceb089b5e0b6e5322dccb13d8121308354b274348fe45643"
+    "verification/probe/run_loading_trace.py": "ea60f013555026c3a5bce98e232f792bea6afd50e72741a23386684de35f732d"
   },
   "native_before": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "error": "AssertionError('Admission mode/root witness failed')"
+  "sources_after_run": {
+    "src/proxy/capture.h": "e573832e0771ad93c76d58dfc8ddc9b33aec5c7db5d4a6ca526797bb5736cf31",
+    "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
+    "src/proxy/loading_trace.h": "98cce0e6f7616eda4a52e857eede7abc95783966a15ba74a04466f081f93ec8a",
+    "src/proxy/loading_trace.cpp": "4c69cf50d95da029c4b9da0b875122a2c14ac55c756a2bc1f629bd4066708235",
+    "src/proxy/mesh_adjacency_cache.h": "9ec016ca7b35df32e0316d4cc83c096cb70ec2c7e5c9e039724e22fd9415003e",
+    "src/proxy/mesh_adjacency_cache.cpp": "9e76ef433c8915a25a77a04e7a45c3487465fe720ba2f18cd089781a6f060d83",
+    "src/proxy/mesh_adjacency_fast.h": "a5f2601af29cabdf23f43b8fecd2b2bf7e1f964d85b91f7edb8fb4e2a6e504d3",
+    "src/proxy/mesh_adjacency_fast.cpp": "60dc6a3845cdac387020036480a3a9301885a6746be1d868ebd043442867c520",
+    "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+    "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+    "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+    "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+    "verification/probe/loading_admission_witness.h": "fa68ba0cefda5aaf2829fc24183d10f40bd21197875f8e37ace60a74abfee6aa",
+    "verification/probe/loading_trace_fixture.cpp": "9f97535c70d1130a9366eea04f4e7881e6af57c6b17399d6efcccc6f200e914d",
+    "verification/probe/loading_trace_stub.cpp": "ac9f065e7263d174b4a120fb1d8a7f294370dc503cb25002fe20697bee7fa905",
+    "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
+    "verification/probe/loading_codec_stub.cpp": "688dae30bb88f07cd79cab193dd9480b34e45e34544742df75255f254908a5ab",
+    "verification/probe/loading_mesh_fixture.cpp": "e6949c1c5b66af9c5e702fa4434974bb84b59f0894a85598a78ad0894bc26067",
+    "verification/probe/mesh_adjacency_fast_fixture.cpp": "88732fbf3628b2466db16b396d90904576ba4e9ac0006433705dc7f0d6b536fc",
+    "verification/probe/build_loading_trace.sh": "8eec869a2f0fe85f1cd1990a60c3bbf339b2974c00ce881a0744a61f56d4ffed",
+    "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
+    "verification/probe/run_loading_trace.py": "ea60f013555026c3a5bce98e232f792bea6afd50e72741a23386684de35f732d"
+  },
+  "native_after": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "sources_and_binaries_unchanged": true
 }

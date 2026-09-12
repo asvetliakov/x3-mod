@@ -23,6 +23,8 @@ NATIVE={
  'wined3d.dll':BOTTLE/'windows/syswow64/wined3d.dll'}
 SOURCES=['src/proxy/capture.h','src/proxy/cpu_state.h','src/proxy/loading_trace.h','src/proxy/loading_trace.cpp','src/proxy/mesh_adjacency_cache.h','src/proxy/mesh_adjacency_cache.cpp','src/proxy/mesh_adjacency_fast.h','src/proxy/mesh_adjacency_fast.cpp','src/ownership/d3d9_ownership.h','src/ownership/d3d9_ownership.cpp', 'src/ownership/application_admission.h', 'src/ownership/application_admission.cpp', 'src/ownership/application_admission_abi.h', 'src/ownership/application_admission_abi.cpp', 'src/ownership/execution_state.cpp', 'src/ownership/execution_state.h', 'src/ownership/finite_buffer_evidence.cpp', 'src/ownership/finite_buffer_evidence.h', 'src/ownership/portable_managed_upload.cpp', 'src/ownership/portable_managed_upload.h','src/ownership/d3d9_classes_inc.h','src/ownership/d3d9_forwarders_inc.h','verification/probe/loading_admission_witness.h','verification/probe/mesh_cache_hook_fixture.cpp','verification/probe/mesh_preparation.cpp','verification/probe/loading_trace_stub.def','verification/probe/build_mesh_cache_hook.sh', 'verification/probe/build_admission_dependencies.sh','verification/probe/run_mesh_cache_hook.py']
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+# Exact check inventory per case (mesh_cache_hook_fixture.cpp); a change is a fixture edit to record.
+EXPECTED_CHECKS={'native-off-normal':1714,'native-on-normal':2003,'native-on-fault':2011,'wrapped-off-normal':2189,'wrapped-on-normal':2673,'wrapped-on-fault':2681}
 def inputs():return {p:sha(ROOT/p) for p in SOURCES}|{'native/'+n:sha(p) for n,p in NATIVE.items()}
 def binaries():return {p.name:sha(p) for p in [BUILD/'mesh_cache_hook_fixture.exe',BUILD/'d3dx9_37.dll']}
 def refuse_game():
@@ -43,6 +45,7 @@ def main():
         meta['sources_after_build']=inputs();assert meta['sources_after_build']==meta['sources_before_build'],'Build inputs changed'
         shutil.copyfile(NATIVE['d3dx9_37.dll'],BUILD/'d3dx9_37.dll')
         meta.update(fresh_build=True,phase='running',binaries_before=binaries());save()
+        inventory_mismatches=[]
         for ownership in ('native','wrapped'):
             for mode,fault in (('off','normal'),('on','normal'),('on','fault')):
                 name=f'{ownership}-{mode}-{fault}';out=RESULTS/f'mesh-cache-hook{suffix}-{name}.txt';err=RESULTS/f'mesh-cache-hook{suffix}-{name}-wine.log'
@@ -63,8 +66,9 @@ def main():
                 assert len(witnesses)==1 and witnesses[0][0:2]==(admission,admission) and witnesses[0][2:4]==('0','0') and witnesses[0][5]=='0' and witnesses[0][7]=='1','Admission mode/root witness failed'
                 assert int(witnesses[0][4])>0 if admission=='1' else int(witnesses[0][4])==0,'Admission root count'
                 case['admission_witness']=witnesses[0]
-                expected_checks={'native-off-normal':1714,'native-on-normal':1927,'native-on-fault':1935,'wrapped-off-normal':2189,'wrapped-on-normal':2566,'wrapped-on-fault':2574}
-                assert case['checks']==expected_checks[name] and sum(line.startswith('RESULT ') for line in text.splitlines())==1,'Exact case inventory changed'
+                case['expected_checks']=EXPECTED_CHECKS[name]
+                assert sum(line.startswith('RESULT ') for line in text.splitlines())==1,'Exact case inventory changed'
+                if case['checks']!=EXPECTED_CHECKS[name]:inventory_mismatches.append((name,case['checks'],EXPECTED_CHECKS[name])) # all six counts are surveyed before the run fails
                 meta['cases'][name]=case;save()
                 assert run.returncode==0 and match and 'RESULT FAIL' not in text,text[-4000:]
                 assert 'LIVE32 parity=1' in text and len(re.findall(r'^CASE ',text,re.M))==5,'Missing live32/downstream controls'
@@ -85,6 +89,7 @@ def main():
                 assert (int(result['hits'])>0 and int(result['misses'])>0) if mode=='on' else int(result['calls'])==0,'Cache activation coverage'
                 assert len(re.findall(r'^mesh_cache_fault ',text,re.M))==(1 if fault=='fault' else 0),'Fault event count'
                 assert inputs()==meta['sources_before_build'] and binaries()==meta['binaries_before'],'Inputs changed during case'
+        assert not inventory_mismatches,'Exact case inventory changed (name, checks, expected): '+repr(inventory_mismatches)
         meta.update(sources_after_run=inputs(),binaries_after=binaries(),passed=True,phase='complete')
     except (Exception,KeyboardInterrupt) as error:
         meta.update(passed=False,phase='failed',error=repr(error))

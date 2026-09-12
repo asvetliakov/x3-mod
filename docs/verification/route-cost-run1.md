@@ -283,7 +283,7 @@ instrumentation is a measurable fraction of the load it measures.
 ## Implemented (2026-09-12, items 1–3 of the ranking)
 
 Pure cost fix, no rendering change, no new switch on the fast path; the tree's
-`build/d3d9.dll` is `«DLL_SHA»` (rebuilt, not installed, nothing committed).
+`build/d3d9.dll` is `ab9b4a0f19824de372dfed463f28184435b00f8403cdddc443a63a3aeb62dc88` (rebuilt, not installed, nothing committed).
 
 ### 1. Validated direct reads replace `ReadProcessMemory` (`src/proxy/engine_memory.{h,cpp}`)
 
@@ -293,7 +293,13 @@ go through `engine_memory::read`, which validates the span against a
 32-entry cache of `VirtualQuery`'d regions (committed, readable, not
 `PAGE_GUARD`/`PAGE_NOACCESS`; region = `BaseAddress..+RegionSize`, so one
 entry covers a whole heap segment or the image's data section) and then
-copies with a plain `memcpy`. `X3M_ENGINE_READS=rpm` forces the previous
+copies with `rep movsb`. The unit is compiled with `-mno-sse -mno-mmx
+-mfpmath=387` (CMake source property, mirrored in the two fixture build
+scripts) and its frame epoch is a 32-bit atomic, so the read path executes no
+XMM/MMX/x87 instruction: the lifetime observer runs it inside the game's map
+mutations, where the wrapper restores the original's FX state only around its
+own C++, and the fixture's in-mutation probe compares that state; `objdump` of
+`engine_memory.cpp.obj` shows zero `%xmm`/`%mm`/`%st` references. `X3M_ENGINE_READS=rpm` forces the previous
 syscall path for A/B; `scene_hook.cpp` (the third `ReadProcessMemory` site,
 out of this change's scope) still uses it.
 
@@ -360,14 +366,21 @@ summaries' `read_path` field and `equal=1` is part of `passed`.
 
 | fixture | records | `rpm` | `direct` | decommit case |
 | --- | --- | ---: | ---: | --- |
-| object_trace, route path (4 reads) | `«OT_IDENT»` | «OT_RPM_ROUTE» µs/call | «OT_DIRECT_ROUTE» µs/call | Node bit clear, Camera valid; recommit readable; page-edge span refused |
-| object_trace, capture path (12 reads) | identical | «OT_RPM_CAP» µs/call | «OT_DIRECT_CAP» µs/call | (same) |
-| object_lifetime `current` (12 reads) | `«OL_IDENT»` | «OL_RPM» µs/call | «OL_DIRECT» µs/call | `LookupUnavailable`, identities retired, no revival after recommit |
+| object_trace, route path (4 reads) | `5d9c86811e5cd583 / 0e4093189888fb83 (route / capture)` | 3.36 µs/call | 1.31 µs/call | Node bit clear, Camera valid; recommit readable; page-edge span refused |
+| object_trace, capture path (12 reads) | identical | 7.75 µs/call | 2.17 µs/call | (same) |
+| object_lifetime `current` (12 reads) | `853bfaca11e07f83` | 7.01 µs/call | 0.69 µs/call | `LookupUnavailable`, identities retired, no revival after recommit |
 
 The µs are call costs inside the fixture under Wine (dispatch baseline
-«OT_BASE» µs subtracted for the trace rows: `route_read_us`/`capture_read_us`
-in the summary), «OT_QPC» `VirtualQuery` per call on the route path. Suites:
-«SUITES».
+0.034 µs subtracted for the trace rows: `route_read_us`/`capture_read_us`
+in the summary), 0.0040 `VirtualQuery` per call on the route path. Suites:
+`run_object_lifetime.py` PASS 574 checks / 80 backend calls (the earlier
+`output x87/SSE/MXCSR matches original` failure is gone with the no-SSE unit),
+`run_object_trace.py` PASS 166 / 120017, `run_motion_output.py` PASS (90 cases,
+identical hashes), `run_scene_capture.py` PASS 4908 checks,
+`check_no_x87.py build/d3d9.dll` PASS (130 reachable functions, no violation;
+144 and still clean after a concurrent agent relinked the DLL at 18:2x),
+`unittest discover -s verification/analysis` 710 tests OK (bottle `Steam`,
+2026-09-12 18:00–18:20).
 
 Not yet measured: the gameplay number. The next user-managed run with
 `X3M_TELEMETRY=1` should show the `ZwReadVirtualMemory` line at the observer

@@ -16,11 +16,14 @@
 // Runtime thread-local storage may initialize on a thread's first callback.
 // Initialize outside DllMain, after telemetry initialization. Call report from
 // the existing periodic telemetry summary. No engine code/prologues are patched.
+// X3M_GZ_BUFFER=1 initializes the same import machinery without X3M_TELEMETRY=1:
+// only the zlib gz rows the read-ahead buffer needs are patched then (gz_buffer.h).
 namespace x3m::loading_trace {
 enum class Operation : unsigned {
     FileOpen, FileRead, FileSeek, Effect, Texture, CubeTexture, Surface,
     CursorSet, CursorPosition, GzOpen, GzRead, GzSeek, Inflate, XmlRead, MeshCreate, MeshClean,
     FindFirst, FindNext, FindClose, // resource resolver directory enumeration (loading-orchestration.md, section 2)
+    GzGetc, GzTell, GzClose, GzWrite, // savegame stream rows (savegame-gz-stream.md); routed through gz_buffer when X3M_GZ_BUFFER=1
     MeshPointReps, MeshAdjacency, MeshOptimize, Count
 };
 struct Sample {

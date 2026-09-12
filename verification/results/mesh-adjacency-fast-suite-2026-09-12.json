@@ -1,0 +1,145 @@
+{
+  "date": "2026-09-12",
+  "task": "fast exact-match GenerateAdjacency: suites, performance pass",
+  "bottle": "Steam",
+  "suites": {
+    "run_loading_trace": {
+      "loading-trace": 85,
+      "loading-mesh": 123,
+      "mesh-adjacency-cache-off": 2179,
+      "mesh-adjacency-cache-on": 2219
+    },
+    "run_loading_trace_passed": true,
+    "run_mesh_adjacency_cache": 767,
+    "run_mesh_adjacency_cache_passed": true,
+    "run_mesh_cache_hook": {
+      "native-off-normal": 1714,
+      "native-on-normal": 2003,
+      "native-on-fault": 2011,
+      "wrapped-off-normal": 2189,
+      "wrapped-on-normal": 2673,
+      "wrapped-on-fault": 2681
+    },
+    "run_mesh_cache_hook_passed": true,
+    "run_mesh_cache_hook_total": 13271,
+    "unittest_test_mesh_adjacency_fast": "12 tests OK (pytest not installed)"
+  },
+  "wine_fixture_timing_us": {
+    "cache_off": {
+      "grid-224x224-32": {
+        "native_us": 1250941.7,
+        "fast_us": 11276.2,
+        "speedup": 110.94
+      },
+      "split-150x150-32": {
+        "native_us": 2299646.5,
+        "fast_us": 5148.3,
+        "speedup": 446.68
+      },
+      "star-20000-32": {
+        "native_us": 765859.7,
+        "fast_us": 2663.9,
+        "speedup": 287.5
+      },
+      "split-16": {
+        "native_us": 664628.5,
+        "fast_us": 2494.3,
+        "speedup": 266.46
+      }
+    },
+    "cache_on": {
+      "grid-224x224-32": {
+        "native_us": 1252048.1,
+        "fast_us": 11512.4,
+        "speedup": 108.76
+      },
+      "split-150x150-32": {
+        "native_us": 2287914.7,
+        "fast_us": 5789.2,
+        "speedup": 395.2
+      },
+      "star-20000-32": {
+        "native_us": 771798.9,
+        "fast_us": 2692.6,
+        "speedup": 286.64
+      },
+      "split-16": {
+        "native_us": 658868.7,
+        "fast_us": 2558.2,
+        "speedup": 257.55
+      }
+    }
+  },
+  "host_benchmark_min_us": {
+    "grid-224x224-32": {
+      "faces": 99458,
+      "before_min_us": 5392.1,
+      "after_min_us": 4458.8,
+      "speedup": 1.21,
+      "checksum_equal": true
+    },
+    "split-150x150-32": {
+      "faces": 44402,
+      "before_min_us": 2114.3,
+      "after_min_us": 1921.4,
+      "speedup": 1.1,
+      "checksum_equal": true
+    },
+    "star-20000-32": {
+      "faces": 20000,
+      "before_min_us": 1038.8,
+      "after_min_us": 899.1,
+      "speedup": 1.16,
+      "checksum_equal": true
+    },
+    "split-16": {
+      "faces": 19602,
+      "before_min_us": 1032.5,
+      "after_min_us": 823.3,
+      "speedup": 1.25,
+      "checksum_equal": true
+    },
+    "fan-same-edge-2000": {
+      "faces": 4000,
+      "before_min_us": 12604.4,
+      "after_min_us": 6250.4,
+      "speedup": 2.02,
+      "checksum_equal": true
+    },
+    "fan-same-edge-8000": {
+      "faces": 16000,
+      "before_min_us": 198784.4,
+      "after_min_us": 99320.7,
+      "speedup": 2.0,
+      "checksum_equal": true
+    },
+    "unquantized-grid-150": {
+      "faces": 44402,
+      "before_min_us": 6968.2,
+      "after_min_us": 6948.0,
+      "speedup": 1.0,
+      "checksum_equal": true
+    }
+  },
+  "dll": {
+    "path": "build/d3d9.dll",
+    "sha256": "2d25ec114173d5947a68c52fb539b96eb6e05c259f5363f7b2d07df9b35d7d66",
+    "check_no_x87": "PASS 0 violations (11 roots, 144 reachable)",
+    "installed": false,
+    "note": "working tree also carries other agents in-flight edits (loading_trace.cpp gz hooks, gz_buffer.cpp, engine_memory)"
+  },
+  "module_object": {
+    "x87_opcodes": 0,
+    "undefined_symbols": [
+      "malloc",
+      "free",
+      "memset",
+      "__emutls_get_address",
+      "__cxa_thread_atexit"
+    ]
+  },
+  "open": [
+    "normal selection near ties: game run with --mesh-adjacency verify (verify_mismatched=0) before switching to fast",
+    "wrapped-ownership tracker reads a mesh as ambiguous after an admitting miss (second GenerateAdjacency on the same mesh is gate-rejected); game calls once per mesh"
+  ]
+}

@@ -191,10 +191,35 @@ the object table through RAII, and call preflight rather than native algorithms
 while descriptors are deliberately false.
 
 Current retained evidence is `verification/results/mesh-cache-hook-summary.json`
-and its six raw reports. Native off/on/fault cases pass 1,714/1,927/1,935 checks;
-wrapped off/on/fault cases pass 2,189/2,566/2,574 checks (12,905 total). Each
-enabled case records 38 core calls, 20 hits, 16 misses, one recursive contention
-fallback and one unsupported-FP bypass. Cache-off cases record zero
+and its six raw reports. Native off/on/fault cases pass 1,714/2,003/2,011 checks;
+wrapped off/on/fault cases pass 2,189/2,673/2,681 checks (13,271 total; run of
+2026-09-12). Each enabled case records 40 core calls, 21 hits, 17 misses, one
+recursive contention fallback and one unsupported-FP bypass (an unmasked x87
+denormal exception, control `0x007d`; the earlier alternate-control bypass is now
+keyed under the FP contract of [mesh-adjacency-cache.md](mesh-adjacency-cache.md)).
+
+Inventory deltas from the previous record (1,927/1,935 and 2,566/2,574; the two
+cache-off cases are unchanged because the additions sit in the enabled-only
+block): the `GAME_FP_STATE` case drives the game's actual state (x87 control
+`0x027f`, MXCSR `0x9fc0`) through the hook and adds three fixture meshes
+(`createMesh`, 7 checks each), three `generate` calls (17 checks each under
+native ownership: one adjacency check and two `physical_bytes` snapshots of 8;
+25 under wrapped ownership, where each call also takes two 4-check tracker
+views), two parities (1 check each under native ownership; 3 for the fill and
+6 for the hit under wrapped ownership) and two direct checks (keyed and reused
+without a floating-point bypass; first incoming state published as supported):
+native `3*7 + 3*17 + 2*1 + 2 = 76`, wrapped `3*7 + 3*25 + 3 + 6 + 2 = 107`. The
+case prints `GAME_FP_STATE control=027f mxcsr=9fc0 restored_control=027f
+restored_mxcsr=00009fc0 keyed=1 bypassed=0 hit=1`. The reuse hit is taken on a
+second content-equal mesh, as the dynamic-option loop does: under wrapped
+ownership the tracker reads the first mesh's buffers as `ambiguous` after the
+admitting miss (`known=0 ambiguous=1 status=1` in the diagnostic run), so a
+second `GenerateAdjacency` on the very same mesh is rejected at the `tracker`
+gate. The game calls the method once per mesh, so this affects no game hit; it
+is recorded here as a property of the wrapped path to revisit with the ownership
+tracker (not changed by this task). Two fixture helpers now drive the state
+through the fixture's `seed` (its `generate` helper applies `seed` before every
+call), which the first version of the case missed. Cache-off cases record zero
 core calls and no constructed cache. Fault cases emit exactly one restart-required
 record and reject four subsequent hooked operations. These numbers establish
 actual wiring and parity, not expected X3 repetition. The completed iteration 5
@@ -203,7 +228,7 @@ that installed run used the earlier dynamic-rejecting implementation.
 
 The portable replacement passes the complete six-case suite on the frozen
 ownership source. The separate named-import suites pass 75 ABI checks and 123 real
-mesh checks; the detached core passes 741, including conditional LastError-key
+mesh checks; the detached core passes 767 (741 before the FP contract), including conditional LastError-key
 separation. Production and fixture compile with `-Werror`. No Windows runtime
 execution has been performed.
 

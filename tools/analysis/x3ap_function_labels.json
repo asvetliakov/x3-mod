@@ -7,7 +7,9 @@
     "docs/reverse-engineering/object-identity.md",
     "docs/reverse-engineering/loading-profile-run1.md",
     "docs/reverse-engineering/loading-profile-bottle-x3.md",
-    "docs/reverse-engineering/constant-uploads.md"
+    "docs/reverse-engineering/constant-uploads.md",
+    "docs/reverse-engineering/savegame-gz-stream.md",
+    "docs/reverse-engineering/script-xml-load-stall.md"
   ],
   "labels": {
     "0x00402710": {
@@ -16,40 +18,6 @@
     },
     "0x00402780": {
       "label": "process init body",
-      "source": "loading-orchestration.md"
-    },
-    "0x004ec9e0": {
-      "label": "file-system / catalogue mount (%02d.cat, __chdir)",
-      "source": "loading-orchestration.md"
-    },
-    "0x004ed750": {
-      "label": "CAT directory parse (_atol, _toupper, _qsort)",
-      "source": "loading-orchestration.md"
-    },
-    "0x004ce080": {
-      "label": "mod enumeration (addon\\mods, *.cat)",
-      "source": "loading-orchestration.md",
-      "hooked_apis": [
-        "FindFirstFileA"
-      ]
-    },
-    "0x0048af70": {
-      "label": "graphics/body subsystem init",
-      "source": "loading-orchestration.md"
-    },
-    "0x004869e0": {
-      "label": "dev-flag body dump (dev flag 0x800 only)",
-      "source": "loading-orchestration.md",
-      "hooked_apis": [
-        "FindFirstFileA"
-      ]
-    },
-    "0x00434e40": {
-      "label": "type-table load (addon\\types\\*, TBullets..TShipsWrecks; O(n^2) scan at 0x004381c2)",
-      "source": "loading-orchestration.md"
-    },
-    "0x0046f450": {
-      "label": "load one type file as text (pck txt)",
       "source": "loading-orchestration.md"
     },
     "0x00403840": {
@@ -68,24 +36,36 @@
         "gzread"
       ]
     },
-    "0x0043f420": {
-      "label": "universe restore (re-runs type load; SECT/SOBJ chunks)",
-      "source": "loading-orchestration.md",
-      "hooked_apis": [
-        "gzread"
-      ]
+    "0x0040e710": {
+      "label": "fabsf helper (x87 ABS)",
+      "source": "loading-profile-run1.md"
+    },
+    "0x00412440": {
+      "label": "sqrtf helper (15 bytes, x87 SQRT)",
+      "source": "loading-profile-run1.md"
     },
     "0x00412d00": {
       "label": "universe teardown/reset candidate (103 bytes)",
+      "source": "loading-orchestration.md"
+    },
+    "0x00434e40": {
+      "label": "type-table load (addon\\types\\*, TBullets..TShipsWrecks; O(n^2) scan at 0x004381c2)",
       "source": "loading-orchestration.md"
     },
     "0x00439530": {
       "label": "universe teardown/reset candidate (1,100 bytes)",
       "source": "loading-orchestration.md"
     },
-    "0x004efbf0": {
-      "label": "sector record registration",
-      "source": "loading-orchestration.md"
+    "0x0043ce30": {
+      "label": "type-table object construction: type lookup 0x00492970, node create 0x00486d10, per-part loop (+0x50, stride 0x44) via 0x0043d1d0",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x0043f420": {
+      "label": "universe restore (re-runs type load; SECT/SOBJ chunks)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "gzread"
+      ]
     },
     "0x004421a0": {
       "label": "universe construction callee of 0x0043f420",
@@ -99,37 +79,163 @@
       "label": "universe construction callee of 0x0043f420",
       "source": "loading-orchestration.md"
     },
-    "0x004ab880": {
-      "label": "script VM / command dispatch (SE_XMLImport, ReadText)",
-      "source": "loading-orchestration.md"
+    "0x0044c620": {
+      "label": "orientation/rotation math (fsin/fcos/fpatan, helper 0x0052b5d0; from 0x0042fb20)",
+      "source": "loading-profile-bottle-x3.md"
     },
-    "0x004863c0": {
-      "label": "body (model) cache + loader (pbb bob pbd bod)",
-      "source": "loading-orchestration.md"
+    "0x0044ccc0": {
+      "label": "orientation/rotation math variant (fsin/fcos/fpatan; from 0x0042fb20)",
+      "source": "loading-profile-bottle-x3.md"
     },
-    "0x00481aa0": {
-      "label": "BOB binary body parse",
-      "source": "loading-orchestration.md"
-    },
-    "0x00483f20": {
-      "label": "text body parse",
+    "0x0046df60": {
+      "label": "body name lookup",
       "source": "loading-orchestration.md"
     },
     "0x0046e0a0": {
       "label": "body name lookup",
       "source": "loading-orchestration.md"
     },
-    "0x0046df60": {
-      "label": "body name lookup",
+    "0x0046f450": {
+      "label": "load one type file as text (pck txt)",
+      "source": "loading-orchestration.md"
+    },
+    "0x00479d10": {
+      "label": "node deserialization (load path)",
+      "source": "object-identity.md"
+    },
+    "0x0047b2e0": {
+      "label": "deferred entry pool reuse",
+      "source": "object-identity.md"
+    },
+    "0x0047c640": {
+      "label": "view activation callee",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x0047c840": {
+      "label": "view activation (builds view + projection, Clear)",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x0047d9c0": {
+      "label": "render-node visit (model lookup, LOD choice)",
+      "source": "object-identity.md"
+    },
+    "0x0047e620": {
+      "label": "deferred list sort",
+      "source": "object-identity.md"
+    },
+    "0x0047e6e0": {
+      "label": "deferred draw list drain",
+      "source": "object-identity.md"
+    },
+    "0x0047e920": {
+      "label": "deferred list recycle",
+      "source": "object-identity.md"
+    },
+    "0x0047eb90": {
+      "label": "collision-tree build driver (body triangles int16x1/16384 -> 0x004e0ce0 per triangle, then build 0x004e0c80; sets obj flag 0x1000000)",
+      "source": "loading-profile-run1.md"
+    },
+    "0x00481aa0": {
+      "label": "BOB binary body parse",
+      "source": "loading-orchestration.md"
+    },
+    "0x00482fb0": {
+      "label": "body writer (%05d.bob)",
+      "source": "loading-orchestration.md"
+    },
+    "0x00483f20": {
+      "label": "text body parse",
+      "source": "loading-orchestration.md"
+    },
+    "0x004863c0": {
+      "label": "body (model) cache + loader (pbb bob pbd bod)",
+      "source": "loading-orchestration.md"
+    },
+    "0x004869e0": {
+      "label": "dev-flag body dump (dev flag 0x800 only)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "FindFirstFileA"
+      ]
+    },
+    "0x00486b40": {
+      "label": "scene attach path (triggers 0x004bd830)",
+      "source": "loading-orchestration.md"
+    },
+    "0x00486d10": {
+      "label": "render node allocator (0x270 bytes)",
+      "source": "object-identity.md"
+    },
+    "0x00487be0": {
+      "label": "node release (recursive)",
+      "source": "object-identity.md"
+    },
+    "0x004885a0": {
+      "label": "node allocator (handle map)",
+      "source": "object-identity.md"
+    },
+    "0x00488c70": {
+      "label": "camera allocator (0x790 bytes)",
+      "source": "object-identity.md"
+    },
+    "0x00489bf0": {
+      "label": "scene attach path (triggers 0x004bd830)",
+      "source": "loading-orchestration.md"
+    },
+    "0x00489da0": {
+      "label": "scene attach path (triggers 0x004bd830)",
+      "source": "loading-orchestration.md"
+    },
+    "0x0048a1e0": {
+      "label": "scene attach path (triggers 0x004bd830)",
+      "source": "loading-orchestration.md"
+    },
+    "0x0048af70": {
+      "label": "graphics/body subsystem init",
       "source": "loading-orchestration.md"
     },
     "0x00492970": {
       "label": "cut-scene body loader (cut\\%05)",
       "source": "loading-orchestration.md"
     },
-    "0x004bd830": {
-      "label": "per-body GPU mesh build (iterates parts)",
+    "0x00498140": {
+      "label": "movie playback driver (allocates, then 0x004cf460)",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x00499480": {
+      "label": "pck xml resource class (xmlReadMemory)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "xmlReadMemory"
+      ]
+    },
+    "0x0049d030": {
+      "label": "resource consumer: calls resource load 0x004e8e10 and the signed-file loader 0x004cae90",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x004ab880": {
+      "label": "script VM / command dispatch (SE_XMLImport, ReadText)",
       "source": "loading-orchestration.md"
+    },
+    "0x004b4f80": {
+      "label": "CPureDeviceStateManager::SetRenderState (filters via 0x004b5620, then device vtable+0xe4)",
+      "source": "constant-uploads.md"
+    },
+    "0x004b89f0": {
+      "label": "malloc wrapper used by the crypt/signature path",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x004b9770": {
+      "label": "matrix globals allocation (init block)",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004bb140": {
+      "label": "matrix globals release",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004bb280": {
+      "label": "per-view Clear",
+      "source": "camera-state-and-frame-routine.md"
     },
     "0x004bb470": {
       "label": "mesh build: D3DXCreateMesh + vertex/index fill",
@@ -137,6 +243,14 @@
       "hooked_apis": [
         "D3DXCreateMesh"
       ]
+    },
+    "0x004bbb10": {
+      "label": "mesh build: vertex writer (int16 x 1/16384 from 0x005655d4)",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004bc1c0": {
+      "label": "mesh build: vertex positions (int16 x 1/16384) and normals (D3DXVec3Normalize x3)",
+      "source": "loading-profile-run1.md"
     },
     "0x004bc680": {
       "label": "mesh preparation: adjacency / clean / optimise; calls ID3DXMesh::GenerateAdjacency(1e-6f from 0x00565600) at 0x004bc76a",
@@ -151,146 +265,13 @@
       "label": "installs the cleaned mesh",
       "source": "loading-orchestration.md"
     },
-    "0x00489da0": {
-      "label": "scene attach path (triggers 0x004bd830)",
+    "0x004bcb60": {
+      "label": "mesh build: CloneMesh into final options (D3DXMESH_32BIT above 64k vertices), two attempts, OOM callback, then install via 0x004bc9c0",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004bd830": {
+      "label": "per-body GPU mesh build (iterates parts)",
       "source": "loading-orchestration.md"
-    },
-    "0x00486b40": {
-      "label": "scene attach path (triggers 0x004bd830)",
-      "source": "loading-orchestration.md"
-    },
-    "0x0048a1e0": {
-      "label": "scene attach path (triggers 0x004bd830)",
-      "source": "loading-orchestration.md"
-    },
-    "0x00489bf0": {
-      "label": "scene attach path (triggers 0x004bd830)",
-      "source": "loading-orchestration.md"
-    },
-    "0x004dc540": {
-      "label": "texture loader (pck dds; image info, cube, 2D helpers)",
-      "source": "loading-orchestration.md",
-      "hooked_apis": [
-        "D3DXCreateTextureFromFileInMemoryEx",
-        "D3DXCreateCubeTextureFromFileInMemoryEx"
-      ]
-    },
-    "0x004f3510": {
-      "label": "texture-file wrapper (.jpg, .tga)",
-      "source": "loading-orchestration.md",
-      "hooked_apis": [
-        "D3DXLoadSurfaceFromFileInMemory"
-      ]
-    },
-    "0x004f7830": {
-      "label": "font loader (tga bmp, abc siz)",
-      "source": "loading-orchestration.md"
-    },
-    "0x004e9840": {
-      "label": "load named resource into a buffer",
-      "source": "loading-orchestration.md"
-    },
-    "0x004e8e10": {
-      "label": "resource load = open + read + close",
-      "source": "loading-orchestration.md"
-    },
-    "0x004e8780": {
-      "label": "resource resolve + open (_fopen / gzopen)",
-      "source": "loading-orchestration.md",
-      "hooked_apis": [
-        "CreateFileA",
-        "SetFilePointer"
-      ]
-    },
-    "0x004e8880": {
-      "label": "resource read",
-      "source": "loading-orchestration.md",
-      "hooked_apis": [
-        "ReadFile"
-      ]
-    },
-    "0x004e73f0": {
-      "label": "resource close + free file object",
-      "source": "loading-orchestration.md"
-    },
-    "0x004e7590": {
-      "label": "name resolver (loose scan + catalogue search)",
-      "source": "loading-orchestration.md",
-      "hooked_apis": [
-        "FindFirstFileA"
-      ]
-    },
-    "0x004d2950": {
-      "label": "__findfirst64i32 wrapper",
-      "source": "loading-orchestration.md",
-      "hooked_apis": [
-        "FindFirstFileA"
-      ]
-    },
-    "0x004e7470": {
-      "label": "extension ranking (__stricmp)",
-      "source": "loading-orchestration.md"
-    },
-    "0x004e6f20": {
-      "label": "per-catalogue _bsearch",
-      "source": "loading-orchestration.md"
-    },
-    "0x004e6fa0": {
-      "label": "top-down catalogue scan",
-      "source": "loading-orchestration.md"
-    },
-    "0x004e9210": {
-      "label": "read dispatcher (fread / gzread / XOR-0x33 slice)",
-      "source": "loading-orchestration.md",
-      "hooked_apis": [
-        "ReadFile",
-        "gzread"
-      ]
-    },
-    "0x004e9360": {
-      "label": "close (fclose / gzclose)",
-      "source": "loading-orchestration.md"
-    },
-    "0x004e90f0": {
-      "label": "gzopen wrapper",
-      "source": "loading-orchestration.md",
-      "hooked_apis": [
-        "gzopen"
-      ]
-    },
-    "0x004d34b0": {
-      "label": "Win32 message pump (PeekMessageA / GetMessageA)",
-      "source": "loading-orchestration.md"
-    },
-    "0x00499480": {
-      "label": "pck xml resource class (xmlReadMemory)",
-      "source": "loading-orchestration.md",
-      "hooked_apis": [
-        "xmlReadMemory"
-      ]
-    },
-    "0x004e6b70": {
-      "label": "pck xml resource class (xmlReadMemory)",
-      "source": "loading-orchestration.md",
-      "hooked_apis": [
-        "xmlReadMemory"
-      ]
-    },
-    "0x00482fb0": {
-      "label": "body writer (%05d.bob)",
-      "source": "loading-orchestration.md"
-    },
-    "0x004b9770": {
-      "label": "matrix globals allocation (init block)",
-      "source": "camera-state-and-frame-routine.md"
-    },
-    "0x004bb140": {
-      "label": "matrix globals release",
-      "source": "camera-state-and-frame-routine.md"
-    },
-    "0x004bb280": {
-      "label": "per-view Clear",
-      "source": "camera-state-and-frame-routine.md"
     },
     "0x004bdee0": {
       "label": "world matrix setup for node + camera",
@@ -328,80 +309,74 @@
       "label": "env-map SetViewport site",
       "source": "camera-state-and-frame-routine.md"
     },
-    "0x0047c640": {
-      "label": "view activation callee",
-      "source": "camera-state-and-frame-routine.md"
+    "0x004c82d0": {
+      "label": "base64 encode (signature path)",
+      "source": "script-xml-load-stall.md"
     },
-    "0x0047c840": {
-      "label": "view activation (builds view + projection, Clear)",
-      "source": "camera-state-and-frame-routine.md"
+    "0x004c8420": {
+      "label": "base64 decode (signature path)",
+      "source": "script-xml-load-stall.md"
     },
-    "0x0047d9c0": {
-      "label": "render-node visit (model lookup, LOD choice)",
-      "source": "object-identity.md"
+    "0x004cabc0": {
+      "label": "CryptoAPI signature verify: 3x CryptAcquireContextA(\"X2EgosoftCSPContainer\", Microsoft Base Cryptographic Provider v1.0), CryptImportKey, CryptCreateHash(CALG_MD5 0x8003), CryptHashData, base64 decode 0x004c8420, CryptVerifySignatureA, 2x CryptGetHashParam; callers 0x004af494 (script VM) and 0x004cae90 (x2)",
+      "source": "script-xml-load-stall.md"
     },
-    "0x0047e6e0": {
-      "label": "deferred draw list drain",
-      "source": "object-identity.md"
+    "0x004cae90": {
+      "label": "signed-file load + verify (resource open/close 0x004e72a0/0x004e7350, read 0x004e9210, 2x signature verify 0x004cabc0)",
+      "source": "script-xml-load-stall.md"
     },
-    "0x0047e620": {
-      "label": "deferred list sort",
-      "source": "object-identity.md"
+    "0x004ce080": {
+      "label": "mod enumeration (addon\\mods, *.cat)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "FindFirstFileA"
+      ]
     },
-    "0x0047e920": {
-      "label": "deferred list recycle",
-      "source": "object-identity.md"
+    "0x004cf460": {
+      "label": "DirectShow movie playback setup (CoCreateInstance of the X MPEG filter graph, Data\\mov\\%s, %05d.dat)",
+      "source": "loading-profile-bottle-x3.md"
     },
-    "0x0047b2e0": {
-      "label": "deferred entry pool reuse",
-      "source": "object-identity.md"
+    "0x004d2950": {
+      "label": "__findfirst64i32 wrapper",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "FindFirstFileA"
+      ]
     },
-    "0x00486d10": {
-      "label": "render node allocator (0x270 bytes)",
-      "source": "object-identity.md"
+    "0x004d34b0": {
+      "label": "Win32 message pump (PeekMessageA / GetMessageA)",
+      "source": "loading-orchestration.md"
     },
-    "0x004885a0": {
-      "label": "node allocator (handle map)",
-      "source": "object-identity.md"
+    "0x004d5a90": {
+      "label": "Win32 input / message handling (GetKeyboardLayout, MapVirtualKeyExA; helper 0x004d6850)",
+      "source": "loading-profile-bottle-x3.md"
     },
-    "0x00488c70": {
-      "label": "camera allocator (0x790 bytes)",
-      "source": "object-identity.md"
+    "0x004dc540": {
+      "label": "texture loader (pck dds; image info, cube, 2D helpers)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "D3DXCreateTextureFromFileInMemoryEx",
+        "D3DXCreateCubeTextureFromFileInMemoryEx"
+      ]
     },
-    "0x004efcc0": {
-      "label": "handle map insert",
-      "source": "object-identity.md"
+    "0x004dd2c0": {
+      "label": "jpg/tga texture load body: resource load 0x004e8e10 + D3DXGetImageInfo + 2D helper + LoadSurface (callee of 0x004f3510)",
+      "source": "loading-profile-run1.md",
+      "hooked_apis": [
+        "D3DXCreateTextureFromFileInMemoryEx",
+        "D3DXLoadSurfaceFromFileInMemory"
+      ]
     },
-    "0x004efd30": {
-      "label": "handle map remove",
-      "source": "object-identity.md"
+    "0x004de060": {
+      "label": "audio/COM subsystem init (CoInitialize, mmdevapi); called from process init 0x004033e1",
+      "source": "loading-profile-run1.md"
     },
-    "0x00487be0": {
-      "label": "node release (recursive)",
-      "source": "object-identity.md"
+    "0x004dfef0": {
+      "label": "collision tree: split-candidate extents (sqrtf 0x00412440, fabsf 0x0040e710)",
+      "source": "loading-profile-run1.md"
     },
-    "0x00479d10": {
-      "label": "node deserialization (load path)",
-      "source": "object-identity.md"
-    },
-    "0x004faee2": {
-      "label": "D3DXMatrixLookAtLH thunk",
-      "source": "camera-state-and-frame-routine.md"
-    },
-    "0x004faf00": {
-      "label": "D3DXMatrixMultiply thunk",
-      "source": "camera-state-and-frame-routine.md"
-    },
-    "0x004faf0c": {
-      "label": "D3DXMatrixInverse thunk",
-      "source": "camera-state-and-frame-routine.md"
-    },
-    "0x004faf1e": {
-      "label": "D3DXMatrixTranspose thunk",
-      "source": "camera-state-and-frame-routine.md"
-    },
-    "0x0047eb90": {
-      "label": "collision-tree build driver (body triangles int16x1/16384 -> 0x004e0ce0 per triangle, then build 0x004e0c80; sets obj flag 0x1000000)",
+    "0x004e0770": {
+      "label": "collision tree: 13-float node summary accumulate (weighted vec3 + 9 sums)",
       "source": "loading-profile-run1.md"
     },
     "0x004e0c80": {
@@ -410,6 +385,10 @@
     },
     "0x004e0ce0": {
       "label": "collision tree: add one triangle",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004e0e70": {
+      "label": "collision tree: order the three split candidates (calls 0x004dfef0)",
       "source": "loading-profile-run1.md"
     },
     "0x004e0f00": {
@@ -423,82 +402,6 @@
     "0x004e1220": {
       "label": "collision tree: recursive split body (self-recursive, 2,267 B) - top loading hot spot",
       "source": "loading-profile-run1.md"
-    },
-    "0x004e0770": {
-      "label": "collision tree: 13-float node summary accumulate (weighted vec3 + 9 sums)",
-      "source": "loading-profile-run1.md"
-    },
-    "0x004e0e70": {
-      "label": "collision tree: order the three split candidates (calls 0x004dfef0)",
-      "source": "loading-profile-run1.md"
-    },
-    "0x004dfef0": {
-      "label": "collision tree: split-candidate extents (sqrtf 0x00412440, fabsf 0x0040e710)",
-      "source": "loading-profile-run1.md"
-    },
-    "0x00412440": {
-      "label": "sqrtf helper (15 bytes, x87 SQRT)",
-      "source": "loading-profile-run1.md"
-    },
-    "0x0040e710": {
-      "label": "fabsf helper (x87 ABS)",
-      "source": "loading-profile-run1.md"
-    },
-    "0x004dd2c0": {
-      "label": "jpg/tga texture load body: resource load 0x004e8e10 + D3DXGetImageInfo + 2D helper + LoadSurface (callee of 0x004f3510)",
-      "source": "loading-profile-run1.md",
-      "hooked_apis": [
-        "D3DXCreateTextureFromFileInMemoryEx",
-        "D3DXLoadSurfaceFromFileInMemory"
-      ]
-    },
-    "0x004bbb10": {
-      "label": "mesh build: vertex writer (int16 x 1/16384 from 0x005655d4)",
-      "source": "loading-profile-run1.md"
-    },
-    "0x004bc1c0": {
-      "label": "mesh build: vertex positions (int16 x 1/16384) and normals (D3DXVec3Normalize x3)",
-      "source": "loading-profile-run1.md"
-    },
-    "0x004bcb60": {
-      "label": "mesh build: CloneMesh into final options (D3DXMESH_32BIT above 64k vertices), two attempts, OOM callback, then install via 0x004bc9c0",
-      "source": "loading-profile-run1.md"
-    },
-    "0x004de060": {
-      "label": "audio/COM subsystem init (CoInitialize, mmdevapi); called from process init 0x004033e1",
-      "source": "loading-profile-run1.md"
-    },
-    "0x00511f77": {
-      "label": "CRT fread body (from _fread_s, uses __VEC_memcpy)",
-      "source": "loading-profile-run1.md"
-    },
-    "0x0043ce30": {
-      "label": "type-table object construction: type lookup 0x00492970, node create 0x00486d10, per-part loop (+0x50, stride 0x44) via 0x0043d1d0",
-      "source": "loading-profile-bottle-x3.md"
-    },
-    "0x0044c620": {
-      "label": "orientation/rotation math (fsin/fcos/fpatan, helper 0x0052b5d0; from 0x0042fb20)",
-      "source": "loading-profile-bottle-x3.md"
-    },
-    "0x0044ccc0": {
-      "label": "orientation/rotation math variant (fsin/fcos/fpatan; from 0x0042fb20)",
-      "source": "loading-profile-bottle-x3.md"
-    },
-    "0x00498140": {
-      "label": "movie playback driver (allocates, then 0x004cf460)",
-      "source": "loading-profile-bottle-x3.md"
-    },
-    "0x004b4f80": {
-      "label": "CPureDeviceStateManager::SetRenderState (filters via 0x004b5620, then device vtable+0xe4)",
-      "source": "constant-uploads.md"
-    },
-    "0x004cf460": {
-      "label": "DirectShow movie playback setup (CoCreateInstance of the X MPEG filter graph, Data\\mov\\%s, %05d.dat)",
-      "source": "loading-profile-bottle-x3.md"
-    },
-    "0x004d5a90": {
-      "label": "Win32 input / message handling (GetKeyboardLayout, MapVirtualKeyExA; helper 0x004d6850)",
-      "source": "loading-profile-bottle-x3.md"
     },
     "0x004e2530": {
       "label": "collision query: recursive OBB-tree pair descent (children +0x3c/+0x40, half-extents +0x30..+0x38, leaf test 0x004e2190, budget DAT_0060854c)",
@@ -516,6 +419,110 @@
       "label": "malloc + memset allocation wrapper (via 0x004b8b60)",
       "source": "loading-profile-bottle-x3.md"
     },
+    "0x004e6b70": {
+      "label": "pck xml resource class (xmlReadMemory)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "xmlReadMemory"
+      ]
+    },
+    "0x004e6f20": {
+      "label": "per-catalogue _bsearch",
+      "source": "loading-orchestration.md"
+    },
+    "0x004e6fa0": {
+      "label": "top-down catalogue scan",
+      "source": "loading-orchestration.md"
+    },
+    "0x004e73f0": {
+      "label": "resource close + free file object",
+      "source": "loading-orchestration.md"
+    },
+    "0x004e7470": {
+      "label": "extension ranking (__stricmp)",
+      "source": "loading-orchestration.md"
+    },
+    "0x004e7590": {
+      "label": "logical-name resolution: 10-string extension-preference vector (stride 0x1c), -L%03d language suffix, one _findfirst64i32 (0x004d2950) + __findnext64i32 enumeration per resolve, extension rank 0x004e7470, then catalogue fallback _bsearch over the sorted directory (0xc-byte records, highest catalogue first); one probe per open",
+      "source": "loading-orchestration.md; script-xml-load-stall.md",
+      "hooked_apis": [
+        "FindFirstFileA"
+      ]
+    },
+    "0x004e8780": {
+      "label": "resource open: name resolve 0x004e7590, then fopen(path,\"rb\") for a loose file, or fopen(<NN>.dat,\"rb\") + fseek to the record offset for a catalogue-resident entry - the .dat is reopened per resource",
+      "source": "loading-orchestration.md; script-xml-load-stall.md",
+      "hooked_apis": [
+        "CreateFileA",
+        "SetFilePointer"
+      ]
+    },
+    "0x004e8880": {
+      "label": "archive member reader: 3-byte magic probe via 0x004e9210, gzip magic tested directly and after XOR with byte0^0xC8 (obfuscated members); non-gzip = seek end / tell / seek start / one full read; gzip = seek -8 for CRC+ISIZE, malloc(ISIZE) + memset, seek to 2 or 3, 0x004e91b0 getc walk of method/flags/extra/name/comment, inflateInit2_(-15) and a loop of fread(buf,1,1024) + 1024-iteration byte XOR + inflate at 0x004e8d50-0x004e8db7",
+      "source": "loading-orchestration.md, savegame-gz-stream.md; script-xml-load-stall.md",
+      "hooked_apis": [
+        "ReadFile",
+        "gzseek",
+        "gztell",
+        "inflate"
+      ]
+    },
+    "0x004e8e10": {
+      "label": "resource load = open + read + close",
+      "source": "loading-orchestration.md"
+    },
+    "0x004e90f0": {
+      "label": "gz open wrapper (closes an open handle, gzopen(path, caller mode \"rb\" or \"wb\"), flags |= 5)",
+      "source": "loading-orchestration.md, savegame-gz-stream.md",
+      "hooked_apis": [
+        "gzopen"
+      ]
+    },
+    "0x004e91b0": {
+      "label": "stream getc dispatcher (gz: gzgetc; CAT slice: fgetc XOR 0x33 bounded by member size; plain: fgetc)",
+      "source": "savegame-gz-stream.md",
+      "hooked_apis": [
+        "gzgetc"
+      ]
+    },
+    "0x004e9210": {
+      "label": "read dispatcher, fread-like (ECX = element size, EAX = count, buffer on the stack); 35 callers. Gz mode issues one gzread(handle, buffer, size*count) with no internal loop; catalogue mode clamps the request to the record length then fread (0x00512213) and XORs every byte with 0x33 in the scalar loop at 0x004e9260; else plain fread",
+      "source": "loading-orchestration.md, savegame-gz-stream.md; script-xml-load-stall.md",
+      "hooked_apis": [
+        "ReadFile",
+        "gzread"
+      ]
+    },
+    "0x004e92e0": {
+      "label": "stream write dispatcher (gz: gzwrite of size*count; CAT slice refused; plain: fwrite)",
+      "source": "savegame-gz-stream.md",
+      "hooked_apis": [
+        "gzwrite"
+      ]
+    },
+    "0x004e9360": {
+      "label": "stream close dispatcher (gz: gzclose; else fclose; clears the open flag)",
+      "source": "loading-orchestration.md, savegame-gz-stream.md",
+      "hooked_apis": [
+        "gzclose"
+      ]
+    },
+    "0x004e9590": {
+      "label": "findfirst handle release (_findclose + free(0x138))",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x004e9840": {
+      "label": "load named resource into a buffer",
+      "source": "loading-orchestration.md"
+    },
+    "0x004ec9e0": {
+      "label": "file-system / catalogue mount (%02d.cat, __chdir)",
+      "source": "loading-orchestration.md"
+    },
+    "0x004ed750": {
+      "label": "CAT directory parse (_atol, _toupper, _qsort)",
+      "source": "loading-orchestration.md"
+    },
     "0x004eeab0": {
       "label": "thin wrapper over 0x004db520",
       "source": "loading-profile-bottle-x3.md"
@@ -524,21 +531,132 @@
       "label": "overlay/glyph state helper (0x004dce20 -> 0x004ee6e0 == 0x18 -> 0x004b2730)",
       "source": "loading-profile-bottle-x3.md"
     },
+    "0x004efbf0": {
+      "label": "sector record registration",
+      "source": "loading-orchestration.md"
+    },
+    "0x004efcc0": {
+      "label": "handle map insert",
+      "source": "object-identity.md"
+    },
+    "0x004efd30": {
+      "label": "handle map remove",
+      "source": "object-identity.md"
+    },
     "0x004f22c0": {
       "label": "fpatan angle helper",
       "source": "loading-profile-bottle-x3.md"
+    },
+    "0x004f3510": {
+      "label": "texture-file wrapper (.jpg, .tga)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "D3DXLoadSurfaceFromFileInMemory"
+      ]
+    },
+    "0x004f7830": {
+      "label": "font loader (tga bmp, abc siz)",
+      "source": "loading-orchestration.md"
     },
     "0x004f8600": {
       "label": "text/overlay layout and string formatting (calls 0x004efa70)",
       "source": "loading-profile-bottle-x3.md"
     },
+    "0x004faee2": {
+      "label": "D3DXMatrixLookAtLH thunk",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004faf00": {
+      "label": "D3DXMatrixMultiply thunk",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004faf0c": {
+      "label": "D3DXMatrixInverse thunk",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004faf1e": {
+      "label": "D3DXMatrixTranspose thunk",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x0050e1b0": {
+      "label": "CRT _free",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x0050fff5": {
+      "label": "CRT fgetc (locked: _lock_file 0x00511d5e, _filbuf 0x0051c6b7, _unlock_file tail 0x00510124)",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x00510124": {
+      "label": "CRT _unlock_file tail wrapper (-> 0x00511dc8)",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x00510343": {
+      "label": "CRT fseek (_lock_file, __fseek_nolock, _unlock_file)",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x005112c4": {
+      "label": "CRT _malloc (HeapAlloc / _V6_HeapAlloc, __callnewh)",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x0051142a": {
+      "label": "CRT _realloc",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x00511d5e": {
+      "label": "CRT _lock_file (__lock, EnterCriticalSection)",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x00511dc8": {
+      "label": "CRT _unlock_file (pointer form; same stream-lock mapping as 0x00511dfe)",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x00511dfe": {
+      "label": "CRT _unlock_file: stream lock index 0x10 + (FILE - 0x00573200)/0x20, else the FILE's own CRITICAL_SECTION at +0x20",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x00511f77": {
+      "label": "CRT _fread_nolock: 4096 default buffer, direct _read for requests >= bufsiz, memcpy_s (__VEC_memcpy) from the buffer otherwise, _filbuf 0x0051c6b7 below that",
+      "source": "loading-profile-run1.md; script-xml-load-stall.md"
+    },
+    "0x0051217d": {
+      "label": "CRT _fread_s (_lock_file, _fread_nolock 0x00511f77, _unlock_file)",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x00512213": {
+      "label": "CRT fread thunk -> _fread_s(buf, 0xffffffff, size, count, file)",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x005128e6": {
+      "label": "CRT ftell (_lock_file, _unlock_file)",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x00512a18": {
+      "label": "CRT fopen (-> __fsopen -> __sopen_helper 0x00527869)",
+      "source": "script-xml-load-stall.md"
+    },
     "0x00517d8f": {
-      "label": "CRT file-lock release tail (LeaveCriticalSection, from 0x00524cfa)",
-      "source": "loading-profile-bottle-x3.md"
+      "label": "CRT _unlock(locknum): LeaveCriticalSection(_locktable[locknum]) at 0x00573d18 stride 8; 31 __finally funclet callers - stream locks 0x10+i via _unlock_file 0x00511dfe/0x00511dc8, lowio 10 (___lock_fhandle), 11 (__alloc_osfhnd 0x00524cfa - the caller the sampler records), 4 (heap, funclets next to _malloc/_free/_realloc)",
+      "source": "loading-profile-bottle-x3.md; script-xml-load-stall.md"
+    },
+    "0x0051c6b7": {
+      "label": "CRT _filbuf (__getbuf -> _malloc(4096), then _read)",
+      "source": "script-xml-load-stall.md"
     },
     "0x0051f464": {
       "label": "CRT _read text-mode body (ReadFile, MultiByteToWideChar, __malloc_crt)",
       "source": "loading-profile-bottle-x3.md"
+    },
+    "0x00524aa7": {
+      "label": "CRT ___lock_fhandle (per-fd lowio lock, index 10; funclet 0x00524b3e -> _unlock)",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x00524b69": {
+      "label": "CRT __alloc_osfhnd (OS handle-table lock index 11, __calloc_crt; funclet 0x00524cfa -> _unlock 0x00517d8f)",
+      "source": "script-xml-load-stall.md"
+    },
+    "0x00527869": {
+      "label": "CRT __sopen_helper / open body (up to 3 CreateFileA, GetFileType, __alloc_osfhnd, _read text-mode probes)",
+      "source": "script-xml-load-stall.md"
     }
   }
 }

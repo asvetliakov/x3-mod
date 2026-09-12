@@ -43,7 +43,8 @@ try:
             report['cases'][case].update(adjacency_cases=fields('ADJACENCY_CASE'),policies=fields('ADJACENCY_POLICY'),verify_stats=fields('VERIFY_STATS'),fast_stats=fields('FAST_STATS'),metrics=fields('mesh_adjacency_metric'))
             computable=[c for c in report['cases'][case]['adjacency_cases'] if c['status']=='ok']
             assert computable and all(c['equal']=='1' and c['mismatches']=='0' for c in computable),'Module output differs from native D3DX'
-            assert all(p['equal']=='1' for p in report['cases'][case]['policies'] if p['variant']=='default'),'Default policy differs from native on tie evidence'
+            computable_names={c['name'] for c in computable} # non-computable cases (native fallback) print their policy variants with equal=0 by design
+            assert all(p['equal']=='1' for p in report['cases'][case]['policies'] if p['variant']=='default' and p['name'] in computable_names),'Default policy differs from native on tie evidence'
         assert run.returncode==0 and 'failures=0' in text and 'FAIL' not in text,text[-4000:]
         assert before==sha(binary) and dlls=={p.name:sha(p) for p in directory.glob('*.dll')},'Binaries changed during run'
     assert hashes()==report['sources_before_build'] and sha(native)==report['native_before'],'Sources changed during run'

@@ -2,13 +2,14 @@
 > `algorithm_token`, not a DLL digest. The adapter qualifies public readable
 > SYSTEMMEM buffers and pins implementation lifetime; no DLL/EXE hash allowlist
 > remains. Earlier exact-backend observations below are historical evidence.
-> The fresh public-contract regression passes 741 checks; Windows runtime
-> validation remains outstanding.
+> The fresh public-contract regression passes 767 checks (2026-09-12, FP contract:
+> masked exceptions and an empty x87 stack required, precision/rounding/FTZ/DAZ
+> keyed); Windows runtime validation remains outstanding.
 
 # Production adjacency cache core
 
 `src/proxy/mesh_adjacency_cache.{h,cpp}` implements bounded, process-local reuse of
-successful native `ID3DXMesh::GenerateAdjacency` results. The 741-check evidence below tests this core separately from the game. The
+successful native `ID3DXMesh::GenerateAdjacency` results. The 767-check evidence below tests this core separately from the game. The
 [off-by-default live hook](mesh-cache-hook.md) connects it to the proxy with additional
 public-interface gates and separate evidence. No game loading improvement is claimed. This advances the [original synthetic prototype](mesh-preparation.md)
 by acquiring the current mesh through its real native readonly buffer locks and
@@ -172,7 +173,19 @@ and records failure if compilation, launch or timeout handling fails. Its proces
 is used without Present or game assets. Fixture seams are compile-time only;
 production source also compiles independently with `-Wall -Wextra -Werror`.
 
-The final fixture passes **741 checks**. Coverage includes:
+The final fixture passes **767 checks** (`run_mesh_adjacency_cache.py`, 2026-09-12;
+741 before the FP-contract change). Coverage includes:
+
+- The FP contract: ten state variants driven through fill and reuse. Sticky
+  status flags, condition codes, 64-bit precision, rounding, FTZ, DAZ and the
+  game's `0x027f`/`0x9fc0` (variants 0-7) are keyed and hit on reuse; an unmasked
+  x87 denormal exception (variant 8, control `0x007d`) bypasses. Variant 9 asks
+  for an unmasked SSE denormal exception (MXCSR `0x1e80`), which the Steam
+  bottle's x86_64 Wine under Rosetta 2 does not apply: the state reads back as
+  `0x1f80`, so the fixture derives its expectation from the applied state
+  (`FP_VARIANT ... applied_mxcsr=00001f80 masked=1 expect=keyed`) and records
+  that this variant is only a bypass witness on hosts that honour SSE exception
+  masks (native Windows, FEX to be confirmed).
 
 - Five original mesh cases through native generation, cleaning and optimization,
   with exact adjacency, vertex/index/declaration/attribute data, face/vertex remaps

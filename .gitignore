@@ -17,3 +17,7 @@ verification/results/execution-ownership-wine.log
 verification/results/geometry-lease-wine.log
 verification/results/motion-capture-wine.log
 verification/results/geometry-lease-build.txt
+
+# Non-Steam bottle runs: raw capture logs (several MB each) stay local; the JSON/text records are tracked.
+verification/results/bottle-*/*-capture.log
+.claude/worktrees/

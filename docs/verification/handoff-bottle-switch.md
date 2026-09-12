@@ -1,7 +1,9 @@
-# Handoff: fixture runners and the X3 bottle (2026-09-12, paused)
+# Handoff: fixture runners and the X3 bottle (2026-09-12)
 
-Paused on the orchestrator's request (account switch). Nothing was committed
-by this task.
+Resumed 17:53 after the account switch: the five suites ran under the X3
+bottle; the results, the Steam comparison and the two FEX limitations found
+are recorded in `bottles.md` (validation table and "FEX-specific limitations").
+The sections below are the state at the pause and stay for provenance.
 
 ## Done
 

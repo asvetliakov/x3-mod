@@ -38,8 +38,13 @@ the welding reduces to a hash of the three position bit patterns.
 
 ## Module: `src/proxy/mesh_adjacency_fast.{h,cpp}`
 
-Pure code (no Windows headers, no globals, `malloc` scratch, SSE2 only; the
-production object has no x87 opcode and imports only `malloc`, `free`, `memset`).
+Pure code (no Windows headers, SSE2 only; the production object has no x87
+opcode and imports only `malloc`, `free`, `memset` and the compiler's
+thread-local support `__emutls_get_address`/`__cxa_thread_atexit`). Its only
+state is one thread-local scratch arena: a call computes the byte layout of all
+its arrays up front and carves them from a single allocation, which is kept for
+the thread's next call when it is at most 16 MB (`release_scratch()` frees it;
+larger arenas are released after the call). See *Performance pass* below.
 Input: the locked vertex bytes with the `FLOAT3` position offset and stride, the
 locked 16- or 32-bit indices, the face count and the epsilon. Output:
 `DWORD[3 * faces]`, `0xffffffff` where a face has no neighbour across an edge.
@@ -98,8 +103,10 @@ module on the locked buffers and compares byte for byte; then it installs the
 production hooks and drives `verify` and `fast` through the shared vtable slot,
 with the cache off and on.
 
-Direct runs on 2026-09-12 (`build/mesh_adjacency_fast/mesh_adjacency_fast_fixture.exe 0|1`,
-outputs to be re-recorded by the suite under `verification/results/mesh-adjacency-cache-{off,on}-fixture.txt`):
+Suite runs on 2026-09-12 (`run_loading_trace.py`, Steam bottle, x86_64 Wine under
+Rosetta 2; records `verification/results/mesh-adjacency-cache-{off,on}-fixture.txt`
+and `loading-trace-mesh-summary.json`; all four cases pass: loading-trace 85,
+loading-mesh 123, cache off 2179, cache on 2219 checks):
 
 * **37 cases, 35 computable, 35 byte-identical to d3dx9_37, 0 mismatching
   entries**; `nan-position` (`non_finite`) and `unquantized-near-1.5e-6`
@@ -121,13 +128,15 @@ outputs to be re-recorded by the suite under `verification/results/mesh-adjacenc
   `no_welded_corner_drop` variants mismatch.
 * `duplicate-faces` and `double-adjacency-order` establish the single-adjacency
   refusal after selection (`double_adjacency` variant mismatches).
-* Timing, uninstrumented native versus module on the locked buffers (one run,
-  QPC): `grid-224x224-32` 99,458 faces: 1.21 s versus 33.2 ms (**36x**; 8.8 ms
-  and 143x in another run); `split-150x150-32` 44,402 faces / 133,206 split
-  vertices: 2.31 s versus 10.8 ms (**213x**); `star-20000-32` 20,000 faces on
-  one welded centre (D3DX's degenerate bucket): 0.78 s versus 4.7 ms (**166x**);
-  `split-16` 19,602 faces: 0.68 s versus 4.0 ms (**168x**). Two-face meshes are
-  1-3 us either way.
+* Timing, uninstrumented native versus module on the locked buffers (suite run,
+  QPC, cache off / cache on): `grid-224x224-32` 99,458 faces: 1.25 s versus
+  11.3 / 11.5 ms (**111x**); `split-150x150-32` 44,402 faces / 133,206 split
+  vertices: 2.30 s versus 5.1 / 5.8 ms (**447x**); `star-20000-32` 20,000 faces on
+  one welded centre (D3DX's degenerate bucket): 0.77 s versus 2.7 ms (**288x**);
+  `split-16` 19,602 faces: 0.66 s versus 2.5 ms (**266x**). Two-face meshes are
+  1-3 us either way. (The pre-optimisation direct runs measured 33.2 / 10.8 / 4.7 /
+  4.0 ms; the controlled before/after comparison is the host benchmark in
+  *Performance pass* below.)
 * Hook path: verify mode `calls=37 verify_meshes=35 verify_equal=35
   verify_mismatched=0`, both fallbacks counted with their module status; fast
   mode computes every computable case (`computed=70` over verify+fast,
@@ -193,9 +202,74 @@ native_us= fast_us= ...` per mismatching mesh (bounded). `native_us` in verify
 mode is the D3DX time of the same call, so the speed-up on the game's meshes is
 `native_us / fast_us` of that line.
 
+## Performance pass (2026-09-12)
+
+Measured with a host benchmark that includes the module source directly
+(arm64 clang `-O2`, 20 repeated calls per mesh, minimum and mean; record
+`verification/results/mesh-adjacency-fast-host-benchmark.txt`) on the fixture's
+four timing meshes, an unquantized grid (cell-scan gate) and a pathological fan
+where every face shares one directed edge (all reverse candidates in one chain).
+Output checksums are identical before and after on every mesh; the 12 host tests
+and the Wine suites above pass on the new code.
+
+* **Allocations.** Before: 13 `malloc`s per call (positions, keys, representatives,
+  the vertex table, corners, active, valid, a 24-byte `Edge` per corner, 8-byte
+  slot keys, slot heads, dropped flags, plus the cell hash on the unquantized
+  path). After: the byte layout is computed up front and carved from **one arena**
+  (bump allocation; the representative table and the cell hash are phase scratch
+  that is rewound and reused). The arena is **thread-local and retained** between
+  calls when it is at most 16 MB (`release_scratch()` frees it; a larger arena is
+  released after its call), so a loading burst pays the allocation and the
+  first-touch page faults once. The per-corner data shrank from 24 + 12 bytes to
+  4 + 12 (the edge id `face * 3 + point` names its corners, so only the chain
+  link remains; slots hold an anchor edge id and a chain head, 8 bytes instead of
+  12), and `keys` was folded into `positions` (the normalised bit patterns are
+  the key). Arena for the 99,458-face grid: 12.6 MB; for a 20,000-face mesh:
+  about 2.5 MB. Face normals for candidate selection are cached per edge in a
+  lazily allocated block that exists only for meshes with a multi-candidate
+  chain (none of the timing meshes; `multi_candidate_meshes` in the telemetry).
+* **Chain retirement.** Entries are no longer unlinked (a chain walk per query);
+  a retired flag hides them from scans, so retiring the querying face's own
+  entry is O(1).
+* **Numbers** (min of 20 calls, before -> after): grid 5.39 -> 4.46 ms (1.21x),
+  split-150 2.11 -> 1.92 ms (1.10x), star 1.04 -> 0.90 ms (1.16x), split-16
+  1.03 -> 0.82 ms (1.25x), unquantized grid 6.97 -> 6.95 ms (the 27-cell scan
+  dominates; unchanged), fan-same-edge-2000 12.6 -> 6.25 ms and
+  fan-same-edge-8000 199 -> 99 ms (**2.0x**, the normal cache: candidates cost
+  one dot product instead of a cross product, square root and three divisions).
+* **Hash quality.** Linear-probe statistics with the module's hashes and table
+  sizes (load factor at most 1/2): position table mean 1.02-1.47 probes per
+  insertion, maximum 3-15 (grid 50,176 distinct keys: 1.31 / 15; the game's
+  split layout 133,206 vertices / 22,500 distinct: 1.02 / 3); directed-edge table
+  mean 1.11-1.43, maximum 8-25 (grid 298,374 keys in 1,048,576 slots: 1.20 / 12;
+  star 60,000 keys in 131,072: 1.43 / 25). These match the random-hash
+  expectation for the load factors, so the multiply-and-fmix64 hashes of the
+  2^-14 grid bit patterns show no structure; the finalizer is unchanged.
+* **Worst case.** The star (one welded centre shared by 20,000 faces) is linear
+  in the module, 0.9 ms host / 2.7 ms Wine: its directed edges are all distinct
+  pairs, so no chain is long; D3DX's quadratic bucket is what the 288x measures.
+  The module's own quadratic case is many faces on one directed edge (every
+  query scans the whole chain, as D3DX's rule requires: the best normal among all
+  candidates): 8,000 such faces cost 99 ms after the pass, 16x the cost of
+  2,000 (quadratic), which is inherent to the rule and does not occur in the
+  game's welded layouts (a mesh with such an edge is counted in
+  `multi_candidate_meshes`).
+* **FP exception state.** Both services (`adjacency_fast_service`,
+  `adjacency_verify_service`) load MXCSR `0x1f80` (all SSE exceptions masked,
+  flags cleared) before `adjacency_compute` and restore the caller's x87
+  environment and MXCSR afterwards; the module object contains no x87 opcode
+  (`objdump` audit of `mesh_adjacency_fast.cpp.obj`: 0 x87 mnemonics; its
+  undefined symbols are `malloc`, `free`, `memset`, `__emutls_get_address`,
+  `__cxa_thread_atexit`), so a pending unmasked x87 exception in the caller's
+  state cannot fire inside the module, and `check_no_x87.py build/d3d9.dll`
+  passes (0 violations). The fixture's `GAME_FP_STATE` case (x87 `0x027f`, MXCSR
+  `0x9fc0`) and the native state sweep cover the game's state.
+
 ## Host tests
 
-`verification/analysis/test_mesh_adjacency_fast.py` tests a Python port of the
+`verification/analysis/test_mesh_adjacency_fast.py` (run with
+`python3 -m unittest verification/analysis/test_mesh_adjacency_fast.py`; pytest
+is not installed on this machine) tests a Python port of the
 algorithm (`tools/analysis/mesh_adjacency_reference.py`, float32 emulated per
 operation) on the edge cases (shared edge, exact duplicates, grid neighbours,
 signed zero, NaN/infinity, bad epsilon, index range, unquantized gate, three faces
@@ -203,3 +277,22 @@ on one edge under every policy, degenerate faces) and cross-checks the C++ modul
 built with the host compiler through `verification/probe/mesh_adjacency_fast_host.cpp`,
 against the port on those cases and on 60 random meshes with 16- and 32-bit
 indices under all policies, including mutual-pairing invariants.
+
+## Suite record (2026-09-12, resumed session)
+
+* `run_loading_trace.py`: 85 / 123 / 2179 / 2219, passed. The runner's default-policy
+  assertion now considers computable cases only (the two native-fallback cases
+  print their policy variants with `equal=0` by design). The fixture build scripts
+  link `src/proxy/gz_buffer.cpp` since `loading_trace.cpp` gained the gz
+  read-ahead hooks.
+* `run_mesh_adjacency_cache.py`: 767 checks ([mesh-adjacency-cache.md](mesh-adjacency-cache.md)).
+* `run_mesh_cache_hook.py`: 1,714 / 2,003 / 2,011 / 2,189 / 2,673 / 2,681
+  ([mesh-cache-hook.md](mesh-cache-hook.md)).
+* `python3 -m unittest verification/analysis/test_mesh_adjacency_fast.py`: 12 tests OK.
+* `build/d3d9.dll` from the working tree (which also carries the other in-flight
+  edits to `loading_trace.cpp`, `gz_buffer.cpp` and `engine_memory.cpp`):
+  SHA-256 `2d25ec114173d5947a68c52fb539b96eb6e05c259f5363f7b2d07df9b35d7d66`,
+  `check_no_x87.py`: PASS, 11 roots, 144 reachable functions, 0 violations.
+  Not installed.
+* Open: normal selection near ties remains the game-run acceptance item
+  (`--telemetry --mesh-adjacency verify`, `verify_mismatched=0`).

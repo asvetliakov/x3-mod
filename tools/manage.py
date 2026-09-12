@@ -41,6 +41,8 @@ def main():
     parser.add_argument('--object-lifetime', action='store_true', help='Observe verified render-registry lifetimes (requires --object-trace --ownership)')
     parser.add_argument('--mesh-cache', action='store_true', help='Enable experimental verified native adjacency reuse (requires --telemetry)')
     parser.add_argument('--mesh-adjacency', choices=['native', 'verify', 'fast'], default='native', help='ID3DXMesh::GenerateAdjacency service (X3M_MESH_ADJACENCY; requires --telemetry): native forwards; verify runs D3DX, recomputes by exact position equality and logs any difference; fast answers from the exact-equality computation and falls through to D3DX on any qualification failure (docs/verification/mesh-adjacency-fast.md)')
+    parser.add_argument('--gz-buffer', action='store_true', help='Read-ahead buffer in front of the zlib gz imports of the savegame decoder (X3M_GZ_BUFFER=1; no --telemetry needed): the ~14 M three-byte gzread calls of a load are served from 256 KB chunks with zlib 1.2.3 semantics kept; one gz_buffer_file line per file in the session log (docs/verification/gz-buffer.md)')
+    parser.add_argument('--gz-buffer-kb', type=int, default=256, help='Chunk size in KB of --gz-buffer (X3M_GZ_BUFFER_KB; 1..65536, default 256)')
     parser.add_argument('--profile', action='store_true', help='Run the in-process sampling profiler (X3M_PROFILE=1): one sampler thread, periodic profile_* reports in the session log; see docs/verification/sampling-profiler.md')
     parser.add_argument('--profile-interval-us', type=int, default=2000, help='Sampling interval in microseconds for --profile (100..1000000, default 2000)')
     parser.add_argument('--finite-positions', action='store_true', help='Validate positions from verified existing buffer uploads (requires --ownership --telemetry)')
@@ -115,6 +117,10 @@ def main():
         parser.error('--state-shadow requires --motion-output.')
     if not 100 <= args.profile_interval_us <= 1000000:
         parser.error('--profile-interval-us must be between 100 and 1000000.')
+    if args.gz_buffer_kb != 256 and not args.gz_buffer:
+        parser.error('--gz-buffer-kb requires --gz-buffer.')
+    if not 1 <= args.gz_buffer_kb <= 65536:
+        parser.error('--gz-buffer-kb must be between 1 and 65536.')
     if args.taa:
         args.motion_jitter = True
     if args.motion_capture and args.capture_frames < 2:
@@ -188,6 +194,8 @@ def main():
         env['X3M_HDR_EV_MANUAL'] = '' if args.hdr_ev_manual is None else repr(args.hdr_ev_manual)
         env['X3M_HDR_CLAMP'] = repr(args.hdr_clamp)
         env['X3M_STATE_SHADOW'] = '1' if args.state_shadow == 'on' else '0'
+        env['X3M_GZ_BUFFER'] = '1' if args.gz_buffer else '0'
+        env['X3M_GZ_BUFFER_KB'] = str(args.gz_buffer_kb)
         env['X3M_PROFILE'] = '1' if args.profile else '0'
         env['X3M_PROFILE_INTERVAL_US'] = str(args.profile_interval_us)
         # --dll applies to this child only, preserving the user's other overrides.

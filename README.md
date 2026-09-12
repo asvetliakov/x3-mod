@@ -51,6 +51,11 @@ Present is running; F8 captures four frames with this command. See the
 [coverage limits](docs/verification/telemetry.md). Timing is CPU-side elapsed
 time, not GPU timing. Loading optimization and the alt-tab cursor fix remain pending.
 
+`--gz-buffer` (env `X3M_GZ_BUFFER=1`, chunk size `--gz-buffer-kb`, default 256)
+puts a read-ahead buffer in front of the savegame decoder's zlib imports without
+enabling telemetry; it keeps zlib 1.2.3 semantics and logs one `gz_buffer_file`
+line per file ([docs/verification/gz-buffer.md](docs/verification/gz-buffer.md)).
+
 The live motion route is opt-in and diagnostic: `--motion-output` (env
 `X3M_MOTION_OUTPUT=1`) draws the reviewed material pair through transformed
 variants into a private RGBA32F RT1 and writes it back in capture frames. Object

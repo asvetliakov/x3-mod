@@ -315,7 +315,8 @@ Every engine read of the observer (`read_registry`, `lookup`, the ownership
 check, the baseline snapshot) goes through `src/proxy/engine_memory.h`
 (2026-09-12): a span is validated against a cache of `VirtualQuery`'d
 committed readable regions, re-validated on the first touch of each frame, then
-copied directly; `X3M_ENGINE_READS=rpm` restores the `ReadProcessMemory` path.
+copied with `rep movsb` in a translation unit built without SSE/MMX (the
+in-mutation probe of the fixture compares the mutation's XMM state); `X3M_ENGINE_READS=rpm` restores the `ReadProcessMemory` path.
 A registry page decommitted between frames yields `LookupUnavailable` and
 retires the identities instead of faulting (fixture case: bucket array on a
 `VirtualAlloc`'d page); the invalidation policy and its residual risk are in

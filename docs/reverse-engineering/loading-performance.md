@@ -225,6 +225,20 @@ real `d3dx9_37.dll` and fixture timings are in
 The next user run should use `verify` first (`verify_mismatched=0` in the last
 `mesh_adjacency_metric` line), then `fast`.
 
+## Savegame gz read-ahead buffer
+
+The 13.9 M three-byte `gzread` calls of the savegame decode come from the
+read dispatcher `0x004e9210` issuing one `gzread` per field
+([savegame-gz-stream.md](savegame-gz-stream.md): mode strings, seek/tell
+usage, no handle both written and read). `X3M_GZ_BUFFER=1`
+(`tools/manage.py launch --gz-buffer`, optional `--gz-buffer-kb`, no
+`--telemetry` needed) serves them from 256 KB chunks in `src/proxy/gz_buffer.cpp`
+behind the same import hooks, keeping zlib 1.2.3 semantics. The fixture against
+the real `zlib1.dll`, the semantics table, the timing (which shows that the
+profile's 0.656 µs per hooked call is mostly the hook envelope under FEX, not
+zlib) and the expected in-game bound are in
+[docs/verification/gz-buffer.md](../verification/gz-buffer.md).
+
 `tools/analysis/analyze_loading_profile.py <session.log> --output <dir> --ghidra`
 runs that chain in one command: every presentation gap over 2 s and every
 report stall inside it gets the hooked operation table next to the sampled

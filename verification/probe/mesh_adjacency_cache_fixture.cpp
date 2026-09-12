@@ -114,7 +114,16 @@ int main(int argc,char**argv){
         for(unsigned variant=0;variant<10;++variant){FP state=seed;
             switch(variant){case 0:state.x87.status|=0x20;break;case 1:state.x87.status|=0x4100;break;case 2:state.x87.control=(state.x87.control&0xffff0000)|0x037f;break;case 3:state.x87.control|=0x0400;break;case 4:state.mxcsr|=0x8000;break;case 5:state.mxcsr|=0x40;break;case 6:state.mxcsr|=0x20;break;
                 case 7:state.x87.control=(state.x87.control&0xffff0000)|0x027f;state.mxcsr=0x9fc0;break;case 8:state.x87.control&=~DWORD(0x2);break;case 9:state.mxcsr&=~DWORD(0x100);break;}
-            mac::Cache c;auto a=invoke(nullptr,mesh.p,base.epsilon,state);auto b=invoke(&c,mesh.p,base.epsilon,state);auto d=invoke(&c,mesh.p,base.epsilon,state);parity(a,b,"FP fill variant parity");parity(a,d,"FP reuse variant parity");require((d.result.origin==mac::Origin::CacheHit)==(variant<8),"FP unmasked exceptions bypass, controls are keyed");
+            // The expectation follows the state the host actually applies: Rosetta 2
+            // (Steam bottle) keeps the SSE exception masks set, so variant 9 reads back
+            // masked there and is keyed like a supported state; variant 8 (x87) applies everywhere.
+            write_fp(state);const FP applied=read_fp();write_fp(seed);
+            const bool masked=(applied.x87.control&0x3f)==0x3f&&(applied.mxcsr&0x1f80)==0x1f80;
+            std::printf("FP_VARIANT variant=%u cw=%04lx sw=%04lx mxcsr=%08lx applied_cw=%04lx applied_mxcsr=%08lx masked=%u expect=%s\n",variant,state.x87.control&0xffff,state.x87.status&0xffff,state.mxcsr,applied.x87.control&0xffff,applied.mxcsr,unsigned(masked),masked?"keyed":"bypass");
+            if(variant<8)require(masked,"FP keyed variant applies a supported state");else if(variant==8)require(!masked,"FP x87 unmask applies");
+            mac::Cache c;auto a=invoke(nullptr,mesh.p,base.epsilon,state);auto b=invoke(&c,mesh.p,base.epsilon,state);auto d=invoke(&c,mesh.p,base.epsilon,state);parity(a,b,"FP fill variant parity");parity(a,d,"FP reuse variant parity");
+            char fp_label[160];std::snprintf(fp_label,sizeof fp_label,"FP unmasked exceptions bypass, controls are keyed (variant %u fill=%u reuse=%u applied_mxcsr=%08lx)",variant,unsigned(b.result.origin),unsigned(d.result.origin),applied.mxcsr);
+            require((d.result.origin==mac::Origin::CacheHit)==masked,fp_label);
             if(variant<8)require(c.statistics().first_fp_available&&c.statistics().first_fp_supported&&c.statistics().first_fp.mxcsr==state.mxcsr,"first incoming FP state published as supported");
         }
         write_fp(seed);

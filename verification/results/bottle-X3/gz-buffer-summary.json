@@ -1,0 +1,203 @@
+{
+  "passed": true,
+  "phase": "complete",
+  "game_launched": false,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "timing_calls": 10000000,
+  "zlib1_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/zlib1.dll",
+  "sources": {
+    "src/proxy/gz_buffer.h": "bacec1b06195c83f7007fe5ed4a9d18cd9ad79503d9cfbc8e6dbaa1390f2ec2d",
+    "src/proxy/gz_buffer.cpp": "b3b9c0fd8d381750f0900dc00ce985cfc5af71eabc704441d242637d8ed52fc0",
+    "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
+    "src/proxy/capture.h": "e573832e0771ad93c76d58dfc8ddc9b33aec5c7db5d4a6ca526797bb5736cf31",
+    "verification/probe/gz_buffer_fixture.cpp": "eb6fab399e2195a370b592641fa4201cad7765447a9f0c7bd22abd4666055e63",
+    "verification/probe/build_gz_buffer.sh": "55f19ad8313a5a0633b75c3eb265b38c6482f18d81689c9dc763b6770c5ea74a",
+    "verification/probe/run_gz_buffer.py": "e0ae338c2226602b2af26b45fef2190746b62342797b10cfca4ff49372b0f71c"
+  },
+  "zlib1_sha256_before": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
+  "executable_sha256": "b3eeb6e586ba827c9d033196c4eb4a22c228c0c4c5adb9b921d1fa97b011c759",
+  "zlib1_sha256_copied": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
+  "exit_code": 0,
+  "report": {
+    "zlib_version": "1.2.3",
+    "zlib_exports": true,
+    "zlib_rewind": true,
+    "cases": {
+      "big-cap4k": {
+        "capacity": 4096,
+        "ops": 20000,
+        "checks": 29526,
+        "failures": 0
+      },
+      "big-cap64k": {
+        "capacity": 65536,
+        "ops": 20000,
+        "checks": 29211,
+        "failures": 0
+      },
+      "big-cap256k-r": {
+        "capacity": 262144,
+        "ops": 8000,
+        "checks": 8006,
+        "failures": 0
+      },
+      "small": {
+        "capacity": 4096,
+        "ops": 4000,
+        "checks": 4313,
+        "failures": 0
+      },
+      "empty": {
+        "capacity": 4096,
+        "ops": 1000,
+        "checks": 1005,
+        "failures": 0
+      },
+      "truncated": {
+        "capacity": 4096,
+        "ops": 6000,
+        "checks": 7660,
+        "failures": 0
+      },
+      "crc": {
+        "capacity": 4096,
+        "ops": 6000,
+        "checks": 6075,
+        "failures": 0
+      },
+      "crc-cap64k": {
+        "capacity": 65536,
+        "ops": 6000,
+        "checks": 6019,
+        "failures": 0
+      },
+      "corrupt": {
+        "capacity": 4096,
+        "ops": 6000,
+        "checks": 6124,
+        "failures": 0
+      },
+      "corrupt-cap64k": {
+        "capacity": 65536,
+        "ops": 6000,
+        "checks": 6015,
+        "failures": 0
+      },
+      "multiple": {
+        "capacity": 4096,
+        "ops": 4000,
+        "checks": 5371,
+        "failures": 0
+      },
+      "multiple-crc": {
+        "capacity": 4096,
+        "ops": 4000,
+        "checks": 5307,
+        "failures": 0
+      },
+      "multiple-crc-bad": {
+        "capacity": 4096,
+        "ops": 6000,
+        "checks": 6016,
+        "failures": 0
+      },
+      "transparent": {
+        "capacity": 4096,
+        "ops": 4000,
+        "checks": 5014,
+        "failures": 0
+      },
+      "concat": {
+        "capacity": 4096,
+        "ops": 8000,
+        "checks": 11742,
+        "failures": 0
+      },
+      "eof-error-paths": {
+        "capacity": 4096,
+        "ops": 400037,
+        "checks": 566580,
+        "failures": 0
+      },
+      "sequential-3byte": {
+        "capacity": 262144,
+        "ops": 333339,
+        "checks": 8,
+        "failures": 0
+      },
+      "mixed-handles": {
+        "capacity": 4096,
+        "ops": 24000,
+        "checks": 31592,
+        "failures": 0
+      },
+      "table-full": {
+        "capacity": 4096,
+        "ops": 165,
+        "checks": 268,
+        "failures": 0
+      },
+      "timing": {
+        "capacity": 262144,
+        "ops": 0,
+        "checks": 7,
+        "failures": 0
+      }
+    },
+    "timing": {
+      "unbuffered": {
+        "calls": 10000000,
+        "bytes": 30000000,
+        "seconds": 0.329,
+        "ns_per_call": 32.9,
+        "wall_ms": 320
+      },
+      "hooked": {
+        "calls": 10000000,
+        "bytes": 30000000,
+        "seconds": 12.676,
+        "ns_per_call": 1267.6,
+        "wall_ms": 12662
+      },
+      "buffered": {
+        "calls": 10000000,
+        "bytes": 30000000,
+        "seconds": 0.422,
+        "ns_per_call": 42.2,
+        "wall_ms": 407
+      }
+    },
+    "statistics": {
+      "opens": 22,
+      "buffered": 21,
+      "passthrough": 0,
+      "closes": 21,
+      "calls": 804135,
+      "small": 788301,
+      "served": 164523529,
+      "real_reads": 12924,
+      "real_bytes": 402938088,
+      "direct": 2365,
+      "getcs": 16276,
+      "tells": 14125,
+      "seeks": 24116,
+      "seeks_served": 1311,
+      "seeks_real": 13971,
+      "errors": 9
+    },
+    "file_lines": 58,
+    "checks": 735871,
+    "failures": 0,
+    "fail_lines": [],
+    "hook_envelope_ratio": 38.52887537993921,
+    "speedup": 0.7796208530805688
+  }
+}

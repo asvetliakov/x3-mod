@@ -31,6 +31,30 @@ is committed; the tree compiles; `build/d3d9.dll` =
   `docs/reverse-engineering/object-identity.md`, `object-lifetimes.md`,
   `docs/architecture/live-motion-route.md` (cost paragraph, switches).
 
+## Resolved (2026-09-12 18:20)
+
+The FX failure is fixed by building `engine_memory.cpp` without SSE/MMX
+(`-mno-sse -mno-mmx -mfpmath=387`: CMake source property and a separate compile
+step in `build_object_lifetime.sh`/`build_object_trace.sh`) and making the frame
+epoch a 32-bit atomic (a 64-bit atomic load without SSE is an x87 pair).
+`objdump` of the DLL's and both fixtures' `engine_memory` objects shows zero
+`%xmm`/`%mm`/`%st` references. Final suites, one Wine runner at a time under
+`wine_lock.py`, bottle `Steam`:
+
+| suite | result |
+| --- | --- |
+| `run_object_lifetime.py` | PASS 574 checks / 80 backend calls, 0 failures; identity equal (853bfaca11e07f83); `current` 7.007 µs rpm vs 0.693 direct, 0.0237 queries/call |
+| `run_object_trace.py` | PASS 166 / 120017; identity equal (route 5d9c86811e5cd583, capture 0e4093189888fb83); route 3.362 µs rpm vs 1.312 direct, capture 7.745 vs 2.170 (baseline 0.034), 0.0040 queries/call |
+| `run_motion_output.py` | PASS, 90 cases exit 0 (two earlier attempts aborted on the runner's source fingerprint while other agents edited `loading_trace.*`/`gz_buffer.*`/`capture.cpp`; every case had passed) |
+| `run_scene_capture.py` | PASS 4908 checks |
+| `check_no_x87.py build/d3d9.dll` | PASS, 130 reachable, no violation (144, still clean, on a later concurrent relink `851f3e5f…`) |
+| `unittest discover -s verification/analysis` | 710 tests OK |
+
+`build/d3d9.dll` = `ab9b4a0f19824de372dfed463f28184435b00f8403cdddc443a63a3aeb62dc88`
+(the `--clean-first` relink by `run_motion_output.py`; the tree also carries the
+other agents' uncommitted edits). Placeholders in the four docs are filled.
+Nothing committed, nothing installed.
+
 ## Suite results so far
 
 | suite | result |

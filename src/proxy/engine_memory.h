@@ -8,7 +8,8 @@
 //
 // Default path (X3M_ENGINE_READS unset or "direct"): every [address, address+size)
 // span is checked against a small cache of VirtualQuery'd regions that are
-// committed, readable and not guard pages, then copied with a plain memcpy.
+// committed, readable and not guard pages, then copied with `rep movsb` (the
+// unit is built without SSE/MMX so the read path leaves XMM state untouched).
 // A cached region is trusted until the next frame (next_frame(), called by the
 // motion route at begin_frame) or for at most ~100 ms without a frame advance
 // (a tick sampled every 64 reads, for callers outside the route), whichever
@@ -46,7 +47,7 @@ struct Stats {
     std::uint64_t queries = 0;    // VirtualQuery calls (cache misses and per-frame refreshes)
     std::uint64_t rejected = 0;   // spans refused by validation
     std::uint64_t syscalls = 0;   // ReadProcessMemory calls (rpm mode)
-    std::uint64_t frame = 0;      // current epoch
+    std::uint64_t frame = 0;      // current epoch (a 32-bit counter; wraps are harmless, the 100 ms tick bound still applies)
 };
 Stats stats();
 }

@@ -5,6 +5,7 @@
 #include "../ownership/d3d9_ownership.h"
 #include "../ownership/application_admission_abi.h"
 #include "cpu_state.h"
+#include "gz_buffer.h"
 #include <new>
 #include <d3dx9.h>
 #include <algorithm>
@@ -396,11 +397,22 @@ using GzSeekFn=LONG (__cdecl*)(void*,LONG,int);
 using InflateFn=int (__cdecl*)(void*,int);
 using XmlReadFn=void* (__cdecl*)(const char*,int,const char*,const char*,int);
 static_assert(sizeof(LONG)==4&&sizeof(int)==4&&sizeof(void*)==4);
+using GzTellFn=LONG (__cdecl*)(void*);
+using GzGetcFn=int (__cdecl*)(void*);
+using GzCloseFn=int (__cdecl*)(void*);
+using GzWriteFn=int (__cdecl*)(void*,const void*,unsigned);
 void* __cdecl gz_open(const char*,const char*);
 int __cdecl gz_read(void*,void*,unsigned);
 LONG __cdecl gz_seek(void*,LONG,int);
+int __cdecl gz_getc(void*);
+LONG __cdecl gz_tell(void*);
+int __cdecl gz_close(void*);
+int __cdecl gz_write(void*,const void*,unsigned);
 int __cdecl inflate_stream(void*,int);
 void* __cdecl xml_read(const char*,int,const char*,const char*,int);
+// X3M_GZ_BUFFER=1: the gz hooks route through gz_buffer (set before patching, never
+// cleared); its real functions are the traced wrappers with telemetry, else the originals.
+bool gz_buffer_active=false;
 Hook hooks[]={
     {"KERNEL32.dll","CreateFileA",reinterpret_cast<PVOID>(file_open)},
     {"KERNEL32.dll","ReadFile",reinterpret_cast<PVOID>(file_read)},
@@ -420,8 +432,16 @@ Hook hooks[]={
     {"d3dx9_37.dll","D3DXCleanMesh",reinterpret_cast<PVOID>(mesh_clean)},
     {"KERNEL32.dll","FindFirstFileA",reinterpret_cast<PVOID>(find_first)},
     {"KERNEL32.dll","FindNextFileA",reinterpret_cast<PVOID>(find_next)},
-    {"KERNEL32.dll","FindClose",reinterpret_cast<PVOID>(find_close)}
+    {"KERNEL32.dll","FindClose",reinterpret_cast<PVOID>(find_close)},
+    {"zlib1.dll","gzgetc",reinterpret_cast<PVOID>(gz_getc)},
+    {"zlib1.dll","gztell",reinterpret_cast<PVOID>(gz_tell)},
+    {"zlib1.dll","gzclose",reinterpret_cast<PVOID>(gz_close)},
+    {"zlib1.dll","gzwrite",reinterpret_cast<PVOID>(gz_write)}
 };
+// Rows the read-ahead buffer needs; patched alone when telemetry is off.
+bool gz_buffer_row(const Hook& hook){
+    return !std::strcmp(hook.dll,"zlib1.dll")&&std::strcmp(hook.name,"inflate")&&std::strcmp(hook.name,"gzwrite");
+}
 constexpr unsigned import_count=sizeof hooks/sizeof *hooks;
 static_assert(import_count==static_cast<unsigned>(Operation::MeshPointReps));
 const char* method_names[]={"ID3DXMesh::ConvertPointRepsToAdjacency","ID3DXMesh::GenerateAdjacency","ID3DXMesh::OptimizeInplace"};
@@ -573,27 +593,67 @@ BOOL WINAPI find_close(HANDLE find) {
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,!result);return result;
 }
 
-void* __cdecl gz_open(const char* path,const char* mode) {
+void* __cdecl gz_open_traced(const char* path,const char* mode) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     Span span(Operation::GzOpen);cpu.before_original();
     void* result=original<GzOpenFn>(span.op)(path,mode);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,!result);return result;
 }
-int __cdecl gz_read(void* file,void* data,unsigned size) {
+// With the buffer on, the GzRead metric counts the real (chunk) reads it issues;
+// the served calls are in the gz_buffer_file line of each close.
+int __cdecl gz_read_traced(void* file,void* data,unsigned size) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     Span span(Operation::GzRead);cpu.before_original();
     int result=original<GzReadFn>(span.op)(file,data,size);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,result<0,result>0?result:0);return result;
 }
-LONG __cdecl gz_seek(void* file,LONG offset,int whence) {
+LONG __cdecl gz_seek_traced(void* file,LONG offset,int whence) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     Span span(Operation::GzSeek);cpu.before_original();
     LONG result=original<GzSeekFn>(span.op)(file,offset,whence);cpu.after_original();
     const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,result<0);return result;
 }
+int __cdecl gz_getc_traced(void* file) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    Span span(Operation::GzGetc);cpu.before_original();
+    int result=original<GzGetcFn>(span.op)(file);cpu.after_original();
+    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,result<0,result>=0?1:0);return result;
+}
+LONG __cdecl gz_tell_traced(void* file) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    Span span(Operation::GzTell);cpu.before_original();
+    LONG result=original<GzTellFn>(span.op)(file);cpu.after_original();
+    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,result<0);return result;
+}
+int __cdecl gz_close_traced(void* file) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    Span span(Operation::GzClose);cpu.before_original();
+    int result=original<GzCloseFn>(span.op)(file);cpu.after_original();
+    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,result!=0);return result;
+}
+// The buffer never touches write handles; the row exists for the trace only.
+int __cdecl gz_write(void* file,const void* data,unsigned size) {
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    Span span(Operation::GzWrite);cpu.before_original();
+    int result=original<GzWriteFn>(span.op)(file,data,size);cpu.after_original();
+    const DWORD error=GetLastError();const auto end=tick();span.finish(end,error,result<=0&&size>0,result>0?result:0);return result;
+}
+// Import-slot entry points. With the buffer off these are the traced wrappers
+// (unchanged timing); with it on, the buffer's fast path runs with no boundary,
+// span or admission scope of its own (no x87 code, no allocation, no logging).
+void* __cdecl gz_open(const char* path,const char* mode){return gz_buffer_active?gz_buffer::open(path,mode):gz_open_traced(path,mode);}
+int __cdecl gz_read(void* file,void* data,unsigned size){return gz_buffer_active?gz_buffer::read(file,data,size):gz_read_traced(file,data,size);}
+LONG __cdecl gz_seek(void* file,LONG offset,int whence){return gz_buffer_active?gz_buffer::seek(file,offset,whence):gz_seek_traced(file,offset,whence);}
+int __cdecl gz_getc(void* file){return gz_buffer_active?gz_buffer::getc(file):gz_getc_traced(file);}
+LONG __cdecl gz_tell(void* file){return gz_buffer_active?gz_buffer::tell(file):gz_tell_traced(file);}
+int __cdecl gz_close(void* file){return gz_buffer_active?gz_buffer::close(file):gz_close_traced(file);}
 int __cdecl inflate_stream(void* stream,int flush) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
@@ -879,7 +939,8 @@ void restore_mesh_hooks() {
 bool install(HMODULE target) {
     if(installed.load())return true;
     if(installation_started){log("loading_trace disabled=reinitialization_not_supported");return false;}
-    if(!requested())return false;
+    const bool trace=requested(),buffer=gz_buffer::requested();
+    if(!trace&&!buffer)return false;
     auto base=reinterpret_cast<unsigned char*>(target);
     auto dos=reinterpret_cast<IMAGE_DOS_HEADER*>(base);
     if(!readable(dos,sizeof *dos,target)||dos->e_magic!=IMAGE_DOS_SIGNATURE||
@@ -922,7 +983,35 @@ bool install(HMODULE target) {
     bool found=false;for(auto* slot:slots)found|=slot!=nullptr;if(!found)return false;
     LARGE_INTEGER frequency{};if(!QueryPerformanceFrequency(&frequency)||frequency.QuadPart<=0)return false;
     for(auto& hook:hooks){const auto i=&hook-hooks;hook.slot=slots[i];hook.original=originals[i];}
+    if(buffer) {
+        gz_buffer::Originals real;
+        real.open=trace?gz_open_traced:original<GzOpenFn>(Operation::GzOpen);
+        real.read=trace?gz_read_traced:original<GzReadFn>(Operation::GzRead);
+        real.seek=trace?gz_seek_traced:original<GzSeekFn>(Operation::GzSeek);
+        real.getc=trace?gz_getc_traced:original<GzGetcFn>(Operation::GzGetc);
+        real.tell=trace?gz_tell_traced:original<GzTellFn>(Operation::GzTell);
+        real.close=trace?gz_close_traced:original<GzCloseFn>(Operation::GzClose);
+        bool imports=true;
+        for(const auto& hook:hooks)if(gz_buffer_row(hook)&&!hook.slot)imports=false;
+        if(imports){
+            if(HMODULE zlib=GetModuleHandleW(L"zlib1.dll"))real.rewind=reinterpret_cast<gz_buffer::RewindFn>(GetProcAddress(zlib,"gzrewind"));
+            gz_buffer_active=gz_buffer::initialize(real,gz_buffer::requested_capacity());
+        }
+        log("gz_buffer requested=1 enabled=%u capacity_kb=%u telemetry=%u imports=%u rewind=%u slots=%u",gz_buffer_active,gz_buffer::requested_capacity()/1024,trace,imports,real.rewind!=nullptr,gz_buffer::slot_count);
+        if(!gz_buffer_active&&!trace)return false;
+    }
     installation_started=true;
+    if(!trace) { // buffer only: no mesh observation, no cache/adjacency services
+        LARGE_INTEGER buffer_frequency{};QueryPerformanceFrequency(&buffer_frequency);clock_frequency=buffer_frequency.QuadPart;
+        for(auto& hook:hooks) {
+            if(!gz_buffer_row(hook)){hook.slot=nullptr;continue;}
+            if(hook.slot&&patch(hook,false)){++hook_count;log("loading_hook name=%s installed=1",hook.name);}
+            else {log("loading_hook name=%s installed=0",hook.name);if(hook.slot&&!has_protection_debt(hook.slot))hook.slot=nullptr;}
+        }
+        coverage_start=tick();installed.store(hook_count!=0);
+        log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=0 paths=0 qualification=named_pe32_imports scope=gz_buffer",coverage_start,clock_frequency,hook_count);
+        return installed.load();
+    }
     wchar_t cache_setting[8]{};cache_requested=GetEnvironmentVariableW(L"X3M_MESH_CACHE",cache_setting,8)==1&&cache_setting[0]==L'1';
     log("mesh_cache requested=%u enabled=0 activation=await_public_mesh_and_buffer_contract adjacency_metric_scope=hook_service restart_on_cleanup_failure=1",cache_requested);
     wchar_t adjacency_setting[16]{};const DWORD adjacency_length=GetEnvironmentVariableW(L"X3M_MESH_ADJACENCY",adjacency_setting,16);

@@ -1,0 +1,75 @@
+MODULE C:\windows\system32\d3d9.dll
+MODULE C:\X3\d3dx9_37.dll
+STATIONARY_CASES
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+EDGE left x=4 y=8 resolved_coverage=0.8041 sampled_coverage=0.7500 analytic_coverage=0.7200
+EDGE right x=12 y=8 resolved_coverage=0.4584 sampled_coverage=0.6875 analytic_coverage=0.7200
+EDGE top x=8 y=4 resolved_coverage=0.8022 sampled_coverage=0.6875 analytic_coverage=0.6300
+EDGE bottom x=8 y=12 resolved_coverage=0.3938 sampled_coverage=0.5625 analytic_coverage=0.5900
+EDGE corner x=4 y=4 resolved_coverage=0.6521 sampled_coverage=0.5000 analytic_coverage=0.4536
+STATIONARY frames=64 phases=16 weight=0.90 oracle_error=0.454102 interior_delta=0.479980 edge_delta=0.507812 ramp_delta=0.242920 edge_dc_error=0.2291 corner_dc_error=0.1521 edge_analytic_error=0.2616 ramp_dc_error=0.3115 drift_px=0.911719 ramp_gradient_energy_ratio=1.0257
+SAMPLE stationary one-step oracle max error over 64 frames actual=0.454101562 expected=0.000000000 tolerance=0.002000000 FAIL
+RESULT FAIL stationary one-step oracle max error over 64 frames

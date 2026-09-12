@@ -1,0 +1,117 @@
+D3D9 loaded: Y:\x3-mod\verification\probe\build\ownership-integration-depth_only-smoke-20260912-180937-475455\d3d9.dll
+D3D9 QueryInterface IUnknown: 0x00000000 PASS
+D3D9 COM identity: PASS
+DEVICE ITERATION 0
+CreateDevice: 0x00000000 PASS
+GetDirect3D: 0x00000000 PASS
+GetDirect3D identity: PASS
+Device QueryInterface IUnknown: 0x00000000 PASS
+Device COM identity: PASS
+CreateTexture managed: 0x00000000 PASS
+Texture GetDevice: 0x00000000 PASS
+Texture GetDevice identity: PASS
+SetTexture: 0x00000000 PASS
+UnsetTexture: 0x00000000 PASS
+Set state before capture: 0x00000000 PASS
+CreateStateBlock: 0x00000000 PASS
+StateBlock Capture: 0x00000000 PASS
+Change captured state: 0x00000000 PASS
+StateBlock Apply: 0x00000000 PASS
+GetRenderState after Apply: 0x00000000 PASS
+StateBlock restored value: PASS
+BeginStateBlock: 0x00000000 PASS
+Record state: 0x00000000 PASS
+EndStateBlock: 0x00000000 PASS
+Recorded state Apply: 0x00000000 PASS
+CreatePixelShader: 0x00000000 PASS
+PixelShader GetFunction: 0x00000000 PASS
+PixelShader bytecode preserved: PASS
+PixelShader GetDevice: 0x00000000 PASS
+PixelShader owner identity: PASS
+SetPixelShader: 0x00000000 PASS
+SetPixelShaderConstantF: 0x00000000 PASS
+Clear: 0x00000000 PASS
+BeginScene: 0x00000000 PASS
+SetFVF: 0x00000000 PASS
+SetRenderState lighting off: 0x00000000 PASS
+SetRenderState cull none: 0x00000000 PASS
+DrawPrimitiveUP: 0x00000000 PASS
+EndScene: 0x00000000 PASS
+Present: 0x00000000 PASS
+Clear: 0x00000000 PASS
+BeginScene: 0x00000000 PASS
+SetFVF: 0x00000000 PASS
+SetRenderState lighting off: 0x00000000 PASS
+SetRenderState cull none: 0x00000000 PASS
+DrawPrimitiveUP: 0x00000000 PASS
+EndScene: 0x00000000 PASS
+Present: 0x00000000 PASS
+UnsetPixelShader: 0x00000000 PASS
+Reset: 0x00000000 PASS
+Clear: 0x00000000 PASS
+BeginScene: 0x00000000 PASS
+SetFVF: 0x00000000 PASS
+SetRenderState lighting off: 0x00000000 PASS
+SetRenderState cull none: 0x00000000 PASS
+DrawPrimitiveUP: 0x00000000 PASS
+EndScene: 0x00000000 PASS
+Present: 0x00000000 PASS
+Device final Release reaches zero: PASS
+DEVICE ITERATION 1
+CreateDevice: 0x00000000 PASS
+GetDirect3D: 0x00000000 PASS
+GetDirect3D identity: PASS
+Device QueryInterface IUnknown: 0x00000000 PASS
+Device COM identity: PASS
+CreateTexture managed: 0x00000000 PASS
+Texture GetDevice: 0x00000000 PASS
+Texture GetDevice identity: PASS
+SetTexture: 0x00000000 PASS
+UnsetTexture: 0x00000000 PASS
+Set state before capture: 0x00000000 PASS
+CreateStateBlock: 0x00000000 PASS
+StateBlock Capture: 0x00000000 PASS
+Change captured state: 0x00000000 PASS
+StateBlock Apply: 0x00000000 PASS
+GetRenderState after Apply: 0x00000000 PASS
+StateBlock restored value: PASS
+BeginStateBlock: 0x00000000 PASS
+Record state: 0x00000000 PASS
+EndStateBlock: 0x00000000 PASS
+Recorded state Apply: 0x00000000 PASS
+CreatePixelShader: 0x00000000 PASS
+PixelShader GetFunction: 0x00000000 PASS
+PixelShader bytecode preserved: PASS
+PixelShader GetDevice: 0x00000000 PASS
+PixelShader owner identity: PASS
+SetPixelShader: 0x00000000 PASS
+SetPixelShaderConstantF: 0x00000000 PASS
+Clear: 0x00000000 PASS
+BeginScene: 0x00000000 PASS
+SetFVF: 0x00000000 PASS
+SetRenderState lighting off: 0x00000000 PASS
+SetRenderState cull none: 0x00000000 PASS
+DrawPrimitiveUP: 0x00000000 PASS
+EndScene: 0x00000000 PASS
+Present: 0x00000000 PASS
+Clear: 0x00000000 PASS
+BeginScene: 0x00000000 PASS
+SetFVF: 0x00000000 PASS
+SetRenderState lighting off: 0x00000000 PASS
+SetRenderState cull none: 0x00000000 PASS
+DrawPrimitiveUP: 0x00000000 PASS
+EndScene: 0x00000000 PASS
+Present: 0x00000000 PASS
+UnsetPixelShader: 0x00000000 PASS
+Reset: 0x00000000 PASS
+Clear: 0x00000000 PASS
+BeginScene: 0x00000000 PASS
+SetFVF: 0x00000000 PASS
+SetRenderState lighting off: 0x00000000 PASS
+SetRenderState cull none: 0x00000000 PASS
+DrawPrimitiveUP: 0x00000000 PASS
+EndScene: 0x00000000 PASS
+Present: 0x00000000 PASS
+Device final Release reaches zero: PASS
+D3D9 final Release reaches zero: PASS
+SMOKE RESULT: 0 failures

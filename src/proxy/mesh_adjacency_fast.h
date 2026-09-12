@@ -3,8 +3,9 @@
 #include <cstdint>
 
 // Exact-equality replacement for ID3DXMesh::GenerateAdjacency(epsilon).
-// Pure, host-testable: no Windows headers, COM, hooks or globals. The caller
-// supplies locked read-only vertex/index memory and receives the D3DX output
+// Pure, host-testable: no Windows headers, COM or hooks; the only state is one
+// thread-local scratch arena reused between calls (release_scratch frees it).
+// The caller supplies locked read-only vertex/index memory and receives the D3DX output
 // (DWORD[3*faces], 0xffffffff where a face has no neighbour across an edge).
 // Ok is returned only when equivalence to the D3DX epsilon welding is
 // established for this input (docs/verification/mesh-adjacency-fast.md):
@@ -42,4 +43,7 @@ struct Report {
 };
 // Writes all 3*face_count entries only on Ok; the array is untouched otherwise.
 Report generate(const Input& input,uint32_t* adjacency,const Policy& policy={}) noexcept;
+// Frees the calling thread's retained scratch arena (one malloc per call otherwise;
+// arenas above 16 MB are released after the call, smaller ones kept for the next mesh).
+void release_scratch() noexcept;
 }

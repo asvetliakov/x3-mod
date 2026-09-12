@@ -1,5 +1,4 @@
-FAIL output x87/SSE/MXCSR matches original
-TIMING mode=rpm snapshot_us=7.060 reads_per_call=0.00 queries_per_call=0.0000 syscalls_per_call=12.00
-TIMING mode=direct snapshot_us=0.706 reads_per_call=12.00 queries_per_call=0.0197 syscalls_per_call=0.00
+TIMING mode=rpm snapshot_us=6.894 reads_per_call=0.00 queries_per_call=0.0000 syscalls_per_call=12.00
+TIMING mode=direct snapshot_us=0.697 reads_per_call=12.00 queries_per_call=0.0237 syscalls_per_call=0.00
 IDENTITY rpm=853bfaca11e07f83 direct=853bfaca11e07f83 equal=1
-RESULT FAIL checks=574 failures=1 backend_calls=80
+RESULT PASS checks=574 failures=0 backend_calls=80

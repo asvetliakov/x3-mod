@@ -175,11 +175,11 @@ between frames, recommitted, and read across a reserved-only page edge. The runn
 pre/post source and executable hashes plus exact report bytes. This verifies
 mechanism with original code, not executable call coverage in X3.
 
-The fresh run passed **«OT_CHECKS» checks / «OT_CALLS» backend calls** (the read-path
+The fresh run passed **166 checks / 120017 backend calls** (the read-path
 loops account for the calls); see
 [exact results](../../verification/results/object-trace-summary.json), whose
-`read_path` field carries the `TIMING`/`IDENTITY` lines: «OT_RPM_ROUTE» µs per
-route-path call over `ReadProcessMemory` against «OT_DIRECT_ROUTE» µs direct, identical
+`read_path` field carries the `TIMING`/`IDENTITY` lines: 3.36 µs per
+route-path call over `ReadProcessMemory` against 1.31 µs direct, identical
 record hashes. The standalone executable hash remained identical before and after
 execution. Earlier run (2026-09-11): 139 checks / 9 backend calls, source cpp
 SHA-256 `22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba`.

@@ -578,7 +578,9 @@ previous behaviour. The object observers read engine memory through
 `engine_memory` (validated direct reads: one `VirtualQuery` per distinct
 region per frame, re-validated at `begin_frame`, instead of the ~21
 `ReadProcessMemory` syscalls per routed draw that were 92–98 % of the gate in
-[route-cost-run1.md](../verification/route-cost-run1.md)); the four engine
+[route-cost-run1.md](../verification/route-cost-run1.md); fixture cost of the
+four route-path reads 1.31 µs direct against 3.36 µs over `ReadProcessMemory`,
+and the reader unit executes no XMM/x87 instruction); the four engine
 matrices are read only on capture frames (`object_trace::current(out,
 capture_)`), and the per-draw QPC stamps need `X3M_TELEMETRY_DRAW=1` on top
 of `X3M_TELEMETRY=1`. No getter fetches shader bytecode or shader objects on

@@ -62,6 +62,13 @@ implemented when only capture or API capability testing exists. Keep extracted
 copyrighted game shader bytes/decompiler output local and untracked. Derived
 names, hashes and technical findings may be documented.
 
+Wine runner lock (added 2026-09-12): every command that executes under Wine
+(a `run_*.py` runner or a hand-started fixture `.exe`) must be wrapped as
+`python3 verification/probe/wine_lock.py <command...>`, which serialises on
+`/tmp/x3-wine-runner.lock` and waits for the holder. `game_guard.py` still
+refuses to start while the game is up. Never run two Wine commands at once,
+even from different agents.
+
 Context discipline for agents (added 2026-09-12):
 
 - Never read large files whole: anything over about 50 KB under

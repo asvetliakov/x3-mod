@@ -1,5 +1,10 @@
 # Handoff: gz read-ahead buffer for the savegame decode (paused 2026-09-12)
 
+**Superseded 2026-09-12 (evening):** implemented; see
+[gz-buffer.md](gz-buffer.md) and
+[savegame-gz-stream.md](../reverse-engineering/savegame-gz-stream.md). Kept as
+the record of the plan and of the facts established before implementation.
+
 Paused on the orchestrator's request before any source edit. Nothing in this
 task is implemented yet; the tree compiles unchanged. Decompiler output lives
 only under `/tmp/x3-gz-study/` (xrefs.txt so far; never commit it).

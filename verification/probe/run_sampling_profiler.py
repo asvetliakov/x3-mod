@@ -59,8 +59,8 @@ def wait_for_idle_wine(limit_s=1800):
                 if not line.split() or not line.split()[0].isdigit():
                     continue  # continuation line of a multi-line command, not a `pid args` row
                 pid = int(line.split()[0])
-                if pid in me or 'run_sampling_profiler' in line or 'pgrep' in line:
-                    continue
+                if pid in me or 'run_sampling_profiler' in line or 'pgrep' in line or 'wine_lock.py' in line:
+                    continue  # a wine_lock wrapper waiting for the lock executes nothing under Wine
                 busy.append(line)
         if not busy:
             return

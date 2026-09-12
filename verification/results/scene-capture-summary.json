@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T13:35:03.613010+00:00",
+  "started_utc": "2026-09-12T15:13:07.743241+00:00",
   "bottle": {
     "name": "Steam",
     "wine_arch": "win64",
@@ -50,7 +50,7 @@
     "C:\\X3\\d3dx9_37.dll",
     "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl"
   ],
-  "executable_sha256": "baecd0f3577c4c24750d72a14db404dcb05fb2700b2e609ab219f5b38be538d5",
+  "executable_sha256": "f9307f38feb7929c2745b24d61c60af2aca4e06c4fa651140ee74d29a354e4c7",
   "exit_code": 0,
   "checks": 4908,
   "samples": 16,
