@@ -186,8 +186,8 @@ int main(int argc,char** argv){
     check(live_providers==0&&live_keys==0,"off_pass_leaks");
     // Pass 2: cache on, bound to the same shims.
     cc::Originals originals;originals.acquire=shim_acquire;originals.release=shim_release;originals.import_key=shim_import;originals.destroy_key=shim_destroy;
-    check(cc::initialize(originals),"cache_initialize");
-    check(!cc::initialize(originals),"cache_initialize_refused_twice");
+    check(cc::initialize(originals,CONTAINER),"cache_initialize");
+    check(!cc::initialize(originals,CONTAINER),"cache_initialize_refused_twice");
     check(cc::enabled(),"cache_enabled");
     const RealCounts before_on=real_counts;
     for(unsigned i=0;i<iterations;++i)run_check(cached,messages[i].data(),DWORD(messages[i].size()),signatures[i].data(),DWORD(signatures[i].size()),blob.data(),blob_len,on[i]);
@@ -264,6 +264,11 @@ int main(int argc,char** argv){
     check(real_counts.releases-before_shutdown.releases==1&&real_counts.destroys-before_shutdown.destroys==1&&real_counts.deletes-before_shutdown.deletes==1,"shutdown_real_calls");
     printf("CRYPT_LEAK live_providers=%d live_keys=%d\n",live_providers,live_keys);
     check(live_providers==0&&live_keys==0,"no_handle_leak");
+    for(const char* module_name : {"advapi32.dll", "rsaenh.dll"}){
+        char path[MAX_PATH]{};const HMODULE module=GetModuleHandleA(module_name);
+        if(module)GetModuleFileNameA(module,path,MAX_PATH);
+        printf("CRYPT_MODULE name=%s path=%s\n",module_name,path);
+    }
     // Signer cleanup.
     CryptDestroyKey(private_key);CryptReleaseContext(signer,0);
     {HCRYPTPROV scratch=0;CryptAcquireContextA(&scratch,SIGNER,PROVIDER,PROV_RSA_FULL,CRYPT_DELETEKEYSET);}

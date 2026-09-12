@@ -1,0 +1,27 @@
+CHECK synthetic address allocation PASS
+CHECK atomic group result matches expected qualification PASS
+CHECK all lifetime slots committed or rolled back PASS
+CHECK all lifetime slots committed or rolled back PASS
+CHECK all lifetime slots committed or rolled back PASS
+CHECK all lifetime slots committed or rolled back PASS
+CHECK exact operation callsite classification PASS
+CHECK adjacent unobserved caller rejected PASS
+CHECK exact operation callsite classification PASS
+CHECK adjacent unobserved caller rejected PASS
+CHECK exact operation callsite classification PASS
+CHECK adjacent unobserved caller rejected PASS
+CHECK exact operation callsite classification PASS
+CHECK adjacent unobserved caller rejected PASS
+CHECK exact operation callsite classification PASS
+CHECK adjacent unobserved caller rejected PASS
+CHECK exact operation callsite classification PASS
+CHECK adjacent unobserved caller rejected PASS
+CHECK unqualified real IAT dispatch stays native PASS
+CHECK no cache activity from unqualified caller PASS
+CHECK transaction observer inventory PASS
+CHECK no protection restoration debt PASS
+CHECK quiescent shutdown restores native slot PASS
+CHECK quiescent shutdown restores native slot PASS
+CHECK quiescent shutdown restores native slot PASS
+CHECK quiescent shutdown restores native slot PASS
+CRYPT HOOK RESULT mode=bytes checks=26 failures=0

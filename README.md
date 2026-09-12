@@ -65,8 +65,10 @@ line per file ([docs/verification/gz-buffer.md](docs/verification/gz-buffer.md))
 CryptoAPI provider handle and imported public key of the per-script signature
 check, replacing the three `CryptAcquireContextA` container delete/create/delete
 calls per script (4 ms each under Wine, 844 per save load) with one cached
-handle; hash and signature verification are untouched, and the handles are
-released at process detach ([docs/verification/crypt-cache.md](docs/verification/crypt-cache.md)).
+handle; hash and signature verification are untouched. Reviewed game call sites
+and a complete lifecycle-hook installation are required. Native handles are
+retained until process exit; the scratch container can persist until the next
+startup delete ([docs/verification/crypt-cache.md](docs/verification/crypt-cache.md)).
 
 Loading-time switches ([docs/verification/loading-probes.md](docs/verification/loading-probes.md),
 [docs/verification/resource-reader.md](docs/verification/resource-reader.md)):

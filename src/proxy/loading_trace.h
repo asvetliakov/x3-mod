@@ -84,6 +84,9 @@ bool adjacency_write_dump(const wchar_t* path,ID3DXMesh* mesh,FLOAT epsilon,cons
 #ifdef X3M_LOADING_TRACE_FIXTURE
 // Compile-only fixture seam: these symbols do not exist in the production DLL.
 bool fixture_initialize(HMODULE target);
+void fixture_crypt_image_base(HMODULE base);
+void fixture_crypt_patch_control(unsigned step,void(*observer)());
+bool fixture_crypt_site(const void* caller,Operation operation);
 // One-shot failed mesh slot installation, 1..3; quiescent synthetic tests only.
 void fixture_fail_mesh_patch(unsigned step);
 void fixture_fail_protection_restores(unsigned calls);

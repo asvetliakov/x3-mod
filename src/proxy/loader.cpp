@@ -7,7 +7,6 @@
 #include "../ownership/d3d9_ownership.h"
 #include "../ownership/application_admission_abi.h"
 #include "cpu_state.h"
-#include "crypt_cache.h"
 #include <string>
 
 namespace {
@@ -298,12 +297,6 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID) {
         self_module = module;
         DisableThreadLibraryCalls(module);
         LARGE_INTEGER stamp{}; QueryPerformanceCounter(&stamp); x3m::dll_load_qpc = static_cast<unsigned long long>(stamp.QuadPart);
-    } else if (reason == DLL_PROCESS_DETACH) {
-        // The CryptoAPI context/key cache holds ADVAPI32 handles the game believes
-        // it released: release them for real and delete the container the game
-        // had deleted last. ADVAPI32 is our own import, so it outlives us; a lock
-        // still held by a terminated thread makes this a no-op (no logging here).
-        x3m::crypt_cache::shutdown();
     }
     return TRUE;
 }

@@ -13,3 +13,6 @@ abi="-msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2"
 "$cxx" $abi -std=c++17 -O2 -Wall -Wextra -Werror -Wno-cast-function-type -DWIN32_LEAN_AND_MEAN -DNOMINMAX \
   -static -static-libgcc -static-libstdc++ \
   crypt_cache_fixture.cpp build/crypt_cache/crypt_cache.o -ladvapi32 -o build/crypt_cache/crypt_cache_fixture.exe
+
+"$cxx" $abi -std=c++17 -O2 -Wall -Wextra -Werror -DWIN32_LEAN_AND_MEAN -DNOMINMAX -pthread -static \
+  crypt_cache_controls.cpp build/crypt_cache/crypt_cache.o -ladvapi32 -o build/crypt_cache/crypt_cache_controls.exe

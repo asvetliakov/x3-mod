@@ -458,7 +458,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         // callsite restore (the object-trace patch keeps its own lifetime).
         if(scene_hook::installed()){const bool restored=scene_hook::shutdown();log("scene_hook_shutdown restored=%u status=%s",restored,scene_hook::status());}
         resource_reader::report(); // final summary without telemetry; the reader itself stays installed (loading continues without a device)
-        loading_trace::crypt_cache_report("session"); // cumulative crypt_cache totals; the handles are released at process detach (loader.cpp)
+        loading_trace::crypt_cache_report("session"); // cumulative totals; bounded native cache retained until process exit
     }
     if(!refs){
         // A nested final factory Release can report this device root still

@@ -826,13 +826,15 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
    `X3M_CRYPT_CACHE=1` / `launch --crypt-cache` (`src/proxy/crypt_cache.cpp`,
    no-SSE unit, no telemetry needed) caches the provider handle and the
    imported RSA-2048 key, emulates the two ignored deletes with the recorded
-   `NTE_BAD_KEYSET`, leaves hash/verify to the CSP and releases at detach.
-   Fixture against the real ADVAPI32 on both bottles: call-by-call identical
-   results and errors over 200 checks, no leak, 4.1–4.7× per check
-   ([crypt-cache.md](verification/crypt-cache.md)). Next run:
-   `launch --direct --telemetry --loading-probes --crypt-cache`, expect the
-   `crypt_cache` window lines, `signature_check` ≈ 2 s instead of 12.8 s and
-   the `CryptAcquireContextA` row at 2 calls.
+   `NTE_BAD_KEYSET` and leaves hash/verify to the CSP. Review corrections qualify
+   six game call returns and all four lifecycle imports, reject overlapping key
+   reuse/stale native publication, and remove unsafe detach-time CSP cleanup.
+   The bounded provider/key cache lasts until process exit; its named scratch
+   container can persist until the next startup delete. Corrected-source tests
+   pass 572 checks on each bottle; the 200-sequence real-CSP differential measures
+   approximately 4.0× (Steam) / 4.14× (X3) per check, excluding the probe envelope
+   ([crypt-cache.md](verification/crypt-cache.md)). The 11–13 s loading estimate
+   remains a hypothesis for the user's reviewed `--crypt-cache` run.
 
 ## Replay/admission line (reference only, superseded 2026-09-12)
 

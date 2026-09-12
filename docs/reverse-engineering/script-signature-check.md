@@ -53,9 +53,8 @@ in it: the key is imported from a blob and the hash is keyless. The first
 acquire is not a probe the game reads; its failure is simply the steady state
 of a "delete whatever is left" call. Both deletes are `CRYPT_DELETEKEYSET`
 with no other flag (no `CRYPT_MACHINE_KEYSET`, no `CRYPT_VERIFYCONTEXT`), so
-they are per-user registry operations (`HKCU\Software\Microsoft\Cryptography\
-UserKeys\X2EgosoftCSPContainer` on Windows; Wine's `rsaenh` keeps the same
-layout in the bottle registry).
+they target the current user's named keyset. Its storage layout is a CSP
+implementation detail; the cache does not read registry paths or private files.
 
 Cost model (run B, X3/FEX): 2,532 acquires, 10.346 s — the delete and create
 each pay the registry round trip, the failing delete included; the remaining
@@ -110,19 +109,18 @@ across checks on the same provider handle.
 
 ## 5. Consequences for the cache
 
-The observable contract of the sequence is: the return values of calls 2–8
-(and the digest bytes), plus, for the two ignored deletes, nothing at all. A
-cache that keeps the provider handle from call 2 alive across checks, answers
-call 2 from it, turns `CryptReleaseContext` into a mark and emulates the two
-deletes (fail while "deleted", succeed after a release) reproduces every value
-the game reads — and, for the fixture's stricter comparison, also the
-`GetLastError` of the failing delete, recorded from the first real failure.
-The imported key is cached per (provider handle, flags, blob bytes) and its
-`CryptDestroyKey` suppressed; hash creation, hashing, verification and the
-hash parameters are not touched, so the verdict is computed by the CSP exactly
-as before. Expected saving from run B: the 10.346 s of acquires and most of
-the 2.5 s of imports — 11.3–12.8 s of the 16.758 s stall.
+The game reads the verification/digest result and ignores the two delete return
+values. A narrowly qualified optimization can reuse the scratch provider and
+public key while keeping every hash/verify operation in the original CSP. The
+reviewed implementation qualifies the six exact call returns above the CryptoAPI
+imports, not arbitrary API callers. Its ownership guards and deliberate
+persistent-container side effect are documented in
+[crypt-cache.md](../verification/crypt-cache.md). Do not infer general CryptoAPI
+or registry equivalence from the game's ignored delete results.
 
-Related: [script-xml-load-stall.md](script-xml-load-stall.md) §6 item 4 (the
-measurement request this note answers), [loading-probes.md](loading-probes.md)
-(the `signature_check` probe row and the ADVAPI32 import rows).
+Run B's acquisition time identifies a potential saving; the earlier 11–13 s
+estimate is not a measured game improvement. The corrected branch needs fresh
+fixture evidence and a user-run loading comparison before that claim is made.
+
+Related: [script-xml-load-stall.md](script-xml-load-stall.md),
+[loading-probes.md](loading-probes.md).

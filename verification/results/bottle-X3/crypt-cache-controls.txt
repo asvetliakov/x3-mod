@@ -1,0 +1,54 @@
+CHECK initialize PASS
+CHECK provider miss preserves seeded native CPU state and success LastError PASS
+CHECK key miss preserves seeded native CPU state and success LastError PASS
+CHECK end release PASS
+CHECK provider hit preserves full seeded CPU state and success LastError PASS
+CHECK key hit preserves full seeded CPU state and success LastError PASS
+CHECK end release PASS
+CHECK begin PASS
+CHECK import PASS
+CHECK import PASS
+CHECK simultaneous imports never alias cached handle PASS
+CHECK uncached duplicate destroy PASS
+CHECK cached key destroy PASS
+CHECK import PASS
+CHECK released public key reused PASS
+CHECK machine delete not emulated as user delete PASS
+CHECK other container not cached PASS
+CHECK private key not cached PASS
+CHECK foreign thread cannot borrow cached key PASS
+CHECK shutdown refuses outstanding provider PASS
+CHECK nonzero release flags preserve native failure PASS
+CHECK bad release retires owned key before native context release PASS
+CHECK bad release retains no invalid handles PASS
+CHECK begin PASS
+CHECK import PASS
+CHECK in-use eviction destroys zero-outstanding cached key outside lock PASS
+CHECK begin PASS
+CHECK import PASS
+CHECK in-use eviction preserves caller-owned key PASS
+CHECK begin PASS
+CHECK import PASS
+CHECK release with outstanding key is native and retires provider PASS
+CHECK outstanding key release cannot seed future cache reuse PASS
+CHECK begin PASS
+CHECK import PASS
+CHECK foreign key destruction reaches native and retires cached key PASS
+CHECK end release PASS
+CHECK begin PASS
+CHECK reentrant acquire control starts with no reusable provider PASS
+CHECK begin PASS
+CHECK late native acquire cannot publish across reentrant lifecycle change PASS
+CHECK begin PASS
+CHECK import PASS
+CHECK late native import cannot publish after provider eviction PASS
+CHECK begin PASS
+CHECK import PASS
+CHECK end release PASS
+CHECK next exact complete sequence reuses provider PASS
+CHECK end release PASS
+CHECK quiescent shutdown succeeds with reentrant statistics callbacks PASS
+CHECK shutdown releases each retained object exactly once PASS
+CHECK shutdown idempotent PASS
+CHECK shutdown cache empty PASS
+CRYPT CONTROLS RESULT checks=53 failures=0

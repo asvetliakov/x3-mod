@@ -251,9 +251,10 @@ again after the verify — at 4.086 ms each under Wine
 provider handle and the imported RSA-2048 public key across checks in
 `src/proxy/crypt_cache.cpp` behind the same import hooks, emulates the two
 ignored deletes with the recorded `NTE_BAD_KEYSET`, and leaves hash and verify
-to the CSP; the fixture against the bottle's real ADVAPI32 (call-by-call
-identical results and last errors, no handle leak, 4.1–4.7× per check) and the
-expected 11–13 s in-game saving are in
+to the CSP. Review fixes narrow the game call-site/lifetime gate and retain
+bounded native objects until process exit, with an explicit persistent scratch-
+container side effect. Historical fixture results and the still-unverified
+11–13 s in-game saving hypothesis are in
 [docs/verification/crypt-cache.md](../verification/crypt-cache.md).
 
 ## Light hooks, probe batch 2, fast resource reader

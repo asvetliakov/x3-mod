@@ -27,7 +27,7 @@ def synthetic(iterations=200, failures=0, mismatches=0, on_acquires=2, leak=0, c
     if fail_line:
         lines.append('FAIL compare iteration=3 step=verify result off=1 on=0')
     lines = [l for l in lines if not (drop and l.startswith(drop))]
-    lines.append(f'CRYPT CACHE RESULT checks=40 failures={failures}')
+    lines.append(f'CRYPT CACHE RESULT checks={37 + iterations} failures={failures}')
     if not terminal:
         lines.append('trailing')
     return '\n'.join(lines) + '\n'
@@ -47,11 +47,23 @@ class ParserTests(unittest.TestCase):
 
     def test_rejects_bad_reports(self):
         bad = (synthetic(failures=1), synthetic(mismatches=1), synthetic(on_acquires=3), synthetic(leak=1), synthetic(container_absent=0),
-               synthetic(on_mean=20000.0), synthetic(fail_line=True), synthetic(terminal=False), synthetic(drop='CRYPT_STATS'),
+               synthetic(fail_line=True), synthetic(terminal=False), synthetic(drop='CRYPT_STATS'),
                synthetic(drop='CRYPT_KEY'), synthetic(drop='CRYPT_LEAK'), '')
         for text in bad:
             with self.assertRaises(AssertionError):
                 runner.parse_report(text)
+
+    def test_duplicate_and_unknown_rows_rejected(self):
+        text = synthetic()
+        for prefix in ('CRYPT_KEY', 'CRYPT_MODE', 'CRYPT_STATS', 'CRYPT_COMPARE', 'CRYPT_SHUTDOWN', 'CRYPT_LEAK'):
+            row = next(line for line in text.splitlines() if line.startswith(prefix))
+            with self.assertRaises(AssertionError):
+                runner.parse_report(row + '\n' + text)
+        with self.assertRaises(AssertionError):
+            runner.parse_report('unexpected\n' + text)
+
+    def test_timing_noise_does_not_change_semantic_acceptance(self):
+        self.assertLess(runner.parse_report(synthetic(on_mean=20000.0))['speedup'], 1.0)
 
     def test_step_inventory_matches_fixture_source(self):
         source = (ROOT / 'verification/probe/crypt_cache_fixture.cpp').read_text()
