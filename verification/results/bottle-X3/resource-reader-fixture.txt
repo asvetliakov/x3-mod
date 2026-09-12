@@ -28,11 +28,11 @@ loading_probe_site index=9 name=fixture va=0x00000000 length=0 timed=1 kind=plai
 loading_probe_site index=10 name=fixture va=0x00000000 length=0 timed=1 kind=plain status=invalid_spec x0=- x1=- x2=- x3=- atomic_write=0
 loading_probe_site index=11 name=fixture va=0x00000000 length=0 timed=1 kind=plain status=invalid_spec x0=- x1=- x2=- x3=- atomic_write=0
 RR_CASE name=probes installed=4
-RR_STATS mode=verify calls=22 handled=20 fallbacks=2 verify_files=20 verify_equal=20 verify_mismatched=0 bytes_in=4044806 bytes_out=6162400 our_us=59993.4 original_us=66348.6
-resource_reader verify equal=0 size=31000 original_size=31000 mismatches=1 first=0 original_null=0 globals_ok=1 counters_ok=1 cursor_ok=1 catalogue=1 scrambled=1 our_us=336.600 original_us=355.900
-RR_TIMING name=large bytes=3000000 rounds=5 fast_us=29100.2 reference_us=32239.6 ratio=1.11
-RR_TIMING name=medium bytes=31000 rounds=400 fast_us=324.2 reference_us=340.7 ratio=1.05
-resource_reader_metric cumulative=1 mode=fast calls=34 handled=31 fallbacks=3 bytes_in=6086863 bytes_out=9274600 fast_us=90769.700 fast_max_us=29404.400 original_us=66704.500 verify_files=21 verify_equal=20 verify_mismatched=1 verify_original_null=0 catalogue=11 scrambled=25 fallback_unopened=0 fallback_gz_handle=0 fallback_progress=0 fallback_tell=0 fallback_state=0 fallback_length=0 fallback_scratch=0 fallback_short_read=0 fallback_not_gzip=3 fallback_method=0 fallback_reserved=0 fallback_header=0 fallback_empty=0 fallback_alloc=0 fallback_init=0 fallback_inflate=0 fallback_size=0
+RR_STATS mode=verify calls=22 handled=20 fallbacks=2 verify_files=20 verify_equal=20 verify_mismatched=0 bytes_in=4044806 bytes_out=6162400 our_us=58865.6 original_us=64381.1
+resource_reader verify equal=0 size=31000 original_size=31000 mismatches=1 first=0 original_null=0 globals_ok=1 counters_ok=1 cursor_ok=1 catalogue=1 scrambled=1 our_us=313.400 original_us=334.000
+RR_TIMING name=large bytes=3000000 rounds=5 fast_us=27481.0 reference_us=30932.0 ratio=1.13
+RR_TIMING name=medium bytes=31000 rounds=400 fast_us=308.3 reference_us=323.5 ratio=1.05
+resource_reader_metric cumulative=1 mode=fast calls=34 handled=31 fallbacks=3 bytes_in=6086863 bytes_out=9274600 fast_us=87685.200 fast_max_us=29105.500 original_us=64715.100 verify_files=21 verify_equal=20 verify_mismatched=1 verify_original_null=0 catalogue=11 scrambled=25 fallback_unopened=0 fallback_gz_handle=0 fallback_progress=0 fallback_tell=0 fallback_state=0 fallback_length=0 fallback_scratch=0 fallback_short_read=0 fallback_not_gzip=3 fallback_method=0 fallback_reserved=0 fallback_header=0 fallback_empty=0 fallback_alloc=0 fallback_init=0 fallback_inflate=0 fallback_size=0
 loading_probe_site name=fixture restored=1 status=restored
 loading_probe_site name=fixture restored=1 status=restored
 loading_probe_site name=fixture restored=1 status=restored

@@ -13,10 +13,16 @@ Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
 
-## Latest checkpoint: review 25 — fast adjacency, direct engine reads, gz buffer, bottle X3 (2026-09-12 night)
+## Latest checkpoint: review 29 — loading branch, adjacency parity and present readback merged (2026-09-12 night)
 
-Review: [review-25.md](verification/review-25.md) (three low findings fixed;
-full suite chain green on the Steam bottle after a clean rebuild). Nothing in
+Reviews: [review-25.md](verification/review-25.md) (fast adjacency, engine
+reads, gz buffer; three low findings fixed), [review-27.md](verification/review-27.md)
+(loading branch, merged as `c152860`), [review-28.md](verification/review-28.md)
+(GenerateAdjacency parity rewrite, `a839bc9`) and
+[review-29.md](verification/review-29.md) (integration of the three on main
+after the merges `c152860` and `0a32f33`: hook-table/gate/install-order
+checks, `--dry-run` of the planned commands, full suite chain green after a
+clean rebuild; the build hash to install next is recorded there). Nothing in
 this checkpoint is gameplay-verified yet; the next user runs below are the
 acceptance tests. The game and `tools/manage.py` default to the CrossOver
 bottle **X3** (arm64 Wine + FEX); fixtures default to Steam
@@ -37,7 +43,9 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   wrong were decompiled from the game's d3dx9_37 and the module, its Python
   port and the fixture rewritten to them
   ([d3dx-generate-adjacency.md](reverse-engineering/d3dx-generate-adjacency.md),
-  [handoff-adjacency-parity.md](verification/handoff-adjacency-parity.md), resolved).
+  [handoff-adjacency-parity.md](verification/handoff-adjacency-parity.md), resolved;
+  reviewed in [review-28.md](verification/review-28.md), three gate/contract
+  findings fixed, committed as `a839bc9`).
   Fixture evidence on both bottles (Steam/Rosetta and X3/FEX): 51/51 computable
   named cases and a 2,000-mesh random differential sweep byte-identical to
   d3dx9_37 (`mismatched=0`), 33,272 checks; the rewrite's speed regression was
@@ -67,8 +75,9 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   loads representative (removes ~16 s of instrumented stall) but the plain
   game gains ~0.5 s. The true X3 save-load time without telemetry is unknown —
   run 1 below measures it.
-- **Light loading hooks, probe batch 2, fast resource reader** (uncommitted
-  worktree, 2026-09-12 night; [loading-probes.md](verification/loading-probes.md),
+- **Light loading hooks, probe batch 2, fast resource reader** (loading
+  branch, reviewed in [review-27.md](verification/review-27.md), merged into
+  main as `c152860`; [loading-probes.md](verification/loading-probes.md),
   [resource-reader.md](verification/resource-reader.md)). The counting/timing
   import rows moved to a no-SSE unit without `CpuCallBoundary` (objdump: 0
   xmm/x87 references; envelope 355 ns vs 1,215 ns under FEX, gz fixture);
@@ -80,15 +89,20 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   the catalogue `.dat` handles (both call sites are plain `E8` sites);
   `frame_end` lines carry `elapsed_ms`/`dt_ms`/`qpc` in every mode. All three
   gated, exact-executable only, fixture-verified against the real zlib; not yet
-  run in the game — the acceptance runs are listed in the two documents.
+  run in the game — the acceptance runs are listed in the two documents and
+  in runs 6–7 below. A plain `--direct` run patches nothing (review 29
+  checked the gates): only the `frame_end` stamps differ from the review-26 build.
 - **Bottle X3 validation** ([bottles.md](verification/bottles.md)): four of
   five suites pass on X3 with comparable numbers; the sampling profiler cannot
   attribute samples under FEX (`GetThreadContext` returns creation-time
   context, also seen once on Rosetta), and the FEX CRT prints NaN/Inf as huge
   finite numbers (the exposure fixture must print bits). Loading attribution
   on X3 therefore relies on hook/trampoline counters.
-- **Review 27 (worktree, 2026-09-12 evening): the presented-image readback and
-  the iteration-12 tool.** `--taa-debug` capture frames now also write
+- **Presented-image readback and the iteration-12 tool** (readback branch,
+  merged into main as `0a32f33`; fixture evidence in
+  [taa-sharpen.md](verification/taa-sharpen.md) and
+  [iteration-12.md](verification/iteration-12.md), integration checked in
+  review 29). `--taa-debug` capture frames now also write
   `present_<device>_<frame>.bgra8`, the game's main target after the RCAS
   sharpen draw / copy-back (8-bit route) or after the HDR write-back — the
   `taa_*` readback is the unsharpened history input, so until now no run
@@ -104,10 +118,10 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   rise −0.03 to −0.20 px, halo excursion +0.02–0.06 of edge contrast, flicker
   energy +3–7 % evenly across classes ([iteration-12.md](verification/iteration-12.md),
   complete). Fixed: `analyze_iteration09_run2.py` burst grouping (readback
-  frames only) and its `--text` crash without mesh-cache lines. The `b10d129`
-  checkpoint did not compile (`ID3DXMesh` undeclared in `loading_trace.h`);
-  a forward declaration fixes it. Not committed; branch
-  `worktree-agent-a59b38a89c58bc731`.
+  frames only) and its `--text` crash without mesh-cache lines. The
+  `struct ID3DXMesh;` forward declaration in `loading_trace.h` (the `b10d129`
+  checkpoint did not compile without it) is on main since `a839bc9`; the
+  merge kept one copy.
 - **Analyses**: [iteration-10.md](verification/iteration-10.md) (FEX health
   clean, TAA no regression, frame time 24.1 → 8.4 ms route off, 34.2 → 16.9 ms
   route on; hook agrees 214/214, `rs_resyncs` 24 on a latch-only screen);
@@ -598,7 +612,9 @@ all 181 routed frames, mip bias applied on 34,625 draws with matching
 restores, the game's effects write bias 0 on cube stages 3/4 and the override
 handles it; analysis in flight → iteration-12.md).
 
-Branches (committed, not merged): `worktree-agent-a68201431d638fe21`
+Branches at the pause (since merged: the loading branch as `c152860` after
+review 27, the readback branch as `0a32f33`; integration in review 29):
+`worktree-agent-a68201431d638fe21`
 (loading: light no-SSE hooks, probe batch 2 with 12 byte-verified
 trampolines, gated fast resource reader + catalogue handle pool, frame_end
 `elapsed_ms`; review 27 in progress in that worktree, see review-27.md),
@@ -674,7 +690,11 @@ default resolve point.
 
 ## Next user-managed runs (2026-09-12 night, bottle X3)
 
-All runs on the X3 bottle with the installed build (see "Installed" below);
+All runs on the X3 bottle with the installed build (see "Installed" below;
+the currently installed review-26 build `8864bff0…` predates the loading
+branch, the adjacency parity fix and the present readback — install the
+review-29 build first, hash in [review-29.md](verification/review-29.md),
+otherwise runs 2, 4, 6 and 7 cannot show the new lines);
 logs land in the game's `x3-modern-captures` folder as
 `session-<date>-<pid>.log`. Tell the orchestrator after each run; it snapshots
 the log to /tmp and analyses it. Same save and flight path as the earlier runs.
@@ -706,6 +726,14 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
 5. **Run 5 — first tonemapped look**: run 4 plus `--hdr --hdr-tonemap`
    (optionally `--hdr-look golden`, `--hdr-ev -1`). Report what looks wrong;
    the orchestrator reads the `hdr_frame` ev/luma fields and `hdr_tonemap`.
+6. **Run 6 — loading stall decomposition**: `python3 tools/manage.py launch
+   --direct --telemetry --loading-probes` ([loading-probes.md](verification/loading-probes.md));
+   `loading_probe_site … status=late_claim` in the log would mean an
+   install-order regression.
+7. **Run 7 — resource reader**: `python3 tools/manage.py launch --direct
+   --telemetry --resource-read verify --dat-handles`
+   ([resource-reader.md](verification/resource-reader.md)); `fast` only after
+   verify reports no difference.
 
 ## Concrete next work
 

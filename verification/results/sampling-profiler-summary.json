@@ -13,13 +13,13 @@
   "sources": {
     "src/proxy/sampling_profiler.h": "4dd65e4adce63b06eb8342b023403a8eba627aa355d53af26701f90588463d6f",
     "src/proxy/sampling_profiler.cpp": "a58979029c532538265e0aacf3a03e3cbb4bd88db2cd6833b53d460afbf4ea2d",
-    "src/proxy/capture.h": "e573832e0771ad93c76d58dfc8ddc9b33aec5c7db5d4a6ca526797bb5736cf31",
+    "src/proxy/capture.h": "35a4350a1babdea3d61b7de88b6548669f9e7de19137e6cdebc2b018a591949b",
     "verification/probe/sampling_profiler_fixture.cpp": "4aaca0f592c67480db8b30235f3187b0055332fa4a5b1e49513629ee22e26347",
     "verification/probe/sampling_profiler_fpo.cpp": "cd89b2c3268c118a31d1ae58580a7f112a2673a526b37f5834ae7e220b191c13",
     "verification/probe/build_sampling_profiler.sh": "84de45862a0cf10e2ee3fdc8f4aa675adc5c73a0b65fc2911ef1dd49cf65d52b",
     "verification/probe/run_sampling_profiler.py": "fd3763e96e6652ab8d1ef81e631b65c5f3c33e96acea5bc820802012d2df0ffa"
   },
-  "executable_sha256": "63f33233892ef25e0307ee74a77d123052cc4dd924f3e4b1307e4464a4ad7493",
+  "executable_sha256": "08d919c81b8bdfe21af0e42ff723f1885daf5e4322229735d3e6a88b6fe23e35",
   "frame_pointer_usage": {
     "spin_a": true,
     "wait_b": true,
@@ -30,14 +30,14 @@
     "0": {
       "output": "verification/results/sampling-profiler-off-fixture.txt",
       "exit_code": 0,
-      "wall_s": 5.235,
-      "output_sha256": "6b1440ca023d5d9cd46e77723ef116314df450e0ec4fe73b0d564ec183046367"
+      "wall_s": 3.351,
+      "output_sha256": "a379d587546d36a90661b5fdea5bf8fb9dd37423a334357fd784d55d66a5e65e"
     },
     "1": {
       "output": "verification/results/sampling-profiler-on-fixture.txt",
       "exit_code": 0,
-      "wall_s": 3.335,
-      "output_sha256": "55c9cf090be87f5ba820abf2e91aecc83174cb98ccb0737cb858c9cec2c2b20f"
+      "wall_s": 3.38,
+      "output_sha256": "211ee21b50c0bfc04e39e449854751d193ac8fd7d7457f57224ad1f4fb5d85ba"
     }
   },
   "checks": {
@@ -66,84 +66,84 @@
   },
   "notes": {
     "a_leaf_in_spin_a": [
-      1.0,
-      1089,
-      1089
+      0.9991596638655462,
+      1189,
+      1190
     ],
     "a_pair_spin_a_caller_a": [
       1.0,
-      1089,
-      1089
+      1190,
+      1190
     ],
     "b_leaf_outside_exe": [
       1.0,
-      1090,
-      1090
+      1191,
+      1191
     ],
     "b_leaf_kinds": {
       "leaf_x3ap": 0,
-      "leaf_ntdll": 1090,
+      "leaf_ntdll": 1191,
       "leaf_wine": 0,
       "leaf_other": 0,
       "leaf_proxy": 0
     },
     "b_frame_in_wait_b": [
       1.0,
-      1090,
-      1090
+      1191,
+      1191
     ],
     "c_leaf_in_fpo_leaf": [
-      0.9990817263544536,
-      1088,
-      1089
+      0.9991596638655462,
+      1189,
+      1190
     ],
     "c_frame_in_fpo_leaf": [
-      0.9990817263544536,
-      1088,
-      1089
+      0.9991596638655462,
+      1189,
+      1190
     ],
     "c_pair_fpo_leaf_fpo_spin": [
-      0.9990817263544536,
-      1088,
-      1089
+      0.9991596638655462,
+      1189,
+      1190
     ],
     "c_pair_fpo_leaf_caller_c": [
       0.0,
       0,
-      1089
+      1190
     ],
     "sampler_cost": {
-      "ticks": 1090,
-      "samples": 2912,
+      "ticks": 1191,
+      "samples": 3180,
       "dropped": 0,
       "reports": 2,
       "threads": 4,
       "modules": 5,
-      "tick_us_mean": 268.584,
-      "tick_us_max": 7764.1,
-      "report_us": 2863.5,
-      "refresh_us": 12264.4
+      "tick_us_mean": 260.573,
+      "tick_us_max": 6410.7,
+      "report_us": 2961.4,
+      "refresh_us": 12388.8
     },
     "overhead": {
       "iterations_a": {
-        "off": 7397,
-        "on": 7186,
-        "overhead": 0.02852507773421653
+        "off": 7363,
+        "on": 7171,
+        "overhead": 0.026076327583865244
       },
       "iterations_c": {
-        "off": 7404,
-        "on": 7192,
-        "overhead": 0.028633171258779067
+        "off": 7375,
+        "on": 7174,
+        "overhead": 0.027254237288135585
       },
       "main_iterations": {
-        "off": 1104053,
-        "on": 1074567,
-        "overhead": 0.02670705120134631
+        "off": 1152927,
+        "on": 1125454,
+        "overhead": 0.02382891544737875
       }
     },
     "elapsed_ms": {
-      "off": 3018,
-      "on": 3023
+      "off": 3016,
+      "on": 3022
     }
   },
   "functions": {

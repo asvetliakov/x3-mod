@@ -1,4 +1,4 @@
-FIXTURE_BEGIN profile=0 pid=204 tid=208 qpc_frequency=10000000 main_base=0x00400000
+FIXTURE_BEGIN profile=0 pid=528 tid=532 qpc_frequency=10000000 main_base=0x00400000
 FIXTURE_FUNCTION name=spin_a rva_begin=0x1550 rva_end=0x15f0
 FIXTURE_FUNCTION name=caller_a rva_begin=0x1600 rva_end=0x1620
 FIXTURE_FUNCTION name=wait_b rva_begin=0x1630 rva_end=0x1660
@@ -6,13 +6,13 @@ FIXTURE_FUNCTION name=caller_c rva_begin=0x1670 rva_end=0x1690
 FIXTURE_FUNCTION name=fpo_leaf rva_begin=0x1980 rva_end=0x19f0
 FIXTURE_FUNCTION name=fpo_spin rva_begin=0x1a00 rva_end=0x1a20
 FIXTURE_PROFILER requested=0 active=0
-FIXTURE_THREAD name=a tid=224
-FIXTURE_THREAD name=b tid=228
-FIXTURE_THREAD name=c tid=232
-FIXTURE_PROGRESS main_iterations=160764 bytes=331718925
-FIXTURE_PROGRESS main_iterations=318546 bytes=656640187
-FIXTURE_PROGRESS main_iterations=516213 bytes=1063848951
-FIXTURE_PROGRESS main_iterations=714218 bytes=1473217800
-FIXTURE_PROGRESS main_iterations=903726 bytes=1864196697
+FIXTURE_THREAD name=a tid=548
+FIXTURE_THREAD name=b tid=552
+FIXTURE_THREAD name=c tid=556
+FIXTURE_PROGRESS main_iterations=151820 bytes=313367892
+FIXTURE_PROGRESS main_iterations=319313 bytes=658224489
+FIXTURE_PROGRESS main_iterations=517432 bytes=1066343170
+FIXTURE_PROGRESS main_iterations=733406 bytes=1512782022
+FIXTURE_PROGRESS main_iterations=945431 bytes=1950269607
 FIXTURE_STATUS joined=0 ticks=0 samples=0 dropped=0 reports=0 threads=0 modules=0 unsampled=0 tick_us_mean=0.000 tick_us_max=0.000 report_us=0.000 refresh_us=0.000
-FIXTURE_END exit=0 elapsed_ms=3018 iterations_a=7397 iterations_c=7404 main_iterations=1104053 wait_result=1 handles_before=0 handles_after=0 threads_before=1 threads_after=1 active_after=0 stop_us=46
+FIXTURE_END exit=0 elapsed_ms=3016 iterations_a=7363 iterations_c=7375 main_iterations=1152927 wait_result=1 handles_before=0 handles_after=0 threads_before=1 threads_after=1 active_after=0 stop_us=43

@@ -96,11 +96,11 @@ gz_buffer_file slot=30 capacity=4096 calls=3 small_calls=2 served_bytes=105 real
 gz_buffer_file slot=31 capacity=4096 calls=3 small_calls=2 served_bytes=105 real_reads=2 real_bytes=100 direct_reads=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 error=0 end=1 close=0
 GZ_CASE name=table-full capacity=4096 ops=165 checks=268 failures=0
 GZ_CASE_BEGIN name=timing
-GZ_TIMING mode=unbuffered calls=10000000 bytes=30000000 seconds=0.346 ns_per_call=34.6 wall_ms=340
-GZ_TIMING mode=qpc calls=10000000 bytes=30000000 seconds=2.427 ns_per_call=242.7 wall_ms=2414
-GZ_TIMING mode=light calls=10000000 bytes=30000000 seconds=3.954 ns_per_call=395.4 wall_ms=3938 row_count=10000000 row_bytes=30000000 nesting=1
-GZ_TIMING mode=hooked calls=10000000 bytes=30000000 seconds=12.255 ns_per_call=1225.5 wall_ms=12246
+GZ_TIMING mode=unbuffered calls=10000000 bytes=30000000 seconds=0.326 ns_per_call=32.6 wall_ms=320
+GZ_TIMING mode=qpc calls=10000000 bytes=30000000 seconds=2.401 ns_per_call=240.1 wall_ms=2384
+GZ_TIMING mode=light calls=10000000 bytes=30000000 seconds=3.837 ns_per_call=383.7 wall_ms=3834 row_count=10000000 row_bytes=30000000 nesting=1
+GZ_TIMING mode=hooked calls=10000000 bytes=30000000 seconds=12.142 ns_per_call=1214.2 wall_ms=12136
 gz_buffer_file slot=0 capacity=262144 calls=10000000 small_calls=10000000 served_bytes=30000000 real_reads=115 real_bytes=30000000 direct_reads=0 getcs=0 tells=0 seeks=0 seeks_served=0 seeks_real=0 error=0 end=0 close=0
-GZ_TIMING mode=buffered calls=10000000 bytes=30000000 seconds=0.430 ns_per_call=43.0 wall_ms=421
+GZ_TIMING mode=buffered calls=10000000 bytes=30000000 seconds=0.420 ns_per_call=42.0 wall_ms=405
 GZ_CASE name=timing capacity=262144 ops=0 checks=12 failures=0
 GZ BUFFER RESULT checks=735876 failures=0

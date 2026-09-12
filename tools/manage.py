@@ -83,6 +83,8 @@ def main():
         parser.error('--object-lifetime requires --object-trace and --ownership.')
     if args.mesh_cache and not args.telemetry:
         parser.error('--mesh-cache requires --telemetry.')
+    if args.loading_probes and not args.telemetry:
+        parser.error('--loading-probes requires --telemetry (the probe rows and trampolines are installed by the loading-trace initialization).')
     if args.mesh_adjacency != 'native' and not args.telemetry:
         parser.error('--mesh-adjacency verify|fast requires --telemetry.')
     if args.mesh_adjacency_dump and args.mesh_adjacency != 'verify':

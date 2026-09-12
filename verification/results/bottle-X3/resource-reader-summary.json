@@ -23,14 +23,14 @@
     "src/proxy/loading_probes.cpp": "49630c0bd9f4706b7ec7c6836d4e6963fa7ae0fae8df81131988d44b606818db",
     "src/proxy/loading_trace_light.h": "d233da9be49a47953ce82fe330e0e863c4ab5464c08d8b066602a690d7115aed",
     "src/proxy/loading_trace_light.cpp": "074a26fc2c6772082c38c28902c44247ea4a5b8b3a71e2460de10c5501ef8241",
-    "src/proxy/loading_trace.h": "0fecb2a9110f5f9a3e829947e31e28795f4303f240dd89eb7563933f6322badd",
+    "src/proxy/loading_trace.h": "0459716f86040b872ae2bf4ec40d072188b2732bbafafb31a18f7a946d84a565",
     "verification/probe/resource_reader_fixture.cpp": "08ef3b0866b9baa0bac18be103ee9bc4e848a2ce1ef0b35424f83423ac2b1145",
     "verification/probe/build_resource_reader.sh": "d0795d783d6afa55db902435cf751c30d27dff429c47dc53329253c3e4e62896",
     "verification/probe/build_loading_light.sh": "9530d12e65cdb3bff4345ba806b74d9620a91fee45a33231b4f67fbe8a76d251",
     "verification/probe/run_resource_reader.py": "75bdbc7a9aca2b6cdf54e21be2041fd0b719aa59033531ed92ced9ff4592da3d"
   },
   "zlib1_sha256_before": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
-  "executable_sha256": "90b03deb84acdb35ec670909de41b4e8a62a9312bac262a4744cbfad484fbf4b",
+  "executable_sha256": "2d608a55be2faaae390fd7f83c1ce18ac87223caa730457116b9751e2d6ce1dc",
   "zlib1_sha256_copied": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
   "exit_code": 0,
   "report": {
@@ -79,22 +79,22 @@
       "verify_mismatched": 0,
       "bytes_in": 4044806,
       "bytes_out": 6162400,
-      "our_us": 59993.4,
-      "original_us": 66348.6
+      "our_us": 58865.6,
+      "original_us": 64381.1
     },
     "timing": {
       "large": {
         "bytes": 3000000,
         "rounds": 5,
-        "fast_us": 29100.2,
-        "reference_us": 32239.6,
-        "ratio": 1.11
+        "fast_us": 27481.0,
+        "reference_us": 30932.0,
+        "ratio": 1.13
       },
       "medium": {
         "bytes": 31000,
         "rounds": 400,
-        "fast_us": 324.2,
-        "reference_us": 340.7,
+        "fast_us": 308.3,
+        "reference_us": 323.5,
         "ratio": 1.05
       }
     },
