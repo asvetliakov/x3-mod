@@ -1,0 +1,65 @@
+iteration-07 TAA analysis of x3-iteration07-snapshot.log (90351004 bytes, sha256 dfcb6610677209e6…)
+TAA: 148 motion_output_frame records, attempted 118, resolved 118, failed 0, history valid 117
+  skip histogram {'0': 118, '2': 30} ; results {'00000001': 30, '00000000': 118}
+  every captured frame resolved with history: True
+route totals: draws 41916 routed 29709 matched 29644 gates {'gate1': 0, 'gate2': 5771, 'gate3': 694, 'gate4': 5742, 'gate5': 0, 'gate6': 65}
+  per-draw gate histogram {'0': 4030, '3': 52, '4': 768, '6': 4}; counter consistency True
+burst 0 frames 2017-2020: cut median [0.0, 0.0, 0.0, 0.0] px, missing [0.0, 0.0, 0.0, 0.0], verdicts [0, 0, 0, 0], stationary=True
+burst 1 frames 2259-2262: cut median [1.3402, 7.7586, 7.9111, 8.0497] px, missing [0.0, 0.0, 0.0, 0.0], verdicts [0, 0, 0, 0], stationary=False
+burst 2 frames 3170-3173: cut median [2.8173, 15.7745, 15.9249, 16.1341] px, missing [0.0106, 0.0105, 0.0, 0.0], verdicts [0, 0, 0, 0], stationary=False
+diagnostics: 0 failure records, 0 resets, 0 shutdown records, 0 nonzero readback results
+  telemetry 0:create_device: n=1 mean=7675.3us max=7675.3us buckets=[0, 0, 0, 1, 0, 0]
+  telemetry 0:lock_wait: n=6559985 mean=0.2us max=126.9us buckets=[6559751, 233, 1, 0, 0, 0]
+  telemetry 0:log_flush: n=303 mean=0.6us max=28.0us buckets=[302, 1, 0, 0, 0, 0]
+  telemetry 0:shader_dump: n=61 mean=7313.7us max=31998.1us buckets=[0, 0, 1, 52, 8, 0]
+  telemetry 0:shader_getfunction: n=10311 mean=0.5us max=37.0us buckets=[10308, 3, 0, 0, 0, 0]
+  telemetry 0:shader_hash: n=10311 mean=6.9us max=97.1us buckets=[8591, 1720, 0, 0, 0, 0]
+  telemetry 0:shader_inspect: n=10311 mean=51.7us max=32043.3us buckets=[5983, 4266, 1, 53, 8, 0]
+  telemetry 1:capture_cpu: n=5230 mean=952.1us max=32810.0us buckets=[0, 119, 4382, 717, 12, 0]
+  telemetry 1:cube_texture: n=35 mean=25.3us max=143.1us buckets=[4, 30, 1, 0, 0, 0]
+  telemetry 1:depth_stencil: n=1 mean=49.6us max=49.6us buckets=[0, 1, 0, 0, 0, 0]
+  telemetry 1:draw_backend: n=2226284 mean=2.5us max=1691.4us buckets=[2213800, 12449, 32, 3, 0, 0]
+  telemetry 1:frame_capture: n=15 mean=392177.5us max=751970.3us buckets=[0, 0, 0, 0, 3, 12]
+  telemetry 1:frame_normal: n=8105 mean=49828.4us max=97393549.4us buckets=[0, 0, 0, 737, 7340, 28]
+  telemetry 1:index_buffer: n=12937 mean=2.7us max=388.9us buckets=[12639, 293, 5, 0, 0, 0]
+  telemetry 1:log_flush: n=8421 mean=0.7us max=11.4us buckets=[8420, 1, 0, 0, 0, 0]
+  telemetry 1:present_capture: n=12 mean=78.8us max=113.6us buckets=[0, 10, 2, 0, 0, 0]
+  telemetry 1:present_normal: n=8109 mean=34.1us max=873.0us buckets=[1500, 6540, 69, 0, 0, 0]
+  telemetry 1:shader_ps_backend: n=57 mean=17.0us max=96.8us buckets=[21, 36, 0, 0, 0, 0]
+  telemetry 1:shader_vs_backend: n=58 mean=17.2us max=177.7us buckets=[22, 35, 1, 0, 0, 0]
+  telemetry 1:snapshot: n=5098 mean=802.7us max=7020.9us buckets=[0, 0, 5068, 30, 0, 0]
+  telemetry 1:texture: n=1784 mean=22.7us max=386.4us buckets=[249, 1523, 12, 0, 0, 0]
+  telemetry 1:vertex_buffer: n=12945 mean=8.1us max=4156.5us buckets=[10842, 2035, 67, 1, 0, 0]
+  window run/0:lock_wait/all: 304 windows, per-window mean median 0.2us, per-window min median 0.1us
+  window run/0:lock_wait/other: 69 windows, per-window mean median 0.2us, per-window min median 0.1us
+  window run/0:lock_wait/scene: 232 windows, per-window mean median 0.2us, per-window min median 0.1us
+  window run/1:draw_backend/all: 250 windows, per-window mean median 2.4us, per-window min median 0.7us
+  window run/1:draw_backend/other: 29 windows, per-window mean median 2.7us, per-window min median 0.8us
+  window run/1:draw_backend/scene: 221 windows, per-window mean median 2.4us, per-window min median 0.7us
+  window run/1:frame_normal/all: 246 windows, per-window mean median 37776.2us, per-window min median 35071.6us
+  window run/1:frame_normal/other: 29 windows, per-window mean median 34593.2us, per-window min median 33581.8us
+  window run/1:frame_normal/scene: 217 windows, per-window mean median 38543.2us, per-window min median 36141.9us
+  window run/1:present_normal/all: 246 windows, per-window mean median 46.6us, per-window min median 38.9us
+  window run/1:present_normal/other: 29 windows, per-window mean median 10.2us, per-window min median 7.2us
+  window run/1:present_normal/scene: 217 windows, per-window mean median 48.6us, per-window min median 40.9us
+  window baseline/0:lock_wait/all: 455 windows, per-window mean median 0.2us, per-window min median 0.0us
+  window baseline/0:lock_wait/other: 288 windows, per-window mean median 0.2us, per-window min median 0.0us
+  window baseline/0:lock_wait/scene: 165 windows, per-window mean median 0.2us, per-window min median 0.0us
+  window baseline/1:draw_backend/all: 379 windows, per-window mean median 2.7us, per-window min median 0.6us
+  window baseline/1:draw_backend/other: 235 windows, per-window mean median 2.8us, per-window min median 0.6us
+  window baseline/1:draw_backend/scene: 144 windows, per-window mean median 2.5us, per-window min median 0.6us
+  window baseline/1:frame_normal/all: 366 windows, per-window mean median 24603.5us, per-window min median 22565.3us
+  window baseline/1:frame_normal/other: 230 windows, per-window mean median 25013.0us, per-window min median 23207.1us
+  window baseline/1:frame_normal/scene: 136 windows, per-window mean median 16107.1us, per-window min median 14115.1us
+  window baseline/1:present_normal/all: 367 windows, per-window mean median 12.9us, per-window min median 8.3us
+  window baseline/1:present_normal/other: 231 windows, per-window mean median 12.0us, per-window min median 7.5us
+  window baseline/1:present_normal/scene: 136 windows, per-window mean median 16.3us, per-window min median 10.6us
+  boundary StretchRect bracket [run]: n=12 median=21475.4us max=32804.7us
+  boundary StretchRect bracket [baseline]: n=68 median=18.3us max=29.1us
+image 2017->2018: jitter step (+0.5000,+0.3333) colour (+0.5086,+0.3441) resolved (+0.5375,+0.3252) resolved/colour (1.057,0.945)
+image 2018->2019: jitter step (-0.2500,-0.5556) colour (-0.2563,-0.5696) resolved (-0.2148,-0.5317) resolved/colour (0.838,0.933)
+image 2019->2020: jitter step (+0.5000,+0.3333) colour (+0.4922,+0.3446) resolved (+0.4964,+0.3205) resolved/colour (1.008,0.930)
+blur frame 2017: gradient energy ratio 0.5646, high-frequency fraction ratio 0.6090
+blur frame 2018: gradient energy ratio 0.5554, high-frequency fraction ratio 0.6174
+blur frame 2019: gradient energy ratio 0.5805, high-frequency fraction ratio 0.6058
+blur frame 2020: gradient energy ratio 0.5737, high-frequency fraction ratio 0.5679

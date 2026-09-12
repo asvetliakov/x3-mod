@@ -532,6 +532,51 @@ class MotionReadbackTests(unittest.TestCase):
         shifted = frame(run(self.dir), 2)['depth']
         self.assertLess(shifted['compared_pixels'] - shifted['previous_sentinel'], d['compared_pixels'])
 
+    def test_jitter_from_log_unjitters_the_current_raster_pixel(self):
+        """With --motion-jitter/--taa the scene is rasterized at `p + j` while the
+        producer still writes the unjittered previous UV, so every displacement
+        of a static object is reported as `-j` unless the frame's own jitter is
+        taken from the log.  The fixture's readback is unjittered, so switching
+        the option on must move every displacement by exactly `+j`."""
+        extra = (' jitter=1 jitter_index=3 jitter_x=0.250000 jitter_y=-0.500000'
+                 ' jitter_previous_x=0.000000 jitter_previous_y=0.000000')
+        build_scenario(self.dir, frame2_extra=extra)
+        plain = frame(run(self.dir), 2)['pixels']
+        lifted = frame(run(self.dir, jitter_from_log=True), 2)['pixels']
+        self.assertEqual(plain['raster_jitter_px'], [0.0, 0.0])
+        self.assertEqual(lifted['raster_jitter_px'], [0.25, -0.5])
+        self.assertAlmostEqual(lifted['displacement_x_px']['median'],
+                               plain['displacement_x_px']['median'] + 0.25, places=5)
+        self.assertAlmostEqual(lifted['displacement_y_px']['median'],
+                               plain['displacement_y_px']['median'] - 0.5, places=5)
+        # row_consistency compares against the unjittered raster position, so the
+        # fixture (whose raster is unjittered) gains exactly that error instead.
+        self.assertAlmostEqual(
+            frame(run(self.dir, jitter_from_log=True), 2)['row_consistency']['max_error_px'],
+            frame(run(self.dir), 2)['row_consistency']['max_error_px'] + 0.5, places=5)
+
+    def test_jitter_from_log_is_inert_without_the_option_or_without_jitter(self):
+        off = ' jitter=0 jitter_index=0 jitter_x=0.250000 jitter_y=-0.500000'
+        build_scenario(self.dir, frame2_extra=off)
+        # jitter=0 means the route ran unjittered; the stale offsets are ignored.
+        self.assertEqual(frame(run(self.dir, jitter_from_log=True), 2)['pixels']['raster_jitter_px'],
+                         [0.0, 0.0])
+        build_scenario(self.dir)      # no jitter fields at all
+        self.assertEqual(frame(run(self.dir, jitter_from_log=True), 2)['pixels']['raster_jitter_px'],
+                         [0.0, 0.0])
+
+    def test_jitter_from_log_offsets_the_previous_coverage_lookup(self):
+        # Frame 1's validity mask lives on frame 1's jittered raster; the previous
+        # UV is unjittered, so the lookup must add jitter_previous.
+        extra = (' jitter=1 jitter_index=3 jitter_x=0.000000 jitter_y=0.000000'
+                 ' jitter_previous_x=8.000000 jitter_previous_y=8.000000')
+        build_scenario(self.dir, frame2_extra=extra)
+        plain = frame(run(self.dir), 2)['temporal']
+        lifted = frame(run(self.dir, jitter_from_log=True), 2)['temporal']
+        self.assertEqual(plain['previous_jitter_px'], [0.0, 0.0])
+        self.assertEqual(lifted['previous_jitter_px'], [8.0, 8.0])
+        self.assertNotEqual(lifted['previous_covered'], plain['previous_covered'])
+
     def test_bilinear_depth_sampling(self):
         build_scenario(self.dir, depth_image='sentinel')
         d = frame(run(self.dir, depth_sampling='bilinear'), 2)['depth']

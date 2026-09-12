@@ -610,6 +610,7 @@ def analyze_pixels(frame, readback, options):
     """Displacement statistics, static test and row-pair consistency for one frame."""
     width, height = readback.width, readback.height
     jitter_u, jitter_v = options['jitter_uv']
+    raster_jx, raster_jy = raster_jitter_px(frame, options)
     count = len(readback.index)
     magnitudes = array.array('f')
     dx_values = array.array('f')
@@ -636,8 +637,8 @@ def analyze_pixels(frame, readback, options):
             outside += 1
         # Previous raster position minus current raster position, both in the
         # texture-centre convention (the +0.5 cancels in the difference).
-        dx = (u + jitter_u) * width - (px + 0.5)
-        dy = (v + jitter_v) * height - (py + 0.5)
+        dx = (u + jitter_u) * width - (px - raster_jx + 0.5)
+        dy = (v + jitter_v) * height - (py - raster_jy + 0.5)
         dx_values.append(dx)
         dy_values.append(dy)
         magnitude = math.hypot(dx, dy)
@@ -662,6 +663,7 @@ def analyze_pixels(frame, readback, options):
         'suspicious_fraction': (suspicious / count) if count else None,
         'static_max_error_px': static_max if count else None,
         'static_violations': static_violations if count else None,
+        'raster_jitter_px': [raster_jx, raster_jy],
     }
     return stats, dx_values, dy_values
 
@@ -670,6 +672,7 @@ def row_consistency(frame, readback, dx_values, dy_values, options):
     """Map each sampled valid pixel back through every matched draw's row pair."""
     width, height = readback.width, readback.height
     jitter_u, jitter_v = options['jitter_uv']
+    raster_jx, raster_jy = raster_jitter_px(frame, options)
     tolerance = options['consistency_tolerance_px']
     candidates = []
     skipped = []
@@ -736,7 +739,8 @@ def row_consistency(frame, readback, dx_values, dy_values, options):
                 continue
             cx = (m[0][0] * xp + m[0][1] * yp + m[0][2] * zp + m[0][3]) / cw
             cy = (m[1][0] * xp + m[1][1] * yp + m[1][2] * zp + m[1][3]) / cw
-            error = max(abs((cx * 0.5 + 0.5) * width - px), abs((-cy * 0.5 + 0.5) * height - py))
+            error = max(abs((cx * 0.5 + 0.5) * width - (px - raster_jx)),
+                        abs((-cy * 0.5 + 0.5) * height - (py - raster_jy)))
             if error <= tolerance:
                 hits += 1
             if best is None or error < best:
@@ -780,6 +784,7 @@ def row_consistency(frame, readback, dx_values, dy_values, options):
         per_draw.append(entry)
     result.update({
         'status': 'evaluated',
+        'raster_jitter_px': [raster_jx, raster_jy],
         'sample_stride': stride,
         'sampled_pixels': sampled,
         'explained_pixels': explained,
@@ -794,7 +799,8 @@ def row_consistency(frame, readback, dx_values, dy_values, options):
     return result
 
 
-def temporal_cross_check(previous_frame, previous_readback, frame, readback, min_matched_ratio):
+def temporal_cross_check(previous_frame, previous_readback, frame, readback, min_matched_ratio,
+                         previous_jitter=(0.0, 0.0)):
     if previous_frame is None or previous_readback is None:
         return {'status': 'unavailable', 'reason': 'previous captured frame readback not available'}
     if previous_frame.device != frame.device or previous_frame.frame != frame.frame - 1:
@@ -803,10 +809,13 @@ def temporal_cross_check(previous_frame, previous_readback, frame, readback, min
         return {'status': 'unavailable', 'reason': 'dimensions differ between frames'}
     width, height = readback.width, readback.height
     validity = previous_readback.validity
+    # Frame N-1 was rasterized with its own jitter, so the previous UV (which is
+    # unjittered) lands on the mask offset by that jitter.
+    jx, jy = previous_jitter
     covered = uncovered = offscreen = 0
     for n in range(len(readback.index)):
         u, v = readback.u[n], readback.v[n]
-        px, py = int(math.floor(u * width)), int(math.floor(v * height))
+        px, py = int(math.floor(u * width + jx)), int(math.floor(v * height + jy))
         if px < 0 or py < 0 or px >= width or py >= height:
             offscreen += 1
         elif validity[py * width + px] == 1:
@@ -821,6 +830,7 @@ def temporal_cross_check(previous_frame, previous_readback, frame, readback, min
         'status': 'evaluated' if in_range else 'unavailable',
         'reason': None if in_range else 'no in-range valid pixels',
         'previous_frame': previous_frame.frame,
+        'previous_jitter_px': [jx, jy],
         'valid_pixels': len(readback.index),
         'previous_offscreen': offscreen,
         'previous_covered': covered,
@@ -864,6 +874,25 @@ def sample_depth(depth, width, height, u, v, bilinear):
     if total <= 0.0:
         return None, 'sentinel'
     return accumulated / total, None
+
+
+def raster_jitter_px(frame, options):
+    """Frame N's own raster jitter in pixels (`motion_output_frame jitter_x/y`,
+    +X right, +Y down), or (0, 0) unless `--jitter-from-log` is requested.
+
+    With `--motion-jitter`/`--taa` the route offsets the projection of every
+    scene draw, so a stationary object is rasterized at `p + j` while the
+    producer still writes the **unjittered** previous UV (`c216 = (1/W, 1/H,
+    0, 0)`: zero prior jitter). Comparing that UV against the jittered raster
+    pixel therefore reports a constant `-j` displacement for a static scene.
+    Subtracting the frame's own jitter from the raster pixel removes it.
+    """
+    if not options.get('jitter_from_log'):
+        return (0.0, 0.0)
+    summary = frame.summary or {}
+    if number(summary.get('jitter'), 0) != 1:
+        return (0.0, 0.0)
+    return (real(summary.get('jitter_x'), 0.0), real(summary.get('jitter_y'), 0.0))
 
 
 def previous_jitter_px(frame):
@@ -1075,8 +1104,10 @@ def analyze(log_path, readback_dir, options, depth_pattern=None):
         if report['row_consistency']['status'] == 'evaluated':
             consistency_frames.append(report)
         prev_frame, prev_readback, prev_depth = previous_state.get(frame.device, (None, None, None))
-        report['temporal'] = temporal_cross_check(prev_frame, prev_readback, frame, readback,
-                                                  options['temporal_criterion_min_matched_ratio'])
+        report['temporal'] = temporal_cross_check(
+            prev_frame, prev_readback, frame, readback,
+            options['temporal_criterion_min_matched_ratio'],
+            previous_jitter_px(frame) if options.get('jitter_from_log') else (0.0, 0.0))
         if report['temporal']['status'] == 'evaluated':
             temporal_pairs.append(report)
         report['depth'] = depth_cross_check(prev_frame, prev_depth, frame, readback, options['depth_tolerance'],
@@ -1378,6 +1409,7 @@ def default_options(**overrides):
         'depth_sampling': 'nearest',
         'taa_threshold': 2.0 / 255.0,
         'jitter_uv': (0.0, 0.0),
+        'jitter_from_log': False,
         'draw_details': True,
     }
     unknown = set(overrides) - set(options)
@@ -1413,6 +1445,12 @@ def main(argv=None):
                         help='resolved-vs-current RGB difference above which a pixel counts as changed by history (X3M_TAA_DEBUG images)')
     parser.add_argument('--jitter-uv', type=float, nargs=2, default=(0.0, 0.0), metavar=('U', 'V'),
                         help='prior jitter UV subtracted by the producer (zero at checkpoint B1)')
+    parser.add_argument('--jitter-from-log', action='store_true',
+                        help='take each captured frame\'s own raster jitter from '
+                             'motion_output_frame (jitter_x/jitter_y, pixels) and unjitter the '
+                             'raster pixel before comparing it with the producer\'s unjittered '
+                             'previous UV; also offsets the previous-frame coverage lookup by '
+                             'jitter_previous_x/y. Required for --motion-jitter/--taa captures.')
     parser.add_argument('--no-draw-details', action='store_true', help='omit per-draw keys and rows from the JSON')
     args = parser.parse_args(argv)
     options = default_options(
@@ -1429,6 +1467,7 @@ def main(argv=None):
         depth_sampling=args.depth_sampling,
         taa_threshold=args.taa_threshold,
         jitter_uv=tuple(args.jitter_uv),
+        jitter_from_log=args.jitter_from_log,
         draw_details=not args.no_draw_details,
     )
     readback_dir = args.readback_dir or args.log.parent

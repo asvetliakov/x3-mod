@@ -56,6 +56,24 @@ From `src/temporal/rigid_motion_ps.hlsl` and `src/temporal/README.md`:
   jitter (checkpoint B1, `--jitter-uv 0 0`) a static object therefore reports
   exactly the texture-centre UV `((px + 0.5)/W, (py + 0.5)/H)` of its own
   pixel, and the pixel displacement is `(uv_prev − centre)·size`.
+- **`--jitter-from-log` (required for `--motion-jitter`/`--taa` captures).**
+  `prior_jitter` is zero in every build so far: the producer's UV is always
+  **unjittered**. The *raster* is not — with jitter on, the route offsets the
+  projection of every scene draw, so a static object is rasterized at `p + j`
+  where `j` is that frame's `motion_output_frame jitter_x/jitter_y` (pixels,
+  +X right, +Y down). Comparing the unjittered UV with the jittered pixel
+  reports a constant `−j` displacement for a static scene, and pushes
+  `row_consistency` towards its tolerance. `--jitter-from-log` takes each
+  captured frame's own jitter from the log (ignored when that frame's
+  `jitter=0`) and unjitters the raster pixel in the displacement, static and
+  row-consistency comparisons, and offsets the previous-frame coverage lookup
+  in `temporal_coverage` by `jitter_previous_x/y`. `depth` already applied
+  `jitter_previous_x/y` unconditionally, because RT2 *is* a jittered raster.
+  This is a different quantity from `--jitter-uv`, which models a producer-side
+  `prior_jitter` and is one constant for the whole run; leave it at `0 0`.
+  Measured effect on the iteration-7 capture: a stationary burst's median
+  displacement falls from 0.31–0.38 px (exactly `−j`) to 0.0010 px, and
+  `row_consistency`'s maximum error from 0.44 px to 0.0081 px.
 - Rows `c24–27` are applied as `clip_i = dot(row_i, position)`; the translation
   column `(c24.w, c25.w, c26.w, c27.w)` is the clip position of the object
   origin. This is the convention the fixture rows follow (`c27 = (0.25,0,0,1)`

@@ -94,7 +94,14 @@ Evidence at this checkpoint:
   unjittered position plus the current jitter; a stationary fixture shows
   0.000 px drift and bit-stable interiors across jitter phases where the old
   shader drifted 0.46 px, and three automated negative controls reproduce the
-  regression. See [review 17](verification/review-17.md). Known limitation:
+  regression. See [review 17](verification/review-17.md) and the
+  [run analysis](verification/iteration-07.md): the resolved image moved by
+  exactly the logged jitter each frame (0.013 px residual), 44% of
+  high-frequency detail was lost, all 118 scene frames resolved and 99.8% of
+  routed draws matched history. Scene time averaged 38.5 ms versus 16.1 ms in
+  iteration 6, uncontrolled (different sectors) and unattributed: telemetry
+  has no boundary metric yet, and the route's per-draw render-target
+  switching is a candidate alongside the resolve chain. Known limitation:
   draws without a profile row (background, particles, effects) resolve
   current-only and show sub-pixel crawl; silhouette edges whose coverage flips
   stay current-only.
