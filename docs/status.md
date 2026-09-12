@@ -18,12 +18,13 @@ Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
 
-Current work: review 30 is complete and ready for its first install; review/fix
+Current work: review 30 is committed and installed; review/fix
 and merge crypto and exposure branches, finish adjacency/reader reviews, then
 install the integrated build and request
 the [controlled run groups](verification/next-runs-2026-09-13.md) from handoff
-section 5.
-The agent never launches the game. Installed at resumption: review-29 build
+section 5. **Current install:** review-30 checkpoint `3124e0b`, SHA-256
+`d648594bf346f8ccc8d5e476bcc26345d16741974f76c5b3769017075712e825`, bottle X3.
+The agent never launches the game. Installed at resumption was review-29 build
 `a34c389`, SHA-256 `4abd56b3a77682594756c8805f6f1661c35f8f7b611a297f312bfec2d00855a8`.
 Main resumed at `f4d2384`; fixes called “uncommitted” in the historical notes
 were captured in WIP commit `1c8322e`. Review findings and later installs will
@@ -220,7 +221,7 @@ SHA-256 `4abd56b3a77682594756c8805f6f1661c35f8f7b611a297f312bfec2d00855a8`,
 through `tools/manage.py install`. The native-Windows fixes (`20683cc`) are
 merged but not installed until review 30 passes.
 
-## Checkpoint: review 30 complete — native-Windows fixes D1–D3, W1, W3 (2026-09-13; ready to install)
+## Checkpoint: review 30 complete — native-Windows fixes D1–D3, W1, W3 (2026-09-13; installed)
 
 Implements every item of the paused
 [handoff](verification/handoff-windows-fixes.md) against the
@@ -275,13 +276,18 @@ CrossOver Preview (Steam bottle, plus one X3/FEX rerun of the motion suite).
 - Final host checks: **836 tests**, no-x87 **196 functions / zero violations**,
   17 PE exports, ten exact shader regenerations. The final reviewed DLL is
   SHA-256 `d648594bf346f8ccc8d5e476bcc26345d16741974f76c5b3769017075712e825`.
-  It is ready for the first install; this is still CrossOver evidence, not a
+  It is installed at checkpoint `3124e0b`; this is still CrossOver evidence, not a
   native-Windows runtime result.
 - **Separate review 31 remains open:** known SSE2 competing-normal adjacency
   differences, registry type and FP-domain admission; reader diagnostic format,
   failed final rewind and LastError transport. See [review 31](verification/review-31-adjacency-reader.md).
   These optional paths are not approved for fast gameplay by review 30. The
   final run plan requires their fixes and meaningful verify coverage first.
+- Install verification: the app-local DLL and ownership manifest match the
+  audited SHA-256; `X3AP.exe` and `cxbottle.conf` hashes are unchanged. The
+  previous owned DLL/manifest are retained at
+  `/tmp/x3-review29-rollback-n4t0lk50/`. No game was launched. Crypto/exposure
+  branch verification and the review-31 fixes precede the next requested runs.
 
 ## Checkpoint: TAA tremble fixed, resolve quality pass, loading attribution (2026-09-12, superseded by the section above)
 

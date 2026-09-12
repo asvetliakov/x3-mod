@@ -34,8 +34,9 @@ its raw log/readbacks remain local in `/tmp/x3-bottleX3-run16/`.
 
 ## Execution order
 
-1. Finish review 30 on the frozen merged tree, fix findings, commit evidence and
-   install the reviewed build.
+1. **Completed:** review 30 passed on the frozen merged tree, was committed as
+   `3124e0b` and installed in bottle X3. Its scoped fixture/runtime evidence does
+   not close review 31 or establish native-Windows runtime behavior.
 2. Review/fix and merge the crypto cache and space-aware exposure branches.
 3. Finish adjacency parity and resource reader reviews/fixes, run affected
    verification, commit and install the integrated build.

@@ -344,3 +344,11 @@ accepted with the explicit review-31 opt-in-path limitations above. The previous
 paused suite chain is complete. No commit or install was performed by this
 reviewer; root owns the checkpoint commit, installation, status update and later
 user-managed game tests.
+
+Root installation record: committed as `3124e0b`, then installed app-locally
+with `tools/manage.py install`. Installed DLL and manifest SHA-256 match the
+audited `d648594b…` build; `X3AP.exe` and bottle `cxbottle.conf` hashes remained
+unchanged. The previous owned DLL/manifest and pre-install provenance are saved
+locally in `/tmp/x3-review29-rollback-n4t0lk50/`. The game was absent before
+installation and was not launched. This is the first handoff install; the later
+integrated build and user-managed verification remain pending.
