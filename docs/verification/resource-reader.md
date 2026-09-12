@@ -220,3 +220,29 @@ opens=594 reused=582 real_opens=12 … errors=0 full=0 held=12`.
    difference — the acceptance number for §6 items 1 and 2 of the stall study.
 3. A stopwatch comparison against the plain `--direct` load (≈ 40 s on X3)
    with `frame_end dt_ms` as the log-side witness.
+
+## Review 31 reader corrections (2026-09-13, full X3 fixture passed)
+
+The independent reader review found three issues outside the successful cursor
+fixture cases: the mismatch format omitted `cursor_ok`, fast mode ignored failure
+of the short-class final rewind, and verify instrumentation did not restore
+incoming LastError before the original call. All three are corrected and independently reviewed in source;
+[review 31](review-31-adjacency-reader.md#resource-reader-review-2026-09-13) records
+the findings and evidence limits. The old 4,707-check result above predates these
+fixes and its deliberate-mismatch line has shifted fields.
+
+New controls fail the final rewind once for both loose and catalogue inputs and
+check allocation release, untouched bookkeeping, restored entry state and a
+successful original retry. The existing deliberate mismatch also verifies
+incoming/outgoing LastError through the generated stub. The runner rejects
+missing/duplicate records and fields, checks the exact cursor inventory and typed
+mismatch line, and hashes every compiled local dependency plus its runtime
+helpers and parser tests. The standalone Werror build and one full X3 fixture run pass **4,721 checks,
+zero failures**, followed by all ten host tests. The 40/32/60/1 cursor inventory
+is unchanged; both rewind failures and the original error sentinels pass, and
+the deliberate mismatch line now has correctly aligned fields. All 21 source
+hashes and the current native/copy/executable/stdout hashes match. Summary SHA-256:
+`43fc03ab8b57a53cb067bd249ca46b8521d57e6c593f338d2fa7a2989c602f33`.
+Current warm-cache fast/reference ratios are 1.11x loose-large, 1.11x medium,
+1.12x catalogue-large. See review 31 for full provenance and independent closure.
+This does not establish game parity or a native-Windows test result.

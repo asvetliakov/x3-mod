@@ -74,3 +74,25 @@ build should also compare the seam's discovered production object set with
 the actual CMake link response, since the seam links `find`-discovered objects.
 Unchanged, independently reviewed standalone and performance evidence can be
 reused after checking its actual source dependencies against the final tree.
+
+After the exposure merge and selected-runner correction, root checked the
+reader's 21-entry before/after source maps against main: both still match.
+Its independently reviewed 4,721-check X3 result therefore remains applicable
+to the reader sources; exposure integration does not require a duplicate run
+of that unchanged standalone fixture.
+Root also reran the reader and adjacency host suites: 36 tests passed in
+9.55 seconds. Together with the 60 tests above, this is 96 targeted host
+tests on the merged tree, not a new full-repository test-suite claim.
+
+## Final combined qualification plan (runtime pending)
+
+After the loading source freeze, run eleven selected motion cases in X3:
+production off/on, ownership on, HDR ramp, TAA/AgX; and seam exposure,
+offset exposure, wrapped exposure, tonemap-fault recovery, meter-self-test
+unlock refusal and TAA/automatic exposure. Their clean build supplies the
+candidate production DLL. Retain `PARTIAL` for this selected run, verify every
+requested case and the expanded source maps, and audit its object inventory,
+exports and no-x87 boundary. Recompile all ten authored shader programs with
+`--check`. Follow with the merged X3 CryptoAPI fixture. These are modular
+integration tests; the user's subsequent gameplay run supplies real game
+co-activation and visual acceptance.

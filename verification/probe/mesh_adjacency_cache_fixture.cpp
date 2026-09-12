@@ -26,6 +26,7 @@ static HRESULT STDMETHODCALLTYPE native(ID3DXMesh*m,FLOAT epsilon,DWORD*out){
     if(behavior==4){behavior=0;std::vector<DWORD> nested(m->GetNumFaces()*3);auto r=nested_cache->generate(m,epsilon,nested.data(),native,identity);require(r.origin==mac::Origin::Native,"recursive lease bypass");}
     if(behavior==5&&!entered.exchange(true)){while(!resume_native.load())Sleep(1);}
     if(behavior==6)return E_POINTER;
+    if(behavior==8){auto hr=backend(m,epsilon,out);const DWORD error=GetLastError();asm volatile("fldz\n\tfldz\n\tfcompp":::"st","st(1)","memory");SetLastError(error);return hr;}
     if(behavior==7){const auto incoming=observed_error;auto hr=backend(m,epsilon,out);SetLastError(incoming==123?0:incoming);return hr;}
     const bool disturbed=disturb_acquisition;disturb_acquisition=false;auto hr=backend(m,epsilon,out);disturb_acquisition=disturbed;return hr;
 }
@@ -99,7 +100,14 @@ int main(int argc,char**argv){
         }
         mac::Cache cache;auto baseline=invoke(nullptr,mesh.p,base.epsilon);auto fill=invoke(&cache,mesh.p,base.epsilon);auto hit=invoke(&cache,mesh.p,base.epsilon);
         parity(baseline,fill,"fill computational state parity");parity(baseline,hit,"hit computational state parity");require(hit.result.origin==mac::Origin::CacheHit,"exact reuse hit");
-        require((baseline.fp.x87.status&0xffff)!=(seed.x87.status&0xffff),"native FP status changes observed");
+        // Actual D3DX is permitted to leave status unchanged. A separate original
+        // callback supplies a known outgoing status to test replay on every backend.
+        {mac::Cache c;behavior=8;auto expected=invoke(nullptr,mesh.p,base.epsilon);auto first=invoke(&c,mesh.p,base.epsilon);auto reused=invoke(&c,mesh.p,base.epsilon);behavior=0;
+            require((expected.fp.x87.status&0x4500)==0x4000&&expected.fp.x87.status!=baseline.fp.x87.status&&expected.fp.x87.control==baseline.fp.x87.control&&expected.fp.x87.tag==baseline.fp.x87.tag&&expected.fp.mxcsr==baseline.fp.mxcsr&&expected.error==baseline.error,"authored outgoing status observed with native controls and LastError");
+            parity(expected,first,"authored outgoing FP status miss parity");parity(expected,reused,"authored outgoing FP status hit parity");
+            require(first.result.origin==mac::Origin::Native&&reused.result.origin==mac::Origin::CacheHit,"authored outgoing status replayed on real cache hit");
+            std::printf("FP_AUTHORED equal_condition=4000 status_changed=1 miss_equal=1 hit_equal=1 controls_error_equal=1 native_status_changed=%u\n",unsigned((baseline.fp.x87.status&0xffff)!=(seed.x87.status&0xffff)));
+        }
         std::printf("FP native_cw=%04lx native_sw=%04lx native_mxcsr=%08lx hit_computational_parity=1 diagnostic_instruction_pointers_excluded=1\n",baseline.fp.x87.control&0xffff,baseline.fp.x87.status&0xffff,baseline.fp.mxcsr);
         for(unsigned variation=0;variation<8;++variation){auto in=base;auto id=identity;
             switch(variation){case 0:in.vertices[3].x+=.25f;break;case 1:std::swap(in.indices[4],in.indices[5]);break;case 2:in.decl[1].UsageIndex=1;break;case 3:in.epsilon=1e-8f;break;case 4:in.vertices[0].u=.25f;break;case 5:id.algorithm_token++;break;case 6:id.generation++;break;case 7:in.options|=D3DXMESH_SOFTWAREPROCESSING;break;}
@@ -119,12 +127,12 @@ int main(int argc,char**argv){
             // masked there and is keyed like a supported state; variant 8 (x87) applies everywhere.
             write_fp(state);const FP applied=read_fp();write_fp(seed);
             const bool masked=(applied.x87.control&0x3f)==0x3f&&(applied.mxcsr&0x1f80)==0x1f80;
-            std::printf("FP_VARIANT variant=%u cw=%04lx sw=%04lx mxcsr=%08lx applied_cw=%04lx applied_mxcsr=%08lx masked=%u expect=%s\n",variant,state.x87.control&0xffff,state.x87.status&0xffff,state.mxcsr,applied.x87.control&0xffff,applied.mxcsr,unsigned(masked),masked?"keyed":"bypass");
+            std::printf("FP_VARIANT variant=%u cw=%04lx sw=%04lx mxcsr=%08lx applied_cw=%04lx applied_sw=%04lx applied_mxcsr=%08lx masked=%u expect=%s\n",variant,state.x87.control&0xffff,state.x87.status&0xffff,state.mxcsr,applied.x87.control&0xffff,applied.x87.status&0xffff,applied.mxcsr,unsigned(masked),masked?"keyed":"bypass");
             if(variant<8)require(masked,"FP keyed variant applies a supported state");else if(variant==8)require(!masked,"FP x87 unmask applies");
             mac::Cache c;auto a=invoke(nullptr,mesh.p,base.epsilon,state);auto b=invoke(&c,mesh.p,base.epsilon,state);auto d=invoke(&c,mesh.p,base.epsilon,state);parity(a,b,"FP fill variant parity");parity(a,d,"FP reuse variant parity");
             char fp_label[160];std::snprintf(fp_label,sizeof fp_label,"FP unmasked exceptions bypass, controls are keyed (variant %u fill=%u reuse=%u applied_mxcsr=%08lx)",variant,unsigned(b.result.origin),unsigned(d.result.origin),applied.mxcsr);
             require((d.result.origin==mac::Origin::CacheHit)==masked,fp_label);
-            if(variant<8)require(c.statistics().first_fp_available&&c.statistics().first_fp_supported&&c.statistics().first_fp.mxcsr==state.mxcsr,"first incoming FP state published as supported");
+            if(variant<8)require(c.statistics().first_fp_available&&c.statistics().first_fp_supported&&c.statistics().first_fp.mxcsr==applied.mxcsr,"first incoming FP state published as supported");
         }
         write_fp(seed);
         for(unsigned mode=1;mode<=3;++mode){mac::Cache c;behavior=mode;auto a=invoke(nullptr,mesh.p,base.epsilon);parity(a,invoke(&c,mesh.p,base.epsilon),"native failure/alternate success/error fill");parity(a,invoke(&c,mesh.p,base.epsilon),"native failure/alternate success/error repeat");require(c.statistics().admissions==0,"only stable S_OK admitted");}behavior=0;
@@ -141,7 +149,7 @@ int main(int argc,char**argv){
         {mac::Cache c;nested_cache=&c;behavior=4;require(invoke(&c,mesh.p,base.epsilon).result.hr==S_OK,"reentrant native succeeds");require(c.statistics().contention==1,"reentrant contention counted");nested_cache=nullptr;}
         {mac::Cache c;Table table(mesh.p);table.slots[4]=reinterpret_cast<void*>(extreme);table.slots[5]=reinterpret_cast<void*>(extreme);table.slots[8]=reinterpret_cast<void*>(extreme);behavior=1;DWORD out=999;write_fp(seed);SetLastError(0x12345);auto r=c.generate(mesh.p,base.epsilon,&out,native,identity);require(r.hr==E_FAIL&&r.origin==mac::Origin::Native&&out==123&&c.statistics().bypasses==1,"hostile counts/stride bypass without arithmetic wrap");behavior=0;}
         {mac::Cache c;Table table(mesh.p);disturb_acquisition=true;auto a=invoke(&c,mesh.p,base.epsilon);require(observed_error==0x12345&&same_fp(observed_fp,seed),"successful acquisition restores incoming native FP/error");parity(baseline,a,"disturbed acquisition miss parity");auto b=invoke(&c,mesh.p,base.epsilon);require(b.result.origin==mac::Origin::CacheHit,"disturbed acquisition hit");parity(baseline,b,"disturbed acquisition hit restores state");disturb_acquisition=false;}
-        {mac::Cache c;invoke(&c,mesh.p,base.epsilon);FP changed=seed;changed.x87.status|=0x20;auto b=invoke(&c,mesh.p,base.epsilon,changed);require(b.result.origin==mac::Origin::Native&&c.statistics().misses==2,"input FP status participates in exact key");}
+        {mac::Cache c;invoke(&c,mesh.p,base.epsilon);FP changed=seed;changed.x87.status|=0x0100;write_fp(changed);const FP applied=read_fp();write_fp(seed);auto b=invoke(&c,mesh.p,base.epsilon,changed);require(applied.x87.status!=seed.x87.status&&b.result.origin==mac::Origin::Native&&c.statistics().misses==2,"observably changed input FP status participates in exact key");}
         {mac::Cache c;auto id=identity;id.generation=0;require(invoke(&c,mesh.p,base.epsilon,seed,&id).result.origin==mac::Origin::Native&&c.statistics().bypasses==1,"unknown generation bypass");}
         for(unsigned mode=0;mode<2;++mode){mac::Cache c;auto id=identity;if(mode)id.public_contract=false;else id.algorithm_token=0;
             auto result=invoke(&c,mesh.p,base.epsilon,seed,&id);parity(baseline,result,"missing public algorithm identity preserves native result");

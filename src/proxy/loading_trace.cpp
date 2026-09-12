@@ -145,7 +145,7 @@ namespace adjacency_fast=mesh_adjacency_fast;
 enum class AdjacencyMode : unsigned { Native, Verify, Fast };
 std::atomic<AdjacencyMode> adjacency_mode{AdjacencyMode::Native};
 std::atomic<bool> adjacency_faulted{false};
-enum class AdjacencyFallback : unsigned { Input, Gate, Declaration, Size, Lock, Module, MathTable, Count };
+enum class AdjacencyFallback : unsigned { Input, Gate, Declaration, Size, Lock, Module, MathTable, CompetingNormals, FpDomain, Count };
 constexpr unsigned adjacency_fallback_count=static_cast<unsigned>(AdjacencyFallback::Count);
 // d3dx9_37's math-table dispatch (0x00587e6b), mirrored from its documented
 // inputs: DisablePSGP / DisableD3DXPSGP (HKLM\Software\Microsoft\Direct3D,
@@ -156,14 +156,21 @@ constexpr unsigned adjacency_fallback_count=static_cast<unsigned>(AdjacencyFallb
 // generic table (the FEX case: 3DNow reported, bit absent); without 3DNow, SSE2
 // (CPUID leaf 1 EDX bit 26, 0x00587c94) selects the SSE2 table, else
 // IsProcessorFeaturePresent(6) the SSE table.
+bool adjacency_registry_dword(LSTATUS status,DWORD type,DWORD size){return status==ERROR_SUCCESS&&type==REG_DWORD&&size==sizeof(DWORD);}
+bool adjacency_registry_ambiguous(LSTATUS status,DWORD type,DWORD size){return status==ERROR_SUCCESS&&type==REG_DWORD&&size!=sizeof(DWORD);}
 D3dxMathTable d3dx_math_table_detect(){
-    auto registry=[](const char* value,DWORD& out){
+    bool ambiguous=false;
+    auto registry=[&](const char* value,DWORD& out){
         HKEY key=nullptr;if(RegOpenKeyA(HKEY_LOCAL_MACHINE,"Software\\Microsoft\\Direct3D",&key)!=ERROR_SUCCESS)return false;
-        DWORD size=sizeof out;const LSTATUS status=RegQueryValueExA(key,value,nullptr,nullptr,reinterpret_cast<BYTE*>(&out),&size);RegCloseKey(key);
-        return status==ERROR_SUCCESS&&size==sizeof out;
+        DWORD type=0,size=sizeof out;const LSTATUS status=RegQueryValueExA(key,value,nullptr,&type,reinterpret_cast<BYTE*>(&out),&size);RegCloseKey(key);
+        // Native checks the type but not returned size. A malformed DWORD must
+        // not be mistaken for an absent override and silently select a table.
+        ambiguous|=adjacency_registry_ambiguous(status,type,size);
+        return adjacency_registry_dword(status,type,size);
     };
     DWORD psgp=0;if(!registry("DisablePSGP",psgp))psgp=0;
     DWORD d3dx_psgp=0;if(registry("DisableD3DXPSGP",d3dx_psgp))psgp=d3dx_psgp;
+    if(ambiguous)return D3dxMathTable::Unknown;
     if(psgp==1)return D3dxMathTable::Generic;
     unsigned edx1=0,ext_edx=0;
     {
@@ -178,10 +185,18 @@ D3dxMathTable d3dx_math_table_detect(){
     return D3dxMathTable::Generic;
 }
 }
-D3dxMathTable d3dx_math_table(){static const D3dxMathTable table=d3dx_math_table_detect();return table;}
+#ifdef X3M_LOADING_TRACE_FIXTURE
+int adjacency_fixture_math_table=-1;
+#endif
+D3dxMathTable d3dx_math_table(){
+#ifdef X3M_LOADING_TRACE_FIXTURE
+    if(adjacency_fixture_math_table>=0)return static_cast<D3dxMathTable>(adjacency_fixture_math_table);
+#endif
+    static const D3dxMathTable table=d3dx_math_table_detect();return table;
+}
 const char* d3dx_math_table_name(D3dxMathTable table){
-    static constexpr const char* names[]={"generic","3dnow","sse2","sse"};
-    return unsigned(table)<4?names[unsigned(table)]:"unknown";
+    static constexpr const char* names[]={"generic","3dnow","sse2","sse","unknown"};
+    return unsigned(table)<5?names[unsigned(table)]:"unknown";
 }
 namespace {
 const char* adjacency_mode_name(AdjacencyMode mode){return mode==AdjacencyMode::Fast?"fast":mode==AdjacencyMode::Verify?"verify":"native";}
@@ -189,6 +204,7 @@ struct AdjacencyCounters {
     std::atomic<uint64_t> calls{0},computed{0},fallbacks{0},faults{0},faces{0},vertices{0};
     std::atomic<uint64_t> fast_ticks{0},fast_max_ticks{0},native_ticks{0},native_max_ticks{0};
     std::atomic<uint64_t> verify_meshes{0},verify_equal{0},verify_mismatched{0},verify_entries{0},verify_mismatch_entries{0},verify_native_failures{0};
+    std::atomic<uint64_t> verify_admitted{0},verify_admitted_mismatched{0},verify_refused_fp{0},verify_refused_competing{0};
     std::atomic<uint64_t> quantized{0},unquantized{0},welded_vertices{0},multi_candidate_meshes{0},normal_selected{0},degenerate_faces{0};
     std::atomic<uint64_t> mismatch_lines{0};
     std::atomic<unsigned> fp_publication{0};ComputationalState first_fp{};
@@ -213,10 +229,11 @@ struct AdjacencyCompute {
 void adjacency_note_max(std::atomic<uint64_t>& slot,uint64_t value){uint64_t old=slot.load(std::memory_order_relaxed);while(old<value&&!slot.compare_exchange_weak(old,value,std::memory_order_relaxed)){}}
 // Public-interface path only: the cache gate (mesh table/method pointers,
 // SYSTEMMEM pool, descriptors), then GetDeclaration and READONLY Lock/Unlock.
-AdjacencyCompute adjacency_compute(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output) {
+AdjacencyCompute adjacency_compute(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output,bool enforce_admission,const ComputationalState& incoming) {
     AdjacencyCompute r;
     auto fall=[&](AdjacencyFallback reason){r.fallback=reason;adjacency_counters.fallbacks.fetch_add(1,std::memory_order_relaxed);adjacency_counters.fallback_reasons[unsigned(reason)].fetch_add(1,std::memory_order_relaxed);return r;};
     if(!mesh||!output)return fall(AdjacencyFallback::Input);
+    if(enforce_admission&&!adjacency_fast::supported_fp_domain(incoming.x87.control,incoming.x87.tag,incoming.mxcsr))return fall(AdjacencyFallback::FpDomain);
     if(!cache_buffer_contract(mesh))return fall(AdjacencyFallback::Gate);
     const DWORD options=mesh->GetOptions(),vertices=mesh->GetNumVertices(),faces=mesh->GetNumFaces(),stride=mesh->GetNumBytesPerVertex();
     r.faces=faces;r.vertices=vertices;
@@ -247,7 +264,7 @@ AdjacencyCompute adjacency_compute(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output) 
     // reproduces the generic and the SSE2 tables, the 3DNow and SSE ones are native's.
     adjacency_fast::Policy policy;
     switch(d3dx_math_table()){
-    case D3dxMathTable::Sse2:policy.normalize=adjacency_fast::Normalize::Sse2;break;
+    case D3dxMathTable::Sse2:policy.normalize=adjacency_fast::Normalize::Sse2;policy.refuse_competing_normals=enforce_admission;break;
     case D3dxMathTable::Generic:policy.normalize=adjacency_fast::Normalize::Generic;break;
     default:return fall(AdjacencyFallback::MathTable);
     }
@@ -274,6 +291,7 @@ AdjacencyCompute adjacency_compute(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output) 
     if(r.fault)return r;
     if(!ran)return fall(AdjacencyFallback::Size);
     adjacency_counters.module_status[unsigned(r.report.status)].fetch_add(1,std::memory_order_relaxed);
+    if(r.report.status==adjacency_fast::Status::CompetingNormals)return fall(AdjacencyFallback::CompetingNormals);
     if(r.report.status!=adjacency_fast::Status::Ok)return fall(AdjacencyFallback::Module);
     r.computed=true;
     adjacency_counters.computed.fetch_add(1,std::memory_order_relaxed);
@@ -300,7 +318,7 @@ HRESULT WINAPI adjacency_fast_service(ID3DXMesh* mesh,FLOAT epsilon,DWORD* adjac
     const AdjacencyFn original=adjacency_thread_original;
     const DWORD error=GetLastError();const auto fp=computational_state();adjacency_note_fp(fp);set_default_mxcsr();
     adjacency_counters.calls.fetch_add(1,std::memory_order_relaxed);
-    const AdjacencyCompute r=adjacency_compute(mesh,epsilon,adjacency);
+    const AdjacencyCompute r=adjacency_compute(mesh,epsilon,adjacency,true,fp);
     restore_computational_state(fp);SetLastError(error);
     if(r.fault){adjacency_fault(r.fault_hr);return r.fault_hr;}
     if(r.computed)return S_OK;
@@ -359,7 +377,8 @@ namespace {
 HRESULT WINAPI adjacency_verify_service(ID3DXMesh* mesh,FLOAT epsilon,DWORD* adjacency){
     const AdjacencyFn original=adjacency_thread_original;
     if(!original)return E_POINTER;
-    adjacency_counters.calls.fetch_add(1,std::memory_order_relaxed);adjacency_note_fp(computational_state());
+    const auto incoming=computational_state();
+    adjacency_counters.calls.fetch_add(1,std::memory_order_relaxed);adjacency_note_fp(incoming);
     const auto native_begin=tick();const HRESULT hr=original(mesh,epsilon,adjacency);const uint64_t native_ticks=tick()-native_begin;
     const DWORD error=GetLastError();const auto fp=computational_state();set_default_mxcsr();
     adjacency_counters.native_ticks.fetch_add(native_ticks,std::memory_order_relaxed);adjacency_note_max(adjacency_counters.native_max_ticks,native_ticks);
@@ -367,13 +386,18 @@ HRESULT WINAPI adjacency_verify_service(ID3DXMesh* mesh,FLOAT epsilon,DWORD* adj
     const DWORD faces=mesh?mesh->GetNumFaces():0;
     DWORD* scratch=faces&&faces<=0x0fffffffu?static_cast<DWORD*>(HeapAlloc(GetProcessHeap(),0,size_t(faces)*3*sizeof(DWORD))):nullptr;
     if(scratch){
-        const AdjacencyCompute r=adjacency_compute(mesh,epsilon,scratch);
+        const AdjacencyCompute r=adjacency_compute(mesh,epsilon,scratch,false,incoming);
         if(r.fault){HeapFree(GetProcessHeap(),0,scratch);restore_computational_state(fp);SetLastError(error);adjacency_fault(r.fault_hr);return r.fault_hr;}
         if(r.computed){
             const size_t entries=size_t(faces)*3;uint64_t mismatches=0;size_t first=entries;
             for(size_t i=0;i<entries;++i)if(scratch[i]!=adjacency[i]){if(!mismatches)first=i;++mismatches;}
             adjacency_counters.verify_meshes.fetch_add(1,std::memory_order_relaxed);
             adjacency_counters.verify_entries.fetch_add(entries,std::memory_order_relaxed);
+            const bool fp_supported=adjacency_fast::supported_fp_domain(incoming.x87.control,incoming.x87.tag,incoming.mxcsr);
+            const bool competing=r.report.potential_competing_normals&&d3dx_math_table()==D3dxMathTable::Sse2;
+            if(!fp_supported)adjacency_counters.verify_refused_fp.fetch_add(1,std::memory_order_relaxed);
+            if(competing)adjacency_counters.verify_refused_competing.fetch_add(1,std::memory_order_relaxed);
+            if(fp_supported&&!competing){adjacency_counters.verify_admitted.fetch_add(1,std::memory_order_relaxed);adjacency_counters.verify_admitted_mismatched.fetch_add(mismatches!=0,std::memory_order_relaxed);}
             if(!mismatches)adjacency_counters.verify_equal.fetch_add(1,std::memory_order_relaxed);
             else{
                 adjacency_counters.verify_mismatched.fetch_add(1,std::memory_order_relaxed);
@@ -401,14 +425,14 @@ void adjacency_report(){
     auto& c=adjacency_counters;const auto calls=c.calls.load(std::memory_order_relaxed);
     if(calls==adjacency_last_report_calls)return;
     adjacency_last_report_calls=calls;
-    log("mesh_adjacency_metric cumulative=1 qpc=%llu mode=%s faulted=%u calls=%llu computed=%llu fallbacks=%llu faults=%llu faces=%llu vertices=%llu fast_ticks=%llu fast_max_ticks=%llu fast_us=%.3f fast_max_us=%.3f native_ticks=%llu native_max_ticks=%llu native_us=%.3f native_max_us=%.3f verify_meshes=%llu verify_equal=%llu verify_mismatched=%llu verify_entries=%llu verify_mismatch_entries=%llu verify_native_failures=%llu quantized=%llu unquantized=%llu welded_vertices=%llu multi_candidate_meshes=%llu normal_selected=%llu degenerate_faces=%llu fallback_input=%llu fallback_gate=%llu fallback_declaration=%llu fallback_size=%llu fallback_lock=%llu fallback_module=%llu fallback_math_table=%llu module_input=%llu module_index_range=%llu module_non_finite=%llu module_magnitude=%llu module_epsilon_neighbour=%llu module_allocation=%llu",
+    log("mesh_adjacency_metric cumulative=1 qpc=%llu mode=%s faulted=%u calls=%llu computed=%llu fallbacks=%llu faults=%llu faces=%llu vertices=%llu fast_ticks=%llu fast_max_ticks=%llu fast_us=%.3f fast_max_us=%.3f native_ticks=%llu native_max_ticks=%llu native_us=%.3f native_max_us=%.3f verify_meshes=%llu verify_equal=%llu verify_mismatched=%llu verify_entries=%llu verify_mismatch_entries=%llu verify_native_failures=%llu quantized=%llu unquantized=%llu welded_vertices=%llu multi_candidate_meshes=%llu normal_selected=%llu degenerate_faces=%llu fallback_input=%llu fallback_gate=%llu fallback_declaration=%llu fallback_size=%llu fallback_lock=%llu fallback_module=%llu fallback_math_table=%llu module_input=%llu module_index_range=%llu module_non_finite=%llu module_magnitude=%llu module_epsilon_neighbour=%llu module_allocation=%llu module_competing_normals=%llu fallback_competing_normals=%llu fallback_fp_domain=%llu verify_admitted=%llu verify_admitted_mismatched=%llu verify_refused_fp=%llu verify_refused_competing=%llu",
         tick(),adjacency_mode_name(mode),unsigned(adjacency_faulted.load(std::memory_order_relaxed)),calls,c.computed.load(),c.fallbacks.load(),c.faults.load(),c.faces.load(),c.vertices.load(),
         c.fast_ticks.load(),c.fast_max_ticks.load(),double(c.fast_ticks.load())*1e6/clock_frequency,double(c.fast_max_ticks.load())*1e6/clock_frequency,
         c.native_ticks.load(),c.native_max_ticks.load(),double(c.native_ticks.load())*1e6/clock_frequency,double(c.native_max_ticks.load())*1e6/clock_frequency,
         c.verify_meshes.load(),c.verify_equal.load(),c.verify_mismatched.load(),c.verify_entries.load(),c.verify_mismatch_entries.load(),c.verify_native_failures.load(),
         c.quantized.load(),c.unquantized.load(),c.welded_vertices.load(),c.multi_candidate_meshes.load(),c.normal_selected.load(),c.degenerate_faces.load(),
         c.fallback_reasons[0].load(),c.fallback_reasons[1].load(),c.fallback_reasons[2].load(),c.fallback_reasons[3].load(),c.fallback_reasons[4].load(),c.fallback_reasons[5].load(),c.fallback_reasons[6].load(),
-        c.module_status[1].load(),c.module_status[2].load(),c.module_status[3].load(),c.module_status[4].load(),c.module_status[5].load(),c.module_status[6].load());
+        c.module_status[1].load(),c.module_status[2].load(),c.module_status[3].load(),c.module_status[4].load(),c.module_status[5].load(),c.module_status[6].load(),c.module_status[7].load(),c.fallback_reasons[7].load(),c.fallback_reasons[8].load(),c.verify_admitted.load(),c.verify_admitted_mismatched.load(),c.verify_refused_fp.load(),c.verify_refused_competing.load());
     if(!adjacency_fp_reported&&c.fp_publication.load(std::memory_order_acquire)==2){adjacency_fp_reported=true;const auto& f=c.first_fp;
         log("mesh_adjacency_fp_first control=%08lx status=%08lx tag=%08lx mxcsr=%08lx compute_mxcsr=00001f80 restored=1",f.x87.control,f.x87.status,f.x87.tag,f.mxcsr);
     }
@@ -1099,7 +1123,7 @@ bool install(HMODULE target) {
     if(adjacency_length&&adjacency_length<16){if(!lstrcmpiW(adjacency_setting,L"fast"))requested_mode=AdjacencyMode::Fast;else if(!lstrcmpiW(adjacency_setting,L"verify"))requested_mode=AdjacencyMode::Verify;}
     adjacency_mode.store(requested_mode,std::memory_order_release);
     wchar_t dump_setting[8]{};adjacency_dump_requested.store(GetEnvironmentVariableW(L"X3M_MESH_ADJACENCY_DUMP",dump_setting,8)==1&&dump_setting[0]==L'1',std::memory_order_relaxed);
-    log("mesh_adjacency mode=%s scope=hook_service equivalence=d3dx_rules+exact_position_equality gate=public_systemmem_readonly+declaration_float3+no_attribute_table order=cache_lookup,compute,cache_store native_fallback=1 dump=%u rsqrt=%s math_table=%s normalize=%s",adjacency_mode_name(requested_mode),unsigned(adjacency_dump_requested.load(std::memory_order_relaxed)),adjacency_fast::rsqrt_implementation(),
+    log("mesh_adjacency mode=%s scope=hook_service equivalence=d3dx_rules+exact_position_equality fp_domain=pc53_nearest_masked_empty_mxcsr_1f80_or_9fc0 normal_gate=sse2_no_competing gate=public_systemmem_readonly+declaration_float3+no_attribute_table order=cache_lookup,compute,cache_store native_fallback=1 dump=%u rsqrt=%s math_table=%s normalize=%s",adjacency_mode_name(requested_mode),unsigned(adjacency_dump_requested.load(std::memory_order_relaxed)),adjacency_fast::rsqrt_implementation(),
         d3dx_math_table_name(d3dx_math_table()),d3dx_math_table()==D3dxMathTable::Sse2?"sse2":d3dx_math_table()==D3dxMathTable::Generic?"generic":"native_only");
     clock_frequency=frequency.QuadPart;
     mesh_observation_enabled.store(true,std::memory_order_release);
@@ -1198,10 +1222,21 @@ void fixture_cache_cleanup_failure(HRESULT hr){forced_cache_cleanup.store(hr);}
 void fixture_cache_reenter_once(){cache_reentry_once=true;}
 bool fixture_cache_contract(ID3DXMesh* mesh){return cache_buffer_contract(mesh);}
 uint64_t fixture_cache_gate_reason(const char* reason){for(unsigned i=0;i<gate_reason_count;++i)if(!std::strcmp(reason,gate_reason_name(i)))return cache_gate_reasons[i].count.load();return 0;}
+void fixture_adjacency_math_table(int table){adjacency_fixture_math_table=table;}
+bool fixture_adjacency_registry_dword(LSTATUS status,DWORD type,DWORD size){return adjacency_registry_dword(status,type,size);}
+bool fixture_adjacency_registry_ambiguous(LSTATUS status,DWORD type,DWORD size){return adjacency_registry_ambiguous(status,type,size);}
+HRESULT fixture_adjacency_fast(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output,HRESULT(WINAPI* original)(ID3DXMesh*,FLOAT,DWORD*)){
+    // Match the real mesh_adjacency wrapper: cold emutls lookup may alter
+    // LastError, so restore caller state immediately before entering the service.
+    CpuCallBoundary cpu;const auto saved=adjacency_thread_original;adjacency_thread_original=original;
+    cpu.before_original();const HRESULT hr=adjacency_fast_service(mesh,epsilon,output);cpu.after_original();
+    adjacency_thread_original=saved;return hr;
+}
 void fixture_adjacency_mode(unsigned mode){adjacency_mode.store(mode==2?AdjacencyMode::Fast:mode==1?AdjacencyMode::Verify:AdjacencyMode::Native,std::memory_order_release);}
 AdjacencyStatistics fixture_adjacency_statistics(){
     const auto& c=adjacency_counters;AdjacencyStatistics s;
     s.calls=c.calls.load();s.computed=c.computed.load();s.fallbacks=c.fallbacks.load();s.faults=c.faults.load();s.fast_ticks=c.fast_ticks.load();s.native_ticks=c.native_ticks.load();
+    s.verify_admitted=c.verify_admitted.load();s.verify_admitted_mismatched=c.verify_admitted_mismatched.load();s.verify_refused_fp=c.verify_refused_fp.load();s.verify_refused_competing=c.verify_refused_competing.load();
     s.verify_meshes=c.verify_meshes.load();s.verify_equal=c.verify_equal.load();s.verify_mismatched=c.verify_mismatched.load();s.verify_mismatch_entries=c.verify_mismatch_entries.load();
     s.quantized=c.quantized.load();s.unquantized=c.unquantized.load();s.multi_candidate_meshes=c.multi_candidate_meshes.load();
     for(unsigned i=0;i<adjacency_fallback_count;++i)s.fallback_reasons[i]=c.fallback_reasons[i].load();

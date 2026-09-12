@@ -47,7 +47,7 @@ def main():
             kind=line.split(' ',1)[0];groups.setdefault(kind,[]).append(dict(re.findall(r'(\w+)=([^\s]+)',line)))
         meta['results']=groups
         terminal=report.read_text().rstrip().splitlines()[-1]
-        meta['passed']=run.returncode==0 and bool(re.fullmatch(r'RESULT PASS checks=\d+',terminal)) and len(groups.get('RESULT',[]))==1 and before==meta['hashes_after'] and len(groups.get('CASE',[]))==5 and len(groups.get('FP',[]))==1 and len(groups.get('TIMING',[]))==1 and len(groups.get('LAST_ERROR_KEY',[]))==1
+        meta['passed']=run.returncode==0 and terminal=='RESULT PASS checks=770' and len(groups.get('RESULT',[]))==1 and before==meta['hashes_after'] and len(groups.get('CASE',[]))==5 and len(groups.get('FP',[]))==1 and len(groups.get('FP_AUTHORED',[]))==1 and all(groups['FP_AUTHORED'][0].get(k)==v for k,v in {'equal_condition':'4000','status_changed':'1','miss_equal':'1','hit_equal':'1','controls_error_equal':'1'}.items()) and len(groups.get('TIMING',[]))==1 and len(groups.get('LAST_ERROR_KEY',[]))==1
         meta['phase']='complete'
         meta['limits']=[
             'Detached core; no hooks, installation or game loading improvement.',

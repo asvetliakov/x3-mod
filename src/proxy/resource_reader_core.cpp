@@ -140,6 +140,12 @@ Result decode(const Environment& env,FileObject* object,bool game_buffer) noexce
     r.expected_position=begin_offset+final;
     // A scratch decode (verify) puts the stream back so the original can run;
     // fast mode leaves it where the original would.
+    // Reposition before publishing ownership or game bookkeeping. A failed
+    // rewind must free our allocation and leave the entry guard armed so the
+    // original can retry from its initial stream position.
+    if(game_buffer&&final!=length&&env.fseek(file,r.expected_position,seek_set)!=0){
+        release();return fail(r,Reason::Tell);
+    }
     guard.armed=!game_buffer;
     r.outcome=Outcome::Handled;r.buffer=out;r.size=isize;
     if(game_buffer){
@@ -148,7 +154,6 @@ Result decode(const Environment& env,FileObject* object,bool game_buffer) noexce
         if(env.counters[3])*env.counters[3]+=1;
         for(unsigned i=0;i<2;++i)if(env.size_globals[i])*env.size_globals[i]=isize;
         if(catalogue)object->cursor=int32_t(final);
-        if(final!=length)env.fseek(file,r.expected_position,seek_set); // the fread left us at the extent end
     }
     r.ticks=tick()-begin;
     return r;
@@ -212,8 +217,10 @@ extern "C" uint32_t __cdecl x3m_resource_read_entry(uint32_t* regs) {
         for(unsigned i=0;i<4;++i)counters_before[i]=bound_env.counters[i]?*bound_env.counters[i]:0;
         for(unsigned i=0;i<2;++i)globals_before[i]=bound_env.size_globals[i]?*bound_env.size_globals[i]:0;
         const uint64_t t0=tick();
+        SetLastError(error); // scratch decode and timing are not original-call inputs
         void* original=call_original(*continuation,object);
-        const uint64_t t1=tick();const DWORD original_error=GetLastError();
+        const DWORD original_error=GetLastError(); // sample before any diagnostic call
+        const uint64_t t1=tick();
         add64(&stats.original_ticks,t1-t0);add64(&stats.verify_files,1);
         VerifyEvent e{};
         e.size=r.size;e.catalogue=r.catalogue;e.scrambled=r.scrambled;e.our_ticks=r.ticks;e.original_ticks=t1-t0;

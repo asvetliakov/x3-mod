@@ -88,9 +88,9 @@ bool adjacency_write_dump(const wchar_t* path,ID3DXMesh* mesh,FLOAT epsilon,cons
 // documented inputs D3DX itself reads (HKLM\Software\Microsoft\Direct3D
 // DisablePSGP / DisableD3DXPSGP, IsProcessorFeaturePresent for 3DNow and SSE,
 // CPUID for MMX, SSE2 and the extended 3DNow bit); D3DX's memory is never read.
-// The module reproduces Generic and Sse2; the other two fall back to native.
+// Generic and SSE2 are modeled; other tables and unknown dispatch use native.
 // The dump header's reserved[0] records 1 + this value.
-enum class D3dxMathTable : unsigned { Generic, ThreeDNow, Sse2, Sse };
+enum class D3dxMathTable : unsigned { Generic, ThreeDNow, Sse2, Sse, Unknown };
 D3dxMathTable d3dx_math_table();
 const char* d3dx_math_table_name(D3dxMathTable table);
 #ifdef X3M_LOADING_TRACE_FIXTURE
@@ -114,12 +114,17 @@ bool fixture_cache_contract(ID3DXMesh* mesh); // Preflight only; never dispatche
 uint64_t fixture_cache_gate_reason(const char* reason);
 // X3M_MESH_ADJACENCY seams: 0 native, 1 verify, 2 fast (the production switch is read once at initialization).
 void fixture_adjacency_mode(unsigned mode);
+void fixture_adjacency_math_table(int table); // -1 restores real process dispatch; no production override.
+bool fixture_adjacency_registry_dword(LSTATUS status,DWORD type,DWORD size);
+bool fixture_adjacency_registry_ambiguous(LSTATUS status,DWORD type,DWORD size);
+HRESULT fixture_adjacency_fast(ID3DXMesh*,FLOAT,DWORD*,HRESULT(WINAPI*)(ID3DXMesh*,FLOAT,DWORD*));
 struct AdjacencyStatistics {
     uint64_t calls=0,computed=0,fallbacks=0,faults=0,fast_ticks=0,native_ticks=0;
+    uint64_t verify_admitted=0,verify_admitted_mismatched=0,verify_refused_fp=0,verify_refused_competing=0;
     uint64_t verify_meshes=0,verify_equal=0,verify_mismatched=0,verify_mismatch_entries=0;
     uint64_t quantized=0,unquantized=0,multi_candidate_meshes=0;
-    std::array<uint64_t,7> fallback_reasons{}; // input, gate, declaration, size, lock, module, math_table
-    std::array<uint64_t,7> module_status{};    // mesh_adjacency_fast::Status order
+    std::array<uint64_t,9> fallback_reasons{}; // input, gate, declaration, size, lock, module, math_table, competing_normals, fp_domain
+    std::array<uint64_t,8> module_status{};    // mesh_adjacency_fast::Status order
     bool faulted=false;
 };
 AdjacencyStatistics fixture_adjacency_statistics();

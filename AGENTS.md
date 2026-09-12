@@ -51,6 +51,15 @@ User preferences recorded 2026-09-10:
   Newer SIMD requires verified runtime support and a measured benefit; do not
   enable fast-math globally.
 - Subagents may be used when helpful for independent research/context management.
+- Agent model allocation (user preference, 2026-09-13): use `gpt-5.6-sol`
+  with `high` reasoning for bounded log analysis, documentation, routine
+  verification and artifact checks; use `high` or `xhigh` for independent
+  reviews, choosing `xhigh` for code/correctness reviews. Use `gpt-6-astra`
+  for implementation, planning, architecture and difficult debugging.
+  Escalate ambiguous or consequential findings to the Astra orchestrator.
+  Apply this split to new agents; do not interrupt a useful in-flight run
+  just to change models. Give secondary agents a focused task and the needed
+  files/evidence instead of duplicating the entire conversation history.
 - Close unused launcher menus promptly: they sit above other windows.
 - Never launch the game, including menu-only tests (user clarification,
   2026-09-13). Tell the user what is needed and let them launch/load the scene.

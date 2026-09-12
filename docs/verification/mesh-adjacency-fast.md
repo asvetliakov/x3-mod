@@ -537,3 +537,22 @@ controlled comparison.
   installed.
 * Open: the game acceptance run (`--telemetry --mesh-adjacency verify
   --mesh-adjacency-dump`, bottle X3, `verify_mismatched=0`), then `fast`.
+
+## Review 31 admission boundary (2026-09-13)
+
+The fast service refuses potentially competing SSE2 directed edges before any
+output write, and uses native outside its explicit FP domain. Generic normal
+selection remains available. Verify retains comparisons and separately counts
+what fast would admit. Registry dispatch requires the DWORD type and falls back
+on malformed successful DWORD reads. See [review 31](review-31-adjacency-reader.md#adjacency-implementation-follow-up)
+for the proof, counters, 26 host tests and final two-bottle qualification.
+Previous raw-module parity counts do not certify the broader fast domain.
+
+Fresh Steam and X3 loading suites pass 86 / 123 / **36,093 / 36,150** checks.
+The local 37-mesh replay serves native-equal output on both: Steam conservatively
+falls back for all 37 competing-normal inputs; X3 computes all 37 and admits all
+37 verify comparisons. Steam's historical unseeded SSE2 mismatch cause remains
+unresolved. See review 31 for exact source/binary provenance, the narrowly
+observed Steam FP-control canonicalization, authored admitted-path coverage and
+fixed-order timing limitations. No game acceptance or native-Windows run is
+claimed by these fixture results.

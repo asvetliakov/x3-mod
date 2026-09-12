@@ -3,4 +3,18 @@ CASE name=duplicated_seam adjacency_hr=00000000 clean_hr=00000000 optimize_hr=00
 CASE name=epsilon_seam adjacency_hr=00000000 clean_hr=00000000 optimize_hr=00000000 cache_hit=1 downstream_exact=1
 CASE name=disconnected adjacency_hr=00000000 clean_hr=00000000 optimize_hr=00000000 cache_hit=1 downstream_exact=1
 CASE name=degenerate adjacency_hr=00000000 clean_hr=88760b55 optimize_hr=80004005 cache_hit=1 downstream_exact=1
-RESULT FAIL checks=303 error=native FP status changes observed
+FP_AUTHORED equal_condition=4000 status_changed=1 miss_equal=1 hit_equal=1 controls_error_equal=1 native_status_changed=0
+FP native_cw=007f native_sw=0000 native_mxcsr=00001f80 hit_computational_parity=1 diagnostic_instruction_pointers_excluded=1
+FP_VARIANT variant=0 cw=007f sw=0020 mxcsr=00001f80 applied_cw=007f applied_sw=0000 applied_mxcsr=00001f80 masked=1 expect=keyed
+FP_VARIANT variant=1 cw=007f sw=4100 mxcsr=00001f80 applied_cw=007f applied_sw=4100 applied_mxcsr=00001f80 masked=1 expect=keyed
+FP_VARIANT variant=2 cw=037f sw=0000 mxcsr=00001f80 applied_cw=037f applied_sw=0000 applied_mxcsr=00001f80 masked=1 expect=keyed
+FP_VARIANT variant=3 cw=047f sw=0000 mxcsr=00001f80 applied_cw=047f applied_sw=0000 applied_mxcsr=00001f80 masked=1 expect=keyed
+FP_VARIANT variant=4 cw=007f sw=0000 mxcsr=00009f80 applied_cw=007f applied_sw=0000 applied_mxcsr=00009f80 masked=1 expect=keyed
+FP_VARIANT variant=5 cw=007f sw=0000 mxcsr=00001fc0 applied_cw=007f applied_sw=0000 applied_mxcsr=00001fc0 masked=1 expect=keyed
+FP_VARIANT variant=6 cw=007f sw=0000 mxcsr=00001fa0 applied_cw=007f applied_sw=0000 applied_mxcsr=00001f80 masked=1 expect=keyed
+FP_VARIANT variant=7 cw=027f sw=0000 mxcsr=00009fc0 applied_cw=027f applied_sw=0000 applied_mxcsr=00009fc0 masked=1 expect=keyed
+FP_VARIANT variant=8 cw=007d sw=0000 mxcsr=00001f80 applied_cw=007d applied_sw=0000 applied_mxcsr=00001f80 masked=0 expect=bypass
+FP_VARIANT variant=9 cw=007f sw=0000 mxcsr=00001e80 applied_cw=007f applied_sw=0000 applied_mxcsr=00001e80 masked=0 expect=bypass
+LAST_ERROR_KEY conditional_change=1 misses=2 hits=1 rejected=1
+TIMING faces=18432 vertices=9409 repetitions=15 native_median_us=4496.200 adapter_miss_median_us=5857.200 adapter_hit_median_us=1357.200 includes_native_buffer_acquisition=1 retained_bytes=540932 scratch_cap_bytes=4194304 acquisition_ticks=30295 lookup_ticks=343047 copy_ticks=7410 native_ticks=732248 total_ticks=1115349 hits=15 misses=16
+RESULT PASS checks=770

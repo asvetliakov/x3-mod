@@ -1,6 +1,6 @@
 TRACKER baseline_vertex_revision=1 baseline_index_revision=1 vertex_flags=00000010 index_flags=00000010 known=0
 mesh_cache requested=0 enabled=0 activation=await_public_mesh_and_buffer_contract adjacency_metric_scope=hook_service restart_on_cleanup_failure=1
-mesh_adjacency mode=native scope=hook_service equivalence=exact_position_equality gate=public_systemmem_readonly+declaration_float3 order=cache_lookup,compute,cache_store native_fallback=1
+mesh_adjacency mode=native scope=hook_service equivalence=d3dx_rules+exact_position_equality fp_domain=pc53_nearest_masked_empty_mxcsr_1f80_or_9fc0 normal_gate=sse2_no_competing gate=public_systemmem_readonly+declaration_float3+no_attribute_table order=cache_lookup,compute,cache_store native_fallback=1 dump=0 rsqrt=rsqrtss math_table=generic normalize=generic
 loading_hook name=CreateFileA installed=0
 loading_hook name=ReadFile installed=0
 loading_hook name=SetFilePointer installed=0
@@ -24,7 +24,7 @@ loading_hook name=gzgetc installed=0
 loading_hook name=gztell installed=0
 loading_hook name=gzclose installed=0
 loading_hook name=gzwrite installed=0
-loading_trace coverage_begin=9629780430326 frequency=10000000 hooks=2 module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=1 probes=0
+loading_trace coverage_begin=9815095114810 frequency=10000000 hooks=2 module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=1 probes=0 crypt_cache=0
 mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=8 objects_retained=0
 mesh_hook table=0 installed=1 owned_slots=3 scope=shared_native_vtable
 CASE name=closed_manifold parity=1
@@ -38,10 +38,10 @@ DYNAMIC options=00000990 parity=1 write_after_hit_miss=0
 DYNAMIC options=00000991 parity=1 write_after_hit_miss=0
 DYNAMIC options=00018990 parity=1 write_after_hit_miss=0
 DYNAMIC options=00018991 parity=1 write_after_hit_miss=0
-loading_metric op=D3DXCreateMesh qpc=9629780754322 count=31 failures=0 pending=0 ambiguous=0 bytes=0 inclusive_ticks=69715 exclusive_ticks=69715 max_ticks=8193 wrapper_tail_ticks=35 total_us=6971.500 exclusive_us=6971.500 max_us=819.300 wrapper_tail_us=3.500
-loading_metric op=D3DXCleanMesh qpc=9629780754322 count=18 failures=2 pending=0 ambiguous=0 bytes=0 inclusive_ticks=4357 exclusive_ticks=4357 max_ticks=332 wrapper_tail_ticks=21 total_us=435.700 exclusive_us=435.700 max_us=33.200 wrapper_tail_us=2.100
-loading_metric op=ID3DXMesh::GenerateAdjacency qpc=9629780754322 count=36 failures=1 pending=0 ambiguous=0 bytes=0 inclusive_ticks=27486 exclusive_ticks=27486 max_ticks=1260 wrapper_tail_ticks=57 total_us=2748.600 exclusive_us=2748.600 max_us=126.000 wrapper_tail_us=5.700
-loading_metric op=ID3DXMesh::OptimizeInplace qpc=9629780754322 count=24 failures=0 pending=0 ambiguous=0 bytes=0 inclusive_ticks=31684 exclusive_ticks=31684 max_ticks=11930 wrapper_tail_ticks=33 total_us=3168.400 exclusive_us=3168.400 max_us=1193.000 wrapper_tail_us=3.300
+loading_metric op=D3DXCreateMesh qpc=9815095462011 count=31 failures=0 pending=0 ambiguous=0 bytes=0 inclusive_ticks=76077 exclusive_ticks=76077 max_ticks=8098 wrapper_tail_ticks=42 total_us=7607.700 exclusive_us=7607.700 max_us=809.800 wrapper_tail_us=4.200
+loading_metric op=D3DXCleanMesh qpc=9815095462011 count=18 failures=2 pending=0 ambiguous=0 bytes=0 inclusive_ticks=4689 exclusive_ticks=4689 max_ticks=354 wrapper_tail_ticks=24 total_us=468.900 exclusive_us=468.900 max_us=35.400 wrapper_tail_us=2.400
+loading_metric op=ID3DXMesh::GenerateAdjacency qpc=9815095462011 count=36 failures=1 pending=0 ambiguous=0 bytes=0 inclusive_ticks=30518 exclusive_ticks=30518 max_ticks=2462 wrapper_tail_ticks=71 total_us=3051.800 exclusive_us=3051.800 max_us=246.200 wrapper_tail_us=7.100
+loading_metric op=ID3DXMesh::OptimizeInplace qpc=9815095462011 count=24 failures=0 pending=0 ambiguous=0 bytes=0 inclusive_ticks=33911 exclusive_ticks=33911 max_ticks=13554 wrapper_tail_ticks=34 total_us=3391.100 exclusive_us=3391.100 max_us=1355.400 wrapper_tail_us=3.400
 CACHE_RESULT enabled=0 wrapped=1 fault=0 calls=0 hits=0 misses=0 native_calls=0 rejections=0 blocked=0 retained=0
 mesh_hook table=0 restored_slots=3 foreign_slots=0 remaining_owned_slots=0
 mesh_hook table=1 restored_slots=3 foreign_slots=0 remaining_owned_slots=0

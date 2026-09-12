@@ -13,9 +13,10 @@ implemented, but the source lighting is still gamma-space; neither
 scene-referred lighting nor HDR display presentation is complete. Native
 Windows source compatibility remains distinct from native runtime verification.
 
-Immediate order: finish review 30 and install, review/fix and merge the crypto
-cache and space-aware exposure meter, finish adjacency/reader reviews, install,
-then obtain the controlled user runs. Sharpen 0.75 / mip bias −0.5 remain
+Review 30 is installed; the crypto cache and space-aware exposure meter are
+reviewed and merged, and adjacency/reader review is complete. Immediate order:
+finish combined DLL qualification, install, then obtain the controlled user
+runs. Sharpen 0.75 / mip bias −0.5 remain
 candidate defaults until 0.75 is measured in game. HDR bloom on the FP16 target
 is the next visual feature; use the [existing glow/compositor
 map](../reverse-engineering/compositor-and-glow.md) to avoid double bloom or HUD

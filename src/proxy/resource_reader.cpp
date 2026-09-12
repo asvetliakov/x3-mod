@@ -43,7 +43,7 @@ const char* mode_name(Mode m){return m==Mode::Fast?"fast":m==Mode::Verify?"verif
 void verify_sink(const VerifyEvent& e){
     PreserveCpuState cpu;
     if(mismatch_lines++>=mismatch_line_limit)return;
-    log("resource_reader verify equal=%u size=%lu original_size=%lu mismatches=%lu first=%lu original_null=%u globals_ok=%u counters_ok=%u position_ok=%u cursor=%ld expected_cursor=%ld position=%ld expected_position=%ld catalogue=%u scrambled=%u our_us=%.3f original_us=%.3f",
+    log("resource_reader verify equal=%u size=%lu original_size=%lu mismatches=%lu first=%lu original_null=%u globals_ok=%u counters_ok=%u cursor_ok=%u position_ok=%u cursor=%ld expected_cursor=%ld position=%ld expected_position=%ld catalogue=%u scrambled=%u our_us=%.3f original_us=%.3f",
         unsigned(e.equal),static_cast<unsigned long>(e.size),static_cast<unsigned long>(e.original_size),static_cast<unsigned long>(e.mismatches),static_cast<unsigned long>(e.first_mismatch),
         unsigned(e.original_null),unsigned(e.globals_ok),unsigned(e.counters_ok),unsigned(e.cursor_ok),unsigned(e.position_ok),long(e.cursor),long(e.expected_cursor),e.position,e.expected_position,unsigned(e.catalogue),unsigned(e.scrambled),
         double(e.our_ticks)*1e6/double(frequency),double(e.original_ticks)*1e6/double(frequency));

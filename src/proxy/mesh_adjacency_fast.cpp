@@ -189,7 +189,7 @@ struct NormalCache { // lazily malloc'd only when a chain offers several candida
 };
 }
 const char* status_name(unsigned status) noexcept {
-    static constexpr const char* names[]={"ok","input","index_range","non_finite","magnitude","epsilon_neighbour","allocation"};
+    static constexpr const char* names[]={"ok","input","index_range","non_finite","magnitude","epsilon_neighbour","allocation","competing_normals"};
     return status<status_count?names[status]:"unknown";
 }
 const char* rsqrt_implementation() noexcept {
@@ -200,6 +200,17 @@ const char* rsqrt_implementation() noexcept {
 #endif
 }
 const char* normalize_name(Normalize normalize) noexcept { return normalize==Normalize::Generic?"generic":"sse2"; }
+bool supported_fp_domain(uint32_t control,uint32_t tag,uint32_t mxcsr) noexcept {
+    // 53-bit x87, nearest, all exceptions masked, empty register stack. The
+    // reserved CW bit 6 differs between 023f (game) and 027f (CRT) and is ignored.
+    // Admit only the ordinary or observed game MXCSR controls. In Generic the
+    // native arithmetic is x87; admitted SSE2 meshes never evaluate a normal.
+    // Thus game FTZ/DAZ does not alter the admitted native arithmetic. Other
+    // combinations remain unproved, even if a selected fixture happens to agree.
+    const uint32_t mx_controls=mxcsr&~uint32_t(0x3f);
+    return (control&0x0f3f)==0x023f&&(tag&0xffff)==0xffff&&
+        (mx_controls==0x1f80||mx_controls==0x9fc0);
+}
 void release_scratch() noexcept { std::free(arena.base);arena.base=nullptr;arena.capacity=0; }
 Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexcept {
     Report report;
@@ -416,12 +427,28 @@ Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexce
         size_t s=size_t(mix((uint64_t(a)<<32|b)*0x9e3779b97f4a7c15ull))&edge_mask;
         for(;;){const uint32_t anchor=slots[s].anchor;if(anchor==unused||(edge_v1(anchor)==a&&edge_v2(anchor)==b))return s;s=(s+1)&edge_mask;}
     };
+    bool duplicate_edges=false;
     auto insert=[&](uint32_t id) noexcept {
         const size_t s=slot_of(edge_v1(id),edge_v2(id));if(slots[s].anchor==unused)slots[s].anchor=id;
+        duplicate_edges|=slots[s].head!=unused;
         if(policy.head_insertion||slots[s].head==unused){next[id]=slots[s].head;slots[s].head=id;}
         else{uint32_t tail=slots[s].head;while(next[tail]!=unused)tail=next[tail];next[tail]=id;next[id]=unused;}
     };
     for(uint32_t f=0;f<F;++f){if(!active[f])continue;for(uint32_t k=0;k<3;++k)insert(f*3+k);}
+    // No output has been touched. A single candidate needs no normal score;
+    // duplicate keys without a reverse also need none. Only ambiguous meshes
+    // pay this scan, and rejection happens before any normal allocation/math.
+    if((policy.refuse_competing_normals||policy.normalize==Normalize::Sse2)&&duplicate_edges){
+        for(size_t s=0;s<size_t(edge_slots);++s){
+            const uint32_t first=slots[s].head;
+            if(first==unused||next[first]==unused)continue;
+            if(slots[slot_of(edge_v2(first),edge_v1(first))].head!=unused){
+                report.potential_competing_normals=true;
+                if(policy.refuse_competing_normals){report.status=Status::CompetingNormals;return report;}
+                break;
+            }
+        }
+    }
     // D3DX unlinks a matched entry inside the lookup and removes the querying
     // edge's own entry (FUN_0058a8ff, a chain walk) after a successful lookup. A
     // retired flag hides an entry from the scans instead: the remaining entries

@@ -46,11 +46,22 @@ static GzOpenFn gz_open;static GzWriteFn gz_write;static GzCloseFn gz_close;
 static InflateInitFn inflate_init;static InflateFn inflate_fn;static InflateEndFn inflate_end;
 // ---- fixture CRT environment (msvcrt FILE*) and game-like globals ----
 static uint32_t counters[4],size_globals[2];
-static unsigned malloc_failures_armed=0;
-static void* __cdecl env_malloc(size_t n){ if(malloc_failures_armed){--malloc_failures_armed;return nullptr;} return malloc(n); }
-static void __cdecl env_free(void* p){ free(p); }
-static size_t __cdecl env_fread(void* b,size_t s,size_t n,void* f){ return fread(b,s,n,static_cast<FILE*>(f)); }
-static int __cdecl env_fseek(void* f,long o,int w){ return fseek(static_cast<FILE*>(f),o,w); }
+static unsigned malloc_failures_armed=0,allocation_calls=0,free_calls=0;
+static bool rewind_failure_armed=false,scratch_error_armed=false,error_witness=false;
+static long rewind_target=0;
+static DWORD observed_original_error=0;
+constexpr DWORD incoming_error=0x31415926,scratch_error=0x27182818,outgoing_error=0x16180339;
+static void* __cdecl env_malloc(size_t n){ if(malloc_failures_armed){--malloc_failures_armed;return nullptr;} ++allocation_calls;return malloc(n); }
+static void __cdecl env_free(void* p){ ++free_calls;free(p); }
+static size_t __cdecl env_fread(void* b,size_t s,size_t n,void* f){
+    const size_t result=fread(b,s,n,static_cast<FILE*>(f));
+    if(scratch_error_armed)SetLastError(scratch_error);
+    return result;
+}
+static int __cdecl env_fseek(void* f,long o,int w){
+    if(rewind_failure_armed&&w==SEEK_SET&&o==rewind_target){rewind_failure_armed=false;return -1;}
+    return fseek(static_cast<FILE*>(f),o,w);
+}
 static long __cdecl env_ftell(void* f){ return ftell(static_cast<FILE*>(f)); }
 static rr::Environment environment(){
     rr::Environment env;env.fread=env_fread;env.fseek=env_fseek;env.ftell=env_ftell;env.malloc=env_malloc;env.free=env_free;
@@ -174,7 +185,12 @@ static void* reference_read(rr::FileObject* o){ // 0x004e8880 (mode 5 gz handles
 }
 // A fixture site with the real prologue of 0x004e8880 (sub esp,0x454) and the
 // EAX-in/EAX-out convention, forwarding to the reference decoder.
-extern "C" void* __cdecl reference_entry_c(rr::FileObject* o){ return reference_read(o); }
+extern "C" void* __cdecl reference_entry_c(rr::FileObject* o){
+    if(error_witness)observed_original_error=GetLastError();
+    void* result=reference_read(o);
+    if(error_witness)SetLastError(outgoing_error);
+    return result;
+}
 extern "C" void reference_site();
 asm(".text\n.globl _reference_site\n_reference_site:\n"
     "\t.byte 0x81,0xec,0x54,0x04,0x00,0x00\n"   // sub esp,0x454 (the displaced instruction)
@@ -415,6 +431,28 @@ int main(int argc,char** argv){
         { rr::FileObject o=loose_object(s);malloc_failures_armed=1;check_fallback_restores(o,"alloc");malloc_failures_armed=0;
           void* buf=reference_read(&o);check(buf&&same(buf,size_globals[0],s.payload),"reference_after_alloc_fallback");if(buf)env_free(buf);close_object(o); }
     }
+    // A final short-class rewind failure must not publish an allocation or
+    // bookkeeping. The one-shot seam leaves restoration and original retry viable.
+    for(unsigned catalogue=0;catalogue<2;++catalogue){
+        const Record& rec=cursor_records.back();const Source& src=cursor_sources[rec.index];
+        rr::FileObject o=catalogue?cursor_record_object(rec):loose_object(src);
+        check(o.file!=nullptr,"rewind_open");
+        const long initial=ftell(static_cast<FILE*>(o.file));
+        const int32_t initial_cursor=o.cursor;
+        counters[0]=11;counters[1]=22;counters[2]=33;counters[3]=44;
+        size_globals[0]=55;size_globals[1]=66;
+        const unsigned allocations=allocation_calls,frees=free_calls;
+        rewind_target=(catalogue?rec.offset:0)+original_final(src.stored);rewind_failure_armed=true;
+        const rr::Result result=rr::decode(environment(),&o,true);
+        check(!rewind_failure_armed&&result.outcome==rr::Outcome::Fallback&&result.reason==rr::Reason::Tell&&!result.buffer,"rewind_refused");
+        check(allocation_calls==allocations+1&&free_calls==frees+1,"rewind_allocation_released");
+        check(counters[0]==11&&counters[1]==22&&counters[2]==33&&counters[3]==44&&size_globals[0]==55&&size_globals[1]==66,"rewind_bookkeeping_unpublished");
+        check(o.cursor==initial_cursor&&ftell(static_cast<FILE*>(o.file))==initial,"rewind_entry_restored");
+        void* original=reference_read(&o);
+        check(original&&same(original,size_globals[0],src.payload),"rewind_original_retry");
+        if(original)env_free(original);close_object(o);
+    }
+    printf("RR_CASE name=rewind_failure modes=2 allocations_freed=2 entry_restored=2 bookkeeping_unchanged=2 original_retries=2\n");
     printf("RR_CASE name=fallbacks\n");
     // ---- case 4: the probe machinery on fixture sites ----
     {
@@ -492,7 +530,15 @@ int main(int argc,char** argv){
             st.calls,st.handled,st.fallbacks,st.verify_files,st.verify_equal,st.verify_mismatched,st.bytes_in,st.bytes_out,us(st.ticks),us(st.original_ticks));
         // a deliberately different original (first byte flipped) must be reported as a mismatch and still be what the caller gets
         { reference_tamper=true;rr::FileObject o=record_object(records[1]);
+          scratch_error_armed=true;error_witness=true;SetLastError(incoming_error);
           void* buf=call_site(reference_site,&o);
+          const DWORD returned_error=GetLastError();
+          scratch_error_armed=false;error_witness=false;
+          check(observed_original_error==incoming_error,"verify_original_error_input");
+          check(returned_error==outgoing_error,"verify_original_error_output");
+          printf("RR_CASE name=error_abi incoming=%lu original_input=%lu outgoing=%lu returned=%lu\n",
+              static_cast<unsigned long>(incoming_error),static_cast<unsigned long>(observed_original_error),
+              static_cast<unsigned long>(outgoing_error),static_cast<unsigned long>(returned_error));
           check(buf&&size_globals[0]==sources[1].payload.size()&&static_cast<unsigned char*>(buf)[0]==(sources[1].payload[0]^1),"verify_mismatch_returns_original");
           if(buf)env_free(buf);close_object(o);reference_tamper=false;
           st=rr::statistics();check(st.verify_mismatched==1&&st.verify_equal==2*gz_sources,"verify_mismatch_counted"); }

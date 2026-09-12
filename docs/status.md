@@ -20,8 +20,11 @@ tests still run only on CrossOver. See
 
 Current work: review 30 is committed and installed; crypto is reviewed and
 merged, the reviewed exposure branch is merged, and the reader has
-passed 4,721 checks plus independent artifact review. Adjacency qualification
-remains in progress. Then
+passed 4,721 checks plus independent artifact review. Adjacency output
+preservation and cache/hook qualification are accepted on both bottles:
+X3 computed all 37 retained meshes; Steam used native fallback for all 37.
+The final combined rendering and
+CryptoAPI checks remain before installation. Then
 install the integrated build and request
 the [controlled run groups](verification/next-runs-2026-09-13.md) from handoff
 section 5. **Current install:** review-30 checkpoint `3124e0b`, SHA-256
@@ -64,6 +67,30 @@ crypto module. Merged loading/capture sources pass the production-flag syntax
 check; CLI dry-run and six crypto host controls pass. Full integrated fixture
 qualification follows the adjacency/reader work before installation. The
 approximately 4× signature-fixture speedup is not a measured game load saving.
+
+## Reader and adjacency checkpoint (2026-09-13; reviewed, not installed)
+
+[Review 31](verification/review-31-adjacency-reader.md) is closed for its
+scoped fixes. Reader verifies the short-record cursor, checks rewind failure
+before publishing a buffer, preserves LastError and repairs shifted diagnostic
+fields; its X3 fixture passes 4,721 checks. Adjacency now refuses unsupported
+FP domains and ambiguous SSE2 edge selection before writing output, and checks
+registry types. Both bottles pass loading suites of 86 / 123 / 36,093 / 36,150
+checks, the standalone cache's 770 checks and six hook cases totaling 13,271.
+
+The exact-binary replay serves native-equal output for all 37 retained meshes
+on both bottles. X3 computes and admits all 37; Steam conservatively falls
+back for all 37. The older unseeded Steam mismatch cause remains unresolved;
+this seeded replay does not justify removing that guard. Fixed-order X3
+replay totals were 196 ms native versus 58 ms served; these are diagnostic
+fixture timings, not a measured game load saving. Several fixture-only FP
+controls now distinguish requested state from delivered state and use a real
+comparison to witness status replay. No production gate was weakened.
+
+The independent review checks source/native/retained-binary/raw-result hashes.
+All game fast-mode acceptance and native-Windows runtime behavior remain
+unverified. The source freeze is now entering final combined qualification;
+the installed game DLL remains review 30.
 
 ## Space-aware exposure checkpoint (2026-09-13; merged, not installed)
 

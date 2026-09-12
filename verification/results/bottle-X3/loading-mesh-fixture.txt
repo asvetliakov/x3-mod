@@ -1,5 +1,5 @@
 mesh_cache requested=0 enabled=0 activation=await_public_mesh_and_buffer_contract adjacency_metric_scope=hook_service restart_on_cleanup_failure=1
-mesh_adjacency mode=native scope=hook_service equivalence=d3dx_rules+exact_position_equality gate=public_systemmem_readonly+declaration_float3+no_attribute_table order=cache_lookup,compute,cache_store native_fallback=1 dump=0 rsqrt=rsqrtss math_table=generic normalize=generic
+mesh_adjacency mode=native scope=hook_service equivalence=d3dx_rules+exact_position_equality fp_domain=pc53_nearest_masked_empty_mxcsr_1f80_or_9fc0 normal_gate=sse2_no_competing gate=public_systemmem_readonly+declaration_float3+no_attribute_table order=cache_lookup,compute,cache_store native_fallback=1 dump=0 rsqrt=rsqrtss math_table=generic normalize=generic
 loading_hook name=CreateFileA installed=0
 loading_hook name=ReadFile installed=0
 loading_hook name=SetFilePointer installed=0
@@ -23,15 +23,15 @@ loading_hook name=gzgetc installed=0
 loading_hook name=gztell installed=0
 loading_hook name=gzclose installed=0
 loading_hook name=gzwrite installed=0
-loading_trace coverage_begin=9756164534512 frequency=10000000 hooks=2 module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=1 probes=0
+loading_trace coverage_begin=9808645164572 frequency=10000000 hooks=2 module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=1 probes=0 crypt_cache=0
 mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=8 objects_retained=0
 mesh_hook table=0 installed=0 owned_slots=0 scope=shared_native_vtable
 mesh_hook table=0 installed=1 owned_slots=3 scope=shared_native_vtable
-MESH_COUNT op=14 count=1 failures=0 inclusive=3170 max=3170
-MESH_COUNT op=15 count=1 failures=0 inclusive=248 max=248
-MESH_COUNT op=41 count=1 failures=0 inclusive=299 max=299
-MESH_COUNT op=42 count=2 failures=0 inclusive=893 max=676
-MESH_COUNT op=43 count=2 failures=1 inclusive=2459 max=2449
+MESH_COUNT op=14 count=1 failures=0 inclusive=3763 max=3763
+MESH_COUNT op=15 count=1 failures=0 inclusive=292 max=292
+MESH_COUNT op=41 count=1 failures=0 inclusive=239 max=239
+MESH_COUNT op=42 count=2 failures=0 inclusive=764 max=390
+MESH_COUNT op=43 count=2 failures=1 inclusive=2975 max=2966
 mesh_hook table=0 restored_slots=0 foreign_slots=1 remaining_owned_slots=0
 loading_hook name=D3DXCreateMesh restored=0 owned=1
 loading_hook name=D3DXCleanMesh restored=0 owned=1

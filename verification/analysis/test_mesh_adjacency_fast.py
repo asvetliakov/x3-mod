@@ -284,14 +284,14 @@ class HostModule(unittest.TestCase):
     def tearDownClass(cls):
         shutil.rmtree(cls.directory, ignore_errors=True)
 
-    def run_driver(self, vertices, faces, epsilon, bits=16, stride=20, offset=0, heads=None, normalize='sse2', **policy):
+    def run_driver(self, vertices, faces, epsilon, bits=16, stride=20, offset=0, heads=None, normalize='sse2', refuse_competing=False, **policy):
         flags = dict(DEFAULTS, **policy)
         heads = heads if heads is not None else vertices
         text = (f'{len(vertices)} {len(faces)} {bits} {epsilon!r} {stride} {offset} ' + ' '.join(str(int(flags[p])) for p in POLICIES)
                 + f' {int(normalize == "generic")}\n')
         text += ''.join(f'{x:08x} {y:08x} {z:08x} {hx:08x} {hy:08x} {hz:08x}\n' for (x, y, z), (hx, hy, hz) in zip(vertices, heads))
         text += ''.join(f'{a} {b} {c}\n' for a, b, c in faces)
-        out = subprocess.run([str(self.exe)], input=text, capture_output=True, text=True, check=True).stdout.splitlines()
+        out = subprocess.run([str(self.exe)]+(["refuse-competing"] if refuse_competing else []), input=text, capture_output=True, text=True, check=True).stdout.splitlines()
         head_fields = out[0].split()
         report = dict(representatives=int(head_fields[1]), welded=int(head_fields[2]), quantized=bool(int(head_fields[3])),
                       degenerate_faces=int(head_fields[4]), welded_degenerate_faces=int(head_fields[5]), refused_welds=int(head_fields[6]),
@@ -300,6 +300,43 @@ class HostModule(unittest.TestCase):
         self.assertEqual(head_fields[12], normalize)
         adjacency = [U if v == '-1' else int(v) for v in out[1].split()] if head_fields[0] == 'ok' else None
         return head_fields[0], report, adjacency
+
+    def test_competing_normal_admission(self):
+        for bits in (16, 32):
+            v, f = fan(16)
+            self.assertEqual(self.run_driver(v, f, 1e-6, bits=bits, refuse_competing=True)[0], 'competing_normals')
+            # Diagnostic mode remains computable and sees competing normals.
+            status, report, _ = self.run_driver(v, f, 1e-6, bits=bits)
+            self.assertEqual(status, 'ok')
+            self.assertGreater(report['multi_candidates'], 0)
+            # Duplicate directed edges with no reverse do not need scoring.
+            self.assertEqual(self.run_driver(v, [f[1], f[2]], 1e-6, bits=bits, refuse_competing=True)[0], 'ok')
+            v, f = quad()
+            self.assertEqual(self.run_driver(v, f, 1e-6, bits=bits, refuse_competing=True)[0], 'ok')
+
+    def test_preflight_covers_later_normal_selection(self):
+        rng = random.Random(3101)
+        for _ in range(100):
+            vertices = [P(rng.randrange(3), rng.randrange(3), rng.randrange(2)) for _ in range(12)]
+            faces = [tuple(rng.randrange(12) for _ in range(3)) for _ in range(20)]
+            diagnostic = self.run_driver(vertices, faces, 1e-6)
+            guarded = self.run_driver(vertices, faces, 1e-6, refuse_competing=True)
+            if diagnostic[1]['multi_candidates']:
+                self.assertEqual(guarded[0], 'competing_normals')
+            if guarded[0] == 'ok':
+                self.assertEqual(guarded[2], diagnostic[2])
+                self.assertEqual(diagnostic[1]['multi_candidates'], 0)
+
+    def test_fp_admission_domain(self):
+        check = lambda cw, tag, mx: subprocess.check_output([str(self.exe), 'fp-domain', f'{cw:x}', f'{tag:x}', f'{mx:x}'], text=True).strip() == '1'
+        for cw in (0x023f, 0x027f):
+            for mx in (0x1f80, 0x9fc0, 0x1fbf, 0x9fff):
+                self.assertTrue(check(cw, 0xffff, mx))
+        for cw in (0x007f, 0x037f, 0x067f, 0x0a7f, 0x0e7f, 0x027e):
+            self.assertFalse(check(cw, 0xffff, 0x1f80))
+        for mx in (0x1fc0, 0x9f80, 0x3f80, 0x5f80, 0x7f80, 0x1f00, 0x10000):
+            self.assertFalse(check(0x027f, 0xffff, mx))
+        self.assertFalse(check(0x027f, 0xfffc, 0x1f80))
 
     def check(self, vertices, faces, epsilon, offset=0, heads=None, **policy):
         head_bits = heads if heads is not None else ([(ZERO,) * 3] * len(vertices) if offset else None)

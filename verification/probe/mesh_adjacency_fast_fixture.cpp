@@ -200,6 +200,87 @@ static Fast fast_generate(ID3DXMesh* mesh,const Case& c,const fast::Policy& poli
 static size_t mismatches(const std::vector<DWORD>& a,const std::vector<DWORD>& b,size_t& first){first=a.size();size_t n=0;for(size_t i=0;i<a.size();++i)if(a[i]!=b[i]){if(!n)first=i;++n;}return n;}
 static void print_adjacency(const char* label,const std::vector<DWORD>& a){printf("%s",label);for(auto v:a)printf(" %ld",v==0xffffffffu?-1L:long(v));printf("\n");}
 // mesh-adjacency-<n>.bin dumps (loading_trace.h): read, rebuild the mesh, run native D3DX and the module.
+// Original failing callback: witnesses what the service passes to native after
+// refusal. It deliberately returns a distinct HRESULT/LastError and writes output.
+struct FpEnvironment {DWORD control,status,tag,ip,cs,dp,ds;};
+struct FpState {FpEnvironment x87;DWORD mxcsr;};
+static FpState read_state(){FpState f{};asm volatile("fnstenv %0\n\tfldenv %0\n\tstmxcsr %1":"=m"(f.x87),"=m"(f.mxcsr)::"memory");return f;}
+static void write_state(const FpState& f){asm volatile("fldenv %0\n\tldmxcsr %1"::"m"(f.x87),"m"(f.mxcsr):"memory");}
+static FpState fallback_expected{},fallback_observed{};
+static DWORD fallback_error=0;static bool fallback_untouched=false;static unsigned fallback_calls=0;
+static HRESULT WINAPI refused_original(ID3DXMesh*,FLOAT,DWORD* output){
+    fallback_error=GetLastError();fallback_observed=read_state();++fallback_calls;
+    fallback_untouched=true;for(unsigned i=0;i<9;++i)fallback_untouched&=output[i]==0xabcdefu;
+    output[0]=0x12345678;SetLastError(0x2468);return E_FAIL;
+}
+static void admission_controls(IDirect3DDevice9* device){
+    const unsigned before=checks;
+    require(fixture_adjacency_registry_dword(ERROR_SUCCESS,REG_DWORD,4),"registry valid DWORD");
+    require(!fixture_adjacency_registry_dword(ERROR_FILE_NOT_FOUND,REG_DWORD,4),"registry absent");
+    require(!fixture_adjacency_registry_dword(ERROR_SUCCESS,REG_BINARY,4),"registry binary not DWORD");
+    require(!fixture_adjacency_registry_dword(ERROR_SUCCESS,REG_SZ,4),"registry string not DWORD");
+    require(!fixture_adjacency_registry_dword(ERROR_SUCCESS,REG_DWORD,3),"registry short DWORD");
+    require(!fixture_adjacency_registry_dword(ERROR_MORE_DATA,REG_DWORD,8),"registry overlong DWORD");
+    require(fixture_adjacency_registry_ambiguous(ERROR_SUCCESS,REG_DWORD,3),"short successful DWORD makes dispatch unknown");
+    require(!fixture_adjacency_registry_ambiguous(ERROR_SUCCESS,REG_BINARY,4),"wrong registry type is ignored as native does");
+    Case c=fan("admission-refusal",16,{0,1,2});ID3DXMesh* mesh=nullptr;create_mesh(&D3DXCreateMesh,device,c,&mesh);
+    const FpState saved=read_state();FpState seed=saved;seed.x87.control=(seed.x87.control&0xffff0000)|0x027f;seed.x87.status&=0xffff0000;seed.x87.tag|=0xffff;seed.mxcsr=0x1f80;
+    struct Domain {DWORD cw,mx,tag;bool supported;};
+    const Domain domains[]={{0x023f,0x1f80,0xffff,true},{0x027f,0x9fc0,0xffff,true},
+        {0x007f,0x1f80,0xffff,false},{0x037f,0x1f80,0xffff,false},
+        {0x067f,0x1f80,0xffff,false},{0x0a7f,0x1f80,0xffff,false},{0x0e7f,0x1f80,0xffff,false},
+        {0x027f,0x3f80,0xffff,false},{0x027f,0x1fc0,0xffff,false},{0x027f,0x9f80,0xffff,false},
+        {0x027e,0x1f80,0xffff,false},{0x027f,0x1f00,0xffff,false},{0x027f,0x1f80,0xfffc,false}};
+    unsigned canonicalized_domains=0;
+    for(const auto& d:domains){
+        require(fast::supported_fp_domain(d.cw,d.tag,d.mx)==d.supported,"explicit FP domain classification");
+        // Force only the fixture's dispatch classification, never the native DLL.
+        // This makes the SSE2 preflight witness run on both fixture bottles.
+        fixture_adjacency_math_table(int(D3dxMathTable::Sse2));
+        fallback_expected=seed;fallback_expected.x87.control=(fallback_expected.x87.control&0xffff0000)|d.cw;fallback_expected.x87.tag=(fallback_expected.x87.tag&0xffff0000)|d.tag;fallback_expected.mxcsr=d.mx;
+        DWORD output[9];for(auto& v:output)v=0xabcdefu;
+        const auto stats=fixture_adjacency_statistics();const unsigned calls=fallback_calls;
+        write_state(fallback_expected);
+        // FLDENV tags alone do not create a physical stack value on every
+        // emulator. Construct a real x87 value for the nonempty-stack control.
+        if(d.tag!=0xffff){asm volatile("fldz":::"st","memory");}
+        fallback_expected=read_state();const FpState actual_before=fallback_expected;SetLastError(0x1357); // actual canonical hardware state
+        const HRESULT hr=fixture_adjacency_fast(mesh,c.epsilon,output,refused_original);
+        const DWORD error=GetLastError();const FpState after=read_state();write_state(saved);fixture_adjacency_math_table(-1);
+        const auto final=fixture_adjacency_statistics();
+        require(hr==E_FAIL&&error==0x2468&&output[0]==0x12345678,"native failure/output/LastError forwarded exactly");
+        require(fallback_calls==calls+1&&fallback_untouched,"refused candidate never publishes output before native");
+        if(fallback_error!=0x1357||fallback_observed.x87.control!=fallback_expected.x87.control||fallback_observed.x87.status!=fallback_expected.x87.status||fallback_observed.x87.tag!=fallback_expected.x87.tag||fallback_observed.mxcsr!=fallback_expected.mxcsr)
+            printf("ADMISSION_STATE_DIAGNOSTIC expected=%08lx/%08lx/%08lx/%08lx observed=%08lx/%08lx/%08lx/%08lx error=%08lx\n",fallback_expected.x87.control,fallback_expected.x87.status,fallback_expected.x87.tag,fallback_expected.mxcsr,fallback_observed.x87.control,fallback_observed.x87.status,fallback_observed.x87.tag,fallback_observed.mxcsr,fallback_error);
+        require(fallback_error==0x1357&&fallback_observed.x87.control==fallback_expected.x87.control&&fallback_observed.x87.status==fallback_expected.x87.status&&fallback_observed.x87.tag==fallback_expected.x87.tag&&fallback_observed.mxcsr==fallback_expected.mxcsr,"native receives incoming computational state and LastError");
+        require(after.x87.control==fallback_observed.x87.control&&after.x87.status==fallback_observed.x87.status&&after.x87.tag==fallback_observed.x87.tag&&after.mxcsr==fallback_observed.mxcsr,"native outgoing computational state retained");
+        // Rosetta can mask an attempted unmask of the invalid SSE exception.
+        // Count this narrowly observed normalization, never call it coverage of
+        // an unmasked runtime domain. All other requested controls must survive.
+        const bool same_control=(actual_before.x87.control&0x0f3f)==(d.cw&0x0f3f);
+        const bool same_occupancy=((actual_before.x87.tag&0xffff)==0xffff)==(d.tag==0xffff);
+        const bool canonicalized=same_control&&same_occupancy&&d.mx==0x1f00&&actual_before.mxcsr==0x1f80;
+        require(same_control&&same_occupancy&&(actual_before.mxcsr==d.mx||canonicalized),"requested FP controls represented or exact recorded mask canonicalization");
+        canonicalized_domains+=canonicalized;
+        const bool actual_supported=fast::supported_fp_domain(actual_before.x87.control,actual_before.x87.tag,actual_before.mxcsr);
+        const unsigned reason=actual_supported?7:8;
+        if(final.fallback_reasons[reason]!=stats.fallback_reasons[reason]+1||final.computed!=stats.computed){
+            printf("ADMISSION_EARLY_STATE requested_mx=%08lx requested_tag=%08lx canonical=%08lx/%08lx/%08lx/%08lx\n",d.mx,d.tag,actual_before.x87.control,actual_before.x87.status,actual_before.x87.tag,actual_before.mxcsr);
+            printf("ADMISSION_COUNTER_DIAGNOSTIC requested_cw=%04lx actual_cw=%08lx tag=%08lx mxcsr=%08lx supported=%u computed=%llu reasons=",d.cw,fallback_expected.x87.control,fallback_expected.x87.tag,fallback_expected.mxcsr,unsigned(d.supported),final.computed-stats.computed);
+            for(unsigned i=0;i<final.fallback_reasons.size();++i){printf("%u:%llu,",i,final.fallback_reasons[i]-stats.fallback_reasons[i]);}putchar('\n');
+        }
+        require(final.fallback_reasons[reason]==stats.fallback_reasons[reason]+1&&final.computed==stats.computed,"distinct normal/FP refusal counters");
+    }
+    write_state(seed);
+    fixture_adjacency_mode(1);const auto before_verify=fixture_adjacency_statistics();
+    FpState rejected=seed;rejected.x87.control=(rejected.x87.control&0xffff0000)|0x007f;write_state(rejected);
+    const Native diagnostic=native_generate(mesh,c.epsilon);write_state(saved);
+    const auto after_verify=fixture_adjacency_statistics();
+    require(SUCCEEDED(diagnostic.hr)&&after_verify.verify_meshes==before_verify.verify_meshes+1&&after_verify.verify_refused_fp==before_verify.verify_refused_fp+1&&after_verify.verify_admitted==before_verify.verify_admitted,"verify retains rejected-domain comparison with separate coverage");
+    require(mesh->Release()==0,"admission control mesh released");
+    printf("ADJACENCY_ADMISSION requested_domains=%u distinct_runtime_domains=%u canonicalized_domains=%u registry=8 checks=%u untouched=1 incoming_preserved=1 diagnostic_refused=1\n",unsigned(sizeof domains/sizeof *domains),unsigned(sizeof domains/sizeof *domains)-canonicalized_domains,canonicalized_domains,checks-before);
+}
+
 struct Dump {AdjacencyDumpHeader header{};std::vector<D3DVERTEXELEMENT9> declaration;std::vector<unsigned char> vertices,indices;std::vector<DWORD> native,module;};
 static bool read_dump(const wchar_t* path,Dump& d){
     FILE* f=_wfopen(path,L"rb");if(!f)return false;
@@ -215,6 +296,7 @@ static bool read_dump(const wchar_t* path,Dump& d){
 static void dump_face_indices(const Dump& d,DWORD face,unsigned* out){
     for(unsigned k=0;k<3;++k){if(d.header.options&D3DXMESH_32BIT){DWORD i;std::memcpy(&i,&d.indices[(size_t(face)*3+k)*4],4);out[k]=i;}else{WORD i;std::memcpy(&i,&d.indices[(size_t(face)*3+k)*2],2);out[k]=i;}}
 }
+static bool safe_replay=false;
 static bool replay_dump(Create create,IDirect3DDevice9* device,const char* label,const Dump& d){
     std::vector<D3DVERTEXELEMENT9> decl=d.declaration;decl.push_back(D3DDECL_END());
     ID3DXMesh* mesh=nullptr;ok(create(d.header.faces,d.header.vertices,(d.header.options&D3DXMESH_32BIT)|D3DXMESH_SYSTEMMEM,decl.data(),device,&mesh),"replay CreateMesh");
@@ -225,8 +307,12 @@ static bool replay_dump(Create create,IDirect3DDevice9* device,const char* label
     DWORD* attrs=nullptr;ok(mesh->LockAttributeBuffer(0,&attrs),"replay attrs lock");for(unsigned i=0;i<d.header.faces;++i)attrs[i]=0;ok(mesh->UnlockAttributeBuffer(),"replay attrs unlock");
     float epsilon;std::memcpy(&epsilon,&d.header.epsilon_bits,sizeof epsilon);
     Case c;c.name=label;c.bits32=(d.header.options&D3DXMESH_32BIT)!=0;c.stride=d.header.stride;c.position_offset=d.header.position_offset;c.epsilon=epsilon;
-    const Native n=native_generate(mesh,epsilon);ok(n.hr,"replay native GenerateAdjacency");
+    const FpState saved_state=read_state();FpState captured=saved_state;captured.x87.control=(captured.x87.control&0xffff0000)|(d.header.x87_control&0xffff);captured.x87.tag|=0xffff;captured.x87.status&=0xffff0000;captured.mxcsr=d.header.mxcsr;
+    if(safe_replay)write_state(captured);
+    const Native n=native_generate(mesh,epsilon,safe_replay);ok(n.hr,"replay native GenerateAdjacency");
+    if(safe_replay){FpState compute=captured;compute.mxcsr=0x1f80;write_state(compute);}
     const Fast fa=fast_generate(mesh,c);
+    if(safe_replay)write_state(saved_state);
     size_t first_native=0,first=0,first_module=0;
     const size_t native_diff=mismatches(n.adjacency,d.native,first_native);
     const size_t diff=fa.report.status==fast::Status::Ok?mismatches(n.adjacency,fa.adjacency,first):n.adjacency.size();
@@ -249,8 +335,19 @@ static bool replay_dump(Create create,IDirect3DDevice9* device,const char* label
         for(const auto& variant:variants){const Fast alt=fast_generate(mesh,c,variant.policy);size_t alt_first=0;const size_t alt_diff=alt.report.status==fast::Status::Ok?mismatches(n.adjacency,alt.adjacency,alt_first):alt.adjacency.size();
             printf("REPLAY_POLICY file=%s variant=%s equal=%u mismatches=%u\n",label,variant.name,unsigned(alt_diff==0),unsigned(alt_diff));}
     }
+    bool accepted=diff==0;
+    if(safe_replay){
+        const auto start=fixture_adjacency_statistics();fixture_adjacency_mode(1);write_state(captured);
+        const Native verified=native_generate(mesh,epsilon);write_state(saved_state);
+        const auto verify=fixture_adjacency_statistics();fixture_adjacency_mode(2);write_state(captured);
+        const Native served=native_generate(mesh,epsilon);write_state(saved_state);
+        const auto end=fixture_adjacency_statistics();
+        accepted=served.hr==n.hr&&served.adjacency==n.adjacency&&verified.hr==n.hr&&verified.adjacency==n.adjacency&&end.verify_admitted_mismatched==start.verify_admitted_mismatched;
+        printf("REPLAY_ADMISSION file=%s equal_native=%u computed=%llu fallback_normals=%llu fallback_fp=%llu verify_admitted=%llu verify_refused_normals=%llu verify_refused_fp=%llu diagnostic_mismatched=%llu faults=%llu native_us=%.3f served_us=%.3f\n",label,unsigned(accepted),end.computed-verify.computed,end.fallback_reasons[7]-verify.fallback_reasons[7],end.fallback_reasons[8]-verify.fallback_reasons[8],verify.verify_admitted-start.verify_admitted,verify.verify_refused_competing-start.verify_refused_competing,verify.verify_refused_fp-start.verify_refused_fp,verify.verify_mismatched-start.verify_mismatched,end.faults-start.faults,us(n.ticks),us(served.ticks));
+        require(accepted&&end.faults==start.faults,"replayed admitted/fallback output equals native without faults");
+    }
     require(mesh->Release()==0,"replay mesh released");
-    return diff==0;
+    return accepted;
 }
 static int replay_main(Create create,IDirect3DDevice9* device,int argc,char** argv){
     unsigned dumps=0,equal=0,unreadable=0;
@@ -272,9 +369,24 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int exit=1;
         HMODULE d3d=LoadLibraryW(L"d3d9.dll");require(d3d!=nullptr,"builtin D3D9");auto create9=symbol<IDirect3D9*(WINAPI*)(UINT)>(d3d,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create9(D3D_SDK_VERSION);require(api.p!=nullptr,"Create9");
         WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName="X3MeshAdjacencyFastFixture";RegisterClassA(&cls);window=CreateWindowA(cls.lpszClassName,"Original mesh adjacency fixture",WS_OVERLAPPEDWINDOW,0,0,64,64,nullptr,nullptr,cls.hInstance,nullptr);require(window!=nullptr,"window");
         D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=64;pp.BackBufferHeight=64;IDirect3DDevice9* device=nullptr;ok(api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING,&pp,&device),"device");
+        if(argc>1&&!std::strcmp(argv[1],"admission-only")){
+            SetEnvironmentVariableW(L"X3M_TELEMETRY",L"1");SetEnvironmentVariableW(L"X3M_MESH_CACHE",L"0");SetEnvironmentVariableW(L"X3M_MESH_ADJACENCY",L"verify");
+            require(fixture_initialize(GetModuleHandleW(nullptr)),"control hooks installed");admission_controls(device);shutdown();require(device->Release()==0,"control device released");if(window)DestroyWindow(window);return 0;
+        }
+        if(argc>1&&!std::strcmp(argv[1],"replay-safe")){
+            safe_replay=true;
+            const D3DVERTEXELEMENT9 decl[]={{0,0,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},D3DDECL_END()};
+            for(DWORD options:{DWORD(D3DXMESH_SYSTEMMEM),DWORD(D3DXMESH_SYSTEMMEM|D3DXMESH_32BIT)}){ID3DXMesh* probe=nullptr;ok(create(1,3,options,decl,device,&probe),"replay raw class");remember_raw(probe);require(probe->Release()==0,"replay raw probe released");}
+            SetEnvironmentVariableW(L"X3M_TELEMETRY",L"1");SetEnvironmentVariableW(L"X3M_MESH_CACHE",L"0");SetEnvironmentVariableW(L"X3M_MESH_ADJACENCY",L"verify");
+            require(fixture_initialize(GetModuleHandleW(nullptr)),"replay hooks installed");
+            exit=replay_main(&D3DXCreateMesh,device,argc,argv);fixture_adjacency_report();shutdown();require(device->Release()==0,"safe replay device released");if(window)DestroyWindow(window);return exit;
+        }
         if(argc>1&&!std::strcmp(argv[1],"replay")){exit=replay_main(create,device,argc,argv);require(device->Release()==0,"replay device released");if(window)DestroyWindow(window);return exit;}
         printf("MESH ADJACENCY MATH_TABLE table=%s normalize=%s rsqrt=%s\n",d3dx_math_table_name(d3dx_math_table()),fast::normalize_name(default_policy().normalize),fast::rsqrt_implementation());
-        const auto all=cases();std::vector<Native> baselines;
+        // Establish the supported ordinary domain explicitly; CreateDevice/CRT
+        // defaults on another platform are not evidence for fast admission.
+        FpState ordinary=read_state();ordinary.x87.control=(ordinary.x87.control&0xffff0000)|0x027f;ordinary.x87.tag|=0xffff;ordinary.x87.status&=0xffff0000;ordinary.mxcsr=0x1f80;write_state(ordinary);
+        const auto all=cases();std::vector<Native> baselines;unsigned expected_fast_refused=0;
         // Part A: uninstrumented native D3DX against the pure module.
         for(const auto& c:all){
             ID3DXMesh* mesh=nullptr;create_mesh(create,device,c,&mesh);
@@ -282,6 +394,7 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int exit=1;
             const Native n=native_generate(mesh,c.epsilon);
             if(!std::strcmp(c.expected_status,"ok"))ok(n.hr,"native GenerateAdjacency");
             const Fast fa=fast_generate(mesh,c);
+            if(fa.report.status==fast::Status::Ok&&d3dx_math_table()==D3dxMathTable::Sse2&&fa.report.potential_competing_normals)++expected_fast_refused;
             const char* status=fast::status_name(unsigned(fa.report.status));
             require(!std::strcmp(status,c.expected_status),"module status as expected");
             size_t first=0;const size_t diff=fa.report.status==fast::Status::Ok?mismatches(n.adjacency,fa.adjacency,first):0;
@@ -381,6 +494,7 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int exit=1;
             stats.calls,stats.computed,stats.fallbacks,stats.verify_meshes,stats.verify_equal,stats.verify_mismatched,stats.verify_mismatch_entries,stats.quantized,stats.unquantized,stats.module_status[3],stats.module_status[5]);
         require(stats.calls==all.size()&&stats.verify_meshes==expected_ok&&stats.verify_equal==expected_ok&&stats.verify_mismatched==0,"verify: every computable case equal, none mismatched");
         require(stats.fallbacks==all.size()-expected_ok&&stats.module_status[3]==1&&stats.module_status[5]==1,"verify: NaN and near-neighbour cases fell back with their module status");
+        const unsigned expected_fast_ok=expected_ok-expected_fast_refused;
         // Fast mode: identical content through the cache hits when the cache is on;
         // fresh content is computed by the module; the caller's LastError is preserved.
         fixture_adjacency_mode(2);
@@ -396,13 +510,13 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int exit=1;
             // The cache keys the service pointer as the algorithm identity, so the
             // verify-mode entries never serve fast mode: the first fast pass misses
             // and computes, the second pass hits every case.
-            require(cache_after.misses-cache_before.misses==all.size()&&cache_after.hits==cache_before.hits&&stats.computed==2*expected_ok,"fast results are keyed by the fast service, not served from verify entries");
+            require(cache_after.misses-cache_before.misses==all.size()&&cache_after.hits==cache_before.hits&&stats.computed==expected_ok+expected_fast_ok,"fast results are keyed by the fast service, not served from verify entries");
             for(size_t i=0;i<all.size();++i){const Native n=native_generate(hooked[i],all[i].epsilon);require(n.adjacency==baselines[i].adjacency,"second fast pass output");}
             const auto repeat=fixture_cache_statistics();const auto again=fixture_adjacency_statistics();
             require(repeat.hits==cache_after.hits+all.size()&&again.computed==stats.computed,"second fast pass is served by the cache without running the module");
             printf("FAST_CACHE second_pass_hits=%llu computed=%llu\n",repeat.hits-cache_after.hits,again.computed);
         }else{
-            require(stats.calls==2*all.size()&&stats.computed==2*expected_ok&&stats.fallbacks==2*(all.size()-expected_ok),"fast: every computable case computed (verify computed them once already), the rest fell back to native");
+            require(stats.calls==2*all.size()&&stats.computed==expected_ok+expected_fast_ok&&stats.fallbacks==2*(all.size()-expected_ok)+expected_fast_refused,"fast: every computable case computed (verify computed them once already), the rest fell back to native");
         }
         // Fresh content in fast mode: computed by the module, then cached if enabled.
         {Case c=quad("fresh-fast");c.vertices[1]=grid(3);ID3DXMesh* mesh=nullptr;create_mesh(&D3DXCreateMesh,device,c,&mesh);
@@ -440,11 +554,13 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int exit=1;
                     Case c=all[i];c.vertices[2]=grid(mode==1?5:6); // fresh content per mode: the module or D3DX must run, not a cache hit
                     ID3DXMesh* reference=nullptr;create_mesh(create,device,c,&reference);ID3DXMesh* mesh=nullptr;create_mesh(&D3DXCreateMesh,device,c,&mesh);
                     write_fp(game);const Native expected=native_generate(reference,c.epsilon,true);const FP native_after=read_fp();
+                    const auto computed_before=fixture_adjacency_statistics().computed;
                     write_fp(game);const Native n=native_generate(mesh,c.epsilon);const FP after=read_fp();
+                    const bool was_computed=fixture_adjacency_statistics().computed!=computed_before;
                     if(n.hr!=expected.hr||n.adjacency!=expected.adjacency){printf("GAME_FP_MISMATCH mode=%u name=%s hr=%08lx expected_hr=%08lx\n",mode,name,n.hr,expected.hr);print_adjacency("GAME_FP_EXPECTED",expected.adjacency);print_adjacency("GAME_FP_ACTUAL",n.adjacency);}
                     require(n.hr==expected.hr&&n.adjacency==expected.adjacency,"game FP state: hooked output equals native");
                     // verify returns D3DX's outgoing state; fast is state-transparent (the caller's own state).
-                    const FP& want=mode==1?native_after:game;
+                    const FP& want=mode==1||!was_computed?native_after:game;
                     const bool same=(after.x87.control&0xffff)==(want.x87.control&0xffff)&&after.mxcsr==want.mxcsr&&(after.x87.tag&0xffff)==(want.x87.tag&0xffff);
                     printf("GAME_FP_CALL mode=%s name=%s incoming_cw=027f incoming_mxcsr=9fc0 native_cw=%04lx native_sw=%04lx native_mxcsr=%08lx after_cw=%04lx after_sw=%04lx after_tag=%04lx after_mxcsr=%08lx restored=%u\n",mode==1?"verify":"fast",name,native_after.x87.control&0xffff,native_after.x87.status&0xffff,native_after.mxcsr,after.x87.control&0xffff,after.x87.status&0xffff,after.x87.tag&0xffff,after.mxcsr,unsigned(same));
                     require(same,"game FP state restored after the hooked call");
@@ -458,6 +574,7 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int exit=1;
             require(cs.bypass_reasons[2]==0,"cache never bypassed the game FP state (floating_point)");
             printf("GAME_FP_STATE control=027f mxcsr=9fc0 meshes=%u verify_equal=%u fast_equal=%u restored=%u cache_fp_bypasses=%llu cache_hits=%llu cache_misses=%llu\n",unsigned(2*6),verified,fast_equal,restored,cs.bypass_reasons[2],cs.hits,cs.misses);
         }
+        admission_controls(device);
         // Native mode leaves the module idle.
         fixture_adjacency_mode(0);
         {const auto before=fixture_adjacency_statistics();const Native n=native_generate(hooked[0],all[0].epsilon);require(n.adjacency==baselines[0].adjacency&&fixture_adjacency_statistics().calls==before.calls,"native mode does not invoke the service");}

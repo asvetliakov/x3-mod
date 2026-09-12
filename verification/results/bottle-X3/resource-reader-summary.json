@@ -13,45 +13,78 @@
   },
   "quick": false,
   "zlib1_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/zlib1.dll",
+  "verification_schema": 2,
+  "expected_checks": 4721,
+  "terminal_inventory": "exact-full",
   "sources": {
     "src/proxy/resource_reader.h": "873a3899269496d39cac43be32d376b3ea897a86dcc103d955545e9a85db6cb6",
-    "src/proxy/resource_reader.cpp": "a0ba9c82792563fbf23bc2b7cdeecde2ce8d92c61b41cd55e8094a6b6f7686e2",
-    "src/proxy/resource_reader_core.cpp": "39e876e8dd6ac329ccdb85d81be18d2397c27ddf5503c96de88abb64285969ff",
+    "src/proxy/resource_reader.cpp": "e3d38b15f96d1d421691192d8f57d597806bf8d3c8449feb1b122e1ffba5b86a",
+    "src/proxy/resource_reader_core.cpp": "43eaf23f72236c569a4c5316ae06ab2d1ad186833453c43e84997882ca48437e",
     "src/proxy/engine_patch.h": "163b0a0789adc75ddca115389a1f7426cbeadf158f092626aa4976238e95fab1",
     "src/proxy/engine_patch.cpp": "5a0f59ccb0d47c6be6ccab62e3bcfc873ff1a61633e1cc3c875fddef21962d67",
     "src/proxy/loading_probes.h": "92a4bf1383c6752e5d8a888231bd9b1873224603704b7354e0878d982ac2b482",
     "src/proxy/loading_probes.cpp": "49630c0bd9f4706b7ec7c6836d4e6963fa7ae0fae8df81131988d44b606818db",
     "src/proxy/loading_trace_light.h": "d233da9be49a47953ce82fe330e0e863c4ab5464c08d8b066602a690d7115aed",
     "src/proxy/loading_trace_light.cpp": "074a26fc2c6772082c38c28902c44247ea4a5b8b3a71e2460de10c5501ef8241",
-    "src/proxy/loading_trace.h": "445f1336e7014aadbf5ab526450069ce46a08b626463f969d644fea37ce7beab",
-    "verification/probe/resource_reader_fixture.cpp": "967b4bce40592441310aca3796278b21174c144b8cfd1c12efdb8be1df89a00e",
+    "src/proxy/loading_trace.h": "6f7cb50dc11f98cf32fb7eac1ed23a9da14a8214dda8c8cd8f170fe7c4680097",
+    "verification/probe/resource_reader_fixture.cpp": "d0b7ef4cdf0420553121aa37e916f7000ca422d18c92f0c2ea126db9be49976d",
     "verification/probe/build_resource_reader.sh": "d0795d783d6afa55db902435cf751c30d27dff429c47dc53329253c3e4e62896",
-    "verification/probe/build_loading_light.sh": "9530d12e65cdb3bff4345ba806b74d9620a91fee45a33231b4f67fbe8a76d251",
-    "verification/probe/run_resource_reader.py": "69dd8f3642d176c957d36adf14ba9257df5adc835738aa19b7f07e18f0929488"
+    "verification/probe/build_loading_light.sh": "33864e3b506b0e0091e2c699a1770fb3c129fc0ad04c3a19ca3ed9d9365cdab9",
+    "verification/probe/run_resource_reader.py": "28884cfb3fcce680633a0237e5826d1274ca6e3271c0f13c8cb647d189ef7a2c",
+    "src/proxy/capture.h": "c9029e5297939f57e165626033a785eada38c5932850b3f8d8ca9dbfbe4747db",
+    "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
+    "src/proxy/object_trace.h": "fc9168feeb59630bdb11550e9c6a3c6b42c1ea471add2ad96f182e6af36bbb0b",
+    "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+    "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
+    "verification/probe/wine_lock.py": "b09ad9fa9d78151b0a04730ce23ed49ef9cc01eea01815a7655f900b1e54ede6",
+    "verification/analysis/test_resource_reader.py": "06a324a7b7ada4ba34e58e1edb2d13f88263a4a8419a02d63b3560dba673dbf8"
   },
   "zlib1_sha256_before": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
-  "executable_sha256": "999b1f0bf870dd61b88e847aab1aa6ac0d1d245a9bda416596f9b60704e1bb7c",
+  "executable_sha256": "7bf746d206535796602bdc9ac46da12813abbdc986f5b9773c83c3addc80d5d0",
   "zlib1_sha256_copied": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
+  "stdout_sha256": "df14b2cf96bf9f6787daea9719e17fb60331e4d2ef6c975942fe23879d5a76b9",
+  "wine_log_sha256": "06bb0bf4cb250155ea8c208eb08f13662e526c8f474265eac9a41e565eafaf31",
   "exit_code": 0,
   "report": {
     "zlib_version": "1.2.3",
     "cases": {
       "fast": {
+        "name": "fast",
         "loose_handled": 10,
         "record_handled": 20,
         "sources": 11
       },
       "cursor": {
+        "name": "cursor",
         "sources": 20,
         "class_records": 16,
         "loose_and_record_handled": 20,
         "last_record_class": 1
       },
-      "fallbacks": {},
+      "rewind_failure": {
+        "name": "rewind_failure",
+        "modes": 2,
+        "allocations_freed": 2,
+        "entry_restored": 2,
+        "bookkeeping_unchanged": 2,
+        "original_retries": 2
+      },
+      "fallbacks": {
+        "name": "fallbacks"
+      },
       "probes": {
+        "name": "probes",
         "installed": 4
       },
+      "error_abi": {
+        "name": "error_abi",
+        "incoming": 826366246,
+        "original_input": 826366246,
+        "outgoing": 370672441,
+        "returned": 370672441
+      },
       "pool": {
+        "name": "pool",
         "opens": 7,
         "reused": 2,
         "real_opens": 5,
@@ -85,56 +118,62 @@
       "verify_mismatched": 0,
       "bytes_in": 4044806,
       "bytes_out": 6162400,
-      "our_us": 63246.9,
-      "original_us": 68119.8
+      "our_us": 65863.0,
+      "original_us": 68212.6
     },
     "timing": {
       "large": {
+        "name": "large",
         "bytes": 3000000,
         "rounds": 5,
-        "fast_us": 29013.4,
-        "reference_us": 32233.1,
+        "fast_us": 28458.3,
+        "reference_us": 31703.4,
         "ratio": 1.11
       },
       "medium": {
+        "name": "medium",
         "bytes": 31000,
         "rounds": 400,
-        "fast_us": 318.9,
-        "reference_us": 355.3,
+        "fast_us": 312.3,
+        "reference_us": 346.1,
         "ratio": 1.11
       },
       "large_record": {
+        "name": "large_record",
         "bytes": 3000000,
         "rounds": 5,
-        "fast_us": 29240.6,
-        "reference_us": 32341.1,
-        "ratio": 1.11
+        "fast_us": 28154.4,
+        "reference_us": 31431.0,
+        "ratio": 1.12
       }
     },
     "phases": {
       "large": {
+        "name": "large",
         "extent": 1971063,
-        "read_us": 462.8,
-        "scan_us": 72.9,
-        "alloc_us": 9.6,
-        "inflate_us": 28328.8,
-        "total_us": 29013.4
+        "read_us": 519.3,
+        "scan_us": 69.1,
+        "alloc_us": 10.5,
+        "inflate_us": 27714.0,
+        "total_us": 28458.3
       },
       "medium": {
+        "name": "medium",
         "extent": 19654,
-        "read_us": 6.7,
+        "read_us": 7.7,
         "scan_us": 0.1,
         "alloc_us": 0.2,
-        "inflate_us": 305.9,
-        "total_us": 318.9
+        "inflate_us": 298.3,
+        "total_us": 312.3
       },
       "large_record": {
+        "name": "large_record",
         "extent": 1971063,
-        "read_us": 527.5,
-        "scan_us": 141.5,
-        "alloc_us": 10.8,
-        "inflate_us": 28391.1,
-        "total_us": 29240.6
+        "read_us": 524.7,
+        "scan_us": 134.6,
+        "alloc_us": 11.0,
+        "inflate_us": 27349.6,
+        "total_us": 28154.4
       }
     },
     "cursor_statistics": {
@@ -143,8 +182,53 @@
       "verify_equal": 60,
       "verify_mismatched": 1
     },
-    "checks": 4707,
+    "mismatch": {
+      "equal": 0,
+      "size": 31000,
+      "original_size": 31000,
+      "mismatches": 1,
+      "first": 0,
+      "original_null": 0,
+      "globals_ok": 1,
+      "counters_ok": 1,
+      "cursor_ok": 1,
+      "position_ok": 1,
+      "cursor": 19654,
+      "expected_cursor": 19654,
+      "position": 20113,
+      "expected_position": 20113,
+      "catalogue": 1,
+      "scrambled": 1,
+      "our_us": 326.6,
+      "original_us": 365.6
+    },
+    "checks": 4721,
     "failures": 0,
     "fail_lines": []
-  }
+  },
+  "sources_after": {
+    "src/proxy/resource_reader.h": "873a3899269496d39cac43be32d376b3ea897a86dcc103d955545e9a85db6cb6",
+    "src/proxy/resource_reader.cpp": "e3d38b15f96d1d421691192d8f57d597806bf8d3c8449feb1b122e1ffba5b86a",
+    "src/proxy/resource_reader_core.cpp": "43eaf23f72236c569a4c5316ae06ab2d1ad186833453c43e84997882ca48437e",
+    "src/proxy/engine_patch.h": "163b0a0789adc75ddca115389a1f7426cbeadf158f092626aa4976238e95fab1",
+    "src/proxy/engine_patch.cpp": "5a0f59ccb0d47c6be6ccab62e3bcfc873ff1a61633e1cc3c875fddef21962d67",
+    "src/proxy/loading_probes.h": "92a4bf1383c6752e5d8a888231bd9b1873224603704b7354e0878d982ac2b482",
+    "src/proxy/loading_probes.cpp": "49630c0bd9f4706b7ec7c6836d4e6963fa7ae0fae8df81131988d44b606818db",
+    "src/proxy/loading_trace_light.h": "d233da9be49a47953ce82fe330e0e863c4ab5464c08d8b066602a690d7115aed",
+    "src/proxy/loading_trace_light.cpp": "074a26fc2c6772082c38c28902c44247ea4a5b8b3a71e2460de10c5501ef8241",
+    "src/proxy/loading_trace.h": "6f7cb50dc11f98cf32fb7eac1ed23a9da14a8214dda8c8cd8f170fe7c4680097",
+    "verification/probe/resource_reader_fixture.cpp": "d0b7ef4cdf0420553121aa37e916f7000ca422d18c92f0c2ea126db9be49976d",
+    "verification/probe/build_resource_reader.sh": "d0795d783d6afa55db902435cf751c30d27dff429c47dc53329253c3e4e62896",
+    "verification/probe/build_loading_light.sh": "33864e3b506b0e0091e2c699a1770fb3c129fc0ad04c3a19ca3ed9d9365cdab9",
+    "verification/probe/run_resource_reader.py": "28884cfb3fcce680633a0237e5826d1274ca6e3271c0f13c8cb647d189ef7a2c",
+    "src/proxy/capture.h": "c9029e5297939f57e165626033a785eada38c5932850b3f8d8ca9dbfbe4747db",
+    "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
+    "src/proxy/object_trace.h": "fc9168feeb59630bdb11550e9c6a3c6b42c1ea471add2ad96f182e6af36bbb0b",
+    "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+    "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
+    "verification/probe/wine_lock.py": "b09ad9fa9d78151b0a04730ce23ed49ef9cc01eea01815a7655f900b1e54ede6",
+    "verification/analysis/test_resource_reader.py": "06a324a7b7ada4ba34e58e1edb2d13f88263a4a8419a02d63b3560dba673dbf8"
+  },
+  "zlib1_sha256_copied_after": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
+  "executable_sha256_after": "7bf746d206535796602bdc9ac46da12813abbdc986f5b9773c83c3addc80d5d0"
 }

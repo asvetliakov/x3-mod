@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T17:18:36.689700+00:00",
+  "started_utc": "2026-09-12T22:26:46.628212+00:00",
   "bottle": {
     "name": "X3",
     "wine_arch": "arm64",
@@ -9,26 +9,26 @@
     },
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
-  "passed": false,
+  "passed": true,
   "phase": "complete",
   "fresh_build": true,
   "timeout_seconds": 90,
   "source_hashes_before_build": {
     "src/proxy/mesh_adjacency_cache.h": "9ec016ca7b35df32e0316d4cc83c096cb70ec2c7e5c9e039724e22fd9415003e",
     "src/proxy/mesh_adjacency_cache.cpp": "9e76ef433c8915a25a77a04e7a45c3487465fe720ba2f18cd089781a6f060d83",
-    "verification/probe/mesh_adjacency_cache_fixture.cpp": "8b8b32fdd93a8f205a3dcfbee0df6f8ed2f288989f9597b1ebd2efd43b60f638",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "e03f92ba4793031e09b5972494581fc596a1cb14294c43df55f92ff75d144ca1",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
-    "verification/probe/run_mesh_adjacency_cache.py": "9bdae9f10706c1b8af82f83ebe321e8dbc52d3f0b57bf7b6ffdfcca433177de3",
+    "verification/probe/run_mesh_adjacency_cache.py": "c5d3b70ace9f591a0bc687b2c614bfb69f5f36c23df56d77029ed2850f6befb5",
     "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   },
   "source_hashes_after_build": {
     "src/proxy/mesh_adjacency_cache.h": "9ec016ca7b35df32e0316d4cc83c096cb70ec2c7e5c9e039724e22fd9415003e",
     "src/proxy/mesh_adjacency_cache.cpp": "9e76ef433c8915a25a77a04e7a45c3487465fe720ba2f18cd089781a6f060d83",
-    "verification/probe/mesh_adjacency_cache_fixture.cpp": "8b8b32fdd93a8f205a3dcfbee0df6f8ed2f288989f9597b1ebd2efd43b60f638",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "e03f92ba4793031e09b5972494581fc596a1cb14294c43df55f92ff75d144ca1",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
-    "verification/probe/run_mesh_adjacency_cache.py": "9bdae9f10706c1b8af82f83ebe321e8dbc52d3f0b57bf7b6ffdfcca433177de3",
+    "verification/probe/run_mesh_adjacency_cache.py": "c5d3b70ace9f591a0bc687b2c614bfb69f5f36c23df56d77029ed2850f6befb5",
     "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   },
   "command": [
@@ -37,32 +37,32 @@
     "X3",
     "--no-update",
     "--workdir",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a68201431d638fe21/verification/probe/build",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a68201431d638fe21/verification/probe/build/mesh_adjacency_cache_fixture.exe",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/mesh_adjacency_cache_fixture.exe",
     "C:\\X3\\d3dx9_37.dll"
   ],
   "hashes_before": {
     "src/proxy/mesh_adjacency_cache.h": "9ec016ca7b35df32e0316d4cc83c096cb70ec2c7e5c9e039724e22fd9415003e",
     "src/proxy/mesh_adjacency_cache.cpp": "9e76ef433c8915a25a77a04e7a45c3487465fe720ba2f18cd089781a6f060d83",
-    "verification/probe/mesh_adjacency_cache_fixture.cpp": "8b8b32fdd93a8f205a3dcfbee0df6f8ed2f288989f9597b1ebd2efd43b60f638",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "e03f92ba4793031e09b5972494581fc596a1cb14294c43df55f92ff75d144ca1",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
-    "verification/probe/run_mesh_adjacency_cache.py": "9bdae9f10706c1b8af82f83ebe321e8dbc52d3f0b57bf7b6ffdfcca433177de3",
-    "verification/probe/build/mesh_adjacency_cache_fixture.exe": "3acae20e6a7f4020114c5484776efcad3ace78d05ff28953f018030ffb04543b",
+    "verification/probe/run_mesh_adjacency_cache.py": "c5d3b70ace9f591a0bc687b2c614bfb69f5f36c23df56d77029ed2850f6befb5",
+    "verification/probe/build/mesh_adjacency_cache_fixture.exe": "11f316bc3a307703b45de0fa0119457d46ca9d3dbbf22bdd56121a438afc7d58",
     "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   },
-  "exit_code": 1,
+  "exit_code": 0,
   "hashes_after": {
     "src/proxy/mesh_adjacency_cache.h": "9ec016ca7b35df32e0316d4cc83c096cb70ec2c7e5c9e039724e22fd9415003e",
     "src/proxy/mesh_adjacency_cache.cpp": "9e76ef433c8915a25a77a04e7a45c3487465fe720ba2f18cd089781a6f060d83",
-    "verification/probe/mesh_adjacency_cache_fixture.cpp": "8b8b32fdd93a8f205a3dcfbee0df6f8ed2f288989f9597b1ebd2efd43b60f638",
+    "verification/probe/mesh_adjacency_cache_fixture.cpp": "e03f92ba4793031e09b5972494581fc596a1cb14294c43df55f92ff75d144ca1",
     "verification/probe/mesh_preparation.cpp": "2fab9f6dd61c643314938cb593345a9a618f5bf475f1cf4968ff4386e42d03ad",
     "verification/probe/build_mesh_adjacency_cache.sh": "741438da38c0ffa8a856f85b5151c33ea9ddb22bd15549962195c672ac849ab4",
-    "verification/probe/run_mesh_adjacency_cache.py": "9bdae9f10706c1b8af82f83ebe321e8dbc52d3f0b57bf7b6ffdfcca433177de3",
-    "verification/probe/build/mesh_adjacency_cache_fixture.exe": "3acae20e6a7f4020114c5484776efcad3ace78d05ff28953f018030ffb04543b",
+    "verification/probe/run_mesh_adjacency_cache.py": "c5d3b70ace9f591a0bc687b2c614bfb69f5f36c23df56d77029ed2850f6befb5",
+    "verification/probe/build/mesh_adjacency_cache_fixture.exe": "11f316bc3a307703b45de0fa0119457d46ca9d3dbbf22bdd56121a438afc7d58",
     "native_d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   },
-  "report_sha256": "877553c8f74fb5e826f2d31f245701bbaf7a1f492e4be094bf96d21c6b25da84",
+  "report_sha256": "d940be23603781ed8677c3624563ade3fa721b3e0c97da2a10eab8789ac7890d",
   "results": {
     "CASE": [
       {
@@ -106,10 +106,168 @@
         "downstream_exact": "1"
       }
     ],
+    "FP_AUTHORED": [
+      {
+        "equal_condition": "4000",
+        "status_changed": "1",
+        "miss_equal": "1",
+        "hit_equal": "1",
+        "controls_error_equal": "1",
+        "native_status_changed": "0"
+      }
+    ],
+    "FP": [
+      {
+        "native_cw": "007f",
+        "native_sw": "0000",
+        "native_mxcsr": "00001f80",
+        "hit_computational_parity": "1",
+        "diagnostic_instruction_pointers_excluded": "1"
+      }
+    ],
+    "FP_VARIANT": [
+      {
+        "variant": "0",
+        "cw": "007f",
+        "sw": "0020",
+        "mxcsr": "00001f80",
+        "applied_cw": "007f",
+        "applied_sw": "0000",
+        "applied_mxcsr": "00001f80",
+        "masked": "1",
+        "expect": "keyed"
+      },
+      {
+        "variant": "1",
+        "cw": "007f",
+        "sw": "4100",
+        "mxcsr": "00001f80",
+        "applied_cw": "007f",
+        "applied_sw": "4100",
+        "applied_mxcsr": "00001f80",
+        "masked": "1",
+        "expect": "keyed"
+      },
+      {
+        "variant": "2",
+        "cw": "037f",
+        "sw": "0000",
+        "mxcsr": "00001f80",
+        "applied_cw": "037f",
+        "applied_sw": "0000",
+        "applied_mxcsr": "00001f80",
+        "masked": "1",
+        "expect": "keyed"
+      },
+      {
+        "variant": "3",
+        "cw": "047f",
+        "sw": "0000",
+        "mxcsr": "00001f80",
+        "applied_cw": "047f",
+        "applied_sw": "0000",
+        "applied_mxcsr": "00001f80",
+        "masked": "1",
+        "expect": "keyed"
+      },
+      {
+        "variant": "4",
+        "cw": "007f",
+        "sw": "0000",
+        "mxcsr": "00009f80",
+        "applied_cw": "007f",
+        "applied_sw": "0000",
+        "applied_mxcsr": "00009f80",
+        "masked": "1",
+        "expect": "keyed"
+      },
+      {
+        "variant": "5",
+        "cw": "007f",
+        "sw": "0000",
+        "mxcsr": "00001fc0",
+        "applied_cw": "007f",
+        "applied_sw": "0000",
+        "applied_mxcsr": "00001fc0",
+        "masked": "1",
+        "expect": "keyed"
+      },
+      {
+        "variant": "6",
+        "cw": "007f",
+        "sw": "0000",
+        "mxcsr": "00001fa0",
+        "applied_cw": "007f",
+        "applied_sw": "0000",
+        "applied_mxcsr": "00001f80",
+        "masked": "1",
+        "expect": "keyed"
+      },
+      {
+        "variant": "7",
+        "cw": "027f",
+        "sw": "0000",
+        "mxcsr": "00009fc0",
+        "applied_cw": "027f",
+        "applied_sw": "0000",
+        "applied_mxcsr": "00009fc0",
+        "masked": "1",
+        "expect": "keyed"
+      },
+      {
+        "variant": "8",
+        "cw": "007d",
+        "sw": "0000",
+        "mxcsr": "00001f80",
+        "applied_cw": "007d",
+        "applied_sw": "0000",
+        "applied_mxcsr": "00001f80",
+        "masked": "0",
+        "expect": "bypass"
+      },
+      {
+        "variant": "9",
+        "cw": "007f",
+        "sw": "0000",
+        "mxcsr": "00001e80",
+        "applied_cw": "007f",
+        "applied_sw": "0000",
+        "applied_mxcsr": "00001e80",
+        "masked": "0",
+        "expect": "bypass"
+      }
+    ],
+    "LAST_ERROR_KEY": [
+      {
+        "conditional_change": "1",
+        "misses": "2",
+        "hits": "1",
+        "rejected": "1"
+      }
+    ],
+    "TIMING": [
+      {
+        "faces": "18432",
+        "vertices": "9409",
+        "repetitions": "15",
+        "native_median_us": "4496.200",
+        "adapter_miss_median_us": "5857.200",
+        "adapter_hit_median_us": "1357.200",
+        "includes_native_buffer_acquisition": "1",
+        "retained_bytes": "540932",
+        "scratch_cap_bytes": "4194304",
+        "acquisition_ticks": "30295",
+        "lookup_ticks": "343047",
+        "copy_ticks": "7410",
+        "native_ticks": "732248",
+        "total_ticks": "1115349",
+        "hits": "15",
+        "misses": "16"
+      }
+    ],
     "RESULT": [
       {
-        "checks": "303",
-        "error": "native"
+        "checks": "770"
       }
     ]
   },
