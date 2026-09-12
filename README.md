@@ -56,6 +56,18 @@ puts a read-ahead buffer in front of the savegame decoder's zlib imports without
 enabling telemetry; it keeps zlib 1.2.3 semantics and logs one `gz_buffer_file`
 line per file ([docs/verification/gz-buffer.md](docs/verification/gz-buffer.md)).
 
+Loading-time switches ([docs/verification/loading-probes.md](docs/verification/loading-probes.md),
+[docs/verification/resource-reader.md](docs/verification/resource-reader.md)):
+`--telemetry --loading-probes` (env `X3M_LOADING_PROBES=1`) adds the CryptoAPI /
+per-open import rows and entry-counting trampolines on twelve engine loading
+functions; `--resource-read verify|fast` (env `X3M_RESOURCE_READ`) replaces the
+archive reader's per-kilobyte decode with one read + one inflate (`verify` compares
+against the original on every file); `--dat-handles` (env `X3M_DAT_HANDLES=1`) keeps
+catalogue `.dat` handles open between resources. All three are exact-executable
+only and fail closed. Every mode's `frame_end` lines now carry `elapsed_ms` (since
+DLL load), `dt_ms` and `qpc`, so a plain `--direct` log yields load times
+(`tools/analysis/analyze_loading_profile.py`, `summarize_profile.py --frame-gaps`).
+
 The live motion route is opt-in and diagnostic: `--motion-output` (env
 `X3M_MOTION_OUTPUT=1`) draws the reviewed material pair through transformed
 variants into a private RGBA32F RT1 and writes it back in capture frames. Object

@@ -124,6 +124,14 @@ verification/probe/run_gz_buffer.py` → `verification/results/bottle-X3/gz-buff
   | raw inside the hook envelope | 12.676 | **1,267.6** |
   | buffered (256 KB) | 0.422 | **42.2** |
 
+  Rerun after the light rows (2026-09-12 night, same bottle, `gz-buffer-summary.json`
+  of that run; [loading-probes.md](loading-probes.md) has the derivation): raw
+  32.5 ns; raw + the three QPC reads of a span (`qpc`): 243.2 ns; the light
+  span that now wraps every counting/timing row (`light`): 386.8 ns; the former
+  `CpuCallBoundary` envelope (`hooked`): 1,237.1 ns; buffered 43.3 ns. The
+  production `gzread` row therefore costs ≈ 354 ns of envelope per call instead
+  of ≈ 1,205 ns, 211 ns of which are the clock reads.
+
 ## What this means for the loading stall
 
 The profile attributed 9.103 s (0.656 µs per call) of the 25.31 s savegame

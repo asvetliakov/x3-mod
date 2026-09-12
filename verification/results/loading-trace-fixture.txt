@@ -23,9 +23,28 @@ loading_hook name=gzgetc installed=0
 loading_hook name=gztell installed=0
 loading_hook name=gzclose installed=0
 loading_hook name=gzwrite installed=0
-loading_trace coverage_begin=9554560521485 frequency=10000000 hooks=19 module=main inclusive=1 paths=0 qualification=named_pe32_imports
+loading_hook name=inflateInit2_ installed=0
+loading_hook name=inflateEnd installed=0
+loading_hook name=CryptAcquireContextA installed=0
+loading_hook name=CryptReleaseContext installed=0
+loading_hook name=CryptImportKey installed=0
+loading_hook name=CryptCreateHash installed=0
+loading_hook name=CryptHashData installed=0
+loading_hook name=CryptVerifySignatureA installed=0
+loading_hook name=CryptGetHashParam installed=0
+loading_hook name=CryptDestroyHash installed=0
+loading_hook name=CryptDestroyKey installed=0
+loading_hook name=CreateDirectoryA installed=0
+loading_hook name=DeleteFileA installed=0
+loading_hook name=MoveFileA installed=0
+loading_hook name=MoveFileExA installed=0
+loading_hook name=WriteFile installed=1
+loading_hook name=GetFileType installed=0
+loading_hook name=CloseHandle installed=1
+loading_trace coverage_begin=9591514823677 frequency=10000000 hooks=21 module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=1 probes=1
+loading_probes requested=1 installed=0 status=executable_mismatch
 mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=8 objects_retained=0
-loading_benchmark synthetic=1 calls=20000 raw_us_per_call=0.003515 hooked_us_per_call=0.383610
+loading_benchmark synthetic=1 calls=20000 raw_us_per_call=0.003770 hooked_us_per_call=0.383130
 loading_hook name=CreateFileA restored=1 owned=1
 loading_hook name=ReadFile restored=0 owned=0
 loading_hook name=SetFilePointer restored=1 owned=1
@@ -45,6 +64,8 @@ loading_hook name=D3DXCleanMesh restored=1 owned=1
 loading_hook name=FindFirstFileA restored=1 owned=1
 loading_hook name=FindNextFileA restored=1 owned=1
 loading_hook name=FindClose restored=1 owned=1
+loading_hook name=WriteFile restored=1 owned=1
+loading_hook name=CloseHandle restored=1 owned=1
 loading_trace disabled=reinitialization_not_supported
 ADMISSION_WITNESS requested=0 enabled=0 active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 valid=1
-loading_fixture checks=85 failures=0
+loading_fixture checks=86 failures=0

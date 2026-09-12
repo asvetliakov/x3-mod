@@ -26,6 +26,7 @@ def synthetic(failures=0, drop_case=None, fail_line=False, terminal=True):
     lines.append('GZ_STATS opens=5 buffered=5 passthrough=1 closes=5 calls=10 small=9 served=30 real_reads=2 real_bytes=30 direct=0 getcs=1 tells=1 seeks=1 seeks_served=1 seeks_real=0 errors=0')
     lines.append('GZ_TIMING mode=unbuffered calls=1000 bytes=3000 seconds=0.600 ns_per_call=600.0 wall_ms=600')
     lines.append('GZ_TIMING mode=hooked calls=1000 bytes=3000 seconds=6.000 ns_per_call=6000.0 wall_ms=6000')
+    lines.append('GZ_TIMING mode=light calls=1000 bytes=3000 seconds=0.900 ns_per_call=900.0 wall_ms=900 row_count=1000 row_bytes=3000 nesting=1')
     lines.append('GZ_TIMING mode=buffered calls=1000 bytes=3000 seconds=0.050 ns_per_call=50.0')
     lines.append(f'GZ BUFFER RESULT checks={len(runner.EXPECTED_CASES) * 200} failures={failures}')
     if not terminal:
@@ -40,8 +41,16 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(len(report['cases']), len(runner.EXPECTED_CASES))
         self.assertAlmostEqual(report['speedup'], 12.0)
         self.assertAlmostEqual(report['hook_envelope_ratio'], 10.0)
+        self.assertAlmostEqual(report['light_envelope_ratio'], 1.5)
+        self.assertAlmostEqual(report['light_envelope_ns'], 300.0)
+        self.assertAlmostEqual(report['hooked_envelope_ns'], 5400.0)
         self.assertEqual(report['timing']['buffered']['wall_ms'], None)
         self.assertEqual(report['statistics']['served'], 30)
+
+    def test_light_envelope_must_beat_the_boundary_one(self):
+        text = synthetic().replace('mode=light calls=1000 bytes=3000 seconds=0.900', 'mode=light calls=1000 bytes=3000 seconds=7.000')
+        with self.assertRaises(AssertionError):
+            runner.parse_report(text)
 
     def test_rejects_failures_missing_cases_fail_lines_and_nonterminal_result(self):
         for bad in (synthetic(failures=1), synthetic(drop_case='timing'), synthetic(fail_line=True), synthetic(terminal=False), ''):

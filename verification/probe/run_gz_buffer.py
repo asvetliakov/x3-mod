@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCES = ('src/proxy/gz_buffer.h', 'src/proxy/gz_buffer.cpp', 'src/proxy/cpu_state.h', 'src/proxy/capture.h',
            'verification/probe/gz_buffer_fixture.cpp', 'verification/probe/build_gz_buffer.sh', 'verification/probe/run_gz_buffer.py')
 CASE = re.compile(r'^GZ_CASE name=(\S+) capacity=(\d+) ops=(\d+) checks=(\d+) failures=(\d+)\r?$', re.M)
-TIMING = re.compile(r'^GZ_TIMING mode=(\w+) calls=(\d+) bytes=(\d+) seconds=([0-9.]+) ns_per_call=([0-9.]+)(?: wall_ms=(\d+))?\r?$', re.M)
+TIMING = re.compile(r'^GZ_TIMING mode=(\w+) calls=(\d+) bytes=(\d+) seconds=([0-9.]+) ns_per_call=([0-9.]+)(?: wall_ms=(\d+))?(?: row_count=\d+ row_bytes=\d+ nesting=\d)?\r?$', re.M)
 ZLIB = re.compile(r'^GZ_ZLIB version=(\S+) exports=(\d) rewind=(\d)\r?$', re.M)
 STATS = re.compile(r'^GZ_STATS (.*)$', re.M)
 FILE_LINE = re.compile(r'^gz_buffer_file (.*)$', re.M)
@@ -67,6 +67,15 @@ def parse_report(text):
     assert timing['unbuffered']['calls'] == timing['buffered']['calls'] == timing['hooked']['calls'] > 0, 'timing call counts differ'
     report['hook_envelope_ratio'] = timing['hooked']['seconds'] / timing['unbuffered']['seconds'] if timing['unbuffered']['seconds'] > 0 else None
     report['speedup'] = timing['unbuffered']['seconds'] / timing['buffered']['seconds'] if timing['buffered']['seconds'] > 0 else None
+    # The light envelope (loading_trace_light.cpp) replaced the CpuCallBoundary one; recorded runs before it have no line.
+    if 'light' in timing:
+        assert timing['light']['calls'] == timing['unbuffered']['calls'], 'light timing call count differs'
+        report['light_envelope_ratio'] = timing['light']['seconds'] / timing['unbuffered']['seconds'] if timing['unbuffered']['seconds'] > 0 else None
+        report['light_envelope_ns'] = timing['light']['ns_per_call'] - timing['unbuffered']['ns_per_call']
+        report['hooked_envelope_ns'] = timing['hooked']['ns_per_call'] - timing['unbuffered']['ns_per_call']
+        assert timing['light']['seconds'] < timing['hooked']['seconds'], 'the light envelope is not cheaper than the CpuCallBoundary one'
+    if 'qpc' in timing:
+        report['qpc_envelope_ns'] = timing['qpc']['ns_per_call'] - timing['unbuffered']['ns_per_call']
     return report
 
 

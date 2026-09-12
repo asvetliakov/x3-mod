@@ -27,7 +27,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-KEEP = ('profile_', 'telemetry_start ')
+KEEP = ('profile_', 'telemetry_start ', 'frame_end ')
 LEAF_KINDS = ('leaf_x3ap', 'leaf_ntdll', 'leaf_wine', 'leaf_d3dx', 'leaf_zlib', 'leaf_xml', 'leaf_proxy', 'leaf_other')
 
 
@@ -44,7 +44,7 @@ def scan(path):
     kept = []
     with Path(path).open('rb') as stream:
         for raw in stream:
-            if raw.startswith(b'profile_') or raw.startswith(b'telemetry_start '):
+            if raw.startswith(b'profile_') or raw.startswith(b'telemetry_start ') or raw.startswith(b'frame_end '):
                 kept.append(raw.decode('utf-8', 'replace').rstrip('\r\n'))
     return kept
 
@@ -52,9 +52,16 @@ def scan(path):
 def parse(lines):
     anchor, frequency = None, None
     start, modules, blocks, current = None, {}, [], None
+    frame_ends = []
     for line in lines:
         head, _, _ = line.partition(' ')
         f = fields(line)
+        if head == 'frame_end':
+            if 'elapsed_ms' in f:
+                frame_ends.append(dict(device=int(f['device']), frame=int(f['frame']), capture=f.get('capture') == '1',
+                                       elapsed_seconds=int(f['elapsed_ms']) / 1000.0, dt_seconds=int(f.get('dt_ms', 0)) / 1000.0,
+                                       qpc=int(f['qpc']) if 'qpc' in f else None))
+            continue
         if head == 'telemetry_start':
             anchor, frequency = int(f['qpc']), int(f['qpc_frequency'])
         elif head == 'profile_start':
@@ -90,11 +97,35 @@ def parse(lines):
             current['frames'].append(f)
         elif head == 'profile_pair':
             current['pairs'].append(f)
-    return dict(anchor=anchor, frequency=frequency, start=start, modules=modules, blocks=blocks)
+    return dict(anchor=anchor, frequency=frequency, start=start, modules=modules, blocks=blocks, frame_ends=frame_ends)
 
 
 def seconds(qpc, parsed):
     return (qpc - parsed['anchor']) / parsed['frequency'] if parsed['anchor'] is not None and parsed['frequency'] else None
+
+
+def frame_end_gaps(parsed, threshold=2.0):
+    """Load gaps bounded by consecutive frame_end lines of one device.
+
+    frame_end is written in every mode (every 300 frames or a capture frame)
+    with elapsed_ms since DllMain, dt_ms since the previous line and the QPC
+    stamp. A dt_ms over the threshold marks a gap inside [previous, this]; the
+    interval also holds up to 300 ordinary frames. With a profile/telemetry
+    anchor the bounds are on that clock (usable as --window values); without
+    one they are seconds since DllMain.
+    """
+    found = []
+    previous = {}
+    for item in parsed.get('frame_ends', []):
+        last = previous.get(item['device'])
+        if last is not None and item['dt_seconds'] >= threshold:
+            on_anchor = seconds(item['qpc'], parsed) is not None if item.get('qpc') is not None and last.get('qpc') is not None else False
+            start = seconds(last['qpc'], parsed) if on_anchor else last['elapsed_seconds']
+            end = seconds(item['qpc'], parsed) if on_anchor else item['elapsed_seconds']
+            found.append(dict(start_s=start, end_s=end, dt_seconds=item['dt_seconds'], frames=item['frame'] - last['frame'],
+                              end_frame=item['frame'], device=item['device'], clock='anchor' if on_anchor else 'dll_load'))
+        previous[item['device']] = item
+    return found
 
 
 def overlaps(block, parsed, from_s, to_s):
@@ -200,14 +231,18 @@ def main_module_rvas(parsed):
     return sorted(rvas)
 
 
-def summarize(path, windows, top=48, symbols=None):
+def summarize(path, windows, top=48, symbols=None, frame_gaps=False, threshold=2.0):
     parsed = parse(scan(path))
+    gaps = frame_end_gaps(parsed, threshold)
+    if frame_gaps:
+        windows = list(windows) + [(f'frame_gap_{i}', g['start_s'], g['end_s']) for i, g in enumerate(gaps, 1) if g['clock'] == 'anchor']
     result = dict(
         source=str(path), anchor_qpc=parsed['anchor'], qpc_frequency=parsed['frequency'],
         profile_start=parsed['start'], modules={str(k): v for k, v in sorted(parsed['modules'].items())},
         blocks=dict(delta=sum(b['scope'] == 'delta' for b in parsed['blocks']), cumulative=sum(b['scope'] == 'cumulative' for b in parsed['blocks'])),
         windows=[summarize_window(parsed, label, lo, hi, top, symbols or {}) for label, lo, hi in windows],
         main_module_rvas=[hex(r) for r in main_module_rvas(parsed)],
+        frame_end_lines=len(parsed['frame_ends']), frame_end_gaps=gaps,
     )
     return result
 
@@ -228,10 +263,14 @@ def main():
     parser.add_argument('--symbols', type=Path, help='JSON from X3ProfileSymbols.java to name main-module RVAs')
     parser.add_argument('--output', type=Path, help='write the JSON summary here')
     parser.add_argument('--rva-list', type=Path, help='write every main-module RVA (one hex per line) for the Ghidra script')
+    parser.add_argument('--frame-gaps', action='store_true', help='add one window per frame_end-derived gap (dt_ms over --gap-threshold) on the profile clock')
+    parser.add_argument('--gap-threshold', type=float, default=2.0, help='seconds of dt_ms between frame_end lines that count as a gap')
     args = parser.parse_args()
     windows = [('whole' if args.from_s is None and args.to_s is None else 'window', args.from_s, args.to_s)]
     windows += [parse_window(w) for w in args.window]
-    result = summarize(args.log, windows, args.top, load_symbols(args.symbols))
+    result = summarize(args.log, windows, args.top, load_symbols(args.symbols), args.frame_gaps, args.gap_threshold)
+    for g in result['frame_end_gaps']:
+        print(f"frame_end gap: {g['start_s']:.3f}-{g['end_s']:.3f} s ({g['clock']} clock) dt={g['dt_seconds']:.3f} s frames={g['frames']} end_frame={g['end_frame']}")
     if args.output:
         args.output.write_text(json.dumps(result, indent=2) + '\n')
     if args.rva_list:

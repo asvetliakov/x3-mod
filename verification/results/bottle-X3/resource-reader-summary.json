@@ -1,0 +1,105 @@
+{
+  "passed": true,
+  "phase": "complete",
+  "game_launched": false,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "quick": false,
+  "zlib1_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/zlib1.dll",
+  "sources": {
+    "src/proxy/resource_reader.h": "598179e85a01ce46b74412387ddbf3b75316e2349d59cfafb87aba1e6d012d2a",
+    "src/proxy/resource_reader.cpp": "4039c57ccf8fbf28d05f21233c6f787184ec894a470b3d6d70b707570d718ae7",
+    "src/proxy/resource_reader_core.cpp": "ffae7072967ad03bec52f2c951cb49874f66d0572afb547752eba866db594d22",
+    "src/proxy/engine_patch.h": "3ceeed5c186f04c982f508d2d85c39bb6dc7f6f5b1a99990d45e57213e057a23",
+    "src/proxy/engine_patch.cpp": "177fa17fe9853a9a43447410c11e99cd71e2b016f1ef521fd9ba38fad44e1ebe",
+    "src/proxy/loading_probes.h": "92a4bf1383c6752e5d8a888231bd9b1873224603704b7354e0878d982ac2b482",
+    "src/proxy/loading_probes.cpp": "9aeadea4db8a3a604f0a99f3302e760749a312727a13d9ca572fa192411bbc7d",
+    "src/proxy/loading_trace_light.h": "6ffea95a2d5e4abf59acbb0c6ff4dfcfc21224c3e9a5c9dbfd4b9050d387ddee",
+    "src/proxy/loading_trace_light.cpp": "427a605cef0997d3d13f8707b5b4403fb30d448a102ef250cd98b273d16110fb",
+    "src/proxy/loading_trace.h": "0fecb2a9110f5f9a3e829947e31e28795f4303f240dd89eb7563933f6322badd",
+    "verification/probe/resource_reader_fixture.cpp": "08ef3b0866b9baa0bac18be103ee9bc4e848a2ce1ef0b35424f83423ac2b1145",
+    "verification/probe/build_resource_reader.sh": "d0795d783d6afa55db902435cf751c30d27dff429c47dc53329253c3e4e62896",
+    "verification/probe/build_loading_light.sh": "9530d12e65cdb3bff4345ba806b74d9620a91fee45a33231b4f67fbe8a76d251",
+    "verification/probe/run_resource_reader.py": "75bdbc7a9aca2b6cdf54e21be2041fd0b719aa59033531ed92ced9ff4592da3d"
+  },
+  "zlib1_sha256_before": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
+  "executable_sha256": "f61054879de0bdfadf09c5d294d3ed3526aab20ed1885b72fdb2fabc8f6cbf8c",
+  "zlib1_sha256_copied": "27b95a87be89090df67f5f1e7fc88437da400b7c3b6728418d97eca71882cad5",
+  "exit_code": 0,
+  "report": {
+    "zlib_version": "1.2.3",
+    "cases": {
+      "fast": {
+        "loose_handled": 10,
+        "record_handled": 20,
+        "sources": 11
+      },
+      "fallbacks": {},
+      "probes": {
+        "installed": 4
+      },
+      "pool": {
+        "opens": 7,
+        "reused": 2,
+        "real_opens": 5,
+        "kept": 4,
+        "real_closes": 2
+      }
+    },
+    "fallbacks": {
+      "gz_handle": "gz_handle",
+      "progress": "progress",
+      "transparent": "not_gzip",
+      "state_position": "state",
+      "state_cursor": "state",
+      "method": "method",
+      "reserved": "reserved",
+      "length": "length",
+      "inflate": "inflate",
+      "size": "size",
+      "truncated": "inflate",
+      "empty": "empty",
+      "header": "header",
+      "alloc": "alloc"
+    },
+    "statistics": {
+      "mode": "verify",
+      "calls": 22,
+      "handled": 20,
+      "fallbacks": 2,
+      "verify_files": 20,
+      "verify_equal": 20,
+      "verify_mismatched": 0,
+      "bytes_in": 4044806,
+      "bytes_out": 6162400,
+      "our_us": 60201.4,
+      "original_us": 66179.2
+    },
+    "timing": {
+      "large": {
+        "bytes": 3000000,
+        "rounds": 5,
+        "fast_us": 28949.6,
+        "reference_us": 32091.7,
+        "ratio": 1.11
+      },
+      "medium": {
+        "bytes": 31000,
+        "rounds": 400,
+        "fast_us": 327.9,
+        "reference_us": 345.2,
+        "ratio": 1.05
+      }
+    },
+    "checks": 405,
+    "failures": 0,
+    "fail_lines": []
+  }
+}

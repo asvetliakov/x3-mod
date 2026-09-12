@@ -262,6 +262,77 @@ class LoadingProfileTest(unittest.TestCase):
         self.assertIn(0x004e7590, self.labels)
         self.assertIn('ID3DXMesh::GenerateAdjacency', self.labels[0x004bc680]['hooked_apis'])
 
+    def test_probe_lines_are_attributed_to_the_gap_and_rendered_with_named_extras(self):
+        probes = ('loading_probe_site index=1 name=resource_open va=0x004e8780 length=5 timed=1 kind=resource_open status=active x0=loose x1=catalogue x2=failed x3=-\n'
+                  'loading_probe_site index=7 name=find_wrapper va=0x004d2950 length=9 timed=1 kind=find_wrapper status=active x0=- x1=- x2=- x3=-\n'
+                  'loading_probe_site index=5 name=crt_fgetc va=0x0050fff5 length=7 timed=0 kind=count_only status=bytes_mismatch x0=- x1=- x2=- x3=-\n')
+        deltas = (summary(0, 0, 15000) + MENU_METRICS
+                  + 'loading_probe site=resource_open va=0x004e8780 qpc=15000 calls=700 exits=700 inclusive_ticks=2100 max_ticks=40 total_us=0 max_us=0 overflow=0 desync=0 bytes=0 x0=400 x1=300 x2=0 x3=0\n'
+                  + 'loading_probe site=find_wrapper va=0x004d2950 qpc=15000 calls=710 exits=710 inclusive_ticks=500 max_ticks=9 total_us=0 max_us=0 overflow=0 desync=1 bytes=0 x0=0 x1=0 x2=0 x3=0\n'
+                  + 'loading_probe_caller site=find_wrapper caller=0x004e7942 calls=700\n'
+                  + 'loading_probe_caller site=find_wrapper caller=0x004ade9c calls=10\n'
+                  + summary(0, 0, 30000)
+                  + 'loading_probe site=resource_open va=0x004e8780 qpc=30000 calls=300 exits=300 inclusive_ticks=900 max_ticks=60 total_us=0 max_us=0 overflow=0 desync=0 bytes=0 x0=100 x1=200 x2=0 x3=0\n'
+                  + summary(1, 4, 41500) + frame_metric(3, 30_500_000.0, 30_000_000.0))
+        result = self.run_pipeline(HEADER + probes + summary(1, 1, 11000) + deltas, symbols=None)
+        gap = result['gaps'][0]
+        table = gap['hooked']['probes']
+        self.assertEqual(table['resource_open']['calls'], 1000)
+        self.assertEqual(table['resource_open']['x1'], 500)
+        self.assertAlmostEqual(table['resource_open']['inclusive_seconds'], 3.0)
+        self.assertAlmostEqual(table['resource_open']['max_seconds'], 0.06)
+        self.assertAlmostEqual(table['resource_open']['mean_ms'], 3.0)
+        self.assertEqual(table['find_wrapper']['callers'], {'0x004e7942': 700, '0x004ade9c': 10})
+        self.assertEqual(table['find_wrapper']['desync'], 1)
+        self.assertEqual(result['probe_sites']['resource_open']['extras'], ['loose', 'catalogue', 'failed', '-'])
+        self.assertEqual(result['probe_sites']['crt_fgetc']['status'], 'bytes_mismatch')
+        text = alp.render(result)
+        self.assertIn('Engine probes: 2 of 3 sites active (find_wrapper, resource_open).', text)
+        self.assertIn('| `resource_open` | 1,000 | 1,000 | 3.000 | 3.000 | 60.0 | 0 | loose=500, catalogue=500 |', text)
+        self.assertIn('desync=1, caller 0x004e7942 700, caller 0x004ade9c 10', text)
+        stall = gap['stalls'][0]   # the 5-20 s report stall carries the deltas reported at 20 s
+        self.assertEqual(stall['hooked']['probes']['resource_open']['calls'], 300)
+
+    def test_frame_end_lines_bound_gaps_when_the_log_has_no_telemetry(self):
+        text = ('x3-modern-renderer version=0.4 schema=2 capture_start=120 capture_frames=1 pointer_bits=32\n'
+                'frame_end device=1 frame=300 draws=10 capture=0 present=00000000 elapsed_ms=5000 dt_ms=0 qpc=15000\n'
+                'frame_end device=1 frame=600 draws=10 capture=0 present=00000000 elapsed_ms=10000 dt_ms=5000 qpc=20000\n'
+                'frame_end device=1 frame=900 draws=10 capture=0 present=00000000 elapsed_ms=52000 dt_ms=42000 qpc=62000\n'
+                'frame_end device=1 frame=1200 draws=10 capture=0 present=00000000 elapsed_ms=57000 dt_ms=5000 qpc=67000\n'
+                'frame_end device=1 frame=1201 draws=10 capture=1 present=00000000 elapsed_ms=57016 dt_ms=16 qpc=67016\n')
+        result = self.run_pipeline(text, symbols=None)
+        self.assertEqual(result['gap_source'], 'frame_end')
+        self.assertIsNone(result['clock'])
+        self.assertEqual(result['frame_ends'], 5)
+        self.assertEqual(len(result['gaps']), 3)   # every 300-frame interval of 5 s or more passes the 2 s threshold; the load is the 42 s one
+        first, second, third = result['gaps']
+        self.assertEqual(first['label'], 'frame_end gap')
+        self.assertAlmostEqual(first['gap_seconds'], 5.0)
+        self.assertAlmostEqual(third['gap_seconds'], 5.0)
+        self.assertAlmostEqual(second['start_seconds'], 10.0)
+        self.assertAlmostEqual(second['end_seconds'], 52.0)
+        self.assertAlmostEqual(second['gap_seconds'], 42.0)
+        self.assertEqual(second['end_frame'], 900)
+        self.assertEqual(second['hooked']['operations'], {})
+        self.assertIn('300 frames between two frame_end lines (dll_load clock)', second['evidence'])
+        rendered = alp.render(result)
+        self.assertIn('no telemetry clock (frame_end elapsed_ms since DllMain)', rendered)
+        self.assertIn('**Gaps come from the 5 `frame_end` lines**', rendered)
+        self.assertIn('## Gap 2: frame_end gap (42.000 s, ends at frame 900)', rendered)
+
+    def test_frame_end_gaps_use_the_telemetry_clock_when_present(self):
+        text = (HEADER + 'frame_end device=1 frame=300 draws=1 capture=0 present=00000000 elapsed_ms=1000 dt_ms=0 qpc=12000\n'
+                + 'frame_end device=1 frame=600 draws=1 capture=0 present=00000000 elapsed_ms=31000 dt_ms=30000 qpc=42000\n')
+        lines, _, _ = alp.scan(self.write(text))
+        clock, anchors, present, windows, _, _ = alp.loading.parse(lines)
+        gaps = alp.loading.frame_end_gaps(anchors['frame_ends'], 2.0, clock)
+        self.assertEqual(len(gaps), 1)
+        self.assertEqual(gaps[0]['clock'], 'telemetry')
+        self.assertAlmostEqual(gaps[0]['start_earliest_seconds'], 2.0)
+        self.assertAlmostEqual(gaps[0]['end_latest_seconds'], 32.0)
+        self.assertEqual(alp.loading.frame_end_gaps(anchors['frame_ends'], 2.0, None)[0]['clock'], 'dll_load')
+        self.assertAlmostEqual(alp.loading.frame_end_gaps(anchors['frame_ends'], 2.0, None)[0]['start_earliest_seconds'], 1.0)
+
     def test_scan_keeps_only_sparse_lines(self):
         loading_lines, profile_lines, provenance = alp.scan(self.write(HEADER + LOADING + PROFILE))
         self.assertFalse(any('payload' in line for line in loading_lines + profile_lines))

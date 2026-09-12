@@ -34,9 +34,13 @@ from pathlib import Path
 KEEP = ('telemetry_start', 'telemetry_span', 'telemetry_summary', 'telemetry_metric',
         'loading_metric', 'loading_trace', 'loading_hook', 'mesh_hook',
         'telemetry_first_present', 'telemetry_cursor_poll', 'telemetry_presentation',
-        'create_device', 'create_device_result', 'capture_event')
+        'create_device', 'create_device_result', 'capture_event',
+        'loading_probe', 'loading_probe_site', 'loading_probe_caller', 'frame_end')
 METRIC_KEYS = ('count', 'failures', 'pending', 'ambiguous', 'bytes',
                'inclusive_ticks', 'exclusive_ticks', 'max_ticks', 'wrapper_tail_ticks')
+# Engine probe rows (loading_probe lines, docs/verification/loading-probes.md): deltas per
+# report window like loading_metric; x0..x3 are per-site extras named by loading_probe_site.
+PROBE_KEYS = ('calls', 'exits', 'inclusive_ticks', 'max_ticks', 'overflow', 'desync', 'bytes', 'x0', 'x1', 'x2', 'x3')
 # Fields compared when deciding whether two report windows repeat the same work.
 VECTOR_KEYS = ('count', 'failures', 'pending', 'ambiguous', 'bytes')
 
@@ -71,13 +75,23 @@ def parse(lines):
     """Build the clock, anchors, presentation windows and loading report windows."""
     clock = None
     anchors = dict(spans=[], first_presents=[], create_device=None, hooks=0,
-                   coverage_begin_qpc=None, mesh_tables=0)
+                   coverage_begin_qpc=None, mesh_tables=0, probe_sites={}, frame_ends=[])
     present, loading, cursor, captures = [], [], [], []
     current = None
     previous_report_qpc = None
     for line in lines:
         event = line.partition(' ')[0]
         f = fields(line)
+        if event == 'frame_end':
+            # Every mode writes these (every 300 frames or a capture frame) with
+            # elapsed_ms since DllMain and dt_ms since the previous line, so a
+            # plain --direct log still bounds its load gaps (frame_end_gaps).
+            if 'elapsed_ms' in f:
+                anchors['frame_ends'].append(dict(
+                    device=int(f['device']), frame=int(f['frame']), capture=f.get('capture') == '1',
+                    elapsed_seconds=int(f['elapsed_ms']) / 1000.0, dt_seconds=int(f.get('dt_ms', 0)) / 1000.0,
+                    qpc=int(f['qpc']) if 'qpc' in f else None))
+            continue
         if event == 'telemetry_start':
             frequency = int(f['qpc_frequency'])
             if frequency <= 0:
@@ -114,7 +128,8 @@ def parse(lines):
             if f['device'] == '0':
                 current = dict(begin_seconds=seconds(previous_report_qpc, clock)
                                if previous_report_qpc is not None else seconds(stamp, clock),
-                               report_seconds=seconds(stamp, clock), report_qpc=stamp, metrics={})
+                               report_seconds=seconds(stamp, clock), report_qpc=stamp, metrics={},
+                               probes={}, probe_callers={})
                 loading.append(current)
                 previous_report_qpc = stamp
             else:
@@ -148,9 +163,91 @@ def parse(lines):
                 current['report_qpc'] = stamp
                 current['report_seconds'] = seconds(stamp, clock)
                 previous_report_qpc = stamp
-    if clock is None:
+        elif event == 'loading_probe_site':
+            anchors['probe_sites'][f['name']] = dict(
+                index=int(f.get('index', 0)), va=f.get('va'), length=int(f.get('length', 0)),
+                timed=f.get('timed') == '1', kind=f.get('kind'), status=f.get('status'),
+                extras=[f.get('x0', '-'), f.get('x1', '-'), f.get('x2', '-'), f.get('x3', '-')])
+        elif event == 'loading_probe':
+            if current is None:
+                raise ValueError('loading probe delta without a preceding process summary')
+            row = {key: int(f[key]) for key in PROBE_KEYS}
+            if min(row.values()) < 0:
+                raise ValueError('negative probe delta')
+            row['inclusive_seconds'] = row['inclusive_ticks'] / clock['frequency']
+            row['max_seconds'] = row['max_ticks'] / clock['frequency']
+            existing = current['probes'].get(f['site'])
+            if existing:
+                for key in PROBE_KEYS + ('inclusive_seconds',):
+                    if key not in ('max_ticks',):
+                        existing[key] += row[key]
+                existing['max_ticks'] = max(existing['max_ticks'], row['max_ticks'])
+                existing['max_seconds'] = max(existing['max_seconds'], row['max_seconds'])
+            else:
+                current['probes'][f['site']] = row
+            stamp = int(f['qpc'])
+            if stamp > current['report_qpc']:
+                current['report_qpc'] = stamp
+                current['report_seconds'] = seconds(stamp, clock)
+                previous_report_qpc = stamp
+        elif event == 'loading_probe_caller':
+            if current is not None:
+                key = (f['site'], f['caller'])
+                current['probe_callers'][key] = current['probe_callers'].get(key, 0) + int(f['calls'])
+    if clock is None and not anchors['frame_ends']:
         raise ValueError('missing telemetry clock')
     return clock, anchors, present, loading, cursor, captures
+
+
+def probe_totals(windows):
+    """Per-site probe totals over report windows (deltas summed; maxima kept)."""
+    result = {}
+    callers = {}
+    for window in windows:
+        for site, row in window.get('probes', {}).items():
+            aggregate = result.setdefault(site, dict(
+                calls=0, exits=0, inclusive_ticks=0, max_ticks=0, overflow=0, desync=0, bytes=0,
+                x0=0, x1=0, x2=0, x3=0, inclusive_seconds=0.0, max_seconds=0.0))
+            for key in PROBE_KEYS + ('inclusive_seconds',):
+                if key != 'max_ticks':
+                    aggregate[key] += row[key]
+            aggregate['max_ticks'] = max(aggregate['max_ticks'], row['max_ticks'])
+            aggregate['max_seconds'] = max(aggregate['max_seconds'], row['max_seconds'])
+        for (site, caller), count in window.get('probe_callers', {}).items():
+            callers.setdefault(site, {})[caller] = callers.get(site, {}).get(caller, 0) + count
+    for site, aggregate in result.items():
+        aggregate['mean_ms'] = aggregate['inclusive_seconds'] / aggregate['calls'] * 1000.0 if aggregate['calls'] else 0.0
+        aggregate['callers'] = callers.get(site, {})
+    return result
+
+
+def frame_end_gaps(frame_ends, threshold, clock=None):
+    """Gaps bounded by consecutive frame_end lines of one device (a 300-frame cadence).
+
+    dt_seconds between two lines contains up to 300 ordinary frames as well as
+    any load stall, so the bounds are coarse: the stall lies inside
+    [previous line, this line]. With a telemetry clock the bounds use the qpc
+    field on the same axis as the report windows; otherwise seconds since
+    DllMain (elapsed_ms). Same keys as gaps() so attribute() accepts them.
+    """
+    found = []
+    previous = {}
+    for item in frame_ends:
+        last = previous.get(item['device'])
+        if last is not None and item['dt_seconds'] >= threshold:
+            if clock and item.get('qpc') is not None and last.get('qpc') is not None:
+                start, end = seconds(last['qpc'], clock), seconds(item['qpc'], clock)
+            else:
+                start, end = last['elapsed_seconds'], item['elapsed_seconds']
+            found.append(dict(
+                gap_seconds=item['dt_seconds'], source='frame_end', device=item['device'],
+                end_earliest_seconds=start, end_latest_seconds=end,
+                start_earliest_seconds=start, start_latest_seconds=end,
+                end_frame=item['frame'], window_frames=item['frame'] - last['frame'],
+                window_present_count=item['frame'] - last['frame'], report_seconds=end,
+                clock='telemetry' if clock and item.get('qpc') is not None else 'dll_load'))
+        previous[item['device']] = item
+    return found
 
 
 def seconds(qpc, clock):
@@ -252,7 +349,8 @@ def attribute(gap, loading):
                 work_vector_sha256=hashlib.sha256(shape.encode()).hexdigest()[:16],
                 start_seconds=start, end_seconds=end, end_frame=gap['end_frame'],
                 windows=len(inside) + len(straddling), straddling_windows=len(straddling),
-                operations=table, instrumented_exclusive_seconds=exclusive,
+                operations=table, probes=probe_totals(inside + straddling),
+                instrumented_exclusive_seconds=exclusive,
                 unexplained_seconds=gap['gap_seconds'] - exclusive,
                 report_stalls=stalls(sorted(inside + straddling,
                                             key=lambda w: w['begin_seconds']), 2.0, detail=4))
