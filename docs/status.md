@@ -80,6 +80,11 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   [native-windows-audit-2026-09-12.md](architecture/native-windows-audit-2026-09-12.md)
   (D1 format-converting StretchRect in-scene, D2 ps_3_0 with fixed-function
   VS, D3 MSAA mismatch on RT1/RT2, W1 missing d3d9 exports, W3 log path).
+**Installed (2026-09-12 night, after review 26, bottle X3):** `build/d3d9.dll`
+from commit `c782a5a` (sharpen, mip bias, scene hook default on with the
+route), SHA-256 `8864bff00e284db0a23ff152a1cf3e26c0ffaed161d010ec305be4bf46abb532`,
+through `tools/manage.py install`.
+
 **Installed (2026-09-12 night, after review 25, bottle X3):** `build/d3d9.dll`
 SHA-256 `38562f3a7e2bbb03c6ffd1e746540b062dbf1ec9d184163407d771d5cbfbc1f8`,
 through `tools/manage.py install` (default bottle X3; the Steam bottle keeps
@@ -599,11 +604,15 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
    times with run 1 and the route cost with iteration 10 (`gate_us` needs
    `X3M_TELEMETRY_DRAW=1`, off by default; add it only if the per-draw
    attribution is wanted, it costs QPC per draw).
-4. **Run 4 — TAA sharpness**: run 3 plus `--taa-sharpen 0.5 --taa-mip-bias
-   -0.5` (after review 26 lands). Look for over-sharpening halos, texture
-   shimmer on distant hulls (the mip bias) and fill-rate cost; take a
-   stationary capture burst for the MTF50/gradient comparison against run 2 of
-   iteration 9.
+4. **Run 4 — TAA sharpness** (review-26 build installed): `python3
+   tools/manage.py launch --direct --ownership --object-trace --object-lifetime
+   --motion-output --taa --taa-debug --telemetry --gz-buffer --taa-sharpen 0.5
+   --taa-mip-bias -0.5 --capture-start 999999 --capture-frames 4` (the scene
+   hook is now on by default with the route). Look for over-sharpening halos,
+   texture shimmer on distant hulls (the mip bias) and fill-rate cost; take
+   three 4-frame capture bursts (stationary, turning, moving) for the
+   MTF50/gradient comparison against iteration 9 run 2 and the per-pixel
+   motion certification that run 3 lacked.
 5. **Run 5 — first tonemapped look**: run 4 plus `--hdr --hdr-tonemap`
    (optionally `--hdr-look golden`, `--hdr-ev -1`). Report what looks wrong;
    the orchestrator reads the `hdr_frame` ev/luma fields and `hdr_tonemap`.
