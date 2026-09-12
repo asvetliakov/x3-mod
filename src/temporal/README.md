@@ -437,6 +437,20 @@ re-created lazily on the next run with invalid history. `shutdown` remains the
 full teardown. The fixture keeps one pass alive across a real device Reset.
 <!-- END route inputs (step 2) -->
 
+## Post-resolve sharpen (`rcas.hlsl`, `taa_sharpen_ps.hlsl`, `agx_sharpen_ps.hlsl`)
+
+`rcas.hlsl` is the shared RCAS core (our reimplementation of AMD's published
+FidelityFX Super Resolution 1.0 RCAS, MIT; five-tap cross, luma noise
+detector, guarded peak-range limiter, single lobe, plus a clamp to the taps'
+min/max), bound to `c23` (`sharpen.h`: gain `exp2(-2 (1 - s))`, 1/width,
+1/height). `taa_sharpen_ps.hlsl` includes it and sharpens `s0` as it is (the
+8-bit route's resolved history, the HDR identity write-back);
+`agx_sharpen_ps.hlsl` includes `agx.hlsl` with `AGX_NO_MAIN` and tonemaps
+each of the five taps through `agxTonemap()` before RCAS. The `#include`
+lines are expanded textually by the generator and the temporal fixture
+(D3DXCompileShader gets no include handler). Contract and placement:
+docs/architecture/temporal-integration.md, "Post-resolve sharpen".
+
 ## AgX tonemap and exposure meter (HDR scene path, stage 2)
 
 `agx.hlsl` is the `ps_3_0` AgX write-back of the FP16 HDR scene path (s0 the

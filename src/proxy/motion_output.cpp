@@ -10,6 +10,7 @@
 #include "../renderer/material_motion.h"
 #include "../renderer/temporal_pass.h"
 #include "../renderer/temporal_resolve_program.h"
+#include "../renderer/taa_sharpen_program.h"
 #include "../renderer/hdr_pass.h"
 #include <algorithm>
 #include <cmath>
@@ -474,9 +475,12 @@ bool MotionOutput::ensure_taa() noexcept {
     if (taa_failed_) return false;
     try { taa_ = std::make_unique<renderer::TemporalPass>(); } catch (...) { taa_failed_ = true; return false; }
     HRESULT hr = E_FAIL;
-    taa_call([&] { hr = taa_->initialize(device_, nullptr, reinterpret_cast<const DWORD*>(renderer::temporal_resolve_program()), native_); });
+    // The sharpen program is created only when the switch is on: with it off
+    // the pass is the pre-sharpen pass, shader for shader.
+    taa_call([&] { hr = taa_->initialize(device_, nullptr, reinterpret_cast<const DWORD*>(renderer::temporal_resolve_program()), native_,
+                                         taa_sharpen_ > 0.f ? reinterpret_cast<const DWORD*>(renderer::taa_sharpen_program()) : nullptr); });
     taa_failed_ = FAILED(hr);
-    log("motion_output_taa device=%llu initialize=%08lx references=%u", id_, hr, taa_references_);
+    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f", id_, hr, taa_references_, double(taa_sharpen_));
     return !taa_failed_;
 }
 // The whole resolve at the bloom copy: RT1/RT2 containers as inputs, the
@@ -505,6 +509,10 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 readback_surface(main_surface, static_cast<D3DFORMAT>(main_.format), 4, L"color", L"bgra8", "motion_output_color_readback", "bgra8_row_major", target_width_, target_height_);
             renderer::FrameInputs in{};
             if (hdr_scene) { in.color = hdr_scene; in.luminance_k = hdr_taa_k_; } else in.color_surface = main_surface;
+            // Post-resolve sharpen on the 8-bit route: the pass draws RCAS of
+            // its history into the main target in place of the copy-back
+            // below (the HDR route sharpens in the write-back instead).
+            in.sharpen = hdr_scene ? 0.f : taa_sharpen_;
             in.current_depth = depth; in.motion = motion;
             in.width = main_.width; in.height = main_.height;
             in.epoch = generation_; // Dimension changes are compared by the pass itself.
@@ -562,6 +570,10 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                     // samples the resolved FP16 image (tonemap and meter), and
                     // the history already holds it.
                     hdr_resolved_ = out.color; t.copy = S_FALSE;
+                } else if (out.display_written) {
+                    // The pass drew the sharpened display image into the main
+                    // target itself: no copy-back (taa_copy stays S_FALSE).
+                    t.copy = S_FALSE; t.sharpened = true;
                 } else {
                     // Point-filtered full-rect copy of the resolved FP16 image back into
                     // the 8-bit main target; StretchRect changes no device state.
@@ -1927,6 +1939,8 @@ renderer::HdrWriteback MotionOutput::hdr_writeback(IDirect3DSurface9* final_rt0,
         ++h.writebacks; h.source = unsigned(r.source);
         h.writeback_ticks += ticks; h.writeback_draw_ticks += r.ticks_draw; h.writeback_stretch_ticks += r.ticks_stretch;
         h.tonemap = r.tonemap; h.fallback = h.fallback || r.fallback; h.tonemap_draw = r.tonemap_draw;
+        h.sharpened = r.sharpened; h.sharpen_fallback = h.sharpen_fallback || r.sharpen_fallback;
+        if (r.sharpened) counters_.taa.sharpened = true;
         if (r.meter != S_FALSE) { h.meter = r.meter; h.meter_ticks += r.ticks_meter; record(unsigned(telemetry::Metric::HdrMeter), r.ticks_meter, FAILED(r.meter)); }
         record(unsigned(telemetry::Metric::HdrWriteback), ticks, r.unwind);
         record(unsigned(telemetry::Metric::HdrWritebackDraw), r.ticks_draw, FAILED(r.draw) || FAILED(r.restore));
@@ -1990,7 +2004,7 @@ void MotionOutput::log_hdr_frame() noexcept {
     const bool tonemap = hdr_ && hdr_->tonemap_active();
     const auto& e = hdr_ ? hdr_->exposure() : renderer::ExposureState{};
     const auto& c = hdr_ ? hdr_->config() : renderer::HdrConfig{};
-    log("hdr_frame device=%llu frame=%llu hdr=%u redirected=%u end=%s writebacks=%lu flushes=%lu writeback_source=%s unwind=%u unwind_reason=%s unwind_draw=%08lx unwind_restore=%08lx unwind_stretch=%08lx unwind_bind=%08lx blocked=%u recheck=%s suspended=%lu resumed=%lu dirty_at_present=%u refused_msaa=%u target_create=%08lx latch_bind=%08lx target=%ux%u target_bytes=%llu caps=%s stretch_conversion=%08lx timing=%s redirect_us=%.1f writeback_us=%.1f writeback_draw_us=%.1f writeback_stretch_us=%.1f bind_us=%.1f recheck_us=%.1f tonemap=%s tonemapped=%u look=%s decode=%s clamp=%g exposure=%s ev=%.5f ev_adapted=%.5f ev_target=%.5f avg_log_l=%.5f luma_mean=%.6g dt_ms=%.3f stepped=%u steps=%u meter=%08lx readback=%08lx tonemap_draw=%08lx fallback=%u meter_us=%.1f readback_us=%.1f k=%.5f chain_bytes=%llu",
+    log("hdr_frame device=%llu frame=%llu hdr=%u redirected=%u end=%s writebacks=%lu flushes=%lu writeback_source=%s unwind=%u unwind_reason=%s unwind_draw=%08lx unwind_restore=%08lx unwind_stretch=%08lx unwind_bind=%08lx blocked=%u recheck=%s suspended=%lu resumed=%lu dirty_at_present=%u refused_msaa=%u target_create=%08lx latch_bind=%08lx target=%ux%u target_bytes=%llu caps=%s stretch_conversion=%08lx timing=%s redirect_us=%.1f writeback_us=%.1f writeback_draw_us=%.1f writeback_stretch_us=%.1f bind_us=%.1f recheck_us=%.1f tonemap=%s tonemapped=%u look=%s decode=%s clamp=%g exposure=%s ev=%.5f ev_adapted=%.5f ev_target=%.5f avg_log_l=%.5f luma_mean=%.6g dt_ms=%.3f stepped=%u steps=%u meter=%08lx readback=%08lx tonemap_draw=%08lx fallback=%u meter_us=%.1f readback_us=%.1f k=%.5f chain_bytes=%llu sharpen=%s sharpened=%u sharpen_fallback=%u",
         id_, frame_, hdr_enabled_, h.redirected, hdr_end_name(h.end), static_cast<unsigned long>(h.writebacks), static_cast<unsigned long>(h.flushes),
         hdr_source_name(h.source), h.unwind, h.unwind_reason, h.unwind_draw, h.unwind_restore, h.unwind_stretch, h.unwind_bind,
         h.blocked, h.recheck_ran ? (h.recheck_passed ? "pass" : "fail") : "none", static_cast<unsigned long>(h.suspended),
@@ -2001,7 +2015,8 @@ void MotionOutput::log_hdr_frame() noexcept {
         tonemap ? "agx" : "identity", h.tonemap, renderer::hdr_look_name(c.look), renderer::hdr_decode_name(c.decode), double(c.clamp_max),
         renderer::hdr_exposure_name(c.exposure), double(e.ev()), double(e.ev_adapted()), double(e.ev_target()), double(e.avg_log_l()),
         double(std::exp2(e.avg_log_l())), double(e.dt()) * 1000., h.stepped, e.steps(), h.meter, h.readback, h.tonemap_draw, h.fallback,
-        us(h.meter_ticks), us(h.readback_ticks), double(hdr_taa_k_), hdr_ ? hdr_->chain_bytes() : 0ull);
+        us(h.meter_ticks), us(h.readback_ticks), double(hdr_taa_k_), hdr_ ? hdr_->chain_bytes() : 0ull,
+        caps.sharpen_reason, h.sharpened, h.sharpen_fallback);
 }
 
 // ---- frame end -------------------------------------------------------------
@@ -2171,7 +2186,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         // telemetry on (timing=cpu_qpc) and zero otherwise (timing=off).
         const auto& c = counters_;
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
-        log("motion_output_frame device=%llu frame=%llu latched=%u filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f scene_open=%u active_queries=%lu taa_references=%u"
+        log("motion_output_frame device=%llu frame=%llu latched=%u filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u scene_open=%u active_queries=%lu taa_references=%u"
             " camera_valid=%u camera_background_valid=%u camera_reads=%lu camera_policy=%lu camera_reason=%lu camera_cut=%u camera_rotation_deg=%.4f"
             " rt_mode=%s timing=%s set_rt=%lu lazy_flushes=%lu jitter_writes=%lu readbacks=%lu gate_us=%.1f route_draw_us=%.1f set_rt_us=%.1f lazy_flush_us=%.1f jitter_us=%.1f fill_us=%.1f taa_run_us=%.1f taa_capture_us=%.1f taa_copy_color_us=%.1f taa_copy_depth_us=%.1f taa_draw_us=%.1f taa_apply_us=%.1f taa_copy_back_us=%.1f readback_us=%.1f"
             " state_shadow=%u rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u",
@@ -2186,7 +2201,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             static_cast<unsigned long>(counters_.jittered), counters_.cut, counters_.cut_median_px, counters_.cut_missing_fraction,
             static_cast<unsigned long>(counters_.displacement_samples), taa_enabled_, counters_.taa.attempted, counters_.taa.resolved,
             counters_.taa.used_history, static_cast<unsigned long>(counters_.taa.skip), counters_.taa.result, counters_.taa.restore,
-            counters_.taa.copy, counters_.taa.hdr, counters_.taa.k, scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,
+            counters_.taa.copy, counters_.taa.hdr, counters_.taa.k, counters_.taa.sharpened, scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,
             counters_.camera_scene_valid, counters_.camera_background_valid, static_cast<unsigned long>(counters_.camera_reads),
             static_cast<unsigned long>(counters_.taa.camera_policy), static_cast<unsigned long>(counters_.taa.camera_reason),
             counters_.taa.camera_cut, counters_.taa.camera_rotation_deg,

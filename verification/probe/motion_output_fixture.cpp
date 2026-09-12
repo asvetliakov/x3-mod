@@ -338,6 +338,7 @@ struct Fixture {
     HRESULT (*readback_depth)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*last_pixel_abi)(IDirect3DDevice9*, float*, unsigned) = nullptr;
     bool seam = false, enabled = false, jitter = false, taa = false, bench = false, burst = false, lazy = false, envmap = false;
+    float sharpen = 0.f;   // X3M_TAA_SHARPEN: the presented image is RCAS of the resolved one (the runner compares it against the Python reference)
     bool hook = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
     bool hdrramp = false, hdrexposure = false, hdrtonemapfault = false; // stage-2 scripts
     bool hdr_agx = false;           // X3M_HDR_TONEMAP=agx: the presented image is AgX (the runner holds the reference)
@@ -875,7 +876,7 @@ struct Fixture {
         const bool expect_history = live && resolve_expected && frames_since_reset > 0 && !expected_cut() && !history_dropped;
         require(history == expect_history, "history use follows the script (first frame, Reset, cut and post-skip frames run current-only)");
         history_dropped = !resolve_expected;
-        if (!history) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
+        if (!history && sharpen <= 0.f) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
         std::printf("TAA frame=%llu history=%u cut=%u changed=%u policy=%u skipped=%u\n", frame, history, expected_cut(), changed, decision.policy, !resolve_expected);
         ++taa_frames; taa_history_frames += history; taa_changed_pixels += changed;
         // The history now holds this frame's scene view (the route records it
@@ -1168,7 +1169,7 @@ struct Fixture {
         }
         const bool expect_history = resolves && history_valid && !expected_cut();
         require(history == expect_history, "history use follows the script (the route drops history on a frame it cannot resolve)");
-        if (!history) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
+        if (!history && sharpen <= 0.f) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
         history_valid = resolves;
         camera_history = resolves ? camera_current : x3m::renderer::CameraState{};
         std::printf("TAA frame=%llu history=%u cut=%u changed=%u policy=%u skipped=%u source=%s glow=%u outside=%u\n", frame, history, expected_cut(), changed, decision.policy, !resolves,
@@ -1244,19 +1245,25 @@ struct Fixture {
     // one code per channel is the tolerance (the conversions' rounding);
     // with the AgX write-back only the alpha carry is checked here and the
     // runner compares the colour against the Python AgX reference.
+    // With the post-resolve sharpen on (either route) only the alpha carry
+    // is checked here, like the AgX case: the runner compares the colour
+    // against the Python RCAS reference of the resolved (and, HDR, AgX
+    // tonemapped) image, and the FP16 history against the reference pass.
     unsigned presented_mismatches(const std::vector<DWORD>& actual, const std::vector<DWORD>& expected, float k) {
         unsigned mismatches = 0, worst = 0;
+        const bool colour = !hdr_agx && sharpen <= 0.f;
         for (std::size_t i = 0; i < expected.size(); ++i) {
-            if (!hdr) { if (expected[i] != actual[i] && ++mismatches <= 4) std::printf("TAA_DIFF frame=%llu index=%u actual=%08lx reference=%08lx\n", frame, unsigned(i), actual[i], expected[i]); continue; }
+            if (!hdr && colour) { if (expected[i] != actual[i] && ++mismatches <= 4) std::printf("TAA_DIFF frame=%llu index=%u actual=%08lx reference=%08lx\n", frame, unsigned(i), actual[i], expected[i]); continue; }
             unsigned difference = 0;
             for (unsigned c = 0; c < 4; ++c) {
                 const unsigned a = (actual[i] >> (8 * c)) & 255, e = (expected[i] >> (8 * c)) & 255;
-                if (c == 3 || !hdr_agx) difference = std::max(difference, a > e ? a - e : e - a);
+                if (c == 3 || colour) difference = std::max(difference, a > e ? a - e : e - a);
             }
             worst = std::max(worst, difference);
             if (difference > 1 && ++mismatches <= 4) std::printf("TAA_DIFF frame=%llu index=%u actual=%08lx reference=%08lx\n", frame, unsigned(i), actual[i], expected[i]);
         }
         if (hdr) std::printf("TAA_HDR frame=%llu k=%.5f agx=%u worst_code=%u mismatches=%u\n", frame, double(k), hdr_agx, worst, mismatches);
+        if (sharpen > 0.f) std::printf("TAA_SHARPEN frame=%llu sharpen=%g hdr=%u agx=%u worst_alpha=%u mismatches=%u\n", frame, double(sharpen), hdr, hdr_agx, worst, mismatches);
         return mismatches;
     }
     // ---- FP16 HDR scene path scripts (X3M_HDR=1, seam) ----
@@ -1722,11 +1729,12 @@ int main(int argc, char** argv) {
         f.state_shadow = !(GetEnvironmentVariableA("X3M_STATE_SHADOW", setting, sizeof setting) == 1 && setting[0] == '0');
         f.hdr = f.enabled && GetEnvironmentVariableA("X3M_HDR", setting, sizeof setting) == 1 && setting[0] == '1';
         f.hdr_agx = f.hdr && GetEnvironmentVariableA("X3M_HDR_TONEMAP", setting, sizeof setting) > 0 && (!std::strcmp(setting, "agx") || !std::strcmp(setting, "1"));
+        if (f.taa && GetEnvironmentVariableA("X3M_TAA_SHARPEN", setting, sizeof setting) > 0) { const float v = float(std::atof(setting)); if (v > 0.f && v <= 1.f) f.sharpen = v; }
         // A caps/self-test fault must be queued before the device is created (attach).
         if (f.hdr_fault && GetEnvironmentVariableA("X3M_FIXTURE_HDR_FAULT", setting, sizeof setting) > 0) f.hdr_fault(nullptr, unsigned(std::atoi(setting)), 1);
         if (f.camera) { fake_camera_pose(0); f.camera_install(&fake_projection_slot, &fake_view_slot); }
         char path[MAX_PATH]{}; GetModuleFileNameA(runtime, path, MAX_PATH);
-        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s camera=%u sentinel=%u envmap=%u hook=%u state_shadow=%u hdr=%u hdrvalues=%u hdrfault=%u hdrramp=%u hdrexposure=%u hdrtonemapfault=%u\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw", f.camera, f.sentinel, f.envmap, f.hook, f.state_shadow, f.hdr, f.hdrvalues, f.hdrfault, f.hdrramp, f.hdrexposure, f.hdrtonemapfault);
+        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s camera=%u sentinel=%u envmap=%u hook=%u state_shadow=%u hdr=%u hdrvalues=%u hdrfault=%u hdrramp=%u hdrexposure=%u hdrtonemapfault=%u sharpen=%g\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw", f.camera, f.sentinel, f.envmap, f.hook, f.state_shadow, f.hdr, f.hdrvalues, f.hdrfault, f.hdrramp, f.hdrexposure, f.hdrtonemapfault, double(f.sharpen));
         f.vs_words = load(argv[1]); f.ps_words = load(argv[2]);
         f.vs_hash = fnv(f.vs_words.data(), f.vs_words.size() * 4); f.ps_hash = fnv(f.ps_words.data(), f.ps_words.size() * 4);
         f.flat_hash = fnv(flat_program, sizeof flat_program);

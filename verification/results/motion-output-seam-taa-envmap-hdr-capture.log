@@ -1,26 +1,24 @@
 motion_capture_mode requested=0 enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0
-motion_output_mode requested=1 scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=1 taa=1 taa_debug=1 jitter=1 jitter_samples=8 cut_median_px=48.000 cut_missing=0.250 rt_mode=perdraw frame_log=60 sentinel=auto camera_cut_deg=20.00 camera_log=300 state_shadow=1 scene_hook=0 hdr=1 taa_k=-1.00000
+motion_output_mode requested=1 scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=1 taa=1 taa_debug=1 jitter=1 jitter_samples=8 cut_median_px=48.000 cut_missing=0.250 rt_mode=perdraw frame_log=60 sentinel=auto camera_cut_deg=20.00 camera_log=300 state_shadow=1 scene_hook=0 hdr=1 taa_k=-1.00000 taa_sharpen=0.000
 x3-modern-renderer version=0.4 schema=2 capture_start=1 capture_frames=4 pointer_bits=32
-telemetry_start schema=1 qpc_frequency=10000000 qpc=9498111392344 anchor=proxy_initialize cpu_only=1 per_draw=1
+telemetry_start schema=1 qpc_frequency=10000000 qpc=9533731381152 anchor=proxy_initialize cpu_only=1 per_draw=1
 application_admission_mode requested=0 enabled=0 live_replay=0 coverage_complete=0
-telemetry_span name=backend_load qpc_begin=9498111400659 qpc_end=9498111453946 thread=192 success=1 error=0
+telemetry_span name=backend_load qpc_begin=9533731387681 qpc_end=9533731439731 thread=2052 success=1 error=0
 backend path=C:\windows\system32\d3d9.dll
 object_trace active=0 status=disabled recovery_required=0
 camera_state active=1 status=fixture
 scene_hook active=0 status=disabled
 object_lifetime active=0 status=disabled recovery_required=0 baseline_complete=0 baseline_entries=0
-telemetry_span name=direct3d_create9 qpc_begin=9498111457170 qpc_end=9498123088908 thread=192 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9533731443048 qpc_end=9533739440193 thread=2052 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
-telemetry_summary device=0 frame=0 reason=interval qpc=9498123097492 since_start_us=1170514.800 interval_us=1170514.800 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=1 failures=0 total_us=0.600 min_us=0.600 max_us=0.600 bytes=0 buckets=1,0,0,0,0,0
-telemetry_presentation phase=create_before device=0 thread=192 focus_window=002c006e device_window=002c006e width=64 height=64 format=21 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_before device=0 thread=2052 focus_window=00370060 device_window=00370060 width=64 height=64 format=21 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000040 width=64 height=64 format=21 windowed=1 msaa=0 interval=2147483648
-telemetry_presentation phase=create_after device=0 thread=192 focus_window=002c006e device_window=002c006e width=64 height=64 format=21 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
+telemetry_presentation phase=create_after device=0 thread=2052 focus_window=00370060 device_window=00370060 width=64 height=64 format=21 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=1 depth_format=77 flags=00000000 refresh=0 interval=2147483648
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
-device_hooked ptr=00115fe0 device=1 ex=0
-resource identity=1 ptr=015b04f8 type=1
-resource identity=2 ptr=015b0538 type=1
+device_hooked ptr=00119518 device=1 ex=0
+resource identity=1 ptr=001171a0 type=1
+resource identity=2 ptr=001171e0 type=1
 hdr_device device=1 enabled=1 reason=ok fp16_target=00000000 fp16_blending=00000000 fp16_filter=00000000 fp16_sampling=00000000 stretch_conversion=00000000 main_format=21 mrt_blending=1 self_test_targets=3 self_test=stage=compare result=00000000 draw=00000000 blend=00000000 copy=00000000 restore=00000000 copy_restore=00000000 scene=00000000 stretch=00000000 scene_errors=0 sum_errors=0 motion_errors=0 depth_errors=0 copy_errors=0 stretch_errors=0 targets=3 tonemap=00000001 tonemap_errors=0 meter=00000001 meter_errors=0 meter_value=0.00000 meter_expected=0.00000 route=1 depth=1
 hdr_tonemap device=1 enabled=1 requested=identity tonemap=0 tonemap_reason=off meter=0 meter_reason=off look=none decode=gamma2.2 clamp=0 exposure=auto ev_manual=0.0000 ev_offset=0.0000 key=0.1800 ev_min=-8.00 ev_max=8.00 tau_up=0.400 tau_down=1.200 meter_floor=0.0001 meter_clip=64 fixed_dt_ms=0.000 tonemap_shader=00000001 meter_shader=00000001 r32f_target=00000001 r32f_sampling=00000001
 motion_output_device device=1 enabled=1 reason=ok detail=stage=compare result=00000000 draw=00000000 restore=00000000 scene=00000000 color_errors=0 motion_errors=0 depth_errors=0 targets=3 mrt=4 vs_constants=256 misc=002ecff2 vs=fffe0300 ps=ffff0300 rgba32f=00000000 history_available=0 history_capacity=4096 depth=1 depth_reason=ok depth_detail=stage=compare result=00000000 draw=00000000 restore=00000000 scene=00000000 color_errors=0 motion_errors=0 depth_errors=0 targets=3 r32f=00000000 jitter=1 jitter_samples=8 taa=1 taa_reason=ok taa_format=00000000 taa_debug=1 rt_mode=perdraw camera=fixture sentinel=0 camera_cut_deg=20.00 camera_log=300 state_shadow=1 scene_hook=0 hdr=1
@@ -33,31 +31,38 @@ shader kind=vs id=53a0a641107ed76c bytes=2104 dumped=1
 motion_output_variant device=1 kind=vs original=53a0a641107ed76c transform=0 create=00000000 words=556 depth=1
 shader kind=ps id=8759c7838bbc86c2 bytes=5040 dumped=1
 motion_output_variant device=1 kind=ps original=8759c7838bbc86c2 transform=0 create=00000000 words=1402 depth=1
-resource identity=3 ptr=0213ed40 type=6
+resource identity=3 ptr=0213f0f0 type=6
 hdr_target device=1 frame=0 width=64 height=64 format=A16B16G16R16F bytes=32768 create=00000000 chain_levels=0 chain_bytes=0 meter=0 meter_reason=off
-resource identity=4 ptr=0220ba28 type=1
-resource identity=5 ptr=0220b9e8 type=3
+resource identity=4 ptr=0221bbf0 type=1
+resource identity=5 ptr=0221bbb0 type=3
 motion_output_target device=1 width=64 height=64 create=00000000 level=00000000 depth=1 depth_create=00000000 depth_level=00000000
-resource identity=6 ptr=0213ed70 type=6
-resource identity=7 ptr=0213d118 type=1
-resource identity=8 ptr=0213d0d8 type=3
-motion_output_taa device=1 initialize=00000000 references=1
-motion_output_frame device=1 frame=0 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=0 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=2 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=0 jitter_x=0.000000 jitter_y=-0.166667 jitter_previous_x=0.000000 jitter_previous_y=0.000000 jittered=2 cut=1 cut_median_px=0.0000 cut_missing=1.0000 cut_samples=0 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000001 taa_hdr=1 taa_k=0.00000 scene_open=0 active_queries=0 taa_references=6 camera_valid=1 camera_background_valid=1 camera_reads=2 camera_policy=1 camera_reason=3 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=0 gate_us=384.5 route_draw_us=122.8 set_rt_us=2.7 lazy_flush_us=0.0 jitter_us=1.5 fill_us=146.1 taa_run_us=1657.0 taa_capture_us=52.0 taa_copy_color_us=42.1 taa_copy_depth_us=6.1 taa_draw_us=528.4 taa_apply_us=379.7 taa_copy_back_us=0.0 readback_us=0.0 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1
-camera_state device=1 frame=0 status=fixture reads=2 valid=1 read_failure=0 failure=0 projection=0050a0e0 view=0050a0a0 p00=0.8 p11=1.333333 p20=0 p21=0 r00=1 r01=0 r02=0 r10=0 r11=1 r12=0 r20=-0 r21=0 r22=1 t=12.5,-3,1000 background_valid=1 background_p00=0.8 background_p11=1.333333 background_rotation_deg=0.0000 history_view_valid=1 history_view_frame=0 rotation_deg=0.0000 policy=1 reason=3 camera_cut=0 mode=0 cut_deg=20.00
-hdr_frame device=1 frame=0 hdr=1 redirected=1 end=bloom_copy writebacks=2 flushes=1 writeback_source=shader unwind=0 unwind_reason=none unwind_draw=00000001 unwind_restore=00000001 unwind_stretch=00000001 unwind_bind=00000001 blocked=0 recheck=none suspended=0 resumed=0 dirty_at_present=0 refused_msaa=0 target_create=00000000 latch_bind=00000000 target=64x64 target_bytes=32768 caps=ok stretch_conversion=00000000 timing=cpu_qpc redirect_us=8.7 writeback_us=24515.0 writeback_draw_us=24384.1 writeback_stretch_us=0.0 bind_us=0.0 recheck_us=0.0 tonemap=identity tonemapped=0 look=none decode=gamma2.2 clamp=0 exposure=auto ev=0.00000 ev_adapted=0.00000 ev_target=0.00000 avg_log_l=0.00000 luma_mean=1 dt_ms=0.000 stepped=0 steps=0 meter=00000001 readback=00000001 tonemap_draw=00000001 fallback=0 meter_us=0.0 readback_us=0.0 k=0.00000 chain_bytes=0
-telemetry_first_present device=1 frame=0 qpc=9498125350486 since_start_us=1395814.200 capture=0 reset_count=0
-telemetry_window_context device=1 frame=0 render_thread=192 window_thread=192 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
-telemetry_window device=1 frame=0 qpc=9498125354857 window=002c006e foreground=00000000 thread_focus=00000000 iconic=0 visible=0 style=04cf0000 exstyle=00000100 window_rect=0,0,119,96 client_rect=0,0,111,62
-telemetry_cursor_poll device=1 frame=0 qpc=9498125354857 flags=1 cursor=00000000 x=1575 y=523
-telemetry_present_window device=1 frame=0 override=00000000 device_window=002c006e result=00000000
+resource identity=6 ptr=0213f120 type=6
+resource identity=7 ptr=0213df18 type=1
+resource identity=8 ptr=0213ded8 type=3
+motion_output_taa device=1 initialize=00000000 references=1 sharpen=0.000
+telemetry_summary device=0 frame=0 reason=interval qpc=9533741527792 since_start_us=1014664.000 interval_us=1014664.000 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=98 failures=0 total_us=27.600 min_us=0.000 max_us=2.200 bytes=0 buckets=98,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=6719.900 min_us=6719.900 max_us=6719.900 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=shader_inspect count=7 failures=0 total_us=3534.300 min_us=357.200 max_us=981.700 bytes=0 buckets=0,0,7,0,0,0
+telemetry_metric device=0 name=shader_getfunction count=7 failures=0 total_us=173.300 min_us=0.200 max_us=140.700 bytes=0 buckets=5,1,1,0,0,0
+telemetry_metric device=0 name=shader_hash count=7 failures=0 total_us=16.300 min_us=0.200 max_us=11.100 bytes=7340 buckets=6,1,0,0,0,0
+telemetry_metric device=0 name=shader_dump count=7 failures=0 total_us=3246.700 min_us=341.800 max_us=936.900 bytes=7340 buckets=0,0,7,0,0,0
+motion_output_frame device=1 frame=0 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=0 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=2 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=0 jitter_x=0.000000 jitter_y=-0.166667 jitter_previous_x=0.000000 jitter_previous_y=0.000000 jittered=2 cut=1 cut_median_px=0.0000 cut_missing=1.0000 cut_samples=0 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000001 taa_hdr=1 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=6 camera_valid=1 camera_background_valid=1 camera_reads=2 camera_policy=1 camera_reason=3 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=0 gate_us=611.5 route_draw_us=125.1 set_rt_us=3.5 lazy_flush_us=0.0 jitter_us=18.1 fill_us=131.1 taa_run_us=1530.5 taa_capture_us=50.5 taa_copy_color_us=0.2 taa_copy_depth_us=6.1 taa_draw_us=438.0 taa_apply_us=384.2 taa_copy_back_us=0.0 readback_us=0.0 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1
+camera_state device=1 frame=0 status=fixture reads=2 valid=1 read_failure=0 failure=0 projection=0050b0e0 view=0050b0a0 p00=0.8 p11=1.333333 p20=0 p21=0 r00=1 r01=0 r02=0 r10=0 r11=1 r12=0 r20=-0 r21=0 r22=1 t=12.5,-3,1000 background_valid=1 background_p00=0.8 background_p11=1.333333 background_rotation_deg=0.0000 history_view_valid=1 history_view_frame=0 rotation_deg=0.0000 policy=1 reason=3 camera_cut=0 mode=0 cut_deg=20.00
+hdr_frame device=1 frame=0 hdr=1 redirected=1 end=bloom_copy writebacks=2 flushes=1 writeback_source=shader unwind=0 unwind_reason=none unwind_draw=00000001 unwind_restore=00000001 unwind_stretch=00000001 unwind_bind=00000001 blocked=0 recheck=none suspended=0 resumed=0 dirty_at_present=0 refused_msaa=0 target_create=00000000 latch_bind=00000000 target=64x64 target_bytes=32768 caps=ok stretch_conversion=00000000 timing=cpu_qpc redirect_us=6.3 writeback_us=25265.5 writeback_draw_us=25173.0 writeback_stretch_us=0.0 bind_us=0.0 recheck_us=0.0 tonemap=identity tonemapped=0 look=none decode=gamma2.2 clamp=0 exposure=auto ev=0.00000 ev_adapted=0.00000 ev_target=0.00000 avg_log_l=0.00000 luma_mean=1 dt_ms=0.000 stepped=0 steps=0 meter=00000001 readback=00000001 tonemap_draw=00000001 fallback=0 meter_us=0.0 readback_us=0.0 k=0.00000 chain_bytes=0 sharpen=off sharpened=0 sharpen_fallback=0
+telemetry_first_present device=1 frame=0 qpc=9533741565956 since_start_us=1018480.400 capture=0 reset_count=0
+telemetry_window_context device=1 frame=0 render_thread=2052 window_thread=2052 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
+telemetry_window device=1 frame=0 qpc=9533741570683 window=00370060 foreground=00000000 thread_focus=00000000 iconic=0 visible=0 style=04cf0000 exstyle=00000100 window_rect=0,0,119,96 client_rect=0,0,111,62
+telemetry_cursor_poll device=1 frame=0 qpc=9533741570683 flags=1 cursor=00000000 x=-1512 y=0
+telemetry_present_window device=1 frame=0 override=00000000 device_window=00370060 result=00000000
 frame_end device=1 frame=0 draws=3 capture=0 present=00000000
 frame_begin device=1 frame=1
-capture_event device=1 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9498125362505
+capture_event device=1 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9533741575865
 clear flags=3 color=ff203040 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=clear_depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=1 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9498125374289
+capture_event device=1 frame=1 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9533741585451
 draw device=1 frame=1 index=1 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=98731d5594e36226
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -79,8 +84,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -109,32 +114,32 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=64 h=64 minz=0 maxz=1
-resource identity=9 ptr=0213cd98 type=3
-texture stage=0 ptr=0213cd98 type=3 identity=9
+resource identity=9 ptr=0213db98 type=3
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-resource identity=10 ptr=0213ce18 type=3
-texture stage=1 ptr=0213ce18 type=3 identity=10
+resource identity=10 ptr=0213dc18 type=3
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-resource identity=11 ptr=0213ce98 type=3
-texture stage=2 ptr=0213ce98 type=3 identity=11
+resource identity=11 ptr=0213dc98 type=3
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-resource identity=12 ptr=0213cf18 type=5
-texture stage=3 ptr=0213cf18 type=5 identity=12
+resource identity=12 ptr=0213dd18 type=5
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -341,21 +346,21 @@ motion_input device=1 frame=1 index=1 blockers=00000252 proofs=20 position_path=
 motion_geometry device=1 frame=1 index=1 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=1 index=1 result=00000000
 hdr_readback device=1 frame=1 file=hdr_1_1.rgba16f width=64 height=64 format=rgba16f_row_major result=00000000 bytes=32768
-resource identity=13 ptr=0220b828 type=1
-capture_event device=1 frame=1 seq=3 after_draw=1 op=set_rt result=00000000 qpc=9498125399957
-set_rt index=0 result=00000000 ptr=0220b828
-resource identity=14 ptr=0220b7e8 type=5
-surface role=binding ptr=0220b828 identity=13 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-resource identity=15 ptr=0220b9a8 type=1
-capture_event device=1 frame=1 seq=4 after_draw=1 op=set_depth result=00000000 qpc=9498125400226
-set_depth ptr=0220b9a8 result=00000000
-surface role=depth_binding ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=1 seq=5 after_draw=1 op=clear result=00000000 qpc=9498125400418
+resource identity=13 ptr=0221b9f0 type=1
+capture_event device=1 frame=1 seq=3 after_draw=1 op=set_rt result=00000000 qpc=9533741609365
+set_rt index=0 result=00000000 ptr=0221b9f0
+resource identity=14 ptr=0221b9b0 type=5
+surface role=binding ptr=0221b9f0 identity=13 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+resource identity=15 ptr=0221bb70 type=1
+capture_event device=1 frame=1 seq=4 after_draw=1 op=set_depth result=00000000 qpc=9533741609652
+set_depth ptr=0221bb70 result=00000000
+surface role=depth_binding ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=1 seq=5 after_draw=1 op=clear result=00000000 qpc=9533741609880
 clear flags=3 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=0220b828 identity=13 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=clear_depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=0221b9f0 identity=13 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=clear_depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=16 h=16 minz=0 maxz=1
-capture_event device=1 frame=1 seq=6 after_draw=1 op=draw_begin result=00000000 qpc=9498125402553
+capture_event device=1 frame=1 seq=6 after_draw=1 op=draw_begin result=00000000 qpc=9533741610871
 draw device=1 frame=1 index=2 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -377,8 +382,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=0220b828 identity=13 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=0221b9f0 identity=13 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -407,28 +412,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=16 h=16 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -634,19 +639,19 @@ draw_args start_vertex=0
 motion_input device=1 frame=1 index=2 blockers=00000250 proofs=20 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=13 depth=15 width=16 height=16 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=1 index=2 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=1 index=2 result=00000000
-resource identity=16 ptr=0220b868 type=1
-capture_event device=1 frame=1 seq=7 after_draw=2 op=set_rt result=00000000 qpc=9498125410607
-set_rt index=0 result=00000000 ptr=0220b868
-surface role=binding ptr=0220b868 identity=16 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-capture_event device=1 frame=1 seq=8 after_draw=2 op=set_depth result=00000000 qpc=9498125410724
-set_depth ptr=0220b9a8 result=00000000
-surface role=depth_binding ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=1 seq=9 after_draw=2 op=clear result=00000000 qpc=9498125410843
+resource identity=16 ptr=0221ba30 type=1
+capture_event device=1 frame=1 seq=7 after_draw=2 op=set_rt result=00000000 qpc=9533741619570
+set_rt index=0 result=00000000 ptr=0221ba30
+surface role=binding ptr=0221ba30 identity=16 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+capture_event device=1 frame=1 seq=8 after_draw=2 op=set_depth result=00000000 qpc=9533741619719
+set_depth ptr=0221bb70 result=00000000
+surface role=depth_binding ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=1 seq=9 after_draw=2 op=clear result=00000000 qpc=9533741619893
 clear flags=3 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=0220b868 identity=16 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=clear_depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=0221ba30 identity=16 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=clear_depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=16 h=16 minz=0 maxz=1
-capture_event device=1 frame=1 seq=10 after_draw=2 op=draw_begin result=00000000 qpc=9498125412569
+capture_event device=1 frame=1 seq=10 after_draw=2 op=draw_begin result=00000000 qpc=9533741621856
 draw device=1 frame=1 index=3 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -668,8 +673,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=0220b868 identity=16 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=0221ba30 identity=16 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -698,28 +703,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=16 h=16 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -925,19 +930,19 @@ draw_args start_vertex=0
 motion_input device=1 frame=1 index=3 blockers=00000250 proofs=20 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=16 depth=15 width=16 height=16 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=1 index=3 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=1 index=3 result=00000000
-resource identity=17 ptr=0220b8a8 type=1
-capture_event device=1 frame=1 seq=11 after_draw=3 op=set_rt result=00000000 qpc=9498125420636
-set_rt index=0 result=00000000 ptr=0220b8a8
-surface role=binding ptr=0220b8a8 identity=17 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-capture_event device=1 frame=1 seq=12 after_draw=3 op=set_depth result=00000000 qpc=9498125420792
-set_depth ptr=0220b9a8 result=00000000
-surface role=depth_binding ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=1 seq=13 after_draw=3 op=clear result=00000000 qpc=9498125420963
+resource identity=17 ptr=0221ba70 type=1
+capture_event device=1 frame=1 seq=11 after_draw=3 op=set_rt result=00000000 qpc=9533741629941
+set_rt index=0 result=00000000 ptr=0221ba70
+surface role=binding ptr=0221ba70 identity=17 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+capture_event device=1 frame=1 seq=12 after_draw=3 op=set_depth result=00000000 qpc=9533741630055
+set_depth ptr=0221bb70 result=00000000
+surface role=depth_binding ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=1 seq=13 after_draw=3 op=clear result=00000000 qpc=9533741630169
 clear flags=3 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=0220b8a8 identity=17 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=clear_depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=0221ba70 identity=17 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=clear_depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=16 h=16 minz=0 maxz=1
-capture_event device=1 frame=1 seq=14 after_draw=3 op=draw_begin result=00000000 qpc=9498125421996
+capture_event device=1 frame=1 seq=14 after_draw=3 op=draw_begin result=00000000 qpc=9533741631693
 draw device=1 frame=1 index=4 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -959,8 +964,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=0220b8a8 identity=17 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=0221ba70 identity=17 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -989,28 +994,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=16 h=16 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -1216,19 +1221,19 @@ draw_args start_vertex=0
 motion_input device=1 frame=1 index=4 blockers=00000250 proofs=20 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=17 depth=15 width=16 height=16 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=1 index=4 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=1 index=4 result=00000000
-resource identity=18 ptr=0220b8e8 type=1
-capture_event device=1 frame=1 seq=15 after_draw=4 op=set_rt result=00000000 qpc=9498125429745
-set_rt index=0 result=00000000 ptr=0220b8e8
-surface role=binding ptr=0220b8e8 identity=18 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-capture_event device=1 frame=1 seq=16 after_draw=4 op=set_depth result=00000000 qpc=9498125429861
-set_depth ptr=0220b9a8 result=00000000
-surface role=depth_binding ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=1 seq=17 after_draw=4 op=clear result=00000000 qpc=9498125429972
+resource identity=18 ptr=0221bab0 type=1
+capture_event device=1 frame=1 seq=15 after_draw=4 op=set_rt result=00000000 qpc=9533741639494
+set_rt index=0 result=00000000 ptr=0221bab0
+surface role=binding ptr=0221bab0 identity=18 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+capture_event device=1 frame=1 seq=16 after_draw=4 op=set_depth result=00000000 qpc=9533741639625
+set_depth ptr=0221bb70 result=00000000
+surface role=depth_binding ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=1 seq=17 after_draw=4 op=clear result=00000000 qpc=9533741639739
 clear flags=3 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=0220b8e8 identity=18 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=clear_depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=0221bab0 identity=18 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=clear_depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=16 h=16 minz=0 maxz=1
-capture_event device=1 frame=1 seq=18 after_draw=4 op=draw_begin result=00000000 qpc=9498125430762
+capture_event device=1 frame=1 seq=18 after_draw=4 op=draw_begin result=00000000 qpc=9533741640533
 draw device=1 frame=1 index=5 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -1250,8 +1255,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=0220b8e8 identity=18 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=0221bab0 identity=18 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -1280,28 +1285,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=16 h=16 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -1507,19 +1512,19 @@ draw_args start_vertex=0
 motion_input device=1 frame=1 index=5 blockers=00000250 proofs=20 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=18 depth=15 width=16 height=16 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=1 index=5 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=1 index=5 result=00000000
-resource identity=19 ptr=0220b928 type=1
-capture_event device=1 frame=1 seq=19 after_draw=5 op=set_rt result=00000000 qpc=9498125438503
-set_rt index=0 result=00000000 ptr=0220b928
-surface role=binding ptr=0220b928 identity=19 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-capture_event device=1 frame=1 seq=20 after_draw=5 op=set_depth result=00000000 qpc=9498125438631
-set_depth ptr=0220b9a8 result=00000000
-surface role=depth_binding ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=1 seq=21 after_draw=5 op=clear result=00000000 qpc=9498125438757
+resource identity=19 ptr=0221baf0 type=1
+capture_event device=1 frame=1 seq=19 after_draw=5 op=set_rt result=00000000 qpc=9533741648584
+set_rt index=0 result=00000000 ptr=0221baf0
+surface role=binding ptr=0221baf0 identity=19 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+capture_event device=1 frame=1 seq=20 after_draw=5 op=set_depth result=00000000 qpc=9533741648695
+set_depth ptr=0221bb70 result=00000000
+surface role=depth_binding ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=1 seq=21 after_draw=5 op=clear result=00000000 qpc=9533741648808
 clear flags=3 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=0220b928 identity=19 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=clear_depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=0221baf0 identity=19 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=clear_depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=16 h=16 minz=0 maxz=1
-capture_event device=1 frame=1 seq=22 after_draw=5 op=draw_begin result=00000000 qpc=9498125439506
+capture_event device=1 frame=1 seq=22 after_draw=5 op=draw_begin result=00000000 qpc=9533741649540
 draw device=1 frame=1 index=6 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -1541,8 +1546,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=0220b928 identity=19 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=0221baf0 identity=19 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -1571,28 +1576,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=16 h=16 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -1798,19 +1803,19 @@ draw_args start_vertex=0
 motion_input device=1 frame=1 index=6 blockers=00000250 proofs=20 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=19 depth=15 width=16 height=16 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=1 index=6 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=1 index=6 result=00000000
-resource identity=20 ptr=0220b968 type=1
-capture_event device=1 frame=1 seq=23 after_draw=6 op=set_rt result=00000000 qpc=9498125447341
-set_rt index=0 result=00000000 ptr=0220b968
-surface role=binding ptr=0220b968 identity=20 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-capture_event device=1 frame=1 seq=24 after_draw=6 op=set_depth result=00000000 qpc=9498125447540
-set_depth ptr=0220b9a8 result=00000000
-surface role=depth_binding ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=1 seq=25 after_draw=6 op=clear result=00000000 qpc=9498125447756
+resource identity=20 ptr=0221bb30 type=1
+capture_event device=1 frame=1 seq=23 after_draw=6 op=set_rt result=00000000 qpc=9533741657320
+set_rt index=0 result=00000000 ptr=0221bb30
+surface role=binding ptr=0221bb30 identity=20 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+capture_event device=1 frame=1 seq=24 after_draw=6 op=set_depth result=00000000 qpc=9533741657442
+set_depth ptr=0221bb70 result=00000000
+surface role=depth_binding ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=1 seq=25 after_draw=6 op=clear result=00000000 qpc=9533741657595
 clear flags=3 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=0220b968 identity=20 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=clear_depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=0221bb30 identity=20 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=clear_depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=16 h=16 minz=0 maxz=1
-capture_event device=1 frame=1 seq=26 after_draw=6 op=draw_begin result=00000000 qpc=9498125448597
+capture_event device=1 frame=1 seq=26 after_draw=6 op=draw_begin result=00000000 qpc=9533741658256
 draw device=1 frame=1 index=7 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -1832,8 +1837,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=0220b968 identity=20 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=0221bb30 identity=20 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -1862,28 +1867,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=16 h=16 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -2089,18 +2094,18 @@ draw_args start_vertex=0
 motion_input device=1 frame=1 index=7 blockers=00000250 proofs=20 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=20 depth=15 width=16 height=16 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=1 index=7 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=1 index=7 result=00000000
-capture_event device=1 frame=1 seq=27 after_draw=7 op=set_rt result=00000000 qpc=9498125456330
-set_rt index=0 result=00000000 ptr=015b04f8
-surface role=binding ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=1 seq=28 after_draw=7 op=set_depth result=00000000 qpc=9498125456520
-set_depth ptr=015b0538 result=00000000
-surface role=depth_binding ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=1 seq=29 after_draw=7 op=clear result=00000000 qpc=9498125457342
+capture_event device=1 frame=1 seq=27 after_draw=7 op=set_rt result=00000000 qpc=9533741666284
+set_rt index=0 result=00000000 ptr=001171a0
+surface role=binding ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=1 seq=28 after_draw=7 op=set_depth result=00000000 qpc=9533741666448
+set_depth ptr=001171e0 result=00000000
+surface role=depth_binding ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=1 seq=29 after_draw=7 op=clear result=00000000 qpc=9533741667136
 clear flags=2 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=clear_depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=1 seq=30 after_draw=7 op=draw_begin result=00000000 qpc=9498125458225
+capture_event device=1 frame=1 seq=30 after_draw=7 op=draw_begin result=00000000 qpc=9533741667957
 draw device=1 frame=1 index=8 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -2122,8 +2127,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=1
 state id=14 value=1
 state id=23 value=4
@@ -2152,28 +2157,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=64 h=64 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -2379,7 +2384,7 @@ draw_args start_vertex=0
 motion_input device=1 frame=1 index=8 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=6e1905db0b783f53 color=1 depth=2 width=64 height=64 cull=1 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=1 index=8 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=1 index=8 result=00000000
-capture_event device=1 frame=1 seq=31 after_draw=8 op=draw_begin result=00000000 qpc=9498125466981
+capture_event device=1 frame=1 seq=31 after_draw=8 op=draw_begin result=00000000 qpc=9533741677199
 draw device=1 frame=1 index=9 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=6 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -2401,8 +2406,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=1
 state id=14 value=1
 state id=23 value=4
@@ -2431,28 +2436,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=64 h=64 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -2658,30 +2663,30 @@ draw_args start_vertex=0
 motion_input device=1 frame=1 index=9 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=8804f37c47da2009 color=1 depth=2 width=64 height=64 cull=1 vb=6 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=1 index=9 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=1 index=9 result=00000000
-capture_event device=1 frame=1 seq=32 after_draw=9 op=set_depth result=00000000 qpc=9498125478434
+capture_event device=1 frame=1 seq=32 after_draw=9 op=set_depth result=00000000 qpc=9533741688853
 set_depth ptr=00000000 result=00000000
 surface role=depth_binding ptr=0 identity=0
-capture_event device=1 frame=1 seq=33 after_draw=9 op=stretch_rect result=00000000 qpc=9498125512284
-stretch_rect source=015b04f8 dest=0213d118 filter=0 source_rect_null=1 dest_rect_null=1
-surface role=stretch_source ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=stretch_dest ptr=0213d118 identity=7 width=64 height=64 format=21 usage=1 msaa=0 container=8 container_type=3 container_result=00000000
-capture_event device=1 frame=1 seq=34 after_draw=9 op=set_depth result=00000000 qpc=9498125538235
-set_depth ptr=015b0538 result=00000000
-surface role=depth_binding ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=1 seq=33 after_draw=9 op=stretch_rect result=00000000 qpc=9533742630170
+stretch_rect source=001171a0 dest=0213df18 filter=0 source_rect_null=1 dest_rect_null=1
+surface role=stretch_source ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=stretch_dest ptr=0213df18 identity=7 width=64 height=64 format=21 usage=1 msaa=0 container=8 container_type=3 container_result=00000000
+capture_event device=1 frame=1 seq=34 after_draw=9 op=set_depth result=00000000 qpc=9533742653130
+set_depth ptr=001171e0 result=00000000
+surface role=depth_binding ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 motion_output_cut device=1 frame=1 samples=0 median_px=0.0000 keyed=0 missing=0 missing_fraction=0.0000 bound_px=2.400 bound_missing=0.250 cut=0
 motion_output_readback device=1 frame=1 file=motion_1_1.rgba32f width=64 height=64 format=rgba32f_row_major result=00000000 bytes=65536
 motion_output_depth_readback device=1 frame=1 file=depth_1_1.r32f width=64 height=64 format=r32f_row_major result=00000000 bytes=16384
-motion_output_frame device=1 frame=1 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=9 routed=0 matched=0 gate1=0 gate2=9 gate3=0 gate4=0 gate5=0 gate6=0 apply_failures=0 restore_failures=0 history_previous=0 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=0 jitter=1 jitter_index=1 jitter_x=-0.250000 jitter_y=0.166667 jitter_previous_x=0.000000 jitter_previous_y=-0.166667 jittered=0 cut=0 cut_median_px=0.0000 cut_missing=0.0000 cut_samples=0 taa=1 taa_attempted=0 taa_resolved=0 taa_history=0 taa_skip=2 taa_result=00000001 taa_restore=00000000 taa_copy=00000001 taa_hdr=0 taa_k=0.00000 scene_open=0 active_queries=0 taa_references=6 camera_valid=0 camera_background_valid=1 camera_reads=1 camera_policy=1 camera_reason=1 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=0 lazy_flushes=0 jitter_writes=0 readbacks=3 gate_us=5.5 route_draw_us=0.0 set_rt_us=0.0 lazy_flush_us=0.0 jitter_us=0.0 fill_us=67.2 taa_run_us=0.0 taa_capture_us=0.0 taa_copy_color_us=0.0 taa_copy_depth_us=0.0 taa_draw_us=0.0 taa_apply_us=0.0 taa_copy_back_us=0.0 readback_us=2020.6 state_shadow=1 rs_queries=2 rs_hits=2 rs_gets=14 rs_resyncs=0 scene_hook=0 scene_end_source=none scene_end_check=0 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=0
+motion_output_frame device=1 frame=1 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=9 routed=0 matched=0 gate1=0 gate2=9 gate3=0 gate4=0 gate5=0 gate6=0 apply_failures=0 restore_failures=0 history_previous=0 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=0 jitter=1 jitter_index=1 jitter_x=-0.250000 jitter_y=0.166667 jitter_previous_x=0.000000 jitter_previous_y=-0.166667 jittered=0 cut=0 cut_median_px=0.0000 cut_missing=0.0000 cut_samples=0 taa=1 taa_attempted=0 taa_resolved=0 taa_history=0 taa_skip=2 taa_result=00000001 taa_restore=00000000 taa_copy=00000001 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=6 camera_valid=0 camera_background_valid=1 camera_reads=1 camera_policy=1 camera_reason=1 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=0 lazy_flushes=0 jitter_writes=0 readbacks=3 gate_us=5.2 route_draw_us=0.0 set_rt_us=0.0 lazy_flush_us=0.0 jitter_us=0.0 fill_us=42.3 taa_run_us=0.0 taa_capture_us=0.0 taa_copy_color_us=0.0 taa_copy_depth_us=0.0 taa_draw_us=0.0 taa_apply_us=0.0 taa_copy_back_us=0.0 readback_us=1793.3 state_shadow=1 rs_queries=2 rs_hits=2 rs_gets=14 rs_resyncs=0 scene_hook=0 scene_end_source=none scene_end_check=0 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=0
 camera_state device=1 frame=1 status=fixture reads=1 valid=0 read_failure=0 failure=0 projection=00000000 view=00000000 p00=0 p11=0 p20=0 p21=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 t=0,0,0 background_valid=1 background_p00=0.8 background_p11=1.333333 background_rotation_deg=0.0000 history_view_valid=0 history_view_frame=0 rotation_deg=0.0000 policy=1 reason=1 camera_cut=0 mode=0 cut_deg=20.00
-hdr_frame device=1 frame=1 hdr=1 redirected=1 end=present writebacks=2 flushes=2 writeback_source=shader unwind=0 unwind_reason=none unwind_draw=00000001 unwind_restore=00000001 unwind_stretch=00000001 unwind_bind=00000001 blocked=0 recheck=none suspended=1 resumed=1 dirty_at_present=0 refused_msaa=0 target_create=00000000 latch_bind=00000000 target=64x64 target_bytes=32768 caps=ok stretch_conversion=00000000 timing=cpu_qpc redirect_us=5.4 writeback_us=2986.4 writeback_draw_us=2984.4 writeback_stretch_us=0.0 bind_us=4.4 recheck_us=0.0 tonemap=identity tonemapped=0 look=none decode=gamma2.2 clamp=0 exposure=auto ev=0.00000 ev_adapted=0.00000 ev_target=0.00000 avg_log_l=0.00000 luma_mean=1 dt_ms=0.000 stepped=0 steps=0 meter=00000001 readback=00000001 tonemap_draw=00000001 fallback=0 meter_us=0.0 readback_us=0.0 k=0.00000 chain_bytes=0
+hdr_frame device=1 frame=1 hdr=1 redirected=1 end=present writebacks=2 flushes=2 writeback_source=shader unwind=0 unwind_reason=none unwind_draw=00000001 unwind_restore=00000001 unwind_stretch=00000001 unwind_bind=00000001 blocked=0 recheck=none suspended=1 resumed=1 dirty_at_present=0 refused_msaa=0 target_create=00000000 latch_bind=00000000 target=64x64 target_bytes=32768 caps=ok stretch_conversion=00000000 timing=cpu_qpc redirect_us=3.7 writeback_us=93281.0 writeback_draw_us=93278.7 writeback_stretch_us=0.0 bind_us=4.1 recheck_us=0.0 tonemap=identity tonemapped=0 look=none decode=gamma2.2 clamp=0 exposure=auto ev=0.00000 ev_adapted=0.00000 ev_target=0.00000 avg_log_l=0.00000 luma_mean=1 dt_ms=0.000 stepped=0 steps=0 meter=00000001 readback=00000001 tonemap_draw=00000001 fallback=0 meter_us=0.0 readback_us=0.0 k=0.00000 chain_bytes=0 sharpen=off sharpened=0 sharpen_fallback=0
 frame_end device=1 frame=1 draws=9 capture=1 present=00000000
 frame_begin device=1 frame=2
-capture_event device=1 frame=2 seq=1 after_draw=0 op=clear result=00000000 qpc=9498125551217
+capture_event device=1 frame=2 seq=1 after_draw=0 op=clear result=00000000 qpc=9533742667512
 clear flags=3 color=ff203040 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=clear_depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=2 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9498125552060
+capture_event device=1 frame=2 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9533742668511
 draw device=1 frame=2 index=1 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=98731d5594e36226
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -2703,8 +2708,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -2733,28 +2738,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=64 h=64 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -2960,12 +2965,12 @@ draw_args start_vertex=0
 motion_input device=1 frame=2 index=1 blockers=00000252 proofs=20 position_path=1 vs=53a0a641107ed76c ps=98731d5594e36226 declaration=0cdf6a8c884ad955 rows_hash=1b0c97ae01a7ec05 color=1 depth=2 width=64 height=64 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=2 index=1 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=2 index=1 result=00000000
-capture_event device=1 frame=2 seq=3 after_draw=1 op=clear result=00000000 qpc=9498125560098
+capture_event device=1 frame=2 seq=3 after_draw=1 op=clear result=00000000 qpc=9533742676921
 clear flags=2 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=clear_depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=2 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9498125560920
+capture_event device=1 frame=2 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9533742677744
 draw device=1 frame=2 index=2 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -2987,8 +2992,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=1
 state id=14 value=1
 state id=23 value=4
@@ -3017,28 +3022,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=64 h=64 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -3245,7 +3250,7 @@ motion_route device=1 frame=2 index=2 gate=6 routed=1 matched=0 depth=1 jittered
 motion_input device=1 frame=2 index=2 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=1 depth=2 width=64 height=64 cull=1 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=2 index=2 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=2 index=2 result=00000000
-capture_event device=1 frame=2 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9498125569771
+capture_event device=1 frame=2 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9533742687339
 draw device=1 frame=2 index=3 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=6 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -3267,8 +3272,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=1
 state id=14 value=1
 state id=23 value=4
@@ -3297,28 +3302,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=64 h=64 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -3526,38 +3531,38 @@ motion_input device=1 frame=2 index=3 blockers=00000210 proofs=28 position_path=
 motion_geometry device=1 frame=2 index=3 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=2 index=3 result=00000000
 motion_output_cut device=1 frame=2 samples=0 median_px=0.0000 keyed=2 missing=2 missing_fraction=1.0000 bound_px=2.400 bound_missing=0.250 cut=1
-capture_event device=1 frame=2 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9498125579565
+capture_event device=1 frame=2 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9533742698072
 set_depth ptr=00000000 result=00000000
 surface role=depth_binding ptr=0 identity=0
 hdr_readback device=1 frame=2 file=hdr_1_2.rgba16f width=64 height=64 format=rgba16f_row_major result=00000000 bytes=32768
 motion_output_color_readback device=1 frame=2 file=color_1_2.bgra8 width=64 height=64 format=bgra8_row_major result=00000000 bytes=16384
 motion_output_taa_readback device=1 frame=2 file=taa_1_2.rgba16f width=64 height=64 format=rgba16f_row_major result=00000000 bytes=32768
-capture_event device=1 frame=2 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9498125606173
-stretch_rect source=015b04f8 dest=0213d118 filter=0 source_rect_null=1 dest_rect_null=1
-surface role=stretch_source ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=stretch_dest ptr=0213d118 identity=7 width=64 height=64 format=21 usage=1 msaa=0 container=8 container_type=3 container_result=00000000
-capture_event device=1 frame=2 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9498125658160
-set_depth ptr=015b0538 result=00000000
-surface role=depth_binding ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=2 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9533742727601
+stretch_rect source=001171a0 dest=0213df18 filter=0 source_rect_null=1 dest_rect_null=1
+surface role=stretch_source ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=stretch_dest ptr=0213df18 identity=7 width=64 height=64 format=21 usage=1 msaa=0 container=8 container_type=3 container_result=00000000
+capture_event device=1 frame=2 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9533742773740
+set_depth ptr=001171e0 result=00000000
+surface role=depth_binding ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 motion_output_readback device=1 frame=2 file=motion_1_2.rgba32f width=64 height=64 format=rgba32f_row_major result=00000000 bytes=65536
 motion_output_depth_readback device=1 frame=2 file=depth_1_2.r32f width=64 height=64 format=r32f_row_major result=00000000 bytes=16384
-motion_output_frame device=1 frame=2 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=0 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=2 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=2 jitter_x=0.250000 jitter_y=-0.388889 jitter_previous_x=-0.250000 jitter_previous_y=0.166667 jittered=2 cut=1 cut_median_px=0.0000 cut_missing=1.0000 cut_samples=0 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000001 taa_hdr=1 taa_k=0.00000 scene_open=0 active_queries=0 taa_references=6 camera_valid=1 camera_background_valid=1 camera_reads=2 camera_policy=1 camera_reason=3 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=5 gate_us=28.9 route_draw_us=15.6 set_rt_us=8.3 lazy_flush_us=0.0 jitter_us=1.2 fill_us=48.2 taa_run_us=228.8 taa_capture_us=11.8 taa_copy_color_us=0.4 taa_copy_depth_us=3.3 taa_draw_us=196.3 taa_apply_us=11.3 taa_copy_back_us=0.0 readback_us=2973.4 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1
-camera_state device=1 frame=2 status=fixture reads=2 valid=1 read_failure=0 failure=0 projection=0050a0e0 view=0050a0a0 p00=0.8 p11=1.333333 p20=0 p21=0 r00=0.9993908 r01=0 r02=0.0348995 r10=0 r11=1 r12=0 r20=-0.0348995 r21=0 r22=0.9993908 t=12.5,-3,1000 background_valid=1 background_p00=0.8 background_p11=1.333333 background_rotation_deg=0.9999 history_view_valid=1 history_view_frame=2 rotation_deg=0.0000 policy=1 reason=3 camera_cut=0 mode=0 cut_deg=20.00
-hdr_frame device=1 frame=2 hdr=1 redirected=1 end=bloom_copy writebacks=2 flushes=1 writeback_source=shader unwind=0 unwind_reason=none unwind_draw=00000001 unwind_restore=00000001 unwind_stretch=00000001 unwind_bind=00000001 blocked=0 recheck=none suspended=0 resumed=0 dirty_at_present=0 refused_msaa=0 target_create=00000000 latch_bind=00000000 target=64x64 target_bytes=32768 caps=ok stretch_conversion=00000000 timing=cpu_qpc redirect_us=3.5 writeback_us=80.8 writeback_draw_us=79.3 writeback_stretch_us=0.0 bind_us=0.0 recheck_us=0.0 tonemap=identity tonemapped=0 look=none decode=gamma2.2 clamp=0 exposure=auto ev=0.00000 ev_adapted=0.00000 ev_target=0.00000 avg_log_l=0.00000 luma_mean=1 dt_ms=0.000 stepped=0 steps=0 meter=00000001 readback=00000001 tonemap_draw=00000001 fallback=0 meter_us=0.0 readback_us=0.0 k=0.00000 chain_bytes=0
+motion_output_frame device=1 frame=2 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=0 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=2 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=2 jitter_x=0.250000 jitter_y=-0.388889 jitter_previous_x=-0.250000 jitter_previous_y=0.166667 jittered=2 cut=1 cut_median_px=0.0000 cut_missing=1.0000 cut_samples=0 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000001 taa_hdr=1 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=6 camera_valid=1 camera_background_valid=1 camera_reads=2 camera_policy=1 camera_reason=3 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=5 gate_us=27.7 route_draw_us=20.6 set_rt_us=12.9 lazy_flush_us=0.0 jitter_us=1.5 fill_us=50.1 taa_run_us=283.5 taa_capture_us=11.4 taa_copy_color_us=0.2 taa_copy_depth_us=3.7 taa_draw_us=209.4 taa_apply_us=15.0 taa_copy_back_us=0.0 readback_us=3127.6 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1
+camera_state device=1 frame=2 status=fixture reads=2 valid=1 read_failure=0 failure=0 projection=0050b0e0 view=0050b0a0 p00=0.8 p11=1.333333 p20=0 p21=0 r00=0.9993908 r01=0 r02=0.0348995 r10=0 r11=1 r12=0 r20=-0.0348995 r21=0 r22=0.9993908 t=12.5,-3,1000 background_valid=1 background_p00=0.8 background_p11=1.333333 background_rotation_deg=0.9999 history_view_valid=1 history_view_frame=2 rotation_deg=0.0000 policy=1 reason=3 camera_cut=0 mode=0 cut_deg=20.00
+hdr_frame device=1 frame=2 hdr=1 redirected=1 end=bloom_copy writebacks=2 flushes=1 writeback_source=shader unwind=0 unwind_reason=none unwind_draw=00000001 unwind_restore=00000001 unwind_stretch=00000001 unwind_bind=00000001 blocked=0 recheck=none suspended=0 resumed=0 dirty_at_present=0 refused_msaa=0 target_create=00000000 latch_bind=00000000 target=64x64 target_bytes=32768 caps=ok stretch_conversion=00000000 timing=cpu_qpc redirect_us=3.7 writeback_us=95.7 writeback_draw_us=94.1 writeback_stretch_us=0.0 bind_us=0.0 recheck_us=0.0 tonemap=identity tonemapped=0 look=none decode=gamma2.2 clamp=0 exposure=auto ev=0.00000 ev_adapted=0.00000 ev_target=0.00000 avg_log_l=0.00000 luma_mean=1 dt_ms=0.000 stepped=0 steps=0 meter=00000001 readback=00000001 tonemap_draw=00000001 fallback=0 meter_us=0.0 readback_us=0.0 k=0.00000 chain_bytes=0 sharpen=off sharpened=0 sharpen_fallback=0
 frame_end device=1 frame=2 draws=3 capture=1 present=00000000
 frame_begin device=1 frame=3
-capture_event device=1 frame=3 seq=1 after_draw=0 op=set_rt result=00000000 qpc=9498125669487
-set_rt index=0 result=00000000 ptr=0220b828
-surface role=binding ptr=0220b828 identity=13 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-capture_event device=1 frame=3 seq=2 after_draw=0 op=set_depth result=00000000 qpc=9498125669682
-set_depth ptr=0220b9a8 result=00000000
-surface role=depth_binding ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=3 seq=3 after_draw=0 op=clear result=00000000 qpc=9498125669908
+capture_event device=1 frame=3 seq=1 after_draw=0 op=set_rt result=00000000 qpc=9533742784977
+set_rt index=0 result=00000000 ptr=0221b9f0
+surface role=binding ptr=0221b9f0 identity=13 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+capture_event device=1 frame=3 seq=2 after_draw=0 op=set_depth result=00000000 qpc=9533742785137
+set_depth ptr=0221bb70 result=00000000
+surface role=depth_binding ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=3 seq=3 after_draw=0 op=clear result=00000000 qpc=9533742785337
 clear flags=3 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=0220b828 identity=13 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=clear_depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=0221b9f0 identity=13 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=clear_depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=16 h=16 minz=0 maxz=1
-capture_event device=1 frame=3 seq=4 after_draw=0 op=draw_begin result=00000000 qpc=9498125670978
+capture_event device=1 frame=3 seq=4 after_draw=0 op=draw_begin result=00000000 qpc=9533742786341
 draw device=1 frame=3 index=1 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -3579,8 +3584,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=0220b828 identity=13 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=0221b9f0 identity=13 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -3609,28 +3614,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=16 h=16 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -3836,18 +3841,18 @@ draw_args start_vertex=0
 motion_input device=1 frame=3 index=1 blockers=00000250 proofs=20 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=13 depth=15 width=16 height=16 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=3 index=1 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=3 index=1 result=00000000
-capture_event device=1 frame=3 seq=5 after_draw=1 op=set_rt result=00000000 qpc=9498125678665
-set_rt index=0 result=00000000 ptr=0220b868
-surface role=binding ptr=0220b868 identity=16 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-capture_event device=1 frame=3 seq=6 after_draw=1 op=set_depth result=00000000 qpc=9498125678817
-set_depth ptr=0220b9a8 result=00000000
-surface role=depth_binding ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=3 seq=7 after_draw=1 op=clear result=00000000 qpc=9498125678940
+capture_event device=1 frame=3 seq=5 after_draw=1 op=set_rt result=00000000 qpc=9533742794361
+set_rt index=0 result=00000000 ptr=0221ba30
+surface role=binding ptr=0221ba30 identity=16 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+capture_event device=1 frame=3 seq=6 after_draw=1 op=set_depth result=00000000 qpc=9533742794558
+set_depth ptr=0221bb70 result=00000000
+surface role=depth_binding ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=3 seq=7 after_draw=1 op=clear result=00000000 qpc=9533742794733
 clear flags=3 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=0220b868 identity=16 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=clear_depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=0221ba30 identity=16 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=clear_depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=16 h=16 minz=0 maxz=1
-capture_event device=1 frame=3 seq=8 after_draw=1 op=draw_begin result=00000000 qpc=9498125679697
+capture_event device=1 frame=3 seq=8 after_draw=1 op=draw_begin result=00000000 qpc=9533742795625
 draw device=1 frame=3 index=2 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -3869,8 +3874,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=0220b868 identity=16 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=0221ba30 identity=16 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -3899,28 +3904,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=16 h=16 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -4126,18 +4131,18 @@ draw_args start_vertex=0
 motion_input device=1 frame=3 index=2 blockers=00000250 proofs=20 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=16 depth=15 width=16 height=16 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=3 index=2 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=3 index=2 result=00000000
-capture_event device=1 frame=3 seq=9 after_draw=2 op=set_rt result=00000000 qpc=9498125687102
-set_rt index=0 result=00000000 ptr=0220b8a8
-surface role=binding ptr=0220b8a8 identity=17 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-capture_event device=1 frame=3 seq=10 after_draw=2 op=set_depth result=00000000 qpc=9498125687227
-set_depth ptr=0220b9a8 result=00000000
-surface role=depth_binding ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=3 seq=11 after_draw=2 op=clear result=00000000 qpc=9498125687359
+capture_event device=1 frame=3 seq=9 after_draw=2 op=set_rt result=00000000 qpc=9533742803537
+set_rt index=0 result=00000000 ptr=0221ba70
+surface role=binding ptr=0221ba70 identity=17 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+capture_event device=1 frame=3 seq=10 after_draw=2 op=set_depth result=00000000 qpc=9533742803715
+set_depth ptr=0221bb70 result=00000000
+surface role=depth_binding ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=3 seq=11 after_draw=2 op=clear result=00000000 qpc=9533742803875
 clear flags=3 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=0220b8a8 identity=17 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=clear_depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=0221ba70 identity=17 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=clear_depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=16 h=16 minz=0 maxz=1
-capture_event device=1 frame=3 seq=12 after_draw=2 op=draw_begin result=00000000 qpc=9498125688337
+capture_event device=1 frame=3 seq=12 after_draw=2 op=draw_begin result=00000000 qpc=9533742804702
 draw device=1 frame=3 index=3 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -4159,8 +4164,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=0220b8a8 identity=17 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=0221ba70 identity=17 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -4189,28 +4194,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=16 h=16 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -4416,18 +4421,18 @@ draw_args start_vertex=0
 motion_input device=1 frame=3 index=3 blockers=00000250 proofs=20 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=17 depth=15 width=16 height=16 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=3 index=3 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=3 index=3 result=00000000
-capture_event device=1 frame=3 seq=13 after_draw=3 op=set_rt result=00000000 qpc=9498125696099
-set_rt index=0 result=00000000 ptr=0220b8e8
-surface role=binding ptr=0220b8e8 identity=18 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-capture_event device=1 frame=3 seq=14 after_draw=3 op=set_depth result=00000000 qpc=9498125696251
-set_depth ptr=0220b9a8 result=00000000
-surface role=depth_binding ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=3 seq=15 after_draw=3 op=clear result=00000000 qpc=9498125696374
+capture_event device=1 frame=3 seq=13 after_draw=3 op=set_rt result=00000000 qpc=9533742812503
+set_rt index=0 result=00000000 ptr=0221bab0
+surface role=binding ptr=0221bab0 identity=18 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+capture_event device=1 frame=3 seq=14 after_draw=3 op=set_depth result=00000000 qpc=9533742812646
+set_depth ptr=0221bb70 result=00000000
+surface role=depth_binding ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=3 seq=15 after_draw=3 op=clear result=00000000 qpc=9533742812765
 clear flags=3 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=0220b8e8 identity=18 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=clear_depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=0221bab0 identity=18 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=clear_depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=16 h=16 minz=0 maxz=1
-capture_event device=1 frame=3 seq=16 after_draw=3 op=draw_begin result=00000000 qpc=9498125697077
+capture_event device=1 frame=3 seq=16 after_draw=3 op=draw_begin result=00000000 qpc=9533742813442
 draw device=1 frame=3 index=4 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -4449,8 +4454,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=0220b8e8 identity=18 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=0221bab0 identity=18 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -4479,28 +4484,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=16 h=16 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -4706,18 +4711,18 @@ draw_args start_vertex=0
 motion_input device=1 frame=3 index=4 blockers=00000250 proofs=20 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=18 depth=15 width=16 height=16 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=3 index=4 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=3 index=4 result=00000000
-capture_event device=1 frame=3 seq=17 after_draw=4 op=set_rt result=00000000 qpc=9498125704846
-set_rt index=0 result=00000000 ptr=0220b928
-surface role=binding ptr=0220b928 identity=19 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-capture_event device=1 frame=3 seq=18 after_draw=4 op=set_depth result=00000000 qpc=9498125704970
-set_depth ptr=0220b9a8 result=00000000
-surface role=depth_binding ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=3 seq=19 after_draw=4 op=clear result=00000000 qpc=9498125705090
+capture_event device=1 frame=3 seq=17 after_draw=4 op=set_rt result=00000000 qpc=9533742821159
+set_rt index=0 result=00000000 ptr=0221baf0
+surface role=binding ptr=0221baf0 identity=19 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+capture_event device=1 frame=3 seq=18 after_draw=4 op=set_depth result=00000000 qpc=9533742821299
+set_depth ptr=0221bb70 result=00000000
+surface role=depth_binding ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=3 seq=19 after_draw=4 op=clear result=00000000 qpc=9533742821423
 clear flags=3 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=0220b928 identity=19 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=clear_depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=0221baf0 identity=19 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=clear_depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=16 h=16 minz=0 maxz=1
-capture_event device=1 frame=3 seq=20 after_draw=4 op=draw_begin result=00000000 qpc=9498125705745
+capture_event device=1 frame=3 seq=20 after_draw=4 op=draw_begin result=00000000 qpc=9533742822090
 draw device=1 frame=3 index=5 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -4739,8 +4744,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=0220b928 identity=19 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=0221baf0 identity=19 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -4769,28 +4774,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=16 h=16 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -4996,18 +5001,18 @@ draw_args start_vertex=0
 motion_input device=1 frame=3 index=5 blockers=00000250 proofs=20 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=19 depth=15 width=16 height=16 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=3 index=5 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=3 index=5 result=00000000
-capture_event device=1 frame=3 seq=21 after_draw=5 op=set_rt result=00000000 qpc=9498125713430
-set_rt index=0 result=00000000 ptr=0220b968
-surface role=binding ptr=0220b968 identity=20 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-capture_event device=1 frame=3 seq=22 after_draw=5 op=set_depth result=00000000 qpc=9498125713619
-set_depth ptr=0220b9a8 result=00000000
-surface role=depth_binding ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=3 seq=23 after_draw=5 op=clear result=00000000 qpc=9498125713767
+capture_event device=1 frame=3 seq=21 after_draw=5 op=set_rt result=00000000 qpc=9533742829843
+set_rt index=0 result=00000000 ptr=0221bb30
+surface role=binding ptr=0221bb30 identity=20 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+capture_event device=1 frame=3 seq=22 after_draw=5 op=set_depth result=00000000 qpc=9533742829960
+set_depth ptr=0221bb70 result=00000000
+surface role=depth_binding ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=3 seq=23 after_draw=5 op=clear result=00000000 qpc=9533742830095
 clear flags=3 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=0220b968 identity=20 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=clear_depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=0221bb30 identity=20 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=clear_depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=16 h=16 minz=0 maxz=1
-capture_event device=1 frame=3 seq=24 after_draw=5 op=draw_begin result=00000000 qpc=9498125714545
+capture_event device=1 frame=3 seq=24 after_draw=5 op=draw_begin result=00000000 qpc=9533742830755
 draw device=1 frame=3 index=6 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -5029,8 +5034,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=0220b968 identity=20 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
-surface role=depth ptr=0220b9a8 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=0221bb30 identity=20 width=16 height=16 format=21 usage=1 msaa=0 container=14 container_type=5 container_result=00000000
+surface role=depth ptr=0221bb70 identity=15 width=16 height=16 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -5059,28 +5064,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=16 h=16 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -5286,18 +5291,18 @@ draw_args start_vertex=0
 motion_input device=1 frame=3 index=6 blockers=00000250 proofs=20 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=20 depth=15 width=16 height=16 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=3 index=6 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=3 index=6 result=00000000
-capture_event device=1 frame=3 seq=25 after_draw=6 op=set_rt result=00000000 qpc=9498125722107
-set_rt index=0 result=00000000 ptr=015b04f8
-surface role=binding ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=3 seq=26 after_draw=6 op=set_depth result=00000000 qpc=9498125722236
-set_depth ptr=015b0538 result=00000000
-surface role=depth_binding ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
-capture_event device=1 frame=3 seq=27 after_draw=6 op=clear result=00000000 qpc=9498125722388
+capture_event device=1 frame=3 seq=25 after_draw=6 op=set_rt result=00000000 qpc=9533742838588
+set_rt index=0 result=00000000 ptr=001171a0
+surface role=binding ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=3 seq=26 after_draw=6 op=set_depth result=00000000 qpc=9533742838770
+set_depth ptr=001171e0 result=00000000
+surface role=depth_binding ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=3 seq=27 after_draw=6 op=clear result=00000000 qpc=9533742838995
 clear flags=3 color=ff203040 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=clear_depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=3 seq=28 after_draw=6 op=draw_begin result=00000000 qpc=9498125722883
+capture_event device=1 frame=3 seq=28 after_draw=6 op=draw_begin result=00000000 qpc=9533742839565
 draw device=1 frame=3 index=7 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=98731d5594e36226
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -5319,8 +5324,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -5349,28 +5354,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=64 h=64 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -5576,12 +5581,12 @@ draw_args start_vertex=0
 motion_input device=1 frame=3 index=7 blockers=00000252 proofs=20 position_path=1 vs=53a0a641107ed76c ps=98731d5594e36226 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=1 depth=2 width=64 height=64 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=3 index=7 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=3 index=7 result=00000000
-capture_event device=1 frame=3 seq=29 after_draw=7 op=clear result=00000000 qpc=9498125730083
+capture_event device=1 frame=3 seq=29 after_draw=7 op=clear result=00000000 qpc=9533742847260
 clear flags=2 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=clear_depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=3 seq=30 after_draw=7 op=draw_begin result=00000000 qpc=9498125730809
+capture_event device=1 frame=3 seq=30 after_draw=7 op=draw_begin result=00000000 qpc=9533742848030
 draw device=1 frame=3 index=8 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -5603,8 +5608,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=1
 state id=14 value=1
 state id=23 value=4
@@ -5633,28 +5638,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=64 h=64 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -5860,7 +5865,7 @@ draw_args start_vertex=0
 motion_input device=1 frame=3 index=8 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=6e1905db0b783f53 color=1 depth=2 width=64 height=64 cull=1 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=3 index=8 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=3 index=8 result=00000000
-capture_event device=1 frame=3 seq=31 after_draw=8 op=draw_begin result=00000000 qpc=9498125739375
+capture_event device=1 frame=3 seq=31 after_draw=8 op=draw_begin result=00000000 qpc=9533742856895
 draw device=1 frame=3 index=9 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=6 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -5882,8 +5887,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=1
 state id=14 value=1
 state id=23 value=4
@@ -5912,28 +5917,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=64 h=64 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -6139,28 +6144,28 @@ draw_args start_vertex=0
 motion_input device=1 frame=3 index=9 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=8804f37c47da2009 color=1 depth=2 width=64 height=64 cull=1 vb=6 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=3 index=9 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=3 index=9 result=00000000
-capture_event device=1 frame=3 seq=32 after_draw=9 op=set_depth result=00000000 qpc=9498125748959
+capture_event device=1 frame=3 seq=32 after_draw=9 op=set_depth result=00000000 qpc=9533742867377
 set_depth ptr=00000000 result=00000000
 surface role=depth_binding ptr=0 identity=0
-capture_event device=1 frame=3 seq=33 after_draw=9 op=stretch_rect result=00000000 qpc=9498125757325
-stretch_rect source=015b04f8 dest=0213d118 filter=0 source_rect_null=1 dest_rect_null=1
-surface role=stretch_source ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=stretch_dest ptr=0213d118 identity=7 width=64 height=64 format=21 usage=1 msaa=0 container=8 container_type=3 container_result=00000000
-capture_event device=1 frame=3 seq=34 after_draw=9 op=set_depth result=00000000 qpc=9498125779150
-set_depth ptr=015b0538 result=00000000
-surface role=depth_binding ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=3 seq=33 after_draw=9 op=stretch_rect result=00000000 qpc=9533742873617
+stretch_rect source=001171a0 dest=0213df18 filter=0 source_rect_null=1 dest_rect_null=1
+surface role=stretch_source ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=stretch_dest ptr=0213df18 identity=7 width=64 height=64 format=21 usage=1 msaa=0 container=8 container_type=3 container_result=00000000
+capture_event device=1 frame=3 seq=34 after_draw=9 op=set_depth result=00000000 qpc=9533742894267
+set_depth ptr=001171e0 result=00000000
+surface role=depth_binding ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 motion_output_cut device=1 frame=3 samples=0 median_px=0.0000 keyed=0 missing=0 missing_fraction=0.0000 bound_px=2.400 bound_missing=0.250 cut=0
-motion_output_frame device=1 frame=3 latched=0 filled=0 fill_result=00000001 fill_restore=00000000 draws=9 routed=0 matched=0 gate1=0 gate2=9 gate3=0 gate4=0 gate5=0 gate6=0 apply_failures=0 restore_failures=0 history_previous=0 history_current=0 committed=0 selector_state=9 present=00000000 depth=1 depth_routed=0 jitter=0 jitter_index=0 jitter_x=0.000000 jitter_y=0.000000 jitter_previous_x=0.000000 jitter_previous_y=0.000000 jittered=0 cut=0 cut_median_px=0.0000 cut_missing=0.0000 cut_samples=0 taa=1 taa_attempted=0 taa_resolved=0 taa_history=0 taa_skip=2 taa_result=00000001 taa_restore=00000000 taa_copy=00000001 taa_hdr=0 taa_k=0.00000 scene_open=0 active_queries=0 taa_references=6 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=1 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=0 lazy_flushes=0 jitter_writes=0 readbacks=0 gate_us=3.8 route_draw_us=0.0 set_rt_us=0.0 lazy_flush_us=0.0 jitter_us=0.0 fill_us=0.0 taa_run_us=0.0 taa_capture_us=0.0 taa_copy_color_us=0.0 taa_copy_depth_us=0.0 taa_draw_us=0.0 taa_apply_us=0.0 taa_copy_back_us=0.0 readback_us=0.0 state_shadow=1 rs_queries=0 rs_hits=0 rs_gets=0 rs_resyncs=0 scene_hook=0 scene_end_source=none scene_end_check=0 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=0
+motion_output_frame device=1 frame=3 latched=0 filled=0 fill_result=00000001 fill_restore=00000000 draws=9 routed=0 matched=0 gate1=0 gate2=9 gate3=0 gate4=0 gate5=0 gate6=0 apply_failures=0 restore_failures=0 history_previous=0 history_current=0 committed=0 selector_state=9 present=00000000 depth=1 depth_routed=0 jitter=0 jitter_index=0 jitter_x=0.000000 jitter_y=0.000000 jitter_previous_x=0.000000 jitter_previous_y=0.000000 jittered=0 cut=0 cut_median_px=0.0000 cut_missing=0.0000 cut_samples=0 taa=1 taa_attempted=0 taa_resolved=0 taa_history=0 taa_skip=2 taa_result=00000001 taa_restore=00000000 taa_copy=00000001 taa_hdr=0 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=6 camera_valid=0 camera_background_valid=0 camera_reads=0 camera_policy=1 camera_reason=1 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=0 lazy_flushes=0 jitter_writes=0 readbacks=0 gate_us=2.9 route_draw_us=0.0 set_rt_us=0.0 lazy_flush_us=0.0 jitter_us=0.0 fill_us=0.0 taa_run_us=0.0 taa_capture_us=0.0 taa_copy_color_us=0.0 taa_copy_depth_us=0.0 taa_draw_us=0.0 taa_apply_us=0.0 taa_copy_back_us=0.0 readback_us=0.0 state_shadow=1 rs_queries=0 rs_hits=0 rs_gets=0 rs_resyncs=0 scene_hook=0 scene_end_source=none scene_end_check=0 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=0
 camera_state device=1 frame=3 status=fixture reads=0 valid=0 read_failure=0 failure=0 projection=00000000 view=00000000 p00=0 p11=0 p20=0 p21=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 t=0,0,0 background_valid=0 background_p00=0 background_p11=0 background_rotation_deg=0.0000 history_view_valid=0 history_view_frame=2 rotation_deg=0.0000 policy=1 reason=1 camera_cut=0 mode=0 cut_deg=20.00
-hdr_frame device=1 frame=3 hdr=1 redirected=0 end=none writebacks=0 flushes=0 writeback_source=none unwind=0 unwind_reason=none unwind_draw=00000001 unwind_restore=00000001 unwind_stretch=00000001 unwind_bind=00000001 blocked=0 recheck=none suspended=0 resumed=0 dirty_at_present=0 refused_msaa=0 target_create=00000001 latch_bind=00000001 target=64x64 target_bytes=32768 caps=ok stretch_conversion=00000000 timing=cpu_qpc redirect_us=0.0 writeback_us=0.0 writeback_draw_us=0.0 writeback_stretch_us=0.0 bind_us=0.0 recheck_us=0.0 tonemap=identity tonemapped=0 look=none decode=gamma2.2 clamp=0 exposure=auto ev=0.00000 ev_adapted=0.00000 ev_target=0.00000 avg_log_l=0.00000 luma_mean=1 dt_ms=0.000 stepped=0 steps=0 meter=00000001 readback=00000001 tonemap_draw=00000001 fallback=0 meter_us=0.0 readback_us=0.0 k=0.00000 chain_bytes=0
+hdr_frame device=1 frame=3 hdr=1 redirected=0 end=none writebacks=0 flushes=0 writeback_source=none unwind=0 unwind_reason=none unwind_draw=00000001 unwind_restore=00000001 unwind_stretch=00000001 unwind_bind=00000001 blocked=0 recheck=none suspended=0 resumed=0 dirty_at_present=0 refused_msaa=0 target_create=00000001 latch_bind=00000001 target=64x64 target_bytes=32768 caps=ok stretch_conversion=00000000 timing=cpu_qpc redirect_us=0.0 writeback_us=0.0 writeback_draw_us=0.0 writeback_stretch_us=0.0 bind_us=0.0 recheck_us=0.0 tonemap=identity tonemapped=0 look=none decode=gamma2.2 clamp=0 exposure=auto ev=0.00000 ev_adapted=0.00000 ev_target=0.00000 avg_log_l=0.00000 luma_mean=1 dt_ms=0.000 stepped=0 steps=0 meter=00000001 readback=00000001 tonemap_draw=00000001 fallback=0 meter_us=0.0 readback_us=0.0 k=0.00000 chain_bytes=0 sharpen=off sharpened=0 sharpen_fallback=0
 frame_end device=1 frame=3 draws=9 capture=1 present=00000000
 frame_begin device=1 frame=4
-capture_event device=1 frame=4 seq=1 after_draw=0 op=clear result=00000000 qpc=9498125780581
+capture_event device=1 frame=4 seq=1 after_draw=0 op=clear result=00000000 qpc=9533742895510
 clear flags=3 color=ff203040 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=clear_depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=4 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9498125781429
+capture_event device=1 frame=4 seq=2 after_draw=0 op=draw_begin result=00000000 qpc=9533742896327
 draw device=1 frame=4 index=1 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=98731d5594e36226
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -6182,8 +6187,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=0
 state id=14 value=0
 state id=23 value=4
@@ -6212,28 +6217,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=64 h=64 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -6439,12 +6444,12 @@ draw_args start_vertex=0
 motion_input device=1 frame=4 index=1 blockers=00000252 proofs=20 position_path=1 vs=53a0a641107ed76c ps=98731d5594e36226 declaration=0cdf6a8c884ad955 rows_hash=1b0c97ae01a7ec05 color=1 depth=2 width=64 height=64 cull=2 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=4 index=1 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=4 index=1 result=00000000
-capture_event device=1 frame=4 seq=3 after_draw=1 op=clear result=00000000 qpc=9498125790285
+capture_event device=1 frame=4 seq=3 after_draw=1 op=clear result=00000000 qpc=9533742904976
 clear flags=2 color=00000000 z=1 stencil=0 rect_count=0 rect_ptr=00000000
-surface role=clear_rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=clear_depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=clear_depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 clear_viewport result=00000000 x=0 y=0 w=64 h=64 minz=0 maxz=1
-capture_event device=1 frame=4 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9498125791244
+capture_event device=1 frame=4 seq=4 after_draw=1 op=draw_begin result=00000000 qpc=9533742905827
 draw device=1 frame=4 index=2 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -6466,8 +6471,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=1
 state id=14 value=1
 state id=23 value=4
@@ -6496,28 +6501,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=64 h=64 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -6724,7 +6729,7 @@ motion_route device=1 frame=4 index=2 gate=6 routed=1 matched=0 depth=1 jittered
 motion_input device=1 frame=4 index=2 blockers=00000210 proofs=28 position_path=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 declaration=0cdf6a8c884ad955 rows_hash=712d59ff944d11a8 color=1 depth=2 width=64 height=64 cull=1 vb=3 vb_revision=0 ib=0 ib_revision=0 position_offset=0 position_type=16 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=4 index=2 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=4 index=2 result=00000000
-capture_event device=1 frame=4 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9498125800146
+capture_event device=1 frame=4 seq=5 after_draw=2 op=draw_begin result=00000000 qpc=9533742915146
 draw device=1 frame=4 index=3 kind=primitive topology=4 primitives=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2
 geometry source=buffers
 stream slot=0 result=00000000 identity=6 offset=0 stride=24 frequency=1 frequency_result=00000000
@@ -6746,8 +6751,8 @@ stream slot=13 result=00000000 identity=0
 stream slot=14 result=00000000 identity=0
 stream slot=15 result=00000000 identity=0
 indices result=00000000 identity=0
-surface role=rt0 ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=depth ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=rt0 ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=depth ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 state id=7 value=1
 state id=14 value=1
 state id=23 value=4
@@ -6776,28 +6781,28 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=64 h=64 minz=0 maxz=1
-texture stage=0 ptr=0213cd98 type=3 identity=9
+texture stage=0 ptr=0213db98 type=3 identity=9
 texture_desc stage=0 w=2 h=2 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-texture stage=1 ptr=0213ce18 type=3 identity=10
+texture stage=1 ptr=0213dc18 type=3 identity=10
 texture_desc stage=1 w=2 h=2 format=21
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-texture stage=2 ptr=0213ce98 type=3 identity=11
+texture stage=2 ptr=0213dc98 type=3 identity=11
 texture_desc stage=2 w=2 h=2 format=21
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-texture stage=3 ptr=0213cf18 type=5 identity=12
+texture stage=3 ptr=0213dd18 type=5 identity=12
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
@@ -7005,65 +7010,63 @@ motion_input device=1 frame=4 index=3 blockers=00000210 proofs=28 position_path=
 motion_geometry device=1 frame=4 index=3 source_qualified=1 source_hash=53a0a641107ed76c source_words=526 finite_requested=0 finite_state=0 finite_reason=4 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=0 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=4 index=3 result=00000000
 motion_output_cut device=1 frame=4 samples=0 median_px=0.0000 keyed=2 missing=2 missing_fraction=1.0000 bound_px=2.400 bound_missing=0.250 cut=1
-capture_event device=1 frame=4 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9498125810564
+capture_event device=1 frame=4 seq=6 after_draw=3 op=set_depth result=00000000 qpc=9533742926681
 set_depth ptr=00000000 result=00000000
 surface role=depth_binding ptr=0 identity=0
 hdr_readback device=1 frame=4 file=hdr_1_4.rgba16f width=64 height=64 format=rgba16f_row_major result=00000000 bytes=32768
 motion_output_color_readback device=1 frame=4 file=color_1_4.bgra8 width=64 height=64 format=bgra8_row_major result=00000000 bytes=16384
 motion_output_taa_readback device=1 frame=4 file=taa_1_4.rgba16f width=64 height=64 format=rgba16f_row_major result=00000000 bytes=32768
-capture_event device=1 frame=4 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9498125835959
-stretch_rect source=015b04f8 dest=0213d118 filter=0 source_rect_null=1 dest_rect_null=1
-surface role=stretch_source ptr=015b04f8 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
-surface role=stretch_dest ptr=0213d118 identity=7 width=64 height=64 format=21 usage=1 msaa=0 container=8 container_type=3 container_result=00000000
-capture_event device=1 frame=4 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9498125879659
-set_depth ptr=015b0538 result=00000000
-surface role=depth_binding ptr=015b0538 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
+capture_event device=1 frame=4 seq=7 after_draw=3 op=stretch_rect result=00000000 qpc=9533742967852
+stretch_rect source=001171a0 dest=0213df18 filter=0 source_rect_null=1 dest_rect_null=1
+surface role=stretch_source ptr=001171a0 identity=1 width=64 height=64 format=21 usage=1 msaa=0 container=0 container_type=0 container_result=80004002
+surface role=stretch_dest ptr=0213df18 identity=7 width=64 height=64 format=21 usage=1 msaa=0 container=8 container_type=3 container_result=00000000
+capture_event device=1 frame=4 seq=8 after_draw=3 op=set_depth result=00000000 qpc=9533743038390
+set_depth ptr=001171e0 result=00000000
+surface role=depth_binding ptr=001171e0 identity=2 width=64 height=64 format=77 usage=2 msaa=0 container=0 container_type=0 container_result=80004002
 motion_output_readback device=1 frame=4 file=motion_1_4.rgba32f width=64 height=64 format=rgba32f_row_major result=00000000 bytes=65536
 motion_output_depth_readback device=1 frame=4 file=depth_1_4.r32f width=64 height=64 format=r32f_row_major result=00000000 bytes=16384
-motion_output_frame device=1 frame=4 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=0 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=2 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=3 jitter_x=-0.375000 jitter_y=-0.055556 jitter_previous_x=0.250000 jitter_previous_y=-0.388889 jittered=2 cut=1 cut_median_px=0.0000 cut_missing=1.0000 cut_samples=0 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000001 taa_hdr=1 taa_k=0.00000 scene_open=0 active_queries=0 taa_references=6 camera_valid=1 camera_background_valid=1 camera_reads=2 camera_policy=1 camera_reason=3 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=5 gate_us=10.5 route_draw_us=15.4 set_rt_us=8.4 lazy_flush_us=0.0 jitter_us=1.0 fill_us=63.9 taa_run_us=153.5 taa_capture_us=5.2 taa_copy_color_us=0.5 taa_copy_depth_us=2.7 taa_draw_us=127.7 taa_apply_us=10.7 taa_copy_back_us=0.0 readback_us=2689.9 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1
-camera_state device=1 frame=4 status=fixture reads=2 valid=1 read_failure=0 failure=0 projection=0050a0e0 view=0050a0a0 p00=0.8 p11=1.333333 p20=0 p21=0 r00=0.9975641 r01=0 r02=0.06975647 r10=0 r11=1 r12=0 r20=-0.06975647 r21=0 r22=0.9975641 t=12.5,-3,1000 background_valid=1 background_p00=0.8 background_p11=1.333333 background_rotation_deg=1.0000 history_view_valid=1 history_view_frame=4 rotation_deg=0.0000 policy=1 reason=3 camera_cut=0 mode=0 cut_deg=20.00
-hdr_frame device=1 frame=4 hdr=1 redirected=1 end=bloom_copy writebacks=2 flushes=1 writeback_source=shader unwind=0 unwind_reason=none unwind_draw=00000001 unwind_restore=00000001 unwind_stretch=00000001 unwind_bind=00000001 blocked=0 recheck=none suspended=0 resumed=0 dirty_at_present=0 refused_msaa=0 target_create=00000000 latch_bind=00000000 target=64x64 target_bytes=32768 caps=ok stretch_conversion=00000000 timing=cpu_qpc redirect_us=2.6 writeback_us=111.1 writeback_draw_us=109.2 writeback_stretch_us=0.0 bind_us=0.0 recheck_us=0.0 tonemap=identity tonemapped=0 look=none decode=gamma2.2 clamp=0 exposure=auto ev=0.00000 ev_adapted=0.00000 ev_target=0.00000 avg_log_l=0.00000 luma_mean=1 dt_ms=0.000 stepped=0 steps=0 meter=00000001 readback=00000001 tonemap_draw=00000001 fallback=0 meter_us=0.0 readback_us=0.0 k=0.00000 chain_bytes=0
+motion_output_frame device=1 frame=4 latched=1 filled=1 fill_result=00000000 fill_restore=00000000 draws=3 routed=2 matched=0 gate1=0 gate2=1 gate3=0 gate4=0 gate5=0 gate6=2 apply_failures=0 restore_failures=0 history_previous=2 history_current=0 committed=1 selector_state=9 present=00000000 depth=1 depth_routed=2 jitter=1 jitter_index=3 jitter_x=-0.375000 jitter_y=-0.055556 jitter_previous_x=0.250000 jitter_previous_y=-0.388889 jittered=2 cut=1 cut_median_px=0.0000 cut_missing=1.0000 cut_samples=0 taa=1 taa_attempted=1 taa_resolved=1 taa_history=0 taa_skip=0 taa_result=00000000 taa_restore=00000000 taa_copy=00000001 taa_hdr=1 taa_k=0.00000 taa_sharpen=0 scene_open=0 active_queries=0 taa_references=6 camera_valid=1 camera_background_valid=1 camera_reads=2 camera_policy=1 camera_reason=3 camera_cut=0 camera_rotation_deg=0.0000 rt_mode=perdraw timing=cpu_qpc set_rt=8 lazy_flushes=0 jitter_writes=4 readbacks=5 gate_us=14.0 route_draw_us=17.1 set_rt_us=8.7 lazy_flush_us=0.0 jitter_us=5.5 fill_us=39.9 taa_run_us=134.4 taa_capture_us=5.6 taa_copy_color_us=0.2 taa_copy_depth_us=3.2 taa_draw_us=109.1 taa_apply_us=11.0 taa_copy_back_us=0.0 readback_us=4439.5 state_shadow=1 rs_queries=18 rs_hits=18 rs_gets=14 rs_resyncs=0 scene_hook=0 scene_end_source=stretchrect scene_end_check=3 hook_signals=0 hook_outside_scene=0 hook_state=0 draws_after_hook=0 bloom_copy_seen=1
+camera_state device=1 frame=4 status=fixture reads=2 valid=1 read_failure=0 failure=0 projection=0050b0e0 view=0050b0a0 p00=0.8 p11=1.333333 p20=0 p21=0 r00=0.9975641 r01=0 r02=0.06975647 r10=0 r11=1 r12=0 r20=-0.06975647 r21=0 r22=0.9975641 t=12.5,-3,1000 background_valid=1 background_p00=0.8 background_p11=1.333333 background_rotation_deg=1.0000 history_view_valid=1 history_view_frame=4 rotation_deg=0.0000 policy=1 reason=3 camera_cut=0 mode=0 cut_deg=20.00
+hdr_frame device=1 frame=4 hdr=1 redirected=1 end=bloom_copy writebacks=2 flushes=1 writeback_source=shader unwind=0 unwind_reason=none unwind_draw=00000001 unwind_restore=00000001 unwind_stretch=00000001 unwind_bind=00000001 blocked=0 recheck=none suspended=0 resumed=0 dirty_at_present=0 refused_msaa=0 target_create=00000000 latch_bind=00000000 target=64x64 target_bytes=32768 caps=ok stretch_conversion=00000000 timing=cpu_qpc redirect_us=3.6 writeback_us=82.0 writeback_draw_us=80.0 writeback_stretch_us=0.0 bind_us=0.0 recheck_us=0.0 tonemap=identity tonemapped=0 look=none decode=gamma2.2 clamp=0 exposure=auto ev=0.00000 ev_adapted=0.00000 ev_target=0.00000 avg_log_l=0.00000 luma_mean=1 dt_ms=0.000 stepped=0 steps=0 meter=00000001 readback=00000001 tonemap_draw=00000001 fallback=0 meter_us=0.0 readback_us=0.0 k=0.00000 chain_bytes=0 sharpen=off sharpened=0 sharpen_fallback=0
 frame_end device=1 frame=4 draws=3 capture=1 present=00000000
 motion_output_release device=1 held=14 count=16 released=1
-telemetry_summary device=1 frame=5 reason=device_destroy qpc=9498125970463 since_start_us=1457811.900 interval_us=251717.200 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=1143.600 min_us=1143.600 max_us=1143.600 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=1 name=present_capture count=4 failures=0 total_us=346.700 min_us=67.000 max_us=102.100 bytes=0 buckets=0,3,1,0,0,0
-telemetry_metric device=1 name=frame_capture count=4 failures=0 total_us=53816.200 min_us=10848.900 max_us=19914.400 bytes=0 buckets=0,0,0,0,4,0
-telemetry_metric device=1 name=draw_backend count=27 failures=0 total_us=429.800 min_us=1.700 max_us=183.000 bytes=0 buckets=23,2,2,0,0,0
-telemetry_metric device=1 name=capture_cpu count=84 failures=0 total_us=23471.400 min_us=9.600 max_us=2160.100 bytes=0 buckets=3,53,25,3,0,0
-telemetry_metric device=1 name=snapshot count=24 failures=0 total_us=16321.600 min_us=627.500 max_us=927.900 bytes=0 buckets=0,0,24,0,0,0
-telemetry_metric device=1 name=shader_vs_backend count=1 failures=0 total_us=172.900 min_us=172.900 max_us=172.900 bytes=0 buckets=0,0,1,0,0,0
-telemetry_metric device=1 name=shader_ps_backend count=6 failures=0 total_us=68.300 min_us=4.300 max_us=38.400 bytes=0 buckets=5,1,0,0,0,0
-telemetry_metric device=1 name=texture count=4 failures=0 total_us=15.500 min_us=1.500 max_us=8.200 bytes=0 buckets=4,0,0,0,0,0
-telemetry_metric device=1 name=cube_texture count=2 failures=0 total_us=91.800 min_us=4.200 max_us=87.600 bytes=0 buckets=1,1,0,0,0,0
-telemetry_metric device=1 name=depth_stencil count=1 failures=0 total_us=29.000 min_us=29.000 max_us=29.000 bytes=0 buckets=0,1,0,0,0,0
-telemetry_metric device=1 name=vertex_buffer count=2 failures=0 total_us=75.700 min_us=1.400 max_us=74.300 bytes=144 buckets=1,1,0,0,0,0
-telemetry_metric device=1 name=log_flush count=5 failures=0 total_us=3.700 min_us=0.600 max_us=0.900 bytes=0 buckets=5,0,0,0,0,0
-telemetry_metric device=1 name=stretch_backend count=5 failures=0 total_us=11.500 min_us=0.700 max_us=4.300 bytes=0 buckets=5,0,0,0,0,0
-telemetry_metric device=1 name=route_gate count=27 failures=0 total_us=433.200 min_us=0.200 max_us=211.800 bytes=0 buckets=24,1,2,0,0,0
-telemetry_metric device=1 name=route_draw count=6 failures=0 total_us=153.800 min_us=3.100 max_us=119.700 bytes=0 buckets=4,1,1,0,0,0
-telemetry_metric device=1 name=route_set_rt count=24 failures=0 total_us=19.400 min_us=0.100 max_us=4.600 bytes=0 buckets=24,0,0,0,0,0
-telemetry_metric device=1 name=route_jitter count=12 failures=0 total_us=3.700 min_us=0.100 max_us=0.700 bytes=0 buckets=12,0,0,0,0,0
-telemetry_metric device=1 name=route_fill count=4 failures=0 total_us=325.400 min_us=48.200 max_us=146.100 bytes=0 buckets=0,3,1,0,0,0
-telemetry_metric device=1 name=route_readback count=13 failures=0 total_us=7683.900 min_us=316.400 max_us=1051.200 bytes=442368 buckets=0,0,11,2,0,0
-telemetry_metric device=1 name=taa_run count=3 failures=0 total_us=2039.300 min_us=153.500 max_us=1657.000 bytes=0 buckets=0,0,2,1,0,0
-telemetry_metric device=1 name=taa_state_capture count=3 failures=0 total_us=69.000 min_us=5.200 max_us=52.000 bytes=0 buckets=1,2,0,0,0,0
-telemetry_metric device=1 name=taa_copy_color count=3 failures=0 total_us=43.000 min_us=0.400 max_us=42.100 bytes=0 buckets=2,1,0,0,0,0
-telemetry_metric device=1 name=taa_copy_depth count=3 failures=0 total_us=12.100 min_us=2.700 max_us=6.100 bytes=0 buckets=3,0,0,0,0,0
-telemetry_metric device=1 name=taa_resolve_draw count=3 failures=0 total_us=852.400 min_us=127.700 max_us=528.400 bytes=0 buckets=0,0,3,0,0,0
-telemetry_metric device=1 name=taa_state_apply count=3 failures=0 total_us=401.700 min_us=10.700 max_us=379.700 bytes=0 buckets=0,2,1,0,0,0
-telemetry_metric device=1 name=hdr_redirect count=4 failures=0 total_us=20.200 min_us=2.600 max_us=8.700 bytes=0 buckets=4,0,0,0,0,0
-telemetry_metric device=1 name=hdr_writeback count=8 failures=0 total_us=27693.300 min_us=36.300 max_us=24203.200 bytes=0 buckets=0,5,1,1,1,0
-telemetry_metric device=1 name=hdr_writeback_draw count=8 failures=0 total_us=27557.000 min_us=35.600 max_us=24201.400 bytes=0 buckets=0,5,1,1,1,0
-telemetry_metric device=1 name=hdr_bind count=1 failures=0 total_us=4.400 min_us=4.400 max_us=4.400 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=5 reason=device_destroy qpc=9498125972465 since_start_us=1458012.100 interval_us=287497.300 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=625 failures=0 total_us=255.700 min_us=0.000 max_us=141.100 bytes=0 buckets=624,0,1,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=6783.800 min_us=6783.800 max_us=6783.800 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=0 name=shader_inspect count=55 failures=0 total_us=4037.900 min_us=1.200 max_us=956.400 bytes=0 buckets=28,20,7,0,0,0
-telemetry_metric device=0 name=shader_getfunction count=55 failures=0 total_us=205.900 min_us=0.300 max_us=150.400 bytes=0 buckets=53,1,1,0,0,0
-telemetry_metric device=0 name=shader_hash count=55 failures=0 total_us=292.900 min_us=0.100 max_us=11.300 bytes=158812 buckets=54,1,0,0,0,0
-telemetry_metric device=0 name=shader_dump count=7 failures=0 total_us=3409.700 min_us=342.400 max_us=924.000 bytes=7340 buckets=0,0,7,0,0,0
-telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=31.400 min_us=31.400 max_us=31.400 bytes=0 buckets=0,1,0,0,0,0
-device_destroy ptr=00115fe0 device=1
+telemetry_summary device=1 frame=5 reason=device_destroy qpc=9533743111009 since_start_us=1172985.700 interval_us=331986.200 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=1516.100 min_us=1516.100 max_us=1516.100 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=1 name=present_capture count=4 failures=0 total_us=335.600 min_us=65.100 max_us=94.000 bytes=0 buckets=0,4,0,0,0,0
+telemetry_metric device=1 name=frame_capture count=4 failures=0 total_us=148230.000 min_us=11064.800 max_us=109992.600 bytes=0 buckets=0,0,0,0,3,1
+telemetry_metric device=1 name=draw_backend count=27 failures=0 total_us=392.200 min_us=1.800 max_us=162.500 bytes=0 buckets=24,1,2,0,0,0
+telemetry_metric device=1 name=capture_cpu count=84 failures=0 total_us=25939.200 min_us=9.700 max_us=2834.700 bytes=0 buckets=4,53,24,3,0,0
+telemetry_metric device=1 name=snapshot count=24 failures=0 total_us=17196.000 min_us=672.500 max_us=990.900 bytes=0 buckets=0,0,24,0,0,0
+telemetry_metric device=1 name=shader_vs_backend count=1 failures=0 total_us=457.900 min_us=457.900 max_us=457.900 bytes=0 buckets=0,0,1,0,0,0
+telemetry_metric device=1 name=shader_ps_backend count=6 failures=0 total_us=57.200 min_us=3.000 max_us=32.400 bytes=0 buckets=5,1,0,0,0,0
+telemetry_metric device=1 name=texture count=4 failures=0 total_us=13.000 min_us=1.000 max_us=7.900 bytes=0 buckets=4,0,0,0,0,0
+telemetry_metric device=1 name=cube_texture count=2 failures=0 total_us=94.000 min_us=6.800 max_us=87.200 bytes=0 buckets=1,1,0,0,0,0
+telemetry_metric device=1 name=depth_stencil count=1 failures=0 total_us=26.700 min_us=26.700 max_us=26.700 bytes=0 buckets=0,1,0,0,0,0
+telemetry_metric device=1 name=vertex_buffer count=2 failures=0 total_us=72.100 min_us=2.000 max_us=70.100 bytes=144 buckets=1,1,0,0,0,0
+telemetry_metric device=1 name=log_flush count=5 failures=0 total_us=2.000 min_us=0.300 max_us=0.800 bytes=0 buckets=5,0,0,0,0,0
+telemetry_metric device=1 name=stretch_backend count=5 failures=0 total_us=12.700 min_us=0.700 max_us=5.400 bytes=0 buckets=5,0,0,0,0,0
+telemetry_metric device=1 name=route_gate count=27 failures=0 total_us=661.300 min_us=0.200 max_us=405.200 bytes=0 buckets=24,1,2,0,0,0
+telemetry_metric device=1 name=route_draw count=6 failures=0 total_us=162.800 min_us=4.400 max_us=120.700 bytes=0 buckets=4,1,1,0,0,0
+telemetry_metric device=1 name=route_set_rt count=24 failures=0 total_us=25.100 min_us=0.200 max_us=8.100 bytes=0 buckets=24,0,0,0,0,0
+telemetry_metric device=1 name=route_jitter count=12 failures=0 total_us=25.100 min_us=0.200 max_us=17.200 bytes=0 buckets=11,1,0,0,0,0
+telemetry_metric device=1 name=route_fill count=4 failures=0 total_us=263.400 min_us=39.900 max_us=131.100 bytes=0 buckets=0,3,1,0,0,0
+telemetry_metric device=1 name=route_readback count=13 failures=0 total_us=9360.400 min_us=399.700 max_us=2210.100 bytes=442368 buckets=0,0,11,2,0,0
+telemetry_metric device=1 name=taa_run count=3 failures=0 total_us=1948.400 min_us=134.400 max_us=1530.500 bytes=0 buckets=0,0,2,1,0,0
+telemetry_metric device=1 name=taa_state_capture count=3 failures=0 total_us=67.500 min_us=5.600 max_us=50.500 bytes=0 buckets=1,2,0,0,0,0
+telemetry_metric device=1 name=taa_copy_color count=3 failures=0 total_us=0.600 min_us=0.200 max_us=0.200 bytes=0 buckets=3,0,0,0,0,0
+telemetry_metric device=1 name=taa_copy_depth count=3 failures=0 total_us=13.000 min_us=3.200 max_us=6.100 bytes=0 buckets=3,0,0,0,0,0
+telemetry_metric device=1 name=taa_resolve_draw count=3 failures=0 total_us=756.500 min_us=109.100 max_us=438.000 bytes=0 buckets=0,0,3,0,0,0
+telemetry_metric device=1 name=taa_state_apply count=3 failures=0 total_us=410.200 min_us=11.000 max_us=384.200 bytes=0 buckets=0,2,1,0,0,0
+telemetry_metric device=1 name=hdr_redirect count=4 failures=0 total_us=17.300 min_us=3.600 max_us=6.300 bytes=0 buckets=4,0,0,0,0,0
+telemetry_metric device=1 name=hdr_writeback count=8 failures=0 total_us=118724.200 min_us=41.000 max_us=93239.400 bytes=0 buckets=0,5,1,0,2,0
+telemetry_metric device=1 name=hdr_writeback_draw count=8 failures=0 total_us=118625.800 min_us=39.800 max_us=93238.100 bytes=0 buckets=0,5,1,0,2,0
+telemetry_metric device=1 name=hdr_bind count=1 failures=0 total_us=4.100 min_us=4.100 max_us=4.100 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=5 reason=device_destroy qpc=9533743113120 since_start_us=1173196.800 interval_us=158532.800 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=528 failures=0 total_us=86.600 min_us=0.000 max_us=6.300 bytes=0 buckets=528,0,0,0,0,0
+telemetry_metric device=0 name=shader_inspect count=48 failures=0 total_us=355.700 min_us=1.300 max_us=17.600 bytes=0 buckets=30,18,0,0,0,0
+telemetry_metric device=0 name=shader_getfunction count=48 failures=0 total_us=26.200 min_us=0.300 max_us=1.400 bytes=0 buckets=48,0,0,0,0,0
+telemetry_metric device=0 name=shader_hash count=48 failures=0 total_us=286.500 min_us=0.100 max_us=16.100 bytes=151472 buckets=46,2,0,0,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=25.500 min_us=25.500 max_us=25.500 bytes=0 buckets=0,1,0,0,0,0
+device_destroy ptr=00119518 device=1
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0

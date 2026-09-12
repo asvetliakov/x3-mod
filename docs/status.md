@@ -17,6 +17,21 @@ tests still run only on CrossOver. See
 
 Evidence at this checkpoint (details in the linked documents):
 
+- **Post-resolve sharpen (2026-09-12, uncommitted worktree)**
+  ([design](architecture/temporal-integration.md#post-resolve-sharpen-2026-09-12),
+  [record](verification/taa-sharpen.md)): `X3M_TAA_SHARPEN=<0..1>`
+  (`--taa-sharpen`, requires `--taa`) applies RCAS (our HLSL reimplementation
+  of AMD's published FSR 1.0 RCAS, guarded and clamped to the 3×3 min/max) to
+  the display image only — never to the history — on both routes: the 8-bit
+  route's copy-back becomes the sharpen draw inside the pass (cost neutral at
+  5120×1440: 2.252 → 2.238 ms), the HDR write-back tonemaps five taps then
+  sharpens (+0.80 ms at 5120×1440). Off is bit-identical (twin runs
+  byte-equal; the seven existing shader programs kept their hashes). Fixture
+  measurement at 1.0: gradient-energy ratio 1.147, 10–90% rise 1.82 → 1.49 px,
+  MTF50 0.262 → 0.298 c/px; GPU output within 0.5 code of the Python
+  reference on both routes, order verified as after-tonemap. Synthetic only;
+  not gameplay-verified.
+
 - **TAA rerun ([iteration 8](verification/iteration-08.md))** with the corrected
   history convention: all six stationary frame pairs are `stable` (iteration 7:
   all tracked the jitter); the resolved image moves 0.14–0.31× the raw colour

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Fresh-build production-module integration; standalone Preview only."""
 from pathlib import Path
-import hashlib,json,os,re,subprocess,tempfile
+import hashlib,json,os,re,subprocess,sys,tempfile
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 root=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(root/'tools/analysis'))
+import analyze_iteration09_run2 as it09  # noqa: E402  the run-2 sharpness metrics (gradient energy, edge spread / MTF50)
 results=bottle.results_dir(root)
 exe=root/'verification/probe/build/temporal_pass_fixture.exe'
-paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/temporal_pass.cpp','src/temporal/resolve.h','src/temporal/resolve.hlsl','src/temporal/depth_decode.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
+paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/temporal_pass.cpp','src/temporal/resolve.h','src/temporal/resolve.hlsl','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 hashes=lambda:{str(p.relative_to(root)):sha(p) for p in paths}
 d3dx=bottle.game_dir() / 'd3dx9_37.dll'
@@ -15,7 +17,7 @@ try:
     subprocess.run(['sh',str(root/'verification/probe/build_temporal_pass.sh')],check=True,cwd=root)
     assert hashes()==report['sources_before_build'],'Source changed during build'
     report['executable_sha256']=sha(exe)
-    command=['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine','--bottle',bottle.BOTTLE,'--no-update','--dll','d3d9=b','--workdir',str(exe.parent),str(exe),r'C:\X3\d3dx9_37.dll','Z:'+str(root/'src/temporal/depth_decode.hlsl'),'Z:'+str(root/'src/temporal/resolve.hlsl')]
+    command=['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine','--bottle',bottle.BOTTLE,'--no-update','--dll','d3d9=b','--workdir',str(exe.parent),str(exe),r'C:\X3\d3dx9_37.dll','Z:'+str(root/'src/temporal/depth_decode.hlsl'),'Z:'+str(root/'src/temporal/resolve.hlsl'),'Z:'+str(root/'src/temporal/taa_sharpen_ps.hlsl')]
     report['command']=command
     with (results/'temporal-pass.txt').open('w') as out,(results/'temporal-pass-wine.log').open('w') as err:
         run=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=300)
@@ -30,10 +32,16 @@ try:
     report['state_restorations']=int(match[2]) if match else 0
     report['generations']=int(match[3]) if match else 0
     report['camera']={m.group(1):dict(drift_px=float(m.group(2)),error=float(m.group(3))) for m in re.finditer(r'CAMERA label=(\S+) frames=\d+ from=\d+ drift_px=([0-9.]+) error=([0-9.]+)',text)}
-    # 448 / 204: the stage-3 HDR cases (k > 0) added 14 numerical and 16 state
-    # checks per generation to review 23's 416 / 164, review 24's negative-luma
-    # case 2 and 4 more; the 386 samples are unchanged.
-    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(448,204,2) and report['samples']==386 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    # 468 / 228: the post-resolve sharpen cases added 10 numerical and 12 state
+    # checks per generation to stage 3's 448 / 204 (review 23: 416 / 164);
+    # the 386 samples are unchanged.
+    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(468,228,2) and report['samples']==386 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    # The sharpen cases' verdict lines (docs/verification/taa-sharpen.md).
+    report['sharpen']={'verdicts':[dict((k,float(v)) for k,v in re.findall(r'(\w+)=([-0-9.e]+)',line)) for line in text.splitlines() if line.startswith('SHARPEN sharpness=')],
+                       'nan':[dict((k,int(v)) for k,v in re.findall(r'(\w+)=(\d+)',line)) for line in text.splitlines() if line.startswith('SHARPEN_NAN ')],
+                       'nonfinite':[line for line in text.splitlines() if line.startswith('SHARPEN_NONFINITE ')]}
+    assert len(report['sharpen']['verdicts'])==4 and all(v['outside']==0 and v['alpha_diff']==0 and v['changed']>0 for v in report['sharpen']['verdicts']),report['sharpen']
+    assert len(report['sharpen']['nan'])==2 and all(n['uniform']==1 for n in report['sharpen']['nan']),report['sharpen']
     assert report['source_unchanged'] and report['binary_unchanged'] and report['compiler_unchanged'],'Provenance changed during run'
     # Negative controls for the jitter convention: the stationary scene must
     # reject the plausible wrong lookups. Each variant mutates the two history
@@ -52,7 +60,7 @@ try:
         for name,(motion_line,camera_line) in variants.items():
             mutated=Path(directory)/f'resolve-{name}.hlsl'
             mutated.write_text(source.replace(motion_tap,motion_line).replace(camera_tap,camera_line))
-            negative=command[:-1]+['Z:'+str(mutated),'stationary-only']
+            negative=command[:-2]+['Z:'+str(mutated),command[-1],'stationary-only']
             out_path=results/f'temporal-stationary-negative-{name}.txt'
             with out_path.open('w') as out,(results/'temporal-pass-wine.log').open('a') as err:
                 control=subprocess.run(negative,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=90)
@@ -64,6 +72,41 @@ try:
             report['negative_controls'][name]=entry
             assert control.returncode!=0 and stationary and 'RESULT FAIL stationary one-step oracle' in text and entry['oracle_error']>0.1,(name,text[-800:])
     assert hashes()==report['sources_before_build'],'Source changed during the negative controls'
+    # Sharpen measurement (docs/verification/taa-sharpen.md): the fixture's
+    # 128x128 synthetic resolved-looking image through the pass at sharpness
+    # 0 (the copy-back), 0.25, 0.5 and 1.0; the run-2 analysis functions give
+    # the mean squared luma gradient (ratio against 0) and the slanted-edge
+    # 10-90% rise and MTF50 of the strongest vertical edges (a comparison
+    # between images of the same content, never an absolute MTF).
+    measure_path=results/'temporal-sharpen-measure.txt'
+    with measure_path.open('w') as out,(results/'temporal-pass-wine.log').open('a') as err:
+        measure=subprocess.run(command+['sharpen-measure'],stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=120)
+    measure_text=measure_path.read_text()
+    assert measure.returncode==0 and 'RESULT PASS numerical=3 sharpen_measure=1' in measure_text and 'FAIL' not in measure_text,measure_text[-800:]
+    images={}
+    for line in measure_text.splitlines():
+        if line.startswith('MEASURE '):
+            entry=dict(re.findall(r'(\w+)=(\S+)',line))
+            images[float(entry['sharpness'])]=(exe.parent/entry['file'],int(entry['width']),int(entry['height']))
+    assert sorted(images)==[0.0,0.25,0.5,1.0],images
+    def luma_image(path,width,height):
+        data=path.read_bytes();assert len(data)==width*height*4,(path,len(data))
+        return [(0.2126*data[i*4+2]+0.7152*data[i*4+1]+0.0722*data[i*4])/255.0 for i in range(width*height)]
+    def metrics(path,width,height):
+        image=luma_image(path,width,height);classes=[1]*(width*height)  # every pixel 'routed_interior' (it08.CLASSES index 1)
+        gradient=it09.class_gradient_energy(image,classes,width,height)['all']['mean']
+        edge=it09.edge_spread(image,classes,width,height,want=1)
+        assert edge['status']=='evaluated',edge
+        return {'gradient_energy':gradient,'rise_10_90_px':edge['rise_10_90_px'],'mtf50_cycles_per_px':edge['mtf50_cycles_per_px'],'edges':edge['edges'],'aligned':edge['aligned'],'sha256':sha(path)}
+    base=metrics(*images[0.0])
+    report['sharpen_measure']={'report':measure_path.name,'report_sha256':sha(measure_path),'off':base,'on':{}}
+    for sharpness in (0.25,0.5,1.0):
+        m=metrics(*images[sharpness]);m['gradient_energy_ratio']=m['gradient_energy']/base['gradient_energy']
+        m['mtf50_ratio']=m['mtf50_cycles_per_px']/base['mtf50_cycles_per_px'];m['rise_ratio']=m['rise_10_90_px']/base['rise_10_90_px']
+        report['sharpen_measure']['on'][str(sharpness)]=m
+    ratios=[report['sharpen_measure']['on'][k]['gradient_energy_ratio'] for k in ('0.25','0.5','1.0')]
+    assert ratios==sorted(ratios) and ratios[0]>1.0 and report['sharpen_measure']['on']['1.0']['rise_ratio']<1.0,report['sharpen_measure']
+    assert hashes()==report['sources_before_build'],'Source changed during the measurement'
     report['passed']=True
 finally:
     (results/'temporal-pass-summary.json').write_text(json.dumps(report,indent=2)+'\n')

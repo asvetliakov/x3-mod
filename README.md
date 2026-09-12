@@ -76,7 +76,13 @@ and `--taa` together (stage 3) the temporal resolve runs on the FP16 scene
 before the write-back — no 8-bit round trip, the history in engine radiance,
 a reversible luminance weighting inside the resolve whose constant is the
 write-back's exposure (`--taa-k` fixes it; 0 is the unweighted resolve) —
-and the presented frame is the tonemap of the resolved image. See
+and the presented frame is the tonemap of the resolved image.
+`--taa-sharpen 0..1` (env `X3M_TAA_SHARPEN`, requires `--taa`) adds a
+robust contrast-adaptive sharpen (RCAS) of the presented image only — the
+history is never sharpened; 1 is the strongest setting, unset or 0 leaves
+every route bit-identical to the unsharpened one; on the HDR route it runs
+after the tonemap ([post-resolve sharpen](docs/architecture/temporal-integration.md#post-resolve-sharpen-2026-09-12),
+numbers in [taa-sharpen.md](docs/verification/taa-sharpen.md)). See
 [live motion route](docs/architecture/live-motion-route.md),
 [temporal integration](docs/architecture/temporal-integration.md) and the exact
 gameplay commands in

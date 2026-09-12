@@ -1,4 +1,6 @@
 ==== production-off
+msync: bootstrapped mach port on wine-1f859fc-msync.
+msync: up and running.
 ==== production-on
 ==== seam-off
 ==== seam-on
@@ -88,3 +90,12 @@
 ==== production-taa-hdr-tonemap-on
 ==== seam-taa-hook-hdr-tonemap-on
 ==== seam-taa-hdr-tonemap-fault
+==== seam-taa-sharpen-off
+==== seam-taa-sharpen-on
+==== seam-taa-sharpen-half
+==== seam-taa-hdr-sharpen-on
+==== seam-taa-hdr-tonemap-sharpen-on
+==== bench-1280x768-taa-sharpen-on
+==== bench-5120x1440-taa-sharpen-on
+==== bench-1280x768-hdr-tonemap-taa-sharpen-on
+==== bench-5120x1440-hdr-tonemap-taa-sharpen-on
