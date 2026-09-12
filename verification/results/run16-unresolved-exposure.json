@@ -1,0 +1,257 @@
+{
+  "kind": "offline_unresolved_input_counterfactual",
+  "limitation": "Actual meter consumes post-TAA color, which was not captured. No adaptation or presented-image reconstruction.",
+  "recovery_basis": "Recorded filenames, sizes and source modification times within this session; hashes measured at recovery, no original capture hash was logged",
+  "session_log": "session-20260913-000103-212.log",
+  "reference_sha256": {
+    "exposure_reference.py": "f683a1a4daa0455aaa546803382fb202f200ae4cb2c9b6633496bc659796af9d",
+    "agx_reference.py": "ecb22746b414681151404bc19773b0993e7254e47060864f5bf81681987f3a19"
+  },
+  "analyzer_sha256": "fa61f8220bf40a3e027053a07434d79f7f41e87a5a0b28b1cf03f14952433d3d",
+  "recovery_manifest_sha256": "a6552d4c1c2278db83536cb35c6b2047de73f82f31ad1d35b939ec156ecb4745",
+  "policy": {
+    "decode": "gamma2.2",
+    "old_ev_range": [
+      -8,
+      8
+    ],
+    "new_ev_range": [
+      -3.0,
+      2.0
+    ],
+    "key": 0.18,
+    "meter_floor": 0.0001,
+    "meter_clip": 64.0,
+    "meter_bg": 0.001953125,
+    "meter_min_lit": 0.01,
+    "white_target": 0.9,
+    "key_pull": 0.25,
+    "edge_weight": 0.35
+  },
+  "frames": [
+    {
+      "frame": 2615,
+      "file": "hdr_1_2615.rgba16f",
+      "sha256": "bca99979b1dcd5e553e989dd87798032fb330a9e06b9dd1a0e99d64505990148",
+      "width": 1280,
+      "height": 768,
+      "tile_width": 80,
+      "tile_height": 48,
+      "actual_meter_input_available": false,
+      "recorded_exposure_mode": "manual",
+      "recorded_ev": 0.0,
+      "statistics": {
+        "tiles": 3840,
+        "lit": 1054,
+        "avg_log_l": -10.318973467486915,
+        "lit_fraction": 0.27447916666666666,
+        "lit_weight": 700.0225154345935,
+        "lit_median_log": -7.018350653222203,
+        "lit_mean_log": -6.669417522878764,
+        "p99_max_log": -0.3154043743126505,
+        "neutral": false
+      },
+      "new_policy_fresh_target": {
+        "ev_key": 4.544419464889791,
+        "ev_limit": 4.1894702808676,
+        "ev_target": 2.0
+      },
+      "new_policy_clamp_active": true,
+      "old_policy_1x1_log_l": -12.10433444448299,
+      "old_policy_key_ev": 9.63040325615058,
+      "old_policy_target_ev": 8.0
+    },
+    {
+      "frame": 2783,
+      "file": "hdr_1_2783.rgba16f",
+      "sha256": "c5bff19969c3f3b6a18adaba6a383b18c927aa3298a119a1c0a487b36d36d4d6",
+      "width": 1280,
+      "height": 768,
+      "tile_width": 80,
+      "tile_height": 48,
+      "actual_meter_input_available": false,
+      "recorded_exposure_mode": "manual",
+      "recorded_ev": 0.0,
+      "statistics": {
+        "tiles": 3840,
+        "lit": 1017,
+        "avg_log_l": -10.592303754082586,
+        "lit_fraction": 0.26484375,
+        "lit_weight": 652.5225390916265,
+        "lit_median_log": -7.379335361974549,
+        "lit_mean_log": -6.849398707660398,
+        "p99_max_log": -0.2867346016521445,
+        "neutral": false
+      },
+      "new_policy_fresh_target": {
+        "ev_key": 4.905404173642137,
+        "ev_limit": 4.160800508207094,
+        "ev_target": 2.0
+      },
+      "new_policy_clamp_active": true,
+      "old_policy_1x1_log_l": -12.34035139356366,
+      "old_policy_key_ev": 9.866420205231247,
+      "old_policy_target_ev": 8.0
+    },
+    {
+      "frame": 3003,
+      "file": "hdr_1_3003.rgba16f",
+      "sha256": "483ee3b406e389842ec9d758ee96118ef8201565465de943871b1508ad1b9946",
+      "width": 1280,
+      "height": 768,
+      "tile_width": 80,
+      "tile_height": 48,
+      "actual_meter_input_available": false,
+      "recorded_exposure_mode": "manual",
+      "recorded_ev": 0.0,
+      "statistics": {
+        "tiles": 3840,
+        "lit": 349,
+        "avg_log_l": -12.029980573035854,
+        "lit_fraction": 0.09088541666666666,
+        "lit_weight": 229.56262404511617,
+        "lit_median_log": -7.697885673451511,
+        "lit_mean_log": -7.233737806022572,
+        "p99_max_log": -0.6056175635788219,
+        "neutral": false
+      },
+      "new_policy_fresh_target": {
+        "ev_key": 5.223954485119099,
+        "ev_limit": 4.4796834701337716,
+        "ev_target": 2.0
+      },
+      "new_policy_clamp_active": true,
+      "old_policy_1x1_log_l": -11.84062896718202,
+      "old_policy_key_ev": 9.366697778849609,
+      "old_policy_target_ev": 8.0
+    },
+    {
+      "frame": 3546,
+      "file": "hdr_1_3546.rgba16f",
+      "sha256": "2885f85030a1f31b3e84100a9ffd19c6a99cf4a845405d450d1d8e81ecdb5b5e",
+      "width": 1280,
+      "height": 768,
+      "tile_width": 80,
+      "tile_height": 48,
+      "actual_meter_input_available": false,
+      "recorded_exposure_mode": "manual",
+      "recorded_ev": 0.0,
+      "statistics": {
+        "tiles": 3840,
+        "lit": 1057,
+        "avg_log_l": -10.900991138884626,
+        "lit_fraction": 0.2752604166666667,
+        "lit_weight": 643.34765446669,
+        "lit_median_log": -7.6738039068288755,
+        "lit_mean_log": -7.393415553981711,
+        "p99_max_log": -0.5374415482333957,
+        "neutral": false
+      },
+      "new_policy_fresh_target": {
+        "ev_key": 5.199872718496463,
+        "ev_limit": 4.411507454788345,
+        "ev_target": 2.0
+      },
+      "new_policy_clamp_active": true,
+      "old_policy_1x1_log_l": -9.326870875569362,
+      "old_policy_key_ev": 6.85293968723695,
+      "old_policy_target_ev": 6.85293968723695
+    },
+    {
+      "frame": 9222,
+      "file": "hdr_1_9222.rgba16f",
+      "sha256": "23459ca3f9922b02f086e0822c9ad046c6d6e360f3ec4dfdfc9c7cb7b79db525",
+      "width": 1280,
+      "height": 768,
+      "tile_width": 80,
+      "tile_height": 48,
+      "actual_meter_input_available": false,
+      "recorded_exposure_mode": "manual",
+      "recorded_ev": 0.0,
+      "statistics": {
+        "tiles": 3840,
+        "lit": 2624,
+        "avg_log_l": -7.898819210334053,
+        "lit_fraction": 0.6833333333333333,
+        "lit_weight": 1656.6580172673803,
+        "lit_median_log": -6.51303473617585,
+        "lit_mean_log": -6.251478373907313,
+        "p99_max_log": -0.6181422841456732,
+        "neutral": false
+      },
+      "new_policy_fresh_target": {
+        "ev_key": 4.039103547843438,
+        "ev_limit": 4.492208190700623,
+        "ev_target": 2.0
+      },
+      "new_policy_clamp_active": true,
+      "old_policy_1x1_log_l": -9.485636948514953,
+      "old_policy_key_ev": 7.011705760182541,
+      "old_policy_target_ev": 7.011705760182541
+    },
+    {
+      "frame": 9842,
+      "file": "hdr_1_9842.rgba16f",
+      "sha256": "785d894841c3ad29b1c33c7ef94e2d5b4d71c6e17f2b518ecd579de350c7f716",
+      "width": 1280,
+      "height": 768,
+      "tile_width": 80,
+      "tile_height": 48,
+      "actual_meter_input_available": false,
+      "recorded_exposure_mode": "manual",
+      "recorded_ev": 0.0,
+      "statistics": {
+        "tiles": 3840,
+        "lit": 1493,
+        "avg_log_l": -9.880035993586734,
+        "lit_fraction": 0.3888020833333333,
+        "lit_weight": 934.0397038700117,
+        "lit_median_log": -7.215335142341561,
+        "lit_mean_log": -7.007941348659967,
+        "p99_max_log": -0.3108628381486883,
+        "neutral": false
+      },
+      "new_policy_fresh_target": {
+        "ev_key": 4.741403954009149,
+        "ev_limit": 4.184928744703638,
+        "ev_target": 2.0
+      },
+      "new_policy_clamp_active": true,
+      "old_policy_1x1_log_l": -8.451466190063284,
+      "old_policy_key_ev": 5.977535001730872,
+      "old_policy_target_ev": 5.977535001730872
+    },
+    {
+      "frame": 10020,
+      "file": "hdr_1_10020.rgba16f",
+      "sha256": "6e1b9a217bc7c1a45af900147ce4eeaed15e206da09798122a16072b89879d6f",
+      "width": 1280,
+      "height": 768,
+      "tile_width": 80,
+      "tile_height": 48,
+      "actual_meter_input_available": false,
+      "recorded_exposure_mode": "manual",
+      "recorded_ev": 0.0,
+      "statistics": {
+        "tiles": 3840,
+        "lit": 1452,
+        "avg_log_l": -9.926395789806156,
+        "lit_fraction": 0.378125,
+        "lit_weight": 860.7143036406358,
+        "lit_median_log": -7.334263968290957,
+        "lit_mean_log": -7.0564262032087495,
+        "p99_max_log": -0.36872705499923625,
+        "neutral": false
+      },
+      "new_policy_fresh_target": {
+        "ev_key": 4.8603327799585445,
+        "ev_limit": 4.242792961554186,
+        "ev_target": 2.0
+      },
+      "new_policy_clamp_active": true,
+      "old_policy_1x1_log_l": -8.133184473919135,
+      "old_policy_key_ev": 5.659253285586723,
+      "old_policy_target_ev": 5.659253285586723
+    }
+  ]
+}

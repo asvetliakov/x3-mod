@@ -32,6 +32,12 @@ were captured in WIP commit `1c8322e`. Review findings and later installs will
 be recorded below. Older run lists and completion claims below are historical;
 the current checklist and September 13 handoff supersede them.
 
+The [run-16 offline comparison](verification/run16-exposure-baseline.md) recovers
+seven unresolved HDR inputs. Applying the candidate policy to them yields +2 EV
+in every case because of its cap, versus +5.66…+8 for the old rule. Actual
+post-TAA meter inputs and presented images are absent, so this is a scoped
+counterfactual, not game acceptance of the new meter or its appearance.
+
 ## Handoff (2026-09-13 early morning): read docs/handoff-2026-09-13.md first
 
 The orchestrating session ended at commit `1c8322e` (WIP checkpoint). The
