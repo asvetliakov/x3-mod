@@ -84,15 +84,31 @@ Root also reran the reader and adjacency host suites: 36 tests passed in
 9.55 seconds. Together with the 60 tests above, this is 96 targeted host
 tests on the merged tree, not a new full-repository test-suite claim.
 
-## Final combined qualification plan (runtime pending)
+## Final combined qualification result
 
-After the loading source freeze, run eleven selected motion cases in X3:
+On frozen source `ae03d9a`, X3 completed all eleven selected motion cases:
 production off/on, ownership on, HDR ramp, TAA/AgX; and seam exposure,
 offset exposure, wrapped exposure, tonemap-fault recovery, meter-self-test
-unlock refusal and TAA/automatic exposure. Their clean build supplies the
-candidate production DLL. Retain `PARTIAL` for this selected run, verify every
-requested case and the expanded source maps, and audit its object inventory,
-exports and no-x87 boundary. Recompile all ten authored shader programs with
-`--check`. Follow with the merged X3 CryptoAPI fixture. These are modular
-integration tests; the user's subsequent gameplay run supplies real game
-co-activation and visual acceptance.
+unlock refusal and TAA/automatic exposure. They passed **1,156 checks across
+435 frames**. The runner correctly retains `PARTIAL` and `passed=false` for
+its full-suite verdict; the separate integrated audit records
+`SELECTED_VALIDATED`. Full exposure branch reports remain historical and
+byte-preserved.
+
+The candidate DLL SHA-256 is
+`ae2482fd5146c62898fbe20c45441d9d14183d705c50e3d03872094ec635b193`.
+All 141 expanded source entries match before/after/current; all 40 production
+objects match the CMake response/archive/disk inventory. The production DLL
+has exactly 17 exports, its audited boundaries pass no-x87 verification
+(211 reachable functions, zero violations), and all ten authored shader
+programs pass recompilation with `--check`. The durable artifact audit is
+[integrated-motion-validation.json](../../verification/results/bottle-X3/integrated-motion-validation.json).
+An initial host-audit filename assumption for a copied off-case trace was
+corrected against the actual retained trace; it was not a runtime failure.
+
+The final merged [X3 CryptoAPI fixture](final-crypto-integration.md) also
+passes **572 checks in twelve processes**, with 72 source entries stable
+before build, after build and after execution. These are modular integration
+tests; the user's subsequent gameplay run supplies real game co-activation
+and visual acceptance. Native Windows has not been run. Independent artifact
+review is recorded in [review-34-artifact-audit.md](review-34-artifact-audit.md).

@@ -1,0 +1,410 @@
+{
+  "status": "SELECTED_VALIDATED",
+  "selected_cases_passed": true,
+  "audits_passed": true,
+  "full_suite_passed": false,
+  "scope": "Final main X3 selected eleven-case integration; not a new full-suite run",
+  "game_launched": false,
+  "required_cases": [
+    "production-off",
+    "production-on",
+    "production-ownership-on",
+    "production-hdr-ramp-none",
+    "production-taa-hdr-tonemap-on",
+    "seam-hdr-exposure",
+    "seam-hdr-exposure-offset",
+    "seam-ownership-hdr-exposure",
+    "seam-hdr-tonemap-fault",
+    "seam-hdr-meter-selftest-unlock",
+    "seam-taa-hdr-tonemap-auto"
+  ],
+  "case_files": {
+    "production-off": {
+      "directory": "verification/probe/build/motion-output-production-off-20260913-022927-746161",
+      "trace": "verification/probe/build/motion-output-production-off-20260913-022927-746161/x3-modern-captures/session-20260913-022930-204.log",
+      "trace_sha256": "d6e5797a34f362c96ce06888101ba03ccc5f5e28d11ff1a81c69d006581170b6",
+      "dll_sha256": "ae2482fd5146c62898fbe20c45441d9d14183d705c50e3d03872094ec635b193",
+      "checks": 43
+    },
+    "production-on": {
+      "directory": "verification/probe/build/motion-output-production-on-20260913-022932-272517",
+      "trace": "verification/probe/build/motion-output-production-on-20260913-022932-272517/x3-modern-captures/session-20260913-022933-300.log",
+      "trace_sha256": "3576a1aefa654e41046e1c51c946437bf44ce3994a067c28f1a306d234075350",
+      "dll_sha256": "ae2482fd5146c62898fbe20c45441d9d14183d705c50e3d03872094ec635b193",
+      "checks": 43
+    },
+    "production-ownership-on": {
+      "directory": "verification/probe/build/motion-output-production-ownership-on-20260913-022935-016081",
+      "trace": "verification/probe/build/motion-output-production-ownership-on-20260913-022935-016081/x3-modern-captures/session-20260913-022935-332.log",
+      "trace_sha256": "63d7f0406ddd136b3186fac3afe4a04b31d52226124321fc1859b8ada0f128df",
+      "dll_sha256": "ae2482fd5146c62898fbe20c45441d9d14183d705c50e3d03872094ec635b193",
+      "checks": 43
+    },
+    "production-hdr-ramp-none": {
+      "directory": "verification/probe/build/motion-output-production-hdr-ramp-none-20260913-022936-566848",
+      "trace": "verification/probe/build/motion-output-production-hdr-ramp-none-20260913-022936-566848/x3-modern-captures/session-20260913-022937-364.log",
+      "trace_sha256": "540360d970586300d1f6c80f60702055cec721fd84ea1a34623adbae290c9747",
+      "dll_sha256": "ae2482fd5146c62898fbe20c45441d9d14183d705c50e3d03872094ec635b193",
+      "checks": 11
+    },
+    "seam-hdr-exposure": {
+      "directory": "verification/probe/build/motion-output-seam-hdr-exposure-20260913-022938-766182",
+      "trace": "verification/probe/build/motion-output-seam-hdr-exposure-20260913-022938-766182/x3-modern-captures/session-20260913-022939-396.log",
+      "trace_sha256": "27bfe922cd6ca136038c8c9cfa9f1de8d9b811479d1a5a632c1085d4d30eb7eb",
+      "dll_sha256": "a9c6ae04d141114982a3d3dd2db7d8fa6dc3753d18e5ea13483d35465718b67a",
+      "checks": 245
+    },
+    "seam-hdr-exposure-offset": {
+      "directory": "verification/probe/build/motion-output-seam-hdr-exposure-offset-20260913-022941-293217",
+      "trace": "verification/probe/build/motion-output-seam-hdr-exposure-offset-20260913-022941-293217/x3-modern-captures/session-20260913-022941-428.log",
+      "trace_sha256": "fcc9cc27d1bcdbdf64bfce524a32e1aa1ec82f64d55ea625eb245571129df9f6",
+      "dll_sha256": "a9c6ae04d141114982a3d3dd2db7d8fa6dc3753d18e5ea13483d35465718b67a",
+      "checks": 245
+    },
+    "seam-ownership-hdr-exposure": {
+      "directory": "verification/probe/build/motion-output-seam-ownership-hdr-exposure-20260913-022943-711542",
+      "trace": "verification/probe/build/motion-output-seam-ownership-hdr-exposure-20260913-022943-711542/x3-modern-captures/session-20260913-022944-460.log",
+      "trace_sha256": "7144225737f73ac7689c38582041b10a0e97b820e70e6dcc043d9cab05ed4b66",
+      "dll_sha256": "a9c6ae04d141114982a3d3dd2db7d8fa6dc3753d18e5ea13483d35465718b67a",
+      "checks": 245
+    },
+    "seam-hdr-tonemap-fault": {
+      "directory": "verification/probe/build/motion-output-seam-hdr-tonemap-fault-20260913-022946-200920",
+      "trace": "verification/probe/build/motion-output-seam-hdr-tonemap-fault-20260913-022946-200920/x3-modern-captures/session-20260913-022946-492.log",
+      "trace_sha256": "d5005ef2eb3de16933b61877bd822f38ec64a911224a49c0e842f5e68f8b9024",
+      "dll_sha256": "a9c6ae04d141114982a3d3dd2db7d8fa6dc3753d18e5ea13483d35465718b67a",
+      "checks": 59
+    },
+    "seam-hdr-meter-selftest-unlock": {
+      "directory": "verification/probe/build/motion-output-seam-hdr-meter-selftest-unlock-20260913-022948-019463",
+      "trace": "verification/probe/build/motion-output-seam-hdr-meter-selftest-unlock-20260913-022948-019463/x3-modern-captures/session-20260913-022948-524.log",
+      "trace_sha256": "a43c0c6b11d1bdc41a43c80d47ecd5aa9cc6e9bb1df22dffd785dded8a318e3a",
+      "dll_sha256": "a9c6ae04d141114982a3d3dd2db7d8fa6dc3753d18e5ea13483d35465718b67a",
+      "checks": 23
+    },
+    "seam-taa-hdr-tonemap-auto": {
+      "directory": "verification/probe/build/motion-output-seam-taa-hdr-tonemap-auto-20260913-022949-474249",
+      "trace": "verification/probe/build/motion-output-seam-taa-hdr-tonemap-auto-20260913-022949-474249/x3-modern-captures/session-20260913-022949-556.log",
+      "trace_sha256": "e731ee58e019d30fa0888ce77d25031524228b428fb13244e5bb461843007218",
+      "dll_sha256": "a9c6ae04d141114982a3d3dd2db7d8fa6dc3753d18e5ea13483d35465718b67a",
+      "checks": 140
+    },
+    "production-taa-hdr-tonemap-on": {
+      "directory": "verification/probe/build/motion-output-production-taa-hdr-tonemap-on-20260913-022951-936678",
+      "trace": "verification/probe/build/motion-output-production-taa-hdr-tonemap-on-20260913-022951-936678/x3-modern-captures/session-20260913-022952-592.log",
+      "trace_sha256": "c23ae7349bd14bad9a98b90a802b930aa75dff00273630aabb525c8ecae680c2",
+      "dll_sha256": "ae2482fd5146c62898fbe20c45441d9d14183d705c50e3d03872094ec635b193",
+      "checks": 59
+    }
+  },
+  "copied_traces": {
+    "verification/results/bottle-X3/motion-output-production-on-capture.log": "3576a1aefa654e41046e1c51c946437bf44ce3994a067c28f1a306d234075350",
+    "verification/results/bottle-X3/motion-output-production-ownership-on-capture.log": "63d7f0406ddd136b3186fac3afe4a04b31d52226124321fc1859b8ada0f128df",
+    "verification/results/bottle-X3/motion-output-production-hdr-ramp-none-capture.log": "540360d970586300d1f6c80f60702055cec721fd84ea1a34623adbae290c9747",
+    "verification/results/bottle-X3/motion-output-seam-hdr-exposure-capture.log": "27bfe922cd6ca136038c8c9cfa9f1de8d9b811479d1a5a632c1085d4d30eb7eb",
+    "verification/results/bottle-X3/motion-output-seam-hdr-exposure-offset-capture.log": "fcc9cc27d1bcdbdf64bfce524a32e1aa1ec82f64d55ea625eb245571129df9f6",
+    "verification/results/bottle-X3/motion-output-seam-ownership-hdr-exposure-capture.log": "7144225737f73ac7689c38582041b10a0e97b820e70e6dcc043d9cab05ed4b66",
+    "verification/results/bottle-X3/motion-output-seam-hdr-tonemap-fault-capture.log": "d5005ef2eb3de16933b61877bd822f38ec64a911224a49c0e842f5e68f8b9024",
+    "verification/results/bottle-X3/motion-output-seam-hdr-meter-selftest-unlock-capture.log": "a43c0c6b11d1bdc41a43c80d47ecd5aa9cc6e9bb1df22dffd785dded8a318e3a",
+    "verification/results/bottle-X3/motion-output-seam-taa-hdr-tonemap-auto-capture.log": "e731ee58e019d30fa0888ce77d25031524228b428fb13244e5bb461843007218",
+    "verification/results/bottle-X3/motion-output-production-taa-hdr-tonemap-on-capture.log": "c23ae7349bd14bad9a98b90a802b930aa75dff00273630aabb525c8ecae680c2"
+  },
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "source_count": 141,
+  "source_map_sha256": "074fa3e82509b80975ca70d2e29efaf756a09f3a2875b04a3e29ac9026b9b06a",
+  "source_identity": "expanded before/after maps equal and all current files match",
+  "expanded_helper_names": [
+    "tools/analysis/exposure_reference.py",
+    "tools/analysis/agx_reference.py",
+    "tools/analysis/analyze_motion_readback.py",
+    "tools/analysis/summarize_capture.py",
+    "verification/probe/verify_ownership_integration.py",
+    "verification/probe/run_ownership_integration.py",
+    "verification/probe/verify_capture_state.py",
+    "verification/probe/wine_lock.py",
+    "verification/probe/bottle.py",
+    "verification/probe/game_guard.py"
+  ],
+  "partial_summary": {
+    "path": "verification/results/bottle-X3/motion-output-partial.json",
+    "sha256": "102aeaf11993a1e86b137031d0a435759545627f97c35594bdbb0690a284d751"
+  },
+  "raw_report": {
+    "path": "verification/results/bottle-X3/motion-output-partial.txt",
+    "sha256": "6198ac18ca3249cafc9c4aa62395eb817939f9af6ae69f2beefa8d2e84460b38"
+  },
+  "binaries": {
+    "verification/probe/build/motion_output_fixture.exe": "556afc74c7eee4e488e43a3c4c7fe945376b38ecb2b28871d51a4903b4ba134e",
+    "verification/probe/build/motion-output-seam/d3d9.dll": "a9c6ae04d141114982a3d3dd2db7d8fa6dc3753d18e5ea13483d35465718b67a",
+    "build/d3d9.dll": "ae2482fd5146c62898fbe20c45441d9d14183d705c50e3d03872094ec635b193"
+  },
+  "preservation": {
+    "main_commit_before_run": "4838f3d78219e134683d4537024583f02aab0f72",
+    "full_branch_checkpoint": "e8970116a03ecc58d039b14d229369bd3dcd0a46",
+    "full_reports_before": {
+      "verification/results/bottle-X3/motion-output-summary.json": "8fe78407633907d9e61eb9ec1eb5e166297d86473e70ed8f92fc523f90ced754",
+      "verification/results/bottle-X3/motion-output.txt": "79ace25e3fbf3d65810095afd515dfc6b819ec7b8789b91e75c1b006419cf80e"
+    }
+  },
+  "objects": {
+    "response_sha256": "7532bbc4f1946a70d9c375bfa6e4b6c29ce14071d5ed5e3bc7957f00f0254005",
+    "count": 40,
+    "archive_sha256": "3aca94fe8a7fd135f66f891f363a438b1babf529bec1802fa5da004578c46fc5",
+    "disk_and_archive_match_response": true,
+    "object_sha256": {
+      "build/CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj": "92dd1a6c3b20fc2ad847c1771c4f7f75754efee6ab470e28623bf9b80491fb57",
+      "build/CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj": "73e19bd79b9379364f2f89de81500bc28eb6ddac666ba0e5674ad85ea019777e",
+      "build/CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj": "def2a81672b90f0359747ebbc93071e38e164254d7cf119b686f68d7d585f270",
+      "build/CMakeFiles/d3d9.dir/src/proxy/motion_capture.cpp.obj": "9bc51aa376d0a8d405e5b95ba0b6142f94de171312c2fffe9e6e4173ef2f2ac2",
+      "build/CMakeFiles/d3d9.dir/src/ownership/execution_state.cpp.obj": "e93692985d1ae889146d683bda937545c070d29b14ec56999465d97f5e4872ca",
+      "build/CMakeFiles/d3d9.dir/src/ownership/application_admission.cpp.obj": "5e143e08adf8476a93dd29583c8dfbbbedc43c285caf7aa818c728fd0366f43a",
+      "build/CMakeFiles/d3d9.dir/src/ownership/application_admission_abi.cpp.obj": "d71ebe7fb35bbe5f096e83d8b57aa8587fcf958d0fa5a3fcdaa8e7714fcb887c",
+      "build/CMakeFiles/d3d9.dir/src/proxy/scene_capture.cpp.obj": "10ca2ffe566e067cd2ed9e4c2a9f4ba426f8c7a4ac1ee201dafee135feffb361",
+      "build/CMakeFiles/d3d9.dir/src/proxy/object_trace.cpp.obj": "a7ac9a6867837069477f8b4de2dbc7fbf778aaf8162918a23f9ed34dfbe85a74",
+      "build/CMakeFiles/d3d9.dir/src/proxy/scene_hook.cpp.obj": "db7af04e790bdf1c73c5624ad63ff8fd4f7e76324e6d70d00bbad1d701cd408d",
+      "build/CMakeFiles/d3d9.dir/src/proxy/camera_state.cpp.obj": "72da284c92544533d9fe8147122d09a12b025bec3ca20358f433f353f224ae78",
+      "build/CMakeFiles/d3d9.dir/src/proxy/telemetry.cpp.obj": "a806d634323117029c0497ffdb43b3073db7f289b784d6d719a31c797f09c8f2",
+      "build/CMakeFiles/d3d9.dir/src/proxy/engine_memory.cpp.obj": "a378ecb77c4498bb56115a22739497f1fa05afdd2a6ab217917455dcd5f60069",
+      "build/CMakeFiles/d3d9.dir/src/proxy/loading_trace.cpp.obj": "3c343aca0f4b14e0bb78d3d86a0f1148501ad9a39c4c008ab5b7009145ea7fbe",
+      "build/CMakeFiles/d3d9.dir/src/proxy/loading_trace_light.cpp.obj": "1ccfdb2b22c307b5df7ac103df6e4aa303107236c85c60ca1f3e8dd37e34cc38",
+      "build/CMakeFiles/d3d9.dir/src/proxy/gz_buffer.cpp.obj": "6f08feb1c2b3a21963d6d518489058a619f469643945c17618c36e02dcd981e6",
+      "build/CMakeFiles/d3d9.dir/src/proxy/crypt_cache.cpp.obj": "50ec6609e4bdf42dff00a478f8e4827308a1cb8b4c3030d0d9c7dbedb81e5211",
+      "build/CMakeFiles/d3d9.dir/src/proxy/sampling_profiler.cpp.obj": "0be36613484dc48b5d1cb7e97ca78293912814a65c49ff50c41fca5208447c50",
+      "build/CMakeFiles/d3d9.dir/src/ownership/d3d9_ownership.cpp.obj": "f791b44ac0df1494cdab5e041e4e6878575ed568d9267c1fa682e397e9561703",
+      "build/CMakeFiles/d3d9.dir/src/proxy/engine_patch.cpp.obj": "00dc0d0ba093a15d550dd233fc0476486905c7ff8113e3d7cba8bc52307319db",
+      "build/CMakeFiles/d3d9.dir/src/proxy/loading_probes.cpp.obj": "d850bbe3fe186ae623e65ae5d37be77a5fdcf40e5f3eb07435aaa09f92b262a8",
+      "build/CMakeFiles/d3d9.dir/src/proxy/resource_reader.cpp.obj": "bd1eaf7524b563a7cd59f1cabe930dd80d5cb70fcd8f7f54884fc4040e1df254",
+      "build/CMakeFiles/d3d9.dir/src/proxy/resource_reader_core.cpp.obj": "456938b8f6454475ca0f516583a6bec4518c0a48411fc392e5b6dd62b15a1ba2",
+      "build/CMakeFiles/d3d9.dir/src/ownership/finite_buffer_evidence.cpp.obj": "828033f9b3d0bf76b7217380276e767a31ac75d202f2d0640eb6377cc83f1d33",
+      "build/CMakeFiles/d3d9.dir/src/ownership/portable_managed_upload.cpp.obj": "1e614df3985a3228d3c32cd24421f48cebbe629f87010e5ddc971e5d3cfbc357",
+      "build/CMakeFiles/d3d9.dir/src/proxy/draw_input.cpp.obj": "0267ad476b08dbda840478d10700da4f2b1b60dd7353a7c097b34d282f68ec0e",
+      "build/CMakeFiles/d3d9.dir/src/proxy/object_lifetime.cpp.obj": "4383d4f8b3957e77318424d3703b8cccb07b530c5cd0013fcd72ab2417ada4f6",
+      "build/CMakeFiles/d3d9.dir/src/proxy/mesh_adjacency_cache.cpp.obj": "50685d3dc4f71872d4cffc8d27aacf885fa85217adcd0462f7604c51d2801cbd",
+      "build/CMakeFiles/d3d9.dir/src/proxy/mesh_adjacency_fast.cpp.obj": "b7ca5b089e2d1fe33780c7e9805c9e0e1684415bc78d39d71afd4bce273f0dd8",
+      "build/CMakeFiles/d3d9.dir/src/renderer/temporal_pass.cpp.obj": "1566e26342d0de8f758b8359e20c46e773454a6032de4f123cf0faafc35b7288",
+      "build/CMakeFiles/d3d9.dir/src/renderer/hdr_pass.cpp.obj": "d9de4f3ea6ec31fe0b988bb2dceec2691e35e681e86b70081d7e7b36df41ae64",
+      "build/CMakeFiles/d3d9.dir/src/renderer/exposure.cpp.obj": "d4f582d1f6e093909441ea1642ad3d6521aa640dd880cebd4a3cc0464a00f37e",
+      "build/CMakeFiles/d3d9.dir/src/renderer/material_radiance.cpp.obj": "c4f2f351bea47ef4dd3a6a14e730fbd92ab4cb1113996fb91663713b201e92aa",
+      "build/CMakeFiles/d3d9.dir/src/renderer/motion_history.cpp.obj": "7920a0e0dbd87d773b54ffe3249c8bb5302aa4fa3a850ee6233e2a3309d33215",
+      "build/CMakeFiles/d3d9.dir/src/renderer/rigid_position.cpp.obj": "d0b8398e90b1e246155e9a4db6a3d32e5eabf44052a1d8957cc3a0a3101a1859",
+      "build/CMakeFiles/d3d9.dir/src/renderer/material_motion.cpp.obj": "3750dae3b9b5a009ba96879b0994e6b4a3dc33636cefc45d485cb5244a1c7ae3",
+      "build/CMakeFiles/d3d9.dir/src/renderer/motion_row_history.cpp.obj": "ee3485b58e50197a00171118b28084777b7d392146c5ed444c1f6274750686a6",
+      "build/CMakeFiles/d3d9.dir/src/proxy/motion_output.cpp.obj": "6f84d6d20f3b2ee6f390a8381e09366331b0bf27565541b42c6b57f15b3382c5",
+      "build/CMakeFiles/d3d9.dir/src/renderer/rigid_motion.cpp.obj": "7f46a90ad6c14a0e188051843d5b9f3ff4ef0decba38d173486afde236fbdf93",
+      "build/CMakeFiles/d3d9.dir/src/renderer/rigid_replay_program.cpp.obj": "dac1bf14890a6e26fa4c036acda6e5916a4704f4d177beadb7af80ea26b0478a"
+    },
+    "link_command_sha256": "52a0bb90549284a48c475363d83744834f33cea74b80d008f3bb41ec600d37bf"
+  },
+  "exports": {
+    "machine": "0x014c",
+    "names": [
+      "D3DPERF_BeginEvent",
+      "D3DPERF_EndEvent",
+      "D3DPERF_GetStatus",
+      "D3DPERF_QueryRepeatFrame",
+      "D3DPERF_SetMarker",
+      "D3DPERF_SetOptions",
+      "D3DPERF_SetRegion",
+      "DebugSetLevel",
+      "DebugSetMute",
+      "Direct3D9EnableMaximizedWindowedModeShim",
+      "Direct3DCreate9",
+      "Direct3DCreate9Ex",
+      "Direct3DCreate9On12",
+      "Direct3DCreate9On12Ex",
+      "Direct3DShaderValidatorCreate9",
+      "PSGPError",
+      "PSGPSampleTexture"
+    ],
+    "count": 17,
+    "local_nonzero_RVAs": true,
+    "parser_sha256": "6b7548b440e1a476265a91ba26e5ec0a45bb184bbbb8e57b360a19786091ecea",
+    "definition_sha256": "a826f129abc038d6f1c2d7dcb59b49f37eb772709692f8f331827dc026528d33"
+  },
+  "no_x87": {
+    "command": [
+      "python3",
+      "verification/probe/check_no_x87.py",
+      "build/d3d9.dll"
+    ],
+    "result": {
+      "result": "PASS",
+      "dll": "build/d3d9.dll",
+      "roots": {
+        "set_vs": "__ZN3x3m12_GLOBAL__N_1L6set_vsEP16IDirect3DDevice9P22IDirect3DVertexShader9@8",
+        "set_ps": "__ZN3x3m12_GLOBAL__N_1L6set_psEP16IDirect3DDevice9P21IDirect3DPixelShader9@8",
+        "set_vs_constant_f": "__ZN3x3m12_GLOBAL__N_1L17set_vs_constant_fEP16IDirect3DDevice9jPKfj@16",
+        "set_vs_constant_i": "__ZN3x3m12_GLOBAL__N_1L17set_vs_constant_iEP16IDirect3DDevice9jPKij@16",
+        "set_ps_constant_f": "__ZN3x3m12_GLOBAL__N_1L17set_ps_constant_fEP16IDirect3DDevice9jPKfj@16",
+        "set_viewport": "__ZN3x3m12_GLOBAL__N_1L12set_viewportEP16IDirect3DDevice9PK13_D3DVIEWPORT9@8",
+        "set_render_state": "__ZN3x3m12_GLOBAL__N_1L16set_render_stateEP16IDirect3DDevice919_D3DRENDERSTATETYPEm@12",
+        "set_texture": "__ZN3x3m12_GLOBAL__N_1L11set_textureEP16IDirect3DDevice9mP21IDirect3DBaseTexture9@12",
+        "set_sampler_state": "__ZN3x3m12_GLOBAL__N_1L17set_sampler_stateEP16IDirect3DDevice9m20_D3DSAMPLERSTATETYPEm@16",
+        "gz_read": "__ZN3x3m13loading_trace12_GLOBAL__N_1L7gz_readEPvS2_j",
+        "gz_getc": "__ZN3x3m13loading_trace12_GLOBAL__N_1L7gz_getcEPv",
+        "gz_tell": "__ZN3x3m13loading_trace12_GLOBAL__N_1L7gz_tellEPv",
+        "gz_seek": "__ZN3x3m13loading_trace12_GLOBAL__N_1L7gz_seekEPvli",
+        "crypt_acquire": "__ZN3x3m13loading_trace12_GLOBAL__N_1L13crypt_acquireEPmPKcS4_mm@20",
+        "crypt_release": "__ZN3x3m13loading_trace12_GLOBAL__N_1L13crypt_releaseEmm@8",
+        "crypt_import": "__ZN3x3m13loading_trace12_GLOBAL__N_1L12crypt_importEmPKhmmmPm@24",
+        "crypt_key_destroy": "__ZN3x3m13loading_trace12_GLOBAL__N_1L17crypt_key_destroyEm@4",
+        "light::file_open": "__ZN3x3m13loading_trace5light9file_openEPKcmmP20_SECURITY_ATTRIBUTESmmPv@28",
+        "light::file_read": "__ZN3x3m13loading_trace5light9file_readEPvS2_mPmP11_OVERLAPPED@20",
+        "light::file_seek": "__ZN3x3m13loading_trace5light9file_seekEPvlPlm@16",
+        "light::cursor_set": "__ZN3x3m13loading_trace5light10cursor_setEP7HICON__@4",
+        "light::cursor_position": "__ZN3x3m13loading_trace5light15cursor_positionEii@8",
+        "light::find_first": "__ZN3x3m13loading_trace5light10find_firstEPKcP17_WIN32_FIND_DATAA@8",
+        "light::find_next": "__ZN3x3m13loading_trace5light9find_nextEPvP17_WIN32_FIND_DATAA@8",
+        "light::find_close": "__ZN3x3m13loading_trace5light10find_closeEPv@4",
+        "light::gz_open_traced": "__ZN3x3m13loading_trace5light14gz_open_tracedEPKcS3_",
+        "light::gz_read_traced": "__ZN3x3m13loading_trace5light14gz_read_tracedEPvS2_j",
+        "light::gz_seek_traced": "__ZN3x3m13loading_trace5light14gz_seek_tracedEPvli",
+        "light::gz_getc_traced": "__ZN3x3m13loading_trace5light14gz_getc_tracedEPv",
+        "light::gz_tell_traced": "__ZN3x3m13loading_trace5light14gz_tell_tracedEPv",
+        "light::gz_close_traced": "__ZN3x3m13loading_trace5light15gz_close_tracedEPv",
+        "light::gz_write": "__ZN3x3m13loading_trace5light8gz_writeEPvPKvj",
+        "light::inflate_stream": "__ZN3x3m13loading_trace5light14inflate_streamEPvi",
+        "light::xml_read": "__ZN3x3m13loading_trace5light8xml_readEPKciS3_S3_i",
+        "light::inflate_init2": "__ZN3x3m13loading_trace5light13inflate_init2EPviPKci",
+        "light::inflate_end": "__ZN3x3m13loading_trace5light11inflate_endEPv",
+        "light::crypt_acquire_context": "__ZN3x3m13loading_trace5light21crypt_acquire_contextEPmPKcS4_mm@20",
+        "light::crypt_release_context": "__ZN3x3m13loading_trace5light21crypt_release_contextEmm@8",
+        "light::crypt_import_key": "__ZN3x3m13loading_trace5light16crypt_import_keyEmPKhmmmPm@24",
+        "light::crypt_create_hash": "__ZN3x3m13loading_trace5light17crypt_create_hashEmjmmPm@20",
+        "light::crypt_hash_data": "__ZN3x3m13loading_trace5light15crypt_hash_dataEmPKhmm@16",
+        "light::crypt_verify_signature": "__ZN3x3m13loading_trace5light22crypt_verify_signatureEmPKhmmPKcm@24",
+        "light::crypt_get_hash_param": "__ZN3x3m13loading_trace5light20crypt_get_hash_paramEmmPhPmm@20",
+        "light::crypt_destroy_hash": "__ZN3x3m13loading_trace5light18crypt_destroy_hashEm@4",
+        "light::crypt_destroy_key": "__ZN3x3m13loading_trace5light17crypt_destroy_keyEm@4",
+        "light::create_directory": "__ZN3x3m13loading_trace5light16create_directoryEPKcP20_SECURITY_ATTRIBUTES@8",
+        "light::delete_file": "__ZN3x3m13loading_trace5light11delete_fileEPKc@4",
+        "light::move_file": "__ZN3x3m13loading_trace5light9move_fileEPKcS3_@8",
+        "light::move_file_ex": "__ZN3x3m13loading_trace5light12move_file_exEPKcS3_m@12",
+        "light::write_file": "__ZN3x3m13loading_trace5light10write_fileEPvPKvmPmP11_OVERLAPPED@20",
+        "light::get_file_type": "__ZN3x3m13loading_trace5light13get_file_typeEPv@4",
+        "light::close_handle": "__ZN3x3m13loading_trace5light12close_handleEPv@4",
+        "crypt_cache::acquire": "__ZN3x3m11crypt_cache7acquireEPmPKcS3_mm@20",
+        "crypt_cache::release": "__ZN3x3m11crypt_cache7releaseEmm@8",
+        "crypt_cache::import_key": "__ZN3x3m11crypt_cache10import_keyEmPKhmmmPm@24",
+        "crypt_cache::destroy_key": "__ZN3x3m11crypt_cache11destroy_keyEm@4",
+        "crypt_cache::shutdown": "__ZN3x3m11crypt_cache8shutdownEv",
+        "crypt_cache::statistics": "__ZN3x3m11crypt_cache10statisticsEv",
+        "_x3m_probe_enter": "_x3m_probe_enter",
+        "_x3m_probe_exit": "_x3m_probe_exit",
+        "_x3m_resource_read_entry": "_x3m_resource_read_entry",
+        "_x3m_pool_fopen": "_x3m_pool_fopen",
+        "_x3m_pool_fclose": "_x3m_pool_fclose"
+      },
+      "reachable_functions": 211,
+      "violations": {}
+    },
+    "exit_code": 0,
+    "tool_sha256": "273982279312ca2e01627df615800b548580d47026923884df8a7be83baee210"
+  },
+  "shader_check": {
+    "command": "python3 verification/probe/wine_lock.py --holder final-main-shaders python3 tools/shaders/generate_rigid_motion_pixel.py --check",
+    "exit_code": 0,
+    "bottle": "Steam",
+    "result": {
+      "result": "PASS",
+      "check": true,
+      "shaders": [
+        {
+          "shader": "current_depth",
+          "word_count": 35,
+          "bytecode_sha256": "d097c156f9fc71faf2d554037092b86aefb399434575239c91d12ca46ce54c4c"
+        },
+        {
+          "shader": "hdr_meter_level0",
+          "word_count": 1996,
+          "bytecode_sha256": "994451bc7bd4d3c98e05c5c36708d99319ea37c966085f048c84a7172ace0246"
+        },
+        {
+          "shader": "hdr_meter_reduce",
+          "word_count": 462,
+          "bytecode_sha256": "941e89491c9a20e472dc85e896aa80205d78fd0a9c86c83b1339093d850e5614"
+        },
+        {
+          "shader": "hdr_tonemap",
+          "word_count": 414,
+          "bytecode_sha256": "f5e78954aff3d3ceb9535c67873b8695e4a0b3524cf39b3648c78c2a0a6572aa"
+        },
+        {
+          "shader": "hdr_tonemap_sharpen",
+          "word_count": 1691,
+          "bytecode_sha256": "4b36956c71cd3a75eed5280fd18735669de3d692ba1dedf6a31ec74d5b0177e0"
+        },
+        {
+          "shader": "hdr_writeback",
+          "word_count": 46,
+          "bytecode_sha256": "9cbb62f677f53401c91b61c026639f7bf25d85d6f581bf1952ba3ef4d640009a"
+        },
+        {
+          "shader": "quad_vertex",
+          "word_count": 43,
+          "bytecode_sha256": "09d4c72bab123c0d1127e0fcf0736011526941aca7efe43b055a443b296d32d0"
+        },
+        {
+          "shader": "rigid_motion",
+          "word_count": 176,
+          "bytecode_sha256": "a604ce8c772ac472dca8612c8cafcb353cb648f89aaffd7a089b7c9f0ae1e107"
+        },
+        {
+          "shader": "taa_sharpen",
+          "word_count": 418,
+          "bytecode_sha256": "af5cdb6f63d39989b4162f9d72563e242e4612f7e75a505858aa40781e1e8399"
+        },
+        {
+          "shader": "temporal_resolve",
+          "word_count": 4487,
+          "bytecode_sha256": "4cd8ad52d674c8abb9fde779e3c913d9dbba513fdadfec00f21b7d7c21959f48"
+        }
+      ]
+    },
+    "checked_artifact_sha256": {
+      "src/renderer/current_depth_pixel_program_inc.h": "3ca1fc61affdc38b5e67ffe9302c27997df47de377b6a874f497927c35ab4311",
+      "src/renderer/hdr_meter_level0_program_inc.h": "60a09221eea6b08cfc87b1df270685580278a79a2d6e3a68a3e551ffb69f953c",
+      "src/renderer/hdr_meter_reduce_program_inc.h": "969a7037581117bf069cafcbbd244e5f852f6e5586ab3fdc7726cb67f90a671c",
+      "src/renderer/hdr_tonemap_program_inc.h": "9fa78b9155ce774d369cf9952f77a04fcc53743c1bd4797f731532bb984bc18e",
+      "src/renderer/hdr_tonemap_sharpen_program_inc.h": "ed43e66f9bf91bab53ba18a3fa78a062cfcb9c3ed51bbfd6a8f3e67140a1472f",
+      "src/renderer/hdr_writeback_program_inc.h": "1719c1d7ba85da6cfa12f5662d6d4c33522a45c7fdb7cc1fcd2ae7f2fafb4146",
+      "src/renderer/quad_vertex_program_inc.h": "aa48c154ceffff22f745a1ef8cb4078b1fb4012a145df1666f833b243aa70eb2",
+      "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+      "src/renderer/taa_sharpen_program_inc.h": "93b6cb01499fc4a5cad7789730f6fd5f757235a1a3ed995b0ee80e4d7174db40",
+      "src/renderer/temporal_resolve_program_inc.h": "b8a2e7d7af306591e20b6d64bbdc4a5b61036c83ad97f3db1b11d40ec758c699",
+      "src/temporal/agx.hlsl": "b84c3295eb7095cd00c65518dcaf3dc1f456bfd4bf44e2d19b28547ccac5abce",
+      "src/temporal/agx_sharpen_ps.hlsl": "398233d7eb29bd99d8071697bfa7e0573c277511fe9c0fada3073facf284aca5",
+      "src/temporal/current_depth_ps.hlsl": "e58fdb561b1f1cf32b04339e0d3d47e014f9e1f00989eba98d04ea262bed27e5",
+      "src/temporal/hdr_meter_level0_ps.hlsl": "3f812353f91e6e40a3ec8e73e976e153812410a053629ba1231100a5df1b78fb",
+      "src/temporal/hdr_meter_reduce_ps.hlsl": "23570a77cf83256a25ab726a480dafb9bd011e879d03f2f976328cc82bc1c6ff",
+      "src/temporal/hdr_writeback_ps.hlsl": "94d43598184cdaa0a2bbf8a2d16e640fb7eb5d63d2c7cde0e9efd99c3c782022",
+      "src/temporal/quad_vs.hlsl": "b4bdb74768bb3e4de04b6a910ff252ef943d7fc4514f31566af6af2ce41e8b57",
+      "src/temporal/resolve.hlsl": "6dc25ca6186191436c77eb5ecdc5fc033dbc71f39f415abd576c66c27c3d7a16",
+      "src/temporal/rigid_motion_ps.hlsl": "9fad8bc470ca04dfa164da929c0343c14d3656cf6d7ba781643d8c55e8e66539",
+      "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
+      "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
+      "tools/shaders/generate_rigid_motion_pixel.py": "7fac8448ea5cdf9f644a84ed8f2ea45dac78b4c3d6a25ee0a38a3df2cef77841",
+      "verification/results/current-depth-pixel-program.json": "8ebe438284110943bc8a35273660740cd1e61f96e3882e2aea826000dbc8b2b5",
+      "verification/results/hdr-meter-level0-program.json": "77eaabd6b6630e76f2a3e5af5e894b7138be67c2d6600159da782b8e5ea36694",
+      "verification/results/hdr-meter-reduce-program.json": "111c328689ceb604564e21f7805fa84aaa39b6376305bdbe16b41405cd601bd0",
+      "verification/results/hdr-tonemap-program.json": "3e68a9127d55811673fda9a7c88eb3b68b1ccd9ef4531e2521a250080a1914e8",
+      "verification/results/hdr-tonemap-sharpen-program.json": "c72b9376db2ac31c4e5f2d0e68a0ae24994c727f3615e157843a733ec372b05d",
+      "verification/results/hdr-writeback-program.json": "9425c2b0c9fd6f4c2d74beca463ed58bf335d03d7b25f94ca46ce4185e4c4891",
+      "verification/results/quad-vertex-program.json": "9864860567b9d17ebd33965dbc41f40ac535eaaa8fdcd175751eedb9e71fab90",
+      "verification/results/rigid-motion-pixel-program.json": "0d7d3038848b6ff1ca2111467918d9502f60961c93152954e4cdaccad8336ac3",
+      "verification/results/taa-sharpen-program.json": "bcd37fe8f39d6b3e48aa009bb575c691ee5619faacdf1a6c443a2244395e0a2e",
+      "verification/results/temporal-resolve-program.json": "dad5b900b8f0147ed805cdf6c8d0b603c0c129002ece33eb11897bc7721c943a"
+    },
+    "execution_log_sha256": "af0ef589e66b6ff297b1f260df983b6b632eee5aa8187a073b187196380eb714"
+  },
+  "main_commit_at_audit": "ae03d9ad9acd6fba41d8c4b90d275a725ca0d343",
+  "audit_script_sha256": "0afe66ec8cd4ef97fe0e904e98e014c13309e31e5aed14a7d40d55dd73e58f16"
+}

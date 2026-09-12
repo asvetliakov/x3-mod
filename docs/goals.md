@@ -45,7 +45,8 @@ they are not a measured final-image baseline.
    (98 motion/HDR cases per bottle). Neither change is installed or accepted
    by a game run yet.
 3. Reader/adjacency review and affected fixtures are complete (review 31).
-   Commit that checkpoint, finish combined DLL qualification and install.
+   Checkpoint `ae03d9a` is committed. Combined selected motion/HDR and
+   CryptoAPI checks and independent artifact review passed; install next.
 4. Ask the user for the handoff's six controlled run groups: crypto, reader verify
    then fast, adjacency verify then fast, sharpen 0.75, new exposure, vanilla
    cursor comparison. Reader fast requires zero verification mismatches;

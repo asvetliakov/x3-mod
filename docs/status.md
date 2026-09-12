@@ -23,9 +23,10 @@ merged, the reviewed exposure branch is merged, and the reader has
 passed 4,721 checks plus independent artifact review. Adjacency output
 preservation and cache/hook qualification are accepted on both bottles:
 X3 computed all 37 retained meshes; Steam used native fallback for all 37.
-The final combined rendering and
-CryptoAPI checks remain before installation. Then
-install the integrated build and request
+The final combined rendering checks passed all eleven selected cases
+(1,156 checks / 435 frames), and merged X3 CryptoAPI passed 572 checks.
+Independent final artifact review passed; the candidate DLL is ready for installation;
+then request
 the [controlled run groups](verification/next-runs-2026-09-13.md) from handoff
 section 5. **Current install:** review-30 checkpoint `3124e0b`, SHA-256
 `d648594bf346f8ccc8d5e476bcc26345d16741974f76c5b3769017075712e825`, bottle X3.
@@ -67,6 +68,17 @@ crypto module. Merged loading/capture sources pass the production-flag syntax
 check; CLI dry-run and six crypto host controls pass. Full integrated fixture
 qualification follows the adjacency/reader work before installation. The
 approximately 4× signature-fixture speedup is not a measured game load saving.
+
+## Combined DLL qualification (2026-09-13; installation pending)
+
+Frozen source `ae03d9a` produced candidate SHA-256
+`ae2482fd5146c62898fbe20c45441d9d14183d705c50e3d03872094ec635b193`.
+[Review 34](verification/review-34-integration.md) records eleven validated
+selected motion/HDR cases (not a full-suite pass), all ten shader checks,
+211 no-x87 boundary functions, 17 exports and matching object/source maps.
+The final merged X3 CryptoAPI suite passed 572 checks across twelve processes.
+The independently reviewed branch suites remain scoped historical evidence.
+No game was launched, and no native-Windows runtime result is claimed.
 
 ## Reader and adjacency checkpoint (2026-09-13; reviewed, not installed)
 
