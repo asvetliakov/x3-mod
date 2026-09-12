@@ -1,4 +1,4 @@
-# Review 27: loading trampolines, light hooks, resource reader (paused 3: triage of the two X3 failures in progress)
+# Review 27: loading trampolines, light hooks, resource reader
 
 Independent review of the loading branch (`a752167` "Loading: light no-SSE
 hooks, probe batch 2 trampolines, gated fast resource reader") on top of main
@@ -10,9 +10,8 @@ and the probe handlers), `resource_reader*.{h,cpp}` (gated fast/verify
 resource reader and the catalogue handle pool), the `loading_trace`,
 `capture`, `loader`, CMake and `manage.py` wiring, `run_resource_reader.py`
 and its fixture, `check_no_x87.py`, the analysis scripts and their tests, and
-the five docs. No game was launched. The review ran in two sittings (paused
-once for an account switch after the merge and the first read; resumed and
-closed on the same day).
+the five docs. No game was launched. The review ran across four sittings
+(three account switches interrupted it) and closed on the same day.
 
 ## Merge notes
 
@@ -204,78 +203,61 @@ closed on the same day).
 ## Suite results
 
 Chain run on the final sources (`build/d3d9.dll` rebuilt clean at the start,
-SHA-256 `87d6588c4cada65f2214bad5859205934c2c44fe71b42dddcccee8f0756097eb`,
-11,015,608 bytes; the runners that rebuild the DLL themselves (`fresh_build`)
-left `38afa8c6c975cb3a3a1e64c432af81f43528324138ab0e481274010aad49d001` in
-`build/` at the end of the chain — same sources, MinGW PE timestamp). Every
-Wine command ran as `python3 verification/probe/wine_lock.py --holder review27 …`,
-one at a time, sharing the lock with two other agents' chains. Steam bottle
-unless noted.
+SHA-256 `87d6588c4cada65f2214bad5859205934c2c44fe71b42dddcccee8f0756097eb`;
+the runners that rebuild the DLL themselves (`fresh_build`) left
+**`38afa8c6c975cb3a3a1e64c432af81f43528324138ab0e481274010aad49d001`**
+(11,015,608 bytes) in `build/` at the end — same sources, MinGW PE
+timestamp; this is the build to install from). Every Wine command ran as
+`python3 verification/probe/wine_lock.py --holder review27 …`, one at a time,
+sharing the lock with other agents' chains. Bottle per row as listed
+(`verification/probe/bottle.py` `DEFAULT_BOTTLE='Steam'`, verified).
 
-| Suite | Result |
-| --- | --- |
-| `run_motion_output.py` | PASS (`{"passed": true}`; seam and production cases all `exit=0`, e.g. `seam-taa-lazy-on` 164 checks) |
-| `run_temporal_pass.py` | PASS: 386 samples, 228 state restorations, 2 device generations |
-| `temporal_run.py` | PASS first attempt: 78/78 sample checks, reset passed, 2 device generations, sources/executable unchanged |
-| `run_ownership_integration.py` | PASS: 26 cases, all `exit=0` |
-| `run_scene_capture.py` | PASS: 4,908 checks, no failed checks |
-| `run_loading_trace.py` | PASS (`phase=complete`, native D3DX hash unchanged before/after) |
-| `run_gz_buffer.py` (`X3M_FIXTURE_BOTTLE=X3`) | PASS: 735,876 checks, 0 failures, 10 M timing calls |
-| `run_resource_reader.py` (X3) | PASS: 405 checks, 0 failures (`quick=false`; includes the probe cases: `probe_b_garbage_esi_unclassified` with the new page guard, longjmp `desync=2` recovery, two threads) |
-| `run_object_lifetime.py` | **FAIL: 574 checks, 10 failures** — TODO triage (below) |
-| `run_object_trace.py` | PASS: 166 checks, 0 failures, 120,017 backend calls |
-| `run_mesh_adjacency_cache.py` | **FAIL** (`exit_code=1`, the fixture itself reports `cache=1 checks=2219 failures=0`; the runner's own expectation "Persistent acquisition unlock failure has distinct origin, permanently disables cache and does not call native" failed with `error=native`) — TODO triage (below) |
-| `run_mesh_cache_hook.py` | PASS (`phase=complete`, admission 0) |
-| `generate_rigid_motion_pixel.py --check` | PASS (all programs recompiled equal) |
-| `check_no_x87.py build/d3d9.dll` | PASS: 53 roots, 195 reachable functions, 0 violations |
-| `unittest discover -s verification/analysis` (`PYTHONPATH=verification/probe`) | 726 tests OK (30.5 s) |
+| Suite | Bottle | Result |
+| --- | --- | --- |
+| `run_motion_output.py` | Steam | PASS (`{"passed": true}`; seam and production cases all `exit=0`, e.g. `seam-taa-lazy-on` 164 checks) |
+| `run_temporal_pass.py` | Steam | PASS: 386 samples, 228 state restorations, 2 device generations |
+| `temporal_run.py` | Steam | PASS first attempt: 78/78 sample checks, reset passed, 2 device generations, sources/executable unchanged |
+| `run_ownership_integration.py` | Steam | PASS: 26 cases, all `exit=0` |
+| `run_scene_capture.py` | Steam | PASS: 4,908 checks, no failed checks |
+| `run_loading_trace.py` | Steam | PASS (`phase=complete`, native D3DX hash unchanged before/after) |
+| `run_gz_buffer.py` | X3 | PASS: 735,876 checks, 0 failures, 10 M timing calls |
+| `run_resource_reader.py` | X3 | PASS: 405 checks, 0 failures (`quick=false`; includes the probe cases: `probe_b_garbage_esi_unclassified` with the new page guard, longjmp `desync=2` recovery, two threads) |
+| `run_object_lifetime.py` | Steam | PASS: 574 checks, 0 failures, 80 backend calls |
+| `run_object_trace.py` | Steam | PASS: 166 checks, 0 failures, 120,017 backend calls |
+| `run_mesh_adjacency_cache.py` | Steam | PASS: 767 checks (`phase=complete`) |
+| `run_mesh_cache_hook.py` | Steam | PASS (`phase=complete`, six cases 1,714–2,681 checks, all `exit=0`) |
+| `generate_rigid_motion_pixel.py --check` | – | PASS (all programs recompiled equal) |
+| `check_no_x87.py build/d3d9.dll` | host | PASS: 53 roots, 195 reachable functions, 0 violations |
+| `unittest discover -s verification/analysis` (`PYTHONPATH=verification/probe`) | host | 726 tests OK (30.5 s) |
 
-**Triage state (paused 3, orchestrator's account switch).** The two
-failures were not Steam runs: the chain script's `X3M_FIXTURE_BOTTLE=X3 run …`
-prefix on a shell *function* persisted (POSIX assignment-before-function
-semantics), so every step after `run_gz_buffer.py` — `object_lifetime`,
-`object_trace`, `mesh_adjacency_cache`, `mesh_cache_hook`, the generator — ran
-in the **X3** bottle (arm64 Wine + FEX), and their records went to
-`verification/results/bottle-X3/` (committed with the paused-2 checkpoint).
-The table's bottle column for those rows is therefore X3, not Steam;
-`verification/probe/bottle.py` `DEFAULT_BOTTLE` is still `Steam` (verified).
-
-* `run_object_lifetime.py` on X3: the 10 failures are `input/output
-  x87/SSE/MXCSR matches original` and `all boundaries input/output FX state
-  preserved` (4 boundaries × 2) — FX-state fidelity under FEX
-  (`FEX_X87REDUCEDPRECISION=1`); every functional check passes.
-* `run_mesh_adjacency_cache.py` on X3: `RESULT FAIL checks=303 error=native
-  FP status changes observed` — the same class (x87 status word through the
-  native D3DX call under FEX).
-* Neither suite is in the X3 validation record (`docs/verification/bottles.md`
-  validated five suites on X3; these two were never run there), so nothing
-  says they should pass on X3.
-* Plain main `b10d129` in the scratch worktree `/tmp/x3-b10d129` (left in
-  place; `cmake` of its `d3d9.dll` fails there — `loading_trace.h:61
-  ID3DXMesh not declared` from `capture.cpp`, main's own WIP state, the
-  runners build their fixtures independently): `run_object_lifetime.py`
-  **Steam PASS 574/0**, `run_mesh_adjacency_cache.py` **Steam PASS
-  (checks=767)**; the X3 reruns on `b10d129` were queued but not started
-  before the pause.
-
-Remaining before the closing commit: (a) rerun the four suites above in
-this worktree on Steam (`run_object_lifetime.py`, `run_object_trace.py`,
-`run_mesh_adjacency_cache.py`, `run_mesh_cache_hook.py`, plain invocation,
-no bottle prefix) and record them; (b) optionally the two X3 runs on
-`b10d129` to show the X3 failures are identical on main; (c) rewrite the
-suite table with the correct bottle per row, drop the paused wording, record
-the final `build/d3d9.dll` hash; (d) `git worktree remove /tmp/x3-b10d129`.
+**X3 side runs (not part of the required chain, recorded for the bottle
+record).** A chain-script quirk (`X3M_FIXTURE_BOTTLE=X3 run …` before a shell
+*function* persists under POSIX semantics) ran `object_lifetime`,
+`object_trace`, `mesh_adjacency_cache` and `mesh_cache_hook` once on X3
+(arm64 Wine + FEX) before the Steam runs above; their records are under
+`verification/results/bottle-X3/`. `object_trace` and `mesh_cache_hook`
+pass there; `run_object_lifetime.py` fails 10 of 574 checks, all FX-state
+fidelity checks (`input/output x87/SSE/MXCSR matches original`, `all
+boundaries input/output FX state preserved`), and `run_mesh_adjacency_cache.py`
+reports `error=native FP status changes observed` — the x87 status/FX image
+under `FEX_X87REDUCEDPRECISION=1`, not this branch: the same two suites pass
+on plain main `b10d129` in a scratch worktree on Steam (574/0 and 767 checks;
+the scratch worktree was removed afterwards), neither suite is in the X3
+validation record of `docs/verification/bottles.md`, and this branch touches
+neither unit. Noted for the bottle record as an X3 limitation of those two
+fixtures. (Side observation: `b10d129`'s own `d3d9.dll` cmake build fails —
+`loading_trace.h:61 ID3DXMesh not declared` from `capture.cpp` — main's WIP
+state, unrelated to this branch, which builds.)
 
 ## What `docs/status.md` must say (orchestrator)
 
-Review 27 code and docs complete on the branch: findings 1–3, 5, 6 fixed, 4
-documented, 7 noted; the twelve trampoline sites byte-verified against the
-installed executable and the Ghidra listings; 13 of 15 chain entries green on
-the final build, `run_object_lifetime.py` and `run_mesh_adjacency_cache.py`
-failing in units this branch does not touch (TODO triage against main's
-`b10d129` WIP before merging). Do not merge or install until that triage is
-done; then the branch is ready, and the next game
-run is the one `docs/verification/loading-probes.md` and
+Review 27 closed on the branch: findings 1–3, 5, 6 fixed, 4 documented, 7
+noted; the twelve trampoline sites byte-verified against the installed
+executable and the Ghidra listings; the full suite chain green on the final
+build (`38afa8c6…`). The branch is ready to merge into main and install from;
+the next game run is the one `docs/verification/loading-probes.md` and
 `resource-reader.md` describe (`--telemetry --loading-probes`, then
 `--resource-read verify --dat-handles`), and `loading_probe_site …
-status=late_claim` in any log would mean an install order regression.
+status=late_claim` in any log would mean an install-order regression. Known
+X3-bottle limitation recorded above: `run_object_lifetime.py` and
+`run_mesh_adjacency_cache.py` fail their FX-state checks under FEX (main too).

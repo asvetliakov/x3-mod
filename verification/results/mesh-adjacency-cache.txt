@@ -15,5 +15,5 @@ FP_VARIANT variant=7 cw=027f sw=0000 mxcsr=00009fc0 applied_cw=027f applied_mxcs
 FP_VARIANT variant=8 cw=007d sw=0000 mxcsr=00001f80 applied_cw=007d applied_mxcsr=00001f80 masked=0 expect=bypass
 FP_VARIANT variant=9 cw=007f sw=0000 mxcsr=00001e80 applied_cw=007f applied_mxcsr=00001f80 masked=1 expect=keyed
 LAST_ERROR_KEY conditional_change=1 misses=2 hits=1 rejected=1
-TIMING faces=18432 vertices=9409 repetitions=15 native_median_us=97434.200 adapter_miss_median_us=98474.100 adapter_hit_median_us=1134.600 includes_native_buffer_acquisition=1 retained_bytes=540932 scratch_cap_bytes=4194304 acquisition_ticks=30191 lookup_ticks=295790 copy_ticks=7370 native_ticks=15619146 total_ticks=15954369 hits=15 misses=16
+TIMING faces=18432 vertices=9409 repetitions=15 native_median_us=93904.300 adapter_miss_median_us=94932.800 adapter_hit_median_us=1143.300 includes_native_buffer_acquisition=1 retained_bytes=540932 scratch_cap_bytes=4194304 acquisition_ticks=31027 lookup_ticks=293074 copy_ticks=7879 native_ticks=15015171 total_ticks=15348924 hits=15 misses=16
 RESULT PASS checks=767

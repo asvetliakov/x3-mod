@@ -12,12 +12,12 @@
     },
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf"
   },
-  "started_utc": "2026-09-12T16:58:12.816428+00:00",
+  "started_utc": "2026-09-12T18:52:37.308640+00:00",
   "cases": {
     "native-off-normal": {
       "exit_code": 0,
       "checks": 1714,
-      "report_sha256": "c52dba09e7350c3f84f5b93ec96582a9c36041e9d86b18555513010d0b21f898",
+      "report_sha256": "32dd8a22d724e0c1065ffbf5263f68e5c7f3540275acafefde924ea25fd9c32c",
       "wine_log_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
@@ -86,7 +86,7 @@
     "native-on-normal": {
       "exit_code": 0,
       "checks": 2003,
-      "report_sha256": "f083432d41e5c3ab4c16ea456a9e44ca8b81625fbfd428d5512b836af7443679",
+      "report_sha256": "603a69e1af0b1f0b0505342847fa6de81b64e76f95e6012f36ed677aee7851cb",
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
@@ -117,7 +117,7 @@
       "cache_metrics": [
         {
           "cumulative": "1",
-          "qpc": "9617472792434",
+          "qpc": "9686109223725",
           "dispatch_enabled": "1",
           "buffer_contract": "public_systemmem_readonly",
           "faulted": "0",
@@ -138,13 +138,13 @@
           "acquired_bytes": "5104",
           "copied_bytes": "960",
           "evicted_bytes": "0",
-          "acquisition_ticks": "14439",
-          "lookup_ticks": "796",
-          "copy_ticks": "80",
-          "native_ticks": "13259",
-          "total_ticks": "32064",
+          "acquisition_ticks": "9623",
+          "lookup_ticks": "533",
+          "copy_ticks": "66",
+          "native_ticks": "11655",
+          "total_ticks": "24806",
           "gate_rejections": "3",
-          "gate_ticks": "4207",
+          "gate_ticks": "3536",
           "native_outcomes": "22",
           "hit_outcomes": "21",
           "cleanup_outcomes": "0",
@@ -418,7 +418,7 @@
     "native-on-fault": {
       "exit_code": 0,
       "checks": 2011,
-      "report_sha256": "252f8912874340f454b3b29e1d12ffe94025c0f4d30ed1c46be1f94cfb82e6c5",
+      "report_sha256": "acd1ba726c84561fab782894b0a9b76d87992f09052ccf9662c041d7756b81bf",
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
@@ -449,7 +449,7 @@
       "cache_metrics": [
         {
           "cumulative": "1",
-          "qpc": "9617490418672",
+          "qpc": "9686124635957",
           "dispatch_enabled": "1",
           "buffer_contract": "public_systemmem_readonly",
           "faulted": "0",
@@ -470,13 +470,13 @@
           "acquired_bytes": "5104",
           "copied_bytes": "960",
           "evicted_bytes": "0",
-          "acquisition_ticks": "8224",
-          "lookup_ticks": "577",
+          "acquisition_ticks": "9010",
+          "lookup_ticks": "579",
           "copy_ticks": "64",
-          "native_ticks": "9171",
-          "total_ticks": "21114",
+          "native_ticks": "10983",
+          "total_ticks": "23246",
           "gate_rejections": "3",
-          "gate_ticks": "3794",
+          "gate_ticks": "3303",
           "native_outcomes": "22",
           "hit_outcomes": "21",
           "cleanup_outcomes": "0",
@@ -488,7 +488,7 @@
         },
         {
           "cumulative": "1",
-          "qpc": "9617490444731",
+          "qpc": "9686124657407",
           "dispatch_enabled": "0",
           "buffer_contract": "public_systemmem_readonly",
           "faulted": "1",
@@ -509,13 +509,13 @@
           "acquired_bytes": "5104",
           "copied_bytes": "960",
           "evicted_bytes": "0",
-          "acquisition_ticks": "8224",
-          "lookup_ticks": "577",
+          "acquisition_ticks": "9010",
+          "lookup_ticks": "579",
           "copy_ticks": "64",
-          "native_ticks": "9171",
-          "total_ticks": "21114",
+          "native_ticks": "10983",
+          "total_ticks": "23246",
           "gate_rejections": "3",
-          "gate_ticks": "3823",
+          "gate_ticks": "3328",
           "native_outcomes": "22",
           "hit_outcomes": "21",
           "cleanup_outcomes": "1",
@@ -789,7 +789,7 @@
     "wrapped-off-normal": {
       "exit_code": 0,
       "checks": 2189,
-      "report_sha256": "c6fa0d91b760c75681e59f9ec28deb60f9c2378e88d76ce70503ec16c6642535",
+      "report_sha256": "d51bd26c3cd67e66633aa746d99cf9142c870e4605d465afa289a57a9f9ea579",
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
@@ -858,7 +858,7 @@
     "wrapped-on-normal": {
       "exit_code": 0,
       "checks": 2673,
-      "report_sha256": "5a0753f3071b397311da513bd7c06e03a51e7c65b3e612a9b3857567c5981975",
+      "report_sha256": "aad19477b54906f6f49e91b4a334829195ea0f468fdc4d229536786f5bb316cd",
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
@@ -889,7 +889,7 @@
       "cache_metrics": [
         {
           "cumulative": "1",
-          "qpc": "9617528705542",
+          "qpc": "9686156017690",
           "dispatch_enabled": "1",
           "buffer_contract": "public_systemmem_readonly",
           "faulted": "0",
@@ -910,13 +910,13 @@
           "acquired_bytes": "5104",
           "copied_bytes": "960",
           "evicted_bytes": "0",
-          "acquisition_ticks": "14572",
-          "lookup_ticks": "552",
-          "copy_ticks": "71",
-          "native_ticks": "16048",
-          "total_ticks": "34444",
+          "acquisition_ticks": "13912",
+          "lookup_ticks": "546",
+          "copy_ticks": "62",
+          "native_ticks": "14495",
+          "total_ticks": "31619",
           "gate_rejections": "5",
-          "gate_ticks": "3598",
+          "gate_ticks": "3142",
           "native_outcomes": "24",
           "hit_outcomes": "21",
           "cleanup_outcomes": "0",
@@ -1211,7 +1211,7 @@
     "wrapped-on-fault": {
       "exit_code": 0,
       "checks": 2681,
-      "report_sha256": "d24a0934d31d5e52b49b87ba6dab54b2e6d1acc20825eaede43d3a90c13288f8",
+      "report_sha256": "f8d8927f2ba11e8137cfa27b225b6ba9bae4f1a5035e2359d7792402019dd721",
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
@@ -1242,7 +1242,7 @@
       "cache_metrics": [
         {
           "cumulative": "1",
-          "qpc": "9617547470221",
+          "qpc": "9686173868154",
           "dispatch_enabled": "1",
           "buffer_contract": "public_systemmem_readonly",
           "faulted": "0",
@@ -1263,13 +1263,13 @@
           "acquired_bytes": "5104",
           "copied_bytes": "960",
           "evicted_bytes": "0",
-          "acquisition_ticks": "16994",
-          "lookup_ticks": "572",
-          "copy_ticks": "64",
-          "native_ticks": "16250",
-          "total_ticks": "37189",
+          "acquisition_ticks": "14317",
+          "lookup_ticks": "550",
+          "copy_ticks": "70",
+          "native_ticks": "15892",
+          "total_ticks": "33403",
           "gate_rejections": "5",
-          "gate_ticks": "3482",
+          "gate_ticks": "3090",
           "native_outcomes": "24",
           "hit_outcomes": "21",
           "cleanup_outcomes": "0",
@@ -1281,7 +1281,7 @@
         },
         {
           "cumulative": "1",
-          "qpc": "9617547495997",
+          "qpc": "9686173891305",
           "dispatch_enabled": "0",
           "buffer_contract": "public_systemmem_readonly",
           "faulted": "1",
@@ -1302,13 +1302,13 @@
           "acquired_bytes": "5104",
           "copied_bytes": "960",
           "evicted_bytes": "0",
-          "acquisition_ticks": "16994",
-          "lookup_ticks": "572",
-          "copy_ticks": "64",
-          "native_ticks": "16250",
-          "total_ticks": "37189",
+          "acquisition_ticks": "14317",
+          "lookup_ticks": "550",
+          "copy_ticks": "70",
+          "native_ticks": "15892",
+          "total_ticks": "33403",
           "gate_rejections": "5",
-          "gate_ticks": "3523",
+          "gate_ticks": "3130",
           "native_outcomes": "24",
           "hit_outcomes": "21",
           "cleanup_outcomes": "1",
@@ -1690,7 +1690,7 @@
     "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
   },
   "binaries_before": {
-    "mesh_cache_hook_fixture.exe": "b3a77ca030f0a3526eaed14b28ac824843680108c59123c4d3bf71269946770c",
+    "mesh_cache_hook_fixture.exe": "5f17248ac3fb9cfea913a4e3fe7ccbcbb1ac3394e469a5e4545f44d8580be797",
     "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   },
   "sources_after_run": {
@@ -1738,7 +1738,7 @@
     "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
   },
   "binaries_after": {
-    "mesh_cache_hook_fixture.exe": "b3a77ca030f0a3526eaed14b28ac824843680108c59123c4d3bf71269946770c",
+    "mesh_cache_hook_fixture.exe": "5f17248ac3fb9cfea913a4e3fe7ccbcbb1ac3394e469a5e4545f44d8580be797",
     "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
   }
 }

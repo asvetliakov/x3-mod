@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T16:07:14.801526+00:00",
+  "started_utc": "2026-09-12T18:52:10.327549+00:00",
   "game_launched": false,
   "bottle": {
     "name": "Steam",
@@ -30,18 +30,18 @@
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
     "verification/probe/run_object_lifetime.py": "8f2617641e1a4678138332cb818edeb1bc0789dd519311b6a77c661b4a80f121"
   },
-  "executable_sha256": "450c1846829333e3bf8635473badbbc26a8c354874aa4dee975b30083b78ac59",
+  "executable_sha256": "02aac568e9922191f804f5bc8508ebed6f38dd1579a9af38824314405d3e879a",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
     "Steam",
     "--no-update",
     "--workdir",
-    "/Users/asvetl/x3-mod/verification/probe/build",
-    "/Users/asvetl/x3-mod/verification/probe/build/object_lifetime.exe"
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a68201431d638fe21/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a68201431d638fe21/verification/probe/build/object_lifetime.exe"
   ],
   "exit_code": 0,
-  "executable_sha256_after_run": "450c1846829333e3bf8635473badbbc26a8c354874aa4dee975b30083b78ac59",
+  "executable_sha256_after_run": "02aac568e9922191f804f5bc8508ebed6f38dd1579a9af38824314405d3e879a",
   "sources_after_run": {
     "src/proxy/object_lifetime.cpp": "4b14f47cc7b024274bd4c85ed7337092cb85dc5d3b6b5c148834256591747e07",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
@@ -51,7 +51,7 @@
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
     "verification/probe/run_object_lifetime.py": "8f2617641e1a4678138332cb818edeb1bc0789dd519311b6a77c661b4a80f121"
   },
-  "report_sha256": "c065ac20016ba4add44eca3c3082f649972e3597f4e44ae4969ce02a34c416b9",
+  "report_sha256": "86c06c9ebbf71e9df9d73cba68cf17e05a3032a90cb7e961f72a7e3236eb2210",
   "checks": 574,
   "failures": 0,
   "backend_calls": 80,
@@ -59,14 +59,14 @@
     "timing": [
       {
         "mode": "rpm",
-        "snapshot_us": "7.221",
+        "snapshot_us": "7.401",
         "reads_per_call": "0.00",
         "queries_per_call": "0.0000",
         "syscalls_per_call": "12.00"
       },
       {
         "mode": "direct",
-        "snapshot_us": "0.712",
+        "snapshot_us": "0.674",
         "reads_per_call": "12.00",
         "queries_per_call": "0.0237",
         "syscalls_per_call": "0.00"
