@@ -29,6 +29,13 @@ enum class Metric : unsigned {
     TaaResolveDraw,      // normalize, scene bracket, resolve quad(s)
     TaaStateApply,       // binding restoration plus state block Apply
     TaaCopyBack,         // resolved FP16 to the 8-bit main target StretchRect
+    // FP16 HDR scene path, stage 1 (docs/architecture/hdr-scene-path.md).
+    HdrRedirect,         // the latching Clear's RT0 substitution (viewport/scissor getters, SetRenderTarget, setters)
+    HdrWriteback,        // one write-back through the ladder, inclusive (nests the two below and hdr_bind)
+    HdrWritebackDraw,    // the identity copy draw: state save, quad, state restore
+    HdrWritebackStretch, // the emergency StretchRect rung (only when the draw failed)
+    HdrBind,             // an explicit rebind of RT0 at the end of a write-back (unwind or nothing to write)
+    HdrRecheck,          // the recovery self test at a latch while blocked
     Count
 };
 struct Counter {

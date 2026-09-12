@@ -1,0 +1,2508 @@
+{
+  "passed": false,
+  "status": "PARTIAL",
+  "game_launched": false,
+  "scope": "Live same-draw route (checkpoint B1 + temporal steps 1 and 3: RT2 current depth, per-draw jitter, cut detector, the temporal resolve at the bloom copy with copy-back) and the FP16 HDR scene path stage 1 (X3M_HDR: redirect, identity write-back, unwind ladder) through the actual proxy DLL with one original synthetic device program, plain and under the ownership wrapper (plus copy-depth and admission); seam DLL adds fixture scope injection, target readback and the reference resolve comparison. Bench runs time the boundary. Not gameplay validation.",
+  "variants": {
+    "plain": {},
+    "ownership": {
+      "X3M_OWNERSHIP": "1"
+    },
+    "depth": {
+      "X3M_OWNERSHIP": "1",
+      "X3M_DEPTH_COPY": "1",
+      "X3M_SCENE_DEPTH_CAPTURE": "1"
+    },
+    "admission": {
+      "X3M_OWNERSHIP": "1",
+      "X3M_ADMISSION": "1"
+    }
+  },
+  "cases": {
+    "production-ownership-hdr-on": {
+      "mode": "production",
+      "enabled": true,
+      "jitter": false,
+      "taa": false,
+      "lazy": false,
+      "checks": 43,
+      "restorations": 39,
+      "frames": 12,
+      "color_hashes": {
+        "0": "47d31d33b1c974f2",
+        "1": "da4a5167b34ce4a4",
+        "2": "da4a5167b34ce4a4",
+        "3": "47d31d33b1c974f2",
+        "4": "9de5ccfbf782db0c",
+        "5": "47d31d33b1c974f2",
+        "6": "da4a5167b34ce4a4",
+        "7": "4a1bd1c19e313467",
+        "8": "3e9c14d09ac461a1",
+        "9": "a93e0c716c4bd313",
+        "10": "3e9c14d09ac461a1",
+        "11": "a93e0c716c4bd313"
+      },
+      "motion_pixels": 0,
+      "matched_pixels": 0,
+      "max_uv_error_pixels": 0.0,
+      "max_previous_depth_error": 0.0,
+      "depth_pixels": 0,
+      "depth_written_pixels": 0,
+      "max_current_depth_error": 0.0,
+      "coverage_frames": 12,
+      "coverage_pixels": 48242,
+      "coverage_ambiguous_pixels": 910,
+      "hdr": {
+        "enabled": true,
+        "device": {
+          "reason": "ok",
+          "fp16_target": "00000000",
+          "fp16_blending": "00000000",
+          "fp16_filter": "00000000",
+          "fp16_sampling": "00000000",
+          "stretch_conversion": "00000000",
+          "mrt_blending": "1",
+          "self_test_targets": "3"
+        },
+        "targets": [
+          [
+            64,
+            64,
+            32768
+          ],
+          [
+            64,
+            64,
+            32768
+          ]
+        ],
+        "frames": {
+          "0": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "5.5",
+            "writeback_us": "1240.4",
+            "writeback_draw_us": "1162.9",
+            "bind_us": "5.0"
+          },
+          "1": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "3.0",
+            "writeback_us": "66.9",
+            "writeback_draw_us": "66.0",
+            "bind_us": "3.9"
+          },
+          "2": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "3.1",
+            "writeback_us": "45.9",
+            "writeback_draw_us": "45.3",
+            "bind_us": "3.5"
+          },
+          "3": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "1.7",
+            "writeback_us": "40.8",
+            "writeback_draw_us": "40.3",
+            "bind_us": "2.8"
+          },
+          "4": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "3.1",
+            "writeback_us": "115.7",
+            "writeback_draw_us": "114.9",
+            "bind_us": "4.7"
+          },
+          "5": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "2.1",
+            "writeback_us": "130.9",
+            "writeback_draw_us": "130.1",
+            "bind_us": "6.5"
+          },
+          "6": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "3.2",
+            "writeback_us": "54.9",
+            "writeback_draw_us": "53.9",
+            "bind_us": "3.7"
+          },
+          "7": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "3.5",
+            "writeback_us": "134.6",
+            "writeback_draw_us": "134.0",
+            "bind_us": "5.6"
+          },
+          "8": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "3.8",
+            "writeback_us": "73.8",
+            "writeback_draw_us": "73.2",
+            "bind_us": "11.5"
+          }
+        },
+        "readbacks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "taa": false
+      },
+      "depth_readbacks": {
+        "1": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "2": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "3": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "4": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "5": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "6": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "7": {
+          "written": 171,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "8": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.6000000238418579
+        }
+      },
+      "variants": 4,
+      "frames_logged": 9,
+      "readbacks": 8,
+      "routes": 19,
+      "render_state": {
+        "0": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "1": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "2": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "3": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "4": {
+          "queries": 23,
+          "hits": 23,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "5": {
+          "queries": 26,
+          "hits": 26,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "6": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "7": {
+          "queries": 12,
+          "hits": 2,
+          "gets": 24,
+          "resyncs": 2
+        },
+        "8": {
+          "queries": 18,
+          "hits": 10,
+          "gets": 22,
+          "resyncs": 1
+        }
+      },
+      "route_decisions": [
+        [
+          "1",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "1",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "2",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "2",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "3",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "3",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "4",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "4",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "4",
+          "4",
+          "4",
+          "0",
+          "0"
+        ],
+        [
+          "4",
+          "5",
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "5",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "5",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "5",
+          "4",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "6",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "6",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "7",
+          "2",
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "7",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "8",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "8",
+          "3",
+          "5",
+          "1",
+          "0"
+        ]
+      ],
+      "variant": "ownership",
+      "ownership": {
+        "wrapped": true,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        },
+        "source_epochs": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0,
+          "6": 0,
+          "7": 0,
+          "8": 0
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-production-ownership-hdr-on-20260912-132233-778972",
+      "trace_sha256": "5b00c8e242e541172a624da926bfd882749754d3cb111f7e6bac92f23c562240",
+      "dll_sha256": "201d3474ba49a6bca5e08657546067badb9fe60c2095f7e9eb1debfdbea3fa5b",
+      "exe_sha256": "37ad4136a352a973f60cf692e8ce7b37a3e04120690e25d7cc514516a9169209"
+    },
+    "seam-ownership-hdr-on": {
+      "mode": "seam",
+      "enabled": true,
+      "jitter": false,
+      "taa": false,
+      "lazy": false,
+      "checks": 103,
+      "restorations": 39,
+      "frames": 12,
+      "color_hashes": {
+        "0": "47d31d33b1c974f2",
+        "1": "da4a5167b34ce4a4",
+        "2": "da4a5167b34ce4a4",
+        "3": "47d31d33b1c974f2",
+        "4": "9de5ccfbf782db0c",
+        "5": "47d31d33b1c974f2",
+        "6": "da4a5167b34ce4a4",
+        "7": "4a1bd1c19e313467",
+        "8": "3e9c14d09ac461a1",
+        "9": "a93e0c716c4bd313",
+        "10": "3e9c14d09ac461a1",
+        "11": "a93e0c716c4bd313"
+      },
+      "motion_pixels": 44284,
+      "matched_pixels": 10261,
+      "max_uv_error_pixels": 0.00156247616,
+      "max_previous_depth_error": 3.69792081e-08,
+      "depth_pixels": 44284,
+      "depth_written_pixels": 27170,
+      "max_current_depth_error": 3.69455019e-06,
+      "coverage_frames": 12,
+      "coverage_pixels": 48242,
+      "coverage_ambiguous_pixels": 910,
+      "hdr": {
+        "enabled": true,
+        "device": {
+          "reason": "ok",
+          "fp16_target": "00000000",
+          "fp16_blending": "00000000",
+          "fp16_filter": "00000000",
+          "fp16_sampling": "00000000",
+          "stretch_conversion": "00000000",
+          "mrt_blending": "1",
+          "self_test_targets": "3"
+        },
+        "targets": [
+          [
+            64,
+            64,
+            32768
+          ],
+          [
+            64,
+            64,
+            32768
+          ]
+        ],
+        "frames": {
+          "0": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "4.5",
+            "writeback_us": "799.2",
+            "writeback_draw_us": "674.4",
+            "bind_us": "4.4"
+          },
+          "1": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "4.4",
+            "writeback_us": "49.3",
+            "writeback_draw_us": "48.9",
+            "bind_us": "3.9"
+          },
+          "2": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "2.6",
+            "writeback_us": "59.3",
+            "writeback_draw_us": "58.6",
+            "bind_us": "4.4"
+          },
+          "3": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "3.4",
+            "writeback_us": "37.7",
+            "writeback_draw_us": "37.2",
+            "bind_us": "2.8"
+          },
+          "4": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "2.8",
+            "writeback_us": "197.5",
+            "writeback_draw_us": "196.8",
+            "bind_us": "5.9"
+          },
+          "5": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "4.4",
+            "writeback_us": "65.9",
+            "writeback_draw_us": "65.2",
+            "bind_us": "5.2"
+          },
+          "6": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "3.2",
+            "writeback_us": "58.9",
+            "writeback_draw_us": "58.3",
+            "bind_us": "4.0"
+          },
+          "7": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "5.1",
+            "writeback_us": "72.4",
+            "writeback_draw_us": "71.5",
+            "bind_us": "4.9"
+          },
+          "8": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "4.3",
+            "writeback_us": "56.8",
+            "writeback_draw_us": "56.1",
+            "bind_us": "3.1"
+          }
+        },
+        "readbacks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "taa": false
+      },
+      "depth_readbacks": {
+        "1": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "2": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "3": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "4": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "5": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "6": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "7": {
+          "written": 171,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "8": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.6000000238418579
+        }
+      },
+      "variants": 4,
+      "frames_logged": 9,
+      "readbacks": 8,
+      "routes": 19,
+      "render_state": {
+        "0": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "1": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "2": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "3": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "4": {
+          "queries": 23,
+          "hits": 23,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "5": {
+          "queries": 26,
+          "hits": 26,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "6": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "7": {
+          "queries": 12,
+          "hits": 2,
+          "gets": 24,
+          "resyncs": 2
+        },
+        "8": {
+          "queries": 18,
+          "hits": 10,
+          "gets": 22,
+          "resyncs": 1
+        }
+      },
+      "route_decisions": [
+        [
+          "1",
+          "2",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "1",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "2",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "2",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "3",
+          "2",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "3",
+          "3",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "4",
+          "2",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "4",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "4",
+          "4",
+          "4",
+          "0",
+          "0"
+        ],
+        [
+          "4",
+          "5",
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "5",
+          "2",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "5",
+          "3",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "5",
+          "4",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "6",
+          "2",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "6",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "7",
+          "2",
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "7",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "8",
+          "2",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "8",
+          "3",
+          "0",
+          "1",
+          "1"
+        ]
+      ],
+      "variant": "ownership",
+      "ownership": {
+        "wrapped": true,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        },
+        "source_epochs": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0,
+          "6": 0,
+          "7": 0,
+          "8": 0
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-hdr-on-20260912-132235-747838",
+      "trace_sha256": "ea567761a086eb9e83eae8a683de60a19402cfd5a5bea0e97f54ba824ffe7555",
+      "dll_sha256": "39a272b6800312ff576d160ff74fbb1065c5a41755a37e616ba5569ac648a125",
+      "exe_sha256": "37ad4136a352a973f60cf692e8ce7b37a3e04120690e25d7cc514516a9169209"
+    },
+    "production-taa-hdr-on": {
+      "mode": "production",
+      "enabled": true,
+      "jitter": true,
+      "taa": true,
+      "lazy": false,
+      "checks": 83,
+      "restorations": 51,
+      "frames": 12,
+      "color_hashes": {
+        "0": "09b9a50ebcf9538f",
+        "1": "916607954e2e2aa8",
+        "2": "cbbe10a82443dd3c",
+        "3": "f16b3011e2e85311",
+        "4": "811f87dcea2f283c",
+        "5": "fb904e3f7d34b8f5",
+        "6": "17354085eb8ee595",
+        "7": "1306f5f85e0f7d92",
+        "8": "b43d0ddc3cfd4170",
+        "9": "f3ab4ac4f88e2e5b",
+        "10": "5cbcad605dd5790c",
+        "11": "216eb963bad3253d"
+      },
+      "motion_pixels": 0,
+      "matched_pixels": 0,
+      "max_uv_error_pixels": 0.0,
+      "max_previous_depth_error": 0.0,
+      "depth_pixels": 0,
+      "depth_written_pixels": 0,
+      "max_current_depth_error": 0.0,
+      "coverage_frames": 12,
+      "coverage_pixels": 48957,
+      "coverage_ambiguous_pixels": 195,
+      "taa_history_frames": [],
+      "camera_policy": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1
+      },
+      "taa_changed_pixels": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+        "6": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0,
+        "10": 0,
+        "11": 0
+      },
+      "color_hashes_before_boundary": {
+        "0": "09b9a50ebcf9538f",
+        "1": "916607954e2e2aa8",
+        "2": "cbbe10a82443dd3c",
+        "3": "f16b3011e2e85311",
+        "4": "811f87dcea2f283c",
+        "5": "fb904e3f7d34b8f5",
+        "6": "17354085eb8ee595",
+        "7": "1306f5f85e0f7d92",
+        "8": "b43d0ddc3cfd4170",
+        "9": "f3ab4ac4f88e2e5b",
+        "10": "5cbcad605dd5790c",
+        "11": "216eb963bad3253d"
+      },
+      "hdr": {
+        "enabled": true,
+        "device": {
+          "reason": "ok",
+          "fp16_target": "00000000",
+          "fp16_blending": "00000000",
+          "fp16_filter": "00000000",
+          "fp16_sampling": "00000000",
+          "stretch_conversion": "00000000",
+          "mrt_blending": "1",
+          "self_test_targets": "3"
+        },
+        "targets": [
+          [
+            64,
+            64,
+            32768
+          ],
+          [
+            64,
+            64,
+            32768
+          ]
+        ],
+        "frames": {
+          "0": {
+            "redirected": "1",
+            "end": "bloom_copy",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "5.6",
+            "writeback_us": "216.7",
+            "writeback_draw_us": "45.8",
+            "bind_us": "3.6"
+          },
+          "1": {
+            "redirected": "1",
+            "end": "bloom_copy",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "6.1",
+            "writeback_us": "39.5",
+            "writeback_draw_us": "38.3",
+            "bind_us": "2.1"
+          },
+          "2": {
+            "redirected": "1",
+            "end": "bloom_copy",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "3.4",
+            "writeback_us": "32.2",
+            "writeback_draw_us": "31.7",
+            "bind_us": "2.5"
+          },
+          "3": {
+            "redirected": "1",
+            "end": "bloom_copy",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "5.6",
+            "writeback_us": "38.6",
+            "writeback_draw_us": "38.1",
+            "bind_us": "2.0"
+          },
+          "4": {
+            "redirected": "1",
+            "end": "bloom_copy",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "2.5",
+            "writeback_us": "98.9",
+            "writeback_draw_us": "98.0",
+            "bind_us": "3.0"
+          },
+          "5": {
+            "redirected": "1",
+            "end": "bloom_copy",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "5.5",
+            "writeback_us": "48.2",
+            "writeback_draw_us": "47.4",
+            "bind_us": "2.1"
+          },
+          "6": {
+            "redirected": "1",
+            "end": "bloom_copy",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "2.0",
+            "writeback_us": "64.3",
+            "writeback_draw_us": "63.7",
+            "bind_us": "3.2"
+          },
+          "7": {
+            "redirected": "1",
+            "end": "bloom_copy",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "3.8",
+            "writeback_us": "55.1",
+            "writeback_draw_us": "54.2",
+            "bind_us": "2.1"
+          },
+          "8": {
+            "redirected": "1",
+            "end": "bloom_copy",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "2.7",
+            "writeback_us": "45.7",
+            "writeback_draw_us": "44.9",
+            "bind_us": "1.8"
+          }
+        },
+        "readbacks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "taa": true
+      },
+      "depth_readbacks": {
+        "1": {
+          "written": 2660,
+          "min": 0.4877398908138275,
+          "max": 0.6000000238418579
+        },
+        "2": {
+          "written": 2683,
+          "min": 0.4888249635696411,
+          "max": 0.6000000238418579
+        },
+        "3": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "4": {
+          "written": 2677,
+          "min": 0.4885537326335907,
+          "max": 0.6000000238418579
+        },
+        "5": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "6": {
+          "written": 2616,
+          "min": 0.4890962541103363,
+          "max": 0.6000000238418579
+        },
+        "7": {
+          "written": 190,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "8": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.6000000238418579
+        }
+      },
+      "camera_log": {
+        "0": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "1": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "2": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "3": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "4": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "5": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "6": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "7": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        },
+        "8": {
+          "policy": 1,
+          "reason": 2,
+          "cut": 0,
+          "rotation_deg": 0.0
+        }
+      },
+      "taa_image": {
+        "differing_fraction": {
+          "1": 0.0,
+          "2": 0.0,
+          "3": 0.0,
+          "4": 0.0,
+          "5": 0.0,
+          "6": 0.0,
+          "7": 0.0,
+          "8": 0.0
+        },
+        "max_difference": {
+          "1": 0.00023360906862746056,
+          "2": 0.00023360906862746056,
+          "3": 0.00023360906862746056,
+          "4": 0.0004844515931372584,
+          "5": 0.00023360906862746056,
+          "6": 0.00023360906862746056,
+          "7": 0.0004844515931372584,
+          "8": 0.00023360906862746056
+        }
+      },
+      "variants": 4,
+      "frames_logged": 9,
+      "readbacks": 8,
+      "routes": 19,
+      "render_state": {
+        "0": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "1": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "2": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "3": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "4": {
+          "queries": 23,
+          "hits": 23,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "5": {
+          "queries": 26,
+          "hits": 26,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "6": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "7": {
+          "queries": 12,
+          "hits": 2,
+          "gets": 24,
+          "resyncs": 2
+        },
+        "8": {
+          "queries": 18,
+          "hits": 10,
+          "gets": 22,
+          "resyncs": 1
+        }
+      },
+      "route_decisions": [
+        [
+          "1",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "1",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "2",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "2",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "3",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "3",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "4",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "4",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "4",
+          "4",
+          "4",
+          "0",
+          "0"
+        ],
+        [
+          "4",
+          "5",
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "5",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "5",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "5",
+          "4",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "6",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "6",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "7",
+          "2",
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "7",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "8",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "8",
+          "3",
+          "5",
+          "1",
+          "0"
+        ]
+      ],
+      "variant": "plain",
+      "ownership": {
+        "wrapped": false,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-production-taa-hdr-on-20260912-132237-454732",
+      "trace_sha256": "54b94a61a04edd6a76d90c9ba1a26110636d894cc623d3c80ab46c8c5943673b",
+      "dll_sha256": "201d3474ba49a6bca5e08657546067badb9fe60c2095f7e9eb1debfdbea3fa5b",
+      "exe_sha256": "37ad4136a352a973f60cf692e8ce7b37a3e04120690e25d7cc514516a9169209"
+    },
+    "seam-taa-envmap-hdr": {
+      "mode": "envmap",
+      "frames": 5,
+      "checks": 67,
+      "restorations": 18,
+      "rejected_frames": [
+        1,
+        3
+      ],
+      "routed_per_frame": {
+        "0": 2,
+        "1": 0,
+        "2": 2,
+        "3": 0,
+        "4": 2
+      },
+      "camera_valid_per_frame": {
+        "0": 1,
+        "1": 0,
+        "2": 1,
+        "3": 0,
+        "4": 1
+      },
+      "color_hashes": {
+        "0": "09b9a50ebcf9538f",
+        "1": "da4a5167b34ce4a4",
+        "2": "88939f8dca6660f9",
+        "3": "8b2e5709a9312512",
+        "4": "f16b3011e2e85311"
+      },
+      "hdr": {
+        "enabled": true,
+        "device": {
+          "reason": "ok",
+          "fp16_target": "00000000",
+          "fp16_blending": "00000000",
+          "fp16_filter": "00000000",
+          "fp16_sampling": "00000000",
+          "stretch_conversion": "00000000",
+          "mrt_blending": "1",
+          "self_test_targets": "3"
+        },
+        "targets": [
+          [
+            64,
+            64,
+            32768
+          ]
+        ],
+        "frames": {
+          "0": {
+            "redirected": "1",
+            "end": "bloom_copy",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "9.0",
+            "writeback_us": "4775.0",
+            "writeback_draw_us": "4673.1",
+            "bind_us": "3.3"
+          },
+          "1": {
+            "redirected": "1",
+            "end": "present",
+            "writebacks": "2",
+            "flushes": "2",
+            "writeback_source": "shader",
+            "suspended": "1",
+            "resumed": "1",
+            "redirect_us": "7.2",
+            "writeback_us": "2406.6",
+            "writeback_draw_us": "2405.0",
+            "bind_us": "3.1"
+          },
+          "2": {
+            "redirected": "1",
+            "end": "bloom_copy",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "1.1",
+            "writeback_us": "35.5",
+            "writeback_draw_us": "35.0",
+            "bind_us": "2.7"
+          },
+          "3": {
+            "redirected": "0",
+            "end": "none",
+            "writebacks": "0",
+            "flushes": "0",
+            "writeback_source": "none",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "0.0",
+            "writeback_us": "0.0",
+            "writeback_draw_us": "0.0",
+            "bind_us": "0.0"
+          },
+          "4": {
+            "redirected": "1",
+            "end": "bloom_copy",
+            "writebacks": "1",
+            "flushes": "1",
+            "writeback_source": "shader",
+            "suspended": "0",
+            "resumed": "0",
+            "redirect_us": "2.4",
+            "writeback_us": "36.0",
+            "writeback_draw_us": "35.1",
+            "bind_us": "2.8"
+          }
+        },
+        "readbacks": [
+          1,
+          2,
+          4
+        ],
+        "taa": true
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-taa-envmap-hdr-20260912-132239-364840",
+      "trace_sha256": "981b0c77fbe1d1bdf5e586be9c56b88cde7fd7e6b49cd39b4173f4ebea047d12",
+      "dll_sha256": "39a272b6800312ff576d160ff74fbb1065c5a41755a37e616ba5569ac648a125",
+      "exe_sha256": "37ad4136a352a973f60cf692e8ce7b37a3e04120690e25d7cc514516a9169209"
+    },
+    "seam-hdr-caps-absent": {
+      "mode": "seam",
+      "enabled": true,
+      "jitter": false,
+      "taa": false,
+      "lazy": false,
+      "checks": 103,
+      "restorations": 39,
+      "frames": 12,
+      "color_hashes": {
+        "0": "86eb44945a50eb49",
+        "1": "8b2e5709a9312512",
+        "2": "8b2e5709a9312512",
+        "3": "86eb44945a50eb49",
+        "4": "cf2e37fae83fa592",
+        "5": "86eb44945a50eb49",
+        "6": "8b2e5709a9312512",
+        "7": "ddc0712e50d28304",
+        "8": "e975537fa974ffaf",
+        "9": "f138e92c0090e990",
+        "10": "e975537fa974ffaf",
+        "11": "f138e92c0090e990"
+      },
+      "motion_pixels": 44284,
+      "matched_pixels": 10261,
+      "max_uv_error_pixels": 0.00156247616,
+      "max_previous_depth_error": 3.69792081e-08,
+      "depth_pixels": 44284,
+      "depth_written_pixels": 27170,
+      "max_current_depth_error": 3.69455019e-06,
+      "coverage_frames": 12,
+      "coverage_pixels": 48242,
+      "coverage_ambiguous_pixels": 910,
+      "hdr": {
+        "enabled": false,
+        "reason": "fp16_target",
+        "device": {
+          "device": "1",
+          "enabled": "0",
+          "reason": "fp16_target",
+          "fp16_target": "80004005",
+          "fp16_blending": "00000000",
+          "fp16_filter": "00000000",
+          "fp16_sampling": "00000000",
+          "stretch_conversion": "00000000",
+          "mrt_blending": "1",
+          "self_test_targets": "0",
+          "self_test": "-",
+          "route": "1",
+          "depth": "1"
+        }
+      },
+      "depth_readbacks": {
+        "1": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "2": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "3": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "4": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "5": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "6": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "7": {
+          "written": 171,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "8": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.6000000238418579
+        }
+      },
+      "variants": 4,
+      "frames_logged": 9,
+      "readbacks": 8,
+      "routes": 19,
+      "render_state": {
+        "0": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "1": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "2": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "3": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "4": {
+          "queries": 23,
+          "hits": 23,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "5": {
+          "queries": 26,
+          "hits": 26,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "6": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "7": {
+          "queries": 12,
+          "hits": 2,
+          "gets": 24,
+          "resyncs": 2
+        },
+        "8": {
+          "queries": 18,
+          "hits": 10,
+          "gets": 22,
+          "resyncs": 1
+        }
+      },
+      "route_decisions": [
+        [
+          "1",
+          "2",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "1",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "2",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "2",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "3",
+          "2",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "3",
+          "3",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "4",
+          "2",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "4",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "4",
+          "4",
+          "4",
+          "0",
+          "0"
+        ],
+        [
+          "4",
+          "5",
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "5",
+          "2",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "5",
+          "3",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "5",
+          "4",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "6",
+          "2",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "6",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "7",
+          "2",
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "7",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "8",
+          "2",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "8",
+          "3",
+          "0",
+          "1",
+          "1"
+        ]
+      ],
+      "variant": "plain",
+      "ownership": {
+        "wrapped": false,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-hdr-caps-absent-20260912-132241-241886",
+      "trace_sha256": "b583a1d32f879477b2f3a060673e94302bb2dcc748a2afc10338b806c301cc67",
+      "dll_sha256": "39a272b6800312ff576d160ff74fbb1065c5a41755a37e616ba5569ac648a125",
+      "exe_sha256": "37ad4136a352a973f60cf692e8ce7b37a3e04120690e25d7cc514516a9169209"
+    },
+    "seam-hdr-selftest-absent": {
+      "mode": "seam",
+      "enabled": true,
+      "jitter": false,
+      "taa": false,
+      "lazy": false,
+      "checks": 103,
+      "restorations": 39,
+      "frames": 12,
+      "color_hashes": {
+        "0": "86eb44945a50eb49",
+        "1": "8b2e5709a9312512",
+        "2": "8b2e5709a9312512",
+        "3": "86eb44945a50eb49",
+        "4": "cf2e37fae83fa592",
+        "5": "86eb44945a50eb49",
+        "6": "8b2e5709a9312512",
+        "7": "ddc0712e50d28304",
+        "8": "e975537fa974ffaf",
+        "9": "f138e92c0090e990",
+        "10": "e975537fa974ffaf",
+        "11": "f138e92c0090e990"
+      },
+      "motion_pixels": 44284,
+      "matched_pixels": 10261,
+      "max_uv_error_pixels": 0.00156247616,
+      "max_previous_depth_error": 3.69792081e-08,
+      "depth_pixels": 44284,
+      "depth_written_pixels": 27170,
+      "max_current_depth_error": 3.69455019e-06,
+      "coverage_frames": 12,
+      "coverage_pixels": 48242,
+      "coverage_ambiguous_pixels": 910,
+      "hdr": {
+        "enabled": false,
+        "reason": "self_test",
+        "device": {
+          "device": "1",
+          "enabled": "0",
+          "reason": "self_test",
+          "fp16_target": "00000000",
+          "fp16_blending": "00000000",
+          "fp16_filter": "00000000",
+          "fp16_sampling": "00000000",
+          "stretch_conversion": "00000000",
+          "mrt_blending": "1",
+          "self_test_targets": "3",
+          "self_test": "stage=compare",
+          "result": "00000000",
+          "draw": "00000000",
+          "blend": "00000000",
+          "copy": "00000000",
+          "restore": "00000000",
+          "copy_restore": "00000000",
+          "scene": "00000000",
+          "scene_errors": "0",
+          "sum_errors": "0",
+          "motion_errors": "0",
+          "depth_errors": "0",
+          "copy_errors": "0",
+          "targets": "3",
+          "route": "1",
+          "depth": "1"
+        }
+      },
+      "depth_readbacks": {
+        "1": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "2": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "3": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "4": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "5": {
+          "written": 2731,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "6": {
+          "written": 2680,
+          "min": 0.48828235268592834,
+          "max": 0.6000000238418579
+        },
+        "7": {
+          "written": 171,
+          "min": 0.5,
+          "max": 0.5
+        },
+        "8": {
+          "written": 2750,
+          "min": 0.5,
+          "max": 0.6000000238418579
+        }
+      },
+      "variants": 4,
+      "frames_logged": 9,
+      "readbacks": 8,
+      "routes": 19,
+      "render_state": {
+        "0": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "1": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "2": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "3": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "4": {
+          "queries": 23,
+          "hits": 23,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "5": {
+          "queries": 26,
+          "hits": 26,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "6": {
+          "queries": 18,
+          "hits": 18,
+          "gets": 14,
+          "resyncs": 0
+        },
+        "7": {
+          "queries": 12,
+          "hits": 2,
+          "gets": 24,
+          "resyncs": 2
+        },
+        "8": {
+          "queries": 18,
+          "hits": 10,
+          "gets": 22,
+          "resyncs": 1
+        }
+      },
+      "route_decisions": [
+        [
+          "1",
+          "2",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "1",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "2",
+          "2",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "2",
+          "3",
+          "5",
+          "1",
+          "0"
+        ],
+        [
+          "3",
+          "2",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "3",
+          "3",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "4",
+          "2",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "4",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "4",
+          "4",
+          "4",
+          "0",
+          "0"
+        ],
+        [
+          "4",
+          "5",
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "5",
+          "2",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "5",
+          "3",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "5",
+          "4",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "6",
+          "2",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "6",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "7",
+          "2",
+          "3",
+          "0",
+          "0"
+        ],
+        [
+          "7",
+          "3",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "8",
+          "2",
+          "6",
+          "1",
+          "0"
+        ],
+        [
+          "8",
+          "3",
+          "0",
+          "1",
+          "1"
+        ]
+      ],
+      "variant": "plain",
+      "ownership": {
+        "wrapped": false,
+        "depth_copy": false,
+        "admission": {
+          "enabled": false,
+          "final_factories": 1,
+          "final_devices": 1,
+          "nested_factory_witnesses": 0,
+          "admitted_roots": 0,
+          "promotions": 0,
+          "final_vetoes": 0
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-hdr-selftest-absent-20260912-132243-122845",
+      "trace_sha256": "7b0ea8d07b727eff5dc003e2e056dea0bea3b4b68eb200f16ec6f7a1ba9c8a5f",
+      "dll_sha256": "39a272b6800312ff576d160ff74fbb1065c5a41755a37e616ba5569ac648a125",
+      "exe_sha256": "37ad4136a352a973f60cf692e8ce7b37a3e04120690e25d7cc514516a9169209"
+    }
+  },
+  "local_inputs": {
+    "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+    "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
+  },
+  "sources_before_build": {
+    "CMakeLists.txt": "46b926e16513a9300fa6f170e1d8540c06b6c4f05ab3b3f092c8a75c2b3ecfaa",
+    "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+    "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
+    "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+    "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+    "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+    "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+    "src/proxy/camera_state.cpp": "393ebb75ccf89b6012329199c465dce9bf806980e7a1e4a77e1b1ea17e5dc3e3",
+    "src/proxy/camera_state.h": "b3d6c32f0f2258aebb3606280bae2e3f6d3f2c7a6708b4ebd000db010bbc9b3d",
+    "src/proxy/capture.cpp": "2209816dadbd5986c99a8f109c422b5842b95e355a7851f67fc346ff185efaa9",
+    "src/proxy/capture.h": "e573832e0771ad93c76d58dfc8ddc9b33aec5c7db5d4a6ca526797bb5736cf31",
+    "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
+    "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
+    "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
+    "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
+    "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
+    "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
+    "src/proxy/loader.cpp": "f07c790f9fdcdc7cdc5f78657bbea8ef5f3d2c9208548ffb70819b156267e145",
+    "src/proxy/loading_trace.cpp": "89fc26125e85b458ebe4e5a9dd440799f2a9af14ddd0bcfeb71eb626e69c4e87",
+    "src/proxy/loading_trace.h": "b4da3176c9852f3c9628c9a0d096400527d858360dcecae2d8a83a24a79032b0",
+    "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+    "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+    "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
+    "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
+    "src/proxy/motion_output.cpp": "1760ef7812424173b3c0ac8c9c0c32838f693978dbd42bcce4c833b580290c4d",
+    "src/proxy/motion_output.h": "2ee2bc7b79c72958e4ae57382620064df489bc58c58653b9c9c3137aff50b1f3",
+    "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+    "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+    "src/proxy/object_trace.cpp": "24500df408d5bfcabf80ba1760805820777aabce9b198af25462980a4797c712",
+    "src/proxy/object_trace.h": "968e7d0ca478a73d65a41b0bf86d60515c18c69c34ed476f493d3cb649634bc9",
+    "src/proxy/sampling_profiler.cpp": "a58979029c532538265e0aacf3a03e3cbb4bd88db2cd6833b53d460afbf4ea2d",
+    "src/proxy/sampling_profiler.h": "4dd65e4adce63b06eb8342b023403a8eba627aa355d53af26701f90588463d6f",
+    "src/proxy/scene_capture.cpp": "a91007b084984bd0b27f2827b2b4c3e06e5c54cf10fe1fd1002e6920bc061712",
+    "src/proxy/scene_capture.h": "26f04fb5fe2de7636e547424d40b00e5edf95d395e32a468343dd65f00030183",
+    "src/proxy/scene_hook.cpp": "e41841be429f8b7fe8196ae368b3566fb8a8e869d15295c1c783d196d4f90f14",
+    "src/proxy/scene_hook.h": "67980b23d034e1b946cae1ee2d07752e816b707881f7a86af866e166a45f318e",
+    "src/proxy/telemetry.cpp": "3ff0047799fc8f9c02bce2cd6bbda65c93630981e6a9f9016b88b45630c60ee7",
+    "src/proxy/telemetry.h": "24d6f9ab2680cf0fbfa38eb927e55762cc4524c6994f8583f237426ae390e7a8",
+    "src/renderer/camera_reprojection.h": "455c2ea1288fc29079c59bff356d0561c2168b03f8639a7e58aa53ffa9727d9b",
+    "src/renderer/current_depth_pixel_program.h": "fd8ebaaf7ea379cfcda1423170e15fbe8a23347cbec5dba62f9e7b444c8b8553",
+    "src/renderer/current_depth_pixel_program_inc.h": "3ca1fc61affdc38b5e67ffe9302c27997df47de377b6a874f497927c35ab4311",
+    "src/renderer/hdr_pass.cpp": "a9a242ccec9777703b1653e7b16cdee274f4f8fa43ceb3af663c23be34d2cd33",
+    "src/renderer/hdr_pass.h": "95510596b85976de7bb16ffa6562499e760b54b9bc4f06b22083a613de0dba48",
+    "src/renderer/hdr_writeback_program.h": "c23f06aa2ba78bda2b804387cd53729d6f7658688954aacbea68d955c3ff7c25",
+    "src/renderer/hdr_writeback_program_inc.h": "1719c1d7ba85da6cfa12f5662d6d4c33522a45c7fdb7cc1fcd2ae7f2fafb4146",
+    "src/renderer/material_motion.cpp": "1a0f10a2aa6857b81475eaf2047960283c65c92c8a52b5ba196a8eeb5208dddb",
+    "src/renderer/material_motion.h": "93f0123a6a691ac2f7539f19d86b8a4c95b2db35b004643c2469b4d657370e41",
+    "src/renderer/material_radiance.cpp": "eb94856002a93d66b0e26aba98e4a44b683a458c384941e991d0164603cdeada",
+    "src/renderer/material_radiance.h": "a0df98c526cdd2ed5146ff460abe0c0f2a8ff46e9e95dcaed38336e372f6a3dc",
+    "src/renderer/material_radiance_profiles_inc.h": "1c0bc9af732a4d6faddfde90dd5a6d63b32cb0aa3aec85c09c4e4714307ec3b3",
+    "src/renderer/motion_history.cpp": "a8c6351ba47247a736de77e0ee104a163e626231f763f4c969375a2af18f3c9d",
+    "src/renderer/motion_history.h": "c5dc2e37548a16355ac073f01b57f47b549f1ab861b06497cda3fc43ac5a5568",
+    "src/renderer/motion_output_profiles.h": "2edaf43b60c052fd247ed15cc7dbc846e25c09c1f462d4acbb749f3a16d0c66e",
+    "src/renderer/motion_output_profiles_inc.h": "f5e3f000f363836b18e396b2360a040be78c36f87b22dae99d9ff4c8351a402e",
+    "src/renderer/motion_row_history.cpp": "f531fb35a46c755e0293748308fc6661e76b038b86999d73941a1d021c21d7fc",
+    "src/renderer/motion_row_history.h": "33fdf843864926fe71aa19c47007fcaa1f3b74abbf8e8b03b57f140c394d7d9b",
+    "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
+    "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
+    "src/renderer/rigid_motion.cpp": "a2ab93ead655a6cde523422b899d15a70afd493af5bb6ef84c9f69e47502b347",
+    "src/renderer/rigid_motion.h": "935fe54387bf1e62f0b04dabc291152b8508f8b6c25138a4a15e93b0f6b136ba",
+    "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+    "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+    "src/renderer/rigid_position.cpp": "2cf2595243b733190bd4e5313a37f21a9f90503c5ead9d18a42ed80318139b49",
+    "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
+    "src/renderer/rigid_position_profiles_inc.h": "e9a684f940b8ec461e736989e4e0dd75d09086b620eb00ed454193e57cf43a67",
+    "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
+    "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
+    "src/renderer/scene_boundary.h": "6d2504e4b568e6fc0d24d2bd6a0d9437a5ccd54fe9e003905dfb46535256303e",
+    "src/renderer/temporal_pass.cpp": "40047c19f605e9b009fc82e9ba0a75bce0895d7227f6b71a24b24ad1b3e01e46",
+    "src/renderer/temporal_pass.h": "5b686cd56dd2a5159fe56d63d5bd54a8da170d0eb11874fa7be8d7197eb0c5a9",
+    "src/renderer/temporal_resolve_program.h": "1001b182ae52ad2b212ce567790224e4971146892952895c79807cbd4ebaa103",
+    "src/renderer/temporal_resolve_program_inc.h": "db25e1f12aeac8a6b9c5c5ac8f6692d55c55b03d68953a24620f633d2e46b4fd",
+    "src/temporal/agx.h": "8069eac9abb065e2948d5dbcb83b7be29bc8e2272877c15153efbb95a21d2d80",
+    "src/temporal/agx.hlsl": "beb3cb08bd35a661e1fda191b8a74d1505f8eab379a0fcff1e5d6bd122a49139",
+    "src/temporal/current_depth_ps.hlsl": "e58fdb561b1f1cf32b04339e0d3d47e014f9e1f00989eba98d04ea262bed27e5",
+    "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
+    "src/temporal/hdr_writeback_ps.hlsl": "94d43598184cdaa0a2bbf8a2d16e640fb7eb5d63d2c7cde0e9efd99c3c782022",
+    "src/temporal/resolve.h": "c2ef21f3d21d43ce5b396d4cb03cc593715562df9b38a568f46abec734291ea3",
+    "src/temporal/resolve.hlsl": "ca73a7e28acf8fa873ec6e90b0f0c0a1313b5bfb8f4e26bef1698862f9ba6fc9",
+    "src/temporal/rigid_motion_ps.hlsl": "9fad8bc470ca04dfa164da929c0343c14d3656cf6d7ba781643d8c55e8e66539",
+    "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
+    "verification/probe/abi_check.cpp": "2a513bd733c43a9b4a5149fd3e16d410f8b71d96bec35cdd832b92e892e3ab31",
+    "verification/probe/build_motion_output.sh": "52edae399deda035c8e3f66133717386cc83b2bbfba739992251b5107ff55a7f",
+    "verification/probe/motion_output_fixture.cpp": "872296dcd3346411d206003c78ac262a781b166c3c27baddafd23bcc14f9a465",
+    "verification/probe/run_motion_output.py": "78f4b80586ce7876d21f9f37cb0f5938d9caff4b584786175ad69a756496610d"
+  },
+  "build_commands": [
+    [
+      "cmake",
+      "-S",
+      ".",
+      "-B",
+      "build",
+      "-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake",
+      "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
+    ],
+    [
+      "cmake",
+      "--build",
+      "build",
+      "--clean-first",
+      "-j4"
+    ],
+    [
+      "i686-w64-mingw32-g++",
+      "-std=c++17",
+      "-Wall",
+      "-Wextra",
+      "-c",
+      "verification/probe/abi_check.cpp",
+      "-o",
+      "verification/probe/build/abi_check.o"
+    ],
+    [
+      "sh",
+      "verification/probe/build_motion_output.sh"
+    ]
+  ],
+  "binaries": {
+    "verification/probe/build/motion_output_fixture.exe": "37ad4136a352a973f60cf692e8ce7b37a3e04120690e25d7cc514516a9169209",
+    "verification/probe/build/motion-output-seam/d3d9.dll": "39a272b6800312ff576d160ff74fbb1065c5a41755a37e616ba5569ac648a125",
+    "build/d3d9.dll": "201d3474ba49a6bca5e08657546067badb9fe60c2095f7e9eb1debfdbea3fa5b"
+  },
+  "bench": {
+    "bench-1280x768-hdr-on-taa-off": {
+      "mode": "bench",
+      "taa": false,
+      "hdr": true,
+      "width": 1280,
+      "height": 768,
+      "frames_timed": 20,
+      "boundary_ms": {
+        "min": 0.3887,
+        "median": 0.4255,
+        "max": 0.7992
+      },
+      "samples_ms": [
+        1.9621,
+        0.8658,
+        0.8195,
+        0.8407,
+        0.7992,
+        0.4231,
+        0.4189,
+        0.4381,
+        0.4247,
+        0.4255,
+        0.4455,
+        0.4281,
+        0.3996,
+        0.4212,
+        0.529,
+        0.3887,
+        0.4105,
+        0.4024,
+        0.5788,
+        0.4664,
+        0.4522,
+        0.4322,
+        0.4017,
+        0.4037
+      ],
+      "timing": "cpu_inclusive_event_synchronized",
+      "hdr_frame0": {
+        "end": "bloom_copy",
+        "writebacks": "1",
+        "flushes": "0",
+        "writeback_source": "shader",
+        "target": "1280x768",
+        "target_bytes": "7864320",
+        "redirect_us": "5.8",
+        "writeback_us": "173.1",
+        "writeback_draw_us": "87.4"
+      },
+      "target_bytes": 7864320,
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-bench-1280x768-hdr-on-taa-off-20260912-132244-804715",
+      "trace_sha256": "6ea432d1b943a3b9fb449d884958d33e9598ec4bc00c99177689a80da1b6595f"
+    },
+    "bench-1280x768-hdr-on-taa-on": {
+      "mode": "bench",
+      "taa": true,
+      "hdr": true,
+      "width": 1280,
+      "height": 768,
+      "frames_timed": 20,
+      "boundary_ms": {
+        "min": 0.7373,
+        "median": 0.8348,
+        "max": 1.1821
+      },
+      "samples_ms": [
+        26.8574,
+        1.6801,
+        1.1949,
+        1.2438,
+        1.1821,
+        1.1285,
+        0.7738,
+        1.1196,
+        0.7709,
+        0.9301,
+        0.7502,
+        0.7669,
+        0.7528,
+        0.7887,
+        0.8514,
+        0.9916,
+        0.7534,
+        0.7373,
+        0.8585,
+        0.8639,
+        0.7703,
+        0.7483,
+        0.8348,
+        0.9069
+      ],
+      "timing": "cpu_inclusive_event_synchronized",
+      "hdr_frame0": {
+        "end": "bloom_copy",
+        "writebacks": "1",
+        "flushes": "0",
+        "writeback_source": "shader",
+        "target": "1280x768",
+        "target_bytes": "7864320",
+        "redirect_us": "5.8",
+        "writeback_us": "146.3",
+        "writeback_draw_us": "75.1"
+      },
+      "target_bytes": 7864320,
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-bench-1280x768-hdr-on-taa-on-20260912-132246-382659",
+      "trace_sha256": "162af8bcf80fd54a3f8092ac8aebe78e9a439b63d51a519edf8611fa480853a6"
+    }
+  }
+}

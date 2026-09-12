@@ -197,9 +197,10 @@ TAA run is user-managed.
 | `src/proxy/capture.cpp` | Hook installation, state block and query wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT`, `X3M_MOTION_JITTER[_SAMPLES]`, `X3M_MOTION_CUT_*`, `X3M_TAA`, `X3M_TAA_DEBUG`, `X3M_MOTION_RT_MODE`, `X3M_MOTION_FRAME_LOG` and `X3M_STATE_SHADOW` parsing; the lazy mode's restore points and `GetRenderTarget`/`GetRenderTargetData`/`GetRenderState` hooks; the light `SetRenderState` hook feeding the render-state shadow; `scene_end_signal`, the engine hook's listener |
 | `src/proxy/scene_hook.{h,cpp}` | Engine scene-end boundary (`X3M_SCENE_HOOK=1`): the five-byte callsite patch of `CALL 0x004c4750` at `0x004721b1` behind the exact-executable gate, its trampoline and restore; fixture seam for the runner's own callsite (section "Engine boundaries and state shadow") |
 | `src/renderer/temporal_pass.{h,cpp}` + `temporal_resolve_program{,_inc}.h` | The resolve the route runs (native-slot calls, cached state block) and its embedded `ps_3_0` bytecode |
+| `src/renderer/hdr_pass.{h,cpp}` + `hdr_writeback_program{,_inc}.h` | FP16 HDR scene path, stage 1 (`X3M_HDR=1`): the owned `A16B16G16R16F` RT0, the capability gate and four-format self test, the identity write-back ladder; the route decides when to redirect, flush and end ([hdr-scene-path.md](hdr-scene-path.md), "Stage 1 implementation") |
 | `src/proxy/scene_capture.{h,cpp}` | `describe_surface` shared with the route |
 | `src/proxy/camera_state.{h,cpp}` + `src/renderer/camera_reprojection.h` | Live engine camera read at the selector's Clear events behind the exact-executable gate (no patch), the far-plane `clip_to_previous` builder and the sentinel policy decision (`X3M_TAA_SENTINEL`, `X3M_CAMERA_CUT_DEG`, `X3M_CAMERA_LOG`); see [temporal-integration.md](temporal-integration.md#camera-reprojection-for-sentinel-pixels-2026-09-12) |
-| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug`, `--taa-sentinel auto|1|2`, `--camera-cut-deg`, `--camera-log`, `--state-shadow on|off`, `--scene-hook` |
+| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug`, `--taa-sentinel auto|1|2`, `--camera-cut-deg`, `--camera-log`, `--state-shadow on|off`, `--scene-hook`, `--hdr` |
 
 `X3M_MOTION_OUTPUT=1` enables the route. Without `X3M_OBJECT_TRACE=1` and
 `X3M_OBJECT_LIFETIME=1` gate 5 never passes and every eligible draw writes the
@@ -231,6 +232,14 @@ log it). The camera read needs the exact executable (the object-trace
 identity gate) and `X3M_TAA=1`; it patches nothing. `X3M_STATE_SHADOW=0`
 (default on, `--state-shadow off`) turns the render-state shadow off, so
 every per-draw state query is a native `GetRenderState` again (A/B only).
+`X3M_HDR=1` (default off, `--hdr`; requires `X3M_MOTION_OUTPUT=1`) redirects
+the scene into an owned `A16B16G16R16F` RT0 at the latching Clear and writes
+it back into the game's 8-bit main target with the stage-1 identity tonemap
+at the scene end (the engine hook, else the bloom copy; `EndScene` flushes,
+Present ends); every proxy consumer keeps seeing the application's logical
+RT0; fails closed on the capability gate and self test; the per-frame
+`hdr_frame` line and the `hdr_*` metrics report it
+([hdr-scene-path.md](hdr-scene-path.md), "Stage 1 implementation").
 `X3M_SCENE_HOOK=1` (default off, `--scene-hook`; requires
 `X3M_MOTION_OUTPUT=1`) patches the frame routine's compositing callsite so
 the route learns the scene end from the engine and, with `X3M_TAA=1`,
@@ -505,13 +514,14 @@ against the SDK layout in `verification/probe/abi_check.cpp`.
 | 118 | CreateQuery | query objects get a private vtable (slots 2 Release, 6 Issue) so the route counts queries between BEGIN and END; the resolve never draws while one is open (step 3) |
 | 57 | SetRenderState | render-state shadow (`X3M_STATE_SHADOW`, default on; light boundary) and, in lazy RT mode, the flush of a held write mask before the application's write (installed in lazy mode with the shadow off too) |
 | 58 | GetRenderState | lazy RT mode only: the application's read of a write mask restores the bindings first |
+| 38 / 32 | GetRenderTarget / GetRenderTargetData | lazy RT mode and `X3M_HDR`: the application's target getter answers with its logical RT0 while the FP16 target is bound (the logical-binding shim), a read of the main target's contents receives the pending FP16 content first |
 
 Native slots the route calls itself (never the hooked table): 1, 2, 6, 8, 9,
 23, 28, 32, 34, 36, 37, 38, 39, 40, 41, 42, 47, 48, 57, 58, 75, 76, 83, 87, 88,
 89, 90, 91, 92, 93, 94, 95, 97, 100, 101, 103, 105, 106, 107, 108, 109, 110; the
 release hook's reference-count probe and the route's pass accounting use
 native 1 and 2 (AddRef/Release). The pass adds 7, 59, 65, 69, 102 and 104
-through the same table.
+through the same table; the HDR pass adds 64, 66, 67 and 68.
 
 The hot setter hooks (shaders, the three constant setters, viewport, render state) use
 `LightCallBoundary` (MXCSR and last error only) with a plain lock: their own
@@ -580,6 +590,12 @@ COLORWRITEENABLE1/2) before and after each fill and each draw.
 - Final device Release: owned variants and target each hold a device reference,
   so the release hook probes the count and drops them first when only the
   caller's reference remains, preserving the application's zero return.
+- HDR write-back failure (`hdr_unwind=<reason>`): the ladder (shader copy,
+  `StretchRect`, binding restore) leaves the main target bound; the redirect
+  is blocked until the recovery self test passes at a later latch or a Reset.
+  A failed latching Clear rebinds without a write-back (`end=clear_failed`);
+  a Reset while redirected binds the main surface back before dropping the
+  FP16 target.
 
 ### Not covered
 

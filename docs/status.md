@@ -143,6 +143,34 @@ Evidence at this checkpoint (details in the linked documents):
   in stage 1. The game is a gamma-space renderer (no sRGB state observed on
   762 draws), so decoding is a documented approximation.
 
+- **FP16 HDR scene path, stage 1 ([design and implementation](architecture/hdr-scene-path.md),
+  [verification](verification/hdr-scene-path.md), [review 22](verification/review-22.md))**:
+  behind `X3M_HDR=1` (`--hdr`, default off) the route redirects the game's RT0
+  to an owned A16B16G16R16F target at the latching Clear (caps gate plus a 4×4
+  MRT and copy self test), keeps the game's depth and the motion/depth MRTs,
+  suspends the redirect across application render-target switches
+  (environment-map faces) and writes back through an identity tonemap at the
+  engine scene-end hook, else at the bloom copy, else at Present, with a
+  must-unwind ladder (shader copy → StretchRect → rebind). Fixture: presented
+  frames equal the non-HDR twins on 98.6–99.0% of pixels with at most one 8-bit
+  code of difference on unquantized material values (FP16 double rounding;
+  background, flat and alpha exact; a mid-value draw yields exact expected
+  codes); motion/depth readbacks byte-identical through the FP16 MRT; additive
+  2.0 + 8.0 draws hold 10.0 in the FP16 readback; five injected write-back
+  faults unwind with one log line each; Reset while active succeeds with zero
+  final device references. Boundary cost +0.05 ms at 1280×768, +0.44 ms at
+  5120×1440; target 7.9 MB / 59 MB. **No HDR output is visible yet**: stage 1
+  is an identity path. Review 22 fixed a missing RT0 rebind before Reset, a
+  write-back of an uncleared target after a failed Clear, MRT unbind order and
+  a hard-coded main format.
+- **Stage 2 preparation**: AgX reference (`tools/analysis/agx_reference.py`,
+  Wrensch's minimal AgX constants; mid-grey 0.18 → 0.497 display), exposure
+  model (`exposure_reference.py`), `src/temporal/agx.hlsl` + `agx.h` (constants
+  c8–c21), 32 tests; not compiled or wired.
+
+**Installed (2026-09-12, after review 22):** `build/d3d9.dll` from the HDR
+stage-1 checkpoint, SHA-256 `4f46feee7d9204bd7fbae55378d6e15fb0c2bfe81fddb7e4c64fa0ca84388a8d`, through `tools/manage.py install`.
+
 **Installed (2026-09-12, after review 21):** `build/d3d9.dll` from the
 engine-boundary checkpoint, SHA-256 `9cd7d7d85cac213edda739611f3f477e621d0b9513776fd44d403ca8f7545993`, through `tools/manage.py install`.
 
@@ -348,8 +376,9 @@ recover projection) so background and effects stop crawling when turning.
 4. Confirm the scene-end hook in gameplay (`--scene-hook` run: the
    `scene_end_check` and `draws_after_hook` distributions), then make it the
    default resolve point.
-5. Implement the [FP16 HDR scene path](architecture/hdr-scene-path.md) stage
-   by stage behind `X3M_HDR`; continue the roadmap.
+5. HDR stage 2 (AgX tonemap + exposure at the write-back), stage 3 (TAA on
+   HDR), stage 4 (radiance clamp removal), stage 5 (HDR bloom) per the
+   [design](architecture/hdr-scene-path.md); continue the roadmap.
 6. Loading-time gap and alt-tab cursor remain tracked.
 
 ## Replay/admission line (reference only, superseded 2026-09-12)

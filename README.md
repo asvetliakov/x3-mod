@@ -59,7 +59,11 @@ sentinel-only mode. `--taa` (env `X3M_TAA=1`, requires `--motion-output` with
 both history options, implies `--motion-jitter`) runs the temporal resolve at the game's pre-bloom
 copy and presents the resolved image; `--taa-debug` writes the resolved FP16
 image in capture frames. This is the first TAA that reaches the screen; it is
-verified synthetically, not yet in gameplay. See
+verified synthetically, not yet in gameplay. `--hdr` (env `X3M_HDR=1`,
+requires `--motion-output`) is stage 1 of the FP16 HDR scene path: the scene
+renders into an owned FP16 target and is written back with an identity
+tonemap, so the picture is unchanged (to within one 8-bit code) while the
+topology is exercised; no tonemapping, exposure or HDR output yet. See
 [live motion route](docs/architecture/live-motion-route.md),
 [temporal integration](docs/architecture/temporal-integration.md) and the exact
 gameplay commands in

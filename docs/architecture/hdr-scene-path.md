@@ -176,10 +176,16 @@ A/B is measured, not argued.
 
 **AgX.** Input Rec.709 scene-linear. The constants below are the "minimal AgX"
 form (Troy Sobotka's AgX as reduced in Benjamin Wrensch's *Minimal AgX
-Implementation*, also used by Godot 4.3 and Blender 4.x). They are reproduced
-from knowledge; the generator that emits the shader header must pin them against
-the cited source, as `tools/shaders/generate_rigid_motion_pixel.py` pins the
-motion and depth fragments.
+Implementation*, iolite-engine.com, MIT). Blender 4.x and Godot 4.3 ship the
+fuller Rec.2020-inset AgX with their own sigmoid fits and LUTs, not these
+numbers; the minimal form is chosen because it fits `ps_3_0` without a LUT.
+Wrensch writes the matrices as GLSL column-major `mat3` constructors; they are
+printed here row-major acting on a column vector, and the reference
+implementation below carries them at full published precision (15 digits).
+They are reproduced from knowledge; the generator that emits the shader header
+must pin them against the cited source, as
+`tools/shaders/generate_rigid_motion_pixel.py` pins the motion and depth
+fragments.
 
 Input (inset) matrix, row-major, acting on a column vector; and its inverse
 (outset). Both are row-stochastic to 1e-4, so white maps to white.
@@ -212,12 +218,67 @@ output(v): return saturate(M_out * v)              // ALREADY display-encoded;
 That last line is the standard integration bug and matters here: the target is a
 plain A8R8G8B8 surface with `SRGBWRITEENABLE=FALSE`, presented as-is, so AgX's
 output transform already produces the value to store. Looks are exposed as
-`X3M_HDR_LOOK=none|golden|punchy` with the published slope/power/sat triples,
-default `none` — a black space background is the worst case for a punchy look.
+`X3M_HDR_LOOK=none|golden|punchy` with Wrensch's published triples — `golden`:
+slope (1.0, 0.9, 0.5), power 0.8, saturation 0.8; `punchy`: slope 1, power
+1.35, saturation 1.4; `none`: slope 1, offset 0, power 1, saturation 1 — default
+`none`; a black space background is the worst case for a punchy look. The CDL
+base is clamped at zero before `pow` (`contrast(0) = -0.00232` would otherwise
+put a negative under a fractional power), so `none` is the identity only above
+zero; the outset plus `saturate` gives the same black either way.
 One `ps_3_0` fragment embedded like `temporal_resolve_program_inc.h`; `log2`,
 `exp2` and `pow` are single-slot SM3 instructions, well under 512 slots.
 Matrices and coefficients live in constant registers so host reference and
 shader consume identical numbers.
+
+Reference values with the constants above, look `none`, EV 0: neutral 0.18 →
+**0.4967** display (0.214 linear under a 2.2 display, i.e. mid-grey lands on
+mid-grey), 1.0 → **0.7867**, 16 → 0.9978, 2^4.026 and above → 0.9986 (the
+sigmoid's `contrast(1)`, one code below full white before `saturate`), 0.001 →
+0.0156. The neutral axis spreads ≤ 1.5e-4 between channels (the matrices are
+row-stochastic to 1.4e-4), under a quarter of an 8-bit code. The full ramp is
+`verification/results/agx-ramp.json`.
+
+**Reference implementation (stage 2 preparation, 2026-09-12).** Nothing in
+this paragraph is compiled, embedded or wired into the renderer; the stage-1
+build is untouched.
+
+- `tools/analysis/agx_reference.py` — pure-Python double-precision oracle:
+  `decode` (gamma2.2 / srgb / none, §2), `log_encode`/`log_decode`, `contrast`,
+  `look`, `agx(rgb_linear, exposure_ev, look)`, `tonemap_engine(...)` (the full
+  fragment including the `X3M_HDR_CLAMP` guard), and a CLI that prints the
+  0.001…64 ramp and writes `verification/results/agx-ramp.json`. Every
+  constant's provenance is in its docstring.
+- `tools/analysis/exposure_reference.py` — the exposure model as pure functions
+  with the names the C++ port will use: `meter_level0`, `reduce_mean`,
+  `reduce_chain` (4× per axis, edge-clamped taps), `meter_image`, `ev_target`,
+  `clamp_dt`, `adapt_rate`, `adapt`, `exposure_multiplier`, `resolve_ev`
+  (auto/manual), `simulate`, `taa_k`, `luma_weight`, `weight_color`,
+  `unweight_color`. Defaults: key 0.18, EV offset 0, τ_up 0.4 s, τ_down 1.2 s,
+  `dt` clamp [1/240, 1/5] s, meter floor 1e-4, `Lmeter_clip` 64, and
+  **`EV_min`/`EV_max` = −8/+8** (not numbered in the original text; a 256×
+  range either way, well beyond the 1e-4…64 luminance span the meter clamps
+  to). `exp2(-dt/(τ·ln2))` is `exp(-dt/τ)`, so τ is an ordinary first-order
+  time constant (63.2 % after τ, 99.3 % after 5τ: a 3 EV sector change settles
+  to 0.02 EV in 2 s at τ_up).
+- `src/temporal/agx.hlsl` — the `ps_3_0` fragment (HLSL source only): sample
+  FP16 scene, decode by mode constant, clamp, exposure multiply, inset as three
+  `dp3`, log encode, polynomial, look, outset, `saturate`, alpha carried. No
+  loops or dynamic branches; the decode mode is a constant-driven `lerp`
+  select.
+- `src/temporal/agx.h` — the constant layout as C++ (`AgxConstants`, 14
+  registers **c8…c21**, deliberately clear of the resolve's c0…c7 so both
+  programs can share one constant file), `set_look`, `set_decode`, `prepare`.
+  `X3M_HDR_CLAMP` unset uploads 65504 so the shader always applies `min`.
+- Tests: `verification/analysis/test_agx_reference.py` (monotone, neutral,
+  mid-grey/white, clamps, log round trip, looks, decode modes, matrix inverse,
+  ramp determinism and CLI, and a parse of `agx.h`/`agx.hlsl` that fails if any
+  constant or register drifts from the reference) and
+  `test_exposure_reference.py` (time constants, up/down asymmetry, monotone
+  convergence, `dt` subdivision invariance to 1e-6, `dt` clamp across a 3 s
+  hitch, EV clamps, 2 s settle, manual override, meter clamps, sun-disc bound,
+  chain-vs-mean). The compiled-fragment-vs-reference ramp comparison of §7
+  (≤ 1/512 code) is still owed to stage 2 proper, along with the generator,
+  `src/renderer/exposure.h` and the reduction/adaptation draws.
 
 **Exposure** is metered on the **resolved** HDR image (after TAA): that is what
 is displayed, and TAA has already removed the per-frame sampling noise, so the
@@ -504,6 +565,21 @@ Risks, ranked:
 
 ## 9. Reverse-engineering gap
 
+**Closed 2026-09-12** by
+[compositor-and-glow.md](../reverse-engineering/compositor-and-glow.md): the
+glow option is `VideoD3DFlags2` bit `0x80` (`*(*0x00606f34 + 0x100) & 0x80`,
+tested at `0x004c4770` together with the device flag at `0x004c478a`); with it
+clear the compositor issues no device call at all. With it set the compositor
+does `GetRenderTarget(0)` (`0x004c4817`) and later
+`StretchRect(saved_rt → sceneMap, LINEAR)` at `0x004c4c8c`; the HUD, the 2D
+overlays and the text draw after it into RT0 (the only two `SetRenderTarget`
+sites in the executable are the compositor's per-pass target selection and
+the environment-map restore); no normal frame reads RT0 back. Consequences
+for the redirect are in that document's section 7 and implemented below
+(stage 1): the redirect is unwound before the compositor's `GetRenderTarget`,
+and `GetRenderTarget(0)` answers with the game's own surface while redirected.
+The paragraphs that follow are the original request, kept for the record.
+
 One function, one pass: **`0x004c4750`** (original bloom/compositor, called from
 `0x004721b1`). [ghidra-render-map.md](../reverse-engineering/ghidra-render-map.md)
 records only that it "requires several non-null globals in the range
@@ -524,3 +600,172 @@ pinned image
 (`fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab`) with the
 existing `X3DecompileFunctions.java` recipe; no new tooling. Stages 1–4 above do
 not depend on it.
+
+## Stage 1 implementation (2026-09-12)
+
+Delivered behind `X3M_HDR=1` (`tools/manage.py launch --hdr`, requires
+`--motion-output`; default off: nothing is created and no call is redirected).
+Synthetic evidence is in [hdr-scene-path verification](../verification/hdr-scene-path.md);
+nothing here is gameplay-verified.
+
+### Files and hooks
+
+| File | Role |
+| --- | --- |
+| `src/renderer/hdr_pass.{h,cpp}` | `HdrPass`: the owned `A16B16G16R16F` target (level-0 surface only, one device reference in both reference models), the attach-time capability gate and four-format self test, the viewport/scissor-preserving `bind`, the write-back ladder, the recovery recheck; every device call through the route's native slots; fixture fault seam |
+| `src/temporal/hdr_writeback_ps.hlsl` → `src/renderer/hdr_writeback_program{,_inc}.h` | the stage-1 identity tonemap (`ps_3_0`, `tex2D` at TEXCOORD0, alpha carried), compiled and pinned by `tools/shaders/generate_rigid_motion_pixel.py --shader hdr_writeback` (provenance `verification/results/hdr-writeback-program.json`) |
+| `src/proxy/motion_output.{h,cpp}` | the redirect state machine (Off / Active / Suspended), the latch decision, the write-back policy at every consumer, the logical-binding shim answers, the `hdr_frame` telemetry and the capture-frame `hdr_<device>_<frame>.rgba16f` readback |
+| `src/proxy/capture.cpp` | `X3M_HDR` parsing; slots 38 (`GetRenderTarget`) and 32 (`GetRenderTargetData`) hooked with the switch on; the substituted `SetRenderTarget(0)`; `ColorFill`/`UpdateSurface` destination checks; the `EndScene` flush |
+| `src/proxy/telemetry.{h,cpp}` | metrics `hdr_redirect`, `hdr_writeback`, `hdr_writeback_draw`, `hdr_writeback_stretch`, `hdr_bind`, `hdr_recheck` |
+
+**Gate (attach, after the route's own gate).** `ps_3_0`,
+`NumSimultaneousRTs ≥ 2`, `MRTINDEPENDENTBITDEPTHS`; `CheckDeviceFormat`
+for `A16B16G16R16F` as a render-target texture, with
+`D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING`, and as a plain sampled texture
+(the write-back samples it); `D3DUSAGE_QUERY_FILTER` and
+`CheckDeviceFormatConversion(A16B16G16R16F → A8R8G8B8)` are recorded (the
+filter gates stage 2's bloom, the conversion enables the emergency
+`StretchRect` rung), `MRTPOSTPIXELSHADERBLENDING` is informational (RT1/RT2
+are never bound across a blended draw). Then the self test on a 4×4 set: an
+MRT draw writing `(2, 8, 0.5, 0.25)` into FP16 + `(1, 2, 3, −1)` into RGBA32F
++ `0.625` into R32F (three formats when the route produces depth, two
+otherwise), an additive `ONE`/`ONE` draw into the FP16 target alone
+(`(4, 16, 1, 0.5)`, the blend capability exercised for real), and the
+write-back program copying the sum into a 4×4 A8R8G8B8 target
+(`255, 255, 255, 128`: clamp and alpha carry), and — whenever the conversion
+is granted — the emergency rung itself: the 8-bit target filled black, then
+`StretchRect(FP16 → A8R8G8B8, POINT)` must reproduce the copy
+(`stretch_errors`); a failure there demotes the rung (the ladder never
+calls a copy known not to work) without refusing the feature, so both copy
+rungs are proven at attach wherever they exist (review 22). The conversion
+is queried for the back buffer's actual format (`main_format` on the
+`hdr_device` line; A8R8G8B8 for the game). Any failure of the four checks:
+`hdr_device enabled=0 reason=…`, no object kept, the frame proceeds as with
+`X3M_HDR=0`.
+
+**Topology per frame.**
+
+1. `before_clear`: a copy of the selector is probed with the pending event;
+   only the Clear that will latch (AwaitInitialClear → Background) redirects.
+   MSAA on the latched pair refuses (`refused_msaa`; the selector never latches
+   one anyway). The target is (re)created at the latched size; the game's RT0
+   is fetched natively, checked against the shadow's description and held (one
+   reference until the end); `SetRenderTarget(0, target)` with the viewport
+   and scissor rectangle read before and written back after (D3D9 resets
+   both). The game's Clear then clears the target. A failed Clear (the
+   selector rejects) restores the binding at once without a write-back
+   (`end=clear_failed`, `writebacks=0`: the never-cleared target is not the
+   frame's content; the main target keeps what the failed Clear left).
+2. Scene draws land in the target; RT1/RT2 bind beside it (the FP16 +
+   RGBA32F + R32F MRT of §1). Every draw and every Clear with the target flag
+   marks the content pending.
+3. The end: at the engine scene-end hook (`end=hook`, before the compositor's
+   `GetRenderTarget(0)`), else at the recognized bloom copy (`end=bloom_copy`,
+   in `before_stretch` before the resolve), else at Present (`end=present`).
+   `EndScene` **flushes** without ending (write-back, target stays bound), so
+   a frame without a recognized scene end (glow off without the hook) is
+   written back while draws are still legal, an environment-map excursion
+   between `EndScene` and `BeginScene` keeps the redirect, and the terminal
+   Present end normally finds nothing pending (`dirty_at_present=0`). The
+   design's rule "reaching EndScene/Present redirected is a bug" is therefore
+   refined: Present is the documented terminal end; content still pending
+   there is the anomaly the counter records. Stage 1 order at the scene end:
+   write-back, then the TAA resolve on the 8-bit target (stage 3 moves TAA
+   onto the FP16 image).
+
+**Logical-binding shim.** Every consumer keeps seeing the application's
+A8R8G8B8 RT0:
+
+| Consumer | How |
+| --- | --- |
+| `SceneBoundarySelector`, `scene_bound`, RT/constant shadow | fed from the application's calls only; `describe_binding(0, surface)` records the application's argument; `resync_shadow` maps a physical FP16 RT0 back to the held main surface |
+| `describe_surface` | called on application arguments, never on the substituted target |
+| state blocks | D3D9 state blocks do not capture render targets; `Apply` resynchronizes the shadow as before |
+| application `GetRenderTarget(0)` (slot 38 hooked with the switch on): `snapshot()`, `clear_rt0`, `SceneCapture::bindings`, the game's compositor | returns the held main surface with one added reference while Active; other indices and other states forward |
+| application `GetRenderTargetData(main, …)` and a `StretchRect` reading main that is not the bloom copy | a flush first (write-back, redirect continues); the read then sees the current scene |
+| application writes into main (`StretchRect` destination, `ColorFill`, `UpdateSurface`) | the redirect ends first, so the write is never overwritten |
+| ownership wrapper accounting | the FP16 texture is dropped after `GetSurfaceLevel`: one child = one logical device reference, counted by `device_references()` with the write-back shader; the held main reference is a child `AddRef`, released at every end and in `release_resources`; the wrapper's `unwrap` sees only wrapper pointers |
+| lazy-mode restore, RT1/RT2 binding | slots 1/2, untouched; `restore_bindings` runs before every end |
+| the sentinel fill, `TemporalPass::SavedState` | save and restore the *physical* RT0 (the target) with viewport and scissor; correct by construction |
+| TAA resolve surface identity | the resolve runs after the end; `scene_end_hook` queries RT0 natively only after `end_redirect` |
+| final device Release | `device_references()` includes the pass's two objects; `release_resources` drops the redirect without a write-back |
+
+Not covered by the shim: `UpdateTexture` into a texture whose level is the
+main target (the game's main target is the back buffer), `GetFrontBufferData`
+(never called in a frame, §9 evidence), and an application `Lock` of RT0
+(impossible on the back buffer).
+
+**Write-back policy for a mid-scene RT0 switch (decided).** Application
+`SetRenderTarget(0, other)` while Active: the pending content is written back
+first (the main target holds the scene so far whether or not the application
+ever rebinds it), the bind is forwarded verbatim and the redirect is
+*suspended* (physical = logical = `other`; the FP16 target keeps its
+content). `SetRenderTarget(0, main)` while suspended binds the target instead
+(the application's expected viewport/scissor reset happens on the same
+dimensions) and the redirect resumes without a copy: the content of the
+excursion's target never touches the scene. `SetRenderTarget(0, main)` while
+Active rebinds the target (the selector's Pattern rejection of a mid-scene
+rebind is unchanged). Reset and the final device Release drop the redirect
+without a write-back (`end=dropped`); before a Reset the held main surface
+is bound back to RT0 first, so the FP16 texture is not kept alive by the
+device's RT0 binding through the Reset and is not RT0 after a failed one
+(the application's own pre-Reset `SetRenderTarget(0, main)` would be
+substituted while Active; review 22).
+
+**Must-unwind ladder** (`HdrPass::write_back`): (1) the identity copy draw
+(explicit save of RT0–3, depth, viewport, scissor, FVF/declaration, VS, PS,
+stream 0 and its frequency, texture 0, eight sampler states, the two stage-0
+states, 23 render states; RT1.. unbound before RT0 changes, since every
+bound target must match RT0's dimensions; restore in D3D9 order, the source
+texture unbound before the target rebind; RT0 left at the caller's final
+binding, so an end costs no extra bind; a scene bracket the pass opened is
+always closed, lost device included, or the application's next `BeginScene`
+would be refused); (2) on a failed draw, `StretchRect(target → main,
+POINT)` when the conversion was granted, proven by the self test and the
+device is not lost; (3) an explicit rebind of the final RT0 with the
+viewport and scissor preserved whenever (1) did not end cleanly. Any rung taken past (1) logs one
+`hdr_unwind=<draw|restore|stretch|lost|bind>` line and blocks the redirect:
+the next latch runs the self test again (`hdr_recheck`, then every 60 latches
+while it fails; Reset clears the block). Finding: rung 3 guarantees the
+binding invariant (the compositor never sees the FP16 surface) but not an
+image — with `D3DSWAPEFFECT_DISCARD` the main target's previous content is
+undefined after Present (zeros on this backend), so both copy rungs failing on
+a non-lost device is the one residual black-frame case (one frame, then
+blocked). A lost device fails both rungs too, but its Present fails as well.
+
+**Telemetry.** `hdr_device` once per device (gate verdict, every cap
+HRESULT, the self-test detail); `hdr_target` per creation (size, bytes);
+`hdr_frame` in capture frames and every `X3M_MOTION_FRAME_LOG` frames with
+telemetry on: `redirected`, `end`, `writebacks`, `flushes`,
+`writeback_source=shader|stretch|restore|none`, `unwind`, `unwind_reason`
+and the four rung HRESULTs, `blocked`, `recheck`, `suspended`, `resumed`,
+`dirty_at_present`, `refused_msaa`, `target_create`, `latch_bind`, `target`,
+`target_bytes`, `caps`, `stretch_conversion` and the CPU-inclusive
+`redirect_us`, `writeback_us`, `writeback_draw_us`, `writeback_stretch_us`,
+`bind_us`, `recheck_us`.
+
+**Evidence and deviations** (numbers in the verification record):
+
+- Case 1 as specified — bit-identical presented frames — does **not** hold
+  through an FP16 intermediate: an unquantized material output is rounded to
+  11 significant bits before the 8-bit conversion, and a value near a code
+  boundary lands one code away from the direct path (double rounding). The
+  measured result on this backend is ~99% of pixels exact, the rest one code
+  apart, only on lit material pixels, alpha exact, background and flat
+  pixels exact; the runner accepts ≤ 1 code and ≥ 98% exact and records the
+  numbers. Exactness would need an FP32 scene target (twice the bandwidth)
+  and is not pursued.
+- Case 3 holds: the RT1/RT2 readbacks of the routed draws through the
+  FP16 + RGBA32F + R32F MRT are byte-identical to the non-HDR run, and the
+  forced-absent capability and self test disable the feature without a
+  redirect.
+- Case 4 holds with the rung-3 finding above.
+- HDR values: 2.0 plain plus 8.0 additive read back as 10.0 (alpha 1.5), 8.0
+  plain as 8.0 (alpha 0.5), presented as 255/255/255 with alpha 255 and 128;
+  the in-range `(0.75, 0.25, 0.375, 0.625)` (exact in FP16, non-integer 8-bit
+  codes) presents as exactly `191, 64, 96, 159` on every pixel, so the
+  one-code deviation above is the double rounding of unquantized values and
+  not a bias or a sampling offset; a Reset with a dimension change
+  re-creates the target at the new size; a Reset issued while the redirect
+  is active succeeds with the main surface handed back first; a mid-scene
+  switch to another target suspends and resumes with the frame intact.

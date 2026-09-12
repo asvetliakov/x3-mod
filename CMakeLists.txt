@@ -11,7 +11,7 @@ add_library(d3d9 SHARED
   src/proxy/loading_trace.cpp src/proxy/sampling_profiler.cpp src/ownership/d3d9_ownership.cpp
   src/ownership/finite_buffer_evidence.cpp src/ownership/portable_managed_upload.cpp
   src/proxy/draw_input.cpp src/proxy/object_lifetime.cpp src/proxy/mesh_adjacency_cache.cpp
-  src/renderer/temporal_pass.cpp src/renderer/material_radiance.cpp
+  src/renderer/temporal_pass.cpp src/renderer/hdr_pass.cpp src/renderer/material_radiance.cpp
   src/renderer/motion_history.cpp src/renderer/rigid_position.cpp
   src/renderer/material_motion.cpp src/renderer/motion_row_history.cpp src/proxy/motion_output.cpp
   src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/proxy/d3d9.def)

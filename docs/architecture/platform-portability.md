@@ -44,6 +44,13 @@ Recording runtime hashes in test reports remains useful provenance.
   next frame's capture (released before Reset); on native D3D those keep the
   device count above the final-release probe until the block is dropped, on
   Wine the application-level references are independent of it.
+- The FP16 HDR scene path (`X3M_HDR=1`, stage 1) needs an `A16B16G16R16F`
+  render-target texture with post-pixel-shader blending and sampling, the
+  three-format independent-bit-depth MRT (FP16 + RGBA32F + R32F) and, for the
+  emergency unwind rung only, `CheckDeviceFormatConversion(A16B16G16R16F →
+  A8R8G8B8)`; all are queried at attach through the documented caps and a
+  live self test, and the feature disables itself otherwise. Native drivers
+  are untested against this stack ([hdr-scene-path.md](hdr-scene-path.md) §5).
 - Current CrossOver fixtures do not establish native-Windows rendering, reset,
   multithreading, presentation or performance. Native-Windows verification remains
   outstanding; no successful Windows run is claimed.

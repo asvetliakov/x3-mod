@@ -12,10 +12,12 @@
 // per-draw sub-pixel jitter (X3M_MOTION_JITTER=1), previous-row history, the
 // cut detector, the live camera state read at the scene Clear (the far-plane
 // reprojection of sentinel pixels, X3M_TAA_SENTINEL), the temporal resolve at
-// the bloom copy (X3M_TAA=1, owning one TemporalPass per device) and
-// capture-frame diagnostics.
-// See docs/architecture/live-motion-route.md (Implementation section) and
-// docs/architecture/temporal-integration.md (steps 1 and 3).
+// the bloom copy (X3M_TAA=1, owning one TemporalPass per device), the FP16
+// HDR scene redirect with its logical-binding shim and write-back policy
+// (X3M_HDR=1, owning one HdrPass per device) and capture-frame diagnostics.
+// See docs/architecture/live-motion-route.md (Implementation section),
+// docs/architecture/temporal-integration.md (steps 1 and 3) and
+// docs/architecture/hdr-scene-path.md ("Stage 1 implementation").
 #include <d3d9.h>
 #include <cstddef>
 #include <cstdint>
@@ -26,7 +28,7 @@
 #include "../renderer/motion_history.h"
 #include "../renderer/motion_row_history.h"
 #include "../renderer/camera_reprojection.h"
-namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
+namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; class HdrPass; struct HdrWriteback; }
 namespace x3m::telemetry { struct State; }
 namespace x3m {
 // Distinct clip-row constant windows the profile table names (c24-27 for the
@@ -87,6 +89,28 @@ enum class SceneEndSource : unsigned { None = 0, Hook = 1, StretchRect = 2 };
 // than one signal, a scene draw between the hook and the copy, or StretchOnly
 // with the hook installed.
 enum class SceneEndCheck : unsigned { None = 0, Agree = 1, HookOnly = 2, StretchOnly = 3, Disagree = 4 };
+// Where this frame's FP16 redirect ended (hdr_frame end=...): at the engine
+// scene-end hook, at the recognized bloom copy, before an application write
+// into the main target's contents (StretchRect destination, ColorFill,
+// UpdateSurface), at Present (the terminal fallback: every frame without a
+// recognized scene end, e.g. glow off without the engine hook), after the
+// latching Clear failed, or dropped without a write-back (Reset, release).
+enum class HdrEnd : unsigned { None = 0, Hook = 1, BloomCopy = 2, ContentWrite = 3, Present = 4, ClearFailed = 5, Dropped = 6 };
+struct MotionHdrCounters {
+    bool redirected = false;     // the latching Clear bound the FP16 target as RT0
+    std::uint32_t end = 0;       // HdrEnd
+    std::uint32_t writebacks = 0, flushes = 0, suspended = 0, resumed = 0;
+    std::uint32_t source = 0;    // renderer::HdrWritebackSource of the last write-back
+    bool unwind = false;         // a write-back did not complete cleanly (ladder taken)
+    const char* unwind_reason = "none";
+    HRESULT unwind_draw = S_FALSE, unwind_restore = S_FALSE, unwind_stretch = S_FALSE, unwind_bind = S_FALSE;
+    bool blocked = false, recheck_ran = false, recheck_passed = false; // blocked after an unwind; the recovery self test
+    bool dirty_at_present = false; // content reached the target after the last write-back and Present ended the redirect
+    bool refused_msaa = false;
+    HRESULT target_create = S_FALSE, latch_bind = S_FALSE;
+    std::uint64_t redirect_ticks = 0, writeback_ticks = 0, writeback_draw_ticks = 0, writeback_stretch_ticks = 0;
+    std::uint64_t bind_ticks = 0, recheck_ticks = 0;
+};
 struct MotionTaaCounters {
     bool attempted = false;      // The main-target bloom copy was recognized this frame.
     bool resolved = false;       // run() and the copy-back both succeeded: the main target holds the resolved image.
@@ -153,6 +177,7 @@ struct MotionFrameCounters {
     std::uint32_t hook_signals = 0, hook_outside_scene = 0, hook_state = 0, draws_after_hook = 0;
     bool hook_scene_end = false, bloom_copy_seen = false;
     std::uint32_t scene_end_check = 0;
+    MotionHdrCounters hdr;
 };
 // Halton(2,3) sample i (1-based) centred on zero, in raster pixels.
 float motion_jitter_sample(unsigned index, unsigned axis) noexcept;
@@ -243,6 +268,39 @@ public:
     // main target); the StretchRect path then skips this frame's resolve.
     void configure_scene_hook(bool installed) noexcept { scene_hook_installed_ = installed; }
     void scene_end_hook() noexcept;
+    // FP16 HDR scene path, stage 1 (X3M_HDR=1; requires the route). Effective
+    // at attach: the pass runs its capability gate and four-format self test
+    // there. The redirect binds the owned A16B16G16R16F target as RT0 at the
+    // latching Clear and writes it back into the application's main target at
+    // the scene end (hook, bloom copy) or, failing those, flushes at EndScene
+    // and ends at Present. Every consumer of the proxy keeps seeing the
+    // application's logical RT0 through the methods below.
+    void configure_hdr(bool requested) noexcept { hdr_requested_ = requested; }
+    bool hdr_enabled() const noexcept { return hdr_enabled_; }
+    bool hdr_redirected() const noexcept { return hdr_state_ != HdrState::Off; }
+    // BEFORE the application's SetRenderTarget: the surface to bind natively.
+    // Index 0 while redirected: the application's main surface maps to the FP16
+    // target (re-entry after an excursion), any other surface is forwarded
+    // verbatim after the pending content is written back (the redirect is
+    // suspended until the main surface is bound again). Other indices and the
+    // non-redirected state return `surface`.
+    IDirect3DSurface9* before_set_render_target(DWORD index, IDirect3DSurface9* surface) noexcept;
+    // The application's GetRenderTarget(0) while redirected: *out receives the
+    // logical main surface (one added reference) and true is returned; false
+    // means forward the call natively.
+    bool hdr_logical_render_target(DWORD index, IDirect3DSurface9** out) noexcept;
+    // BEFORE an application read of a surface's contents (GetRenderTargetData
+    // source, a StretchRect source other than the bloom copy): the pending
+    // FP16 content is written back into the main target first (a flush; the
+    // redirect continues). BEFORE an application write into a surface's
+    // contents (StretchRect destination, ColorFill, UpdateSurface): the
+    // redirect ends first so the write is not overwritten later.
+    void before_render_target_read(IDirect3DSurface9* surface) noexcept;
+    void before_render_target_write(IDirect3DSurface9* surface) noexcept;
+    // BEFORE the application's EndScene: the FP16 content is flushed into the
+    // main target while draws are still legal (the redirect stays on for a
+    // possible BeginScene that follows; Present ends it).
+    void before_end_scene() noexcept;
     // Cadence of the periodic motion_output_frame line with telemetry on
     // (every `frames` frames; default 60; capture frames always log).
     void configure_frame_log(unsigned frames) noexcept { frame_log_interval_ = frames ? frames : 60u; }
@@ -326,6 +384,10 @@ public:
     HRESULT fixture_readback(unsigned target, float* out, std::size_t floats, UINT* width, UINT* height) noexcept;
     // The PS c216-217 values the last routed draw uploaded (eight floats).
     HRESULT fixture_last_pixel_abi(float* out, std::size_t floats) const noexcept;
+    // HDR fault injection (renderer::HdrFault kinds; before attach the fault
+    // is queued for the pass) and the FP16 target as floats (4 per pixel).
+    void fixture_hdr_fault(unsigned kind, unsigned count) noexcept;
+    HRESULT fixture_hdr_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept;
 #endif
 
 private:
@@ -365,7 +427,8 @@ private:
     HRESULT draw_quad(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, IDirect3DSurface9* rt2,
                       IDirect3DPixelShader9* shader, UINT width, UINT height, HRESULT* restore) noexcept;
     HRESULT readback_surface(IDirect3DSurface9* surface, D3DFORMAT format, unsigned bytes_per_pixel,
-                             const wchar_t* prefix, const wchar_t* extension, const char* tag, const char* format_name) noexcept;
+                             const wchar_t* prefix, const wchar_t* extension, const char* tag, const char* format_name,
+                             UINT width, UINT height) noexcept;
     void apply_jitter(MotionRoute& route) noexcept;
     void restore_jitter(MotionRoute& route) noexcept;
     void evaluate_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
@@ -414,6 +477,15 @@ private:
     void undo(MotionRoute& route) noexcept;
     renderer::SceneSignatures signatures() const noexcept;
     void readback() noexcept;
+    // HDR redirect (hdr_pass.h performs the device work; the policy is here).
+    enum class HdrState { Off, Active, Suspended };
+    void begin_redirect() noexcept;             // at the latching Clear (before it is forwarded)
+    void end_redirect(HdrEnd reason) noexcept;  // write back (when content is pending), rebind the main target, release it
+    void flush_redirect() noexcept;             // write back, keep the FP16 target bound
+    void drop_redirect() noexcept;              // Reset/release: no write-back
+    renderer::HdrWriteback hdr_writeback(IDirect3DSurface9* final_rt0, bool write) noexcept;
+    bool hdr_is_main(IDirect3DSurface9* surface) noexcept;
+    void log_hdr_frame() noexcept;
 
     IDirect3DDevice9* device_ = nullptr;
     void** native_ = nullptr;
@@ -474,6 +546,21 @@ private:
     bool lazy_mode_ = false, lazy_rt1_ = false, lazy_rt2_ = false;
     DWORD lazy_write1_ = 15, lazy_write2_ = 15;
     bool state_shadow_ = true, scene_hook_installed_ = false;
+    // FP16 HDR scene path: the pass, the switch and the attach verdict, the
+    // redirect state, the application's main surface held from the latch to
+    // the end (one reference), the description of the FP16 target for the
+    // shadow resynchronization, the dirty flag (content reached the target
+    // since the last write-back), the block after an unwind (cleared by a
+    // passing recheck at a later latch or by Reset) and the target allocation
+    // failure latch (retried after Reset, like the motion target).
+    std::unique_ptr<renderer::HdrPass> hdr_;
+    bool hdr_requested_ = false, hdr_enabled_ = false;
+    HdrState hdr_state_ = HdrState::Off;
+    IDirect3DSurface9* hdr_main_ = nullptr;
+    renderer::Surface hdr_target_{};
+    bool hdr_dirty_ = false, hdr_blocked_ = false, hdr_target_failed_ = false, hdr_latch_pending_ = false;
+    unsigned hdr_blocked_latches_ = 0, hdr_logged_ = 0;
+    std::uint32_t hdr_pending_state_ = 0; // HdrState the application's SetRenderTarget(0) commits on success
     // Metrics of quiet lazy flushes (from the light SetRenderState hook),
     // recorded and logged at the next heavy call.
     std::uint32_t deferred_flushes_ = 0;
@@ -483,6 +570,7 @@ private:
     MotionOutputFixtureConfig fixture_{};
     bool fixture_configured_ = false, fixture_abi_known_ = false;
     float fixture_last_pixel_abi_[8]{};
+    unsigned fixture_hdr_fault_kind_ = 0, fixture_hdr_fault_count_ = 0; // queued until the pass exists
 #endif
 };
 } // namespace x3m

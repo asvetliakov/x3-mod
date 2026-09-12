@@ -51,6 +51,7 @@ def main():
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
     parser.add_argument('--scene-hook', action='store_true', help='Patch the frame routine\'s compositing callsite (0x004721b1, exact executable only) so the route learns the scene end from the engine and, with --taa, resolves there before the glow pass instead of at the bloom copy (X3M_SCENE_HOOK=1; requires --motion-output; default off until a gameplay run confirms it)')
+    parser.add_argument('--hdr', action='store_true', help='FP16 HDR scene path, stage 1 (X3M_HDR=1; requires --motion-output): the scene renders into an owned A16B16G16R16F target bound as RT0 at the latching Clear and is written back into the game\'s 8-bit main target with an identity tonemap at the scene end (--scene-hook, else the bloom copy, else EndScene/Present); fails closed on the capability gate and self test; presented frames equal the non-HDR frames to within one 8-bit code (docs/architecture/hdr-scene-path.md, "Stage 1 implementation")')
     parser.add_argument('--state-shadow', choices=['on', 'off'], default='on', help='Render-state shadow of the route (X3M_STATE_SHADOW): on (default) hooks SetRenderState and answers the per-draw state queries from the shadow; off issues GetRenderState per query (A/B; requires --motion-output)')
     parser.add_argument('--motion-rt-mode', choices=['perdraw', 'lazy'], default='perdraw', help='RT1/RT2 binding policy of the route: perdraw (default) rebinds around every routed draw; lazy keeps the bindings across consecutive routed draws (A/B experiment, requires --motion-output)')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
@@ -87,6 +88,8 @@ def main():
         parser.error('--motion-rt-mode requires --motion-output.')
     if args.scene_hook and not args.motion_output:
         parser.error('--scene-hook requires --motion-output.')
+    if args.hdr and not args.motion_output:
+        parser.error('--hdr requires --motion-output.')
     if args.state_shadow != 'on' and not args.motion_output:
         parser.error('--state-shadow requires --motion-output.')
     if not 100 <= args.profile_interval_us <= 1000000:
@@ -153,6 +156,7 @@ def main():
         env['X3M_CAMERA_LOG'] = str(args.camera_log)
         env['X3M_MOTION_RT_MODE'] = args.motion_rt_mode
         env['X3M_SCENE_HOOK'] = '1' if args.scene_hook else '0'
+        env['X3M_HDR'] = '1' if args.hdr else '0'
         env['X3M_STATE_SHADOW'] = '1' if args.state_shadow == 'on' else '0'
         env['X3M_PROFILE'] = '1' if args.profile else '0'
         env['X3M_PROFILE_INTERVAL_US'] = str(args.profile_interval_us)

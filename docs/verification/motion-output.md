@@ -7,7 +7,7 @@ and never enters the repository or the reports.
 
 ```sh
 python3 verification/probe/run_motion_row_history.py     # host unit fixture, release + ASan/UBSan
-python3 verification/probe/run_motion_output.py          # fresh build + 47 DLL runs (four environments, jitter, TAA, bench, lazy, burst, camera, state shadow, scene hook)
+python3 verification/probe/run_motion_output.py          # fresh build + 63 DLL runs (four environments, jitter, TAA, bench, lazy, burst, camera, state shadow, scene hook, FP16 HDR stage 1)
 python3 verification/probe/check_no_x87.py               # light setter hooks reach no x87 code
 ```
 
@@ -400,6 +400,25 @@ The trace also shows the `scene_hook active=0 status=executable_mismatch`
 line of the production install path with the switch on. The game's own
 callsite is not exercised here; the gameplay run with `--scene-hook` is
 user-managed.
+
+### FP16 HDR scene path, stage 1 (`X3M_HDR`)
+
+Sixteen runs of the suite enable the FP16 redirect: twins of the regular,
+ownership, TAA, hook and environment-map scripts compared per pixel against
+the runs without the switch (equal to within one 8-bit code on lit material
+pixels, everything else identical, RT1/RT2 readbacks byte-identical), the
+value script (2.0 + 8.0 additive read back as 10.0 from the FP16 target, the
+presented frame clamped, alpha carried; the in-range (0.75, 0.25, 0.375,
+0.625) presented as the exact codes 191/64/96/159; across a Reset with a
+dimension change, a Reset issued while the redirect is active and a
+mid-scene RT0 switch), the injected-fault ladder script (write-back rungs,
+device lost, target creation, latch bind, recovery self test, a failed
+latching Clear) and two forced-absent capability runs, plus four bench
+runs. Every frame's presented
+image is dumped as `presented_<frame>.bgra8` beside the fixture in every
+mode (one fixture check per frame, hence the +12/+9/+5/+7 check counts since
+this record's earlier tables). Numbers and findings:
+[hdr-scene-path verification](hdr-scene-path.md).
 
 ## Ownership wrapper interaction
 

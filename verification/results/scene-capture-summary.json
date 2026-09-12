@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T08:33:51.826705+00:00",
+  "started_utc": "2026-09-12T09:55:26.622043+00:00",
   "source_sha256": {
     "verification/probe/scene_capture_fixture.cpp": "0787fae64ef8eb341e88532ed78a7a2b82c1b8c01a03ba74b8f95ae19b03abab",
     "verification/probe/build_scene_capture.sh": "668637625afc590898fce8f9ac65df35b05a10ff82d92c649df8ce1c359baa8f",
@@ -42,7 +42,7 @@
     "C:\\X3\\d3dx9_37.dll",
     "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl"
   ],
-  "executable_sha256": "19b57898cf32def1b5479340448b22066b92047c2b5f6af8f100dd18e0eba950",
+  "executable_sha256": "d8ab16d59db31e7bdeb7ccc598d9c7c0747025750390a24de990aeb5f9ab0ed0",
   "exit_code": 0,
   "checks": 4908,
   "samples": 16,

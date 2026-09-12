@@ -90,6 +90,24 @@ path when the only signal arrives outside the Scene phase (a logged
 disagreement) and restore the original bytes at shutdown; the same script
 unpatched (X3M_SCENE_HOOK=0) resolves at the copy only, so its glow-off frames
 skip and the colour of the frames both runs resolve is identical.
+FP16 HDR scene path, stage 1 (X3M_HDR=1; docs/architecture/hdr-scene-path.md):
+the route binds an owned A16B16G16R16F target as RT0 at the latching Clear and
+writes it back into the game's 8-bit main target with the identity tonemap at
+the scene end. Twin runs of existing scripts with the switch on (regular
+script on both DLLs, under the ownership wrapper, with TAA, the hook script,
+the environment-map script) must present the same frames as their twins: the
+per-frame presented_<frame>.bgra8 dumps are compared per pixel and must agree
+exactly, the seam's RT1/RT2 readback files must be identical (the routed
+draws write the four-format MRT: FP16 RT0 + RGBA32F + R32F), every hdr_frame
+line must report the redirect, its end point (bloom copy, hook, or Present
+after the EndScene flush) and no unwind, and the device must still reach zero
+references. "hdrvalues" proves 2.0 and 8.0 drawn plainly and additively reach
+the FP16 target as 10.0/8.0 with alpha carried while the presented frame holds
+the clamped codes, across a Reset with a dimension change and a mid-scene RT0
+switch; "hdrfault" injects one failure per frame into the write-back ladder
+and requires a valid presented frame and recovery; two runs force the FP16
+render-target capability and the self test absent and require the feature to
+disable itself. Four bench runs time the boundary with the redirect on.
 Reviewed shader bytes are read from local files and never enter the repository
 or the reports.
 """
@@ -134,9 +152,9 @@ VARIANTS = {
     'depth': dict(X3M_OWNERSHIP='1', X3M_DEPTH_COPY='1', X3M_SCENE_DEPTH_CAPTURE='1'),
     'admission': dict(X3M_OWNERSHIP='1', X3M_ADMISSION='1')}
 def case(name, mode, variant='plain', enabled='1', jitter=False, taa=False, bench=None, lazy=False, burst=False, camera=False, sentinel=None, envmap=False,
-         hook=None, shadow=True):
+         hook=None, shadow=True, hdr=False, hdr_fault=None):
     return dict(name=name, mode=mode, variant=variant, enabled=enabled, jitter=jitter, taa=taa, bench=bench, lazy=lazy, burst=burst,
-                camera=camera, sentinel=sentinel, envmap=envmap, hook=hook, shadow=shadow)
+                camera=camera, sentinel=sentinel, envmap=envmap, hook=hook, shadow=shadow, hdr=hdr, hdr_fault=hdr_fault)
 
 
 CASES = [case(f'{dll}-{state}' if variant == 'plain' else f'{dll}-{variant}-{state}', dll, variant, enabled)
@@ -169,6 +187,38 @@ CASES += [case('production-shadow-off', 'production', shadow=False), case('seam-
           case('seam-burst-perdraw-shadow-off', 'seam', burst=True, shadow=False), case('seam-burst-lazy-shadow-off', 'seam', lazy=True, burst=True, shadow=False)]
 # Engine scene-end hook script (seam, TAA): the callsite patched and unpatched.
 CASES += [case('seam-taa-hook-on', 'seam', jitter=True, taa=True, hook='1'), case('seam-taa-hook-unpatched', 'seam', jitter=True, taa=True, hook='0')]
+# FP16 HDR scene path, stage 1 (X3M_HDR=1): twins of existing runs, the value
+# and fault scripts, the forced-absent capability runs and the bench.
+HDR_TWINS = {'production-hdr-on': 'production-on', 'seam-hdr-on': 'seam-on', 'production-ownership-hdr-on': 'production-ownership-on',
+             'seam-ownership-hdr-on': 'seam-ownership-on', 'production-taa-hdr-on': 'production-taa-on', 'seam-taa-hdr-on': 'seam-taa-on',
+             'seam-taa-hook-hdr-on': 'seam-taa-hook-on', 'seam-taa-envmap-hdr': 'seam-taa-envmap'}
+CASES += [case('production-hdr-on', 'production', hdr=True), case('seam-hdr-on', 'seam', hdr=True),
+          case('production-ownership-hdr-on', 'production', 'ownership', hdr=True), case('seam-ownership-hdr-on', 'seam', 'ownership', hdr=True),
+          case('production-taa-hdr-on', 'production', jitter=True, taa=True, hdr=True), case('seam-taa-hdr-on', 'seam', jitter=True, taa=True, hdr=True),
+          case('seam-taa-hook-hdr-on', 'seam', jitter=True, taa=True, hook='1', hdr=True),
+          case('seam-taa-envmap-hdr', 'seam', jitter=True, taa=True, camera=True, envmap=True, hdr=True),
+          case('seam-hdr-values', 'hdrvalues', hdr=True), case('seam-hdr-fault', 'hdrfault', hdr=True),
+          case('seam-hdr-caps-absent', 'seam', hdr=True, hdr_fault='1'), case('seam-hdr-selftest-absent', 'seam', hdr=True, hdr_fault='3')]
+CASES += [case(f'bench-{size}-hdr-on-taa-{state}', 'bench', jitter=True, taa=state == 'on', bench=size, hdr=True) for size in BENCH_SIZES for state in ('off', 'on')]
+# hdr_frame expectations: end point per script (HdrEnd names), write-backs
+# per frame (the EndScene flush, the bloom-copy or hook end; the fixture's
+# GetRenderTargetData before the TAA boundary flushes first).
+HDR_VALUES_FRAMES = 6  # frames 1 and 4 draw B with the in-range (.75, .25, .375, .625); a Reset while redirected precedes frame 5
+HDR_FAULT_SCRIPT = {0: dict(fault=0, redirected=1, unwind=0, source='shader', recheck='none', blocked=0, ldr=0),
+                    1: dict(fault=4, redirected=1, unwind=1, source='stretch', reason='draw', recheck='none', blocked=0, ldr=0),
+                    2: dict(fault=7, redirected=1, unwind=1, source='shader', reason='restore', recheck='pass', blocked=0, ldr=0),
+                    3: dict(fault=6, redirected=1, unwind=1, source='restore', reason='stretch', recheck='pass', blocked=0, ldr=0),
+                    4: dict(fault=5, redirected=1, unwind=1, source='restore', reason='lost', recheck='pass', blocked=0, ldr=0),
+                    5: dict(fault=0, redirected=1, unwind=0, source='shader', recheck='pass', blocked=0, ldr=0),
+                    6: dict(fault=8, redirected=0, unwind=0, source='none', recheck='none', blocked=0, ldr=1, target_create='8007000e'),
+                    7: dict(fault=0, redirected=0, unwind=0, source='none', recheck='none', blocked=0, ldr=1),
+                    8: dict(fault=0, redirected=1, unwind=0, source='shader', recheck='none', blocked=0, ldr=0),
+                    9: dict(fault=9, redirected=0, unwind=0, source='none', recheck='none', blocked=0, ldr=1, latch_bind='80004005'),
+                    10: dict(fault=0, redirected=1, unwind=0, source='shader', recheck='none', blocked=0, ldr=0),
+                    11: dict(fault=4, redirected=1, unwind=1, source='stretch', reason='draw', recheck='none', blocked=0, ldr=0),
+                    12: dict(fault=3, redirected=0, unwind=0, source='none', recheck='fail', blocked=1, ldr=1),
+                    13: dict(fault=0, redirected=1, unwind=0, source='shader', recheck='none', blocked=0, ldr=0),
+                    14: dict(fault=10, redirected=1, unwind=0, source='none', recheck='none', blocked=0, ldr=0, end='clear_failed', writebacks='0')}
 # Render-state shadow: native GetRenderState calls the route issues per frame
 # besides shadow misses (the sentinel fill's touched-state save), the number
 # of shadowed states (the most misses one resynchronization can cause) and the
@@ -188,7 +238,7 @@ HOOK_HISTORY = {True: {1, 2, 3, 4, 5, 6}, False: {1, 2, 3}}
 HOOK_SKIPPED = {True: set(), False: {4, 5}}
 # SceneEndCheck (motion_output.h): 1 Agree, 2 HookOnly, 3 StretchOnly, 4 Disagree.
 HOOK_CHECK = {True: {0: '1', 1: '1', 2: '4', 3: '1', 4: '2', 5: '2', 6: '1'}, False: {0: '3', 1: '3', 2: '3', 3: '3', 4: '0', 5: '0', 6: '3'}}
-HOOK_CHECKS = {True: 134, False: 119}
+HOOK_CHECKS = {True: 141, False: 126}  # one presented-image check per frame included
 # Frames whose keyed draws are matched but whose camera turned 31 degrees: a
 # camera cut (auto and strict), so no history; frame 7 of the camera script.
 CAMERA_CUT_FRAMES = {7}
@@ -345,12 +395,12 @@ def validate_ownership(name, variant, enabled, trace):
     return result
 
 
-def validate_bench(name, taa, size, text, trace):
+def validate_bench(name, taa, size, text, trace, hdr=False):
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: bench did not pass'
     mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
     width, height = size.split('x')
-    assert (mode_line['bench'], mode_line['taa'], mode_line['width'], mode_line['height'], mode_line['enabled']) == ('1', '1', width, height, '1'), (name, mode_line)
+    assert (mode_line['bench'], mode_line['taa'], mode_line['width'], mode_line['height'], mode_line['enabled'], mode_line['hdr']) == ('1', '1', width, height, '1', str(int(hdr))), (name, mode_line)
     summary = fields([l for l in lines if l.startswith('BENCH_SUMMARY ')][0])
     samples = [float(fields(l)['boundary_ms']) for l in lines if l.startswith('BENCH ')]
     assert len(samples) == 24 and int(summary['frames']) == 20, (name, summary)
@@ -362,9 +412,19 @@ def validate_bench(name, taa, size, text, trace):
     if taa:
         assert frames[0]['taa_attempted'] == '1' and frames[0]['taa_skip'] == '0' and frames[0]['taa_result'] == frames[0]['taa_copy'] == '00000000', (name, frames[0])
     assert not any(l.startswith(('motion_output_taa_failed', 'motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed')) for l in trace.splitlines()), name
-    return {'mode': 'bench', 'taa': taa, 'width': int(width), 'height': int(height), 'frames_timed': int(summary['frames']),
-            'boundary_ms': {'min': float(summary['min_ms']), 'median': float(summary['median_ms']), 'max': float(summary['max_ms'])},
-            'samples_ms': samples, 'timing': summary['timing']}
+    result = {'mode': 'bench', 'taa': taa, 'hdr': hdr, 'width': int(width), 'height': int(height), 'frames_timed': int(summary['frames']),
+              'boundary_ms': {'min': float(summary['min_ms']), 'median': float(summary['median_ms']), 'max': float(summary['max_ms'])},
+              'samples_ms': samples, 'timing': summary['timing']}
+    hdr_frames = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('hdr_frame ')}
+    if hdr:
+        # Frame 0 (telemetry cadence): redirected, written back once at the bloom copy, no unwind; the target's size and bytes.
+        assert 0 in hdr_frames and (hdr_frames[0]['redirected'], hdr_frames[0]['end'], hdr_frames[0]['unwind'], hdr_frames[0]['writeback_source']) == ('1', 'bloom_copy', '0', 'shader'), (name, hdr_frames.get(0))
+        assert hdr_frames[0]['target'] == f'{width}x{height}' and int(hdr_frames[0]['target_bytes']) == int(width) * int(height) * 8, (name, hdr_frames[0])
+        result['hdr_frame0'] = {k: hdr_frames[0][k] for k in ('end', 'writebacks', 'flushes', 'writeback_source', 'target', 'target_bytes', 'redirect_us', 'writeback_us', 'writeback_draw_us')}
+        result['target_bytes'] = int(hdr_frames[0]['target_bytes'])
+    else:
+        assert not hdr_frames, (name, 'hdr_frame lines without the switch')
+    return result
 
 
 def camera_expectations(lines):
@@ -400,7 +460,7 @@ def check_camera_log(name, trace, expects, camera, sentinel, frames_logged):
     return {f: {'policy': int(s['policy']), 'reason': int(s['reason']), 'cut': int(s['camera_cut']), 'rotation_deg': float(s['rotation_deg'])} for f, s in states.items()}
 
 
-def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True):
+def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None):
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
     assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
@@ -414,7 +474,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     assert mode_line == {'seam': str(int(seam)), 'enabled': str(int(enabled)), 'jitter': str(int(jitter)),
                          'jitter_samples': str(JITTER_SAMPLES), 'taa': str(int(taa)), 'bench': '0', 'width': '64', 'height': '64',
                          'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode, 'camera': str(int(camera)), 'sentinel': sentinel_mode,
-                         'envmap': '0', 'hook': '0', 'state_shadow': str(int(shadow))}, (name, mode_line)
+                         'envmap': '0', 'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': str(int(hdr)), 'hdrvalues': '0', 'hdrfault': '0'}, (name, mode_line)
     # The camera script: the 31-degree jump at frame 7 is a cut unless the
     # switch is off; strict mode without a camera skips every frame.
     strict_skip = sentinel == '2' and not camera
@@ -430,7 +490,8 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     # the FP16 file per resolved frame and the reference teardown, one check
     # per skipped frame; the camera adds the pose validation per frame. Frame
     # 8 checks that a recorded render-state write never reached the device.
-    expected_checks = 31 + (60 if live else 0)
+    # Every frame writes its presented image for the runner (one check each).
+    expected_checks = 31 + 12 + (60 if live else 0)
     if taa:
         expected_checks += 12 * 2 + (12 - len(history_frames) if live else 12) + 4 + skipped + (1 + 2 * (12 - skipped) + 2 if live else 0) + (12 if camera else 0)
     assert int(terminal['checks']) == expected_checks, (name, terminal, expected_checks)
@@ -519,7 +580,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
     assert modes[0]['jitter'] == str(int(jitter)) and modes[0]['jitter_samples'] == str(JITTER_SAMPLES), (name, modes)
     assert modes[0]['rt_mode'] == rt_mode and modes[0]['frame_log'] == '60', (name, modes)
-    assert modes[0]['state_shadow'] == str(int(shadow)) and modes[0]['scene_hook'] == '0', (name, modes)
+    assert modes[0]['state_shadow'] == str(int(shadow)) and modes[0]['scene_hook'] == '0' and modes[0]['hdr'] == str(int(hdr)), (name, modes)
     taa_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_taa_readback ')}
     color_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_color_readback ')}
     taa_lines_log = [fields(l) for l in tl if l.startswith('motion_output_taa ')]
@@ -531,6 +592,10 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     assert len(devices) == 1 and devices[0]['enabled'] == '1' and devices[0]['reason'] == 'ok', (name, devices)
     assert devices[0]['rt_mode'] == rt_mode, (name, devices)
     assert devices[0]['state_shadow'] == str(int(shadow)) and devices[0]['scene_hook'] == '0', (name, devices)
+    assert devices[0]['hdr'] == str(int(hdr and hdr_fault is None)), (name, devices)
+    # The HDR redirect: device gate, per-frame lines, readbacks (or the feature disabling itself with a forced-absent capability).
+    result['hdr'] = validate_hdr(name, trace, directory, hdr, hdr_fault, frames=range(0, 9), capture_frames=range(1, 9),
+                                 end='bloom_copy' if taa else 'present', taa=taa and not strict_skip)
     assert devices[0]['history_available'] == '0', 'synthetic process must not claim game observers'
     # Three-format self test (A8R8G8B8 + A32B32G32R32F + R32F) on this backend.
     assert devices[0]['depth'] == '1' and devices[0]['depth_reason'] == 'ok' and devices[0]['r32f'] == '00000000', (name, devices)
@@ -572,7 +637,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         assert int(summary['set_rt']) == 4 * int(summary['routed']), (name, frame, summary)
         assert int(summary['lazy_flushes']) == (int(summary['routed']) if lazy else 0), (name, frame, summary)
         assert int(summary['jitter_writes']) == 2 * int(summary['jittered']), (name, frame, summary)
-        assert int(summary['readbacks']) == (0 if frame == 0 else 4 if taa and not strict_skip else 2), (name, frame, summary)
+        assert int(summary['readbacks']) == (0 if frame == 0 else (4 if taa and not strict_skip else 2) + int(hdr and hdr_fault is None)), (name, frame, summary)  # the FP16 readback of the HDR path adds one
         # Render-state shadow: every route query is a shadow hit except after a
         # resynchronization (at most one native read per shadowed state); the
         # native reads are those misses plus the fill's touched-state save. Off:
@@ -723,6 +788,208 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     return result
 
 
+def validate_hdr(name, trace, directory, hdr, hdr_fault, frames, capture_frames, end, taa, ends=None, redirected=None, width=64, height=64):
+    """The route's hdr_device gate, the per-frame hdr_frame lines and the
+    capture-frame FP16 readbacks. `end`: the expected end point of every frame
+    (or `ends` per frame); `redirected`: per-frame expectation (default all)."""
+    tl = trace.splitlines()
+    devices = [fields(l) for l in tl if l.startswith('hdr_device ')]
+    hdr_frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('hdr_frame ')}
+    targets = [fields(l) for l in tl if l.startswith('hdr_target ')]
+    readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('hdr_readback ')}
+    unwinds = [l for l in tl if l.startswith('hdr_unwind=')]
+    if not hdr:
+        assert not devices and not hdr_frames and not targets and not readbacks and not unwinds, (name, 'HDR activity without the switch')
+        return {'enabled': False}
+    assert len(devices) == 1, (name, devices)
+    d = devices[0]
+    if hdr_fault is not None:
+        # A forced-absent capability (1: the FP16 render-target format, 3: the self test) disables the feature at attach: no redirect anywhere.
+        assert d['enabled'] == '0' and d['reason'] == {'1': 'fp16_target', '3': 'self_test'}[hdr_fault], (name, d)
+        assert not hdr_frames and not targets and not readbacks and not unwinds, (name, 'a disabled feature redirected')
+        return {'enabled': False, 'reason': d['reason'], 'device': d}
+    assert d['enabled'] == '1' and d['reason'] == 'ok' and d['route'] == '1' and d['depth'] == '1', (name, d)
+    assert d['fp16_target'] == d['fp16_blending'] == d['fp16_sampling'] == '00000000', (name, d)
+    # The self test's four checks plus the emergency StretchRect rung (exercised whenever the conversion is granted, review 22).
+    assert d['self_test_targets'] == '3' and 'scene_errors=0 sum_errors=0 motion_errors=0 depth_errors=0 copy_errors=0 stretch_errors=0 targets=3' in trace, (name, d)
+    assert d['stretch_conversion'] == '00000000' and d['stretch'] == '00000000' and d['main_format'] == '21', (name, d)  # A8R8G8B8 back buffer
+    assert sorted(hdr_frames) == list(frames), (name, sorted(hdr_frames), list(frames))
+    assert not unwinds, (name, unwinds)
+    for frame, h in hdr_frames.items():
+        expect_redirected = 1 if redirected is None else redirected[frame]
+        expect_end = (ends or {}).get(frame, end)
+        assert h['hdr'] == '1' and h['redirected'] == str(expect_redirected), (name, frame, h)
+        assert (h['unwind'], h['unwind_reason'], h['blocked'], h['recheck'], h['refused_msaa'], h['dirty_at_present']) == ('0', 'none', '0', 'none', '0', '0'), (name, frame, h)
+        assert h['caps'] == 'ok' and h['timing'] == 'cpu_qpc', (name, frame, h)
+        if expect_redirected:
+            assert h['end'] == expect_end and h['writeback_source'] == 'shader' and int(h['writebacks']) >= 1, (name, frame, h, expect_end)
+            assert h['target'] == f'{width}x{height}' and int(h['target_bytes']) == width * height * 8, (name, frame, h)
+            assert float(h['writeback_us']) > 0 and float(h['writeback_draw_us']) > 0 and float(h['redirect_us']) > 0, (name, frame, h)
+            assert h['target_create'] == '00000000' and h['latch_bind'] == '00000000', (name, frame, h)
+        else:
+            assert h['end'] == 'none' and h['writebacks'] == '0', (name, frame, h)
+    # Capture frames read the FP16 image back before the first write-back of the frame.
+    expected_readbacks = [f for f in capture_frames if (1 if redirected is None else redirected[f])]
+    assert sorted(readbacks) == expected_readbacks, (name, sorted(readbacks), expected_readbacks)
+    for frame, r in readbacks.items():
+        assert r['result'] == '00000000' and r['file'] == f'hdr_1_{frame}.rgba16f' and int(r['bytes']) == width * height * 8 and r['format'] == 'rgba16f_row_major', (name, frame, r)
+        assert (directory / 'x3-modern-captures' / r['file']).stat().st_size == width * height * 8, (name, frame)
+    assert all(t['create'] == '00000000' and int(t['bytes']) == int(t['width']) * int(t['height']) * 8 for t in targets), (name, targets)
+    return {'enabled': True, 'device': {k: d[k] for k in ('reason', 'fp16_target', 'fp16_blending', 'fp16_filter', 'fp16_sampling', 'stretch_conversion', 'mrt_blending', 'self_test_targets')},
+            'targets': [(int(t['width']), int(t['height']), int(t['bytes'])) for t in targets],
+            'frames': {f: {k: h[k] for k in ('redirected', 'end', 'writebacks', 'flushes', 'writeback_source', 'suspended', 'resumed', 'redirect_us', 'writeback_us', 'writeback_draw_us', 'bind_us')} for f, h in hdr_frames.items()},
+            'readbacks': sorted(readbacks), 'taa': taa}
+
+
+def read_presented(directory, frame, width=64, height=64):
+    data = (directory / f'presented_{frame}.bgra8').read_bytes()
+    assert len(data) == width * height * 4, (directory, frame, len(data))
+    return data
+
+
+# The fixture's clear colour (0xff203040) and flat program colour (0xff8040bf) as stored BGRA8 bytes.
+PRESENTED_BACKGROUND, PRESENTED_FLAT = bytes.fromhex('403020ff'), bytes.fromhex('bf4080ff')
+# The FP16 intermediate rounds an unquantized shader output to 11 significant
+# bits before the 8-bit conversion; a value near a rounding boundary of the
+# 8-bit code can land one code away from the direct path (double rounding).
+# Accepted: at most one code per channel, on lit material pixels only, alpha
+# exact, and at least 98% of all pixels exact; the numbers are recorded.
+HDR_TWIN_MAX_CODE_DIFFERENCE = 1
+HDR_TWIN_MIN_EXACT_FRACTION = 0.98
+# What the double rounding can touch: a channel differs only when its value
+# lies within half an FP16 ulp of an 8-bit code boundary, i.e. at most
+# (2^-12) / (1/255) = 6.2% of the samples per channel for values in [0.5, 1)
+# and half that per octave below; a systematic offset (a bias, a sampling
+# shift) would differ on every material pixel. Measured: 1.8-2.0%.
+HDR_TWIN_MAX_MATERIAL_DIFFERING_FRACTION = 0.10
+
+
+def compare_presented(name, twin, dir_a, dir_b, frames, width=64, height=64):
+    """Per-pixel comparison of the presented frames of two runs: exact matches,
+    the largest per-channel code difference and the class of every differing
+    pixel (background, flat or material, by the twin's value)."""
+    total = exact = 0
+    max_difference = 0
+    differing_frames = []
+    classes = {'background': [0, 0], 'flat': [0, 0], 'material': [0, 0]}
+    channels = [0, 0, 0, 0]  # differing samples per stored channel (b, g, r, a)
+    for frame in frames:
+        a, b = read_presented(dir_a, frame, width, height), read_presented(dir_b, frame, width, height)
+        pixels = width * height
+        total += pixels
+        same = 0
+        for i in range(pixels):
+            pa, pb = a[i * 4:i * 4 + 4], b[i * 4:i * 4 + 4]
+            cls = 'background' if pb == PRESENTED_BACKGROUND else 'flat' if pb == PRESENTED_FLAT else 'material'
+            classes[cls][0] += 1
+            if pa == pb:
+                same += 1
+                continue
+            classes[cls][1] += 1
+            for k in range(4):
+                if pa[k] != pb[k]:
+                    channels[k] += 1
+                    max_difference = max(max_difference, abs(pa[k] - pb[k]))
+        exact += same
+        if same != pixels:
+            differing_frames.append(frame)
+    return {'twin': twin, 'frames': list(frames), 'pixels': total, 'exact': exact, 'exact_fraction': exact / total if total else 1.0,
+            'max_code_difference': max_difference, 'differing_frames': differing_frames, 'identical': exact == total,
+            'classes': {k: {'pixels': v[0], 'differing': v[1]} for k, v in classes.items()},
+            'differing_channels_bgra': channels}
+
+
+def accept_hdr_twin(name, comparison):
+    """The tolerance above; identical is the ideal, not the requirement."""
+    assert comparison['max_code_difference'] <= HDR_TWIN_MAX_CODE_DIFFERENCE, f'{name}: presented frames differ by more than one code from the twin: {comparison}'
+    assert comparison['exact_fraction'] >= HDR_TWIN_MIN_EXACT_FRACTION, f'{name}: fewer than 98% of the presented pixels equal the twin: {comparison}'
+    assert comparison['classes']['background']['differing'] == 0 and comparison['classes']['flat']['differing'] == 0, f'{name}: a background or flat pixel differs from the twin: {comparison}'
+    assert comparison['differing_channels_bgra'][3] == 0, f'{name}: alpha differs from the twin: {comparison}'
+    assert comparison['classes']['background']['pixels'] > 0 and comparison['classes']['material']['pixels'] > 0, (name, comparison)
+    material = comparison['classes']['material']
+    assert material['differing'] <= HDR_TWIN_MAX_MATERIAL_DIFFERING_FRACTION * material['pixels'], f'{name}: more material pixels differ than FP16 double rounding can explain: {comparison}'
+
+
+def validate_hdrvalues(name, text, trace, directory):
+    lines = text.splitlines()
+    assert lines and lines[-1].startswith('RESULT PASS ') and 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: fixture did not pass'
+    terminal = fields(lines[-1])
+    mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
+    assert (mode_line['seam'], mode_line['enabled'], mode_line['hdr'], mode_line['hdrvalues'], mode_line['jitter'], mode_line['taa']) == ('1', '1', '1', '1', '0', '0'), (name, mode_line)
+    values = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('HDR_VALUES ')}
+    assert sorted(values) == list(range(HDR_VALUES_FRAMES)) and int(terminal['frames']) == HDR_VALUES_FRAMES, (name, sorted(values), terminal)
+    # Two Resets: the dimension change between frames 1 and 2, and the one
+    # issued while the redirect is active before frame 5 (HDR_RESET_ACTIVE).
+    assert text.count('RESET PASS') == 2 and text.count('HDR_RESET_ACTIVE frame=5') == 1, name
+    for frame, v in values.items():
+        assert v['mismatches'] == '0' and float(v['max_error']) <= 2e-3, (name, frame, v)
+        assert (v['width'], v['height']) == (('64', '64') if frame < 2 else ('48', '40')), (name, frame, v)
+        assert v['switch'] == str(int(frame == 3)) and v['mid'] == str(int(frame in (1, 4))), (name, frame, v)
+    tl = trace.splitlines()
+    hdr_frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('hdr_frame ')}
+    targets = [fields(l) for l in tl if l.startswith('hdr_target ')]
+    resets = [fields(l) for l in tl if l.startswith('motion_output_reset ')]
+    assert sorted(hdr_frames) == list(range(HDR_VALUES_FRAMES)), (name, sorted(hdr_frames))
+    assert [r['result'] for r in resets] == ['00000000', '00000000'], (name, resets)
+    # Three targets: 64x64 before the first Reset, 48x40 after it (the dimension change) and again after the Reset while redirected.
+    assert [(t['width'], t['height'], t['bytes'], t['create']) for t in targets] == [('64', '64', '32768', '00000000'), ('48', '40', '15360', '00000000'), ('48', '40', '15360', '00000000')], (name, targets)
+    for frame, h in hdr_frames.items():
+        assert (h['redirected'], h['end'], h['unwind'], h['writeback_source'], h['blocked']) == ('1', 'present', '0', 'shader', '0'), (name, frame, h)
+        assert h['target'] == ('64x64' if frame < 2 else '48x40'), (name, frame, h)
+        # Frame 3 switches RT0 mid-scene: the scene so far is written back at the switch
+        # (a flush), the redirect suspends and resumes, and the EndScene flush writes the rest.
+        assert (h['suspended'], h['resumed'], h['writebacks'], h['flushes']) == (('1', '1', '2', '2') if frame == 3 else ('0', '0', '1', '1')), (name, frame, h)
+    assert not any(l.startswith(('hdr_unwind=', 'motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed')) for l in tl), name
+    return {'mode': 'hdrvalues', 'frames': HDR_VALUES_FRAMES, 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
+            'values': {f: {k: v[k] for k in ('width', 'height', 'checked', 'a', 'b', 'background', 'max_error', 'alpha_b_128', 'switch', 'mid')} for f, v in values.items()},
+            'targets': [(int(t['width']), int(t['height']), int(t['bytes'])) for t in targets],
+            'hdr_frames': {f: {k: h[k] for k in ('end', 'writebacks', 'flushes', 'suspended', 'resumed', 'target')} for f, h in hdr_frames.items()}}
+
+
+def validate_hdrfault(name, text, trace, directory):
+    lines = text.splitlines()
+    assert lines and lines[-1].startswith('RESULT PASS ') and 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: fixture did not pass'
+    terminal = fields(lines[-1])
+    mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
+    assert (mode_line['seam'], mode_line['enabled'], mode_line['hdr'], mode_line['hdrfault']) == ('1', '1', '1', '1'), (name, mode_line)
+    faults = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('HDR_FAULT ')}
+    assert sorted(faults) == sorted(HDR_FAULT_SCRIPT) and int(terminal['frames']) == len(HDR_FAULT_SCRIPT), (name, sorted(faults), terminal)
+    assert text.count('RESET PASS') == 3
+    tl = trace.splitlines()
+    hdr_frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('hdr_frame ')}
+    unwinds = [fields(l.replace('hdr_unwind=', 'reason=', 1)) for l in tl if l.startswith('hdr_unwind=')]
+    rechecks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('hdr_recheck ')}
+    assert sorted(hdr_frames) == sorted(HDR_FAULT_SCRIPT), (name, sorted(hdr_frames))
+    stale = {}
+    for frame, e in HDR_FAULT_SCRIPT.items():
+        h, f = hdr_frames[frame], faults[frame]
+        assert f['fault'] == str(e['fault']) and f['ldr'] == str(e['ldr']), (name, frame, f)
+        assert (h['redirected'], h['unwind'], h['writeback_source'], h['recheck'], h['blocked']) == (str(e['redirected']), str(e['unwind']), e['source'], e['recheck'], str(e['blocked'])), (name, frame, h, e)
+        if e['unwind']:
+            assert h['unwind_reason'] == e['reason'], (name, frame, h)
+        if 'target_create' in e:
+            assert h['target_create'] == e['target_create'], (name, frame, h)
+        if 'latch_bind' in e:
+            assert h['latch_bind'] == e['latch_bind'], (name, frame, h)
+        assert h['end'] == e.get('end', 'present' if e['redirected'] else 'none'), (name, frame, h)
+        if 'writebacks' in e:
+            assert (h['writebacks'], h['flushes']) == (e['writebacks'], e['writebacks']), (name, frame, h)
+        # The frames without a copy rung (both copies refused, device lost) and
+        # the failed latching Clear: the binding is restored (the fixture's
+        # state comparison) and the image is what the swap chain holds; with
+        # DISCARD that is undefined. Recorded.
+        if e['source'] == 'restore' or e.get('end') == 'clear_failed':
+            stale[frame] = {'previous_equal': int(f['previous_equal']), 'black_pixels': int(f['black']), 'pixels': int(f['pixels'])}
+    # One unwind line per injected write-back failure, naming the rung that produced the image.
+    assert [(u['reason'], u['source']) for u in unwinds] == [('draw', 'stretch'), ('restore', 'shader'), ('stretch', 'restore'), ('lost', 'restore'), ('draw', 'stretch')], (name, unwinds)
+    assert {f: r['passed'] for f, r in rechecks.items()} == {2: '1', 3: '1', 4: '1', 5: '1', 12: '0'}, (name, rechecks)
+    return {'mode': 'hdrfault', 'frames': len(HDR_FAULT_SCRIPT), 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
+            'script': HDR_FAULT_SCRIPT, 'unwinds': [(u['reason'], u['source'], u['draw'], u['restore'], u['stretch'], u['bind']) for u in unwinds],
+            'rechecks': {f: r['passed'] for f, r in rechecks.items()}, 'frames_without_copy_rung': stale,
+            'hdr_frames': {f: {k: h[k] for k in ('redirected', 'end', 'unwind', 'unwind_reason', 'writeback_source', 'recheck', 'blocked', 'target_create', 'latch_bind')} for f, h in hdr_frames.items()},
+            'color_hashes': {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}}
+
+
 def check_render_state(name, frame, summary, shadow, resyncs):
     """The DLL's per-frame render-state counters against the shadow switch."""
     assert summary['state_shadow'] == str(int(shadow)), (name, frame, summary)
@@ -736,15 +1003,15 @@ def check_render_state(name, frame, summary, shadow, resyncs):
     return {'queries': q, 'hits': h, 'gets': g, 'resyncs': r}
 
 
-def validate_envmap(name, text, trace, directory):
+def validate_envmap(name, text, trace, directory, hdr=False):
     """Environment-map exclusion: frames 1 and 3 carry the six-face sequence (before
     the depth Clear, before the initial Clear); frames 0, 2 and 4 are routed."""
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS ') and 'FAIL' not in text, f'{name}: fixture did not pass'
     terminal = fields(lines[-1])
     mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
-    assert (mode_line['seam'], mode_line['taa'], mode_line['camera'], mode_line['envmap'], mode_line['sentinel']) == ('1', '1', '1', '1', '0'), (name, mode_line)
-    assert (int(terminal['checks']), int(terminal['restorations']), int(terminal['frames'])) == (62, 18, ENVMAP_FRAMES), (name, terminal)
+    assert (mode_line['seam'], mode_line['taa'], mode_line['camera'], mode_line['envmap'], mode_line['sentinel'], mode_line['hdr']) == ('1', '1', '1', '1', '0', str(int(hdr))), (name, mode_line)
+    assert (int(terminal['checks']), int(terminal['restorations']), int(terminal['frames'])) == (67, 18, ENVMAP_FRAMES), (name, terminal)
     assert (terminal['taa_frames'], terminal['taa_history_frames'], terminal['taa_reference_frames'], terminal['taa_skipped_frames'], terminal['taa_changed_pixels']) == ('5', '0', '3', '2', '0'), (name, terminal)
     taa_lines = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('TAA ')}
     assert sorted(taa_lines) == list(range(ENVMAP_FRAMES)) and all(t['history'] == '0' and t['changed'] == '0' for t in taa_lines.values()), (name, taa_lines)
@@ -782,14 +1049,22 @@ def validate_envmap(name, text, trace, directory):
     pixels = read_motion(directory / 'x3-modern-captures' / 'motion_1_1.rgba32f')
     assert all(p == SENTINEL for p in pixels), f'{name}: the environment-map frame wrote motion'
     assert not any(l.startswith(('motion_output_taa_failed', 'motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed')) for l in tl), name
+    # HDR: frames 0, 2, 4 end at the bloom copy; frame 1 (faces mid-scene, selector rejected: no bloom copy is recognized)
+    # suspends and resumes around the faces and ends at Present; frame 3 (faces before the initial Clear) never latches
+    # (the selector rejected the frame before any Clear), so nothing is redirected there. Frame 1's readback happens at the switch flush.
+    hdr_summary = validate_hdr(name, trace, directory, hdr, None, frames=range(ENVMAP_FRAMES), capture_frames=ENVMAP_CAPTURE, end='bloom_copy', taa=True,
+                               ends={1: 'present'}, redirected={0: 1, 1: 1, 2: 1, 3: 0, 4: 1})
+    if hdr:
+        assert (hdr_summary['frames'][1]['suspended'], hdr_summary['frames'][1]['resumed']) == ('1', '1'), (name, hdr_summary['frames'][1])
+        assert all((hdr_summary['frames'][f]['suspended'], hdr_summary['frames'][f]['resumed']) == ('0', '0') for f in (0, 2, 3, 4)), (name, hdr_summary['frames'])
     return {'mode': 'envmap', 'frames': ENVMAP_FRAMES, 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
             'rejected_frames': [1, 3], 'routed_per_frame': {f: int(frames[f]['routed']) for f in sorted(frames)},
             'camera_valid_per_frame': {f: int(frames[f]['camera_valid']) for f in sorted(frames)},
-            'color_hashes': {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}}
+            'color_hashes': {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}, 'hdr': hdr_summary}
 
 
-def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True):
-    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow)
+def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None):
+    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault)
     result['variant'] = variant
     result['ownership'] = validate_ownership(name, variant, enabled, trace)
     return result
@@ -808,12 +1083,12 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True):
     mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
     assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '0', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
                          'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '1', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0',
-                         'hook': '0', 'state_shadow': str(int(shadow))}, (name, mode_line)
+                         'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0'}, (name, mode_line)
     # Per frame: the fill and the burst restoration comparisons, the coverage
     # oracle (both DLLs), the COLORWRITEENABLE1 read-back between routed draws
     # and, seam, the motion/depth oracle.
     assert int(terminal['frames']) == BURST_FRAMES and int(terminal['restorations']) == 2 * BURST_FRAMES, (name, terminal)
-    assert int(terminal['checks']) == (77 if seam else 32), (name, terminal)
+    assert int(terminal['checks']) == (86 if seam else 41), (name, terminal)  # one presented-image check per frame
     restores = [fields(l) for l in lines if l.startswith('RESTORE ')]
     assert len(restores) == 2 * BURST_FRAMES and all(r['differences'] == '0' for r in restores), f'{name}: restoration differences'
     assert [r['label'] for r in restores] == ['fill', 'burst'] * BURST_FRAMES, (name, [r['label'] for r in restores])
@@ -881,7 +1156,7 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True):
             'route_decisions': [(r['frame'], r['index'], r['gate'], r['routed'], r['matched']) for r in routes]}
 
 
-def validate_hook(name, installed, text, trace, directory):
+def validate_hook(name, installed, text, trace, directory, hdr=False):
     """Hook script: the patch discipline (refusals, bytes, restore), the trampoline
     contract (one signal per call, before the compositor, registers preserved)
     and the resolve at the hook are the fixture's checks; the DLL's per-frame
@@ -890,7 +1165,7 @@ def validate_hook(name, installed, text, trace, directory):
     assert lines and lines[-1].startswith('RESULT PASS ') and 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: fixture did not pass'
     terminal = fields(lines[-1])
     mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
-    assert (mode_line['seam'], mode_line['enabled'], mode_line['taa'], mode_line['hook'], mode_line['state_shadow'], mode_line['camera']) == ('1', '1', '1', '1', '1', '0'), (name, mode_line)
+    assert (mode_line['seam'], mode_line['enabled'], mode_line['taa'], mode_line['hook'], mode_line['state_shadow'], mode_line['camera'], mode_line['hdr']) == ('1', '1', '1', '1', '1', '0', str(int(hdr))), (name, mode_line)
     hook_line = fields([l for l in lines if l.startswith('HOOK ')][0])
     # The last refused install (a site that is not a CALL) leaves its status when nothing is installed.
     assert (hook_line['installed'], hook_line['status']) == (('1', 'active') if installed else ('0', 'callsite_mismatch')), (name, hook_line)
@@ -949,7 +1224,10 @@ def validate_hook(name, installed, text, trace, directory):
         resolved = (directory / 'x3-modern-captures' / t['file']).read_bytes()
         assert t['result'] == '00000000' and resolved == (directory / f'reference_taa_{frame}.rgba16f').read_bytes(), f'{name}: frame {frame} FP16 image differs from the reference'
     assert sum(l.startswith('motion_output_release ') for l in tl) == 1, name
-    return {'mode': 'hook', 'installed': installed, 'frames': HOOK_FRAMES, 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
+    # HDR: the hook frames end at the hook (glow on or off), the outside-Scene frame 2 at the bloom copy.
+    hdr_summary = validate_hdr(name, trace, directory, hdr, None, frames=range(HOOK_FRAMES), capture_frames=range(1, HOOK_FRAMES), end='hook', taa=True,
+                               ends={f: 'bloom_copy' for f in range(HOOK_FRAMES) if HOOK_SCRIPT[f]['outside']} if installed else {f: 'bloom_copy' if HOOK_SCRIPT[f]['glow'] else 'present' for f in range(HOOK_FRAMES)})
+    return {'mode': 'hook', 'installed': installed, 'frames': HOOK_FRAMES, 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']), 'hdr': hdr_summary,
             'hook_status': hook_line['status'], 'sources': {f: t['source'] for f, t in taa_lines.items()}, 'history_frames': sorted(history), 'skipped_frames': sorted(skipped),
             'scene_end_check': {f: int(frames[f]['scene_end_check']) for f in sorted(frames)}, 'disagreements': len(disagreements),
             'color_hashes': colors, 'color_hashes_before_boundary': before, 'taa_changed_pixels': {f: int(t['changed']) for f, t in taa_lines.items()},
@@ -964,7 +1242,7 @@ def main():
     summary_path = RESULTS / ('motion-output-partial.json' if only else 'motion-output-summary.json')
     report_path = RESULTS / ('motion-output-partial.txt' if only else 'motion-output.txt')
     result = {'passed': False, 'status': 'RUNNING', 'game_launched': False,
-              'scope': 'Live same-draw route (checkpoint B1 + temporal steps 1 and 3: RT2 current depth, per-draw jitter, cut detector, the temporal resolve at the bloom copy with copy-back) through the actual proxy DLL with one original synthetic device program, plain and under the ownership wrapper (plus copy-depth and admission); seam DLL adds fixture scope injection, target readback and the reference resolve comparison. Bench runs time the boundary. Not gameplay validation.',
+              'scope': 'Live same-draw route (checkpoint B1 + temporal steps 1 and 3: RT2 current depth, per-draw jitter, cut detector, the temporal resolve at the bloom copy with copy-back) and the FP16 HDR scene path stage 1 (X3M_HDR: redirect, identity write-back, unwind ladder) through the actual proxy DLL with one original synthetic device program, plain and under the ownership wrapper (plus copy-depth and admission); seam DLL adds fixture scope injection, target readback and the reference resolve comparison. Bench runs time the boundary. Not gameplay validation.',
               'variants': VARIANTS,
               'cases': {}}
     save = lambda: summary_path.write_text(json.dumps(result, indent=2) + '\n')
@@ -991,13 +1269,13 @@ def main():
         wine_log = (RESULTS / 'motion-output-wine.log').open('w')
         result['bench'] = {}
         for entry in CASES:
-            name, mode, variant, enabled, jitter, taa, bench, lazy, burst, camera, sentinel, envmap, hook, shadow = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst', 'camera', 'sentinel', 'envmap', 'hook', 'shadow'))
+            name, mode, variant, enabled, jitter, taa, bench, lazy, burst, camera, sentinel, envmap, hook, shadow, hdr, hdr_fault = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst', 'camera', 'sentinel', 'envmap', 'hook', 'shadow', 'hdr', 'hdr_fault'))
             if only and name not in only:
                 continue
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(EXE, directory)
-            shutil.copy(SEAM if mode == 'seam' else DLL, directory / 'd3d9.dll')
+            shutil.copy(SEAM if mode in ('seam', 'hdrvalues', 'hdrfault') else DLL, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -1005,11 +1283,17 @@ def main():
                        X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto',
                        X3M_MOTION_RT_MODE='lazy' if lazy else 'perdraw', X3M_MOTION_FRAME_LOG='1' if burst else '60',
                        X3M_STATE_SHADOW='1' if shadow else '0', X3M_SCENE_HOOK=hook or '0',
+                       X3M_HDR='1' if hdr else '0', X3M_FIXTURE_HDR_FAULT=hdr_fault or '',
                        X3M_OWNERSHIP='0', X3M_DEPTH_COPY='0', X3M_SCENE_DEPTH_CAPTURE='0', X3M_OBJECT_TRACE='0', X3M_OBJECT_LIFETIME='0',
                        X3M_MESH_CACHE='0', X3M_ADMISSION='0', X3M_FINITE_POSITIONS='0', X3M_MOTION_CAPTURE='0')
             env.update(VARIANTS[variant])
+            if mode in ('hdrvalues', 'hdrfault'):
+                env['X3M_MOTION_FRAME_LOG'] = '1'  # every frame's route and hdr lines
             command = [str(WINE), '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=n,b', '--workdir', str(directory),
                        str(directory / EXE.name)] + ['Z:' + str(p) for p in RAW] + ['hook' if hook is not None else 'burst' if burst else 'envmap' if envmap else mode] + ([bench] if bench else [])
+            if mode in ('hdrvalues', 'hdrfault'):
+                # The regular capture window covers the first frames; the frame lines come every frame.
+                env['X3M_CAPTURE_START'] = '1'; env['X3M_CAPTURE_FRAMES'] = '8'
             no_game()
             wine_log.write(f'==== {name}\n'); wine_log.flush()
             completed = subprocess.run(command, env=env, stdout=subprocess.PIPE, stderr=wine_log, text=True, timeout=360)
@@ -1019,14 +1303,23 @@ def main():
             assert completed.returncode == 0 and len(traces) == 1, f'{name}: exit {completed.returncode}, traces {len(traces)}'
             trace = traces[0].read_text()
             if bench:
-                case = validate_bench(name, taa, bench, text, trace)
+                case = validate_bench(name, taa, bench, text, trace, hdr)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]))
                 result['bench'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} boundary_ms={case["boundary_ms"]}', flush=True)
                 continue
+            if mode in ('hdrvalues', 'hdrfault'):
+                case = (validate_hdrvalues if mode == 'hdrvalues' else validate_hdrfault)(name, text, trace, directory)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} frames={case["frames"]}', flush=True)
+                continue
             if envmap:
-                case = validate_envmap(name, text, trace, directory)
+                case = validate_envmap(name, text, trace, directory, hdr)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
@@ -1035,7 +1328,7 @@ def main():
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} rejected={case["rejected_frames"]}', flush=True)
                 continue
             if hook is not None:
-                case = validate_hook(name, hook == '1', text, trace, directory)
+                case = validate_hook(name, hook == '1', text, trace, directory, hdr)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
@@ -1052,7 +1345,7 @@ def main():
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} set_rt={case["set_rt_per_frame"]}', flush=True)
                 continue
-            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow)
+            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault)
             case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                         dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
             if enabled == '1':
@@ -1192,6 +1485,38 @@ def main():
         result['scene_hook'] = {'identical_frames_hook_vs_copy': same, 'frames_only_the_hook_resolves': [4, 5], 'frames_differing_afterwards': [6],
                                 'installed': {k: on[k] for k in ('hook_status', 'sources', 'scene_end_check', 'disagreements', 'checks')},
                                 'unpatched': {k: off[k] for k in ('hook_status', 'sources', 'scene_end_check', 'disagreements', 'checks')}}
+        # FP16 HDR scene path, stage 1: every HDR twin presents the same frames
+        # as its twin (per-pixel dumps: exact), the seam readbacks (RT1/RT2
+        # written through the four-format MRT) are identical, and the runs with
+        # a forced-absent capability equal the plain seam run; the bench
+        # reports the redirect's boundary cost per size with the resolve off and on.
+        hdr_report = {}
+        for hdr_name, twin in HDR_TWINS.items():
+            a, b = result['cases'][hdr_name], result['cases'][twin]
+            frames = sorted(int(f) for f in a['color_hashes'])
+            comparison = compare_presented(hdr_name, twin, ROOT / a['directory'], ROOT / b['directory'], frames)
+            accept_hdr_twin(hdr_name, comparison)
+            comparison['color_hashes_identical'] = a['color_hashes'] == b['color_hashes']
+            for key in ('checks', 'restorations', 'motion_pixels', 'matched_pixels', 'depth_written_pixels', 'route_decisions', 'taa_history_frames', 'sources', 'scene_end_check'):
+                if key in b:
+                    assert a[key] == b[key], f'{hdr_name}: {key} differs from {twin}'
+            if hdr_name.startswith('seam') and 'envmap' not in hdr_name and 'hook' not in hdr_name:
+                files_a, files_b = readback_files(hdr_name), readback_files(twin)
+                assert files_a and files_a == files_b, f'{hdr_name}: RT1/RT2 readback files differ from {twin}'
+                comparison['readback_files_identical'] = len(files_a)
+            hdr_report[hdr_name] = comparison
+        for absent in ('seam-hdr-caps-absent', 'seam-hdr-selftest-absent'):
+            a, b = result['cases'][absent], result['cases']['seam-on']
+            assert a['color_hashes'] == b['color_hashes'] and a['hdr']['enabled'] is False, f'{absent}: the disabled feature changed the colour'
+            hdr_report[absent] = {'twin': 'seam-on', 'identical': True, 'reason': a['hdr']['reason']}
+        for size in BENCH_SIZES:
+            for state in ('off', 'on'):
+                on, off = result['bench'][f'bench-{size}-hdr-on-taa-{state}']['boundary_ms'], result['bench'][f'bench-{size}-taa-{state}']['boundary_ms']
+                result['bench'][f'hdr-{size}-taa-{state}'] = {'median_ms': on['median'] - off['median'], 'min_ms': on['min'] - off['min'],
+                                                               'boundary_hdr_off_median_ms': off['median'], 'boundary_hdr_on_median_ms': on['median'],
+                                                               'target_bytes': result['bench'][f'bench-{size}-hdr-on-taa-{state}']['target_bytes']}
+        result['hdr'] = {'twins': hdr_report, 'values': result['cases']['seam-hdr-values']['values'], 'fault_script': result['cases']['seam-hdr-fault']['unwinds'],
+                         'device': result['cases']['seam-hdr-on']['hdr']['device']}
         result['color_identical_off_vs_on'] = True
         result['color_identical_across_variants'] = True
         result['jitter_changes_color'] = True
@@ -1208,6 +1533,7 @@ def main():
                             'Ownership modes wrap the synthetic device; the game observers stay inactive, so wrapper interaction is proven for fill, routing, Reset and release, not for object history.',
                             'Object scope is injected through the fixture seam; the game observers are not exercised here.',
                             'The engine scene-end hook is exercised on the fixture\'s own callsite through the seam; the game\'s 0x004721b1 patch is verified only for its bytes and identity gate here, not in gameplay.',
+                            'The HDR redirect is proven by identical presented frames against the twins, the FP16 value script and the injected-fault ladder on a 64x64 target; the compositor and the HUD of the game are not exercised.',
                             'CrossOver Preview builtin D3D9 only; Windows is cross-compiled, not verified.']
         result['passed'] = True; result['status'] = 'PASS'
     except BaseException as error:

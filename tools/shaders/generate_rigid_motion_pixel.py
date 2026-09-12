@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Compile our original ps_3_0 fragments with a local native D3DX compiler.
 
-Three authored programs are embedded: the motion fragment
+Four authored programs are embedded: the motion fragment
 (src/temporal/rigid_motion_ps.hlsl -> src/renderer/rigid_motion_pixel_program_inc.h),
 the current-depth fragment
-(src/temporal/current_depth_ps.hlsl -> src/renderer/current_depth_pixel_program_inc.h)
-and the temporal resolve the live route runs (temporal step 3;
-src/temporal/resolve.hlsl -> src/renderer/temporal_resolve_program_inc.h).
+(src/temporal/current_depth_ps.hlsl -> src/renderer/current_depth_pixel_program_inc.h),
+the temporal resolve the live route runs (temporal step 3;
+src/temporal/resolve.hlsl -> src/renderer/temporal_resolve_program_inc.h) and
+the HDR scene path's stage-1 identity write-back (src/temporal/hdr_writeback_ps.hlsl
+-> src/renderer/hdr_writeback_program_inc.h).
 `--shader` selects one (default: all). --check recompiles and compares the
 checked-in artifacts without changing them. The compiler DLL is an external
 local prerequisite, never redistributed. Only our authored shaders' compiled
@@ -37,6 +39,9 @@ SHADERS = {
     'temporal_resolve': dict(source=ROOT / 'src/temporal/resolve.hlsl',
                              header=ROOT / 'src/renderer/temporal_resolve_program_inc.h',
                              provenance=ROOT / 'verification/results/temporal-resolve-program.json'),
+    'hdr_writeback': dict(source=ROOT / 'src/temporal/hdr_writeback_ps.hlsl',
+                          header=ROOT / 'src/renderer/hdr_writeback_program_inc.h',
+                          provenance=ROOT / 'verification/results/hdr-writeback-program.json'),
 }
 
 

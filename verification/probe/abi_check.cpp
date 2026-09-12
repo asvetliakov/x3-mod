@@ -74,7 +74,10 @@ SLOT(IDirect3DDevice9Vtbl, DrawTriPatch, 116);
 // scene/query tracking hooks and the query-object wrapper in capture.cpp).
 SLOT(IDirect3DDevice9Vtbl, AddRef, 1);
 SLOT(IDirect3DDevice9Vtbl, GetDeviceCaps, 7);
+SLOT(IDirect3DDevice9Vtbl, GetTexture, 64);
 SLOT(IDirect3DDevice9Vtbl, SetTexture, 65);
+SLOT(IDirect3DDevice9Vtbl, GetTextureStageState, 66);
+SLOT(IDirect3DDevice9Vtbl, GetSamplerState, 68);
 SLOT(IDirect3DDevice9Vtbl, SetTextureStageState, 67);
 SLOT(IDirect3DDevice9Vtbl, SetSamplerState, 69);
 SLOT(IDirect3DDevice9Vtbl, SetStreamSourceFreq, 102);

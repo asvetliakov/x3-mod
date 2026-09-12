@@ -46,6 +46,21 @@
 // resolve (and the copy path's output) in glow-on frames and still runs in
 // glow-off frames; with X3M_SCENE_HOOK=0 the same script runs unpatched.
 // X3M_STATE_SHADOW=0 runs any script with the route's render-state shadow off.
+// X3M_HDR=1 (stage 1 of the FP16 HDR scene path) runs any script with the
+// route's FP16 redirect on: the presented frames must equal the run without it
+// (the runner compares the per-frame presented_<frame>.bgra8 dumps every mode
+// writes), the route's own GetRenderTarget(0) answers must stay the back
+// buffer (the state snapshots compare it), and the seam's RT1/RT2 readbacks
+// must be unchanged. "hdrvalues" (seam, HDR) draws original ps_3_0 programs
+// emitting 2.0 and 8.0, additively and plainly, and checks the FP16 target
+// (x3m_hdr_fixture_readback) holds the unclamped sums while the presented
+// 8-bit frame holds the clamped values with alpha carried, across a Reset
+// with a dimension change and a mid-scene RT0 switch to another surface.
+// "hdrfault" (seam, HDR) injects one failure per frame into the write-back
+// ladder (x3m_hdr_fixture_fault: draw, restore, both copy rungs, device lost,
+// target creation, the latch bind, the recovery self test) and requires a
+// valid presented frame every time (the written-back image, or the previous
+// frame's image when no copy rung was available) and recovery afterwards.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <d3d9.h>
@@ -171,7 +186,20 @@ bool covers_b(double ox, double oy) { return ox >= -.9 && oy <= .9 && ox - oy <=
 // A record with a null object marks an application depth-only Clear between
 // draws (burst script): the oracles restart the depth test there.
 struct DrawRecord { Object* object; float t, p, zo; bool routed, matched; float pt, pp, pzo; bool flat = false; bool jittered = false; bool keyed = false; };
-enum class Alter { None, Blend, FlatPixel };
+enum class Alter { None, Blend, FlatPixel, Hdr2, Hdr8, Hdr8Additive, HdrMid };
+// ps_3_0: def c0, 2, 2, 2, 1 ; mov oC0, c0 and def c0, 8, 8, 8, .5 ; mov oC0,
+// c0: original programs whose output exceeds the 8-bit range (hdrvalues).
+constexpr DWORD hdr2_program[] = {0xffff0300u, 0x05000051u, 0xa00f0000u, 0x40000000u, 0x40000000u, 0x40000000u, 0x3f800000u,
+                                  0x02000001u, 0x800f0800u, 0xa0e40000u, 0x0000ffffu};
+constexpr DWORD hdr8_program[] = {0xffff0300u, 0x05000051u, 0xa00f0000u, 0x41000000u, 0x41000000u, 0x41000000u, 0x3f000000u,
+                                  0x02000001u, 0x800f0800u, 0xa0e40000u, 0x0000ffffu};
+// def c0, .75, .25, .375, .625 ; mov oC0, c0: in-range values exact in FP16
+// whose 8-bit codes are not integers (191.25, 63.75, 95.625, 159.375): the
+// write-back must produce exactly 191, 64, 96, 159 (no double rounding, no
+// bias, no sampling offset on the flat area).
+constexpr DWORD hdrmid_program[] = {0xffff0300u, 0x05000051u, 0xa00f0000u, 0x3f400000u, 0x3e800000u, 0x3ec00000u, 0x3f200000u,
+                                    0x02000001u, 0x800f0800u, 0xa0e40000u, 0x0000ffffu};
+constexpr DWORD hdrmid_presented = 0x9fbf4060u; // A8R8G8B8: a=159 r=191 g=64 b=96
 
 // The reference resolve: the production TemporalPass (same embedded bytecode
 // as the DLL) on a plain device of the system d3d9, fed with the DLL's own
@@ -271,8 +299,14 @@ struct Fixture {
     HRESULT (*readback_depth)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*last_pixel_abi)(IDirect3DDevice9*, float*, unsigned) = nullptr;
     bool seam = false, enabled = false, jitter = false, taa = false, bench = false, burst = false, lazy = false, envmap = false;
-    bool hook = false, state_shadow = true;
+    bool hook = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
     unsigned jitter_samples = 8;
+    // HDR seam exports (X3M_HDR scripts).
+    void (*hdr_fault)(IDirect3DDevice9*, unsigned, unsigned) = nullptr;
+    HRESULT (*hdr_readback)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
+    Com<IDirect3DPixelShader9> hdr2, hdr8, hdrmid; // original ps_3_0 programs emitting (2,2,2,1), (8,8,8,.5) and (.75,.25,.375,.625)
+    bool skip_coverage = false;             // the presented image is deliberately a previous frame's (fault script)
+    std::vector<DWORD> previous_presented;  // the last presented image (fault script)
     // Engine scene-end hook script ("hook" mode): the seam exports, the stub
     // code page and its three sites (the verified one, one calling another
     // target, one that is not a CALL), the original bytes, and what the
@@ -332,6 +366,9 @@ struct Fixture {
     void create(bool production_expected_seam) {
         (void)production_expected_seam;
         api(d->CreatePixelShader(flat_program, &flat.p), "CreatePixelShader flat");
+        api(d->CreatePixelShader(hdr2_program, &hdr2.p), "CreatePixelShader hdr2");
+        api(d->CreatePixelShader(hdr8_program, &hdr8.p), "CreatePixelShader hdr8");
+        api(d->CreatePixelShader(hdrmid_program, &hdrmid.p), "CreatePixelShader hdrmid");
         create_shaders();
         const D3DVERTEXELEMENT9 elements[] = {
             {0, 0, D3DDECLTYPE_FLOAT16_4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
@@ -552,8 +589,13 @@ struct Fixture {
     void draw(Object& o, float t, float p, float zo, bool known, bool routed, bool matched, Alter alter = Alter::None, bool verify = true) {
         scope(known ? &o : nullptr);
         api(d->SetStreamSource(0, o.vb, 0, 24), "SetStreamSource object");
-        api(d->SetVertexShader(vs.p), "SetVertexShader"); api(d->SetPixelShader(alter == Alter::FlatPixel ? flat.p : ps.p), "SetPixelShader");
+        IDirect3DPixelShader9* program = alter == Alter::FlatPixel ? flat.p : alter == Alter::Hdr2 ? hdr2.p : (alter == Alter::Hdr8 || alter == Alter::Hdr8Additive) ? hdr8.p : alter == Alter::HdrMid ? hdrmid.p : ps.p;
+        api(d->SetVertexShader(vs.p), "SetVertexShader"); api(d->SetPixelShader(program), "SetPixelShader");
         if (alter == Alter::Blend) api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE), "blend on");
+        if (alter == Alter::Hdr8Additive) {
+            api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE), "additive on"); api(d->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE), "src one");
+            api(d->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE), "dest one"); api(d->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD), "blend add");
+        }
         rows(t, p, zo);
         if (verify) {
             const Snapshot before = snapshot();
@@ -564,7 +606,8 @@ struct Fixture {
             api(d->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1), "DrawPrimitive object");
             ++draw_index;
         }
-        if (alter == Alter::Blend) api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE), "blend off");
+        if (alter == Alter::Blend || alter == Alter::Hdr8Additive) api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE), "blend off");
+        if (alter == Alter::Hdr8Additive) { api(d->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE), "src restore"); api(d->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ZERO), "dest restore"); }
         const bool live = enabled && seam;
         const bool jittered = enabled && jitter && !scene_rejected;
         records.push_back({&o, t, p, zo, live && routed, live && matched, o.rt, o.rp, o.rzo, alter == Alter::FlatPixel, jittered, live && routed && known});
@@ -796,12 +839,22 @@ struct Fixture {
         std::printf("COLOR_BEFORE frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(before_image)));
         verify_coverage(before_image);
     }
+    // Every presented frame beside the executable, for the runner's per-pixel
+    // comparisons between runs (the HDR twins): row-major BGRA8, no header.
+    void write_presented(const std::vector<DWORD>& image) {
+        char name[64]; std::snprintf(name, sizeof name, "presented_%llu.bgra8", frame);
+        FILE* file = std::fopen(name, "wb"); require(file != nullptr, "presented image written");
+        std::fwrite(image.data(), 4, image.size(), file); std::fclose(file);
+    }
     void frame_end() {
         if (taa) boundary();
         api(d->EndScene(), "EndScene");
         const auto image = color_image();
         std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
-        if (!taa) verify_coverage(image);
+        write_presented(image);
+        if (!taa && !skip_coverage) verify_coverage(image);
+        skip_coverage = false;
+        previous_presented = image;
         verify_motion();
         // The game rebinds its depth surface after the bloom passes; without
         // the bloom sequence the selector rejects the rest of this frame,
@@ -967,6 +1020,7 @@ struct Fixture {
             api(d->EndScene(), "EndScene");
             const auto image = color_image();
             std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
+            write_presented(image);
             api(d->SetDepthStencilSurface(depth.p), "SetDepthStencilSurface rebind");
             api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
             ++frame; ++frames_since_reset;
@@ -1078,6 +1132,7 @@ struct Fixture {
         api(d->EndScene(), "EndScene");
         const auto image = color_image();
         std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
+        write_presented(image);
         verify_motion();
         if (glow) api(d->SetDepthStencilSurface(depth.p), "SetDepthStencilSurface rebind");
         api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
@@ -1118,6 +1173,172 @@ struct Fixture {
             require(hook_shutdown() == 1, "shutdown without a patch is a no-op");
         }
         VirtualFree(hook_code, 0, MEM_RELEASE); hook_code = nullptr; hook_fixture = nullptr;
+    }
+    // ---- FP16 HDR scene path scripts (X3M_HDR=1, seam) ----
+    // The FP16 target as floats through the seam.
+    std::vector<float> hdr_image(unsigned* w, unsigned* h) {
+        std::vector<float> data(std::size_t(W) * H * 4 * 4); // room for a larger target after a dimension change
+        api(hdr_readback(d.p, data.data(), unsigned(data.size()), w, h), "hdr readback");
+        data.resize(std::size_t(*w) * *h * 4);
+        return data;
+    }
+    // One hdrvalues frame: A drawn with 2.0 (plain), A again with 8.0
+    // additively (10.0, alpha 1.5), B with 8.0 plain (8.0, alpha 0.5; B lies
+    // inside A at equal depth, LESSEQUAL) or, with `mid`, with the in-range
+    // (.75, .25, .375, .625) whose exact 8-bit codes are checked.
+    // `switch_target`: between the A draws and B the application binds
+    // another surface, clears and draws it, then rebinds the main target (the
+    // environment-map shape mid-scene).
+    void hdrvalues_frame(bool switch_target, IDirect3DSurface9* other, IDirect3DSurface9* other_depth, bool mid = false) {
+        frame_begin();
+        draw(a, .75f, 0, 0, true, false, false, Alter::Hdr2);
+        draw(a, .75f, 0, 0, true, false, false, Alter::Hdr8Additive);
+        if (switch_target) {
+            api(d->SetRenderTarget(0, other), "SetRenderTarget other"); api(d->SetDepthStencilSurface(other_depth), "SetDepthStencilSurface other");
+            api(d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0xff00ff00, 1, 0), "Clear other");
+            api(d->SetPixelShader(flat.p), "SetPixelShader flat other"); api(d->SetStreamSource(0, a.vb, 0, 24), "SetStreamSource other"); rows(.75f, 0, 0);
+            api(d->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1), "DrawPrimitive other"); ++draw_index;
+            std::printf("EXPECT frame=%llu index=%u object=A routed=0 matched=0 jittered=0 face=0\n", frame, draw_index);
+            IDirect3DSurface9* bound = nullptr; api(d->GetRenderTarget(0, &bound), "GetRenderTarget other"); bound->Release();
+            require(bound == other, "the application's other target is reported while the redirect is suspended");
+            api(d->SetRenderTarget(0, back.p), "SetRenderTarget main"); api(d->SetDepthStencilSurface(depth.p), "SetDepthStencilSurface main");
+            api(d->GetRenderTarget(0, &bound), "GetRenderTarget main"); bound->Release();
+            require(bound == back.p, "the application's main target is reported after the rebind");
+            scene_rejected = true; // the selector rejected the frame at the switch: no routing, no jitter
+        }
+        draw(b, 0, 0, 0, true, false, false, mid ? Alter::HdrMid : Alter::Hdr8);
+        api(d->EndScene(), "EndScene");
+        const auto image = color_image();
+        std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
+        write_presented(image);
+        unsigned w = 0, h = 0;
+        const auto fp16 = hdr_image(&w, &h);
+        require(w == W && h == H, "the FP16 target matches the main dimensions");
+        unsigned checked = 0, a_pixels = 0, b_pixels = 0, background = 0, mismatches = 0, alpha_b = 0;
+        double max_error = 0;
+        for (UINT y = 0; y < H; ++y) for (UINT x = 0; x < W; ++x) {
+            double ox, oy, wc; object_point(x, y, .75f, 0, ox, oy, wc);
+            if (edge_distance(a, ox, oy) < 1e-3) continue;
+            double bx, by, bw; object_point(x, y, 0, 0, bx, by, bw);
+            if (edge_distance(b, bx, by) < 1e-3) continue;
+            const bool in_b = b.covers(bx, by), in_a = a.covers(ox, oy);
+            const float* v = &fp16[(std::size_t(y) * W + x) * 4];
+            const DWORD c = image[std::size_t(y) * W + x];
+            double expected[4]; DWORD expected8;
+            if (in_b && mid) { expected[0] = .75; expected[1] = .25; expected[2] = .375; expected[3] = .625; expected8 = hdrmid_presented; ++b_pixels; }
+            else if (in_b) { expected[0] = expected[1] = expected[2] = 8; expected[3] = .5; expected8 = 0x80ffffff; ++b_pixels; }
+            else if (in_a) { expected[0] = expected[1] = expected[2] = 10; expected[3] = 1.5; expected8 = 0xffffffff; ++a_pixels; }
+            else { expected[0] = 0x20 / 255.; expected[1] = 0x30 / 255.; expected[2] = 0x40 / 255.; expected[3] = 1; expected8 = 0xff203040; ++background; }
+            ++checked;
+            bool ok = true;
+            for (unsigned k = 0; k < 4; ++k) { const double e = std::fabs(v[k] - expected[k]); max_error = std::max(max_error, e); ok = ok && e <= 2e-3; }
+            // FP16 readback order is RGBA; the presented DWORD is BGRA8. Alpha 0.5 stores as 127 or 128.
+            const DWORD rgb = c & 0x00ffffffu, alpha = c >> 24;
+            if (in_b && !mid) { ok = ok && rgb == 0x00ffffffu && (alpha == 127 || alpha == 128); alpha_b += alpha == 128; }
+            else ok = ok && c == expected8; // mid: the exact codes 191, 64, 96, 159
+            if (!ok && ++mismatches <= 8) std::printf("HDR_DIFF frame=%llu x=%u y=%u fp16=%.6g,%.6g,%.6g,%.6g presented=%08lx expected=%08lx\n", frame, x, y, v[0], v[1], v[2], v[3], c, expected8);
+        }
+        std::printf("HDR_VALUES frame=%llu width=%u height=%u checked=%u a=%u b=%u background=%u mismatches=%u max_error=%.6g alpha_b_128=%u switch=%u mid=%u\n",
+                    frame, w, h, checked, a_pixels, b_pixels, background, mismatches, max_error, alpha_b, switch_target, mid);
+        require(!mismatches && a_pixels > 500 && b_pixels > 50 && background > 100, "FP16 target holds the unclamped sums (10.0, 8.0, alpha carried) and the presented frame the clamped values");
+        api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
+        ++frame; ++frames_since_reset;
+    }
+    void run_hdrvalues() {
+        require(enabled && seam && hdr && hdr_readback && hdr_fault, "hdrvalues needs the seam, the HDR switch and its exports");
+        Com<IDirect3DTexture9> other_texture; Com<IDirect3DSurface9> other, other_depth;
+        api(d->CreateTexture(16, 16, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &other_texture.p, nullptr), "CreateTexture other");
+        api(other_texture->GetSurfaceLevel(0, &other.p), "other level");
+        api(d->CreateDepthStencilSurface(16, 16, D3DFMT_D24X8, D3DMULTISAMPLE_NONE, 0, TRUE, &other_depth.p, nullptr), "CreateDepthStencilSurface other");
+        hdrvalues_frame(false, nullptr, nullptr);
+        hdrvalues_frame(false, nullptr, nullptr, true);
+        // Reset with a dimension change: the FP16 target is released before
+        // the Reset and re-created at the new size at the next latch.
+        other.reset(); other_depth.reset(); other_texture.reset();
+        W = 48; H = 40; pp.BackBufferWidth = W; pp.BackBufferHeight = H;
+        reset();
+        api(d->CreateTexture(16, 16, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &other_texture.p, nullptr), "CreateTexture other");
+        api(other_texture->GetSurfaceLevel(0, &other.p), "other level");
+        api(d->CreateDepthStencilSurface(16, 16, D3DFMT_D24X8, D3DMULTISAMPLE_NONE, 0, TRUE, &other_depth.p, nullptr), "CreateDepthStencilSurface other");
+        hdrvalues_frame(false, nullptr, nullptr);
+        hdrvalues_frame(true, other.p, other_depth.p);
+        hdrvalues_frame(false, nullptr, nullptr, true);
+        other.reset(); other_depth.reset(); other_texture.reset();
+        // Reset while the redirect is active (no Present between the latch and
+        // the Reset): the route must hand RT0 back to the application's main
+        // surface and drop its objects before the Reset, which must succeed;
+        // the frame after it redirects again (a third hdr_target line) and the
+        // teardown's zero-reference check covers the released main surface.
+        frame_begin();
+        draw(a, .75f, 0, 0, true, false, false, Alter::Hdr2);
+        api(d->EndScene(), "EndScene");
+        IDirect3DSurface9* bound = nullptr; api(d->GetRenderTarget(0, &bound), "GetRenderTarget before Reset"); bound->Release();
+        require(bound == back.p, "the application's main target is reported before the Reset");
+        reset();
+        std::printf("HDR_RESET_ACTIVE frame=%llu\n", frame);
+        hdrvalues_frame(false, nullptr, nullptr);
+    }
+    // One hdrfault frame: `fault` (renderer::HdrFault kind, 0 none) injected
+    // before the frame's draws; even frames draw A and B, odd frames A only,
+    // so a stale image is distinguishable from a fresh one. `stale`: the
+    // presented image must be the previous frame's (no copy rung available);
+    // `ldr`: the frame is expected to run without the redirect.
+    void hdrfault_frame(unsigned fault, bool stale, bool ldr) {
+        if (fault) hdr_fault(d.p, fault, 1);
+        frame_begin();
+        const bool even = frame % 2 == 0;
+        // A with the material pair (scope withheld: routed sentinel-only, so
+        // the four-format MRT is written in every frame of this script), B flat.
+        draw(a, .75f, 0, 0, false, true, false);
+        if (even) draw(b, 0, 0, 0, false, false, false, Alter::FlatPixel);
+        skip_coverage = stale;
+        const auto expected_stale = previous_presented;
+        frame_end();
+        // Without a copy rung the main target keeps whatever it held: the
+        // previous frame's image only if the swap chain retained it. This
+        // fixture presents with D3DSWAPEFFECT_DISCARD like the game, so the
+        // content is undefined after Present (this backend returns zeros); the
+        // ladder's third rung guarantees the binding, not an image. Measured,
+        // not asserted; the frame after must recover (the script's next frame).
+        unsigned previous_equal = 0, black = 0;
+        if (stale) {
+            previous_equal = !expected_stale.empty() && previous_presented == expected_stale;
+            for (DWORD v : previous_presented) black += v == 0;
+        }
+        std::printf("HDR_FAULT frame=%llu fault=%u stale=%u ldr=%u previous_equal=%u black=%u pixels=%u\n", frame - 1, fault, stale, ldr, previous_equal, black, unsigned(previous_presented.size()));
+    }
+    void run_hdrfault() {
+        require(enabled && seam && hdr && hdr_readback && hdr_fault, "hdrfault needs the seam, the HDR switch and its exports");
+        // f0 normal; f1 the copy draw fails (StretchRect rung); f2 the
+        // restoration fails after a good draw; f3 both copy rungs fail (the
+        // binding rung: previous image); f4 device lost reported by the draw
+        // (previous image); f5 normal again after the recheck.
+        hdrfault_frame(0, false, false);
+        hdrfault_frame(4, false, false);
+        hdrfault_frame(7, false, false);
+        hdrfault_frame(6, true, false);
+        hdrfault_frame(5, true, false);
+        hdrfault_frame(0, false, false);
+        // f6/f7: the target cannot be created after a Reset (no redirect until
+        // the next Reset); f8 redirected again; f9 the latch bind fails (no
+        // redirect for that frame only); f10 normal; f11 a draw failure
+        // followed by f12 whose recovery self test fails (blocked); f13 after
+        // a Reset (the block is cleared).
+        reset();
+        hdrfault_frame(8, false, true);
+        hdrfault_frame(0, false, true);
+        reset();
+        hdrfault_frame(0, false, false);
+        hdrfault_frame(9, false, true);
+        hdrfault_frame(0, false, false);
+        hdrfault_frame(4, false, false);
+        hdrfault_frame(3, false, true);
+        reset();
+        hdrfault_frame(0, false, false);
+        // f14: the latching Clear "fails" (seam kind 10): the binding goes back
+        // without a write-back (the never-cleared target must not reach the
+        // main target), the frame runs LDR on an uncleared main target.
+        hdrfault_frame(10, true, false);
     }
     void stateblock_case() {
         // A state block Apply rebinding the flat PS must be seen by the route:
@@ -1221,7 +1442,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench [WxH]");
+        if ((argc != 4 && argc != 5) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|envmap|hook|hdrvalues|hdrfault [WxH]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -1229,6 +1450,8 @@ int main(int argc, char** argv) {
         f.burst = mode == "burst";
         f.envmap = mode == "envmap";
         f.hook = mode == "hook";
+        f.hdrvalues = mode == "hdrvalues";
+        f.hdrfault = mode == "hdrfault";
         if (f.bench) {
             unsigned w = 0, h = 0;
             if (argc != 5 || std::sscanf(argv[4], "%ux%u", &w, &h) != 2 || !w || !h || w > 8192 || h > 8192) throw std::runtime_error("bench needs WxH");
@@ -1243,8 +1466,10 @@ int main(int argc, char** argv) {
         f.hook_shutdown = symbol<int (*)()>(runtime, "x3m_scene_hook_fixture_shutdown", false);
         f.hook_signals = symbol<unsigned (*)()>(runtime, "x3m_scene_hook_fixture_signals", false);
         f.hook_status = symbol<const char* (*)()>(runtime, "x3m_scene_hook_fixture_status", false);
+        f.hdr_fault = symbol<void (*)(IDirect3DDevice9*, unsigned, unsigned)>(runtime, "x3m_hdr_fixture_fault", false);
+        f.hdr_readback = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_hdr_fixture_readback", false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
-        require(f.bench || f.burst || f.envmap || f.hook || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.burst || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.taa = f.enabled && GetEnvironmentVariableA("X3M_TAA", setting, sizeof setting) == 1 && setting[0] == '1';
         // The DLL implies the jitter with the resolve on.
@@ -1255,9 +1480,12 @@ int main(int argc, char** argv) {
         char camera_mode[8]{}; f.camera = f.seam && GetEnvironmentVariableA("X3M_FIXTURE_CAMERA", camera_mode, sizeof camera_mode) == 6 && !std::strcmp(camera_mode, "rotate");
         if (GetEnvironmentVariableA("X3M_TAA_SENTINEL", setting, sizeof setting) > 0) f.sentinel = !std::strcmp(setting, "1") ? 1 : !std::strcmp(setting, "2") ? 2 : 0;
         f.state_shadow = !(GetEnvironmentVariableA("X3M_STATE_SHADOW", setting, sizeof setting) == 1 && setting[0] == '0');
+        f.hdr = f.enabled && GetEnvironmentVariableA("X3M_HDR", setting, sizeof setting) == 1 && setting[0] == '1';
+        // A caps/self-test fault must be queued before the device is created (attach).
+        if (f.hdr_fault && GetEnvironmentVariableA("X3M_FIXTURE_HDR_FAULT", setting, sizeof setting) > 0) f.hdr_fault(nullptr, unsigned(std::atoi(setting)), 1);
         if (f.camera) { fake_camera_pose(0); f.camera_install(&fake_projection_slot, &fake_view_slot); }
         char path[MAX_PATH]{}; GetModuleFileNameA(runtime, path, MAX_PATH);
-        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s camera=%u sentinel=%u envmap=%u hook=%u state_shadow=%u\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw", f.camera, f.sentinel, f.envmap, f.hook, f.state_shadow);
+        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s camera=%u sentinel=%u envmap=%u hook=%u state_shadow=%u hdr=%u hdrvalues=%u hdrfault=%u\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw", f.camera, f.sentinel, f.envmap, f.hook, f.state_shadow, f.hdr, f.hdrvalues, f.hdrfault);
         f.vs_words = load(argv[1]); f.ps_words = load(argv[2]);
         f.vs_hash = fnv(f.vs_words.data(), f.vs_words.size() * 4); f.ps_hash = fnv(f.ps_words.data(), f.ps_words.size() * 4);
         f.flat_hash = fnv(flat_program, sizeof flat_program);
@@ -1273,13 +1501,14 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if (f.taa && f.enabled && f.seam && !f.bench) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else f.run();
+        if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
+        else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }
         // Teardown: every fixture object released, then the device must reach zero.
         f.back.reset(); f.depth.reset(); f.bloom_surface.reset(); f.bloom.reset();
         for (UINT i = 0; i < 4; ++i) api(f.d->SetTexture(i, nullptr), "SetTexture null");
         api(f.d->SetVertexShader(nullptr), "unbind"); api(f.d->SetPixelShader(nullptr), "unbind"); api(f.d->SetStreamSource(0, nullptr, 0, 0), "unbind"); api(f.d->SetVertexDeclaration(nullptr), "unbind");
-        f.vs.reset(); f.ps.reset(); f.flat.reset(); f.declaration.reset(); f.vb_a.reset(); f.vb_b.reset(); f.cube.reset();
+        f.vs.reset(); f.ps.reset(); f.flat.reset(); f.hdr2.reset(); f.hdr8.reset(); f.hdrmid.reset(); f.declaration.reset(); f.vb_a.reset(); f.vb_b.reset(); f.cube.reset();
         for (auto& t : f.textures) t.reset();
         const ULONG device_refs = f.d.p->Release(); f.d.p = nullptr;
         require(device_refs == 0, "device final Release reaches zero with the route's objects released");

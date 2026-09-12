@@ -9,6 +9,7 @@
 #include "../renderer/material_motion.h"
 #include "../renderer/temporal_pass.h"
 #include "../renderer/temporal_resolve_program.h"
+#include "../renderer/hdr_pass.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -179,6 +180,20 @@ constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept {
 const char* scene_end_source_name(std::uint32_t source) noexcept {
     return source == unsigned(SceneEndSource::Hook) ? "hook" : source == unsigned(SceneEndSource::StretchRect) ? "stretchrect" : "none";
 }
+const char* hdr_end_name(std::uint32_t end) noexcept {
+    switch (static_cast<HdrEnd>(end)) {
+    case HdrEnd::Hook: return "hook"; case HdrEnd::BloomCopy: return "bloom_copy"; case HdrEnd::ContentWrite: return "content_write";
+    case HdrEnd::Present: return "present"; case HdrEnd::ClearFailed: return "clear_failed"; case HdrEnd::Dropped: return "dropped";
+    default: return "none";
+    }
+}
+const char* hdr_source_name(std::uint32_t source) noexcept {
+    switch (static_cast<renderer::HdrWritebackSource>(source)) {
+    case renderer::HdrWritebackSource::Shader: return "shader"; case renderer::HdrWritebackSource::Stretch: return "stretch";
+    case renderer::HdrWritebackSource::Restore: return "restore"; default: return "none";
+    }
+}
+constexpr unsigned hdr_recheck_interval = 60; // latches between recovery self tests while blocked
 
 std::uint64_t hash_bytes(const void* data, std::size_t size) noexcept {
     std::uint64_t hash = 14695981039346656037ull;
@@ -225,6 +240,7 @@ MotionOutput::~MotionOutput() { release_resources(); }
 unsigned MotionOutput::device_references() const noexcept {
     if (releasing_ || taa_busy_) return 0;
     unsigned count = (target_surface_ ? 1 : 0) + taa_references_;
+    if (hdr_) count += hdr_->references();
     if (depth_surface_) ++count;
     if (sentinel_ps_) ++count;
     if (sentinel_mrt_ps_) ++count;
@@ -241,9 +257,11 @@ unsigned MotionOutput::device_references() const noexcept {
 void MotionOutput::release_resources() noexcept {
     if (releasing_) return;
     releasing_ = true;
+    drop_redirect();
     release_target();
-    // The pass is destroyed with its objects: the destructor's second call of
-    // this function must not probe a device that no longer exists.
+    // The passes are destroyed with their objects: the destructor's second call
+    // of this function must not probe a device that no longer exists.
+    if (hdr_) { hdr_->shutdown(); hdr_.reset(); hdr_enabled_ = false; }
     if (taa_) { taa_call([&] { taa_->shutdown(); }); taa_.reset(); }
     release(sentinel_ps_);
     release(sentinel_mrt_ps_);
@@ -473,7 +491,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface) noexcept {
         else {
             if (capture_ && taa_debug_)
                 // GetRenderTargetData needs the exact format of the main target (A8R8G8B8 or X8R8G8B8).
-                readback_surface(main_surface, static_cast<D3DFORMAT>(main_.format), 4, L"color", L"bgra8", "motion_output_color_readback", "bgra8_row_major");
+                readback_surface(main_surface, static_cast<D3DFORMAT>(main_.format), 4, L"color", L"bgra8", "motion_output_color_readback", "bgra8_row_major", target_width_, target_height_);
             renderer::FrameInputs in{};
             in.color_surface = main_surface; in.current_depth = depth; in.motion = motion;
             in.width = main_.width; in.height = main_.height;
@@ -519,7 +537,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface) noexcept {
             if (SUCCEEDED(hr) && !out.color_surface) hr = E_FAIL;
             if (SUCCEEDED(hr)) {
                 if (capture_ && taa_debug_)
-                    readback_surface(out.color_surface, D3DFMT_A16B16G16R16F, 8, L"taa", L"rgba16f", "motion_output_taa_readback", "rgba16f_row_major");
+                    readback_surface(out.color_surface, D3DFMT_A16B16G16R16F, 8, L"taa", L"rgba16f", "motion_output_taa_readback", "rgba16f_row_major", target_width_, target_height_);
                 // Point-filtered full-rect copy of the resolved FP16 image back into
                 // the 8-bit main target; StretchRect changes no device state.
                 const std::uint64_t copy_begin = stamp();
@@ -551,17 +569,29 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
     // The application's copy (and the resolve, which samples RT1/RT2) must
     // see the application's bindings.
     restore_bindings();
-    if (!enabled_ || selector_.state() != renderer::BoundaryState::AwaitCopy) return;
+    if (!enabled_) return;
     // Would this copy advance the selector out of AwaitCopy? Probe a copy of
     // it with the event after_stretch will feed (same sequence number, not
     // consumed here); only the main-target bloom copy qualifies.
-    renderer::Event e{};
-    e.kind = renderer::EventKind::Copy; e.sequence = sequence_ + 1; e.result_known = true; e.result = 0;
-    e.source = describe_surface(source); e.destination = describe_surface(destination);
-    e.source_rect_null = source_rect == nullptr; e.destination_rect_null = destination_rect == nullptr;
-    renderer::SceneBoundarySelector probe = selector_;
-    probe.observe(e);
-    if (probe.state() != renderer::BoundaryState::AwaitBloomTarget) return;
+    bool bloom = false;
+    if (selector_.state() == renderer::BoundaryState::AwaitCopy) {
+        renderer::Event e{};
+        e.kind = renderer::EventKind::Copy; e.sequence = sequence_ + 1; e.result_known = true; e.result = 0;
+        e.source = describe_surface(source); e.destination = describe_surface(destination);
+        e.source_rect_null = source_rect == nullptr; e.destination_rect_null = destination_rect == nullptr;
+        renderer::SceneBoundarySelector probe = selector_;
+        probe.observe(e);
+        bloom = probe.state() == renderer::BoundaryState::AwaitBloomTarget;
+    }
+    // HDR redirect: the bloom copy is the scene end (write back, rebind the
+    // main target, then the resolve below reads the 8-bit image); any other
+    // copy reading the main target flushes first, one writing it ends first.
+    if (hdr_state_ != HdrState::Off) {
+        if (bloom) end_redirect(HdrEnd::BloomCopy);
+        else if (hdr_is_main(destination)) end_redirect(HdrEnd::ContentWrite);
+        else if (hdr_is_main(source)) flush_redirect();
+    }
+    if (!bloom) return;
     counters_.bloom_copy_seen = true; // The selector's scene end (cross-checked against the engine hook at Present).
     if (!taa_enabled_) return;
     // The copy path is the fallback: a frame the engine hook already resolved
@@ -624,6 +654,10 @@ void MotionOutput::scene_end_hook() noexcept {
     restore_bindings();
     if (!cut_finished_) finish_cut_detector();
     counters_.hook_scene_end = true;
+    // The FP16 scene ends here: written back into the main target and RT0
+    // rebound to it before the compositor's GetRenderTarget(0) and before the
+    // resolve below reads it (docs/reverse-engineering/compositor-and-glow.md, 7.3).
+    end_redirect(HdrEnd::Hook);
     if (!taa_enabled_) return;
     if (!resolve_allowed(SceneEndSource::Hook)) return;
     // The resolve reads and rewrites RT0, which must be the latched main target
@@ -781,13 +815,42 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     }
     taa_enabled_ = taa_requested_ && !std::strcmp(taa_reason, "ok");
     scene_open_ = false; active_queries_ = 0;
-    log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u taa=%u taa_reason=%s taa_format=%08lx taa_debug=%u rt_mode=%s camera=%s sentinel=%u camera_cut_deg=%.2f camera_log=%u state_shadow=%u scene_hook=%u",
+    // FP16 HDR scene path: the pass gates itself (section 5 of the design) and
+    // runs the four-format self test outside the application's scene.
+    hdr_enabled_ = false;
+    if (hdr_requested_) {
+        const char* hdr_reason = "route";
+        renderer::HdrCaps hdr_caps{};
+        D3DFORMAT hdr_main_format = D3DFMT_A8R8G8B8;
+        if (enabled_) {
+            try { hdr_ = std::make_unique<renderer::HdrPass>(); } catch (...) { hdr_.reset(); }
+            if (hdr_) {
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+                if (fixture_hdr_fault_count_) { hdr_->set_fault(static_cast<renderer::HdrFault>(fixture_hdr_fault_kind_), fixture_hdr_fault_count_); fixture_hdr_fault_count_ = 0; }
+#endif
+                // The back buffer's format (A8R8G8B8 for the game, X8R8G8B8
+                // possible) decides the emergency StretchRect conversion query.
+                IDirect3DSurface9* rt0 = nullptr; D3DSURFACE_DESC rt0_desc{};
+                if (SUCCEEDED(native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &rt0)) && rt0 && SUCCEEDED(rt0->GetDesc(&rt0_desc)) && rt0_desc.Format != D3DFMT_UNKNOWN)
+                    hdr_main_format = rt0_desc.Format;
+                release(rt0);
+                hdr_->attach(device_, native_, caps, hdr_main_format, depth_enabled_);
+                hdr_caps = hdr_->caps(); hdr_reason = hdr_caps.reason;
+                hdr_enabled_ = hdr_->enabled();
+                if (!hdr_enabled_) { hdr_->shutdown(); hdr_.reset(); }
+            } else hdr_reason = "allocation";
+        }
+        log("hdr_device device=%llu enabled=%u reason=%s fp16_target=%08lx fp16_blending=%08lx fp16_filter=%08lx fp16_sampling=%08lx stretch_conversion=%08lx main_format=%u mrt_blending=%u self_test_targets=%u self_test=%s route=%u depth=%u",
+            id_, hdr_enabled_, hdr_reason, hdr_caps.fp16_target, hdr_caps.fp16_blending, hdr_caps.fp16_filter, hdr_caps.fp16_sampling,
+            hdr_caps.stretch_conversion, unsigned(hdr_main_format), hdr_caps.mrt_blending, hdr_caps.self_test_targets, hdr_caps.self_test_detail, enabled_, depth_enabled_);
+    }
+    log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u taa=%u taa_reason=%s taa_format=%08lx taa_debug=%u rt_mode=%s camera=%s sentinel=%u camera_cut_deg=%.2f camera_log=%u state_shadow=%u scene_hook=%u hdr=%u",
         id_, enabled_, reason, detail[0] ? detail : "-", caps.NumSimultaneousRTs, caps.MaxVertexShaderConst,
         caps.PrimitiveMiscCaps, caps.VertexShaderVersion, caps.PixelShaderVersion, format_result,
         history_available_, unsigned(history_.stats().capacity), depth_enabled_, depth_reason,
         depth_detail[0] ? depth_detail : "-", depth_format_result, jitter_requested_, jitter_samples_,
         taa_enabled_, taa_reason, taa_format_result, taa_debug_, lazy_mode_ ? "lazy" : "perdraw",
-        camera_state::status(), unsigned(sentinel_mode_), camera_cut_degrees_, camera_log_interval_, state_shadow_, scene_hook_installed_);
+        camera_state::status(), unsigned(sentinel_mode_), camera_cut_degrees_, camera_log_interval_, state_shadow_, scene_hook_installed_, hdr_enabled_);
 }
 
 // One actual mixed-format MRT draw into a 4x4 A8R8G8B8 + A32B32G32R32F pair
@@ -970,7 +1033,14 @@ void MotionOutput::before_reset() noexcept {
     // The pass releases its histories, scratch and state block after RT1/RT2
     // and keeps its resolve shader. A lazily bound RT1/RT2 is unbound first.
     restore_bindings();
+    // Reset discards the frame: no write-back, but the application's main
+    // surface goes back to RT0 first so the FP16 texture is not kept alive by
+    // the binding through the Reset (and is not RT0 after a failed one).
+    if (hdr_state_ == HdrState::Active && hdr_ && hdr_main_) hdr_->bind(hdr_main_, nullptr);
+    drop_redirect(); // The FP16 target goes with RT1/RT2.
     release_target();
+    if (hdr_) hdr_->before_reset();
+    hdr_target_failed_ = false; hdr_blocked_ = false; hdr_blocked_latches_ = 0; // a Reset clears the cause of an unwind
     if (taa_) taa_call([&] { taa_->before_reset(); });
     target_failed_ = false;
     history_.invalidate();
@@ -1178,7 +1248,12 @@ void MotionOutput::resync_shadow() noexcept {
     if (SUCCEEDED(native<GetDeclarationFn>(GetVertexDeclaration)(device_, &declaration))) set_vertex_declaration(declaration);
     release(declaration);
     IDirect3DSurface9* surface = nullptr;
-    if (SUCCEEDED(native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &surface))) shadow_.rt0 = describe_surface(surface);
+    if (SUCCEEDED(native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &surface))) {
+        shadow_.rt0 = describe_surface(surface);
+        // The device holds the FP16 target while redirected; the shadow keeps
+        // the application's logical binding (the latched main surface).
+        if (hdr_state_ == HdrState::Active && hdr_main_ && same(shadow_.rt0, hdr_target_)) shadow_.rt0 = describe_surface(hdr_main_);
+    }
     release(surface);
     const unsigned targets = caps_.NumSimultaneousRTs < 4 ? unsigned(caps_.NumSimultaneousRTs) : 4;
     for (unsigned i = 1; i < targets; ++i) {
@@ -1254,6 +1329,13 @@ void MotionOutput::before_clear(DWORD count, DWORD flags, float z) noexcept {
     bindings(pending_);
     pending_.clear_flags = flags; pending_.rect_count = count; pending_.clear_z = z;
     pending_valid_ = true;
+    // The latching Clear redirects RT0 to the FP16 target before it runs, so
+    // the application's own Clear clears the target; a later Clear with the
+    // target flag while redirected clears it too (content pending).
+    if (hdr_enabled_) {
+        if (hdr_state_ == HdrState::Off) begin_redirect();
+        else if (hdr_state_ == HdrState::Active && (flags & D3DCLEAR_TARGET)) hdr_dirty_ = true;
+    }
 }
 void MotionOutput::after_clear(HRESULT result) noexcept {
     if (!enabled_) return;
@@ -1261,6 +1343,18 @@ void MotionOutput::after_clear(HRESULT result) noexcept {
     pending_valid_ = false;
     const auto before = selector_.state();
     observe(pending_, result);
+    if (hdr_latch_pending_) {
+        hdr_latch_pending_ = false;
+        // The redirect was bound for this Clear; a failed Clear (the selector
+        // rejects) leaves nothing to keep: the binding goes back at once and
+        // nothing is written back (the target holds no content of this frame;
+        // the main target keeps what the application's failed Clear left).
+        bool failed = FAILED(result) || selector_.state() != renderer::BoundaryState::Background;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        if (hdr_ && hdr_->take_fault(renderer::HdrFault::Clear)) failed = true; // seam: the Clear "failed"
+#endif
+        if (failed) { hdr_dirty_ = false; end_redirect(HdrEnd::ClearFailed); }
+    }
     // The scene view's camera is final at the depth-only Clear that starts the
     // scene phase (the view activation issues that Clear right after building
     // the matrices); the background view's at the latching Clear (diagnostics).
@@ -1291,6 +1385,16 @@ void MotionOutput::after_set_render_target(DWORD index, IDirect3DSurface9* surfa
     if (!enabled_) return;
     // Render-target bindings are not state-block state: they apply even while recording.
     if (SUCCEEDED(result)) describe_binding(index, surface);
+    if (index == 0 && hdr_pending_state_) {
+        // The substitution decided in before_set_render_target took effect
+        // only if the native call succeeded (else the binding is unchanged).
+        const auto next = static_cast<HdrState>(hdr_pending_state_);
+        hdr_pending_state_ = 0;
+        if (SUCCEEDED(result) && next != hdr_state_) {
+            if (next == HdrState::Suspended) ++counters_.hdr.suspended; else ++counters_.hdr.resumed;
+            hdr_state_ = next;
+        }
+    }
     auto e = event(renderer::EventKind::SetRenderTarget);
     e.rt_index = index;
     e.rt = index == 0 ? shadow_.rt0 : describe_surface(surface);
@@ -1438,6 +1542,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     MotionRoute route{};
     ++counters_.draws;
     if (!enabled_) { route.gate = MotionGate::Feature; ++counters_.gates[1]; return route; }
+    if (hdr_state_ == HdrState::Active) hdr_dirty_ = true; // every application draw lands in the FP16 target
     const std::uint64_t begin = stamp(), fill_before = counters_.fill_ticks, flush_before = counters_.lazy_flush_ticks;
     evaluate_draw(call, route);
     if (!route.routed) restore_bindings();
@@ -1614,15 +1719,193 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     }
 }
 
+// ---- FP16 HDR redirect (stage 1) ------------------------------------------
+//
+// State machine (docs/architecture/hdr-scene-path.md, "Stage 1
+// implementation"): Off -> Active at the latching colour+depth Clear (the
+// FP16 target replaces the application's main surface as the device's RT0;
+// the application's own Clear then clears the target); Active -> Suspended
+// when the application binds another surface at RT0 (forwarded verbatim after
+// the pending content was written back, so the main target always holds a
+// valid image); Suspended -> Active when it binds the main surface again (the
+// target is substituted; its content is intact); -> Off at the scene end
+// (engine hook, bloom copy), before an application write into the main
+// target's contents, or at Present, with the write-back of any pending
+// content and the main surface rebound. EndScene flushes without ending, so
+// an environment-map excursion after a glow-off scene keeps the redirect and
+// the terminal Present end normally finds nothing pending.
+
+// True when `surface` is the application's latched main surface (pointer or
+// resource identity: through the ownership wrapper the application's pointer
+// is the canonical wrapper, natively the same object).
+bool MotionOutput::hdr_is_main(IDirect3DSurface9* surface) noexcept {
+    if (!surface || !hdr_main_) return false;
+    return surface == hdr_main_ || same(describe_surface(surface), main_);
+}
+
+IDirect3DSurface9* MotionOutput::before_set_render_target(DWORD index, IDirect3DSurface9* surface) noexcept {
+    hdr_pending_state_ = 0;
+    if (index != 0 || hdr_state_ == HdrState::Off || !hdr_ || !hdr_->target()) return surface;
+    if (hdr_is_main(surface)) { hdr_pending_state_ = std::uint32_t(HdrState::Active); return hdr_->target(); }
+    // Another surface (an environment-map face): forwarded verbatim; the scene
+    // so far is written back first so the main target is valid whether or not
+    // the application ever rebinds it.
+    if (hdr_state_ == HdrState::Active) flush_redirect();
+    hdr_pending_state_ = std::uint32_t(HdrState::Suspended);
+    return surface;
+}
+bool MotionOutput::hdr_logical_render_target(DWORD index, IDirect3DSurface9** out) noexcept {
+    if (index != 0 || hdr_state_ != HdrState::Active || !hdr_main_ || !out) return false;
+    hdr_main_->AddRef();
+    *out = hdr_main_;
+    return true;
+}
+void MotionOutput::before_render_target_read(IDirect3DSurface9* surface) noexcept {
+    if (hdr_state_ == HdrState::Active && hdr_dirty_ && hdr_is_main(surface)) flush_redirect();
+}
+void MotionOutput::before_render_target_write(IDirect3DSurface9* surface) noexcept {
+    if (hdr_state_ != HdrState::Off && hdr_is_main(surface)) end_redirect(HdrEnd::ContentWrite);
+}
+void MotionOutput::before_end_scene() noexcept { if (hdr_state_ == HdrState::Active) flush_redirect(); }
+
+// At the latching Clear, before it is forwarded: only the Clear the selector
+// will latch (probed on a copy), never a multisampled target, never while
+// blocked after an unwind unless the recovery self test passes now.
+void MotionOutput::begin_redirect() noexcept {
+    auto& h = counters_.hdr;
+    if (selector_.state() != renderer::BoundaryState::AwaitInitialClear || !hdr_) return;
+    renderer::SceneBoundarySelector probe = selector_;
+    renderer::Event e = pending_;
+    e.result_known = true; e.result = 0;
+    probe.observe(e);
+    if (probe.state() != renderer::BoundaryState::Background) return;
+    if (pending_.rt.msaa || pending_.depth.msaa) { h.refused_msaa = true; return; }
+    if (hdr_blocked_) {
+        h.blocked = true;
+        if (hdr_blocked_latches_++ % hdr_recheck_interval != 0) return;
+        char detail[320] = "";
+        const std::uint64_t begin = stamp();
+        const bool passed = hdr_->recheck(scene_open_, detail, sizeof detail);
+        h.recheck_ticks = stamp() - begin;
+        record(unsigned(telemetry::Metric::HdrRecheck), h.recheck_ticks, !passed);
+        h.recheck_ran = true; h.recheck_passed = passed;
+        log("hdr_recheck device=%llu frame=%llu passed=%u %s", id_, frame_, passed, detail);
+        if (!passed) return;
+        hdr_blocked_ = false; hdr_blocked_latches_ = 0; h.blocked = false;
+    }
+    if (hdr_target_failed_) return;
+    const bool had_target = hdr_->target() && hdr_->width() == pending_.rt.width && hdr_->height() == pending_.rt.height;
+    const HRESULT create = hdr_->ensure_target(pending_.rt.width, pending_.rt.height);
+    h.target_create = create;
+    if (!had_target || FAILED(create))
+        log("hdr_target device=%llu frame=%llu width=%u height=%u format=A16B16G16R16F bytes=%llu create=%08lx",
+            id_, frame_, pending_.rt.width, pending_.rt.height, FAILED(create) ? 0ull : hdr_->target_bytes(), create);
+    if (FAILED(create)) { hdr_target_failed_ = true; return; } // Retry only after Reset, like the motion target.
+    // The application's RT0 (one reference, held until the redirect ends) must
+    // be the logical binding the shadow describes; else nothing is redirected.
+    IDirect3DSurface9* main = nullptr;
+    HRESULT hr = native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &main);
+    if (FAILED(hr) || !main || !same(describe_surface(main), pending_.rt)) {
+        if (hdr_logged_ < failure_log_limit) { ++hdr_logged_; log("hdr_redirect_refused device=%llu frame=%llu reason=binding result=%08lx", id_, frame_, hr); }
+        release(main); return;
+    }
+    std::uint64_t ticks = 0;
+    hr = hdr_->bind(hdr_->target(), telemetry_ ? &ticks : nullptr);
+    h.latch_bind = hr; h.redirect_ticks = ticks;
+    record(unsigned(telemetry::Metric::HdrRedirect), ticks, FAILED(hr));
+    if (FAILED(hr)) {
+        // A failed bind changes nothing (D3D9 keeps the previous target); the
+        // frame runs without the redirect.
+        if (hdr_logged_ < failure_log_limit) { ++hdr_logged_; log("hdr_redirect_refused device=%llu frame=%llu reason=bind result=%08lx", id_, frame_, hr); }
+        release(main); return;
+    }
+    hdr_main_ = main;
+    hdr_target_ = describe_surface(hdr_->target());
+    hdr_state_ = HdrState::Active; hdr_dirty_ = true; hdr_latch_pending_ = true;
+    h.redirected = true;
+}
+// One write-back through the pass (the ladder), with the capture-frame
+// readback of the FP16 image before the first one of the frame, the
+// telemetry and the block after an unwind.
+renderer::HdrWriteback MotionOutput::hdr_writeback(IDirect3DSurface9* final_rt0, bool write) noexcept {
+    auto& h = counters_.hdr;
+    if (write && capture_ && !h.writebacks && hdr_->target())
+        readback_surface(hdr_->target(), D3DFMT_A16B16G16R16F, 8, L"hdr", L"rgba16f", "hdr_readback", "rgba16f_row_major", hdr_->width(), hdr_->height());
+    const std::uint64_t begin = stamp();
+    const renderer::HdrWriteback r = hdr_->write_back(hdr_main_, final_rt0, scene_open_, write, telemetry_);
+    const std::uint64_t ticks = stamp() - begin;
+    if (write) {
+        ++h.writebacks; h.source = unsigned(r.source);
+        h.writeback_ticks += ticks; h.writeback_draw_ticks += r.ticks_draw; h.writeback_stretch_ticks += r.ticks_stretch;
+        record(unsigned(telemetry::Metric::HdrWriteback), ticks, r.unwind);
+        record(unsigned(telemetry::Metric::HdrWritebackDraw), r.ticks_draw, FAILED(r.draw) || FAILED(r.restore));
+        if (r.ticks_stretch) record(unsigned(telemetry::Metric::HdrWritebackStretch), r.ticks_stretch, FAILED(r.stretch));
+    }
+    if (r.ticks_bind) { h.bind_ticks += r.ticks_bind; record(unsigned(telemetry::Metric::HdrBind), r.ticks_bind, FAILED(r.bind)); }
+    hdr_dirty_ = false;
+    if (r.unwind) {
+        // The must-unwind ladder was taken: the main target holds the shader
+        // copy, the StretchRect copy or its previous content, and RT0 is the
+        // main target again (or the target, for a flush). The device state may
+        // be unknown after a failed restoration; the next latch redirects only
+        // after the recovery self test passes.
+        h.unwind = true; h.unwind_reason = r.unwind_reason;
+        h.unwind_draw = r.draw; h.unwind_restore = r.restore; h.unwind_stretch = r.stretch; h.unwind_bind = r.bind;
+        hdr_blocked_ = true; hdr_blocked_latches_ = 0;
+        if (FAILED(r.restore)) { ++counters_.restore_failures; invalidate_render_states(); }
+        if (hdr_logged_ < failure_log_limit) {
+            ++hdr_logged_;
+            log("hdr_unwind=%s device=%llu frame=%llu source=%s draw=%08lx restore=%08lx stretch=%08lx bind=%08lx write=%u final=%s",
+                r.unwind_reason, id_, frame_, hdr_source_name(unsigned(r.source)), r.draw, r.restore, r.stretch, r.bind, write,
+                final_rt0 == hdr_main_ ? "main" : "target");
+        }
+    }
+    return r;
+}
+void MotionOutput::flush_redirect() noexcept {
+    if (hdr_state_ != HdrState::Active || !hdr_dirty_ || !hdr_ || !hdr_main_) return;
+    ++counters_.hdr.flushes;
+    hdr_writeback(hdr_->target(), true);
+}
+void MotionOutput::end_redirect(HdrEnd reason) noexcept {
+    if (hdr_state_ == HdrState::Off) return;
+    if (hdr_state_ == HdrState::Active && hdr_ && hdr_main_) hdr_writeback(hdr_main_, hdr_dirty_);
+    // Suspended: the application bound another surface itself and the main
+    // target already holds the write-back of the switch; nothing to rebind.
+    release(hdr_main_);
+    hdr_state_ = HdrState::Off; hdr_dirty_ = false; hdr_latch_pending_ = false; hdr_pending_state_ = 0;
+    counters_.hdr.end = std::uint32_t(reason);
+}
+void MotionOutput::drop_redirect() noexcept {
+    if (hdr_state_ == HdrState::Off) { release(hdr_main_); return; }
+    release(hdr_main_);
+    hdr_state_ = HdrState::Off; hdr_dirty_ = false; hdr_latch_pending_ = false; hdr_pending_state_ = 0;
+    counters_.hdr.end = std::uint32_t(HdrEnd::Dropped);
+}
+void MotionOutput::log_hdr_frame() noexcept {
+    const auto& h = counters_.hdr;
+    const auto& caps = hdr_ ? hdr_->caps() : renderer::HdrCaps{};
+    const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
+    log("hdr_frame device=%llu frame=%llu hdr=%u redirected=%u end=%s writebacks=%lu flushes=%lu writeback_source=%s unwind=%u unwind_reason=%s unwind_draw=%08lx unwind_restore=%08lx unwind_stretch=%08lx unwind_bind=%08lx blocked=%u recheck=%s suspended=%lu resumed=%lu dirty_at_present=%u refused_msaa=%u target_create=%08lx latch_bind=%08lx target=%ux%u target_bytes=%llu caps=%s stretch_conversion=%08lx timing=%s redirect_us=%.1f writeback_us=%.1f writeback_draw_us=%.1f writeback_stretch_us=%.1f bind_us=%.1f recheck_us=%.1f",
+        id_, frame_, hdr_enabled_, h.redirected, hdr_end_name(h.end), static_cast<unsigned long>(h.writebacks), static_cast<unsigned long>(h.flushes),
+        hdr_source_name(h.source), h.unwind, h.unwind_reason, h.unwind_draw, h.unwind_restore, h.unwind_stretch, h.unwind_bind,
+        h.blocked, h.recheck_ran ? (h.recheck_passed ? "pass" : "fail") : "none", static_cast<unsigned long>(h.suspended),
+        static_cast<unsigned long>(h.resumed), h.dirty_at_present, h.refused_msaa, h.target_create, h.latch_bind,
+        hdr_ ? hdr_->width() : 0u, hdr_ ? hdr_->height() : 0u, hdr_ ? hdr_->target_bytes() : 0ull, caps.reason, caps.stretch_conversion,
+        telemetry_ ? "cpu_qpc" : "off", us(h.redirect_ticks), us(h.writeback_ticks), us(h.writeback_draw_ticks), us(h.writeback_stretch_ticks),
+        us(h.bind_ticks), us(h.recheck_ticks));
+}
+
 // ---- frame end -------------------------------------------------------------
 
 // Copies one owned target through system memory to <prefix>_<device>_<frame>.<extension>
 // beside the capture log (row-major, bytes_per_pixel per pixel, no header).
 HRESULT MotionOutput::readback_surface(IDirect3DSurface9* surface, D3DFORMAT format, unsigned bytes_per_pixel,
-                                       const wchar_t* prefix, const wchar_t* extension, const char* tag, const char* format_name) noexcept {
+                                       const wchar_t* prefix, const wchar_t* extension, const char* tag, const char* format_name,
+                                       UINT width, UINT height) noexcept {
     const std::uint64_t begin = stamp(); // route_readback: allocation, GetRenderTargetData, lock, file write.
     IDirect3DSurface9* copy = nullptr;
-    HRESULT hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, target_width_, target_height_,
+    HRESULT hr = !width || !height ? E_INVALIDARG : native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, width, height,
         format, D3DPOOL_SYSTEMMEM, &copy, nullptr);
     if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, surface, copy);
     std::size_t written = 0;
@@ -1639,8 +1922,8 @@ HRESULT MotionOutput::readback_surface(IDirect3DSurface9* surface, D3DFORMAT for
         if (SUCCEEDED(hr)) {
             FILE* file = _wfopen(path, L"wb");
             if (file) {
-                for (UINT y = 0; y < target_height_; ++y)
-                    written += std::fwrite(static_cast<const char*>(lock.pBits) + y * lock.Pitch, 1, std::size_t(target_width_) * bytes_per_pixel, file);
+                for (UINT y = 0; y < height; ++y)
+                    written += std::fwrite(static_cast<const char*>(lock.pBits) + y * lock.Pitch, 1, std::size_t(width) * bytes_per_pixel, file);
                 if (std::fclose(file)) hr = E_FAIL;
             } else hr = E_FAIL;
             copy->UnlockRect();
@@ -1651,7 +1934,7 @@ HRESULT MotionOutput::readback_surface(IDirect3DSurface9* surface, D3DFORMAT for
     ++counters_.readbacks; counters_.readback_ticks += ticks;
     record(unsigned(telemetry::Metric::RouteReadback), ticks, FAILED(hr), written);
     log("%s device=%llu frame=%llu file=%ls_%llu_%llu.%ls width=%u height=%u format=%s result=%08lx bytes=%u",
-        tag, id_, frame_, prefix, id_, frame_, extension, target_width_, target_height_, format_name, hr, unsigned(written));
+        tag, id_, frame_, prefix, id_, frame_, extension, width, height, format_name, hr, unsigned(written));
     return hr;
 }
 // Capture frames: RT1 as motion_<device>_<frame>.rgba32f and, when produced,
@@ -1659,9 +1942,9 @@ HRESULT MotionOutput::readback_surface(IDirect3DSurface9* surface, D3DFORMAT for
 // depth row covered the pixel).
 void MotionOutput::readback() noexcept {
     if (!target_surface_ || !counters_.filled) return;
-    readback_surface(target_surface_, D3DFMT_A32B32G32R32F, 16, L"motion", L"rgba32f", "motion_output_readback", "rgba32f_row_major");
+    readback_surface(target_surface_, D3DFMT_A32B32G32R32F, 16, L"motion", L"rgba32f", "motion_output_readback", "rgba32f_row_major", target_width_, target_height_);
     if (depth_enabled_ && depth_surface_)
-        readback_surface(depth_surface_, D3DFMT_R32F, 4, L"depth", L"r32f", "motion_output_depth_readback", "r32f_row_major");
+        readback_surface(depth_surface_, D3DFMT_R32F, 4, L"depth", L"r32f", "motion_output_depth_readback", "r32f_row_major", target_width_, target_height_);
 }
 
 // One read of the engine's projection and view buffers (camera_state.cpp:
@@ -1733,6 +2016,10 @@ void MotionOutput::finish_cut_detector() noexcept {
 void MotionOutput::before_present() noexcept {
     if (!enabled_) return;
     restore_bindings();
+    // Terminal end of the redirect: a frame without a recognized scene end
+    // (glow off without the engine hook, the synthetic scripts) is written
+    // back here (normally flushed at EndScene already: nothing pending).
+    if (hdr_state_ != HdrState::Off) { counters_.hdr.dirty_at_present = hdr_state_ == HdrState::Active && hdr_dirty_; end_redirect(HdrEnd::Present); }
     if (!cut_finished_) finish_cut_detector();
     // Engine hook against selector: the verdict of this frame (SceneEndCheck).
     // A frame that never latched a scene (menu) has nothing to compare.
@@ -1806,11 +2093,20 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             static_cast<unsigned long>(c.draws_after_hook), c.bloom_copy_seen);
     }
     if (taa_enabled_ && (capture_ || frame_ % camera_log_interval_ == 0)) log_camera_state();
+    if (hdr_enabled_ && (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0))) log_hdr_frame();
 }
 
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 void MotionOutput::fixture_configure(const MotionOutputFixtureConfig& config) noexcept {
     fixture_ = config; fixture_configured_ = true;
+}
+void MotionOutput::fixture_hdr_fault(unsigned kind, unsigned count) noexcept {
+    if (hdr_) hdr_->set_fault(static_cast<renderer::HdrFault>(kind), count);
+    else { fixture_hdr_fault_kind_ = kind; fixture_hdr_fault_count_ = count; }
+}
+HRESULT MotionOutput::fixture_hdr_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept {
+    if (!hdr_) return D3DERR_NOTAVAILABLE;
+    return hdr_->fixture_readback(out, floats, width, height);
 }
 HRESULT MotionOutput::fixture_last_pixel_abi(float* out, std::size_t floats) const noexcept {
     if (!out || floats < 8) return D3DERR_MOREDATA;

@@ -91,6 +91,12 @@ Per-call metrics (`telemetry_metric name=...`, one `count` per call):
 | `taa_resolve_draw` | the state normalization, the scene bracket when the pass owns it, and the resolve quad(s) | – |
 | `taa_state_apply` | the target/depth unbind and rebind plus the block's `Apply`, viewport and scissor | – |
 | `taa_copy_back` | the resolved FP16 image to the 8-bit main target `StretchRect` | – |
+| `hdr_redirect` | the latching Clear's RT0 substitution (`X3M_HDR`): viewport/scissor getters, `SetRenderTarget(0, FP16)`, their restoration | – |
+| `hdr_writeback` | one write-back through the ladder, inclusive (the shader copy with its state save/restore, the `StretchRect` rung, the explicit rebind) | the capture-frame FP16 readback (`route_readback`) |
+| `hdr_writeback_draw` | the identity copy draw: explicit state save, quad, restore | – |
+| `hdr_writeback_stretch` | the emergency `StretchRect` rung, only after a failed draw | – |
+| `hdr_bind` | an explicit rebind of RT0 ending a write-back (unwind, or nothing pending) | – |
+| `hdr_recheck` | the recovery self test at a latch while blocked after an unwind | – |
 
 `route_gate`, `route_draw`, `route_fill`, `route_jitter` and
 `route_lazy_flush` are exclusive of each other and may be added into "route
@@ -110,7 +116,13 @@ the render-state shadow counters `state_shadow`, `rs_queries`, `rs_hits`,
 `rs_gets`, `rs_resyncs` and the engine-hook fields `scene_hook`,
 `scene_end_source=none|hook|stretchrect`, `scene_end_check`, `hook_signals`,
 `hook_outside_scene`, `hook_state`, `draws_after_hook`, `bloom_copy_seen`
-([live-motion-route.md](../architecture/live-motion-route.md#engine-boundaries-and-state-shadow-2026-09-12)). The line is written in
+([live-motion-route.md](../architecture/live-motion-route.md#engine-boundaries-and-state-shadow-2026-09-12)). With `X3M_HDR=1` a separate
+`hdr_frame` line follows at the same cadence (`redirected`, `end`,
+`writebacks`, `flushes`, `writeback_source`, `unwind`, `unwind_reason` and
+the rung HRESULTs, `blocked`, `recheck`, `suspended`, `resumed`,
+`dirty_at_present`, `target`, `target_bytes`, `caps`, and the `hdr_*` totals
+in microseconds; [hdr-scene-path.md](../architecture/hdr-scene-path.md),
+"Stage 1 implementation"). The line is written in
 every capture frame and, with telemetry on, every `X3M_MOTION_FRAME_LOG`
 frames (default 60). `readbacks > 0` identifies a capture frame:
 `tools/analysis/summarize_telemetry.py` aggregates the lines per device,

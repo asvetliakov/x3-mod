@@ -39,6 +39,9 @@ bool motion_capture_requested = false;
 bool motion_output_requested = false;
 bool motion_jitter_requested = false;
 bool taa_requested = false, taa_debug_requested = false;
+// X3M_HDR=1 (default off; requires X3M_MOTION_OUTPUT=1): the FP16 HDR scene
+// path, stage 1 (docs/architecture/hdr-scene-path.md).
+bool hdr_requested = false;
 // X3M_MOTION_RT_MODE=lazy keeps the route's RT1/RT2 bindings across routed
 // draws (experiment; default perdraw); X3M_MOTION_FRAME_LOG=<n> sets the
 // periodic motion_output_frame cadence with telemetry on (default 60).
@@ -647,9 +650,13 @@ HRESULT WINAPI set_rt(IDirect3DDevice9* d,DWORD index,IDirect3DSurface9* rt) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;auto& ctx=*devices.at(d);CallTimer timer(ctx);
-    ctx.motion_output.restore_bindings();timer.begin();
+    ctx.motion_output.restore_bindings();
+    // HDR redirect: the application's main surface maps to the FP16 target
+    // while the scene is redirected; the shadow below records the logical binding.
+    IDirect3DSurface9* physical=ctx.motion_output.before_set_render_target(index,rt);
+    timer.begin();
     cpu.before_original();
-    const HRESULT result=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,DWORD,IDirect3DSurface9*)>(37)(d,index,rt);cpu.after_original();timer.end();
+    const HRESULT result=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,DWORD,IDirect3DSurface9*)>(37)(d,index,physical);cpu.after_original();timer.end();
     ctx.scene_depth.after_set_rt(d,index,result);
     ctx.motion_output.after_set_render_target(index,rt,result);
     if(ctx.capture){capture_event(ctx,"set_rt",result);log("set_rt index=%lu result=%08lx ptr=%p",index,result,rt);if(SUCCEEDED(result))surface_info("binding",rt);}
@@ -704,6 +711,7 @@ HRESULT WINAPI end_scene(IDirect3DDevice9* d){
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;auto& ctx=*devices.at(d);
     ctx.motion_output.restore_bindings();
+    ctx.motion_output.before_end_scene(); // HDR: flush the FP16 content while draws are legal
     cpu.before_original();
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(42)(d);cpu.after_original();
     ctx.motion_output.after_end_scene(hr);
@@ -764,6 +772,7 @@ HRESULT WINAPI update_surface(IDirect3DDevice9* d,IDirect3DSurface9* source,cons
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;auto& ctx=*devices.at(d);
     ctx.motion_output.restore_bindings();
+    ctx.motion_output.before_render_target_write(dest); // HDR: a write into the main target ends the redirect first
     cpu.before_original();
     const auto hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*,const RECT*,IDirect3DSurface9*,const POINT*)>(30)(d,source,rect,dest,point);cpu.after_original();
     ctx.scene_depth.unsupported("UpdateSurface",hr);ctx.motion_output.unsupported(hr);return hr;
@@ -782,6 +791,7 @@ HRESULT WINAPI color_fill(IDirect3DDevice9* d,IDirect3DSurface9* surface,const R
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;auto& ctx=*devices.at(d);
     ctx.motion_output.restore_bindings();
+    ctx.motion_output.before_render_target_write(surface); // HDR: a fill of the main target ends the redirect first
     cpu.before_original();
     const auto hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*,const RECT*,D3DCOLOR)>(35)(d,surface,rect,color);cpu.after_original();
     ctx.scene_depth.after_color_fill(d,surface,rect,hr);
@@ -1015,13 +1025,18 @@ HRESULT WINAPI begin_stateblock(IDirect3DDevice9* d){
     if(SUCCEEDED(hr))ctx.motion_output.begin_stateblock();
     return hr;
 }
-// Lazy-mode hooks (X3M_MOTION_RT_MODE=lazy only): the application's target
-// getters must report its own bindings, so a kept RT1/RT2 is released first.
+// Lazy-mode and HDR hooks (X3M_MOTION_RT_MODE=lazy, X3M_HDR=1): the
+// application's target getters must report its own bindings, so a kept
+// RT1/RT2 is released first and, while the scene is redirected to the FP16
+// target, GetRenderTarget(0) answers with the application's logical main
+// surface (the logical-binding shim) and a read of the main target's contents
+// receives the pending FP16 content first.
 HRESULT WINAPI get_rt(IDirect3DDevice9* d,DWORD index,IDirect3DSurface9** out){
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;auto& ctx=*devices.at(d);
     ctx.motion_output.restore_bindings();
+    if(ctx.motion_output.hdr_logical_render_target(index,out))return S_OK;
     cpu.before_original();
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,IDirect3DSurface9**)>(38)(d,index,out);cpu.after_original();
     return hr;
@@ -1031,6 +1046,7 @@ HRESULT WINAPI get_rt_data(IDirect3DDevice9* d,IDirect3DSurface9* source,IDirect
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;auto& ctx=*devices.at(d);
     ctx.motion_output.restore_bindings();
+    ctx.motion_output.before_render_target_read(source);
     cpu.before_original();
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*,IDirect3DSurface9*)>(32)(d,source,dest);cpu.after_original();
     return hr;
@@ -1136,6 +1152,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         log("scene_hook active=%u status=%s reinstalled=1",scene_hook::active(),scene_hook::status());
     }
     hooked.motion_output.configure_scene_hook(scene_hook::active());
+    hooked.motion_output.configure_hdr(hdr_requested);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
     if(hooked.motion_output.enabled()){
         // The route needs the complete selector event stream plus setter
@@ -1157,6 +1174,9 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         if(hooked.motion_output.state_shadow()||hooked.motion_output.lazy_rt_mode())hooked.set(57,set_render_state);
         // Lazy binding: the application's target and write-mask getters restore first.
         if(hooked.motion_output.lazy_rt_mode()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);hooked.set(58,get_render_state);}
+        // HDR redirect: the application's GetRenderTarget(0) and its reads of
+        // the main target's contents go through the logical-binding shim.
+        if(hooked.motion_output.hdr_enabled()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);}
     }
     ownership_depth_info(d,devices.at(d)->id,devices.at(d)->frame,"create_after");
 }
@@ -1229,6 +1249,9 @@ void initialize_log(HMODULE module) {
     taa_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_TAA",setting,32)==1 && setting[0]==L'1';
     if(taa_requested)motion_jitter_requested=true;
     taa_debug_requested=taa_requested && GetEnvironmentVariableW(L"X3M_TAA_DEBUG",setting,32)>0 && wcstoul(setting,nullptr,10)>0;
+    // The FP16 HDR scene path (stage 1: redirect, identity write-back) needs
+    // the route's hooks and selector.
+    hdr_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_HDR",setting,32)==1 && setting[0]==L'1';
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
     motion_state_shadow=!(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)==1 && setting[0]==L'0');
     const bool scene_hook_requested=GetEnvironmentVariableW(L"X3M_SCENE_HOOK",setting,32)==1 && setting[0]==L'1';
@@ -1240,9 +1263,9 @@ void initialize_log(HMODULE module) {
     }
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s camera_cut_deg=%.2f camera_log=%u state_shadow=%u scene_hook=%u",
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s camera_cut_deg=%.2f camera_log=%u state_shadow=%u scene_hook=%u hdr=%u",
         motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log,
-        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames,motion_state_shadow,scene_hook_requested);
+        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames,motion_state_shadow,scene_hook_requested,hdr_requested);
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     if(telemetry::enabled())loading_trace::initialize();
@@ -1252,8 +1275,11 @@ const wchar_t* capture_directory() { return directory.c_str(); }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Fixture-only exports (verification/probe/motion_output_fixture.cpp). Absent
 // from production builds; the seam DLL is linked by build_motion_output.sh.
-namespace { MotionOutputFixtureConfig fixture_config{}; bool fixture_configured=false; }
-void fixture_apply(Device& ctx) { if(fixture_configured) ctx.motion_output.fixture_configure(fixture_config); }
+namespace { MotionOutputFixtureConfig fixture_config{}; bool fixture_configured=false; unsigned fixture_hdr_fault_kind=0, fixture_hdr_fault_count=0; }
+void fixture_apply(Device& ctx) {
+    if(fixture_configured) ctx.motion_output.fixture_configure(fixture_config);
+    if(fixture_hdr_fault_count){ctx.motion_output.fixture_hdr_fault(fixture_hdr_fault_kind,fixture_hdr_fault_count);fixture_hdr_fault_count=0;}
+}
 #endif
 
 // The engine scene-end signal: render thread, outside any device hook; every
@@ -1329,5 +1355,19 @@ extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_last_pixel_ab
 }
 extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback_depth(IDirect3DDevice9* device,float* out,unsigned floats,unsigned* width,unsigned* height) {
     return x3m_motion_output_fixture_readback_target(device,2,out,floats,width,height);
+}
+// HDR seam: fault injection (renderer::HdrFault kinds, `count` firings; a null
+// device queues the fault for every hooked device and the next attach) and
+// the FP16 target as floats.
+extern "C" __declspec(dllexport) void x3m_hdr_fixture_fault(IDirect3DDevice9* device,unsigned kind,unsigned count) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    for(auto& entry:x3m::devices) if(!device||entry.first==device) entry.second->motion_output.fixture_hdr_fault(kind,count);
+    if(!device){x3m::fixture_hdr_fault_kind=kind;x3m::fixture_hdr_fault_count=count;}
+}
+extern "C" __declspec(dllexport) HRESULT x3m_hdr_fixture_readback(IDirect3DDevice9* device,float* out,unsigned floats,unsigned* width,unsigned* height) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    const auto it=x3m::devices.find(device);
+    if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
+    return it->second->motion_output.fixture_hdr_readback(out,floats,width,height);
 }
 #endif
