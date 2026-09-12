@@ -155,6 +155,11 @@ def scan_log(path, device='1'):
         'sampler_draws': {'routed': 0, 'unrouted': 0},
         'sampler_states_seen': set(),
         'counts': Counter(),
+        # Frames that wrote a motion readback: the capture bursts proper. A
+        # frame_log record adjacent to a burst (frame 9540 of iteration 12's
+        # run 10, logged because 9540 % 60 == 0) has no readback and must not
+        # be grouped with it.
+        'readback_frames': set(),
     }
     # A captured draw's records arrive as one block: `draw`, then the state and
     # sampler snapshot, then `motion_route` for a routed draw, then
@@ -177,6 +182,10 @@ def scan_log(path, device='1'):
             f = fields(line)
             if f.get('device') == device:
                 out['frames'].append({k: f.get(k) for k in FRAME_KEYS})
+        elif event == 'motion_output_readback':
+            f = fields(line)
+            if f.get('device') == device and number(f.get('frame')) is not None:
+                out['readback_frames'].add(number(f.get('frame')))
         elif event == 'mesh_cache':
             out['mesh_cache']['config'].append(fields(line))
         elif event == 'mesh_hook':
@@ -919,10 +928,16 @@ def classify_burst(frames):
             'camera_cut': [number(f.get('camera_cut'), 0) for f in frames]}
 
 
-def burst_frames(frames, gap=1):
-    """Consecutive logged frames of the same capture burst."""
+def burst_frames(frames, gap=1, readback_frames=None):
+    """Consecutive logged frames of the same capture burst.
+
+    With `readback_frames` (the frames that logged a `motion_output_readback`),
+    only those frames are grouped: a periodic `frame_log` record that happens
+    to follow a burst (no readback files) would otherwise be swallowed into it
+    and the whole burst reported as `missing_readbacks`."""
     numbers = sorted(number(f.get('frame')) for f in frames
-                     if number(f.get('frame')) is not None)
+                     if number(f.get('frame')) is not None
+                     and (readback_frames is None or number(f.get('frame')) in readback_frames))
     index = {number(f.get('frame')): f for f in frames}
     groups = []
     for n in numbers:
@@ -1288,7 +1303,7 @@ def build(args):
         'ideal_frames': args.ideal_frames,
         'edges': not args.no_edges,
     }
-    bursts = burst_frames(scan['frames'])
+    bursts = burst_frames(scan['frames'], readback_frames=scan['readback_frames'] or None)
     selected = []
     for records in bursts:
         numbers = [number(r.get('frame')) for r in records]
@@ -1317,6 +1332,29 @@ def build(args):
     return report
 
 
+def render_mesh_cache(cache):
+    """The mesh adjacency cache section; a run without mesh_cache lines has
+    zero seconds and no per-call mean, which used to raise in the format."""
+    lines = ['== mesh adjacency cache']
+    lines.append('  final ' + ' '.join(f'{k}={v}' for k, v in cache['final'].items()))
+    lines.append(f"  bypass reasons {cache['bypass_reasons']}  single_reason "
+                 f"{cache['single_reason']}  effect {cache['effect']}")
+    if cache['native_seconds'] is not None and cache['mean_native_ms'] is not None:
+        lines.append(f"  native {cache['native_seconds']:.2f} s "
+                     f"({cache['mean_native_ms']:.2f} ms/call), gate "
+                     f"{cache['gate_seconds']:.3f} s")
+    elif cache['native_seconds'] is not None:
+        lines.append(f"  native {cache['native_seconds']:.2f} s (no calls), gate "
+                     f"{cache['gate_seconds']:.3f} s")
+    fp = cache['floating_point']
+    if fp:
+        lines.append('  incoming FPU ' + ' '.join(f'{k}={v}' for k, v in fp['raw'].items()))
+        for fail in fp['failures']:
+            lines.append(f"    {fail['field']}: observed {fail['observed']} expected "
+                         f"{fail['expected']} - {fail['detail']}")
+    return lines
+
+
 def render_text(report):
     lines = []
     hook = report['scene_hook']
@@ -1338,21 +1376,7 @@ def render_text(report):
                      f"state={row['hook_state']} taa_skip={row['taa_skip']}")
     lines.append(f"  shutdown records {len(hook['shutdown_records'])}")
 
-    cache = report['mesh_cache']
-    lines.append('== mesh adjacency cache')
-    lines.append('  final ' + ' '.join(f'{k}={v}' for k, v in cache['final'].items()))
-    lines.append(f"  bypass reasons {cache['bypass_reasons']}  single_reason "
-                 f"{cache['single_reason']}  effect {cache['effect']}")
-    if cache['native_seconds'] is not None:
-        lines.append(f"  native {cache['native_seconds']:.2f} s "
-                     f"({cache['mean_native_ms']:.2f} ms/call), gate "
-                     f"{cache['gate_seconds']:.3f} s")
-    fp = cache['floating_point']
-    if fp:
-        lines.append('  incoming FPU ' + ' '.join(f'{k}={v}' for k, v in fp['raw'].items()))
-        for fail in fp['failures']:
-            lines.append(f"    {fail['field']}: observed {fail['observed']} expected "
-                         f"{fail['expected']} - {fail['detail']}")
+    lines.extend(render_mesh_cache(report['mesh_cache']))
 
     timeline = report['adjacency_timeline']
     lines.append('== adjacency phases')

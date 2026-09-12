@@ -111,6 +111,59 @@ lever is a separate 8-bit pass after one AgX evaluation (one more
 full-screen target and draw, about the copy-back's cost) rather than
 sharpening before the tonemap.
 
+## Presented-image readback (`present_<device>_<frame>.bgra8`, review 27)
+
+The two `--taa-debug` image readbacks of review 26 were taken before the
+sharpen draw: `color_1_*.bgra8` is the pre-resolve main target and
+`taa_1_*.rgba16f` is `Output::color_surface`, the unsharpened history input.
+Run 10 of [iteration-12.md](iteration-12.md) therefore could not measure the
+sharpen at all. `MotionOutput::resolve` now reads the game's main target back
+a third time, **after** the RCAS draw (or the point-filtered copy-back when
+the sharpen is off or fell back), as `present_<device>_<frame>.bgra8`
+(`motion_output_present_readback`, `bgra8_row_major`); on the HDR route
+`hdr_writeback` reads it after the write-back of a resolved frame, i.e. after
+AgX and/or RCAS. Same machinery as the other readbacks
+(`readback_surface`: system-memory surface, `GetRenderTargetData`, file
+beside the log), capture frames with `--taa-debug` only, so nothing changes
+outside them; `readbacks` on the frame line rises from 4 to 5 (HDR: 6). The
+kinds are listed in [capture-format.md](../architecture/capture-format.md).
+
+`run_motion_output.py` checks the new file on every TAA case (25 cases carry
+it: production and seam, 8-bit and HDR, plain/ownership/lazy/camera/sentinel,
+mip bias, the five sharpen cases), frames 1-8:
+
+| check | result (bottle `Steam`, 2026-09-12) |
+| --- | --- |
+| log line and file | `result=00000000`, 16,384 bytes, `present_1_<frame>.bgra8`, `bgra8_row_major` on 8 of 8 frames of all 25 cases |
+| equals the presented image | **byte-identical** to the fixture's own back-buffer dump `presented_<frame>.bgra8` on every frame of every case (8-bit route: after the sharpen draw / copy-back; HDR route: after the write-back) |
+| sharpen off, no tonemap (`seam-taa-on`, `seam-taa-sharpen-off`, production, ownership, lazy, camera, mip bias, `seam-taa-hdr-on`) | equals the resolved FP16 image `taa_1_<frame>.rgba16f` through the 8-bit conversion: max **0.499 code** (production current-only 0.060; HDR identity write-back 0.500), alpha max 0.052 |
+| sharpen on (`seam-taa-sharpen-on` 1.0, `-half` 0.5, `seam-taa-hdr-sharpen-on`, `seam-taa-hdr-tonemap-sharpen-on`) | differs from `taa_1` by the Python RCAS reference of it (`rcas_reference`, display-referred; AgX first on the tonemap case): max error **0.498 / 0.4995 / 0.500 / 0.50002 code**, 0 channels outside the 3x3 min/max of the unsharpened codes, alpha exact; the runner's bound stays `SHARPEN_MAX_CODE_ERROR + 0.5` = 1.5 |
+| sharpen-off twin | `seam-taa-sharpen-off` remains byte-identical to `seam-taa-on` in history, presented frames and now the present readback |
+
+Summary keys: `cases.<name>.present_readbacks` (per frame `equals_presented`
+and, unsharpened, `max_code_error_vs_resolved`) and, on the sharpen cases,
+`cases.<name>.sharpen.images.<frame>.present_readback` /
+`present_equals_presented`. `tools/analysis/analyze_iteration12.py` consumes
+`present_<device>_<frame>.bgra8` directly when a capture has it (section
+2.4: 3x3 escapes, change against the unsharpened codes, halo measures,
+flicker) and falls back to the RCAS model of `taa_<device>_<frame>` otherwise.
+
+### Suite run with the readback (2026-09-12, worktree of review 27)
+
+One at a time under `wine_lock.py`, bottle `Steam`, `build/d3d9.dll`
+SHA-256 `c24b2046010231dbbd5987ad1ad0651f32c1879ba103a21b212934590633c26a` (relinked by the runner's own `cmake --build` from the same sources)
+(RelWithDebInfo; also carries the `ID3DXMesh` forward declaration that the
+`b10d129` checkpoint's `loading_trace.h` needed to compile):
+
+| Step | Result |
+| --- | --- |
+| `run_motion_output.py` | passed: **94 cases** (the 83 above plus the mip-bias cases), 25 with the present readback as tabulated |
+| `run_temporal_pass.py` | passed: 386 samples, 228 state restorations, 2 generations, `RESET PASS` (the pass and its fixture are untouched by the change) |
+| `run_scene_capture.py` | passed |
+| `run_ownership_integration.py` | passed: 27 cases, all `exit=0` |
+| `check_no_x87.py build/d3d9.dll` | PASS, no violations over 149 reachable functions |
+| `python3 -m unittest discover -s verification/analysis` (`PYTHONPATH=verification/probe`) | see [iteration-12.md](iteration-12.md) (adds `test_iteration12.py`) |
+
 ## Other suites and checks
 
 Run one at a time under the machine-wide Wine runner lock

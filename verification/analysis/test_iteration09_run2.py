@@ -454,7 +454,27 @@ class EdgeSpreadTest(unittest.TestCase):
                          'insufficient_edges')
 
 
-class BurstTest(unittest.TestCase):
+class MeshCacheTextTest(Base):
+    def test_text_without_mesh_cache_lines(self):
+        # Iterations 10-12 hit `TypeError: unsupported format string passed to
+        # NoneType.__format__` here: the frequency is known, so the seconds are
+        # 0.0, but with no calls the per-call mean is None.
+        lines = ['telemetry_start schema=1 qpc_frequency=1000 qpc=0 anchor=proxy_initialize',
+                 frame_line(60)]
+        report = run2.mesh_cache_report(self.scan(lines))
+        self.assertEqual(report['native_seconds'], 0.0)
+        self.assertIsNone(report['mean_native_ms'])
+        text = run2.render_mesh_cache(report)
+        self.assertEqual(text[0], '== mesh adjacency cache')
+        self.assertTrue(any('no calls' in line for line in text))
+
+    def test_text_with_mesh_cache_lines(self):
+        report = run2.mesh_cache_report(self.scan(MeshCacheTest.LINES))
+        text = run2.render_mesh_cache(report)
+        self.assertTrue(any('200.00 ms/call' in line for line in text))
+
+
+class BurstTest(Base):
     @staticmethod
     def record(cut, rotation):
         return {'cut_median_px': str(cut), 'camera_rotation_deg': str(rotation),
@@ -475,6 +495,30 @@ class BurstTest(unittest.TestCase):
         groups = run2.burst_frames(frames)
         self.assertEqual([[run2.number(r['frame']) for r in g] for g in groups],
                          [[629, 630, 631, 632], [903, 904]])
+
+    def test_grouping_keeps_a_periodic_record_out_of_an_adjacent_burst(self):
+        # Iteration 12, run 10: burst 9536-9539 followed by the frame_log record
+        # of frame 9540 (9540 % 60 == 0), which wrote no readback. Grouped by
+        # frame number alone it joined the burst and the burst reported
+        # missing_readbacks; restricted to the frames with readbacks it does not.
+        frames = [{'frame': str(f)} for f in (9480, 9536, 9537, 9538, 9539, 9540, 9600)]
+        merged = run2.burst_frames(frames)
+        self.assertEqual([[run2.number(r['frame']) for r in g] for g in merged],
+                         [[9536, 9537, 9538, 9539, 9540]])
+        split = run2.burst_frames(frames, readback_frames={9536, 9537, 9538, 9539})
+        self.assertEqual([[run2.number(r['frame']) for r in g] for g in split],
+                         [[9536, 9537, 9538, 9539]])
+        # No readback information at all keeps the old behaviour.
+        self.assertEqual(run2.burst_frames(frames, readback_frames=None), merged)
+
+    def test_scan_collects_the_readback_frames(self):
+        lines = [frame_line(9539), frame_line(9540),
+                 'motion_output_readback device=1 frame=9539 file=motion_1_9539.rgba32f '
+                 'width=1280 height=768 format=rgba32f_row_major result=00000000 bytes=15728640',
+                 'motion_output_readback device=2 frame=9540 file=motion_2_9540.rgba32f '
+                 'width=1280 height=768 format=rgba32f_row_major result=00000000 bytes=15728640']
+        scan = self.scan(lines)
+        self.assertEqual(scan['readback_frames'], {9539})
 
 
 if __name__ == '__main__':

@@ -42,6 +42,11 @@ per-draw metadata is kept, so gameplay logs of any size are acceptable. A
   and `color_<device>_<frame>.bgra8`, the 8-bit main target read before the
   resolve (row-major A8R8G8B8, logged as `motion_output_color_readback`).
   See [resolved image](#6-resolved-image-sanity-signal-taa_image).
+  Since review 27 also `present_<device>_<frame>.bgra8`, the main target
+  after the sharpen draw / copy-back (HDR: after the write-back), logged as
+  `motion_output_present_readback`; this analyzer does not read it (it is the
+  input of `analyze_iteration12.py` section 2.4), and the `readbacks` counter
+  it cross-checks nowhere counts one file more per resolved capture frame.
 
 ## Conventions assumed
 

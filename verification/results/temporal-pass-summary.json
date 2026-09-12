@@ -23,7 +23,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "5fca3dd2ea033874e21bc28b37c9def218f307735b56cab75faba58bd5772c1a",
+  "executable_sha256": "7e26401911ee360b484a749c2e34e274b371771b6a3c24f78bf0f0d056ea5369",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -32,12 +32,12 @@
     "--dll",
     "d3d9=b",
     "--workdir",
-    "/Users/asvetl/x3-mod/verification/probe/build",
-    "/Users/asvetl/x3-mod/verification/probe/build/temporal_pass_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a59b38a89c58bc731/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a59b38a89c58bc731/verification/probe/build/temporal_pass_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl",
-    "Z:/Users/asvetl/x3-mod/src/temporal/resolve.hlsl",
-    "Z:/Users/asvetl/x3-mod/src/temporal/taa_sharpen_ps.hlsl"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a59b38a89c58bc731/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a59b38a89c58bc731/src/temporal/resolve.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a59b38a89c58bc731/src/temporal/taa_sharpen_ps.hlsl"
   ],
   "exit_code": 0,
   "source_unchanged": true,

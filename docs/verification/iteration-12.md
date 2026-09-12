@@ -1,12 +1,19 @@
 # Iteration 12: post-resolve sharpen 0.5 and mip LOD bias −0.5 in flight
 
-**Status: PAUSED (2026-09-12 20:36), one section incomplete.** The orchestrator
-asked for a hand-off before the account switch. Questions 1, 3, 4 and most of 2
-are complete and reproducible from the commands below. Outstanding:
-**§2.4** (over-sharpening and flicker on an RCAS-modelled presented image) and
-**`tools/analysis/analyze_iteration12.py` with its tests**, which were not
-started — the numbers in `verification/results/iteration-12.json`/`.txt` came
-from one-off code. See [Unfinished work](#unfinished-work).
+**Status: COMPLETE (2026-09-12 21:10; paused 20:36 for the account switch,
+resumed in a worktree).** Every number in this document is now emitted by
+`tools/analysis/analyze_iteration12.py` (tests in
+`verification/analysis/test_iteration12.py`), which re-emitted
+`verification/results/iteration-12.json`/`.txt` from the run-10 data with the
+same numbers the hand-off's one-off code had produced; **§2.4** (over-
+sharpening and flicker on the RCAS-modelled presented image) is analysed
+below, burst 9536–9539 is evaluated, and the two tool defects are fixed. The
+measurement gap itself — the presented image was never read back — is closed
+in production by the `present_<device>_<frame>.bgra8` readback of review 27
+([taa-sharpen.md](taa-sharpen.md), [capture-format.md](../architecture/capture-format.md));
+run 10 predates it, so §2.4 is a **model**, and the next `--taa-debug` run
+measures the GPU image with the same tool. See
+[Completed after the hand-off](#completed-after-the-hand-off).
 
 Run 4 on the **X3** bottle (arm64 Wine + FEX, `FEX_X87REDUCEDPRECISION=1`,
 `WINEMSYNC=1`) with the review-26 build, commit `c782a5a`, installed `d3d9.dll`
@@ -82,11 +89,20 @@ python3 tools/analysis/analyze_iteration11.py --run run10=$T --run run9=$U --run
     --primary run10 --route-off run5 --previous run9 \
     --output /tmp/it12/iteration-12-cost.json --text $R/iteration-12-cost.txt
 
-# TODO: still running when this document was written
+# blur (the fixed grouping evaluates burst 9536 too) and the readback certification
 python3 tools/analysis/analyze_iteration09_run2.py $T --captures /tmp/x3-bottleX3-run10 \
     --ideal-frames 1 --output /tmp/it12/run10-taa.json --text /tmp/it12/run10-taa.txt
 python3 tools/analysis/analyze_motion_readback.py $T --readback-dir /tmp/x3-bottleX3-run10 \
     --label iteration12 --results-dir /tmp/it12/rb --jitter-from-log --no-draw-details
+
+# this document's numbers (sections 1, 2, 2.4, 3.1-3.2, 4.2): about 12 minutes,
+# the RCAS model of the 16 stationary/slow frames being the bulk of it
+python3 tools/analysis/analyze_iteration12.py $T --captures /tmp/x3-bottleX3-run10 \
+    --taa /tmp/it12/run10-taa.json --taa-baseline $R/iteration-09-run2-summary.json \
+    --readback /tmp/it12/rb/motion-readback-iteration12-summary.json --previous-log $U \
+    --flicker-baseline $R/iteration-10-run6-flicker.json \
+    --build-commit c782a5a --dll-sha256-prefix 8864bff0 --bottle X3 \
+    --output $R/iteration-12.json --text $R/iteration-12.txt
 ```
 
 ---
@@ -231,11 +247,16 @@ What is established, and it changes how the question must be asked:
   edges) are checks on that modelled image, and are a *reference* claim, not a
   GPU measurement. `numpy` is **not installed**, so the reference needs a
   row-vectorised pure-Python rewrite before it can run on 1280×768.
-* *Flagged as the run's real verification gap:* to measure the presented
-  sharpened image the route needs a readback of the **main target after** the
-  sharpen draw (a third `--taa-debug` readback), or the RCAS draw must be made
-  to write the FP16 surface that is already read. **Until that exists, no run
-  can measure the sharpen in game.**
+* *Flagged as the run's real verification gap, closed in review 27:* to
+  measure the presented sharpened image the route needs a readback of the
+  **main target after** the sharpen draw. `MotionOutput::resolve` now reads it
+  as `present_<device>_<frame>.bgra8` (`motion_output_present_readback`)
+  after the RCAS draw or the copy-back, and `hdr_writeback` after the HDR
+  write-back; the fixture shows it byte-identical to the presented frame and
+  equal to the RCAS reference of `taa_1_*` within 0.5 code
+  ([taa-sharpen.md](taa-sharpen.md)). `analyze_iteration12.py` §2.4 reads the
+  file directly when a capture has it. **Run 10 predates the readback, so its
+  §2.4 is the model; the next run measures.**
 
 Burst classification (from `cut_median_px` / `camera_rotation_deg` on the burst
 frames, `analyze_iteration09_run2.classify_burst`):
@@ -252,11 +273,14 @@ frames, `analyze_iteration09_run2.classify_burst`):
 Three stationary bursts (against iteration 9 run 2's two) and one slow burst is
 a better population than run 2 had. Every burst frame resolved with history and
 `taa_sharpen=1`; jitter indices walk the 8-phase table as expected. Burst
-9536–9539 came out **unevaluated**: `burst_frames(gap=1)` merged the adjacent
-`frame_log` record at 9540, which has no readback, so the group reports
-`missing_readbacks`. Re-run with `--burst 9536` to recover it. *Flagged as a
-tool defect* (the grouping should intersect with the frames that actually have
-`motion_output_readback` lines).
+9536–9539 first came out **unevaluated**: `burst_frames(gap=1)` merged the
+adjacent `frame_log` record at 9540 (logged because 9540 % 60 == 0, no
+readback), so the group reported `missing_readbacks`. **Fixed**: `scan_log`
+now collects the frames with `motion_output_readback` lines and
+`burst_frames(readback_frames=…)` groups only those (a log without readback
+lines keeps the old behaviour; `test_iteration09_run2.py`). The burst is
+evaluated in the table below (slow, 118,248 interior pixels — the largest
+routed interior of the run).
 
 ### 2.2 Like-for-like table, identical code
 
@@ -275,6 +299,7 @@ edges, and appear in both runs).
 | **run 10** 3856–3859 | stationary | 63,447 | 0.381–0.455 (**0.410**) | **0.84–0.86** | **0.69–1.24** | 1.30–1.58 | 0.28–0.31 |
 | **run 10** 1746–1749 | turning | 3,576 | 0.519–0.677 (0.610) | 1.36–1.71 | 0.44–1.31 | 1.60–4.50 | 0.18–0.25 |
 | **run 10** 8369–8372 | turning | 3,539 | 0.618–0.791 (0.728) | 0.98–5.25 | 0.31–0.52 | 1.38–2.01 | 0.22–0.31 |
+| **run 10** 9536–9539 | slow | 118,248 | 0.598–0.691 (0.648) | 1.94–2.68 | 0.31–0.32 | 2.25–2.49 | 0.21–0.26 |
 | it09r2 629–632 | stationary | 34,361 | 0.488–0.521 (0.505) | 0.86–0.90 | 0.68–0.69 | 1.07–1.67 | 0.35–0.46 |
 | it09r2 1427–1430 | stationary | 167,472 | 0.621–0.642 (0.628) | 1.81–1.83 | 0.34–0.74 | 1.93–2.03 | 0.27–0.29 |
 | it09r2 3685–3688 | slow | 5,815 | 0.630–0.804 (0.731) | 0.99–1.64 | 0.32–0.42 | 1.31–1.53 | 0.24–0.29 |
@@ -318,16 +343,90 @@ interior) to trust unreservedly, reads 75.8 % — the resolve adding 24 %, more
 than run 2's 11–7 %, which is what a sharper raw frame does to this ratio. No
 burst indicates a defect in the resolve.
 
-### 2.4 Over-sharpening and flicker — **TODO: not yet analysed**
+### 2.4 Over-sharpening and flicker on the RCAS-modelled presented image
 
-Not computed: the RCAS-modelled presented image and, on it, (a) channels
-outside the 3×3 min/max of the raw neighbourhood — the shader clamps, so the
-contract says **0**, and the fixture measured 0 on every case; (b) halo ratio at
-strong edges; (c) frame-to-frame flicker on the stationary bursts against
-`verification/results/iteration-10-run2-flicker-baseline.json` class ratios.
-The one adjacent number that *is* available is `analyze_motion_readback`'s
-`taa_image` signal — the fraction of pixels whose RGB moved from the pre-resolve
-colour by more than one code — **0.152 on frame 9539**, reported not judged.
+**A reference claim, not a GPU measurement.** Run 10 has no `present_1_*`
+readback (review 27 adds it), so `analyze_iteration12.py` models the presented
+image: RCAS at gain `sharpen_gain(0.5) = 0.5` of the resolved FP16 readback
+`taa_1_*.rgba16f`, in double, the fixture runner's `rcas_reference` arithmetic
+row-vectorised (`rcas_rows`; `test_iteration12.py` pins it to the runner's
+per-pixel reference to 1e-12 and the runner pins that reference to the GPU
+within 0.5 code), quantised to 8-bit codes. The four bursts whose motion is
+not `turning` were modelled — the three stationary ones and the slow 9536 —
+16 frames, about 40 s each in pure Python. Section keys:
+`presented.bursts[]` in `iteration-12.json`; when a capture carries
+`present_<device>_<frame>.bgra8` the same code reads the file instead
+(`source=present_readback`) and reports its error against the model.
+
+**(a) Neighbourhood escapes: 0.** Over the 16 frames, **0 of 47,185,920
+channels** (16 × 983,040 × 3) lie outside the 3×3 min/max of the unsharpened
+codes, and 0 at the strong-edge pixels below. In the model this follows from
+the clamp the reference implements — it is the contract the fixture measured
+on the GPU (0 outside on every sharpen case, incl. the new present readback),
+and the check is what the run-11 files will be judged by.
+
+**(b) What the sharpen does to the image, and the halo.** Per frame:
+
+| burst | class | pixels changed | max / mean abs change (codes) | interior gradient presented/raw (resolved/raw) | presented / resolved | edge rise resolved → presented | MTF50 resolved → presented | ESF excursion ±2 px resolved → presented | strong-edge px, local range ratio |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1380–1383 | stationary | 12.6–12.7 % | 9 / 0.088–0.089 | 0.537–0.558 (0.517–0.537) | **1.038–1.040** | 0.97–1.00 → **0.94–0.96 px** | 0.42–0.44 → **0.44–0.47** | +0.257–0.297 → +0.302–0.317 | 22.4–22.7 k, **1.014–1.015** |
+| 2717–2720 | stationary | 13.9–14.2 % | 10 / 0.100–0.101 | 0.447–0.522 (0.426–0.500) | **1.043–1.050** | 1.07–1.37 → 1.04–1.31 | 0.31–0.36 → 0.32–0.37 | +0.271–0.443 → +0.273–0.485 | 26.1–27.1 k, 1.016–1.017 |
+| 3856–3859 | stationary | 10.3–10.4 % | 10 / 0.079–0.084 | 0.408–0.486 (0.381–0.455) | **1.069–1.072** | 1.30–1.58 → **1.16–1.38** | 0.28–0.31 → 0.30–0.33 | +0.207–0.321 → +0.227–0.331 | 25.6–28.1 k, 1.018 |
+| 9536–9539 | slow | 21.0–21.3 % | 10 / 0.125–0.128 | 0.629–0.725 (0.598–0.691) | 1.050–1.053 | 2.25–2.49 → 2.20–2.44 | 0.21–0.26 → 0.22–0.27 | +0.033–0.051 → +0.032–0.055 | 27.4–29.9 k, 1.015–1.016 |
+
+Reading. The sharpen at 0.5 touches 10–14 % of a stationary frame's pixels
+(21 % of the slow burst's) by at most 9–10 codes and 0.08–0.13 code on
+average, and raises the routed-interior gradient energy of the resolve by
+**3.8–7.2 %** — the fixture's synthetic 1.063 at 0.5 ([taa-sharpen.md](taa-sharpen.md))
+reproduced on game content. On the edges it recovers **0.03–0.20 px of the
+resolve's 10–90 % rise** (1380: 0.98 → 0.95 px against a raw edge of 0.82;
+3856: 1.45 → 1.28 against 0.85) and 0.01–0.03 c/px of MTF50 — a fifth to a
+third of what the resolve costs on these bursts, as expected of a single-lobe
+sharpen forbidden to overshoot. Halo: the mean aligned edge profile's
+excursion beyond its end values within ±2 px rises by **+0.02 to +0.06 of the
+edge contrast** on the stationary bursts (e.g. 1380: +0.26 → +0.31) and not
+at all on the slow burst (+0.04 → +0.04); the raw jittered frames read
++0.55–1.30 on the same edges, so the sharpened image is far below the input's
+own aliasing. At strong edges (3×3 luma range ≥ 0.2, 22–30 k px per frame)
+the local contrast rises by **1.4–1.8 %** with 0 channels leaving the
+neighbourhood. No over-sharpening signature at 0.5; the headroom this leaves
+is the case for the 1.0 comparison in §5.
+
+**(c) Flicker.** Temporal variance of Rec.709 luma over the four frames of
+each burst, `analyze_iteration08_taa`'s classes, resolved and presented
+against the raw frames (`presented.bursts[].flicker`):
+
+| burst | 0.01 px gate | class | pixels | resolved/raw | presented/raw | presented/resolved |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| **1380–1383** | **met** (peak 0.0068 px) | sentinel | 848,111 | 0.0528 | 0.0564 | 1.068 |
+| | | routed interior | 71,519 | 0.0564 | 0.0604 | **1.070** |
+| | | routed edge | 63,410 | 0.0293 | 0.0314 | 1.071 |
+| | | thin feature (overlay) | 37,842 | 0.0392 | 0.0416 | 1.061 |
+| 2717–2720 | not met (0.27 px) | routed interior | 66,811 | 0.4285 | 0.4429 | 1.034 |
+| 3856–3859 | not met (0.81 px) | routed interior | 63,447 | 0.4623 | 0.4838 | 1.047 |
+| 9536–9539 | not met (2.77 px) | routed interior | 118,248 | 0.5258 | 0.5472 | 1.041 |
+
+Whole-image presented/resolved variance energy: **1.070, 1.036, 1.038,
+1.033**. The sharpen adds 3–7 % temporal variance to the resolve's output,
+which is what amplifying the gradients by 4–7 % predicts (variance goes with
+the square of the amplitude, 1.04² ≈ 1.08), and it adds it uniformly across
+the classes (1.06–1.07 on burst 1380 for sentinel, interior, edge and thin
+features alike) — no class flickers disproportionately, which is the
+over-sharpening signature this check looks for. Against the iteration-10
+stationary baseline (run 6, burst 4754–4757, the only burst of that run that
+met the gate: sentinel **0.0152**, routed interior **0.0097**, routed edge
+**0.0089**, thin 0.0096 — `iteration-10-run6-flicker.json`; the file the
+hand-off named, `iteration-10-run2-flicker-baseline.json`, has
+`flicker: unavailable`, run 2 having no gated burst), run 10's only gated
+burst reads 3.5–5.8× higher *before* the sharpen (resolved/raw 0.029–0.056).
+That gap is in the resolve's own ratio, not in the sharpen (which adds 7 %
+of it), and it is confounded: different scene, a 0.0068 px peak against run
+6's exact 0.0, and the −0.5 mip bias, which raises the raw frames' variance
+denominator as much as the resolved numerator. Not established as a
+regression; the clean comparison is a run with the bias off on the same
+scene, which §5 does not ask for. The `taa_image` signal of §4.2 (0.152 of
+frame 9539's pixels moved by more than one code from the pre-resolve colour)
+remains a reported, unjudged number.
 
 ---
 
@@ -530,7 +629,7 @@ against run 3's 8.386 / 35.707 / 5.944 / 7.947; zlib inside the save load is
 
 ---
 
-## 5. Report — **INCOMPLETE (questions 2 and 4.2 outstanding)**
+## 5. Report
 
 1. **Sharpen.** Live and clean: `sharpen=0.500`, pass `references=2`,
    **181 of 181 resolves sharpened**, `taa_copy=S_FALSE` on every record (the
@@ -551,9 +650,15 @@ against run 3's 8.386 / 35.707 / 5.944 / 7.947; zlib inside the save load is
    unchanged (0.27–0.46): the resolve is no sharper. On two of three stationary
    bursts the resolve now sits **at or above** the ideal 4-phase supersampling
    floor (share of loss 105–116 %; the tight burst 1380 reads 75.8 %). The
-   sharpen itself is **not measurable** — the `taa_1_*.rgba16f` readback is the
-   **unsharpened resolve** and the presented image is never read back. Over-
-   sharpening and flicker: **TODO**.
+   sharpen itself is **not measurable from this run** — the `taa_1_*.rgba16f`
+   readback is the **unsharpened resolve** and run 10 predates the
+   `present_1_*` readback of review 27. **Modelled** (RCAS of `taa_1_*` at
+   gain 0.5, §2.4): 10–14 % of the pixels change by ≤ 10 codes, routed-
+   interior gradient energy **×1.04–1.07** (the fixture's 1.063 on game
+   content), 0.03–0.20 px of edge rise recovered, **0 of 47.2 M channels**
+   outside the 3×3 neighbourhood, halo excursion +0.02–0.06 of the edge
+   contrast, strong-edge contrast +1.4–1.8 %, flicker energy **+3–7 %**
+   spread evenly across the classes. No over-sharpening signature at 0.5.
 4. **Cost.** **232.5 `SetSamplerState` calls/frame = 1.268 per routed draw**
    (capture frames 2,089/frame — diagnostics, not gameplay). The coalescing
    policy the question proposes **is already in force** (source + 0.634 sets/draw
@@ -584,22 +689,25 @@ against run 3's 8.386 / 35.707 / 5.944 / 7.947; zlib inside the save load is
 
 ---
 
-## Unfinished work
+## Completed after the hand-off
 
-| item | what is needed | where the job's output lands |
+| item | done | where |
 | --- | --- | --- |
-| **§2.4** over-sharpening | row-vectorised pure-Python rewrite of `run_motion_output.py:rcas_reference` (no `numpy` on this machine), gain `sharpen_gain(0.5)=0.5`, applied to the FP16 resolve; then the §2.2 metrics on it, the 3×3 min/max escape count (contract: 0) and a halo ratio at strong edges | not started |
-| **§2.4** flicker | frame-to-frame class ratios on the three stationary bursts against `verification/results/iteration-10-run2-flicker-baseline.json` | not started |
-| **§2.1** burst 9536–9539 | re-run `analyze_iteration09_run2.py … --burst 9536` (the gap-1 grouping swallowed the readback-less `frame_log` record at 9540) | scratchpad |
-| like-for-like re-run | §2.2/2.3's it09r2 column comes from the tracked `iteration-09-run2-summary.json`, produced by this same **unmodified** tool (`git status` clean for it). Re-running it on `/tmp/x3-iteration09-run2` would only reproduce it; do so only if the numbers are disputed | — |
-| `tools/analysis/analyze_iteration12.py` + `verification/analysis/test_iteration12.py` | **not started** — the one substantial gap. Every number in this document came from the tracked tools (`analyze_iteration09.py`, `analyze_iteration11.py`, `analyze_iteration09_run2.py`, `analyze_motion_readback.py`) plus short one-off `grep`/Python over the extracted line kinds; `verification/results/iteration-12.json`/`.txt` were written by that one-off code, not by a tracked tool. The tool has to fold the mip-bias/sharpen decode, the §3.2 interleave-run derivation, the §2.2/2.3 tables and the readback roll-up into one report, with unit tests as in `test_iteration11.py` | not started |
+| **§2.4** over-sharpening | `rcas_rows`, the runner's double reference row-vectorised (struct `'e'` decodes the FP16 files natively; ~40 s per 1280×768 frame in pure Python), gain `rcas_gain(0.5) = 0.5`; 3×3 escapes, change against the unsharpened codes, §2.2 metrics, ESF excursion, strong-edge contrast | `analyze_iteration12.py`, `iteration-12.json: presented` |
+| **§2.4** flicker | class ratios of the presented and resolved images against raw on the four modelled bursts, against `iteration-10-run6-flicker.json` (the run-2 file has no gated burst) | same |
+| **§2.1** burst 9536–9539 | `burst_frames(readback_frames=…)`: grouped over the frames with `motion_output_readback` lines | `analyze_iteration09_run2.py`, `test_iteration09_run2.py` |
+| `analyze_iteration09_run2.py --text` | `render_mesh_cache` prints the section without a per-call mean when the cache logged no calls | same |
+| like-for-like re-run | not needed: the it09r2 column is the tracked `iteration-09-run2-summary.json` from the unmodified tool; the grouping fix changes nothing for a run whose bursts are not followed by a periodic record | — |
+| `tools/analysis/analyze_iteration12.py` + `verification/analysis/test_iteration12.py` | written; the JSON/TXT re-emitted with the numbers of the one-off code (the only differences: burst 9536 evaluated, and additional keys — `sharpened_resolved_frames`, `routed_draws`, `bursts`, `presented`, `announcement`, `open`) | `verification/results/iteration-12.json`/`.txt`; 786 analysis tests OK |
+| the measurement gap | `present_<device>_<frame>.bgra8` readback after the sharpen draw / copy-back and after the HDR write-back, fixture-verified | [taa-sharpen.md](taa-sharpen.md), [capture-format.md](../architecture/capture-format.md) |
 
 ### Tracked artefacts written
 
 | path | source |
 | --- | --- |
 | `docs/verification/iteration-12.md` | this document |
-| `verification/results/iteration-12.json` / `.txt` | the derived numbers of §1, §2.2–2.3, §3.1–3.2 and §4.2 (one-off code — **needs to be re-emitted by `analyze_iteration12.py`**) |
+| `verification/results/iteration-12.json` / `.txt` | `analyze_iteration12.py` (the command above): §1, §2.1–2.4, §3.1–3.2, §4.2 |
+| `tools/analysis/analyze_iteration12.py`, `verification/analysis/test_iteration12.py` | the tool and its tests |
 | `verification/results/iteration-12-run10-health.json` / `.txt` | `analyze_iteration09.py`, unmodified |
 | `verification/results/iteration-12-cost.txt` | `analyze_iteration11.py`, unmodified |
 
@@ -609,12 +717,17 @@ Untracked, in the scratchpad
 `rb/motion-readback-iteration12-summary.json` (3.8 MB) and `.txt` (900 KB), and
 the per-kind line extracts.
 
-Two pre-existing tool defects were hit again and are worth fixing:
-`analyze_iteration09_run2.py --text` still raises
-`TypeError: unsupported format string passed to NoneType.__format__` at
-`render_text` line 1347 on a run without `mesh_cache` metrics (third
-occurrence — iterations 10, 11, 12; the JSON is written first, so nothing is
-lost), and `burst_frames(gap=1)` merges a readback-less `frame_log` record into
-an adjacent burst (§2.1, burst 9536).
+Two pre-existing tool defects were hit again and are **fixed** in this
+checkpoint: `analyze_iteration09_run2.py --text` raised
+`TypeError: unsupported format string passed to NoneType.__format__` in
+`render_text` on a run without `mesh_cache` metrics (iterations 10, 11, 12;
+`mesh_cache_report` had `native_seconds = 0.0` with `mean_native_ms = None`
+when the frequency was known and no call was logged — now `render_mesh_cache`
+prints "no calls"), and `burst_frames(gap=1)` merged a readback-less
+`frame_log` record into an adjacent burst (§2.1). The re-run of the tool on
+run 10 with the fixes wrote the text report and evaluated all six bursts.
 
-Nothing was committed, and no production source was modified.
+Production source changed only by the review-27 present readback
+(`motion_output.cpp`: `resolve` and `hdr_writeback`, capture frames with
+`--taa-debug` only) and a forward declaration of `ID3DXMesh` in
+`loading_trace.h` that the `b10d129` checkpoint needed to compile.
