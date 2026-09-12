@@ -425,7 +425,20 @@ game-side LOD-bias knob to reuse or fight.
 
 ### Capture must be extended first
 
-`src/proxy/capture.cpp:374` currently reads back only:
+**Capture gap — closed (2026-09-12).** `src/proxy/capture.cpp` now logs
+`D3DSAMP_MIPMAPLODBIAS` per bound stage as `sampler stage=N state=8
+value=<raw DWORD> bias=<float>` and `D3DSAMP_MAXMIPLEVEL` as `state=9`, in the
+line shape the analysis scripts parse (`tools/analysis/analyze_iteration09.py`,
+`analyze_iteration09_run2.py`), and the `texture` line carries `levels=`. The
+override itself exists (`X3M_TAA_MIP_BIAS`, scoped to the routed draws as
+recommended below:
+[temporal-integration.md](../architecture/temporal-integration.md#mip-lod-bias-for-routed-material-draws-2026-09-12),
+[taa-mip-bias.md](../verification/taa-mip-bias.md)). The route restores its
+bias before the capture diagnostics of every draw, so a capture shows the
+application's value; a non-zero bias there means the `.fx` files declare one.
+The text below is the original recommendation, kept as the record.
+
+`src/proxy/capture.cpp:374` at the time read back only:
 
 ```
 D3DSAMP_MINFILTER, D3DSAMP_MAGFILTER, D3DSAMP_MIPFILTER,

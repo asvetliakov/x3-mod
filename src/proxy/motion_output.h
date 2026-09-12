@@ -190,6 +190,16 @@ struct MotionFrameCounters {
     bool hook_scene_end = false, bloom_copy_seen = false;
     std::uint32_t scene_end_check = 0;
     MotionHdrCounters hdr;
+    // Mip LOD bias of the routed draws (X3M_TAA_MIP_BIAS): SetSamplerState
+    // calls the route issued to apply and to restore the bias this frame,
+    // routed draws that had at least one biased stage, the stages biased at
+    // least once (bit mask), native reads that filled the sampler shadow
+    // (GetSamplerState; the level counts come from the SetTexture hook),
+    // application writes of MIPMAPLODBIAS this frame (the game never issues
+    // one: docs/reverse-engineering/sampler-states-and-mips.md) and failed
+    // native calls of the apply/restore path.
+    std::uint32_t mip_bias_sets = 0, mip_bias_restores = 0, mip_bias_draws = 0, mip_bias_stages = 0;
+    std::uint32_t mip_bias_reads = 0, mip_bias_game_writes = 0, mip_bias_failures = 0;
 };
 // Halton(2,3) sample i (1-based) centred on zero, in raster pixels.
 float motion_jitter_sample(unsigned index, unsigned axis) noexcept;
@@ -296,6 +306,29 @@ public:
     // path (>= 0; 0 is the unweighted resolve); negative selects the derived
     // value (the write-back's exposure multiplier, see the latch).
     void configure_taa_k(float k) noexcept { taa_k_override_ = k; }
+    // X3M_TAA_MIP_BIAS=<float> (0: off, the default; -0.5 intended): the
+    // D3DSAMP_MIPMAPLODBIAS the route applies while the jitter is active to
+    // every sampler stage a routed draw samples a mip chain through (texture
+    // with more than one level and MIPFILTER other than NONE), set once per
+    // stage when a routed draw first needs it and put back to the value read
+    // at that time before any draw that does not route, at the scene end, at
+    // Present, before Reset and before every application call that could
+    // observe the device's sampler state (the restore points of
+    // restore_bindings). The application's SetTexture and SetSamplerState
+    // reach set_texture / set_sampler_state (light hooks, installed only
+    // with a non-zero bias: mip_bias_active) and feed the sampler shadow, so
+    // no GetSamplerState runs per draw; an application write of the bias
+    // itself is counted and logged and its value becomes the restore value.
+    // docs/architecture/temporal-integration.md, "Mip LOD bias".
+    void configure_mip_bias(float bias) noexcept;
+    float mip_bias() const noexcept { return mip_bias_; }
+    bool mip_bias_active() const noexcept { return mip_bias_bits_ != 0 && jitter_requested_; }
+    // After a successful application SetTexture / SetSamplerState (light
+    // hooks). `levels` is the texture's level count when `queried` (the hook
+    // asks the texture once per pointer change, inside its native section).
+    void set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried) noexcept;
+    bool texture_levels_wanted(DWORD stage, IDirect3DBaseTexture9* texture) const noexcept;
+    void set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type, DWORD value) noexcept;
     bool hdr_redirected() const noexcept { return hdr_state_ != HdrState::Off; }
     // BEFORE the application's SetRenderTarget: the surface to bind natively.
     // Index 0 while redirected: the application's main surface maps to the FP16
@@ -463,6 +496,14 @@ private:
     // metrics and failure line are deferred to the next heavy call.
     template<bool quiet> HRESULT flush_bindings() noexcept;
     void record_deferred() noexcept;
+    // Mip LOD bias (X3M_TAA_MIP_BIAS): apply on a routed draw, put every
+    // biased stage back (a restore point), drop the sampler shadow and re-read
+    // the bindings natively (state block Apply, Reset), one stage's restore.
+    void apply_mip_bias() noexcept;
+    void restore_mip_bias() noexcept;
+    void restore_mip_bias_stage(unsigned stage, HRESULT* first) noexcept;
+    void resync_samplers() noexcept;
+    void log_mip_bias_game_write() noexcept;
     // Shadowed render-state query: the shadow's value when known, else one
     // native GetRenderState (counted) that fills the shadow.
     HRESULT render_state(D3DRENDERSTATETYPE state, DWORD* value) noexcept;
@@ -577,6 +618,33 @@ private:
     bool lazy_mode_ = false, lazy_rt1_ = false, lazy_rt2_ = false;
     DWORD lazy_write1_ = 15, lazy_write2_ = 15;
     bool state_shadow_ = true, scene_hook_installed_ = false;
+    // Sampler shadow of the mip LOD bias (X3M_TAA_MIP_BIAS), stages 0-15:
+    // the application's texture binding (pointer identity only, never
+    // dereferenced after the SetTexture hook that recorded it) and its level
+    // count, the application's MIPFILTER (read natively once when a routed
+    // draw first needs it, then trusted: the game shadows its sampler state
+    // and writes once per value change), the value the bias replaced (read
+    // natively once, or the application's own write) and whether the route's
+    // bias is currently on the device. Bit masks select the stages a routed
+    // draw inspects (bound) and the restore visits (biased): no allocation,
+    // a few compares per bound stage per routed draw.
+    struct SamplerShadow {
+        IDirect3DBaseTexture9* texture = nullptr;
+        DWORD levels = 0, mipfilter = 0, saved_bias = 0;
+        bool mipfilter_known = false, saved_known = false, biased = false;
+    };
+    static constexpr unsigned sampler_stage_count = 16;
+    SamplerShadow samplers_[sampler_stage_count]{};
+    std::uint32_t sampler_bound_mask_ = 0, sampler_biased_mask_ = 0;
+    float mip_bias_ = 0.f;
+    DWORD mip_bias_bits_ = 0;
+    // Session totals of the bias path (logged at release) and the last
+    // application write of MIPMAPLODBIAS (recorded by the light hook, logged
+    // by the next heavy call).
+    std::uint32_t mip_bias_total_sets_ = 0, mip_bias_total_restores_ = 0, mip_bias_total_reads_ = 0;
+    std::uint32_t mip_bias_total_game_writes_ = 0, mip_bias_logged_game_writes_ = 0, mip_bias_total_failures_ = 0;
+    DWORD mip_bias_game_write_stage_ = 0, mip_bias_game_write_value_ = 0;
+    bool mip_bias_summary_logged_ = false;
     // FP16 HDR scene path: the pass, the switch and the attach verdict, the
     // redirect state, the application's main surface held from the latch to
     // the end (one reference), the description of the FP16 target for the

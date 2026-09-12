@@ -194,6 +194,14 @@ with it off every query is a native read (`rs_hits = 0`). In the burst
 script the per-draw evaluation's 47 (per-draw) or 43 (lazy: the write masks
 are saved at the three binds, not per draw) queries per frame all hit.
 
+### Mip LOD bias (`X3M_TAA_MIP_BIAS`)
+
+The `mipbias` script and the regular-script twins with the bias on are
+recorded in [taa-mip-bias.md](taa-mip-bias.md): the bias sits on exactly the
+mip-mapped stages of routed draws, every restore point clears it, the unset
+and `0` runs are byte-identical, and the routed material draw samples finer
+levels of a LOD-ramp texture (twice as far at −1.0 as at −0.5).
+
 ## Temporal resolve (step 3)
 
 With `X3M_TAA=1` the fixture ends every frame like the game: inside the scene

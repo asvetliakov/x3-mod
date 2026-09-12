@@ -194,13 +194,13 @@ TAA run is user-managed.
 | `src/renderer/material_motion.{h,cpp}` | Table-driven transformer, `material_motion_vertex_variant` / `material_motion_pixel_variant` (each stage is created separately by the game); the pair function remains for the detached fixtures; `material_motion_reviewed_pairs` is the profile table |
 | `src/renderer/motion_output_profiles.h` + `motion_output_profiles_inc.h` | Row struct, class enum and the generated 169-row archive-wide table (classes A, B and C, each row with its current-depth registers) with compile-time consistency checks; see [material-motion-prototype.md](material-motion-prototype.md) |
 | `src/temporal/current_depth_ps.hlsl` + `src/renderer/current_depth_pixel_program{,_inc}.h` | Authored depth fragment (`oC2 = z/w`), compiled by `tools/shaders/generate_rigid_motion_pixel.py` like the motion fragment |
-| `src/proxy/capture.cpp` | Hook installation, state block and query wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT`, `X3M_MOTION_JITTER[_SAMPLES]`, `X3M_MOTION_CUT_*`, `X3M_TAA`, `X3M_TAA_DEBUG`, `X3M_MOTION_RT_MODE`, `X3M_MOTION_FRAME_LOG` and `X3M_STATE_SHADOW` parsing; the lazy mode's restore points and `GetRenderTarget`/`GetRenderTargetData`/`GetRenderState` hooks; the light `SetRenderState` hook feeding the render-state shadow; `scene_end_signal`, the engine hook's listener |
+| `src/proxy/capture.cpp` | Hook installation, state block and query wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT`, `X3M_MOTION_JITTER[_SAMPLES]`, `X3M_MOTION_CUT_*`, `X3M_TAA`, `X3M_TAA_DEBUG`, `X3M_MOTION_RT_MODE`, `X3M_MOTION_FRAME_LOG`, `X3M_STATE_SHADOW` and `X3M_TAA_MIP_BIAS` parsing; the lazy mode's restore points and `GetRenderTarget`/`GetRenderTargetData`/`GetRenderState` hooks; the light `SetRenderState` hook feeding the render-state shadow; `scene_end_signal`, the engine hook's listener |
 | `src/proxy/scene_hook.{h,cpp}` | Engine scene-end boundary (`X3M_SCENE_HOOK=1`): the five-byte callsite patch of `CALL 0x004c4750` at `0x004721b1` behind the exact-executable gate, its trampoline and restore; fixture seam for the runner's own callsite (section "Engine boundaries and state shadow") |
 | `src/renderer/temporal_pass.{h,cpp}` + `temporal_resolve_program{,_inc}.h` | The resolve the route runs (native-slot calls, cached state block) and its embedded `ps_3_0` bytecode |
 | `src/renderer/hdr_pass.{h,cpp}` + `hdr_writeback_program{,_inc}.h`, `hdr_tonemap_program{,_inc}.h`, `hdr_meter_program.h` + `hdr_meter_{level0,reduce}_program_inc.h`, `exposure.{h,cpp}`, `src/temporal/agx.{h,hlsl}` | FP16 HDR scene path (`X3M_HDR=1`): the owned `A16B16G16R16F` RT0, the capability gate and four-format self test, the write-back ladder (stage 1: identity; stage 2 with `X3M_HDR_TONEMAP=agx`: the AgX tonemap, the exposure meter chain and the host adaptation of `exposure.h`); the route decides when to redirect, flush and end ([hdr-scene-path.md](hdr-scene-path.md), "Stage 1 implementation" and "Stage 2 implementation") |
 | `src/proxy/scene_capture.{h,cpp}` | `describe_surface` shared with the route |
 | `src/proxy/camera_state.{h,cpp}` + `src/renderer/camera_reprojection.h` | Live engine camera read at the selector's Clear events behind the exact-executable gate (no patch), the far-plane `clip_to_previous` builder and the sentinel policy decision (`X3M_TAA_SENTINEL`, `X3M_CAMERA_CUT_DEG`, `X3M_CAMERA_LOG`); see [temporal-integration.md](temporal-integration.md#camera-reprojection-for-sentinel-pixels-2026-09-12) |
-| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug`, `--taa-sentinel auto|1|2`, `--camera-cut-deg`, `--camera-log`, `--state-shadow on|off`, `--scene-hook`, `--hdr` |
+| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug`, `--taa-k`, `--taa-mip-bias <float>` (`X3M_TAA_MIP_BIAS`: the mip LOD bias of the routed material stages while the jitter is on, intended −0.5, default off), `--taa-sentinel auto|1|2`, `--camera-cut-deg`, `--camera-log`, `--state-shadow on|off`, `--scene-hook`, `--hdr` |
 
 `X3M_MOTION_OUTPUT=1` enables the route. Without `X3M_OBJECT_TRACE=1` and
 `X3M_OBJECT_LIFETIME=1` gate 5 never passes and every eligible draw writes the
@@ -545,6 +545,7 @@ against the SDK layout in `verification/probe/abi_check.cpp`.
 | 57 | SetRenderState | render-state shadow (`X3M_STATE_SHADOW`, default on; light boundary) and, in lazy RT mode, the flush of a held write mask before the application's write (installed in lazy mode with the shadow off too) |
 | 58 | GetRenderState | lazy RT mode only: the application's read of a write mask restores the bindings first |
 | 38 / 32 | GetRenderTarget / GetRenderTargetData | lazy RT mode and `X3M_HDR`: the application's target getter answers with its logical RT0 while the FP16 target is bound (the logical-binding shim), a read of the main target's contents receives the pending FP16 content first |
+| 65 / 69 | SetTexture / SetSamplerState | `X3M_TAA_MIP_BIAS` only (light boundary): the sampler shadow of the mip LOD bias — texture binding and level count (`GetLevelCount` once per pointer change, inside the native section), `MIPFILTER`, and the application's own `MIPMAPLODBIAS` writes (counted, logged, the restore value); see [temporal-integration.md](temporal-integration.md#mip-lod-bias-for-routed-material-draws-2026-09-12) |
 
 Native slots the route calls itself (never the hooked table): 1, 2, 6, 8, 9,
 23, 28, 32, 34, 36, 37, 38, 39, 40, 41, 42, 47, 48, 57, 58, 75, 76, 83, 87, 88,
@@ -553,7 +554,7 @@ release hook's reference-count probe and the route's pass accounting use
 native 1 and 2 (AddRef/Release). The pass adds 7, 59, 65, 69, 102 and 104
 through the same table; the HDR pass adds 64, 66, 67 and 68.
 
-The hot setter hooks (shaders, the three constant setters, viewport, render state) use
+The hot setter hooks (shaders, the three constant setters, viewport, render state, texture and sampler state) use
 `LightCallBoundary` (MXCSR and last error only) with a plain lock: their own
 code on both sides of the native call is integer/SSE memory work, so the
 legacy caller's x87 state is untouched by construction, and

@@ -49,6 +49,29 @@ the modes, the final state must equal the pre-burst state, and the DLL's
 per-frame SetRenderTarget count must drop from 20 to 12 in the lazy
 frames without capture diagnostics (capture frames restore before every
 draw's diagnostics and count 20 in both modes).
+Mip LOD bias (X3M_TAA_MIP_BIAS, the TAA blur fix's sampler half): the
+"mipbias" script binds a 1024x1024 LOD-ramp texture with a full mip chain
+(level i a constant grey 16 + 20 i; object A maps it at 8 texels per pixel,
+LOD 3) on stage 0 (MIPFILTER LINEAR) and stage 4
+(POINT), the same texture with MIPFILTER NONE on stage 1, an unmipped texture
+with LINEAR on stage 2, the unmipped cube on stage 3 and nothing on stage 5,
+then reads D3DSAMP_MIPMAPLODBIAS back through GetSamplerState (not hooked)
+after every step: routed draws (sentinel-only, both DLLs) must see the bias
+on stages 0 and 4 only, a flat (gate-3) draw must find every stage restored,
+rebinding stage 4 to an unmipped texture or switching stage 0 to MIPFILTER
+NONE must take the bias off that stage, an application write of the bias
+must stand, be re-biased by the next routed draw and be the value the next
+restore puts back, every frame must end (Present) unbiased, and a Reset after
+frame 3 must make the DLL re-read its saved values. Even frames read back the
+same material draw of A routed (biased) and unrouted (gate 4, ONE/ZERO
+blending): without the bias the two images are identical, with -0.5 the
+routed one is darker (finer ramp levels) and with -1.0 twice as much darker
+(the trilinear sample of a per-level ramp is linear in the LOD). The DLL's
+per-frame set/restore/read counts must equal the fixture's model of the
+restore points and the hand-derived anchors; the unset run must equal the
+X3M_TAA_MIP_BIAS=0 run byte for byte; regular-script twins with the bias on
+(TAA, lazy, jitter-only) must equal their unbiased twins, since they bind no
+mip-mapped texture.
 Camera reprojection of sentinel pixels (X3M_TAA_SENTINEL, seam only): four
 runs install the fixture's own projection/view buffers as the engine camera
 globals (X3M_FIXTURE_CAMERA=rotate: one degree of yaw per frame, a 30-degree
@@ -156,9 +179,10 @@ VARIANTS = {
     'depth': dict(X3M_OWNERSHIP='1', X3M_DEPTH_COPY='1', X3M_SCENE_DEPTH_CAPTURE='1'),
     'admission': dict(X3M_OWNERSHIP='1', X3M_ADMISSION='1')}
 def case(name, mode, variant='plain', enabled='1', jitter=False, taa=False, bench=None, lazy=False, burst=False, camera=False, sentinel=None, envmap=False,
-         hook=None, shadow=True, hdr=False, hdr_fault=None, hdr_env=None):
+         hook=None, shadow=True, hdr=False, hdr_fault=None, hdr_env=None, mip_bias=None, mipbias=False):
     return dict(name=name, mode=mode, variant=variant, enabled=enabled, jitter=jitter, taa=taa, bench=bench, lazy=lazy, burst=burst,
-                camera=camera, sentinel=sentinel, envmap=envmap, hook=hook, shadow=shadow, hdr=hdr, hdr_fault=hdr_fault, hdr_env=hdr_env or {})
+                camera=camera, sentinel=sentinel, envmap=envmap, hook=hook, shadow=shadow, hdr=hdr, hdr_fault=hdr_fault, hdr_env=hdr_env or {},
+                mip_bias=mip_bias, mipbias=mipbias)
 
 
 CASES = [case(f'{dll}-{state}' if variant == 'plain' else f'{dll}-{variant}-{state}', dll, variant, enabled)
@@ -247,7 +271,43 @@ CASES += [case('seam-taa-hdr-tonemap-on', 'seam', jitter=True, taa=True, hdr=Tru
           case('production-taa-hdr-tonemap-on', 'production', jitter=True, taa=True, hdr=True, hdr_env=TAA_HDR),
           case('seam-taa-hook-hdr-tonemap-on', 'seam', jitter=True, taa=True, hook='1', hdr=True, hdr_env=TAA_HDR),
           case('seam-taa-hdr-tonemap-fault', 'hdrtonemapfault', jitter=True, taa=True, hdr=True, hdr_env=dict(AGX, X3M_HDR_DT_MS='16'))]
+# Mip LOD bias (X3M_TAA_MIP_BIAS): the "mipbias" script with the switch unset,
+# at 0 (must be byte-identical to unset), at the intended -0.5 (both DLLs,
+# lazy RT mode too) and at -1.0 (a second level step for the linearity of the
+# evidence), plus regular-script twins with the bias on: they bind no
+# mip-mapped texture, so the bias must change nothing (colour, readback
+# files, checks) while the hooks are installed and the per-frame line counts.
+MIPBIAS_TWINS = {'seam-taa-mipbias-on': 'seam-taa-on', 'production-taa-mipbias-on': 'production-taa-on',
+                 'seam-jitter-mipbias-zero': 'seam-jitter-on', 'seam-taa-lazy-mipbias-on': 'seam-taa-lazy-on'}
+CASES += [case('production-mipbias-off', 'production', jitter=True, mipbias=True),
+          case('production-mipbias-zero', 'production', jitter=True, mipbias=True, mip_bias='0'),
+          case('production-mipbias-on', 'production', jitter=True, mipbias=True, mip_bias='-0.5'),
+          case('production-mipbias-on1', 'production', jitter=True, mipbias=True, mip_bias='-1.0'),
+          case('seam-mipbias-on', 'seam', jitter=True, mipbias=True, mip_bias='-0.5'),
+          case('seam-mipbias-lazy-on', 'seam', jitter=True, lazy=True, mipbias=True, mip_bias='-0.5'),
+          case('seam-taa-mipbias-on', 'seam', jitter=True, taa=True, mip_bias='-0.5'),
+          case('production-taa-mipbias-on', 'production', jitter=True, taa=True, mip_bias='-0.5'),
+          case('seam-jitter-mipbias-zero', 'seam', jitter=True, mip_bias='0'),
+          case('seam-taa-lazy-mipbias-on', 'seam', jitter=True, taa=True, lazy=True, mip_bias='-0.5')]
 HDR_MODES = ('hdrvalues', 'hdrfault', 'hdrramp', 'hdrexposure', 'hdrtonemapfault')
+# Mip-bias script (motion_output_fixture.cpp run_mipbias): eight frames,
+# capture in frame 5 only (the capture diagnostics restore the bias before
+# every draw, so that frame re-sets it per routed draw), the frame line every
+# frame, a Reset after frame 3. Even frames add the evidence pair (a routed
+# and an unrouted material draw of A read back separately). Per-frame
+# SetSamplerState counts of the DLL for the -0.5 run, derived by hand (the
+# fixture's own model of the restore points must agree, frame by frame):
+# odd frames 9 sets / 8 restores, even frames 11 / 10, the capture frame
+# (odd) 15 / 14. Route counters: the background draw stops at gate 2, the two
+# flat draws at gate 3, the evidence's blended draw at gate 4, every routed
+# draw is sentinel-only (gate 5: no scope in this script).
+MIPBIAS_FRAMES = 8
+MIPBIAS_CAPTURE = (5,)
+MIPBIAS_ANCHORS = {'odd': (9, 8), 'even': (11, 10), 'capture': (15, 14)}
+MIPBIAS_EXPECT = {'odd': dict(draws=12, routed=9, matched=0, gate2=1, gate3=2, gate4=0, gate5=9, gate6=0, apply_failures=0, restore_failures=0),
+                  'even': dict(draws=14, routed=10, matched=0, gate2=1, gate3=2, gate4=1, gate5=10, gate6=0, apply_failures=0, restore_failures=0)}
+MIPBIAS_STAGES = '0011'  # stages 0 and 4 carry the bias (hex mask of the frame line)
+MIPBIAS_GAME_WRITES = 2  # application MIPMAPLODBIAS writes per frame (0.25, then 0)
 # hdr_frame expectations: end point per script (HdrEnd names), write-backs
 # per frame (the EndScene flush, the bloom-copy or hook end; the fixture's
 # GetRenderTargetData before the TAA boundary flushes first).
@@ -519,7 +579,12 @@ def check_camera_log(name, trace, expects, camera, sentinel, frames_logged):
     return {f: {'policy': int(s['policy']), 'reason': int(s['reason']), 'cut': int(s['camera_cut']), 'rotation_deg': float(s['rotation_deg'])} for f, s in states.items()}
 
 
-def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None):
+def mip_bias_text(mip_bias):
+    """The fixture's MODE line prints the DLL's bias with %g."""
+    return '%g' % float(mip_bias or 0)
+
+
+def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None):
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
     assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
@@ -533,7 +598,8 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     assert mode_line == {'seam': str(int(seam)), 'enabled': str(int(enabled)), 'jitter': str(int(jitter)),
                          'jitter_samples': str(JITTER_SAMPLES), 'taa': str(int(taa)), 'bench': '0', 'width': '64', 'height': '64',
                          'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode, 'camera': str(int(camera)), 'sentinel': sentinel_mode,
-                         'envmap': '0', 'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': str(int(hdr)), 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0'}, (name, mode_line)
+                         'envmap': '0', 'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': str(int(hdr)), 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
+                         'mipbias': '0', 'mip_bias': mip_bias_text(mip_bias if enabled else None)}, (name, mode_line)
     # The camera script: the 31-degree jump at frame 7 is a cut unless the
     # switch is off; strict mode without a camera skips every frame.
     strict_skip = sentinel == '2' and not camera
@@ -1637,11 +1703,139 @@ def validate_envmap(name, text, trace, directory, hdr=False):
             'color_hashes': {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}, 'hdr': hdr_summary}
 
 
-def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None):
-    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault)
+def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None):
+    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias)
     result['variant'] = variant
     result['ownership'] = validate_ownership(name, variant, enabled, trace)
+    if mip_bias is not None:
+        result['mip_bias'] = validate_mip_bias_lines(name, trace, mip_bias, frames=None, expect_sets=False)
     return result
+
+
+def validate_mip_bias_lines(name, trace, mip_bias, frames, expect_sets):
+    """The DLL's mip-bias fields on the configuration and per-frame lines.
+    Regular scripts (`expect_sets` False) bind no mip-mapped texture: the bias
+    is configured (hooks installed) but never set."""
+    tl = trace.splitlines()
+    bias = float(mip_bias or 0)
+    modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
+    devices = [fields(l) for l in tl if l.startswith('motion_output_device ')]
+    assert len(modes) == 1 and float(modes[0]['mip_bias']) == bias, (name, modes)
+    assert len(devices) == 1 and float(devices[0]['mip_bias']) == bias, (name, devices)
+    frame_lines = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
+    assert frame_lines, name
+    for frame, summary in frame_lines.items():
+        assert float(summary['mip_bias']) == bias, (name, frame, summary['mip_bias'])
+        assert summary['mip_bias_failures'] == '0' and summary['mip_bias_biased_now'] == '0000', (name, frame, summary)
+        if not expect_sets:
+            assert all(summary[k] == '0' for k in ('mip_bias_sets', 'mip_bias_restores', 'mip_bias_draws', 'mip_bias_reads', 'mip_bias_game_writes')), (name, frame, summary)
+            assert summary['mip_bias_stages'] == '0000', (name, frame, summary)
+    summaries = [fields(l) for l in tl if l.startswith('motion_output_mip_bias_summary ')]
+    assert len(summaries) == (1 if bias else 0), (name, summaries)
+    if bias and not expect_sets:
+        assert summaries[0]['sets'] == summaries[0]['restores'] == summaries[0]['game_writes'] == summaries[0]['failures'] == '0', (name, summaries)
+    assert not any(l.startswith('motion_output_mip_bias_game_write ') for l in tl) or expect_sets, name
+    return {'bias': bias, 'frames': len(frame_lines), 'summary': summaries[0] if summaries else None}
+
+
+def validate_mipbias(name, mode, lazy, mip_bias, text, trace, directory):
+    """Mip-bias script (see the module docstring): the fixture's per-step
+    GetSamplerState verdicts, the evidence pairs, the DLL's per-frame counts
+    against the fixture's model and the hand-derived anchors."""
+    lines = text.splitlines()
+    assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
+    assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
+    terminal = fields(lines[-1])
+    seam = mode == 'seam'
+    rt_mode = 'lazy' if lazy else 'perdraw'
+    bias = float(mip_bias or 0)
+    live = bias != 0
+    mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
+    assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '1', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
+                         'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0',
+                         'hook': '0', 'state_shadow': '1', 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
+                         'mipbias': '1', 'mip_bias': mip_bias_text(mip_bias)}, (name, mode_line)
+    assert int(terminal['frames']) == MIPBIAS_FRAMES and text.count('RESET PASS') == 1, (name, terminal)
+    restores = [fields(l) for l in lines if l.startswith('RESTORE ')]
+    assert len(restores) == MIPBIAS_FRAMES and all(r['differences'] == '0' and r['label'] == 'fill' for r in restores), (name, restores)
+    # Every step's verdict: the bias sits on exactly the expected stages (none
+    # without the bias), every frame ends and starts unbiased.
+    verdicts = [fields(l) for l in lines if l.startswith('MIPBIAS ')]
+    assert verdicts and all(v['ok'] == '1' and v['actual'] == v['expected'] for v in verdicts), (name, [v for v in verdicts if v['ok'] != '1'][:4])
+    # The after_present verdict of frame f prints after Present advanced the
+    # fixture's frame counter, so it carries f + 1.
+    labels = [v['label'] for v in verdicts if int(v['frame']) == 1]
+    assert labels == ['after_present', 'before_routed', 'routed', 'routed_again', 'unrouted', 'rerouted', 'stage4_unmipped', 'stage0_mipfilter_none', 'eligible_again',
+                      'after_game_write', 'reapplied_after_game_write', 'restored_to_game_value', 'routed_after_second_write', 'last_routed'], (name, labels)
+    assert sorted(int(v['frame']) for v in verdicts if v['label'] == 'after_present') == list(range(1, MIPBIAS_FRAMES + 1)), name
+    if live:
+        assert {v['expected'] for v in verdicts if v['label'] == 'routed'} == {'11'}, name
+        assert all(v['nonzero'] in ('00', '01') for v in verdicts if v['label'] in ('after_present', 'unrouted', 'before_routed')), name  # 01: the application's own 0.25 on stage 0
+    else:
+        assert all(v['expected'] == '00' and v['nonzero'] in ('00', '01') for v in verdicts), name
+    # Evidence (even frames): identical images without the bias; darker
+    # routed pixels (finer ramp levels) with it.
+    evidence = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('MIPBIAS_EVIDENCE ')}
+    assert sorted(evidence) == [0, 2, 4, 6], (name, sorted(evidence))
+    for frame, e in evidence.items():
+        assert float(e['bias']) == bias and int(e['pixels']) > 500, (name, frame, e)
+        if live:
+            assert int(e['differing']) > int(e['pixels']) // 2 and float(e['delta']) > 1.0, (name, frame, e)
+        else:
+            assert e['differing'] == '0' and float(e['delta']) == 0.0, (name, frame, e)
+    colors = {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}
+    coverage = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('COVERAGE ')}
+    assert sorted(colors) == sorted(coverage) == list(range(MIPBIAS_FRAMES)), (name, sorted(colors), sorted(coverage))
+    assert all(c['mismatches'] == '0' and int(c['checked']) > 3000 for c in coverage.values()), (name, coverage)
+    # The DLL: configuration, per-frame counts against the fixture's model of
+    # the restore points and the hand-derived anchors, the route counters.
+    tl = trace.splitlines()
+    assert not any(l.startswith(('motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed', 'motion_output_taa_failed')) for l in tl), name
+    frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
+    assert sorted(frames) == list(range(MIPBIAS_FRAMES)), (name, sorted(frames))
+    model = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('MIPBIAS_EXPECT ')}
+    assert sorted(model) == list(range(MIPBIAS_FRAMES)), (name, sorted(model))
+    sets, restores_per_frame, reads = {}, {}, {}
+    for frame, summary in frames.items():
+        expect = MIPBIAS_EXPECT['even' if frame % 2 == 0 else 'odd']
+        got = {k: int(summary[k]) for k in expect}
+        assert got == expect, (name, frame, got, expect)
+        assert float(summary['mip_bias']) == bias and summary['rt_mode'] == rt_mode and summary['jitter'] == '1', (name, frame, summary)
+        assert summary['mip_bias_failures'] == '0' and summary['mip_bias_biased_now'] == '0000', (name, frame, summary)
+        m = model[frame]
+        assert m['capture'] == str(int(frame in MIPBIAS_CAPTURE)), (name, frame, m)
+        got = tuple(int(summary[k]) for k in ('mip_bias_sets', 'mip_bias_restores', 'mip_bias_draws', 'mip_bias_reads'))
+        want = tuple(int(m[k]) for k in ('sets', 'restores', 'draws', 'reads'))
+        assert got == want, (name, frame, 'dll', got, 'fixture model', want)
+        sets[frame], restores_per_frame[frame], reads[frame] = got[0], got[1], got[3]
+        if live:
+            anchor = MIPBIAS_ANCHORS['capture' if frame in MIPBIAS_CAPTURE else 'even' if frame % 2 == 0 else 'odd']
+            assert (got[0], got[1]) == anchor, (name, frame, (got[0], got[1]), anchor)
+            assert summary['mip_bias_stages'] == MIPBIAS_STAGES and int(summary['mip_bias_game_writes']) == MIPBIAS_GAME_WRITES, (name, frame, summary)
+            assert int(summary['mip_bias_game_writes_total']) == MIPBIAS_GAME_WRITES * (frame + 1), (name, frame, summary)
+            # The saved value is read once per stage (frame 0) and again after the Reset (frame 4).
+            assert got[3] == (2 if frame in (0, 4) else 0), (name, frame, got)
+        else:
+            assert got == (0, 0, 0, 0) and summary['mip_bias_stages'] == '0000' and summary['mip_bias_game_writes'] == '0', (name, frame, summary)
+    summaries = [fields(l) for l in tl if l.startswith('motion_output_mip_bias_summary ')]
+    game_writes = [fields(l) for l in tl if l.startswith('motion_output_mip_bias_game_write ')]
+    if live:
+        assert len(summaries) == 1 and int(summaries[0]['sets']) == sum(sets.values()) and int(summaries[0]['restores']) == sum(restores_per_frame.values()), (name, summaries, sets, restores_per_frame)
+        assert int(summaries[0]['game_writes']) == MIPBIAS_GAME_WRITES * MIPBIAS_FRAMES and summaries[0]['failures'] == '0' and summaries[0]['biased_now'] == '0000', (name, summaries)
+        assert float(summaries[0]['bias']) == bias, (name, summaries)
+        # One line per application write reaches the log until the cap (16).
+        assert 1 <= len(game_writes) <= 16 and all(float(w['bias']) in (0.25, 0.0) for w in game_writes), (name, len(game_writes))
+    else:
+        assert not summaries and not game_writes, (name, summaries, game_writes)
+    modes = [fields(l) for l in tl if l.startswith('motion_output_mode ')]
+    assert len(modes) == 1 and float(modes[0]['mip_bias']) == bias and modes[0]['rt_mode'] == rt_mode, (name, modes)
+    assert sum(l.startswith('motion_output_release ') for l in tl) == 1, name
+    return {'mode': mode, 'mipbias': True, 'lazy': lazy, 'bias': bias, 'checks': int(terminal['checks']), 'frames': MIPBIAS_FRAMES,
+            'color_hashes': colors, 'sets_per_frame': sets, 'restores_per_frame': restores_per_frame, 'reads_per_frame': reads,
+            'evidence': {f: {'pixels': int(e['pixels']), 'differing': int(e['differing']), 'routed_mean': float(e['routed_mean']),
+                             'unrouted_mean': float(e['unrouted_mean']), 'delta': float(e['delta'])} for f, e in sorted(evidence.items())},
+            'verdicts': len(verdicts), 'summary': summaries[0] if summaries else None, 'game_write_lines': len(game_writes),
+            'coverage_pixels': int(terminal['coverage_pixels'])}
 
 
 def validate_burst(name, mode, lazy, text, trace, directory, shadow=True):
@@ -1657,7 +1851,8 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True):
     mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
     assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '0', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
                          'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '1', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0',
-                         'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0'}, (name, mode_line)
+                         'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
+                         'mipbias': '0', 'mip_bias': '0'}, (name, mode_line)
     # Per frame: the fill and the burst restoration comparisons, the coverage
     # oracle (both DLLs), the COLORWRITEENABLE1 read-back between routed draws
     # and, seam, the motion/depth oracle.
@@ -1845,7 +2040,7 @@ def main():
         wine_log = (RESULTS / 'motion-output-wine.log').open('w')
         result['bench'] = {}
         for entry in CASES:
-            name, mode, variant, enabled, jitter, taa, bench, lazy, burst, camera, sentinel, envmap, hook, shadow, hdr, hdr_fault, hdr_env = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst', 'camera', 'sentinel', 'envmap', 'hook', 'shadow', 'hdr', 'hdr_fault', 'hdr_env'))
+            name, mode, variant, enabled, jitter, taa, bench, lazy, burst, camera, sentinel, envmap, hook, shadow, hdr, hdr_fault, hdr_env, mip_bias, mipbias = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst', 'camera', 'sentinel', 'envmap', 'hook', 'shadow', 'hdr', 'hdr_fault', 'hdr_env', 'mip_bias', 'mipbias'))
             if only and name not in only:
                 continue
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
@@ -1865,10 +2060,16 @@ def main():
                        X3M_MESH_CACHE='0', X3M_ADMISSION='0', X3M_FINITE_POSITIONS='0', X3M_MOTION_CAPTURE='0')
             env.update(VARIANTS[variant])
             env.update(hdr_env)
+            if mip_bias is not None:
+                env['X3M_TAA_MIP_BIAS'] = mip_bias
+            if mipbias:
+                # The mip-bias script: every frame's line, capture in frame 5 only.
+                env['X3M_MOTION_FRAME_LOG'] = '1'
+                env['X3M_CAPTURE_START'] = str(MIPBIAS_CAPTURE[0]); env['X3M_CAPTURE_FRAMES'] = str(len(MIPBIAS_CAPTURE))
             if mode in HDR_MODES:
                 env['X3M_MOTION_FRAME_LOG'] = '1'  # every frame's route and hdr lines
             command = [str(WINE), '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=n,b', '--workdir', str(directory),
-                       str(directory / EXE.name)] + ['Z:' + str(p) for p in RAW] + ['hook' if hook is not None else 'burst' if burst else 'envmap' if envmap else mode] + ([bench] if bench else [])
+                       str(directory / EXE.name)] + ['Z:' + str(p) for p in RAW] + ['hook' if hook is not None else 'burst' if burst else 'mipbias' if mipbias else 'envmap' if envmap else mode] + ([bench] if bench else [])
             if mode in HDR_MODES:
                 # The regular capture window covers the first frames; the frame lines come every frame.
                 # hdrexposure needs no early readback and moves the window (the DLL caps it at eight frames)
@@ -1917,6 +2118,15 @@ def main():
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} hook_status={case["hook_status"]} sources={case["sources"]}', flush=True)
                 continue
+            if mipbias:
+                case = validate_mipbias(name, mode, lazy, mip_bias, text, trace, directory)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} sets={case["sets_per_frame"]} evidence={case["evidence"]}', flush=True)
+                continue
             if burst:
                 case = validate_burst(name, mode, lazy, text, trace, directory, shadow)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
@@ -1926,7 +2136,7 @@ def main():
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} set_rt={case["set_rt_per_frame"]}', flush=True)
                 continue
-            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault)
+            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias)
             if hdr and taa and hdr_env and hdr_fault is None and mode == 'seam':
                 case['hdr_taa'] = validate_hdr_taa(name, text, trace, directory, hdr_env)
             elif hdr and taa and hdr_fault is None and (hdr_env or {}).get('X3M_HDR_TONEMAP', 'identity') == 'identity':
@@ -2109,6 +2319,54 @@ def main():
         result['report_sha256'] = sha(report_path)
         assert sources() == result['sources_before_build'], 'Sources changed during run'
         assert all(sha(p) == h for p, h in RAW.items()), 'Local shader bytes changed during run'
+        # Mip LOD bias (X3M_TAA_MIP_BIAS). Off equals unset byte for byte
+        # (colour, evidence, DLL counters); the regular-script twins with the
+        # bias on are indistinguishable from their unbiased twins (no
+        # mip-mapped texture is bound there) while the DLL reports the bias
+        # configured and never set; the mip-bias script's presented colour
+        # differs from the unbiased run in every frame (the last routed draw
+        # samples finer ramp levels), the seam and production DLLs agree, the
+        # lazy RT mode agrees with per-draw, and the evidence delta doubles
+        # from -0.5 to -1.0 (the trilinear sample of the ramp is linear in the
+        # LOD, so a bias of one level moves it twice as far as half a level).
+        mipbias = {}
+        off, zero = result['cases']['production-mipbias-off'], result['cases']['production-mipbias-zero']
+        for key in ('color_hashes', 'evidence', 'sets_per_frame', 'restores_per_frame', 'reads_per_frame', 'checks', 'verdicts'):
+            assert off[key] == zero[key], f'production-mipbias-zero: {key} differs from the unset run'
+        files_off, files_zero = readback_files('production-mipbias-off'), readback_files('production-mipbias-zero')
+        assert files_off and files_off == files_zero, 'production-mipbias-zero: readback files differ from the unset run'
+        mipbias['zero_equals_unset'] = {'identical': True, 'readback_files': len(files_off)}
+        for on_name, twin in MIPBIAS_TWINS.items():
+            a, b = result['cases'][on_name], result['cases'][twin]
+            assert a['color_hashes'] == b['color_hashes'], f'{on_name}: colour differs from {twin}'
+            assert (a['checks'], a['restorations'], a['motion_pixels'], a['matched_pixels'], a['depth_written_pixels']) == \
+                   (b['checks'], b['restorations'], b['motion_pixels'], b['matched_pixels'], b['depth_written_pixels']), (on_name, twin)
+            if 'color_hashes_before_boundary' in b:
+                assert a['color_hashes_before_boundary'] == b['color_hashes_before_boundary'], (on_name, twin)
+            files_a, files_b = readback_files(on_name), readback_files(twin)
+            assert files_a and files_a == files_b, f'{on_name}: readback files differ from {twin}'
+            assert a['mip_bias']['bias'] == float(next(c['mip_bias'] for c in CASES if c['name'] == on_name)), on_name
+            mipbias.setdefault('twins', {})[on_name] = {'twin': twin, 'identical': True, 'readback_files': len(files_a), 'bias': a['mip_bias']['bias']}
+        on, on1, seam_on, lazy_on = (result['cases'][n] for n in ('production-mipbias-on', 'production-mipbias-on1', 'seam-mipbias-on', 'seam-mipbias-lazy-on'))
+        differing = [f for f in on['color_hashes'] if on['color_hashes'][f] != off['color_hashes'][f]]
+        assert differing == list(range(MIPBIAS_FRAMES)), f'production-mipbias-on: the bias changed the colour of frames {differing} only'
+        assert on['color_hashes'] == seam_on['color_hashes'] == lazy_on['color_hashes'], 'mip-bias colour differs between the production DLL, the seam DLL and the lazy RT mode'
+        assert on['evidence'] == seam_on['evidence'] == lazy_on['evidence'], 'mip-bias evidence differs between the production DLL, the seam DLL and the lazy RT mode'
+        assert on['sets_per_frame'] == seam_on['sets_per_frame'] == lazy_on['sets_per_frame'], 'mip-bias sets differ between the DLLs or the RT modes'
+        assert on['restores_per_frame'] == seam_on['restores_per_frame'] == lazy_on['restores_per_frame'], 'mip-bias restores differ between the DLLs or the RT modes'
+        # The seam DLL adds the motion/depth oracle checks: compare per DLL.
+        assert on['checks'] == on1['checks'] == off['checks'] and seam_on['checks'] == lazy_on['checks'], 'mip-bias runs differ in their check counts'
+        ratios = {}
+        for frame, e in on['evidence'].items():
+            half, full = e['delta'], on1['evidence'][frame]['delta']
+            assert half > 1.0 and full > half, (frame, half, full)
+            ratios[frame] = full / half
+            assert 1.75 <= ratios[frame] <= 2.25, f'frame {frame}: -1.0 moved the ramp sample {ratios[frame]:.3f}x as far as -0.5 (expected 2x)'
+        mipbias['evidence'] = {'unbiased': off['evidence'], 'bias_-0.5': on['evidence'], 'bias_-1.0': on1['evidence'], 'delta_ratio_full_over_half': ratios,
+                               'frames_changed_by_bias': differing, 'identical_across_dlls_and_rt_modes': True}
+        mipbias['counts'] = {'sets_per_frame': on['sets_per_frame'], 'restores_per_frame': on['restores_per_frame'], 'reads_per_frame': on['reads_per_frame'],
+                             'anchors': MIPBIAS_ANCHORS, 'capture_frames': list(MIPBIAS_CAPTURE), 'session': on['summary']}
+        result['mip_bias'] = mipbias
         assert {str(p.relative_to(ROOT)): sha(p) for p in (EXE, SEAM, DLL)} == result['binaries'], 'Binaries changed during run'
         result['sources_after_run'] = sources()
         result['limits'] = ['Synthetic device program; not gameplay validation or temporal image quality.',
@@ -2123,6 +2381,8 @@ def main():
         result['passed'] = True; result['status'] = 'PASS'
     except BaseException as error:
         result['status'] = 'FAIL'; result['error'] = repr(error)
+        if 'report' in locals():
+            report_path.write_text(''.join(report))  # the fixture output of the cases that ran, for the diagnosis
         raise
     finally:
         save()

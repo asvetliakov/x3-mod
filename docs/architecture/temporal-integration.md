@@ -745,3 +745,101 @@ line reports `taa_k`, `hdr_frame … k=`. Not chosen: a fixed default with
 manual exposure (manual EV is still an exposure the tonemap applies, so the
 derivation holds), and `k = 1` with the identity write-back (it would move
 the HDR twins away from their 8-bit references for no display benefit).
+
+## Mip LOD bias for routed material draws (2026-09-12)
+
+The sampler half of the TAA blur fix. Jittering the raster by sub-pixel
+offsets and blending frames supersamples the scene, so the texture
+minification the hardware computes per pixel is no longer the right
+footprint: the resolved image integrates several jittered samples of every
+pixel, and a mip level chosen for one sample's footprint is one level too
+coarse for the integrated result. The customary correction is a negative
+`D3DSAMP_MIPMAPLODBIAS` on the material samplers; the intended value here is
+**−0.5**, applied only while the jitter is active and only on the routed
+draws. Switch: `X3M_TAA_MIP_BIAS=<float>` (`tools/manage.py launch --taa
+--taa-mip-bias -0.5`); unset or `0` is off and bit-identical to before, which
+the fixture proves ([taa-mip-bias.md](../verification/taa-mip-bias.md)).
+
+**Why −0.5.** A mip level halves the sampling rate per axis (LOD +1 ≙ one
+octave). With the route's jitter sequence, four consecutive frames place the
+raster sample at the four quadrant offsets of the pixel and the resolve's
+exponential blend carries most of its weight over those frames, so the
+effective sampling rate per axis is about doubled: 2× per axis is one
+octave, and half of it, −0.5, is the conservative value that keeps the
+trilinear blend between the level the hardware would choose and the next
+finer one rather than jumping a whole level (a full −1 sharpens toward level
+0 at the cost of texture aliasing under motion, which the temporal filter
+then has to hide). The game's material mip chains are complete down to 1×1
+and level 0 is the sharpest image the game ever holds for a texture
+([sampler-states-and-mips.md](../reverse-engineering/sampler-states-and-mips.md),
+section 2), so the bias only moves the blend toward detail that exists;
+`VideoTextureQuality`'s top-level skip composes additively (a lower setting
+has a lower-resolution level 0, and the bias sharpens toward that).
+
+**Why only routed draws.** The game's `ID3DXEffectStateManager` shadows
+sampler state per `(stage, type)` and never writes `MIPMAPLODBIAS`, so a
+value the proxy sets stays on the device until the proxy puts it back
+(section 1 of the study). Left resident it would also bias the compositor,
+the bloom chain, `gui2d`/UI, particles and the skybox, whose stages sample
+1:1 render targets or unmipped textures with `MIPFILTER` `NONE`/`POINT` — a
+visible softening or aliasing of the composite. The routed
+transformed-shader pairs (the reviewed material `(VS, PS)` pairs of
+`motion_output_profiles`) are the only safe discriminator: they are exactly
+the ship, station, asteroid and planet materials whose stages 0–2 and 5–6
+run `ANISOTROPIC/LINEAR/LINEAR` over DXT mip chains, and they automatically
+exclude everything the bias must not touch ("after bloom == HUD" is not a
+valid partition; the sky pair is shared with `gui2d`). Within a routed draw
+the bias goes only to stages whose bound texture has more than one level
+and whose `MIPFILTER` is not `NONE` (the cube stages 3–4 are unmipped and
+stay untouched; the bias would be inert there anyway).
+
+**Mechanism** (`MotionOutput::apply_mip_bias` / `restore_mip_bias`,
+`src/proxy/motion_output.cpp`). Two light hooks (`SetTexture` slot 65,
+`SetSamplerState` slot 69; installed only with a non-zero bias) feed a
+16-stage sampler shadow: the application's texture pointer (identity only,
+never dereferenced later) with its level count (`GetLevelCount` asked once
+per pointer change inside the hook's native section), its `MIPFILTER`, and
+the value the bias replaced. A routed draw walks the bound-stage bit mask:
+an eligible stage not yet biased gets one `SetSamplerState` (after one
+`GetSamplerState` of the value to restore, the first time; the game's shadow
+means that value never changes behind the proxy's back), a biased stage that
+stopped qualifying (texture or filter changed) is restored, everything else
+is a few compares. Consecutive routed draws find the bias set. The restore
+runs at every restore point of the lazy RT mode (`restore_bindings`): before
+any draw that does not route, at `Clear`, `StretchRect`/scene end,
+`EndScene`, `Present`, before `Reset`, around the state block hooks and the
+getters the lazy mode hooks, and at the final `Release`; a state block
+`Apply` or a `Reset` resynchronizes the shadow (bindings re-read natively,
+filters and saved values forgotten). An application write of
+`MIPMAPLODBIAS` is counted, logged (`motion_output_mip_bias_game_write`) and
+becomes the restore value; the static analysis says it never happens. No
+`GetSamplerState` runs per draw; nothing allocates. Per-frame line:
+`mip_bias`, `mip_bias_sets`, `mip_bias_restores`, `mip_bias_draws`,
+`mip_bias_stages` (mask), `mip_bias_reads`, `mip_bias_game_writes[_total]`,
+`mip_bias_failures`, `mip_bias_biased_now`; session totals in
+`motion_output_mip_bias_summary`. Capture frames restore the bias before
+every draw's diagnostics (as the lazy mode does for RT1/RT2), so the
+capture's own `sampler … state=8 bias=` lines show the application's value,
+never the proxy's.
+
+**Interaction with 16× anisotropic minification and the fill-rate caveat.**
+The material stages run `MINFILTER = ANISOTROPIC` with `MAXANISOTROPY = 16`
+(section 4 of the study). Anisotropic filtering already picks a finer level
+along the major axis and takes up to 16 taps along it; a negative bias
+shifts that footprint's level by half a level, so the taps land on a finer
+level and each trilinear lookup touches more texels — a texture bandwidth
+cost proportional to the biased draws' coverage, not a shader cost. The
+fixture measures set/restore counts and the image effect, not throughput,
+so the performance pass must measure the routed draws' GPU time in the game
+with the bias on versus off before the value is promoted from diagnostic to
+default; if it shows, the levers are a smaller bias (−0.25) or biasing stage
+0 (diffuse) only. Restore cost: one `SetSamplerState` per biased stage at
+each transition from a routed to an unrouted draw (the scene interleaves
+`z_only`, particle and material draws, so up to ten sampler calls per
+material batch; D3D9 state changes with no GPU synchronization), counted
+per frame for the telemetry.
+
+**Not covered.** The value stays diagnostic until a gameplay run shows the
+resolved image sharper without new shimmer; `MAXMIPLEVEL` is now captured
+so a stage with a clamped top level (where the bias buys nothing) can be
+recognized; native Windows is cross-compiled only.

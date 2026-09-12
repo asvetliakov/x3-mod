@@ -216,11 +216,39 @@ class SamplerTest(Base):
                                              'magfilter': 'LINEAR',
                                              'mipfilter': 'LINEAR',
                                              'maxanisotropy': 16, 'srgbtexture': 0,
+                                             'mipmaplodbias': None, 'maxmiplevel': None,
                                              'stage_samples': 2}])
         self.assertEqual(report['unrouted'][0]['minfilter'], 'LINEAR')
         self.assertEqual(report['unrouted'][0]['maxanisotropy'], 1)
+        # A log that predates the mip-bias capture: the two states are missing.
         self.assertIn('D3DSAMP_MIPMAPLODBIAS', report['states_not_recorded'])
+        self.assertIn('D3DSAMP_MAXMIPLEVEL', report['states_not_recorded'])
+        self.assertEqual(report['states_recorded'],
+                         ['magfilter', 'maxanisotropy', 'minfilter', 'mipfilter', 'srgbtexture'])
+        self.assertIn('predates', report['note'])
         self.assertEqual(list(report['routed_per_stage']), ['0'])
+
+    def test_lod_bias_recorded(self):
+        # capture.cpp since the mip-bias work: state 8 raw plus bias=<float>
+        # (-0.5 is 0xbf000000 = 3204448256 as a DWORD), state 9 raw.
+        block = self.draw_block(1, 1, True, 3, 16)
+        block[6:6] = ['sampler stage=0 state=8 value=3204448256 bias=-0.5',
+                      'sampler stage=0 state=9 value=0']
+        other = self.draw_block(1, 2, False, 2, 1)
+        other[6:6] = ['sampler stage=0 state=8 value=0 bias=0', 'sampler stage=0 state=9 value=2']
+        report = run2.sampler_report(self.scan(block + other))
+        self.assertEqual(report['routed'][0]['mipmaplodbias'], -0.5)
+        self.assertEqual(report['routed'][0]['maxmiplevel'], 0)
+        self.assertEqual(report['unrouted'][0]['mipmaplodbias'], 0.0)
+        self.assertEqual(report['unrouted'][0]['maxmiplevel'], 2)
+        self.assertNotIn('D3DSAMP_MIPMAPLODBIAS', report['states_not_recorded'])
+        self.assertEqual(report['states_not_recorded'], ['D3DSAMP_ADDRESSU', 'D3DSAMP_ADDRESSV'])
+        self.assertIn('mipmaplodbias', report['states_recorded'])
+        self.assertIn('restores its own bias', report['note'])
+        # Without the bias field the raw DWORD is reinterpreted.
+        raw = self.draw_block(1, 3, True, 3, 16)
+        raw[6:6] = ['sampler stage=0 state=8 value=3204448256']
+        self.assertEqual(run2.sampler_report(self.scan(raw))['routed'][0]['mipmaplodbias'], -0.5)
 
 
 class JitterTableTest(Base):

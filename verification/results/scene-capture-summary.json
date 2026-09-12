@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T15:13:07.743241+00:00",
+  "started_utc": "2026-09-12T14:43:35.709516+00:00",
   "bottle": {
     "name": "Steam",
     "wine_arch": "win64",
@@ -45,12 +45,12 @@
     "Steam",
     "--no-update",
     "--workdir",
-    "/Users/asvetl/x3-mod/verification/probe/build",
-    "/Users/asvetl/x3-mod/verification/probe/build/scene_capture_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-ac19090ecf0fad2ab/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-ac19090ecf0fad2ab/verification/probe/build/scene_capture_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-ac19090ecf0fad2ab/src/temporal/depth_decode.hlsl"
   ],
-  "executable_sha256": "f9307f38feb7929c2745b24d61c60af2aca4e06c4fa651140ee74d29a354e4c7",
+  "executable_sha256": "999555dbc4fe60e51f909809cd14c5d1bfd4034b21ec0c4ea5459bf77edb6a19",
   "exit_code": 0,
   "checks": 4908,
   "samples": 16,
