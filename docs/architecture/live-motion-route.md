@@ -132,26 +132,42 @@ diagnostic command.
 
 ## Coverage plan
 
-Two denominators appear in the evidence. The key validation uses the 24
-gameplay frames selected by the runtime boundary rules (9,001 scene draws);
-the profile study uses a clear-segment approximation over all 28 captured
-frames (11,493 scene-segment draws). Against the profile denominator, the
-Argon pair alone is 19.0% of scene draws and the 16 transformable pairs are
-97.6%; against the gameplay denominator the Argon pair is 24.2%, between 0%
-and 41% per frame.
+Coverage is decided by the shipped archives, not by which sectors a capture
+visited. [Motion output profiles](../reverse-engineering/motion-output-profiles.md)
+classifies every vertex/pixel pairing that a technique pass of the 3,480
+installed compiled effects binds (6,752 passes, 817 distinct pairings): all
+**169 transformable SM3 pairs** are rows of the generated table (56 class A,
+101 class B, 12 class C; 32 vertex and 108 pixel programs, `DEFAULT`,
+`BUMPMAP` and `BUMPMAP_LOW` techniques of every material family, including
+the six light-free asteroid/moon/planet_haze variants whose DP4 quad is
+spaced), so a pair first drawn in a sector or race the user never tested is
+already covered. The 11 SM3 pairs without a row are explicit: nine bloom
+passes whose VS writes the position with `mov`, and the two
+xt_standard_lighting_damage pixel programs with an `ifc` block. SM2 pairs
+(466) carry a feasibility record but no row; SM1 pairs (168) are unsupported
+(no second colour target in ps_1_x). Those, the bloom passes, background and
+planet draws before the scene's depth clear, particles, stardust, overlays and
+GUI keep the sentinel, so the temporal resolve rejects history there.
+
+Capture-derived draw counts remain as metadata only. Against the one captured
+session (28 frames, 11,493 clear-segment scene draws over 25 pairs) the 16
+rows the session drew cover 97.6% (A 35.0% + B 21.9% + C 40.7%); the other
+153 rows were never drawn there and have `observed_scene_draws` 0. The
+remaining 2.4% of that session's scene draws (four bloom pairs, two SM2 and
+three SM1 pairs) have no row. Against the 24 gameplay frames the runtime
+boundary rules select (9,001 scene draws), the Argon pair alone is 24.2%,
+between 0% and 41% per frame.
 
 The [key validation](../reverse-engineering/motion-history-key.md) shows the
 full key above matches 99.97% of keyable scene draws across adjacent frames
 with no in-frame duplicates; dropping buffer identity produces ambiguous
-sub-mesh splits. The transformer is table-driven for classes A, B and C from
-[motion output profiles](../reverse-engineering/motion-output-profiles.md):
-16 pairs (35.0% + 21.9% + 40.7%). The remaining 2.4% of scene-segment draws
-(four direct-clip bloom pairs, five SM1/SM2 pairs) has no row and keeps the
-sentinel. Background and planet draws before the scene's depth clear,
-particles, stardust, overlays and GUI also keep the sentinel, so the temporal
-resolve rejects history there. The inventory comes from one capture session;
-pairs first seen in other sectors are refused at gate 3 and show up in the
-per-frame gate histogram, after which the generator can classify them.
+sub-mesh splits. Two clip-row families exist among the rows (c24 with the
+relative point-light loop, c0 for the light-free `_0000`/`_0001` variants);
+the shadow captures both windows and gate 4 applies each row's own bound
+(see [material-motion-prototype.md](material-motion-prototype.md)). A pair
+refused at gate 3 now means a program outside the archives (a mod, a loose
+override or a dynamically generated shader), not an unvisited sector; it
+shows up in the per-frame gate histogram.
 
 ## Implementation (checkpoint B1, 2026-09-12)
 
@@ -167,7 +183,7 @@ captures are the next step.
 | `src/proxy/motion_output.{h,cpp}` | Per-device route: variant registry, state shadow, motion target, capability self test, sentinel fill, gates, substitution/restoration, history, diagnostics |
 | `src/renderer/motion_row_history.{h,cpp}` | Pure in-frame previous-row table (lookup against the sealed previous frame while collecting); `MotionHistory` stays untouched as the replay reference |
 | `src/renderer/material_motion.{h,cpp}` | Table-driven transformer, `material_motion_vertex_variant` / `material_motion_pixel_variant` (each stage is created separately by the game); the pair function remains for the detached fixtures; `material_motion_reviewed_pairs` is the profile table |
-| `src/renderer/motion_output_profiles.h` + `motion_output_profiles_inc.h` | Row struct, class enum and the generated 16-row table (classes A, B and C) with compile-time consistency checks; see [material-motion-prototype.md](material-motion-prototype.md) |
+| `src/renderer/motion_output_profiles.h` + `motion_output_profiles_inc.h` | Row struct, class enum and the generated 169-row archive-wide table (classes A, B and C) with compile-time consistency checks; see [material-motion-prototype.md](material-motion-prototype.md) |
 | `src/proxy/capture.cpp` | Hook installation, state block wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT` parsing |
 | `src/proxy/scene_capture.{h,cpp}` | `describe_surface` shared with the route |
 | `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only) |
@@ -187,9 +203,10 @@ the two stages separately and a VS such as `53a0a641107ed76c` or
 `4944d81dfe531b37` serves four reviewed pairs each. This is correct only if
 every row sharing a VS uses the same VS-side splice (output register,
 TEXCOORD index, offsets, constant base), so that the one variant links with
-each row's PS variant; the same holds for a PS shared by rows. Inspecting the
-table: the four `53a0…` rows all use o6/TEXCOORD4, the four `4944…` rows all
-use o7/TEXCOORD5, and no PS appears in two rows. Rather than rely on that
+each row's PS variant; the same holds for a PS shared by rows. In the
+169-row table 23 vertex programs and 61 pixel programs each serve several
+rows (the four `53a0…` rows all use o6/TEXCOORD4, the four `4944…` rows all
+use o7/TEXCOORD5). Rather than rely on that
 incidentally, `motion_output_profiles.h` proves it with a `static_assert`
 over the generated table (`motion_output_profiles_consistent`), so a
 regenerated table that broke the agreement would fail to compile instead of
@@ -199,12 +216,20 @@ row lookup. If a future table needs different VS registers for different
 pairs of one VS, the scheme to adopt is a per-pair VS variant keyed by
 `(vs, ps)` in the registry; the static_assert marks exactly that point.
 
-The route itself hard-codes two more table facts: the constant shadow
-captures the one clip-row window c24–27, and gate 4 applies the one bound
-`i0.x` in [0, 8]. A second `static_assert` in `motion_output.cpp`
-(`rows_match_shadow`) requires every row's `matrix_register` and light-loop
-fields to equal those, so a regenerated table with another matrix register
-would fail to build rather than route draws whose rows the shadow never saw.
+The route derives two more table facts at compile time: the constant
+shadow captures every distinct clip-row window the rows name (today c24–27
+for the point-light programs and c0–3 for the light-free variants, at most
+`motion_matrix_windows_max` = 4 windows), each with its own `rows_known`
+flag, and gate 4 reads the window and the light-loop bound of the VS row
+actually bound (`shadow_.vs_row`, recorded at registration through
+`material_motion_vertex_row`; rows sharing a VS agree on these fields by the
+static_assert above). A second `static_assert` in `motion_output.cpp`
+(`rows_match_shadow`) requires every row's window to be one the shadow holds
+and every bounded row's clip rows to lie above the c0–23 light block the
+`i0.x` in [0, 8] bound protects, so a regenerated table naming more windows
+or another bound would fail to build rather than route draws whose rows the
+shadow never captured. `resync_shadow` re-reads every window after a state
+block or Reset.
 
 ### Hooked vtable slots
 

@@ -9,12 +9,12 @@ namespace x3m::renderer {
 
 struct ShaderPair { std::uint64_t vs = 0, ps = 0; };
 // Stored by value. Custom profiles are for verified versions or original test
-// shaders; the default retains only the observed X3 hash pairs.
+// shaders; the default retains only the observed X3 bloom hash pairs.
 struct SceneSignatures {
-    ShaderPair background[3] = {
-        {0x7b6393fe2d3e1d85ull, 0x6109cf64c03529ddull},
-        {0x37c34a7478544c14ull, 0x5f82ecacd39529cdull},
-        {0xbe199829a9bb78dbull, 0xcd6d6eb4b3d99443ull}}; // Haze is one allowed background family, not a mandatory draw.
+    // Deprecated and ignored: the background phase is recognized structurally
+    // (every successful draw on the latched pair before the first depth-only
+    // Clear). Retained only so existing profile constructors keep compiling.
+    ShaderPair background[3]{};
     ShaderPair bloom[4] = {
         {0xcbbf26102694c961ull, 0x1c90e79667bdaddfull},
         {0x6059306306203243ull, 0xf3172baa8dd19a40ull},
@@ -44,7 +44,11 @@ struct Event {
     bool only_rt0 = false;          // Known absence of extra MRTs for Clear/Draw.
     std::uint32_t rt_index = 0;
     std::uint64_t vs = 0, ps = 0, texture0 = 0;
-    bool draw_state_known = false; // Required shader/state/texture queries all succeeded.
+    // Required shader/state/texture queries all succeeded. Adapters fold a null
+    // pixel shader into `false`; such a draw is tolerated in the background and
+    // scene phases (fixed-function or depth-only pass) but never counts as the
+    // scene's depth writer, because its z state is then unknown here.
+    bool draw_state_known = false;
     std::uint32_t topology = 0, primitives = 0, z_enable = 0, z_write = 0;
     std::uint32_t clear_flags = 0, rect_count = 0;
     float clear_z = 0;
@@ -139,16 +143,19 @@ private:
         return e.clear_flags == 2 && e.rect_count == 0 && e.clear_z == 1 && full(e) &&
                same(e.rt, main_) && same(e.depth, depth_);
     }
-    bool scene_draw(const Event& e) const {
-        return e.draw_state_known && e.primitives && e.vs && e.ps && full(e) &&
-               same(e.rt, main_) && same(e.depth, depth_) && e.z_enable <= 1 && e.z_write <= 1;
+    // A successful draw on the latched color/depth pair with a full viewport:
+    // background before the phase-marking depth-only Clear, scene after it.
+    // Known state must carry plausible z values; unknown state is accepted only
+    // for a draw without a pixel shader (see Event::draw_state_known).
+    bool phase_draw(const Event& e) const {
+        return e.primitives && full(e) && same(e.rt, main_) && same(e.depth, depth_) &&
+               (e.draw_state_known ? (e.z_enable <= 1 && e.z_write <= 1) : !e.ps);
+    }
+    static bool depth_writer(const Event& e) {
+        return e.draw_state_known && e.z_enable == 1 && e.z_write == 1;
     }
     static bool matches(const Event& e, const ShaderPair& pair) {
         return pair.vs && pair.ps && e.vs == pair.vs && e.ps == pair.ps;
-    }
-    bool background_pair(const Event& e) const {
-        for (const auto& pair : signatures_.background) if (matches(e, pair)) return true;
-        return false;
     }
     static bool aliases(const Surface& a, const Surface& b) {
         return a.identity == b.identity || (a.container && b.container && a.container == b.container);
@@ -174,15 +181,16 @@ private:
             main_ = e.rt; depth_ = e.depth; epoch_ = 1;
             state_ = BoundaryState::Background; return true;
         case BoundaryState::Background:
-            if (e.kind == EventKind::Draw && scene_draw(e) && background_pair(e)) {
-                background_draw_ = true; return true;
-            }
+            // Any successful draw on the pair is background; the first full
+            // depth-only Clear of the pair marks the phase end. A frame without
+            // a background draw, or with any other operation here, fails closed.
+            if (e.kind == EventKind::Draw && phase_draw(e)) { background_draw_ = true; return true; }
             if (e.kind != EventKind::Clear || !background_draw_ || !depth_clear(e)) return false;
             ++epoch_; state_ = BoundaryState::Scene; return true;
         case BoundaryState::Scene:
-            if (e.kind == EventKind::Draw && scene_draw(e)) {
-                scene_writer_ |= e.z_enable == 1 && e.z_write == 1; return true;
-            }
+            // A further depth-only Clear here would start a third depth epoch
+            // whose relation to the selected color is ambiguous: rejected.
+            if (e.kind == EventKind::Draw && phase_draw(e)) { scene_writer_ |= depth_writer(e); return true; }
             if (e.kind != EventKind::SetDepth || !e.depth.known || e.depth.identity || !scene_writer_) return false;
             state_ = BoundaryState::AwaitCopy; return true;
         case BoundaryState::AwaitCopy:

@@ -1,9 +1,11 @@
 # Same-draw material color and motion prototype
 
 The table-driven transformer adds motion output to the exact opaque SM3
-material pairs listed in the generated profile table (16 rows, classes A, B
-and C). It preserves the original vertex-position and pixel-color instructions,
-adds previous homogeneous clip coordinates, and writes the existing RGBA32F
+material pairs listed in the generated profile table (169 rows, classes A, B
+and C: every transformable pair a technique pass of the installed effects
+binds, see [motion-output-profiles.md](../reverse-engineering/motion-output-profiles.md)).
+It preserves the original vertex-position and pixel-color instructions, adds
+previous homogeneous clip coordinates, and writes the existing RGBA32F
 previous-UV / previous-depth / validity ABI to COLOR1. It makes no D3D calls;
 the live route binds its output (see [motion-output.md](motion-output.md)).
 
@@ -12,12 +14,13 @@ analytic motion samples, 101,318,656 color-component comparisons, and 164
 bilateral D24 EQUAL cases** across 82 configurations, on normal and pure
 hardware vertex-processing devices with an actual Reset on each. Every other
 table row then passes the same color/motion/depth comparison on a third
-device: **16 of 16 rows, 168 configurations, 2,376 checks, 6,048 analytic
-samples, 2,064,384 color components, 336 bilateral cases**, all with identical
-color, zero replay-reference difference and the same analytic maxima as the
-Argon row (0.00086 px UV, 8.7e-7 depth). The four class C rows run every
-configuration under all four pixel boolean settings `b0`/`b1`, after a
-control proving the booleans change the original image (8 controls). See
+device: **169 of 169 rows, 1,230 configurations, 17,413 checks, 44,280
+analytic samples, 15,114,240 color components, 2,460 bilateral cases**, all
+with identical color, zero replay-reference difference and the same analytic
+maxima as the Argon row (0.00086 px UV, 8.7e-7 depth; the review-15 rerun
+reported 0.0010 px UV for the Argon inventory, within the runner's bound). The twelve class C rows
+run every configuration under all four pixel boolean settings `b0`/`b1`, after
+a control proving the booleans change the original image (24 controls). See
 [Results per row](#results-per-row).
 
 This supports the same-draw approach for these materials. It does not
@@ -38,7 +41,7 @@ The other rows' originals are read by both fixtures from
 cross-check each file's SHA-256 and length against
 `verification/results/motion-output-profiles.json` and record them in the
 summaries. A row whose files are absent is reported as skipped, never
-fabricated; the Argon row must always run.
+fabricated; the Argon row must always run. All 169 rows' files were present.
 
 Raw game bytecode, preshader metadata and disassembly stay local and untracked.
 The fixture supplies original triangles, 2×2 diffuse/specular/lightmap textures,
@@ -50,17 +53,26 @@ count or a used material constant changes the original image; transformed color
 still matches under those changed inputs.
 
 Both a FLOAT3-position control and FLOAT16_4 position/texcoord/normal layout are
-used. Packed position W is 7; the original shader constructs homogeneous W from
-XYZ and ignores that stored W. Normals and view vectors are ordinary finite
-inputs. This is not an exhaustive vertex-format or exceptional-input test.
+used; both now also carry TANGENT0 (1,0,0) and BINORMAL0 (0,1,0) elements
+(strides 56 and 40 bytes), because 85 of the archive's row vertex programs
+declare them — a program that does not declare an element ignores it, so the
+Argon inventory is unchanged. Packed position W is 7; the original shader
+constructs homogeneous W from XYZ and ignores that stored W. Normals and view
+vectors are ordinary finite inputs. This is not an exhaustive vertex-format or
+exceptional-input test.
 
 Reserved constants are VS c252–255 for previous WVP rows, PS c216 for inverse
-size and previous jitter UV, and c217.x for known-history mode. The extra VS
-output (o6 / TEXCOORD4 feeding PS v5 for class A rows; the row's free
+size and previous jitter UV, and c217.x for known-history mode. The submitted
+clip rows are uploaded at the row's `matrix_register`: c24–27 for the 107
+point-light rows and c0–3 for the 62 light-free `_0000`/`_0001` rows (the
+fixture copies the same rows there; those programs have no light loop). Six
+of the light-free rows (asteroid, moon, planet_haze) issue their position dots
+non-adjacently; they run the same configurations as every other row. The
+extra VS output (o6 / TEXCOORD4 feeding PS v5 for class A rows; the row's free
 registers for classes B and C) carries previous clip position. Samplers are
 bound according to the original pixel program's declarations: the cubemap on
-its cube sampler (s3 or s4) and the three 2×2 textures on the 2D samplers
-(s0–s6, cycling), which reproduces the Argon inventory's binding exactly. The motion body is
+its cube sampler and the 2×2 textures on the 2D samplers (cycling), which
+reproduces the Argon inventory's binding exactly. The motion body is
 relocated from the project's embedded original motion PS, retaining its
 invalid mode and coordinate ABI.
 The prototype requires a **zero-origin viewport**, previous MinZ/MaxZ of 0/1,
@@ -98,15 +110,21 @@ only**; it is not allocated, rendered, sampled or used as a substitute motion AB
 Every small configuration compares all four original color channels at every
 pixel, including alpha and uncovered regions. Light/material sensitivity checks
 and positive covered-pixel counts prevent matching black clears from satisfying
-the proof. The reported component count includes repeated comparisons for depth
+the proof. Color targets are cleared to a non-zero color (`0x40201008`) and a
+pixel counts as covered when it differs from the texel the device actually
+stores for that clear (probed once per target format), so a material whose
+output quantizes to zero in every ARGB8 channel — one archive row does — is
+still recognized as covered geometry; the motion target keeps its zero clear.
+The reported component count includes repeated comparisons for depth
 controls; it is not a count of independent scene samples.
 
 Bilateral depth controls first write depth with the original VS and redraw with
 the transformed VS under EQUAL with depth writes disabled, then reverse those
 roles. Each resulting material image matches the ordinary original image.
-Changing the submitted depth row makes the EQUAL draw reject every fragment.
-This proves matching stored D24 depth and coverage for the tested geometry, not
-bitwise equality of unquantized clip coordinates at every possible input.
+Changing the submitted depth row (`c<matrix + 2>`) makes the EQUAL draw reject
+every fragment. This proves matching stored D24 depth and coverage for the
+tested geometry, not bitwise equality of unquantized clip coordinates at every
+possible input.
 
 Motion checks cover stationary and translated geometry, perspective-varying
 current and previous W, prior jitter, unknown-history mode and both declarations.
@@ -143,51 +161,84 @@ under pixel booleans `b0/b1` = 0/0, 1/0, 0/1 and 1/1 (`SetPixelShaderConstantB`,
 the `booleans` bitmask in the CONFIG line), so color identity and motion are
 proven in every branch combination; before each format's configurations the
 fixture requires that the original image differs between at least two of the
-four settings, so the identity is not vacuous. Numbers from
+four settings, so the identity is not vacuous (this held for the six
+single-block `b0` programs as well as the six two-block ones). Numbers from
 `verification/results/material-motion-summary.json` (`row_results`).
 
-| Row | VS | PS | Class | Configs | Booleans | Checks | Samples | Color components | Min covered | Max UV px | Max depth | Replay max |
-| ---: | --- | --- | :-: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 0 | `494fe349b8bc12ec` | `fffdabd910793aba` | C | 24 | 0/1/2/3 | 339 | 864 | 294,912 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 1 | `53a0a641107ed76c` | `8759c7838bbc86c2` | A | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 2 | `37c34a7478544c14` | `5f82ecacd39529cd` | C | 24 | 0/1/2/3 | 339 | 864 | 294,912 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 3 | `4944d81dfe531b37` | `ca6bfa4a6cca7e2a` | B | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 4 | `b0602757fce6e870` | `517540ae6d5e5410` | A | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 5 | `4944d81dfe531b37` | `5e0a10fe752b6140` | B | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 6 | `37c34a7478544c14` | `f1b0e820c7b488c3` | C | 24 | 0/1/2/3 | 339 | 864 | 294,912 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 7 | `53a0a641107ed76c` | `63f96eba9eea7880` | A | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 8 | `167eb2d5629ab9d3` | `d44db87778a43b61` | B | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 9 | `494fe349b8bc12ec` | `e6794b6ec37ff71a` | C | 24 | 0/1/2/3 | 339 | 864 | 294,912 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 10 | `53a0a641107ed76c` | `3b94320087e81945` | A | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 11 | `53a0a641107ed76c` | `462342e3e5781384` | A | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 12 | `4944d81dfe531b37` | `64bac8bb307eb896` | B | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 13 | `494fe349b8bc12ec` | `7c83ed50c9894e44` | A | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 14 | `4944d81dfe531b37` | `0c1f3f0f440e4a0c` | B | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
-| 15 | `c30104cb0efb6675` | `a66fb1981ba755b2` | B | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
+Every row of a class produced the same inventory; the table gives the per-row
+numbers by class (169 rows: 56 A, 101 B, 12 C; row order is the table order,
+observed rows first).
 
-The identical maxima are expected: every table VS transforms the same
-synthetic position through `c24–27`, so the interpolated previous clip
-coordinates are the same numbers in every row. What differs per row is the
-material color program (compared full-image and bit-identical) and the
-register relocation (checked structurally). The light-sensitivity and
-material-constant controls run only for the Argon pair, whose constant layout
-the fixture models; the other rows receive the same constant values, which is
-sufficient for the identity comparison but is not a claim that those values
-are meaningful for their materials.
+| Class | Rows | Configs per row | Booleans | Checks | Samples | Color components | Min covered | Max UV px | Max depth | Replay max |
+| :-: | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| A | 56 | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
+| B | 101 | 6 | 0 | 85 | 216 | 73,728 | 912 | 0.00086 | 8.66e-07 | 0 |
+| C | 12 | 24 | 0/1/2/3 | 339 | 864 | 294,912 | 912 | 0.00086 | 8.66e-07 | 0 |
+
+The sixteen rows the captured session drew (the previous table, unchanged
+fields and order) are rows 0–15:
+
+| Row | VS | PS | Class | Configs | Booleans | Checks | Samples | Color components |
+| ---: | --- | --- | :-: | ---: | --- | ---: | ---: | ---: |
+| 0 | `494fe349b8bc12ec` | `fffdabd910793aba` | C | 24 | 0/1/2/3 | 339 | 864 | 294,912 |
+| 1 | `53a0a641107ed76c` | `8759c7838bbc86c2` | A | 6 | 0 | 85 | 216 | 73,728 |
+| 2 | `37c34a7478544c14` | `5f82ecacd39529cd` | C | 24 | 0/1/2/3 | 339 | 864 | 294,912 |
+| 3 | `4944d81dfe531b37` | `ca6bfa4a6cca7e2a` | B | 6 | 0 | 85 | 216 | 73,728 |
+| 4 | `b0602757fce6e870` | `517540ae6d5e5410` | A | 6 | 0 | 85 | 216 | 73,728 |
+| 5 | `4944d81dfe531b37` | `5e0a10fe752b6140` | B | 6 | 0 | 85 | 216 | 73,728 |
+| 6 | `37c34a7478544c14` | `f1b0e820c7b488c3` | C | 24 | 0/1/2/3 | 339 | 864 | 294,912 |
+| 7 | `53a0a641107ed76c` | `63f96eba9eea7880` | A | 6 | 0 | 85 | 216 | 73,728 |
+| 8 | `167eb2d5629ab9d3` | `d44db87778a43b61` | B | 6 | 0 | 85 | 216 | 73,728 |
+| 9 | `494fe349b8bc12ec` | `e6794b6ec37ff71a` | C | 24 | 0/1/2/3 | 339 | 864 | 294,912 |
+| 10 | `53a0a641107ed76c` | `3b94320087e81945` | A | 6 | 0 | 85 | 216 | 73,728 |
+| 11 | `53a0a641107ed76c` | `462342e3e5781384` | A | 6 | 0 | 85 | 216 | 73,728 |
+| 12 | `4944d81dfe531b37` | `64bac8bb307eb896` | B | 6 | 0 | 85 | 216 | 73,728 |
+| 13 | `494fe349b8bc12ec` | `7c83ed50c9894e44` | A | 6 | 0 | 85 | 216 | 73,728 |
+| 14 | `4944d81dfe531b37` | `0c1f3f0f440e4a0c` | B | 6 | 0 | 85 | 216 | 73,728 |
+| 15 | `c30104cb0efb6675` | `a66fb1981ba755b2` | B | 6 | 0 | 85 | 216 | 73,728 |
+
+Rows 16–168 are the 153 archive-only rows (never drawn in the captured
+session; the spaced-quad rows are 16, 17, 42, 53, 129 and 164); their per-row
+numbers equal their class row above and are listed individually in the
+summary JSON. The identical maxima are expected: every
+table VS transforms the same synthetic position through its clip rows, so the
+interpolated previous clip coordinates are the same numbers in every row.
+What differs per row is the material color program (compared full-image and
+bit-identical) and the register relocation (checked structurally). The
+light-sensitivity and material-constant controls run only for the Argon pair,
+whose constant layout the fixture models; the other rows receive the same
+constant values, which is sufficient for the identity comparison but is not a
+claim that those values are meaningful for their materials. The whole GPU run
+(build, Argon inventory and 169 rows) takes about 26 s.
 
 The host structural fixture (`run_material_motion_structure.py`) covers the
-same 16 rows: 161 check groups, 925,248 single-bit mutations (every input
-DWORD, every bit, for every row), 21 row perturbations per row and 26 (class
-A/B) or 40 (class C) program perturbations per row (perturbed originals under
-a row copy carrying their fingerprint, so the structural revalidation is
-exercised from the words; every class refuses an unterminated vertex-side
-block before the position dots; the class C set covers unbalanced, nested,
-`if_comp`, `rep`, `break`/`breakp`, non-boolean, relative, malformed and
-predicated branch variants plus reserved registers used inside a branch body)
-and 96 alias layouts, in optimized and ASan/UBSan builds, and proves the
-Argon output is byte-identical to the earlier hand-written transformer. The
-GPU runner requires at least 512 of the 1,024 pixels of each per-row
-comparison to be covered original geometry (912 observed).
+same 169 rows: 1,691 check groups, 1,551,936 single-bit mutations (every
+input DWORD, every bit, for the 16 captured rows: 925,248; a deterministic
+evenly strided sample of 2,048 bit positions per program for the other 153
+rows: 626,688), 21 row perturbations per row and 26 (class A/B) or 40 (class
+C) program perturbation sites per row, plus two for each spaced-quad row (the
+position temporary written between the dots; a balanced block between them) (perturbed originals under a row copy
+carrying their fingerprint, so the structural revalidation is exercised from
+the words; every class refuses an unterminated vertex-side block before the
+position dots; light-free rows refuse an injected relative operand under
+their denied bound; the class C set covers unbalanced, nested, `if_comp`,
+`rep`, `break`/`breakp`, non-boolean, relative, malformed and predicated
+branch variants plus reserved registers used inside a branch body, for one-
+and two-block programs). A site a program does not offer is reported as
+skipped rather than fabricated and never for a captured row: 4,572 of the
+4,574 sites ran (rows 129 and 130, both with pixel program `6aaaa2cb27e92cc8`,
+have no literal DEF to place on an ABI constant). 1,014 alias layouts, in
+optimized and ASan/UBSan builds (about 27 s in all), and the Argon output is byte-identical
+to the earlier hand-written transformer. A table-level lookup oracle
+(`TABLE lookups=PASS`, review 15) then checks the route's binary searches
+against a linear scan of the same table without local programs: for every
+row the pair, vertex-row and pixel-row lookups (agreeing sides, first row in
+table order, wrong DWORD count refused) and the sixteen neighbouring keys
+(`±1`, `^1` on either fingerprint; 2,535 absent pairs), plus the
+lexicographically first and last pairs, the smallest and largest per-stage
+fingerprints and keys just outside them, zero and all-ones keys. The GPU runner requires at least 512
+of the 1,024 pixels of each per-row comparison to be covered original
+geometry (912 observed for every row).
 
 ## Completed-work cost comparison
 
@@ -217,8 +268,8 @@ begins, avoiding a stream of identical uncompleted draws hiding earlier work.
 
 | Resolution | Original color mean / median ms | Same-draw mean / median ms | Two-pass mean / median ms |
 | --- | ---: | ---: | ---: |
-| 1280×768 | 0.6201 / 0.4851 | 0.6649 / 0.6484 | 0.7143 / 0.6994 |
-| 5120×1440 | 1.4869 / 1.4868 | 1.6026 / 1.5441 | 2.2355 / 2.0781 |
+| 1280×768 | 0.6331 / 0.6752 | 0.6484 / 0.6906 | 0.7481 / 0.7296 |
+| 5120×1440 | 0.7265 / 0.7088 | 0.8116 / 0.8134 | 1.1897 / 1.1976 |
 
 This bounded sample favors one draw over the matched GPU replay workload,
 particularly at the larger target. Six samples with visible variability do not
@@ -233,6 +284,7 @@ integration and its costs remain unimplemented.
 
 ```sh
 python3 verification/probe/run_material_motion.py
+python3 verification/probe/run_material_motion_structure.py
 python3 -m unittest verification/analysis/test_material_motion_report.py
 ```
 
@@ -257,6 +309,10 @@ evidence, GPU fixture, final artifact provenance and stated limits. Review
 corrected the native-module mapping and required one shared scene for the
 timed two-pass comparison. The table-driven extension (2026-09-12) keeps that
 inventory unchanged and adds the per-row section; its independent review is
-[review-13.md](review-13.md). The class C extension (same day) adds the four
+[review-13.md](review-13.md). The class C extension (same day) adds the
 branching rows, the per-boolean repetition and the declaration-driven sampler
-binding; the Argon inventory numbers are unchanged.
+binding ([review-14.md](review-14.md)). The archive-wide extension (same day)
+grows the table from 16 to 169 rows (including six spaced-quad rows), adds
+the tangent/binormal elements, the per-row clip-row register, the probed
+clear color and the sampled mutation sweep; the Argon inventory numbers are
+unchanged.

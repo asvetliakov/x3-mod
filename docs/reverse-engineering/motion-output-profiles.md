@@ -1,109 +1,140 @@
 # Per-program motion-output profiles
 
-Static review, 2026-09-12. The [candidate review](motion-output-candidate.md)
-derived the splice facts for one Argon SM3 pair (VS 335 / 450 / 466, PS 1047 /
-1074, appending before the END at 1259; the original literal DEFs sit at 302
-and 1041), which the first
+Static review, 2026-09-12; archive-wide since the same day. The
+[candidate review](motion-output-candidate.md) derived the splice facts for one
+Argon SM3 pair (VS 335 / 450 / 466, PS 1047 / 1074, appending before the END at
+1259; the original literal DEFs sit at 302 and 1041), which the first
 [`material_motion.cpp`](../../src/renderer/material_motion.cpp) hard-coded.
-This document derives the same facts for the other SM3 material programs the
-captured session draws; the transformer is now driven by the generated table
-below (see [material-motion-prototype.md](../architecture/material-motion-prototype.md))
-so the [live route](../architecture/live-motion-route.md) covers the class A,
-B and C pairs without a second hand-written transformer.
+This document derives the same facts for **every vertex/pixel pairing that a
+technique pass of the installed compiled effects binds**, not only the pairs
+one captured session happened to draw. The transformer is driven by the
+generated table below (see
+[material-motion-prototype.md](../architecture/material-motion-prototype.md));
+the [live route](../architecture/live-motion-route.md) therefore covers every
+transformable SM3 material pair of the shipped archives without a user visiting
+each sector and race.
 
-Everything here is derived structure: hashes, DWORD offsets, register numbers
-and counts. No shader words, literals or disassembly are reproduced. Original
-bytecode and D3DX text stay untracked under `/tmp/x3-shader-sweep/`.
+Everything here is derived structure: hashes, DWORD offsets, register numbers,
+counts, technique and pass names. No shader words, literals or disassembly are
+reproduced. Original bytecode and D3DX text stay untracked under
+`/tmp/x3-shader-sweep/`; the effect containers are read from the CAT/DAT
+archives in memory and nothing is copied.
 
 ## Method and provenance
+
+[`effect_passes.py`](../../tools/analysis/effect_passes.py) walks every
+`shader/**/*.fb` entry of the 17 numbered archives (the same decode as the
+[shader sweep](shader-sweep.md)) and parses the compiled D3DX effect container
+(`0xfeff0901`: parameter, technique, pass and state records, then object data
+and per-state resources; the VertexShader and PixelShader state operations are
+146 and 147 of the D3DX state table). Each pass yields the FNV-1a 64 identity
+and length of its vertex and pixel program, or `null` for a state without a
+resource. The count identity confirms the parse: the 6,752 passes of the 3,480
+effects carry 13,408 shader resources, the 13,407 token streams the sweep
+indexed plus one resource that is not a complete program (the vertex state of
+the pass holding the anomalous `d66dd16fc0a6c3a3`, see the sweep note).
 
 [`inspect_motion_output_profiles.py`](../../tools/analysis/inspect_motion_output_profiles.py)
 walks complete SM1-3 instruction boundaries from the version token, keeping
 comments as opaque data, and splits each instruction into destination and source
 operands. SM2+ counts a relative-address token inside the instruction length, so
-operands are walked rather than read positionally; a naive positional read would
-mistake `c0[a0.w]`'s address token for an ordinary operand. Every parsed program's
-instruction count was independently reconciled against its local D3DX
-disassembly line count: 40 of 40 agree.
+operands are walked rather than read positionally. Every program bound by a
+complete pass is profiled (748 of the 751 archive programs; the two z-only
+vertex programs of the pixel-less `Z_Only_Fast` technique and the anomalous
+pixel program's partner are never paired with a complete counterpart).
 
 Offsets are zero-based DWORD indices from the version token, including all
-comments, matching the candidate review and the existing transformer. The tool
+comments, matching the candidate review and the transformer. The tool
 reproduces every documented Argon number (`reference_check.passed`), and both the
 tool and [`test_motion_output_profiles.py`](../../verification/analysis/test_motion_output_profiles.py)
 fail if it stops doing so.
 
 ```sh
+python3 tools/analysis/effect_passes.py \
+  "$HOME/Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3" \
+  --output /tmp/x3-effect-passes.json          # derived names/hashes only
 python3 tools/analysis/inspect_motion_output_profiles.py \
   --inventory verification/results/shader-sweep-inventory.json \
   --raw-directory /tmp/x3-shader-sweep/programs \
+  --pass-table /tmp/x3-effect-passes.json \
   --capture-log /tmp/x3-iteration05-completed-snapshot.log \
-  --output verification/results/motion-output-profiles.json
+  --output verification/results/motion-output-profiles.json \
+  --emit-header src/renderer/motion_output_profiles_inc.h
 python3 -m unittest verification.analysis.test_motion_output_profiles
 ```
 
+`--game <root>` enumerates the passes directly instead of `--pass-table`;
+`--capture-log` is optional. The JSON is compact (2.5 MB); query it with a
+script or the paired tests rather than reading it whole.
+
+### What "observed" means
+
 Draw counts come from a read-only pass over
 `/tmp/x3-iteration05-completed-snapshot.log` (216,605,445 bytes, SHA-256
-`e5beaa861d04659fe9c7df05a01845bd05d656a33c643f4b484ff379cf3ccaf8`). The capture
-has no per-draw phase field, so the pass splits each frame at its `Clear` calls:
-segment 1 is the span between the first depth-only Clear and the next Clear, which
-is the material span the selector calls Scene. That is a derived approximation of
-the phase, not the selector's own decision. Across 28 frames the capture holds
-12,957 draws; **11,493** fall in the Scene segment across **25 distinct VS/PS
-pairs**. These counts describe one captured session, not the shipped game.
+`e5beaa861d04659fe9c7df05a01845bd05d656a33c643f4b484ff379cf3ccaf8`), split at
+each frame's `Clear` calls as before: segment 1 is the material span the
+selector calls Scene. Across 28 frames the capture holds 12,957 draws; 11,493
+fall in the Scene segment across 25 distinct VS/PS pairs, all of which are
+archive pass pairings (`captured_pairs_outside_archive` is empty). These counts
+are **metadata only**: `observed_draws` is zero for the pairs the session never
+drew, and its sole uses are the row order (observed rows first, so the sixteen
+rows of the capture-derived table keep their relative order) and the choice of
+the exhaustive single-bit sweep in the structural fixture. Coverage itself is
+decided by the archive, not by the capture.
 
 ## Coverage
 
-| Class | Pairs | Scene draws | Share |
-| --- | ---: | ---: | ---: |
-| A — reference registers | 6 | 4,025 | 35.02% |
-| B — relocated registers | 6 | 2,517 | 21.90% |
-| C — relocated registers, static branches in PS | 4 | 4,680 | 40.72% |
-| **A + B + C (transformable)** | **16** | **11,222** | **97.64%** |
-| X — position not a row dot | 4 | 112 | 0.97% |
-| X — not an SM3 material pair | 5 | 159 | 1.38% |
+The 6,752 passes bind **817 distinct pairings**: 180 SM3, 466 SM2, 168 SM1 and
+3 without a complete counterpart. Techniques are `DEFAULT` (3,600 passes),
+`BUMPMAP` (1,776), `INSTANCE` (480), `BUMPMAP_LOW` (384), `INSTANCE_BULLETS`
+(288), `Z_Only_Alpha` and `Z_Only_Fast` (96 each) and `HDR` (32, bloom); every
+material pass is `P0`.
 
-Three classes therefore cover 97.64% of Scene-segment draws, and the top
-**13** transformable pairs alone reach 95.30%. The one pair the current
-transformer handles covers 18.97%.
+| Group | Pairs | Pass occurrences | Captured Scene draws | Share of capture |
+| --- | ---: | ---: | ---: | ---: |
+| SM3 class A — reference registers | 56 | 224 | 4,025 | 35.02% |
+| SM3 class B — relocated registers | 101 | 352 | 2,517 | 21.90% |
+| SM3 class C — relocated registers, static branches in PS | 12 | 112 | 4,680 | 40.72% |
+| **A + B + C (table rows)** | **169** | **688** | **11,222** | **97.64%** |
+| SM3 X — position not a row dot | 9 | 80 | 112 | 0.97% |
+| SM3 X — other refusal | 2 | 8 | 0 | 0 |
+| SM2 (feasibility only, no rows) | 466 | 2,911 | 111 | 0.97% |
+| SM1 (unsupported) | 168 | 2,968 | 48 | 0.42% |
+| Passes without a VS or PS | 3 | 97 | 0 | 0 |
 
-## Pairs by Scene draw count
+**169 of the 180 SM3 pairings are rows**: 32 distinct vertex programs, 108
+distinct pixel programs, all in the `3_0` effect directory, from the
+`DEFAULT` (82 rows), `BUMPMAP` (73) and `BUMPMAP_LOW` (14) techniques. By
+family (a row counts once per family it occurs in): standard_lighting 30,
+argon / khaak / teladi / teladi_nodiff / xenon / split / terran / paranid 20
+each, boron 12, asteroid 10, xt_standard_lighting 6, xt_terraformer 6,
+glass 6, xt_standard_lighting_damage 4, moon 4, planet_haze 2. Sixteen rows
+were observed by the capture (the previous table); 153 were classified from
+the archive alone and have never been drawn in a captured session.
 
-`Insert` columns give the DWORD offsets a table-driven transformer needs:
-VS *declaration* insert (original header end) / VS *arithmetic* insert (after the
-last position DP4), then PS *definition* insert / PS *declaration* insert (header
-end) / PS *append* point (the original END index). `Link` gives the free VS
-output and TEXCOORD index, the PS input register, and the three PS temporaries
-for the relocated motion fragment. Every transformable VS writes clip position
-with four contiguous `dp4 o0.<lane>, r<n>, c<24+lane>` in XYZW order from
-matrix register **c24**, and every one of them has the relative light loop.
+## Two clip-row families
 
-| Scene draws | Share | VS | PS | PS effect | Class | Link | Insert (VS decl / VS arith) | Insert (PS def / decl / append) |
-| ---: | ---: | --- | --- | --- | :-: | --- | --- | --- |
-| 2232 | 19.42% | `494fe349b8bc12ec` | `fffdabd910793aba` | xt_standard_lighting(+damage) | C | o6/TC4 → v6, r6–8 | 335 / 466 | 1280 / 1313 / 1647 |
-| 2180 | 18.97% | `53a0a641107ed76c` | `8759c7838bbc86c2` | argon | **A** | o6/TC4 → v5, r5–7 | 335 / 466 | 1047 / 1074 / 1259 |
-| 1804 | 15.70% | `37c34a7478544c14` | `5f82ecacd39529cd` | xt_standard_lighting | C | o9/TC7 → v8, r6–8 | 500 / 649 | 1325 / 1370 / 1764 |
-| 1440 | 12.53% | `4944d81dfe531b37` | `ca6bfa4a6cca7e2a` | argon | B | o7/TC5 → v6, r7–9 | 344 / 493 | 1062 / 1095 / 1327 |
-| 940 | 8.18% | `b0602757fce6e870` | `517540ae6d5e5410` | asteroid | **A** | o6/TC4 → v5, r5–7 | 335 / 457 | 233 / 257 / 396 |
-| 456 | 3.97% | `4944d81dfe531b37` | `5e0a10fe752b6140` | argon2s | B | o7/TC5 → v6, r7–9 | 344 / 493 | 1062 / 1098 / 1353 |
-| 348 | 3.03% | `37c34a7478544c14` | `f1b0e820c7b488c3` | xt_standard_lighting2s | C | o9/TC7 → v8, r6–8 | 500 / 649 | 1325 / 1373 / 1790 |
-| 332 | 2.89% | `53a0a641107ed76c` | `63f96eba9eea7880` | argon2s | **A** | o6/TC4 → v5, r5–7 | 335 / 466 | 1053 / 1083 / 1291 |
-| 308 | 2.68% | `167eb2d5629ab9d3` | `d44db87778a43b61` | asteroid | B | o8/TC6 → v7, r5–7 | 347 / 487 | 241 / 274 / 447 |
-| 296 | 2.58% | `494fe349b8bc12ec` | `e6794b6ec37ff71a` | xt_standard_lighting2s | C | o6/TC4 → v6, r6–8 | 335 / 466 | 1280 / 1316 / 1673 |
-| 236 | 2.05% | `53a0a641107ed76c` | `3b94320087e81945` | khaak/teladi/xenon | **A** | o6/TC4 → v5, r5–7 | 335 / 466 | 1047 / 1074 / 1263 |
-| 233 | 2.03% | `53a0a641107ed76c` | `462342e3e5781384` | split | **A** | o6/TC4 → v5, r5–7 | 335 / 466 | 1053 / 1080 / 1249 |
-| 148 | 1.29% | `4944d81dfe531b37` | `64bac8bb307eb896` | standard_lighting2s | B | o7/TC5 → v6, r7–9 | 344 / 493 | 1112 / 1148 / 1391 |
-| 104 | 0.90% | `494fe349b8bc12ec` | `7c83ed50c9894e44` | standard_lighting | **A** | o6/TC4 → v5, r5–7 | 335 / 466 | 1097 / 1124 / 1297 |
-| 103 | 0.90% | `d5e1c75351ed3f04` | `8360f422de08b5bd` | effects/engine (SM2) | X | — | — | — |
-| 88 | 0.77% | `4944d81dfe531b37` | `0c1f3f0f440e4a0c` | standard_lighting | B | o7/TC5 → v6, r7–9 | 344 / 493 | 1112 / 1145 / 1365 |
-| 77 | 0.67% | `c30104cb0efb6675` | `a66fb1981ba755b2` | glass | B | o7/TC4 → v6, r5–7 | 338 / 469 | 122 / 149 / 308 |
-| 28 | 0.24% | `1279d081455f5815` | `ff6eed5a5ddf3a3a` | bloom | X | — | — | — |
-| 28 | 0.24% | `6059306306203243` | `241c3fa33270f58e` | bloom | X | — | — | — |
-| 28 | 0.24% | `6059306306203243` | `f3172baa8dd19a40` | bloom | X | — | — | — |
-| 28 | 0.24% | `cbbf26102694c961` | `1c90e79667bdaddf` | bloom | X | — | — | — |
-| 24 | 0.21% | `5e484a06672e28fb` | `0a523f33ac47ae05` | gui2d/stardust (SM1) | X | — | — | — |
-| 20 | 0.17% | `36f98d151fd6b0c6` | `222bee0defcb1852` | particles (SM1) | X | — | — | — |
-| 8 | 0.07% | `ac2319bc3953efc6` | `03a16e5c63daa6e8` | adeffects (SM2) | X | — | — | — |
-| 4 | 0.03% | `be199829a9bb78db` | `cd6d6eb4b3d99443` | planet_haze (SM1) | X | — | — | — |
+Every row's vertex program writes clip position with four
+`dp4 o0.<lane>, r<n>, c<m+lane>` issued in XYZW order (adjacent in 163 rows,
+spaced in six, see below), but the archive holds two families:
+
+| Family | Rows | Matrix register | Relative light loop | Effects |
+| --- | ---: | :-: | :-: | --- |
+| Point-light programs | 107 (A 33, B 62, C 12) | **c24** | yes: `rep i0` reading c0/c1/c2 at `a0.w`; the draw-time bound `i0.x` in [0, 8] keeps the reads in c0–23 | base and `2s` effects, all class C |
+| Light-free variants | 62 (A 23, B 39) | **c0** | none: no relative addressing at all | the `_0000` / `_0001` effects (argon, khaak, boron, glass, moon, paranid, ...) |
+
+The consumer is generalized per row rather than pinned to c24: the route's
+shadow captures every distinct clip-row window the table names (derived from
+the rows at compile time; c24–27 and c0–3 today) and gate 4 applies
+`light_loop_bound_required` / `light_loop_max_count` of the bound VS row, so a
+light-free row needs known rows in its window but no `i0.x` bound. A
+`static_assert` still requires that a bounded row's clip rows lie above the
+c0–23 light block the bound protects (see
+[material-motion-prototype.md](../architecture/material-motion-prototype.md)).
+`c252–255` is free in every row VS and `c216–220` / `oC1` in every row PS;
+`c40–43` is *not* read by every VS any more (the light-free variants keep
+their material constants elsewhere), which only the structural fixture's
+perturbation choice depended on.
 
 ## Transformation classes
 
@@ -112,64 +143,112 @@ insert, VS arithmetic insert, matrix register, position temporary, PS definition
 insert, PS declaration insert, PS append point — plus four register choices. They
 differ only in what a transformer must additionally check or substitute.
 
-**A — reference registers (6 pairs, 35.02%).** Identical to the reviewed Argon
-splice: one new VS output **o6/TEXCOORD4** fed by four DP4s from the position
-temporary and **c252–255**, one new PS input **v5**, the relocated fragment in
-**r5–7**, **c216–220** and **oC1**. Only the five insertion offsets and the
-two position register numbers change between pairs; the emitted instruction
-words are the same as today's hard-coded fragment. One of
-these PS programs (`63f96eba9eea7880`) additionally declares `vFace`, which the
-fragment does not touch. No class A, B or C pixel program contains `texkill`,
-predication, relative addressing or an oDepth write (`texkill_dwords`,
-`predicated_or_coissued_dwords` and `depth_output_dwords` are empty for all
-sixteen), and every transformable vertex program declares `o0` as POSITION0;
-the transformer refuses programs that violate any of these, so classes A and B
-are defined as straight-line programs, class C as the static-branch programs
-described below, all with the rasterized depth.
+**A — reference registers (56 pairs).** Identical to the reviewed Argon splice:
+one new VS output **o6/TEXCOORD4**, one new PS input **v5**, the relocated
+fragment in **r5–7**, **c216–220** and **oC1**. Only the insertion offsets and
+the position registers change between pairs. No class A, B or C pixel program
+contains `texkill`, predication, relative addressing or an oDepth write, and
+every row VS declares `o0` as POSITION0; the transformer refuses programs that
+violate any of these.
 
-**B — relocated registers (6 pairs, 21.90%).** Same shape and same offset table,
-but the reference indices are occupied and the transformer must substitute:
-`4944d81dfe531b37` already uses o6 and TEXCOORD4 (free: o7/TEXCOORD5) and its
-pixel shaders use v5 and r5–6 (free: v6, r7–9); `167eb2d5629ab9d3` uses o6–o7
-(free: o8/TEXCOORD6, v7); `c30104cb0efb6675` uses o6 for COLOR1 (free: o7) and
-glass uses v5 (free: v6). This needs the relocation the existing module already
-performs, parameterised by the per-program free registers instead of the fixed
-`r5–7 / v5 / c216–220 / oC1` mapping. `c216–220` and `oC1` are free in every
-case; `c252–255` is free in every SM3 material VS (highest direct constant is
-c42 or c47).
+**B — relocated registers (101 pairs).** Same shape, but a reference index is
+occupied and the row names free substitutes: VS output/TEXCOORD pairs o6/4
+(60 rows), o7/5 (62), o8/6 (17), o9/7 (14), o7/4 (6), o9/5 (10); PS inputs
+v5 (56), v6 (72), v7 (17), v8 (24); PS temporaries from r5 (99), r6 (52) or
+r7 (18). Register choices are derived from the measured free lists,
+preferring the reference indices whenever they are still free, so a row that
+differs from `o6 / TEXCOORD4 / v5 / r5` differs because the reference register
+is genuinely occupied. Rows sharing a program always agree on that program's
+side of the splice (the generator's choices are functions of the program's own
+free lists, and the TEXCOORD index is free in both programs of every pair that
+shares them); the consumer's `static_assert` requires it and the tests mirror it.
 
-**C — relocated registers with static branches in the PS (4 pairs, 40.72%).**
-As B, plus the pixel shader contains two sequential balanced `if`/`else`/`endif`
-blocks on boolean constants `b0`/`b1` (maximum nesting depth 1, depth 0 at END;
-`static_branches` in the JSON records each site and that every condition is a
-direct boolean register). The append point is at nesting depth 0 immediately
-before END, so the appended fragment is unconditional. The tool classifies a
-pair as C only when its control flow consists of nothing but `if`/`else`/`endif`
-with boolean conditions, is balanced and nests at most one deep
-(`ps_control_flow_not_static_boolean_if` / `ps_control_flow_depth_*_exceeds_1`
-block otherwise); the transformer revalidates the same rule from the words
-with a depth counter and refuses `ifc`, `rep`/`loop`, `break*`, `call`/`ret`
-and predication in every class (see
-[material-motion-prototype.md](../architecture/material-motion-prototype.md)).
-The four programs use samplers up to s4 (`494fe349b8bc12ec` pairs) or s6
-(`37c34a7478544c14` pairs), with the cubemap at s3 or s4; the register choices
-are v6/r6–8 and, for the `37c34a7478544c14` pairs, o9/TEXCOORD7 → v8. These are
-the largest pairs by draw count: 40.72% of the captured Scene draws.
+**C — relocated registers with static branches in the PS (12 pairs).** As B,
+plus the pixel program contains balanced `if`/`else`/`endif` blocks on boolean
+constants (maximum nesting depth 1, depth 0 at END). The archive has two
+shapes: six programs with two sequential blocks on `b0` and `b1` (the captured
+ones among them) and six with a single block on `b0`. All twelve are `xt_*`
+materials: xt_standard_lighting, xt_standard_lighting_damage and
+xt_terraformer with their `2s` variants. The transformer revalidates the
+shape from the words and refuses `ifc`, `rep`/`loop`, `break*`, `call`/`ret`
+and predication in every class.
+
+**Spaced position quads (six rows, classes A and B).** The light-free
+asteroid_0000/0001 (four pairs, VS `0c223ad11bce02d5`, `12b8a13f13fe8cfe`,
+`233d17d26ce0c1fc`, `330ceb9dd874ede2`), moon_0000/0001 (`8198903322dd82fb`)
+and planet_haze_0000/0001 (`d706d31100be1be9`) vertex programs issue the
+four position dots in XYZW order but interleave other instructions between
+the Z and W dots (planet_haze: 58 DWORDs of them). The row records the four
+offsets individually (`position_dp4_dwords`), the arithmetic insert follows
+the last dot, and the JSON marks the pair `position_quad_contiguous: false`.
+The generator admits such a quad only when the span from the first dot to the
+insert rewrites no position temporary (`position_temporary_rewritten_inside_quad`)
+and holds no control-flow instruction (`position_flow_inside_quad`); the
+transformer revalidates both from the words (any write to the temporary,
+whatever its mask, and any `rep`/`loop`/`if`/`ifc`/`else`/`endrep`/`endloop`/
+`endif` in the span refuse, so a balanced block inside the span refuses even
+though the depth is zero at every dot). The register choices fall out as for
+any other pair: four class A rows and two class B rows.
 
 Because the PS side determines two of the four register choices, eligibility
-must be keyed by the **pair**, not by the VS program. In this capture every
-pair sharing a VS happens to agree on the VS choice; the consumer turns that
-from an incidental fact into a compile-time requirement (`static_assert` in
-`motion_output_profiles.h`) so it can keep one variant per original program,
-see the live route's "Pair keying" section.
+is keyed by the **pair**: the route substitutes variants only when the bound VS
+and PS fingerprints appear together in one row (a binary search over the
+sorted pair index, see the prototype note), never by a VS alias.
+
+## SM3 pairs that cannot host the transformation
+
+Eleven SM3 pairings (80 + 8 pass occurrences, 112 captured draws) have no
+row; `unsupported_pairs` in the JSON lists each with its reasons.
+
+| Pairs | Effects | Reason |
+| ---: | --- | --- |
+| 9 | bloom, bloom_0000 (HDR technique passes) | `position_write_is_mov`: the VS writes `o0` with `mov`. Fullscreen/post passes with no world transform; no previous WVP to apply. Two of them also have no free PS input register. |
+| 2 | xt_standard_lighting_damage, xt_standard_lighting_damage2s (PS `31445adb0a62d134`, `d51cf763125cb85a` with VS `37c34a7478544c14`) | `ps_control_flow_not_static_boolean_if`: besides two `if b#` blocks the PS holds an `ifc` block (a dynamic comparison), which no class admits. |
+
+The bloom passes keep the sentinel by design; the damage pair would need a
+class admitting `ifc`, which is not planned.
+
+## SM2 remainder: feasibility, no rows
+
+The 466 SM2 pairings (vs_2_0 / vs_2_x with ps_2_0 / ps_2_x; 2,911 pass
+occurrences; 111 captured draws) receive a `sm2_pairs` feasibility record
+against the documented profile limits — ps_2_0: 64 arithmetic and 32 texture
+slots, 12 temporaries, 32 float constants; ps_2_x (`2_a` / `2_b`
+directories, version token 2.1): up to 512 slots (device caps decide), 22 or
+32 temporaries, 32 constants; vs_2_0 / vs_2_x: 256 slots. The authored motion
+fragment is 25 arithmetic instructions (mov, add, mad, mul, rcp, dp4, max,
+cmp — all present in ps_2_0), no texture instruction, three DEFs, one input
+declaration, three temporaries and five constants; the vertex side adds four
+DP4s. SM2 links `oT<n>` to `t<n>` by index and clamps `oD#`/`v#` colors, so
+previous clip needs one index free in both programs.
+
+| Group | Pairs | Pass occurrences | Note |
+| --- | ---: | ---: | --- |
+| Hostable with a ps_2_0 fragment | 115 | 822 | Row-dot quad (adjacent or spaced under the same span rule as SM3), free oT/t link, free oC1, ≥ 3 free temporaries and ≥ 5 free constants within the limits, arithmetic + 25 ≤ 64 (maximum 88 − 25 = 63 used). |
+| Hostable with a ps_2_x fragment | 267 | 1,263 | 106 in `2_a`, 161 in `2_b`; the largest program would reach 125 of 512 slots. |
+| Exceeds limits | 16 | 122 | All ps_2_0: arithmetic over the 64-slot budget by 2 (standard_lighting_0001 ×2, standard_lighting2s), 3–24 (xt_standard_lighting, xt_standard_lighting_damage, xt_terraformer and their `2s`); one of them is also one temporary short. |
+| Structurally unsupported | 68 | 704 | 32 with no free oT/t index (paranid and boron: all eight `t#` in use), 16 WXYZ issue order (effects, engine; the captured effects/engine pair), 20 `mov` positions (bloom). 30 SM2 pairs have spaced quads; the 14 asteroid_0000, moon_0000 and adeffects ones are hostable, the 16 effects/engine ones fail on the issue order. |
+
+275 of the SM2 vertex programs read constants relatively (the same light loop),
+191 do not. **No code path handles SM2**: this record quantifies what a
+separate ps_2_0 / ps_2_x fragment and an `oT`/`t` linkage would face. Of the
+two captured SM2 pairs, effects/engine (103 draws) is structurally unsupported
+(WXYZ) and adeffects (8 draws) would be hostable with a ps_2_0 fragment.
+
+## SM1 remainder
+
+168 pairings (105 vs_1_1 + ps_1_1, 63 vs_1_1 + ps_1_4; 2,968 pass
+occurrences; 48 captured draws: gui2d/stardust, particles, planet_haze) are
+unsupported: ps_1_x has no second color target (`oC1`) and no declared
+`o#`/`v#` linkage, so there is no motion output to add. They keep the sentinel,
+exactly as the live route specifies for particles, stardust and overlays.
 
 ## Generated table
 
 `--emit-header` writes [`src/renderer/motion_output_profiles_inc.h`](../../src/renderer/motion_output_profiles_inc.h),
-the transformer's input: a bare constexpr row list in the style of
-[`rigid_position_profiles_inc.h`](../../src/renderer/rigid_position_profiles_inc.h).
-The consumer defines the row struct and the `MotionOutputClass` enum; the file
-carries only derived numbers, plus the version tokens.
+the transformer's input: a bare constexpr row list. The consumer defines the
+row struct and the `MotionOutputClass` enum; the file carries only derived
+numbers, plus the version tokens.
 
 ```sh
 python3 tools/analysis/inspect_motion_output_profiles.py \
@@ -177,65 +256,44 @@ python3 tools/analysis/inspect_motion_output_profiles.py \
   --emit-header src/renderer/motion_output_profiles_inc.h
 ```
 
-**16 rows** are emitted today: the six class-A, six class-B and four class-C
-pairs. Adding class C (`MotionOutputClass::RelocatedRegistersWithBranches`)
-changed no field: the branch structure is not a row fact but a revalidated
-property of the pixel words, and the banner states the rule the transformer
-enforces. Rows sharing a vertex program (`494fe349b8bc12ec` carries one class A
-and two class C rows; `37c34a7478544c14` two class C rows) agree on the VS side,
-which the consumer's `static_assert` requires.
-
-Rows are ordered by descending captured Scene draws, then by vertex and pixel
-fingerprint, so regeneration is byte-reproducible. Field order, one row:
+**169 rows** are emitted: 56 class A, 101 class B and 12 class C. Rows are
+ordered by descending observed Scene draws, then by vertex and pixel
+fingerprint, so regeneration is byte-reproducible and the sixteen observed
+rows come first in their previous order with every previous field unchanged
+(`OBSERVED_ROWS` in the tests). Field order, one row:
 
 | Field | Meaning |
 | --- | --- |
 | `vertex_fingerprint`, `vertex_dword_count`, `vertex_version` | Exact original VS identity and length; `0xfffe0300`. |
 | `pixel_fingerprint`, `pixel_dword_count`, `pixel_version` | Exact original PS identity and length; `0xffff0300`. |
 | `transformation_class` | `ReferenceRegisters` (A), `RelocatedRegisters` (B) or `RelocatedRegistersWithBranches` (C). |
-| `matrix_register`, `position_temporary` | The `c24` row base and the temporary the position dots read. |
-| `position_dp4_dwords[4]`, `position_lane_masks[4]` | The four original DP4 offsets in XYZW order and their single-lane destination masks, for revalidation before splicing. |
+| `matrix_register`, `position_temporary` | The clip-row base (c24 or c0) and the temporary the position dots read. |
+| `position_dp4_dwords[4]`, `position_lane_masks[4]` | The four original DP4 offsets in XYZW order (not necessarily adjacent) and their single-lane destination masks, for revalidation before splicing. |
 | `vertex_declaration_insert_dword` | Original VS header end; the new output declaration goes here. |
-| `vertex_arithmetic_insert_dword` | One past the last position DP4; the four previous-row dots go here. |
+| `vertex_arithmetic_insert_dword` | One past the last position DP4 (the W dot); the four previous-row dots go here. |
 | `pixel_definition_insert_dword` | One past the original PS literal DEFs; the relocated definitions go here. |
 | `pixel_declaration_insert_dword` | Original PS header end; the new input declaration goes here. |
 | `pixel_append_dword` | The original END index; executable work is appended before it. |
 | `vertex_output_register`, `texcoord_index` | Free VS output and TEXCOORD index for previous clip, free in both programs. |
 | `pixel_input_register`, `pixel_temporary_base`, `pixel_output_register` | The matching PS input, the first of three consecutive free temporaries, and `oC1`. |
 | `vertex_constant_base`, `pixel_constant_base` | `252` (four previous rows) and `216` (five ABI constants). |
-| `light_loop_bound_required`, `light_loop_max_count` | True wherever the VS reads constants relatively: refuse the variant unless `i0.x` is checked in `[0, 8]` at draw time. |
+| `light_loop_bound_required`, `light_loop_max_count` | True where the VS reads constants relatively: refuse the variant unless `i0.x` is checked in `[0, 8]` at draw time. False for the light-free rows. |
+| `observed_scene_draws` | Metadata: Scene draws of the pair in the captured session, zero when never observed. Orders the rows and selects the fixtures' exhaustive sweep; no runtime meaning. |
 
-Register choices are derived from the measured free lists, preferring the
-reference pair's own indices whenever they are still free, so a row that differs
-from `o6 / TEXCOORD4 / v5 / r5 / c216 / c252` differs because the reference
-register is genuinely occupied. The offsets and registers are transformer
-*input*: the transformer must still revalidate the program it is handed. A row
-is not an eligibility decision.
-
-## Programs that cannot host the transformation
-
-| Pairs | Scene draws | Reason |
-| --- | ---: | --- |
-| `1279d081455f5815`, `6059306306203243` (×2), `cbbf26102694c961` — bloom | 112 | The VS writes `o0`/POSITION0 with `mov`, not four row dots. These are fullscreen/post passes with no world transform; there is no previous WVP to apply and no per-object correspondence. |
-| `d5e1c75351ed3f04` + `8360f422de08b5bd` (effects/engine, SM2), `ac2319bc3953efc6` + `03a16e5c63daa6e8` (adeffects, SM2) | 111 | Not SM3. SM2 uses the fixed `oPos`/`oD#`/`oT#` outputs and `v#`/`t#` pixel inputs rather than declared `o#`/`v#` registers, so the linkage is a different declaration model, not a different offset; and the SM2 position quad is not contiguous (`d5e1c75351ed3f04` also issues WXYZ, not XYZW). |
-| `5e484a06672e28fb` + `0a523f33ac47ae05` (gui2d/stardust), `36f98d151fd6b0c6` + `222bee0defcb1852` (particles), `be199829a9bb78db` + `cd6d6eb4b3d99443` (planet_haze) | 48 | SM1.1. No SM3 output/input registers, the PS writes `r0` rather than a color-output register, and each PS contains a coissued (`+`) instruction. |
-
-The SM1/SM2 and bloom draws total 271 of 11,493 Scene-segment draws (2.36%).
-They keep the sentinel, exactly as the live route already specifies for
-particles, stardust and overlays. Nothing here changes that: extending to them
-would need a different position contract, not a different offset table.
+The offsets and registers are transformer *input*: the transformer must still
+revalidate the program it is handed. A row is not an eligibility decision.
 
 ## Runtime checks this table does not replace
 
-- **Relative light loop.** Every transformable VS reads `c0`, `c1` and `c2` at
-  `a0.w` inside a `rep i0` block, with one `mova`. A base register is a
-  syntactic reference, not a bound: the JSON records
-  `relative_addressing.bounded_by_static_analysis: false`. As the candidate
-  review requires, `c252–255` may only be written when the integer count `i0.x`
-  is checked in `[0, 8]` at draw time, which bounds the reads to c0–23. Refuse
-  the substitution otherwise. The live route applies exactly this bound and
-  shadows exactly `c24–27`; `motion_output.cpp` asserts at compile time that
-  every row's `matrix_register` and light-loop fields agree with it.
+- **Relative light loop.** Every c24 row VS reads `c0`, `c1` and `c2` at
+  `a0.w` inside a `rep i0` block. A base register is a syntactic reference,
+  not a bound: the JSON records
+  `relative_addressing.bounded_by_static_analysis: false`. `c252–255` may only
+  be written when the integer count `i0.x` is checked in `[0, 8]` at draw time,
+  which bounds the reads to c0–23. The live route applies exactly the row's
+  bound and shadows the row's window; `motion_output.cpp` asserts at compile
+  time that every row names a shadowed window and, when bounded, uses the
+  8-light bound below its rows.
 - **Application constants.** Save and restore application `c252–255` (VS) and
   `c216–220` (PS) around the transformed draw; D3DX/effect uploads do not know
   about the extension.
@@ -243,15 +301,16 @@ would need a different position contract, not a different offset table.
   test/blend/sRGB off, Z on, COLORWRITEENABLE 15, `D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS`
   and a mixed-format MRT self test, object/camera lifetime and a matched history
   entry. A profile row is evidence about program structure only.
-- **Centroid.** Several VS programs declare centroid on some TEXCOORD outputs
-  (`53a0a641107ed76c` on three, `b0602757fce6e870` on two, most others on one).
+- **Centroid.** Several VS programs declare centroid on some TEXCOORD outputs.
   The new interpolator must not inherit those modifiers, and the new PS
   declaration must not use `_pp` or centroid even where neighbouring
   declarations do.
 - **Pair-and-state eligibility.** Aliases are broad: `53a0a641107ed76c` alone
-  appears under argon, khaak, split, teladi and xenon effect paths. Eligibility
-  stays keyed to the exact pair and draw state, never to a VS alias.
+  appears under argon, khaak, split, teladi and xenon effect paths, and the 32
+  row vertex programs serve 108 pixel programs. Eligibility stays keyed to the
+  exact pair and draw state, never to a VS alias.
 
-The complete derived table, including per-program declarations, opcode
-histograms, free-register lists and the Argon reference check, is in
+The complete derived table — per-pair effect names, techniques and pass
+occurrences, per-program declarations, opcode histograms, free-register lists,
+the SM2 feasibility records, the SM1 list and the Argon reference check — is in
 [`motion-output-profiles.json`](../../verification/results/motion-output-profiles.json).

@@ -177,6 +177,18 @@ bool vertex_structure(const MotionOutputProfile& row, const std::uint32_t* words
             return false;
         }
         if (declaration || definition || subroutine_opcode(opcode)) return false;
+        // The four dots need not be adjacent. Whatever sits between the first
+        // dot and the arithmetic insert must neither write the position
+        // temporary (any mask: the added dots read the same value the
+        // original ones did) nor open, close or split a block.
+        const bool in_span = at > std::size_t(row.position_dp4_dwords[0]) &&
+            at < std::size_t(row.vertex_arithmetic_insert_dword);
+        if (in_span) {
+            if (block_open_opcode(opcode) || block_close_opcode(opcode) || opcode == op_else) return false;
+            if (length >= 1 && (words[at + 1] & parameter_bit) && register_type(words[at + 1]) == temporary_class &&
+                register_index(words[at + 1]) == row.position_temporary && opcode != op_texkill)
+                return false;
+        }
         if (block_open_opcode(opcode)) ++depth;
         else if (block_close_opcode(opcode) || opcode == op_else) {
             if (depth == 0) return false;
@@ -346,21 +358,114 @@ bool supported_class(const MotionOutputProfile& row) noexcept {
         row.transformation_class == MotionOutputClass::RelocatedRegisters ||
         branching_class(row);
 }
-// First row of a supported class for this program. A program shared with a
-// row of an unsupported class (none today) must still transform for its
-// supported pairs.
+// Compile-time sorted indices into the row table: by (vertex, pixel)
+// fingerprint for the pair lookup and by each stage's fingerprint (stable, so
+// equal fingerprints keep table order) for the per-program lookups. Every
+// lookup is then a binary search over the row count with no allocation, which
+// the live route's per-draw pair gate and its registration path rely on.
+using RowIndex = std::uint16_t;
+static_assert(motion_output_profile_count < 65535, "row index type");
+struct RowOrder { RowIndex at[motion_output_profile_count]; };
+template <class Key>
+constexpr RowOrder sorted_rows(Key key) noexcept {
+    RowOrder order{};
+    for (std::size_t i = 0; i < motion_output_profile_count; ++i) order.at[i] = RowIndex(i);
+    for (std::size_t i = 1; i < motion_output_profile_count; ++i) { // Insertion sort, stable.
+        const RowIndex moving = order.at[i];
+        std::size_t j = i;
+        while (j > 0 && key(motion_output_profiles[moving]) < key(motion_output_profiles[order.at[j - 1]])) {
+            order.at[j] = order.at[j - 1];
+            --j;
+        }
+        order.at[j] = moving;
+    }
+    return order;
+}
+struct PairKey {
+    std::uint64_t vertex, pixel;
+    constexpr bool operator<(const PairKey& other) const noexcept {
+        return vertex < other.vertex || (vertex == other.vertex && pixel < other.pixel);
+    }
+};
+constexpr RowOrder rows_by_pair = sorted_rows([](const MotionOutputProfile& row) {
+    return PairKey{row.vertex_fingerprint, row.pixel_fingerprint};
+});
+constexpr RowOrder rows_by_vertex = sorted_rows([](const MotionOutputProfile& row) { return row.vertex_fingerprint; });
+constexpr RowOrder rows_by_pixel = sorted_rows([](const MotionOutputProfile& row) { return row.pixel_fingerprint; });
+
+// First position in `order` whose key is not less than `wanted`.
+template <class Key, class Value>
+std::size_t lower_bound(const RowOrder& order, Key key, const Value& wanted) noexcept {
+    std::size_t lo = 0, hi = motion_output_profile_count;
+    while (lo < hi) {
+        const std::size_t mid = lo + (hi - lo) / 2;
+        if (key(motion_output_profiles[order.at[mid]]) < wanted) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo;
+}
+constexpr std::uint64_t vertex_key(const MotionOutputProfile& row) noexcept { return row.vertex_fingerprint; }
+constexpr std::uint64_t pixel_key(const MotionOutputProfile& row) noexcept { return row.pixel_fingerprint; }
+constexpr PairKey pair_key(const MotionOutputProfile& row) noexcept {
+    return PairKey{row.vertex_fingerprint, row.pixel_fingerprint};
+}
+
+// First row of a supported class for this program, in table order among the
+// rows sharing it. A program shared with a row of an unsupported class (none
+// today) must still transform for its supported pairs.
 const MotionOutputProfile* vertex_row(std::uint64_t hash, std::size_t count) noexcept {
     if (!hash) return nullptr;
-    for (const auto& row : motion_output_profiles)
-        if (row.vertex_fingerprint == hash && row.vertex_dword_count == count && supported_class(row)) return &row;
+    for (std::size_t i = lower_bound(rows_by_vertex, vertex_key, hash); i < motion_output_profile_count; ++i) {
+        const auto& row = motion_output_profiles[rows_by_vertex.at[i]];
+        if (row.vertex_fingerprint != hash) break;
+        if (row.vertex_dword_count == count && supported_class(row)) return &row;
+    }
     return nullptr;
 }
 const MotionOutputProfile* pixel_row(std::uint64_t hash, std::size_t count) noexcept {
     if (!hash) return nullptr;
-    for (const auto& row : motion_output_profiles)
-        if (row.pixel_fingerprint == hash && row.pixel_dword_count == count && supported_class(row)) return &row;
+    for (std::size_t i = lower_bound(rows_by_pixel, pixel_key, hash); i < motion_output_profile_count; ++i) {
+        const auto& row = motion_output_profiles[rows_by_pixel.at[i]];
+        if (row.pixel_fingerprint != hash) break;
+        if (row.pixel_dword_count == count && supported_class(row)) return &row;
+    }
     return nullptr;
 }
+const MotionOutputProfile* pair_row(std::uint64_t vertex, std::uint64_t pixel) noexcept {
+    if (!vertex || !pixel) return nullptr;
+    const PairKey wanted{vertex, pixel};
+    const std::size_t i = lower_bound(rows_by_pair, pair_key, wanted);
+    if (i == motion_output_profile_count) return nullptr;
+    const auto& row = motion_output_profiles[rows_by_pair.at[i]];
+    return row.vertex_fingerprint == vertex && row.pixel_fingerprint == pixel ? &row : nullptr;
+}
+// Each sorted index must be a permutation of the rows in key order, and the
+// per-stage orders stable (equal fingerprints keep table order, which is what
+// "first row of a supported class" means); proven at compile time so a
+// regenerated table cannot silently break the searches.
+template <class Key>
+constexpr bool row_order_valid(const RowOrder& order, Key key, bool strict) noexcept {
+    bool seen[motion_output_profile_count] = {};
+    for (std::size_t i = 0; i < motion_output_profile_count; ++i) {
+        const auto at = order.at[i];
+        if (at >= motion_output_profile_count || seen[at]) return false;
+        seen[at] = true;
+        if (i == 0) continue;
+        const auto previous = order.at[i - 1];
+        const auto& before = motion_output_profiles[previous];
+        const auto& here = motion_output_profiles[at];
+        if (key(here) < key(before)) return false;
+        const bool equal = !(key(before) < key(here));
+        if (equal && (strict || previous > at)) return false; // Strict: no duplicate pairs; stable otherwise.
+    }
+    return true;
+}
+constexpr bool row_orders_valid() noexcept {
+    return row_order_valid(rows_by_pair, pair_key, true) &&
+        row_order_valid(rows_by_vertex, vertex_key, false) &&
+        row_order_valid(rows_by_pixel, pixel_key, false);
+}
+static_assert(row_orders_valid(), "sorted row indices must be permutations: strict pair order, stable per-stage order");
 
 // The route uploads the public ABI ranges for every routed draw, so every row
 // must reserve exactly those registers.
@@ -380,14 +485,17 @@ std::uint64_t material_motion_fingerprint(const std::uint32_t* words, std::size_
     return words ? fingerprint(words, count) : 0;
 }
 const MotionOutputProfile* material_motion_profile(std::uint64_t vertex, std::uint64_t pixel) noexcept {
-    if (!vertex || !pixel) return nullptr;
-    for (const auto& row : motion_output_profiles)
-        if (row.vertex_fingerprint == vertex && row.pixel_fingerprint == pixel) return &row;
-    return nullptr;
+    return pair_row(vertex, pixel);
 }
 bool material_motion_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept {
-    const auto* row = material_motion_profile(vertex, pixel);
+    const auto* row = pair_row(vertex, pixel);
     return row && supported_class(*row);
+}
+const MotionOutputProfile* material_motion_vertex_row(std::uint64_t vertex, std::size_t words) noexcept {
+    return vertex_row(vertex, words);
+}
+const MotionOutputProfile* material_motion_pixel_row(std::uint64_t pixel, std::size_t words) noexcept {
+    return pixel_row(pixel, words);
 }
 
 MaterialMotionResult material_motion_vertex_variant_for(const MotionOutputProfile& row,

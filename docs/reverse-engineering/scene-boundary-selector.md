@@ -25,13 +25,22 @@ that rejected prefix.
 
 1. A full-viewport color-and-depth Clear, depth value one, no explicit rectangles:
    single-sampled A8R8G8B8 main color and same-size D24X8 depth.
-2. A nonempty background region drawn only with the three verified shader pairs
-   below; any one pair suffices and planet haze is optional. A successful full-viewport
-   depth-only Clear of those same surfaces follows. This begins local depth epoch two.
+2. A nonempty background region: one or more successful draws on those same
+   color/depth surfaces with a full viewport and known absence of extra targets.
+   Shader identity is not a criterion (see the structural correction below). The
+   phase ends at the first successful full-viewport depth-only Clear of the same
+   surfaces, which begins local depth epoch two. A frame whose first Clear is
+   followed directly by the depth-only Clear (no background draw), or by any
+   other Clear, copy or target change, is rejected.
 3. A scene region on the same color/depth allocations and full viewport, including
-   at least one successful draw with depth test and writes enabled. Draw count,
-   primitive count and resource lifetime IDs can vary. No intervening clear,
-   copy or target change is accepted.
+   at least one successful draw with known depth test and writes enabled. Draw
+   count, primitive count and resource lifetime IDs can vary. A draw without a
+   pixel shader (fixed-function or a depth-only pass) is accepted as a scene
+   draw but never as the required depth writer, because both adapters fold a
+   null pixel shader into an unknown draw state. No intervening clear, copy or
+   target change is accepted: a second depth-only Clear inside the scene would
+   start a third depth epoch whose relation to the selected color is ambiguous,
+   so it rejects the frame.
 4. Successful unbinding of depth, zero or more successful ColorFill operations on
    positively identified, nonaliasing scratch color textures, then one successful
    full-source/full-destination StretchRect from main color into a distinct same-size A8R8G8B8 texture surface.
@@ -49,14 +58,13 @@ bindings and unavailable queries have distinct representations. Exact success
 checks concern application HRESULTs and the required state queries; the impending
 Clear result is necessarily unavailable when the pre-call copy must occur.
 
-| Region | VS | PS |
-| --- | --- | --- |
-| Background candidate | `7b6393fe2d3e1d85` | `6109cf64c03529dd` |
-| Background material candidate | `37c34a7478544c14` | `5f82ecacd39529cd` |
-| Background planet-haze candidate | `be199829a9bb78db` | `cd6d6eb4b3d99443` |
-
-The material pair also occurs in the main scene. The separate clear epoch and
-ordered resource flow distinguish its role here; the pair alone cannot do so.
+Background pairs observed so far, for reference only (none is a rule):
+`7b6393fe2d3e1d85`/`6109cf64c03529dd` (sky), `37c34a7478544c14`/`5f82ecacd39529cd`
+(material, also in the main scene), `be199829a9bb78db`/`cd6d6eb4b3d99443`
+(planet haze), `f80f7af59b667bb7`/`d6f6ba4fee1cd53e` (`shader/2_0/moon.fb`) and
+`72f8dbb8567bbf88`/`00fcc903c7f085d5` (`shader/2_0/planet_v.fb`). The separate
+clear epoch and ordered resource flow distinguish the background role; a pair
+alone cannot do so.
 
 | Bloom stage | VS | PS | Target / sampler-zero input |
 | --- | --- | --- | --- |
@@ -100,12 +108,14 @@ A confirmation is a boundary observation, not successful presentation or a valid
 history image for a later frame. The adapter still owns copied-resource lifetime,
 copy failures, later device loss, Reset and any temporal-history policy.
 
-`SceneSignatures` stores three background pairs and four bloom pairs by value;
-none of the background slots is individually mandatory. The default is the exact
-verified profile above. An explicit constructor profile permits a separately
-verified game version or original synthetic integration shaders. `begin_frame`
-clears per-frame state while retaining that profile. Runtime auto-discovery or
-loosening hashes from observed mismatches is not supported.
+`SceneSignatures` stores the four bloom pairs by value; the default is the exact
+verified profile above. Its three `background` slots are deprecated and ignored
+(the background is recognized structurally); they remain only so existing
+profile constructors, including the route's fixture seam, keep compiling. An
+explicit constructor profile permits a separately verified game version or
+original synthetic bloom shaders. `begin_frame` clears per-frame state while
+retaining that profile. Runtime auto-discovery or loosening bloom hashes from
+observed mismatches is not supported.
 
 ## Capture-only correction after iteration 0.4
 
@@ -132,6 +142,56 @@ unchanged when later unsupported calls or invalidations occur. Frame-end records
 also include `rejection_event`. No claim is made that the 0.4 frames would now pass:
 a future capture-only build must supply the missing ColorFill target proof.
 
+## Structural background correction after iteration 06
+
+The [iteration-06 session](../verification/iteration-06.md) captured 68
+gameplay frames with the live motion route; its selector rejected 32 of them
+although every frame had the complete Clear/background/depth-Clear/scene/
+unbind/fill/copy/bloom/rebind/Clear structure. Replaying the derived events
+through the previous header reproduces the three causes exactly: 20 frames
+rejected at the second draw for the moon pair, 4 at the second draw for the
+planet_v pair, both in the Background phase, and 8 rejected at the first scene
+draw of the depth-only prepass `c78b4c68a87fce74` with a null pixel shader.
+The background allowlist was a hash-of-the-day rule: every sector with an
+unlisted background effect lost motion output for the whole frame, and nothing
+about the boundary depends on which background shader ran.
+
+The corrected rules keep every structural check. Background draws must still
+be successful draws on the latched surfaces with a full viewport, no extra
+targets and (when known) plausible z state, and the phase can end only at the
+depth-only Clear. A draw with a null pixel shader is tolerated in both phases
+but cannot satisfy the depth-writer requirement. Fail-closed behavior is
+unchanged elsewhere: menu frames whose first Clear is color-only reject at
+event one, a frame with no background draw rejects at the depth-only Clear, a
+second depth-only Clear inside the scene rejects, and after the selection any
+further Clear is ignored (one selection per frame). The bloom chain, copy,
+fill and rebind gates were not loosened; the iteration-06 data reaches the
+final Clear through them in all 68 frames.
+
+Replay evidence (explicit no-extra-MRT assumption, clear viewport recorded by
+the 0.4 capture; strict replay of both logs still rejects every frame at event
+one because the getter results for absent targets are not recorded):
+
+| Session | Frames | Previous header | Corrected header |
+| --- | ---: | --- | --- |
+| 0.3 station fixture | 12 | 12 selected | 12 selected, same event/draw indices |
+| iteration 05 | 28 | 24 selected, 4 menu rejected | identical; boundaries at events 714, 288-290, 392, 273, 264/262/227, 469, the same events the live adapter confirmed |
+| iteration 06 | 68 | 36 selected, 32 rejected | 68 selected; each boundary is the depth-only Clear after background + scene + four bloom draws |
+
+```sh
+python3 tools/analysis/replay_scene_boundary.py --trace /tmp/x3-iteration06-snapshot.log \
+  --fixture verification/fixtures/iteration06-scene-boundaries.json \
+  --output verification/results/scene-boundary-replay-iteration06.json \
+  --baseline-header <previous scene_boundary.h>
+```
+
+The derived fixtures for both gameplay sessions are tracked next to the station
+fixture; the reports carry per-frame `decision` and `previous_decision`. The
+motion-output integration now shows the production DLL entering the synthetic
+scene phase as well: without the game observers every scene draw routes in
+sentinel-only mode (gate 5), which is the intended behavior and keeps color
+bit-identical.
+
 ## Replay and adversarial verification
 
 The compact [derived fixture](../../verification/fixtures/station-scene-boundaries.json)
@@ -142,14 +202,17 @@ remain available. Those labels are used only to compare the answer with the
 independent pass report, never as classifier inputs. Generation one is an
 original test argument; the old trace did not expose the new ownership generation.
 
-The native C++ replay compiles the actual production header. Twenty-four test methods
+The native C++ replay compiles the actual production header. Twenty-nine test methods
 cover twelve positive conditional replays, strict rejection of missing evidence,
 changed draw counts and resource IDs, failed/unknown results, failed pending
-Clear, sequence gaps/reordering, incorrect background/scene epochs, no depth
-writers, copy/parent/target aliases, all four shader and texture links, wrong
-quad state, partial/unknown viewports, depth mismatch, interposed operations,
-truncation, device-generation invalidation and custom signature profiles that
-survive frame resets. Additional tests cover the no-haze background, full/partial
+Clear, sequence gaps/reordering, structural background acceptance of any pair,
+missing background draw or depth-only Clear, off-target/partial/extra-target
+background draws, null-pixel-shader tolerance without depth-writer credit, a
+second depth-only Clear inside the scene, no depth writers, copy/parent/target
+aliases, all four shader and texture links, wrong quad state, partial/unknown
+viewports, depth mismatch, interposed operations, truncation, device-generation
+invalidation, custom bloom profiles that survive frame resets, and the two
+gameplay fixtures replayed against the live adapter's confirmed boundaries. Additional tests cover the no-haze background, full/partial
 scratch fills, unknown/main/depth/standalone/format/MSAA/container aliases, fills
 in every other phase, failed fill results, and preserving the first rejection
 reason/sequence through later unsupported events or invalidation. The failed-Clear case specifically
@@ -184,7 +247,7 @@ image is therefore still unsafe. This does not locate a clean opaque-only color
 buffer, establish per-object motion, identify all later draws as HUD, or select
 an HDR-linear source. Post-bloom rendering can contain real scene effects.
 
-The strict background hash pattern and exact bloom chain deliberately reject
+The structural clear/scene/copy gates and exact bloom chain deliberately reject
 unseen scene variants, missing bloom, alternate resolution ratios, formats,
 MSAA, extra passes and uncertain inputs. All twelve old frames are one test
 session with no timestamp marking docking. A live successful selector/copy trace

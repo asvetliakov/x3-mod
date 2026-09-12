@@ -42,8 +42,10 @@ pairs adapter before/after callbacks around these calls; it does not compile
 
 The positive sequence is:
 
-1. Full color/depth clear and five verified primary-background draws. The fixture
-   profile has no haze entry: haze is an allowed background family, not mandatory.
+1. Full color/depth clear and five background draws with the fixture's own
+   shaders. The selector recognizes the background structurally (any successful
+   draw on the pair before the depth-only Clear), so no background signature is
+   configured; the profile's deprecated background slots stay empty.
 2. Separate depth clear, scene geometry with depths 0.25 and 0.75 and an occluded
    far triangle. These are actual rasterized original triangles.
 3. Unbind depth, optionally perform three actual scratch ColorFill calls (including
@@ -125,8 +127,9 @@ exit and no failing check. The process has a 90-second timeout.
 - [Source/executable provenance](../../verification/results/scene-capture-summary.json)
 - [Backend diagnostics](../../verification/results/scene-capture-wine.log)
 
-The revised background gate is supported by the 0.4 gameplay trace: its five
-verified background draws do not include planet haze. That trace's ColorFill
+The 0.4 gameplay trace showed five background draws without planet haze, which
+first relaxed the haze requirement; the background allowlist itself was later
+replaced by the structural rule (see the selector notes). That trace's ColorFill
 targets were not recorded, so the safe-target condition cannot be proven
 retrospectively and no claim is made that those actual frames would now pass.
 A future capture-only build must collect the new target evidence. The separate

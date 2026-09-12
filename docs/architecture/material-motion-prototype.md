@@ -8,7 +8,8 @@ records why same-draw output was chosen over replay; the
 [candidate review](../reverse-engineering/motion-output-candidate.md) records
 the Argon reference splice, and the
 [profile table](../reverse-engineering/motion-output-profiles.md) derives the
-same facts for the other captured material programs.
+same facts for every SM3 material pair a technique pass of the installed
+effects binds, so coverage no longer depends on which sectors a capture visited.
 
 ## Program changes
 
@@ -47,24 +48,65 @@ route uploads the same ranges for every pair.
 
 `src/renderer/motion_output_profiles.h` defines `MotionOutputProfile` and
 `MotionOutputClass` and includes the generated row list
-`motion_output_profiles_inc.h` (16 rows today: six class A, six class B, four
-class C). A row carries the original fingerprints, lengths and version tokens, the matrix
-register and position temporary, the four position DP4 offsets and lane masks,
-the five insertion offsets, the four register choices and the light-loop
-bound flag. Rows are derived numbers only; the header states that they are
-transformer input, not an eligibility decision.
+`motion_output_profiles_inc.h` (169 rows: 56 class A, 101 class B, 12 class C —
+every transformable SM3 pairing of the 6,752 technique passes in the archives;
+32 distinct vertex and 108 distinct pixel programs). A row carries the original
+fingerprints, lengths and version tokens, the matrix register and position
+temporary, the four position DP4 offsets and lane masks, the five insertion
+offsets, the four register choices, the light-loop bound flag and bound, and
+`observed_scene_draws` (capture metadata: draws in one session, zero for the
+153 rows never observed; it orders the rows and has no runtime meaning). Rows
+are derived numbers only; the header states that they are transformer input,
+not an eligibility decision.
+
+Two clip-row families exist: 107 rows read the clip rows from **c24** under
+the relative point-light loop (`light_loop_bound_required`, bound 8) and 62
+light-free `_0000`/`_0001` variants read them from **c0** with no relative
+addressing at all (bound not required). The four position dots are issued in
+XYZW order and are adjacent in 163 rows; six light-free asteroid, moon and
+planet_haze rows interleave other work between the Z and W dots, so the row
+carries each dot's own offset and the insert follows the last dot. Both share the same splice; only the
+row's `matrix_register` and bound differ, and the route generalizes its shadow
+and gate per row (see "Lookups and the route's per-row state" below).
 
 | Class | Behavior |
 | --- | --- |
 | A, `ReferenceRegisters` | The reference registers are free in both programs; the emitted words are the Argon fragment with only the insertion offsets and position registers taken from the row. The Argon row produces the same 545/1392-word programs as the earlier hand-written transformer (FNV `07805a216f19b9b6` / `92bd1a32ae7d2a6d`, checked by the structural fixture). |
 | B, `RelocatedRegisters` | Same code path; the row names the free VS output/TEXCOORD index and PS input/temporaries, and the authored fragment and the new declarations are relocated to them. |
-| C, `RelocatedRegistersWithBranches` | Same splice and relocation as B; the pixel program additionally holds static `if b#`/`else`/`endif` blocks. The pixel-side validation below admits exactly that control flow (boolean constant conditions, balanced, nesting depth at most one, one `else` per block, depth zero at the append point so the appended fragment is unconditional) and refuses every other control-flow opcode; classes A and B refuse any branch, and a class C row refuses a program without one. The four captured programs each hold two sequential blocks on `b0` and `b1`. |
+| C, `RelocatedRegistersWithBranches` | Same splice and relocation as B; the pixel program additionally holds static `if b#`/`else`/`endif` blocks. The pixel-side validation below admits exactly that control flow (boolean constant conditions, balanced, nesting depth at most one, one `else` per block, depth zero at the append point so the appended fragment is unconditional) and refuses every other control-flow opcode; classes A and B refuse any branch, and a class C row refuses a program without one. The twelve `xt_*` programs hold two sequential blocks on `b0` and `b1` (six, the captured ones among them) or a single block on `b0` (six). |
 
 Compile-time checks in the header prove that every row is well formed
-(register ranges, ordered offsets, XYZW lane masks, contiguous DP4 quad,
-END at the append point) and that rows sharing an original program agree on
+(register ranges, ordered offsets, XYZW lane masks, DP4 offsets ascending by
+at least one instruction with the insert one past the last, END at the
+append point) and that rows sharing an original program agree on
 that program's side of the splice, which the per-program variant scheme in the
 live route depends on.
+
+## Lookups and the route's per-row state
+
+With 169 rows a linear scan per draw is no longer acceptable, so
+`material_motion.cpp` builds three sorted index tables over the rows at
+compile time (a constexpr stable insertion sort; a `static_assert` proves
+each index a permutation of the rows, the pair order strict and the two
+per-stage orders stable, so equal fingerprints keep table order): by
+(vertex, pixel) fingerprint, by vertex fingerprint and by pixel fingerprint. `material_motion_profile` / `material_motion_pair_reviewed`
+are one binary search each (O(log rows), no allocation), and
+`material_motion_vertex_row` / `material_motion_pixel_row` return the first
+supported row of a program (rows sharing a program agree on its side, so the
+first serves). The live route records that row in its shader registry at
+creation time (`ShaderEntry::row`), copies it into the shadow at
+`SetVertexShader`, and gate 3 is the pair binary search on the two bound
+fingerprints; a VS alias shared with an unreviewed PS still never routes.
+
+The shadow no longer assumes c24: `motion_output.cpp` derives the distinct
+clip-row windows the table names at compile time (c24–27 and c0–3 today, at
+most `motion_matrix_windows_max`), captures every window from
+`SetVertexShaderConstantF` and `GetVertexShaderConstantF` on resync, and gate
+4 uses the bound VS row's window and its own `light_loop_bound_required` /
+`light_loop_max_count` (`i0.x` in [0, 8] only where the program addresses
+relatively). `rows_match_shadow` asserts that every row names a shadowed
+window and that a bounded row's clip rows sit above the c0–23 block the bound
+protects; `rows_use_public_abi` still requires c252 / c216 / oC1 in every row.
 
 ## Qualification at transform time
 
@@ -79,14 +121,19 @@ are then revalidated against the actual words, and any inconsistency yields
   and declaring o0 as POSITION0 (so the dots below are the clip position); no
   DEF or DCL afterwards; the four position DP4s at the recorded offsets with
   the exact opcode, o0 lane mask, position temporary and `c<matrix + lane>`
-  source; the arithmetic insert one past the last DP4; no original
-  declaration, write or read of the chosen output register, TEXCOORD index or
-  c252–255 (every parameter token of every instruction is walked, address
+  source; the arithmetic insert one past the last DP4; between the first DP4
+  and the insert no instruction that writes the position temporary (any
+  mask) and no block boundary (`rep`/`loop`/`if`/`ifc`/`else`/`endrep`/
+  `endloop`/`endif`, so even a balanced block in the span refuses), which
+  makes the spaced quads safe; no original declaration, write or read of the
+  chosen output register, TEXCOORD index or c252–255 (every parameter token of every instruction is walked, address
   tokens skipped); relative addressing accepted only when the row records the
-  draw-time light-loop bound; block depth (`rep`/`loop`/`if`/`ifc` against
-  `endrep`/`endloop`/`endif`, every table VS holds a `rep` light loop and an
-  `if b#` block) zero at every position DP4, at the arithmetic insert and at
-  END, so the added dots are unconditional, and no `call`/`callnz`/`ret`/`label`.
+  draw-time light-loop bound (the light-free c0 rows have none; a relative
+  operand under such a row refuses); block depth (`rep`/`loop`/`if`/`ifc`
+  against `endrep`/`endloop`/`endif`; the c24 programs hold a `rep` light
+  loop and an `if b#` block) zero at every position DP4, at the arithmetic
+  insert and at END, so the added dots are unconditional, and no
+  `call`/`callnz`/`ret`/`label`.
 - PS: DEFs only before the definition insert, DCLs only between it and the
   declaration insert, executable code afterwards; the END token at the append
   point; no predicated or `texkill` instruction, no oDepth write and no
@@ -123,22 +170,31 @@ failure leaves the previous output intact. There is no global cache, device
 retention, native shader compilation or callback in this module.
 
 The host structural fixture passes in optimized and ASan/UBSan builds for all
-16 rows. It reconstructs both originals exactly after removing additions,
+169 rows. It reconstructs both originals exactly after removing additions,
 independently checks relocated operands and literals, refuses 21 row
 perturbations per row (including the class family swapped between B and C,
-which the pixel words contradict) and 26 program perturbations per class A/B
-row (declared or written reserved registers, missing POSITION0, definitions
-after the header, refused opcodes, predication, relative addressing, oDepth,
-malformed END, length overrun, an unterminated vertex-side `if` before the
-position dots and a well-formed pixel static branch) or 40 per
-class C row (additionally: a missing `endif`, `endif` or `else` without
-`if`, a second `else`, a nested block, `ifc`, `rep`, `break` and `breakp`
-opcodes, a float or relatively addressed condition, a two-operand or
-predicated `if`, and a reserved temporary written or an ABI constant read
-inside a branch body), all 925,248 single-bit input mutations without
-changing output, and exercises six successful alias layouts per row. These
-are qualification and memory/structure checks; shader execution is verified
-separately. See `verification/results/material-motion-structure-summary.json`.
+which the pixel words contradict; the previous-row constants placed on a
+constant the VS actually reads; and, for light-free rows, a relative operand
+injected under the row's denied bound) and 26 program perturbations per class
+A/B row (declared or written reserved registers, missing POSITION0,
+definitions after the header, refused opcodes, predication, relative
+addressing, oDepth, malformed END, length overrun, an unterminated
+vertex-side `if` before the position dots and a well-formed pixel static
+branch) or 40 per class C row (additionally: a missing `endif`, `endif` or
+`else` without `if`, a second `else`, a nested block, `ifc`, `rep`, `break`
+and `breakp` opcodes, a float or relatively addressed condition, a two-operand
+or predicated `if`, and a reserved temporary written or an ABI constant read
+inside a branch body); the six spaced-quad rows add two sites each (the
+position temporary written between the dots, and a balanced `if b0`/`endif`
+placed between them). A site an archive program does not offer is reported
+as skipped, never fabricated: two rows share a pixel program with no literal
+DEF, so 4,572 of the 4,574 program perturbation sites ran. The single-bit
+sweep is exhaustive for the 16 captured rows (925,248 mutations) and a
+deterministic evenly strided 2,048 positions per program for the other 153
+(626,688), 1,551,936 mutations in all without changing output, and six
+successful alias layouts per row (1,014). These are qualification and
+memory/structure checks; shader execution is verified separately. See
+`verification/results/material-motion-structure-summary.json`.
 
 ## Caller requirements still outside this module
 
@@ -146,9 +202,10 @@ The caller must establish opaque scene coverage and compatible MRT dimensions,
 formats, write masks and state. It must not replace an application-owned RT1.
 The initial route requires alpha testing, blending and sRGB writes disabled,
 SM3 support and at least 256 VS float constants.
-Every table VS uses relative light constants, so the actual light count must be
-bounded to 0–8 before reserving high constants. A shader fingerprint does not
-validate the runtime count.
+Every c24 row VS uses relative light constants, so the actual light count must
+be bounded to 0–8 before reserving high constants (`light_loop_bound_required`);
+the light-free c0 rows need known rows in their window but no bound. A shader
+fingerprint does not validate the runtime count.
 
 Previous rows require object/geometry correspondence and history validity. The
 current pixel ABI assumes a zero-origin viewport and the established jitter

@@ -14,11 +14,13 @@ int main() {
         std::istringstream in(line); char operation; in >> operation;
         if (operation == 'P') {
             SceneSignatures signatures;
+            // Three deprecated background slots precede the bloom pairs; the
+            // selector ignores them but the profile line format is unchanged.
             for (auto& pair : signatures.background) in >> pair.vs >> pair.ps;
             for (auto& pair : signatures.bloom) in >> pair.vs >> pair.ps;
             selector = SceneBoundarySelector(signatures);
             // Caller storage may change after construction; profile is a copy.
-            signatures.background[2] = {};
+            signatures.bloom[3] = {};
         } else if (operation == 'B') {
             std::uint64_t device, generation, frame; in >> device >> generation >> frame;
             selector.begin_frame(device, generation, frame);
@@ -36,8 +38,13 @@ int main() {
             surface(in,e.source); surface(in,e.destination);
             in >> e.source_rect_null >> e.destination_rect_null;
             if (!in) { std::cerr << "Malformed fixture event\n"; return 2; }
+            const auto before = selector.state();
             const auto candidate = selector.before_clear(e);
             const auto confirmed = selector.observe(e);
+            // Phase timeline: prior state and new state of every transition.
+            if (selector.state() != before)
+                std::cout << "T " << e.sequence << ' ' << static_cast<unsigned>(before) << ' '
+                          << static_cast<unsigned>(selector.state()) << '\n';
             if (candidate.valid || confirmed.valid)
                 std::cout << "S " << e.sequence << ' ' << candidate.valid << ' ' << confirmed.valid
                           << ' ' << candidate.color.identity << ' ' << candidate.depth.identity

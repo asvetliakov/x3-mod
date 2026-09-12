@@ -18,6 +18,14 @@
 #include "../renderer/scene_boundary.h"
 #include "../renderer/motion_history.h"
 #include "../renderer/motion_row_history.h"
+namespace x3m::renderer { struct MotionOutputProfile; }
+namespace x3m {
+// Distinct clip-row constant windows the profile table names (c24-27 for the
+// point-light programs, c0-3 for the light-free variants). The route's shadow
+// captures every window; a draw reads the window of its VS row. The actual
+// count is derived from the table at compile time in motion_output.cpp.
+inline constexpr std::size_t motion_matrix_windows_max = 4;
+}
 
 namespace x3m {
 struct MotionDrawCall {
@@ -142,15 +150,20 @@ public:
 #endif
 
 private:
-    struct ShaderEntry { std::uint64_t hash = 0; IUnknown* variant = nullptr; };
+    // A program's profile row (first row of a supported class hosting it) is
+    // recorded once at registration, so per-draw work is two map lookups at
+    // SetShader time and one binary-search pair check at draw time.
+    struct ShaderEntry { std::uint64_t hash = 0; IUnknown* variant = nullptr;
+                         const renderer::MotionOutputProfile* row = nullptr; };
     struct Shadow {
         IDirect3DVertexShader9* vs = nullptr;
         IDirect3DPixelShader9* ps = nullptr;
         std::uint64_t vs_hash = 0, ps_hash = 0;
         IDirect3DVertexShader9* vs_variant = nullptr;
         IDirect3DPixelShader9* ps_variant = nullptr;
-        float rows[16]{};             // c24-27 as submitted
-        bool rows_known = false;
+        const renderer::MotionOutputProfile* vs_row = nullptr;
+        float rows[motion_matrix_windows_max][16]{}; // Each window's four rows as submitted
+        bool rows_known[motion_matrix_windows_max]{};
         float vs_reserved[16]{};      // application c252-255, restored only if written
         bool vs_reserved_written = false;
         float ps_reserved[8]{};       // application c216-217

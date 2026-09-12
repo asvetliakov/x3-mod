@@ -1,6 +1,6 @@
 ==== production-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-production-off-20260912-031422-107660\d3d9.dll
+MODE seam=0 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-production-off-20260912-042655-187153\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -88,7 +88,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
 ==== production-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-production-on-20260912-031426-192958\d3d9.dll
+MODE seam=0 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-production-on-20260912-042657-022503\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -176,7 +176,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
 ==== seam-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-off-20260912-031428-282517\d3d9.dll
+MODE seam=1 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-off-20260912-042658-864660\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -264,7 +264,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
 ==== seam-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-on-20260912-031430-123134\d3d9.dll
+MODE seam=1 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-on-20260912-042700-064838\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -388,7 +388,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=44284 matched_pixels=10261 max_uv_pixels=0.00156247616 max_depth_error=3.69792081e-08
 ==== production-ownership-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-production-ownership-off-20260912-031432-211009\d3d9.dll
+MODE seam=0 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-production-ownership-off-20260912-042701-883869\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -476,7 +476,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
 ==== production-ownership-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-production-ownership-on-20260912-031434-077149\d3d9.dll
+MODE seam=0 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-production-ownership-on-20260912-042703-706240\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -564,7 +564,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
 ==== seam-ownership-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-ownership-off-20260912-031436-025283\d3d9.dll
+MODE seam=1 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-ownership-off-20260912-042705-579277\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -652,7 +652,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
 ==== seam-ownership-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-ownership-on-20260912-031437-924816\d3d9.dll
+MODE seam=1 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-ownership-on-20260912-042707-372070\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -776,7 +776,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=44284 matched_pixels=10261 max_uv_pixels=0.00156247616 max_depth_error=3.69792081e-08
 ==== production-depth-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-production-depth-off-20260912-031439-888085\d3d9.dll
+MODE seam=0 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-production-depth-off-20260912-042709-175136\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -864,7 +864,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
 ==== production-depth-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-production-depth-on-20260912-031441-820566\d3d9.dll
+MODE seam=0 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-production-depth-on-20260912-042710-858208\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -952,7 +952,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
 ==== seam-depth-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-depth-off-20260912-031443-649437\d3d9.dll
+MODE seam=1 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-depth-off-20260912-042712-786759\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -1040,7 +1040,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
 ==== seam-depth-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-depth-on-20260912-031445-584833\d3d9.dll
+MODE seam=1 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-depth-on-20260912-042714-495074\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -1164,7 +1164,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=44284 matched_pixels=10261 max_uv_pixels=0.00156247616 max_depth_error=3.69792081e-08
 ==== production-admission-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-production-admission-off-20260912-031447-463605\d3d9.dll
+MODE seam=0 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-production-admission-off-20260912-042716-243201\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -1252,7 +1252,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
 ==== production-admission-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-production-admission-on-20260912-031449-438060\d3d9.dll
+MODE seam=0 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-production-admission-on-20260912-042717-929526\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -1340,7 +1340,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
 ==== seam-admission-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-admission-off-20260912-031451-399633\d3d9.dll
+MODE seam=1 enabled=0 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-admission-off-20260912-042719-801525\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -1428,7 +1428,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=6 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0
 ==== seam-admission-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-admission-on-20260912-031453-375862\d3d9.dll
+MODE seam=1 enabled=1 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-admission-on-20260912-042721-699730\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0

@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
-"""Derive per-program motion-output insertion facts for SM3 material programs.
+"""Derive per-program motion-output insertion facts for the archive's material pairs.
 
 This reads local D3D9 bytecode and exports only derived structure: hashes,
 DWORD offsets, register numbers, counts and decoded operand fields. It never
 writes shader words, literal values, comment/CTAB payloads or disassembly text.
 
+Coverage is archive-wide: every vertex/pixel pairing bound by a technique pass
+of the installed compiled effects (`effect_passes.py`) is classified. SM3 pairs
+receive a transformation class (A, B, C) or an explicit unsupported reason and
+the transformable ones become rows of the generated table; SM2 pairs receive a
+feasibility record against the ps_2_0 / ps_2_x limits (no rows); SM1 pairs are
+counted as unsupported (ps_1_x has no second color target). Captured draw
+counts, when a capture log is supplied, are optional metadata per pair (zero
+for pairs the capture never drew) and only order the rows.
+
 The facts answer one narrow question per program: *where* would the reviewed
 same-draw motion transformation splice, and *which* registers are unused. It is
 not an eligibility decision. Object identity, vertex content, draw state, MRT
-capability and the runtime relative-light bound remain separate gates, and the
-per-pair draw counts below describe one captured session, not the game.
+capability and the runtime relative-light bound remain separate gates.
 
 Offsets are zero-based DWORD indices from the version token and include all
 comments, matching `src/renderer/material_motion.cpp` and
@@ -60,7 +68,8 @@ OPCODES = {0: 'nop', 1: 'mov', 2: 'add', 3: 'sub', 4: 'mad', 5: 'mul', 6: 'rcp',
            80: 'cnd', 81: 'def', 82: 'texreg2rgb', 83: 'texdp3tex',
            84: 'texm3x2depth', 85: 'texdp3', 86: 'texm3x3', 87: 'texdepth',
            88: 'cmp', 89: 'bem', 90: 'dp2add', 91: 'dsx', 92: 'dsy',
-           93: 'texldd', 94: 'setp', 95: 'texldl', 96: 'breakp'}
+           93: 'texldd', 94: 'setp', 95: 'texldl', 96: 'breakp',
+           0xfffd: 'phase'}  # ps_1_4 phase marker: no operands.
 FLOW_OPCODES = {'call', 'callnz', 'loop', 'ret', 'endloop', 'label', 'rep',
                 'endrep', 'if', 'ifc', 'else', 'endif', 'break', 'breakc',
                 'breakp'}
@@ -100,6 +109,35 @@ DEFERRED_CLASSES = {}
 STATIC_BRANCH_OPCODES = {'if', 'else', 'endif'}
 STATIC_BRANCH_MAX_DEPTH = 1
 BOOLEAN_REGISTER_TYPE = 14
+
+# SM2 feasibility (no rows are emitted for SM2; this only quantifies what a
+# ps_2_0 / ps_2_x recompilation of the motion fragment would face). Limits are
+# the documented profile maxima: ps_2_0 has 64 arithmetic and 32 texture
+# instruction slots, 12 temporaries and 32 float constants; ps_2_x (the 2_a
+# and 2_b effect directories, both version token 2.1) has up to 512 slots and
+# 22 (2_a) or 32 (2_b) temporaries, the actual numbers being device caps
+# (D3DPSHADERCAPS2_0); vs_2_0 and vs_2_x have 256 instruction slots and at
+# least 256 float constants. The rasterizer clamps oD#/v# colors to [0, 1],
+# so only an oT# / t# pair can carry previous clip coordinates, and SM2 links
+# oT<n> to t<n> by index.
+PS2_LIMITS = {'2_0': {'arithmetic_slots': 64, 'texture_slots': 32, 'temporaries': 12, 'constants': 32},
+              '2_a': {'instruction_slots': 512, 'temporaries': 22, 'constants': 32},
+              '2_b': {'instruction_slots': 512, 'temporaries': 32, 'constants': 32}}
+VS2_INSTRUCTION_SLOTS = 256
+SM2_TEXCOORD_LINKS = 8
+# Slot costs of the macro instructions; everything else executable costs one.
+SLOT_COSTS = {'crs': 2, 'lrp': 2, 'm3x2': 2, 'm3x3': 3, 'm3x4': 4, 'm4x3': 3,
+              'm4x4': 4, 'nrm': 3, 'pow': 3, 'sincos': 8}
+TEXTURE_OPCODES = {'texld', 'texkill', 'texldd', 'texldl'}
+# The authored motion fragment (rigid_motion_pixel_program_inc.h): 25 arithmetic
+# instructions, no texture instruction, three DEFs, one input declaration; the
+# vertex side adds four DP4s. Its opcodes (mov, add, mad, mul, rcp, dp4, max,
+# cmp) exist in ps_2_0.
+FRAGMENT_PIXEL_ARITHMETIC = 25
+FRAGMENT_PIXEL_TEXTURE = 0
+FRAGMENT_PIXEL_TEMPORARIES = 3
+FRAGMENT_PIXEL_CONSTANTS = 5
+FRAGMENT_VERTEX_INSTRUCTIONS = 4
 
 
 def register_of(token):
@@ -251,10 +289,11 @@ def header_boundaries(items):
                 declaration['role'] = 'sampler'
                 declaration['texture_type'] = (usage_token >> 27) & 15
             else:
-                # vPos/vFace are MISCTYPE, not ordinary v# interpolators.
+                # vPos/vFace are MISCTYPE, not ordinary v# interpolators; t# (type
+                # 3) are the SM2 pixel texture-coordinate inputs.
                 declaration['role'] = ('output' if kind in (4, 5, 6, 8, 9)
                                        else 'misc' if kind == 17
-                                       else 'input' if kind == 1 else 'other')
+                                       else 'input' if kind in (1, 3) else 'other')
                 usage, index = usage_token & 15, (usage_token >> 16) & 15
                 declaration['usage'] = usage
                 declaration['usage_name'] = USAGES.get(usage, 'usage%d' % usage)
@@ -460,6 +499,25 @@ def profile(code, identifier, stage, model):
     def numbers(kinds, source=referenced):
         return sorted({number for kind, number in source if kind in kinds})
 
+    def prefix(kind):
+        # Stage-aware spelling: SM2 vertex programs write oT#/oD#/oPos-class
+        # registers where SM3 declares o#, and SM2 pixel programs read t#.
+        if stage == 'vs' and major < 3 and kind == 6:
+            return 'oT'
+        if stage == 'vs' and kind == 5:
+            return 'oD'
+        if stage == 'ps' and kind == 3:
+            return 't'
+        return REGISTER_TYPES.get(kind, 'type%d' % kind)
+
+    def by_type(source):
+        result = {}
+        for kind, number in source:
+            result.setdefault(prefix(kind), []).append(number)
+        return {name: sorted(set(values)) for name, values in sorted(result.items())}
+
+    digest['registers_referenced'] = {'read': by_type(read), 'written': by_type(written)}
+
     constants_direct = numbers(CONSTANT_TYPES)
     digest['constant_registers_direct'] = constants_direct
     digest['highest_direct_constant'] = max(constants_direct, default=None)
@@ -497,6 +555,11 @@ def profile(code, identifier, stage, model):
         digest['written_output_registers'] = written_outputs
         digest['free_output_registers'] = ([n for n in range(VS3_OUTPUTS) if n not in used]
                                            if major >= 3 else [])
+        # SM2: fixed oT0-7 texture-coordinate and oD0-1 color outputs.
+        digest['free_texcoord_outputs'] = ([n for n in range(SM2_TEXCOORD_LINKS) if n not in used]
+                                           if major == 2 else [])
+        digest['free_color_outputs'] = ([n for n in range(2) if n not in set(numbers({5}, set(written)))]
+                                        if major == 2 else [])
         digest['declared_inputs'] = [{'register': d['register'], 'usage': d['usage'],
                                       'usage_index': d['usage_index'], 'usage_name': d['usage_name'],
                                       'mask': d['mask'], 'dword': d['dword']}
@@ -526,8 +589,15 @@ def profile(code, identifier, stage, model):
                         and destination['register'] == temporary
                         and site['quad_first_dword'] < item['dword'] < last]
             digest['position_temporary_rewritten_inside_quad'] = rewrites
+            # Control-flow instructions between the first dot and the insert:
+            # a non-adjacent quad may only span straight-line code.
+            digest['position_flow_inside_quad'] = [
+                item['dword'] for item in items
+                if OPCODES.get(item['opcode']) in FLOW_OPCODES
+                and site['quad_first_dword'] < item['dword'] < last]
     else:
-        digest['declared_inputs'] = [{'register': d['register'], 'usage': d['usage'],
+        digest['declared_inputs'] = [{'register': d['register'], 'register_type': d['register_type'],
+                                      'usage': d['usage'],
                                       'usage_index': d['usage_index'], 'usage_name': d['usage_name'],
                                       'mask': d['mask'], 'modifiers': d['modifiers'],
                                       'dword': d['dword']}
@@ -538,9 +608,15 @@ def profile(code, identifier, stage, model):
         digest['declared_misc_registers'] = [d['name'] for d in declarations if d['role'] == 'misc']
         digest['declared_texcoord_input_indices'] = sorted({d['usage_index'] for d in declarations
                                                             if d['role'] == 'input' and d['usage'] == 5})
-        used_inputs = {d['register'] for d in digest['declared_inputs']} | set(numbers({1}, set(read)))
+        used_inputs = {d['register'] for d in digest['declared_inputs']
+                       if d['register_type'] == 1} | set(numbers({1}, set(read)))
         digest['free_input_registers'] = ([n for n in range(PS3_INPUTS) if n not in used_inputs]
                                           if major >= 3 else [])
+        # SM2: t0-7 texture-coordinate inputs, declared or read.
+        used_texture_inputs = {d['register'] for d in digest['declared_inputs']
+                               if d['register_type'] == 3} | set(numbers({3}))
+        digest['free_texture_inputs'] = ([n for n in range(SM2_TEXCOORD_LINKS) if n not in used_texture_inputs]
+                                         if major == 2 else [])
         digest['color_outputs'] = numbers({8}, set(written))
         digest['depth_output_dwords'] = [item['dword'] for item, (destination, _) in zip(items, decoded)
                                          if destination and destination['register_type'] == 9]
@@ -584,10 +660,14 @@ def classify(vertex, pixel):
             blocking.append('vs_position_rows_not_consecutive')
         if site['issue_order'] != 'xyzw':
             blocking.append('vs_position_issue_order_%s' % site['issue_order'])
-        if not site['contiguous_quad']:
-            blocking.append('vs_position_quad_not_contiguous')
+        # The four dots need not be adjacent: the transformer inserts after the
+        # last one and revalidates that the span rewrites no position temporary
+        # and crosses no control-flow instruction (the asteroid, moon and
+        # planet_haze light-free variants interleave other work between them).
         if vertex.get('position_temporary_rewritten_inside_quad'):
             blocking.append('vs_position_temporary_rewritten_inside_quad')
+        if vertex.get('position_flow_inside_quad'):
+            blocking.append('vs_position_block_boundary_inside_quad')
     if vertex.get('vertex_texture_fetch_dwords'):
         blocking.append('vs_vertex_texture_fetch')
     if pixel.get('texkill_dwords'):
@@ -653,6 +733,7 @@ def classify(vertex, pixel):
             'vs_position_temporary': site['source_temporary'],
             'vs_position_dp4_dwords': list(site['dwords_xyzw']),
             'vs_position_lane_masks': [1, 2, 4, 8],
+            'vs_position_quad_contiguous': site['contiguous_quad'],
             'vs_constant_base': VERTEX_MATRIX_CONSTANTS[0],
             'ps_constant_base': PIXEL_ABI_CONSTANTS[0],
             'ps_output_register': PIXEL_MOTION_OUTPUT,
@@ -673,6 +754,8 @@ def classify(vertex, pixel):
         differences.append('ps_control_flow_%s' % ','.join(sorted(pixel['control_flow_counts'])))
     if pixel.get('declared_misc_registers'):
         differences.append('ps_misc_inputs_%s' % ','.join(pixel['declared_misc_registers']))
+    if not site['contiguous_quad']:
+        differences.append('vs_position_quad_not_contiguous')
 
     flow = bool(pixel.get('control_flow_counts'))
     relocated = any(d.startswith(('vs_output_register', 'ps_input_register',
@@ -698,28 +781,33 @@ HEADER_FIELDS = (
     'vertex_output_register', 'texcoord_index',
     'pixel_input_register', 'pixel_temporary_base', 'pixel_output_register',
     'vertex_constant_base', 'pixel_constant_base',
-    'light_loop_bound_required', 'light_loop_max_count')
+    'light_loop_bound_required', 'light_loop_max_count',
+    'observed_scene_draws')
 
 
 def header_rows(result):
     """Order the emitted rows deterministically and independently of input order."""
     rows = [pair for pair in result['pairs']
             if pair['transformation_class'] in HEADER_CLASSES]
-    return sorted(rows, key=lambda pair: (-pair['draws'], pair['vs'], pair['ps']))
+    return sorted(rows, key=lambda pair: (-pair['observed_draws'], pair['vs'], pair['ps']))
 
 
 def render_header(result):
     """Render the constexpr row list; derived numbers and version tokens only."""
     programs = result['programs']
     reference = '%s + %s' % (REFERENCE['vs'][0], REFERENCE['ps'][0])
+    passes = result['pass_table']
     lines = [
         '// Generated by tools/analysis/inspect_motion_output_profiles.py; derived metadata only.',
         '// Reviewed full shader sweep SHA256:',
         '//   ' + result['inventory_sha256'],
         '// Reference pair, see docs/reverse-engineering/motion-output-candidate.md:',
         '//   ' + reference,
-        '// Rows are transformable captured material pairs, ordered by descending',
-        '// captured Scene draws then by vertex and pixel fingerprint.',
+        '// Rows are every transformable SM3 pair bound by a technique pass of the',
+        '// %d installed compiled effects (%d passes, %d SM3 pairs), ordered by' % (
+            passes['effect_count'], passes['pass_count'], result['pair_count']),
+        '// descending captured Scene draws (metadata: one session, zero when the',
+        '// capture never drew the pair) then by vertex and pixel fingerprint.',
         '// Classes emitted:',
     ]
     lines += ['//   %s = MotionOutputClass::%s' % item for item in sorted(HEADER_CLASSES.items())]
@@ -730,6 +818,9 @@ def render_header(result):
         '// RelocatedRegistersWithBranches rows: the pixel program holds only',
         '// if b#/else/endif blocks (boolean constant conditions, nesting depth <= %d,' % STATIC_BRANCH_MAX_DEPTH,
         '// balanced, depth 0 at the append point); the transformer revalidates this.',
+        '// position_dp4_dwords need not be adjacent: the arithmetic insert follows the',
+        '// last dot and the span between the first dot and the insert is revalidated',
+        '// to rewrite no position temporary and hold no control-flow instruction.',
     ]
     lines.append('// Field order:')
     for index in range(0, len(HEADER_FIELDS), 3):
@@ -758,13 +849,13 @@ def render_header(result):
                 plan['vs_declaration_insert_dword'], plan['vs_arithmetic_insert_dword'],
                 plan['ps_definition_insert_dword'], plan['ps_declaration_insert_dword'],
                 plan['ps_append_dword']),
-            ' %d, %d, %d, %d, %d, %d, %d, %s, %d},' % (
+            ' %d, %d, %d, %d, %d, %d, %d, %s, %d, %d},' % (
                 plan['vs_output_register'], plan['texcoord_index'],
                 plan['ps_input_register'], plan['ps_temporary_base'],
                 plan['ps_output_register'], plan['vs_constant_base'],
                 plan['ps_constant_base'],
                 'true' if plan['light_loop_bound_required'] else 'false',
-                plan['light_loop_max_count']),
+                plan['light_loop_max_count'], pair['observed_draws']),
         ]
     return '\n'.join(lines) + '\n'
 
@@ -815,68 +906,328 @@ def capture_pairs(path):
                      'not the runtime selector decision or full-frame coverage.'}
 
 
-def build(inventory, raw_directory, capture):
+def instruction_slots(program):
+    """(arithmetic, texture) instruction slots of a parsed program's executable
+    instructions, macro instructions at their documented cost."""
+    arithmetic = texture = 0
+    for name, count in (program.get('opcode_counts') or {}).items():
+        if name in ('dcl', 'def', 'defb', 'defi'):
+            continue
+        if name in TEXTURE_OPCODES:
+            texture += count
+        else:
+            arithmetic += count * SLOT_COSTS.get(name, 1)
+    return arithmetic, texture
+
+
+def consecutive_run(free, length):
+    """First base of `length` consecutive free registers, or None."""
+    available = set(free)
+    for base in sorted(free):
+        if all(base + offset in available for offset in range(length)):
+            return base
+    return None
+
+
+def pixel_profile(pixel, directories):
+    """ps_2_0 by token; a 2.1 token is ps_2_x, whose limits follow the effect
+    directory (2_a is the tighter of the two when both host the program)."""
+    if pixel['model'] == '2_0':
+        return '2_0'
+    return '2_a' if '2_a' in directories or '2_b' not in directories else '2_b'
+
+
+SM1_REASON = 'ps_1_x has no second color target (oC1) and no declared o#/v# linkage'
+SM2_GROUPS = ('hostable_with_ps_2_0_fragment', 'hostable_with_ps_2_x_fragment',
+              'exceeds_limits', 'structurally_unsupported')
+
+
+def sm2_feasibility(vertex, pixel, directories):
+    """What a ps_2_0 / ps_2_x recompilation of the motion fragment would face.
+
+    No SM2 row is emitted; this quantifies the remainder. The structural rules
+    mirror the SM3 classifier (row-dot position quad, free carrier, free
+    output, no texkill/oDepth/predication, static boolean branches only) with
+    the SM2 linkage: previous clip must travel oT<n> -> t<n> on one free index
+    in both programs, and the fragment's registers and instructions must fit
+    the profile's documented limits.
+    """
+    if not vertex.get('parsed') or not pixel.get('parsed'):
+        return {'group': 'structurally_unsupported', 'reasons': ['program_not_walkable'],
+                'exceeded': {}, 'pixel_profile': None, 'position': {}, 'vertex': {}, 'pixel': {}}
+    name = pixel_profile(pixel, directories)
+    limits = PS2_LIMITS[name]
+    structural, exceeded = [], {}
+    site = vertex.get('position_output') or {}
+    position = {key: site.get(key) for key in (
+        'shape', 'reason', 'matrix_register', 'rows_xyzw', 'rows_consecutive',
+        'contiguous_quad', 'issue_order', 'source_temporary', 'insertion_dword')}
+    if site.get('shape') != 'row_dot_quad':
+        structural.append('vs_position_%s:%s' % (site.get('shape'), site.get('reason')))
+    else:
+        if not site['rows_consecutive']:
+            structural.append('vs_position_rows_not_consecutive')
+        if site['issue_order'] != 'xyzw':
+            structural.append('vs_position_issue_order_%s' % site['issue_order'])
+        # Same span rule as the SM3 classifier: dots need not be adjacent.
+        if vertex.get('position_temporary_rewritten_inside_quad'):
+            structural.append('vs_position_temporary_rewritten_inside_quad')
+        if vertex.get('position_flow_inside_quad'):
+            structural.append('vs_position_block_boundary_inside_quad')
+    if vertex['predicated_or_coissued_dwords'] or pixel['predicated_or_coissued_dwords']:
+        structural.append('predicated_or_coissued_instruction')
+    if not vertex['header_is_contiguous'] or not pixel['header_is_contiguous']:
+        structural.append('header_not_contiguous')
+    if not vertex['reserved_constants_free']:
+        structural.append('vs_constants_c252_255_used')
+    links = sorted(set(vertex['free_texcoord_outputs']) & set(pixel['free_texture_inputs']))
+    if not links:
+        structural.append('no_free_oT_t_link_index')
+    if pixel['texkill_dwords']:
+        structural.append('ps_texkill')
+    if pixel['depth_output_dwords']:
+        structural.append('ps_depth_output')
+    if pixel['color_outputs'] != [0]:
+        structural.append('ps_color_outputs_%s' % pixel['color_outputs'])
+    if not pixel['reserved_output_free']:
+        structural.append('ps_output_oC1_used')
+    if pixel['relative_addressing']['present']:
+        structural.append('ps_relative_addressing')
+    if not pixel['control_flow_balanced'] or pixel['control_flow_depth_at_end']:
+        structural.append('ps_control_flow_not_balanced')
+    elif pixel['control_flow_counts']:
+        if not pixel['static_branches']['only_boolean_if']:
+            structural.append('ps_control_flow_not_static_boolean_if')
+        if pixel['control_flow_max_depth'] > STATIC_BRANCH_MAX_DEPTH:
+            structural.append('ps_control_flow_depth_%d_exceeds_%d' % (
+                pixel['control_flow_max_depth'], STATIC_BRANCH_MAX_DEPTH))
+    arithmetic, texture = instruction_slots(pixel)
+    vertex_slots = sum(instruction_slots(vertex))
+    free_temporaries = [n for n in range(limits['temporaries']) if n not in pixel['temporary_registers']]
+    used_constants = set(pixel['constant_registers_direct']) | set(pixel['defined_constant_registers'])
+    free_constants = [n for n in range(limits['constants']) if n not in used_constants]
+    if name == '2_0':
+        budget = {'arithmetic_slots': arithmetic + FRAGMENT_PIXEL_ARITHMETIC,
+                  'texture_slots': texture + FRAGMENT_PIXEL_TEXTURE}
+    else:
+        budget = {'instruction_slots': arithmetic + texture + FRAGMENT_PIXEL_ARITHMETIC + FRAGMENT_PIXEL_TEXTURE}
+    for key, value in budget.items():
+        if value > limits[key]:
+            exceeded[key] = value - limits[key]
+    if len(free_temporaries) < FRAGMENT_PIXEL_TEMPORARIES:
+        exceeded['temporaries'] = FRAGMENT_PIXEL_TEMPORARIES - len(free_temporaries)
+    if len(free_constants) < FRAGMENT_PIXEL_CONSTANTS:
+        exceeded['constants'] = FRAGMENT_PIXEL_CONSTANTS - len(free_constants)
+    if vertex_slots + FRAGMENT_VERTEX_INSTRUCTIONS > VS2_INSTRUCTION_SLOTS:
+        exceeded['vertex_instruction_slots'] = vertex_slots + FRAGMENT_VERTEX_INSTRUCTIONS - VS2_INSTRUCTION_SLOTS
+    if structural:
+        group = 'structurally_unsupported'
+    elif exceeded:
+        group = 'exceeds_limits'
+    else:
+        group = 'hostable_with_ps_2_0_fragment' if name == '2_0' else 'hostable_with_ps_2_x_fragment'
+    return {'group': group, 'reasons': structural, 'exceeded': exceeded, 'pixel_profile': name,
+            'position': position,
+            'vertex': {'instruction_slots': vertex_slots, 'instruction_slot_limit': VS2_INSTRUCTION_SLOTS,
+                       'slots_with_fragment': vertex_slots + FRAGMENT_VERTEX_INSTRUCTIONS,
+                       'free_texcoord_outputs': vertex['free_texcoord_outputs'],
+                       'free_color_outputs': vertex['free_color_outputs'],
+                       'previous_clip_link_indices': links,
+                       'constants_c252_255_free': vertex['reserved_constants_free'],
+                       'relative_addressing': vertex['relative_addressing']['present'],
+                       'light_loop_bound_required': vertex['relative_addressing']['present'],
+                       'control_flow_counts': vertex['control_flow_counts']},
+            'pixel': {'arithmetic_slots': arithmetic, 'texture_slots': texture,
+                      'with_fragment': budget,
+                      'free_texture_inputs': pixel['free_texture_inputs'],
+                      'free_temporary_count': len(free_temporaries),
+                      'three_consecutive_free_temporaries': consecutive_run(free_temporaries, 3),
+                      'free_constant_count': len(free_constants),
+                      'five_consecutive_free_constants': consecutive_run(free_constants, 5),
+                      'color_outputs': pixel['color_outputs'],
+                      'oC1_free': pixel['reserved_output_free'],
+                      'texkill_dwords': pixel['texkill_dwords'],
+                      'depth_output_dwords': pixel['depth_output_dwords'],
+                      'control_flow_counts': pixel['control_flow_counts'],
+                      'only_boolean_if': pixel['static_branches']['only_boolean_if'],
+                      'predicated_or_coissued_dwords': pixel['predicated_or_coissued_dwords']}}
+
+
+def effects_summary(records):
+    """Where a pairing occurs: derived names and counts only."""
+    return {'pass_occurrences': len(records),
+            'effect_entries': len({(r['catalogue'], r['path']) for r in records}),
+            'catalogues': sorted({r['catalogue'] for r in records}),
+            'basenames': sorted({Path(r['path']).stem for r in records}),
+            'profile_directories': sorted({r['path'].split('/')[1] for r in records}),
+            'toggle_directories': sorted({'/'.join(r['path'].split('/')[2:-1]) or '(base)' for r in records}),
+            'techniques': sorted({r['technique'] for r in records}),
+            'pass_names': sorted({r['pass'] for r in records})}
+
+
+COMPACT_DROP = {'literal_definitions', 'declarations', 'declared_inputs', 'declared_outputs',
+                'declared_samplers', 'late_header_instruction_dwords', 'centroid_declarations',
+                'partial_precision_declarations', 'declared_misc_registers', 'registers_referenced'}
+
+
+def compact_program(digest):
+    """Keep the JSON queryable at archive scale: every program summarizes its
+    relative-addressing sites as base registers and counts; SM1/SM2 programs
+    additionally carry only the facts the feasibility records cite."""
+    if not digest.get('parsed'):
+        return digest
+    relative = digest['relative_addressing']
+    result = dict(digest)
+    result['relative_addressing'] = {
+        **{key: value for key, value in relative.items() if key not in ('sites', 'note')},
+        'site_count': len(relative['sites']),
+        'base_registers': sorted({site['base_register'] for site in relative['sites']}),
+        'destination_site_count': sum(1 for site in relative['sites'] if site.get('destination'))}
+    if digest['model'] == '3_0':
+        # declared_inputs/outputs/samplers already carry every declaration.
+        del result['registers_referenced'], result['declarations']
+        return result
+    result = {key: value for key, value in result.items() if key not in COMPACT_DROP}
+    site = digest.get('position_output')
+    if site:
+        result['position_output'] = {key: value for key, value in site.items()
+                                     if key not in ('operands_xyzw', 'write_dwords')}
+    result['static_branches'] = {key: value for key, value in digest['static_branches'].items()
+                                 if key != 'sites'}
+    return result
+
+
+def model_major(model):
+    return int(model.split('_')[0]) if model else None
+
+
+def build(inventory, raw_directory, passes, capture=None):
+    """Classify every archive pass pairing; capture counts are optional metadata."""
     programs = {p['id']: p for p in inventory['programs']}
-    scene = [row for row in capture['pairs'] if row['clear_segment'] == capture['scene_segment']]
-    scene.sort(key=lambda row: (-row['draws'], row['vs'], row['ps']))
-    total = sum(row['draws'] for row in scene)
-    profiles, running, pairs = {}, 0, []
-    for row in scene:
-        identifiers = ('vs_' + row['vs'], 'ps_' + row['ps'])
-        for identifier in identifiers:
-            if identifier in profiles:
-                continue
+    observed, scene_total = Counter(), 0
+    if capture:
+        for row in capture['pairs']:
+            if row['clear_segment'] == capture['scene_segment']:
+                observed[(row['vs'], row['ps'])] += row['draws']
+        scene_total = capture['scene_draw_count']
+    groups = {}
+    for record in passes['passes']:
+        groups.setdefault((record['vs'], record['ps']), []).append(record)
+    profiles = {}
+
+    def load(identifier):
+        if identifier not in profiles:
             program = programs.get(identifier)
             if program is None:
                 profiles[identifier] = {'id': identifier, 'parsed': False,
                                         'reason': 'absent_from_reviewed_inventory'}
-                continue
-            code = (raw_directory / (identifier + '.bin')).read_bytes()
-            if hashlib.sha256(code).hexdigest() != program['sha256']:
-                raise ValueError('Program no longer matches reviewed sweep: ' + identifier)
-            profiles[identifier] = profile(code, identifier, program['stage'], program['model'])
-        vertex, pixel = (profiles[identifier] for identifier in identifiers)
-        name, blocking, differences, plan = classify(vertex, pixel)
-        running += row['draws']
-        pairs.append({'vs': row['vs'], 'ps': row['ps'], 'draws': row['draws'],
-                      'scene_draw_share': round(row['draws'] / total, 6) if total else None,
-                      'cumulative_scene_share': round(running / total, 6) if total else None,
-                      'vs_model': vertex.get('model'), 'ps_model': pixel.get('model'),
-                      'vs_dword_count': vertex.get('dword_count'),
-                      'ps_dword_count': pixel.get('dword_count'),
-                      'transformation_class': name,
-                      'hosts_reference_registers': name == 'A_reference_registers',
-                      'blocking_reasons': blocking,
-                      'differences_from_reference': differences,
-                      'insertion_plan': plan,
-                      'vs_relative_light_loop': (vertex.get('relative_addressing') or {}).get('present'),
-                      'vs_loop_bound_integer_registers':
-                          (vertex.get('relative_addressing') or {}).get('loop_bound_integer_registers')})
-    classes = Counter(pair['transformation_class'] for pair in pairs)
-    class_draws = Counter()
-    for pair in pairs:
-        class_draws[pair['transformation_class']] += pair['draws']
-    return {'schema': 1,
-            'scope': 'Derived SM3 motion-output insertion facts for captured '
-                     'material pairs. Offsets are zero-based DWORD indices from '
-                     'the version token including comments. Not an eligibility '
-                     'or equivalence proof.',
+            else:
+                code = (raw_directory / (identifier + '.bin')).read_bytes()
+                if hashlib.sha256(code).hexdigest() != program['sha256']:
+                    raise ValueError('Program no longer matches reviewed sweep: ' + identifier)
+                profiles[identifier] = profile(code, identifier, program['stage'], program['model'])
+        return profiles[identifier]
+
+    sm3, sm2, sm1, incomplete = [], [], [], []
+    for (vs, ps), records in groups.items():
+        effects = effects_summary(records)
+        base = {'vs': vs, 'ps': ps, 'observed_draws': observed.get((vs, ps), 0), 'effects': effects}
+        if vs is None or ps is None:
+            missing = 'vs' if vs is None else 'ps'
+            incomplete.append({**base, 'reason': 'pass_without_' + missing,
+                               'vs_status': sorted({r['vs_status'] for r in records}),
+                               'ps_status': sorted({r['ps_status'] for r in records})})
+            continue
+        vertex, pixel = load('vs_' + vs), load('ps_' + ps)
+        vertex_major, pixel_major = model_major(vertex.get('model')), model_major(pixel.get('model'))
+        models = {'vs_model': vertex.get('model'), 'ps_model': pixel.get('model')}
+        if vertex_major == 3 and pixel_major == 3:
+            name, blocking, differences, plan = classify(vertex, pixel)
+            sm3.append({**base, **models,
+                        'scene_draw_share': (round(base['observed_draws'] / scene_total, 6)
+                                             if scene_total else None),
+                        'vs_dword_count': vertex.get('dword_count'),
+                        'ps_dword_count': pixel.get('dword_count'),
+                        'transformation_class': name,
+                        'position_quad_contiguous': (vertex.get('position_output') or {}).get('contiguous_quad'),
+                        'hosts_reference_registers': name == 'A_reference_registers',
+                        'blocking_reasons': blocking,
+                        'differences_from_reference': differences,
+                        'insertion_plan': plan,
+                        'vs_relative_light_loop': (vertex.get('relative_addressing') or {}).get('present'),
+                        'vs_loop_bound_integer_registers':
+                            (vertex.get('relative_addressing') or {}).get('loop_bound_integer_registers')})
+        elif vertex_major == 2 and pixel_major == 2:
+            sm2.append({**base, **models, **sm2_feasibility(vertex, pixel, effects['profile_directories'])})
+        elif vertex_major == 1 or pixel_major == 1:
+            sm1.append({**base, **models, 'reason': SM1_REASON})
+        else:
+            incomplete.append({**base, **models, 'reason': 'unsupported_model_pairing'})
+    for group in (sm3, sm2, sm1, incomplete):
+        group.sort(key=lambda pair: (-pair['observed_draws'], pair['vs'] or '', pair['ps'] or ''))
+
+    def summary(pairs, key):
+        result = {}
+        for pair in pairs:
+            item = result.setdefault(pair[key], {'pairs': 0, 'observed_draws': 0, 'pass_occurrences': 0})
+            item['pairs'] += 1
+            item['observed_draws'] += pair['observed_draws']
+            item['pass_occurrences'] += pair['effects']['pass_occurrences']
+        for item in result.values():
+            item['scene_share'] = round(item['observed_draws'] / scene_total, 6) if scene_total else None
+        return dict(sorted(result.items()))
+
+    outside = sorted(set(observed) - set(groups))
+    return {'schema': 2,
+            'scope': 'Derived motion-output insertion facts for every vertex/pixel '
+                     'pairing bound by a technique pass of the installed compiled '
+                     'effects. SM3 pairs are classified for the table; SM2 pairs '
+                     'carry a feasibility record; SM1 pairs are counted. Offsets are '
+                     'zero-based DWORD indices from the version token including '
+                     'comments. Not an eligibility or equivalence proof.',
             'tool_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
             'inventory_sha256': inventory['_sha256'],
+            'pass_table': {key: passes[key] for key in ('schema', 'scope', 'effect_count', 'pass_count',
+                                                        'status_counts')},
             'capture': capture,
-            'scene_draw_total': total,
-            'pair_count': len(pairs),
-            'transformation_classes': {name: {'pairs': count, 'draws': class_draws[name],
-                                              'scene_share': round(class_draws[name] / total, 6)
-                                              if total else None}
-                                       for name, count in sorted(classes.items())},
-            'pairs': pairs,
-            'programs': dict(sorted(profiles.items())),
+            'scene_draw_total': scene_total,
+            'captured_pairs_outside_archive': [{'vs': vs, 'ps': ps, 'draws': observed[(vs, ps)]}
+                                               for vs, ps in outside],
+            'pair_count': len(sm3),
+            'transformation_classes': summary(sm3, 'transformation_class'),
+            'pairs': sm3,
+            'unsupported_pairs': [{'vs': pair['vs'], 'ps': pair['ps'], 'observed_draws': pair['observed_draws'],
+                                   'transformation_class': pair['transformation_class'],
+                                   'blocking_reasons': pair['blocking_reasons'],
+                                   'basenames': pair['effects']['basenames']}
+                                  for pair in sm3 if pair['transformation_class'] not in HEADER_CLASSES],
+            'sm2_pair_count': len(sm2),
+            'sm2_limits': {'pixel_profiles': PS2_LIMITS,
+                           'vertex_instruction_slots': VS2_INSTRUCTION_SLOTS,
+                           'fragment': {'pixel_arithmetic': FRAGMENT_PIXEL_ARITHMETIC,
+                                        'pixel_texture': FRAGMENT_PIXEL_TEXTURE,
+                                        'pixel_temporaries': FRAGMENT_PIXEL_TEMPORARIES,
+                                        'pixel_constants': FRAGMENT_PIXEL_CONSTANTS,
+                                        'vertex_instructions': FRAGMENT_VERTEX_INSTRUCTIONS}},
+            'sm2_groups': summary(sm2, 'group'),
+            'sm2_reasons': dict(sorted(Counter(reason for pair in sm2 for reason in pair['reasons']).items())),
+            'sm2_exceeded': dict(sorted(Counter(key for pair in sm2 for key in pair['exceeded']).items())),
+            'sm2_pairs': sm2,
+            'sm1_pair_count': len(sm1),
+            'sm1_models': summary(sm1, 'vs_model'),
+            'sm1_reason': SM1_REASON,
+            'sm1_pairs': sm1,
+            'incomplete_passes': incomplete,
+            'programs': {identifier: compact_program(digest)
+                         for identifier, digest in sorted(profiles.items())},
             'limitations': [
-                'Clear-segment phase attribution approximates the Scene phase.',
+                'Pass pairings come from the installed archives; dynamically generated '
+                'or overridden effects are not enumerated.',
+                'Clear-segment phase attribution approximates the Scene phase; draw '
+                'counts describe one captured session and only order the rows.',
                 'Relative constant reads are bounded only by a runtime integer/loop check.',
                 'Free-register lists describe static references, not driver behavior.',
-                'Draw counts describe one captured session, not the shipped game.']}
+                'SM2 feasibility uses documented profile maxima; device caps decide ps_2_x slots.']}
 
 
 REFERENCE = {
@@ -930,12 +1281,19 @@ def main():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--inventory', type=Path)
     parser.add_argument('--raw-directory', type=Path)
-    parser.add_argument('--capture-log', type=Path)
+    parser.add_argument('--pass-table', type=Path,
+                        help='Technique/pass pairings written by effect_passes.py.')
+    parser.add_argument('--game', type=Path,
+                        help='Enumerate the pass pairings from the installed archives '
+                             'instead of --pass-table (read in memory; nothing is copied).')
+    parser.add_argument('--capture-log', type=Path,
+                        help='Optional capture log; its Scene draw counts become the '
+                             'observed_draws metadata and the row order.')
     parser.add_argument('--pair-cache', type=Path,
                         help='Reuse/store the derived per-pair draw counts.')
     parser.add_argument('--from-profiles', type=Path,
                         help='Re-emit from an existing profile table instead of '
-                             'rereading local bytecode and the capture log.')
+                             'rereading local bytecode and the pass table.')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--emit-header', type=Path,
                         help='Write the transformer input table '
@@ -944,31 +1302,47 @@ def main():
     if arguments.from_profiles:
         result = json.loads(arguments.from_profiles.read_text())
     else:
-        missing = [name for name in ('inventory', 'raw_directory', 'capture_log')
+        missing = [name for name in ('inventory', 'raw_directory')
                    if getattr(arguments, name) is None]
-        if missing:
-            parser.error('--from-profiles, or all of: ' +
-                         ', '.join('--' + name.replace('_', '-') for name in missing))
+        if missing or not (arguments.pass_table or arguments.game):
+            parser.error('--from-profiles, or --inventory, --raw-directory and one of '
+                         '--pass-table / --game')
         inventory_bytes = arguments.inventory.read_bytes()
         inventory = json.loads(inventory_bytes)
         inventory['_sha256'] = hashlib.sha256(inventory_bytes).hexdigest()
+        if arguments.pass_table:
+            passes = json.loads(arguments.pass_table.read_text())
+        else:
+            from effect_passes import archive_passes
+            passes = archive_passes(arguments.game)
+        capture = None
         if arguments.pair_cache and arguments.pair_cache.exists():
             capture = json.loads(arguments.pair_cache.read_text())
-        else:
+        elif arguments.capture_log:
             capture = capture_pairs(arguments.capture_log)
             if arguments.pair_cache:
                 arguments.pair_cache.write_text(json.dumps(capture, indent=2) + '\n')
-        result = build(inventory, arguments.raw_directory, capture)
+        result = build(inventory, arguments.raw_directory, passes, capture)
     failures = check(result)
     result['reference_check'] = {'pair': 'argon_sm3',
                                  'passed': not failures, 'failures': failures}
     if arguments.output:
-        arguments.output.write_text(json.dumps(result, indent=2) + '\n')
+        # Archive scale: compact, stable JSON like the sweep inventories; query
+        # it with scripts or the paired tests rather than reading it whole.
+        arguments.output.write_text(json.dumps(result, separators=(',', ':')) + '\n')
     if arguments.emit_header:
         arguments.emit_header.write_text(render_header(result))
-    print(json.dumps({'pairs': result['pair_count'],
+    print(json.dumps({'sm3_pairs': result['pair_count'],
                       'scene_draws': result['scene_draw_total'],
                       'classes': result['transformation_classes'],
+                      'unsupported_sm3_pairs': len(result['unsupported_pairs']),
+                      'sm2_pairs': result['sm2_pair_count'],
+                      'sm2_groups': result['sm2_groups'],
+                      'sm2_reasons': result['sm2_reasons'],
+                      'sm2_exceeded': result['sm2_exceeded'],
+                      'sm1_pairs': result['sm1_pair_count'],
+                      'sm1_models': result['sm1_models'],
+                      'incomplete_passes': len(result['incomplete_passes']),
                       'header_rows': len(header_rows(result)),
                       'reference_check': result['reference_check']}, indent=2))
     return 0 if not failures else 1

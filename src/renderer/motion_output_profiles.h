@@ -50,6 +50,10 @@ struct MotionOutputProfile {
     std::uint16_t pixel_constant_base;     // Five pixel ABI constants.
     bool light_loop_bound_required;        // VS reads constants relatively.
     std::uint8_t light_loop_max_count;     // Draw-time bound on integer i0.x.
+    std::uint32_t observed_scene_draws;    // Metadata: Scene draws of this pair in one
+                                           // captured session, zero when never observed.
+                                           // Orders the rows and selects the fixtures'
+                                           // exhaustive mutation sweep; no runtime meaning.
 };
 
 // Derived numbers only; regenerate with --emit-header, never edit by hand.
@@ -78,10 +82,12 @@ constexpr bool motion_output_profile_valid(const MotionOutputProfile& row) noexc
         row.pixel_declaration_insert_dword < row.pixel_append_dword &&
         row.pixel_append_dword + 1u == row.pixel_dword_count &&
         row.position_dp4_dwords[3] + 4 == row.vertex_arithmetic_insert_dword;
+    // The four dots are issued in XYZW order but need not be adjacent (other
+    // work may sit between them); the arithmetic insert follows the last one.
     for (unsigned lane = 0; lane < 4; ++lane) {
         ok = ok && row.position_lane_masks[lane] == (1u << lane) &&
             row.position_dp4_dwords[lane] >= row.vertex_declaration_insert_dword &&
-            (lane == 0 || row.position_dp4_dwords[lane] == row.position_dp4_dwords[lane - 1] + 4);
+            (lane == 0 || row.position_dp4_dwords[lane] >= row.position_dp4_dwords[lane - 1] + 4);
     }
     return ok;
 }

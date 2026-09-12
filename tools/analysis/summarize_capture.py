@@ -48,8 +48,8 @@ def summarize(trace, index, include_floats=False):
             current = None
             current_coordinates = None
         elif boundary is not None and boundary['op'] != 'draw_begin' and event in (
-                'clear', 'clear_rect', 'clear_rects', 'set_rt', 'set_depth', 'stretch_rect', 'stretch_source_rect',
-                'stretch_dest_rect', 'surface'):
+                'clear', 'clear_rect', 'clear_rects', 'clear_viewport', 'set_rt', 'set_depth', 'stretch_rect',
+                'stretch_source_rect', 'stretch_dest_rect', 'surface'):
             boundary['details'].append(dict(event=event, **f))
         elif event == 'draw':
             current_coordinates = {key: f.get(key) for key in ('device', 'frame', 'index')}

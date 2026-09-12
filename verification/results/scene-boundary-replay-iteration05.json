@@ -1,0 +1,3083 @@
+{
+  "source": {
+    "name": "x3-iteration05-completed-snapshot.log",
+    "sha256": "e5beaa861d04659fe9c7df05a01845bd05d656a33c643f4b484ff379cf3ccaf8"
+  },
+  "assumptions": [
+    "No additional MRTs (captures omit failed/absent RT getter records)."
+  ],
+  "frames": [
+    {
+      "device": 1,
+      "frame": 120,
+      "draws": 641,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "decision": {
+        "decision": "rejected",
+        "sequence": 1,
+        "phase": "AwaitInitialClear",
+        "reason": "Pattern",
+        "event": "Clear",
+        "after_draw": 0,
+        "clear_flags": 1
+      },
+      "previous_decision": {
+        "decision": "rejected",
+        "sequence": 1,
+        "phase": "AwaitInitialClear",
+        "reason": "Pattern",
+        "event": "Clear",
+        "after_draw": 0,
+        "clear_flags": 1
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 121,
+      "draws": 641,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "decision": {
+        "decision": "rejected",
+        "sequence": 1,
+        "phase": "AwaitInitialClear",
+        "reason": "Pattern",
+        "event": "Clear",
+        "after_draw": 0,
+        "clear_flags": 1
+      },
+      "previous_decision": {
+        "decision": "rejected",
+        "sequence": 1,
+        "phase": "AwaitInitialClear",
+        "reason": "Pattern",
+        "event": "Clear",
+        "after_draw": 0,
+        "clear_flags": 1
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 122,
+      "draws": 641,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "decision": {
+        "decision": "rejected",
+        "sequence": 1,
+        "phase": "AwaitInitialClear",
+        "reason": "Pattern",
+        "event": "Clear",
+        "after_draw": 0,
+        "clear_flags": 1
+      },
+      "previous_decision": {
+        "decision": "rejected",
+        "sequence": 1,
+        "phase": "AwaitInitialClear",
+        "reason": "Pattern",
+        "event": "Clear",
+        "after_draw": 0,
+        "clear_flags": 1
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 123,
+      "draws": 641,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "decision": {
+        "decision": "rejected",
+        "sequence": 1,
+        "phase": "AwaitInitialClear",
+        "reason": "Pattern",
+        "event": "Clear",
+        "after_draw": 0,
+        "clear_flags": 1
+      },
+      "previous_decision": {
+        "decision": "rejected",
+        "sequence": 1,
+        "phase": "AwaitInitialClear",
+        "reason": "Pattern",
+        "event": "Clear",
+        "after_draw": 0,
+        "clear_flags": 1
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 1794,
+      "draws": 800,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 714,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 701
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 700,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 704,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 705,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 706,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 707,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 708,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 709,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 710,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 711,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 712,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 713,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 714,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 714,
+        "after_draw": 701,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 714,
+        "after_draw": 701,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 1795,
+      "draws": 800,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 714,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 701
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 700,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 704,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 705,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 706,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 707,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 708,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 709,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 710,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 711,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 712,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 713,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 714,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 714,
+        "after_draw": 701,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 714,
+        "after_draw": 701,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 1796,
+      "draws": 800,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 714,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 701
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 700,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 704,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 705,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 706,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 707,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 708,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 709,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 710,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 711,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 712,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 713,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 714,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 714,
+        "after_draw": 701,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 714,
+        "after_draw": 701,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 1797,
+      "draws": 800,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 714,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 701
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 700,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 704,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 705,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 706,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 707,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 708,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 709,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 710,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 711,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 712,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 713,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 714,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 714,
+        "after_draw": 701,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 714,
+        "after_draw": 701,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 1975,
+      "draws": 403,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 288,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 275
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 274,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 278,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 279,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 280,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 281,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 282,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 283,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 284,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 285,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 286,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 287,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 288,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 288,
+        "after_draw": 275,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 288,
+        "after_draw": 275,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 1976,
+      "draws": 404,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 289,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 276
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 275,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 279,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 280,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 281,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 282,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 283,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 284,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 285,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 286,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 287,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 288,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 289,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 289,
+        "after_draw": 276,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 289,
+        "after_draw": 276,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 1977,
+      "draws": 405,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 290,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 277
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 276,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 280,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 281,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 282,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 283,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 284,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 285,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 286,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 287,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 288,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 289,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 290,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 290,
+        "after_draw": 277,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 290,
+        "after_draw": 277,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 1978,
+      "draws": 405,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 290,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 277
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 276,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 280,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 281,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 282,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 283,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 284,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 285,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 286,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 287,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 288,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 289,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 290,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 290,
+        "after_draw": 277,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 290,
+        "after_draw": 277,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 2435,
+      "draws": 419,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 392,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 379
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 378,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 382,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 383,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 384,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 385,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 386,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 387,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 388,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 389,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 390,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 391,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 392,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 392,
+        "after_draw": 379,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 392,
+        "after_draw": 379,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 2436,
+      "draws": 419,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 392,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 379
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 378,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 382,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 383,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 384,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 385,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 386,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 387,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 388,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 389,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 390,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 391,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 392,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 392,
+        "after_draw": 379,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 392,
+        "after_draw": 379,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 2437,
+      "draws": 419,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 392,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 379
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 378,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 382,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 383,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 384,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 385,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 386,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 387,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 388,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 389,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 390,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 391,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 392,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 392,
+        "after_draw": 379,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 392,
+        "after_draw": 379,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 2438,
+      "draws": 415,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 392,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 379
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 378,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 382,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 383,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 384,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 385,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 386,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 387,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 388,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 389,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 390,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 391,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 392,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 392,
+        "after_draw": 379,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 392,
+        "after_draw": 379,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 2806,
+      "draws": 268,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 273,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 260
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 259,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 263,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 264,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 265,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 266,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 267,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 268,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 269,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 270,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 271,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 272,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 273,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 273,
+        "after_draw": 260,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 273,
+        "after_draw": 260,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 2807,
+      "draws": 268,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 273,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 260
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 259,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 263,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 264,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 265,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 266,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 267,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 268,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 269,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 270,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 271,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 272,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 273,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 273,
+        "after_draw": 260,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 273,
+        "after_draw": 260,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 2808,
+      "draws": 268,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 273,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 260
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 259,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 263,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 264,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 265,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 266,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 267,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 268,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 269,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 270,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 271,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 272,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 273,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 273,
+        "after_draw": 260,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 273,
+        "after_draw": 260,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 2809,
+      "draws": 268,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 273,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 260
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 259,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 263,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 264,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 265,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 266,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 267,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 268,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 269,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 270,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 271,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 272,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 273,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 273,
+        "after_draw": 260,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 273,
+        "after_draw": 260,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 3047,
+      "draws": 259,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 264,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 251
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 250,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 254,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 255,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 256,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 257,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 258,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 259,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 260,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 261,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 262,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 263,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 264,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 264,
+        "after_draw": 251,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 264,
+        "after_draw": 251,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 3048,
+      "draws": 257,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 262,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 249
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 248,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 252,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 253,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 254,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 255,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 256,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 257,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 258,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 259,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 260,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 261,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 262,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 262,
+        "after_draw": 249,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 262,
+        "after_draw": 249,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 3049,
+      "draws": 222,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 227,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 214
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 213,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 217,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 218,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 219,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 220,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 221,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 222,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 223,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 224,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 225,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 226,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 227,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 227,
+        "after_draw": 214,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 227,
+        "after_draw": 214,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 3050,
+      "draws": 222,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 227,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 214
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 213,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 217,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 218,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 219,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 220,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 221,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 222,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 223,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 224,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 225,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 226,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 227,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 227,
+        "after_draw": 214,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 227,
+        "after_draw": 214,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 4096,
+      "draws": 468,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 469,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 456
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 455,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 459,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 460,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 461,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 462,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 463,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 464,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 465,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 466,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 467,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 468,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 469,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 469,
+        "after_draw": 456,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 469,
+        "after_draw": 456,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 4097,
+      "draws": 468,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 469,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 456
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 455,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 459,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 460,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 461,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 462,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 463,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 464,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 465,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 466,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 467,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 468,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 469,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 469,
+        "after_draw": 456,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 469,
+        "after_draw": 456,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 4098,
+      "draws": 468,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 469,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 456
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 455,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 459,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 460,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 461,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 462,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 463,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 464,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 465,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 466,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 467,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 468,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 469,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 469,
+        "after_draw": 456,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 469,
+        "after_draw": 456,
+        "depth_epoch": 2
+      },
+      "changed": false
+    },
+    {
+      "device": 1,
+      "frame": 4099,
+      "draws": 468,
+      "observed_only": {
+        "selections": [],
+        "state": 9,
+        "rejection": 5,
+        "rejection_sequence": 1,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 9
+          }
+        ]
+      },
+      "with_explicit_assumptions": {
+        "selections": [
+          {
+            "sequence": 469,
+            "candidate": 1,
+            "confirmed": 1,
+            "color": 1,
+            "depth": 2,
+            "epoch": 2,
+            "after_draw": 456
+          }
+        ],
+        "state": 8,
+        "rejection": 0,
+        "rejection_sequence": 0,
+        "transitions": [
+          {
+            "sequence": 1,
+            "before": 0,
+            "after": 1
+          },
+          {
+            "sequence": 7,
+            "before": 1,
+            "after": 2
+          },
+          {
+            "sequence": 455,
+            "before": 2,
+            "after": 3
+          },
+          {
+            "sequence": 459,
+            "before": 3,
+            "after": 4
+          },
+          {
+            "sequence": 460,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 461,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 462,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 463,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 464,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 465,
+            "before": 5,
+            "after": 4
+          },
+          {
+            "sequence": 466,
+            "before": 4,
+            "after": 5
+          },
+          {
+            "sequence": 467,
+            "before": 5,
+            "after": 6
+          },
+          {
+            "sequence": 468,
+            "before": 6,
+            "after": 7
+          },
+          {
+            "sequence": 469,
+            "before": 7,
+            "after": 8
+          }
+        ]
+      },
+      "decision": {
+        "decision": "selected",
+        "sequence": 469,
+        "after_draw": 456,
+        "depth_epoch": 2
+      },
+      "previous_decision": {
+        "decision": "selected",
+        "sequence": 469,
+        "after_draw": 456,
+        "depth_epoch": 2
+      },
+      "changed": false
+    }
+  ],
+  "summary": {
+    "frames": 28,
+    "selected": 24,
+    "rejected": 4,
+    "incomplete": 0,
+    "previous_selected": 24,
+    "previous_rejected": 4,
+    "changed": 0,
+    "baseline_header_sha256": "4c28908bd51c4e0d25269088d91d02e23994089320288ffa161b8afee7c5ace9"
+  },
+  "sources_sha256": {
+    "src/renderer/scene_boundary.h": "6d2504e4b568e6fc0d24d2bd6a0d9437a5ccd54fe9e003905dfb46535256303e",
+    "verification/probe/scene_boundary_replay.cpp": "2a14a1f627f57589276847df26cc3984a57de9c8a899d24256d862da4ddb13be",
+    "tools/analysis/replay_scene_boundary.py": "58d79b2e77756c19e874b680ca2bf37229aac6f6b71f3830511b5d10272b8e84",
+    "verification/fixtures/iteration05-scene-boundaries.json": "fbbdd865d903d5d3fe32983f93b62712be73427d6457bd805dbf652b62e8b5f5"
+  }
+}

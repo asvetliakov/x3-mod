@@ -89,9 +89,12 @@ SELECTOR_STATES = {
     7: 'AwaitFinalClear', 8: 'Selected', 9: 'Rejected',
 }
 
-# The three background pairs the default SceneSignatures carries
-# (src/renderer/scene_boundary.h). Used only to explain a rejected frame; the
-# route itself is not consulted here.
+# The three background pairs the iteration-06 DLL's SceneSignatures carried.
+# Pre-correction rules: since the structural selector (docs/reverse-engineering/
+# scene-boundary-selector.md, "Structural background correction after
+# iteration 06") the header holds no background signatures and any successful
+# draw on the latched pair is background. Kept only to explain why the
+# iteration-06 build rejected frames; the route itself is not consulted here.
 BACKGROUND_PAIRS = frozenset({
     ('7b6393fe2d3e1d85', '6109cf64c03529dd'),
     ('37c34a7478544c14', '5f82ecacd39529cd'),
@@ -244,13 +247,18 @@ def passes_gate4_states(draw):
 
 
 def selector_explanation(frame):
-    """Replay the route's scene selector over the frame's own draw order.
+    """Replay the iteration-06 DLL's scene selector over the frame's draw order.
 
-    Only the two transitions that this session actually exercises are modelled:
-    the Background phase accepts the reviewed background pairs and the
-    depth-only Clear, and the Scene phase accepts draws with both stages bound.
-    The result names the first draw that forced ``advance`` to fail, which is
-    the reason every later draw of the frame is rejected at gate 2.
+    These are the PRE-CORRECTION rules the captured build ran with, kept so
+    the recorded rejections stay explainable: the Background phase accepted
+    only the three reviewed background pairs and the depth-only Clear, and the
+    Scene phase required both stages bound. The current selector
+    (src/renderer/scene_boundary.h) recognizes the background structurally and
+    tolerates null-PS draws in both phases, so it no longer rejects these
+    frames (verification/results/scene-boundary-replay-iteration06.json: 68 of
+    68 selected). The result names the first draw that forced ``advance`` to
+    fail under the old rules, which is why every later draw of the frame was
+    rejected at gate 2 in this capture.
     """
     state = 'background'
     for draw in frame.draws:

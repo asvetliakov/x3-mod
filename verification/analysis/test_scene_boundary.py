@@ -84,9 +84,43 @@ class SceneBoundaryTests(unittest.TestCase):
         self.events[self.bloom[0]],self.events[self.bloom[1]]=self.events[self.bloom[1]],self.events[self.bloom[0]]
         self.renumber(self.events);self.rejected()
 
-    def test_background_requires_observed_family_and_separate_clear(self):
-        self.events[1]['ps']=123;self.rejected()
-        self.setUp();self.events.pop(self.clear_indices[1]);self.renumber(self.events);self.rejected()
+    def selected(self,events=None):
+        result=self.run_events(events);self.assertEqual(result['state'],8)
+        self.assertEqual([s['confirmed'] for s in result['selections']],[1]);return result
+
+    def test_background_accepts_any_successful_draw_on_the_pair_before_the_depth_clear(self):
+        # Structural rule: shader identity is not a background criterion.
+        self.events[1]['ps']=123;self.selected()
+        for e in self.events[1:self.clear_indices[1]]:
+            if e['kind']==1:e['vs'],e['ps']=0xf80f7af59b667bb7,0xd6f6ba4fee1cd53e
+        self.selected()
+
+    def test_background_requires_a_draw_and_the_separate_depth_clear(self):
+        self.events.pop(self.clear_indices[1]);self.renumber(self.events);self.rejected()
+        self.setUp();del self.events[1:self.clear_indices[1]];self.renumber(self.events);self.rejected()
+
+    def test_background_draw_must_target_the_pair_with_a_full_viewport(self):
+        self.events[1]['viewport'][3]-=1;self.rejected()
+        self.setUp();self.events[1]['rt']=deepcopy(self.events[self.copy]['destination']);self.rejected()
+        self.setUp();self.events[1]['depth']={'known':True};self.rejected()
+        self.setUp();self.events[1]['only_rt0']=False;self.rejected()
+        self.setUp();self.events[1]['z_write']=2;self.rejected()
+
+    def test_null_pixel_shader_draw_is_tolerated_but_never_a_depth_writer(self):
+        scene=[i for i,e in enumerate(self.events) if e['kind']==1 and self.clear_indices[1]<i<self.copy]
+        self.events[scene[0]].update(ps=0,draw_state_known=False);self.selected()
+        self.setUp();self.events[1].update(ps=0,draw_state_known=False);self.selected()
+        # Unknown state with a pixel shader bound is still a failed query.
+        self.setUp();self.events[scene[0]]['draw_state_known']=False;self.rejected()
+        # An adapter that does know the z state of a null-PS draw may count it.
+        self.setUp()
+        for i in scene:self.events[i].update(ps=0,draw_state_known=False)
+        self.rejected()
+        self.events[scene[0]].update(draw_state_known=True,z_enable=1,z_write=1);self.selected()
+
+    def test_second_depth_only_clear_inside_the_scene_rejects(self):
+        extra=deepcopy(self.events[self.clear_indices[1]])
+        self.events.insert(self.copy-1,extra);self.renumber(self.events);self.rejected()
 
     def test_scene_requires_depth_writing_geometry(self):
         for e in self.events[self.clear_indices[1]+1:self.copy]:
@@ -221,6 +255,36 @@ class SceneBoundaryTests(unittest.TestCase):
         self.events.insert(self.copy+1,unsupported);self.renumber(self.events)
         result=self.run_events(extra={len(self.events)-1:['I']})
         self.assertEqual((result['rejection'],result['rejection_sequence'],result['selections']),(5,1,[]))
+
+    def test_gameplay_fixtures_replay_to_the_live_adapter_boundaries(self):
+        # Iteration 05: the live capture adapter confirmed these boundary events
+        # (scene_depth_boundary records); four menu frames had a color-only Clear.
+        live={1794:714,1795:714,1796:714,1797:714,1975:288,1976:289,1977:290,1978:290,
+              2435:392,2436:392,2437:392,2438:392,2806:273,2807:273,2808:273,2809:273,
+              3047:264,3048:262,3049:227,3050:227,4096:469,4097:469,4098:469,4099:469}
+        fixture=json.loads((ROOT/'verification/fixtures/iteration05-scene-boundaries.json').read_text())
+        outcomes={f['frame']:replay(self.executable,f,expand(fixture,f,True)) for f in fixture['frames']}
+        self.assertEqual(sorted(outcomes),[120,121,122,123,*sorted(live)])
+        for frame,sequence in live.items():
+            self.assertEqual((outcomes[frame]['state'],[s['sequence'] for s in outcomes[frame]['selections'] if s['confirmed']]),(8,[sequence]),frame)
+        for frame in (120,121,122,123):
+            self.assertEqual((outcomes[frame]['state'],outcomes[frame]['rejection_sequence'],outcomes[frame]['selections']),(9,1,[]),frame)
+        # Iteration 06: every captured frame selects at the depth-only Clear that
+        # follows background + scene + the four bloom draws (analyzer phase counts).
+        fixture=json.loads((ROOT/'verification/fixtures/iteration06-scene-boundaries.json').read_text())
+        summary=json.loads((ROOT/'verification/results/iteration-06-motion-summary.json').read_text())
+        phases={f['frame']:f['phase_draws'] for b in summary['bursts'] for f in b['per_frame']}
+        previously_rejected={f['frame'] for f in summary['scene_selection']['rejected_frames']}
+        self.assertEqual(len(previously_rejected),32)
+        selected=set()
+        for frame in fixture['frames']:
+            result=replay(self.executable,frame,expand(fixture,frame,True))
+            confirmed=[s for s in result['selections'] if s['confirmed']]
+            self.assertEqual((result['state'],len(confirmed)),(8,1),frame['frame'])
+            p=phases[frame['frame']]
+            self.assertEqual((frame['after_draw'][confirmed[0]['sequence']-1],p['bloom']),(p['background']+p['scene']+p['bloom'],4),frame['frame'])
+            selected.add(frame['frame'])
+        self.assertEqual(len(selected),68);self.assertTrue(previously_rejected<=selected)
 
     def test_truncation_cannot_confirm_future_clear(self):
         for end in (self.copy,self.bloom[-1]+1,self.boundary):

@@ -386,3 +386,27 @@ recognized, 99.47% of routed draws matched, every pixel obeyed the ABI, the
 row-pair reconstruction explained all 1,022,880 sampled pixels within 0.149 px,
 and an independent origin projection agreed in sign on 314 of 314 scored draws
 across two bursts.
+
+## Selector correction (addendum)
+
+Anomaly 1 was fixed in the recognizer, as the implications above required, but
+structurally rather than by widening the allowlist: the Background phase now
+accepts every successful draw on the latched color/depth pair with a full
+viewport until the first depth-only Clear of that pair, and the Scene phase
+tolerates a draw with a null pixel shader without counting it as the required
+depth writer. All other gates (initial Clear shape, no background draw, a
+second depth-only Clear inside the scene, copy, fills, the four-draw bloom
+chain, rebind, final Clear) are unchanged. Details and evidence are in the
+[selector notes](../reverse-engineering/scene-boundary-selector.md).
+
+Replaying this session's 68 captured frames through the previous and the
+corrected header (`tools/analysis/replay_scene_boundary.py --baseline-header`,
+report `verification/results/scene-boundary-replay-iteration06.json`): the
+previous header rejects exactly the 32 frames tabulated above, with the same
+three causes at the same draws; the corrected header selects all 68 at the
+depth-only Clear that follows background + scene + the four bloom draws, and
+the 36 frames that were already selected keep their boundary event. The
+iteration-05 log replays unchanged (24 selected at the events the live adapter
+had confirmed, 4 menu frames rejected at event 1), as do the twelve 0.3 fixture
+frames. The recovered frames have not been re-run in the game; the readback
+figures in this document are from the original session with the old selector.

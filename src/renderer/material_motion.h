@@ -26,9 +26,18 @@ struct MaterialMotionAbi {
 // (checked in material_motion.cpp), so the route uploads the same ranges for
 // every pair.
 inline constexpr const auto& material_motion_reviewed_pairs = motion_output_profiles;
-// The row for an exact pair of original fingerprints, or nullptr.
+// The row for an exact pair of original fingerprints, or nullptr. Binary
+// search over a compile-time sorted index of the rows (O(log rows), no
+// allocation), so the live route's per-draw pair gate does not scan the table.
 const MotionOutputProfile* material_motion_profile(std::uint64_t vertex, std::uint64_t pixel) noexcept;
 bool material_motion_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept;
+// The first row of a supported class hosting an original program of this exact
+// fingerprint and DWORD count, or nullptr; the same lookups the per-stage
+// transformers use, exposed so the route can record a program's row at
+// registration time. Rows sharing a program agree on that program's side of
+// the splice (static_assert in motion_output_profiles.h).
+const MotionOutputProfile* material_motion_vertex_row(std::uint64_t vertex, std::size_t words) noexcept;
+const MotionOutputProfile* material_motion_pixel_row(std::uint64_t pixel, std::size_t words) noexcept;
 // FNV-1a 64 over the program bytes in little-endian DWORD order. Equal to the
 // proxy's byte hash of the same bytecode, so create-time hashes identify pairs.
 std::uint64_t material_motion_fingerprint(const std::uint32_t* words, std::size_t count) noexcept;

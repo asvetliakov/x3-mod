@@ -228,8 +228,15 @@ def validate_case(name, mode, variant, enabled, text, trace, directory):
             assert got == SEAM_FRAMES[frame], (name, frame, got, SEAM_FRAMES[frame])
             assert summary['selector_state'] == '2', 'seam frames end inside the Scene phase'
         elif not live:
-            assert summary['routed'] == summary['matched'] == '0' and int(summary['gate2']) == int(summary['draws'])
-            assert summary['selector_state'] == '9', 'default signatures must reject the synthetic background'
+            # Production DLL: the structural selector enters the synthetic frame's
+            # scene phase too, but without the game observers every scene draw
+            # that passes gates 3-4 routes in sentinel-only mode (gate 5).
+            got = {k: int(summary[k]) for k in ('draws', 'routed', 'matched', 'gate2', 'gate3', 'gate4', 'gate5', 'gate6')}
+            assert got['matched'] == 0 and got['gate2'] == 1 and got['gate6'] == 0, (name, frame, got)
+            assert got['routed'] == got['gate5'] == got['draws'] - 1 - got['gate3'] - got['gate4'], (name, frame, got)
+            if frame in SEAM_FRAMES:
+                assert (got['gate3'], got['gate4']) == (SEAM_FRAMES[frame]['gate3'], SEAM_FRAMES[frame]['gate4']), (name, frame, got)
+            assert summary['selector_state'] == '2', 'production frames also end inside the Scene phase'
     assert sorted(readbacks) == list(range(1, 9)), (name, sorted(readbacks))
     for frame, r in readbacks.items():
         assert r['result'] == '00000000' and r['bytes'] == '65536' and r['width'] == r['height'] == '64'
@@ -243,14 +250,18 @@ def validate_case(name, mode, variant, enabled, text, trace, directory):
             assert sentinel == len(pixels), f'{name}: frame {frame} readback is not all sentinel'
     # Per-draw decisions logged in capture frames must agree with the fixture's script.
     expects = [fields(l) for l in lines if l.startswith('EXPECT ') and 1 <= int(fields(l)['frame']) <= 8]
-    assert len(routes) == len(expects) == sum(SEAM_FRAMES[f]['draws'] - 1 for f in SEAM_FRAMES) if live else True
+    assert len(routes) == len(expects) == sum(SEAM_FRAMES[f]['draws'] - 1 for f in SEAM_FRAMES), (name, len(routes), len(expects))
     if live:
         for e in expects:
             match = [r for r in routes if r['frame'] == e['frame'] and r['index'] == e['index']]
             assert len(match) == 1 and match[0]['routed'] == e['routed'] and match[0]['matched'] == e['matched'], (name, e, match)
             assert match[0]['result'] == '00000000'
     else:
-        assert not routes, f'{name}: production DLL must not reach the scene phase'
+        # Every production route is sentinel-only: routed exactly when scope is
+        # unknown (gate 5), never matched, and the fixture's own EXPECT lines
+        # (which assume no live routing) still name each scene draw once.
+        assert all(r['matched'] == '0' and r['routed'] == str(int(r['gate'] == '5')) and r['result'] == '00000000' for r in routes), f'{name}: production routes must be sentinel-only'
+        assert {(r['frame'], r['index']) for r in routes} == {(e['frame'], e['index']) for e in expects}, f'{name}: production routes must cover the scene draws'
     result.update(variants=len(variants), frames_logged=len(frames), readbacks=len(readbacks), routes=len(routes))
     return result
 

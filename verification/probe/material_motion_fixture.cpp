@@ -48,7 +48,8 @@ struct Gpu {
     Com<IDirect3DVertexDeclaration9> declaration[2];Com<IDirect3DVertexBuffer9> vb[2];
     Com<IDirect3DTexture9> textures[3],motion;Com<IDirect3DCubeTexture9> cube;
     Com<IDirect3DSurface9> color,depth,motion_surface,back;
-    Gpu(IDirect3DDevice9* device,const Words& v,const Words& p,const MaterialMotionVariant& changed,UINT width,UINT height,D3DFORMAT f):d(device),w(width),h(height),format(f),samplers(declared_samplers(p)){
+    UINT matrix; // c<n>..c<n+3>: where this row's vertex program reads the clip rows (24 with the point-light loop, 0 for the light-free variants).
+    Gpu(IDirect3DDevice9* device,const Words& v,const Words& p,const MaterialMotionVariant& changed,UINT width,UINT height,D3DFORMAT f,UINT matrix_register=24):d(device),w(width),h(height),format(f),samplers(declared_samplers(p)),matrix(matrix_register){
         api(d->GetRenderTarget(0,&back.p));api(d->CreateRenderTarget(w,h,f,D3DMULTISAMPLE_NONE,0,FALSE,&color.p,nullptr));
         api(d->CreateDepthStencilSurface(w,h,D3DFMT_D24X8,D3DMULTISAMPLE_NONE,0,FALSE,&depth.p,nullptr));
         api(d->CreateTexture(w,h,1,D3DUSAGE_RENDERTARGET,D3DFMT_A32B32G32R32F,D3DPOOL_DEFAULT,&motion.p,nullptr));api(motion->GetSurfaceLevel(0,&motion_surface.p));
@@ -56,18 +57,24 @@ struct Gpu {
         api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(p.data()),&ps[0].p));api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(changed.pixel.data()),&ps[1].p));
         api(d->CreateVertexShader(reinterpret_cast<const DWORD*>(rigid_replay_program().data()),&replay_vs.p));api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(rigid_motion_pixel_program()),&replay_ps.p));
         const float positions[3][3]={{-1,1,.5f},{3,1,.5f},{-1,-3,.5f}};
-        for(UINT packed=0;packed<2;++packed){const UINT stride=packed?24:32;
+        // Position, TEXCOORD0 and NORMAL0 as before, plus TANGENT0 (1,0,0) and
+        // BINORMAL0 (0,1,0): the archive's bump-mapped vertex programs declare
+        // both, and an element the program does not declare is ignored.
+        for(UINT packed=0;packed<2;++packed){const UINT stride=packed?40:56;
             const D3DVERTEXELEMENT9 elements[]={{0,0,BYTE(packed?D3DDECLTYPE_FLOAT16_4:D3DDECLTYPE_FLOAT3),D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},
                 {0,WORD(packed?8:12),BYTE(packed?D3DDECLTYPE_FLOAT16_4:D3DDECLTYPE_FLOAT2),D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TEXCOORD,0},
-                {0,WORD(packed?16:20),BYTE(packed?D3DDECLTYPE_FLOAT16_4:D3DDECLTYPE_FLOAT3),D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_NORMAL,0},D3DDECL_END()};
+                {0,WORD(packed?16:20),BYTE(packed?D3DDECLTYPE_FLOAT16_4:D3DDECLTYPE_FLOAT3),D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_NORMAL,0},
+                {0,WORD(packed?24:32),BYTE(packed?D3DDECLTYPE_FLOAT16_4:D3DDECLTYPE_FLOAT3),D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TANGENT,0},
+                {0,WORD(packed?32:44),BYTE(packed?D3DDECLTYPE_FLOAT16_4:D3DDECLTYPE_FLOAT3),D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_BINORMAL,0},D3DDECL_END()};
             api(d->CreateVertexDeclaration(elements,&declaration[packed].p));api(d->CreateVertexBuffer(stride*3,0,0,D3DPOOL_MANAGED,&vb[packed].p,nullptr));void* dst=nullptr;api(vb[packed]->Lock(0,0,&dst,0));
-            for(UINT i=0;i<3;++i){if(packed){unsigned short data[12]={half(positions[i][0]),half(positions[i][1]),half(.5f),half(7),half(float(i&1)),half(float(i>>1)),0,half(7),0,0,half(1),half(7)};std::memcpy(static_cast<char*>(dst)+i*stride,data,stride);}
-                else{float data[8]={positions[i][0],positions[i][1],.5f,float(i&1),float(i>>1),0,0,1};std::memcpy(static_cast<char*>(dst)+i*stride,data,stride);}}
+            for(UINT i=0;i<3;++i){if(packed){unsigned short data[20]={half(positions[i][0]),half(positions[i][1]),half(.5f),half(7),half(float(i&1)),half(float(i>>1)),0,half(7),0,0,half(1),half(7),half(1),0,0,half(7),0,half(1),0,half(7)};std::memcpy(static_cast<char*>(dst)+i*stride,data,stride);}
+                else{float data[14]={positions[i][0],positions[i][1],.5f,float(i&1),float(i>>1),0,0,1,1,0,0,0,1,0};std::memcpy(static_cast<char*>(dst)+i*stride,data,stride);}}
             api(vb[packed]->Unlock());}
         const DWORD texels[3][4]={{0x99704020,0xcc208050,0xaa508020,0xee403080},{0x80302010,0x90401020,0xa0205030,0xb0402060},{0x20100804,0x30201008,0x40201018,0x50182010}};
         for(UINT i=0;i<3;++i){api(d->CreateTexture(2,2,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&textures[i].p,nullptr));D3DLOCKED_RECT lock{};api(textures[i]->LockRect(0,&lock,nullptr,0));for(UINT y=0;y<2;++y)std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch,&texels[i][y*2],8);api(textures[i]->UnlockRect(0));}
         api(d->CreateCubeTexture(2,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&cube.p,nullptr));
         for(UINT face=0;face<6;++face){D3DLOCKED_RECT lock{};api(cube->LockRect(D3DCUBEMAP_FACES(face),0,&lock,nullptr,0));for(UINT y=0;y<2;++y)for(UINT x=0;x<2;++x){DWORD value=0xff102030+face*0x00050301;std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*4,&value,4);}api(cube->UnlockRect(D3DCUBEMAP_FACES(face),0));}
+        api(d->SetRenderTarget(1,nullptr));api(d->SetRenderTarget(0,color.p));api(d->Clear(0,nullptr,D3DCLEAR_TARGET,clear_color,1,0));clear_pixel=read(color.p,format)[0];api(d->SetRenderTarget(0,back.p));
     }
     ~Gpu(){for(auto [index,type]:samplers)d->SetTexture(index,nullptr);d->SetRenderTarget(1,nullptr);d->SetDepthStencilSurface(nullptr);d->SetRenderTarget(0,back.p);d->SetVertexShader(nullptr);d->SetPixelShader(nullptr);d->SetVertexDeclaration(nullptr);d->SetStreamSource(0,nullptr,0,0);}
     void state(const Configuration& c,bool variant){
@@ -75,13 +82,14 @@ struct Gpu {
         for(auto s:{D3DRS_ALPHABLENDENABLE,D3DRS_ALPHATESTENABLE,D3DRS_SEPARATEALPHABLENDENABLE,D3DRS_FOGENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_SCISSORTESTENABLE,D3DRS_STENCILENABLE,D3DRS_DITHERENABLE,D3DRS_CLIPPLANEENABLE,D3DRS_LIGHTING})api(d->SetRenderState(s,FALSE));
         for(auto s:{D3DRS_WRAP0,D3DRS_WRAP1,D3DRS_WRAP2,D3DRS_WRAP3,D3DRS_WRAP4})api(d->SetRenderState(s,0));
         api(d->SetRenderState(D3DRS_COLORWRITEENABLE,15));api(d->SetRenderState(D3DRS_COLORWRITEENABLE1,15));api(d->SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE));api(d->SetRenderState(D3DRS_ZENABLE,TRUE));api(d->SetRenderState(D3DRS_ZWRITEENABLE,TRUE));api(d->SetRenderState(D3DRS_ZFUNC,D3DCMP_LESSEQUAL));
-        api(d->SetVertexShader(vs[variant].p));api(d->SetPixelShader(ps[variant].p));api(d->SetVertexDeclaration(declaration[c.packed].p));api(d->SetStreamSource(0,vb[c.packed].p,0,c.packed?24:32));
+        api(d->SetVertexShader(vs[variant].p));api(d->SetPixelShader(ps[variant].p));api(d->SetVertexDeclaration(declaration[c.packed].p));api(d->SetStreamSource(0,vb[c.packed].p,0,c.packed?40:56));
         for(auto [i,type]:samplers){api(d->SetTexture(i,type==3?static_cast<IDirect3DBaseTexture9*>(cube.p):textures[i%3].p));for(auto s:{D3DSAMP_MINFILTER,D3DSAMP_MAGFILTER})api(d->SetSamplerState(i,s,D3DTEXF_POINT));api(d->SetSamplerState(i,D3DSAMP_MIPFILTER,D3DTEXF_NONE));api(d->SetSamplerState(i,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP));api(d->SetSamplerState(i,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP));api(d->SetSamplerState(i,D3DSAMP_SRGBTEXTURE,FALSE));}
         float values[256][4]{};std::memcpy(values[24],identity,sizeof identity);values[24][3]=c.translation;
         if(c.perspective){values[27][0]=.125f;values[26][0]=.0625f;values[26][2]=0;values[26][3]=.5f;}
         for(UINT base:{28u,31u,34u})for(UINT i=0;i<3;++i)values[base+i][i]=1;
         values[36][3]=4;values[37][0]=1;values[38][1]=1;values[39][0]=.625f;values[40][0]=.2f;values[40][1]=.1f;values[40][2]=.05f;values[41][0]=1;
         for(UINT i=0;i<8;++i){values[3*i][0]=float(i%3)-1;values[3*i][1]=1;values[3*i][2]=3;values[3*i+1][0]=.04f;values[3*i+1][1]=.025f;values[3*i+1][2]=.015f;values[3*i+2][0]=1;values[3*i+2][1]=.05f;}
+        if(matrix!=24)std::memcpy(values[matrix],values[24],sizeof(float)*16); // The same submitted rows at the row's clip-row register.
         std::memcpy(values[252],identity,sizeof identity);if(c.perspective)values[255][0]=.0625f;
         api(d->SetVertexShaderConstantF(0,values[0],256));int count[4]={int(c.lights),0,1,0};api(d->SetVertexShaderConstantI(0,count,1));BOOL fog=FALSE;api(d->SetVertexShaderConstantB(0,&fog,1));BOOL branches[2]={BOOL(c.booleans&1u),BOOL((c.booleans>>1)&1u)};api(d->SetPixelShaderConstantB(0,branches,2));
         float pixel[218][4]{};pixel[0][0]=pixel[1][1]=pixel[2][2]=c.material_scale;pixel[3][0]=.25f;pixel[4][2]=1;pixel[5][0]=.3f;pixel[5][1]=.2f;pixel[5][2]=.1f;pixel[6][0]=.5f;pixel[6][2]=.5f;pixel[7][0]=.1f;pixel[7][1]=.15f;pixel[7][2]=.2f;
@@ -91,8 +99,15 @@ struct Gpu {
     std::vector<Pixel> read(IDirect3DSurface9* target,D3DFORMAT f){Com<IDirect3DSurface9> sys;api(d->CreateOffscreenPlainSurface(w,h,f,D3DPOOL_SYSTEMMEM,&sys.p,nullptr));api(d->GetRenderTargetData(target,sys.p));D3DLOCKED_RECT lock{};api(sys->LockRect(&lock,nullptr,D3DLOCK_READONLY));std::vector<Pixel> result(std::size_t(w)*h);
         for(UINT y=0;y<h;++y)for(UINT x=0;x<w;++x){auto& p=result[std::size_t(y)*w+x];auto* ptr=static_cast<char*>(lock.pBits)+y*lock.Pitch+x*(f==D3DFMT_A8R8G8B8?4:16);if(f==D3DFMT_A8R8G8B8){DWORD value;std::memcpy(&value,ptr,4);p={{float(value>>16&255)/255,float(value>>8&255)/255,float(value&255)/255,float(value>>24)/255}};}else std::memcpy(&p,ptr,16);}
         api(sys->UnlockRect());return result;}
-    std::vector<Pixel> render(const Configuration& c,bool variant){state(c,variant);api(d->Clear(0,nullptr,D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER,0,1,0));draw();return read(color.p,format);}
-    static bool covered_pixel(const Pixel& p){return p.value[0]!=0||p.value[1]!=0||p.value[2]!=0||p.value[3]!=0;} // Differs from the zero clear.
+    std::vector<Pixel> render(const Configuration& c,bool variant){state(c,variant);api(d->Clear(0,nullptr,D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER,clear_color,1,0));
+        // The motion target keeps its zero clear (the replay reference clears it to zero too): rebind it alone as RT0, clear, restore.
+        if(variant){api(d->SetRenderTarget(1,nullptr));api(d->SetRenderTarget(0,motion_surface.p));api(d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));api(d->SetRenderTarget(0,color.p));api(d->SetRenderTarget(1,motion_surface.p));}
+        draw();return read(color.p,format);}
+    // Colour targets are cleared to an unlikely non-zero colour so a material whose
+    // output quantizes to zero in every ARGB8 channel still counts as covered.
+    static constexpr D3DCOLOR clear_color=0x40201008;
+    Pixel clear_pixel{}; // The cleared texel as this device/format actually stores it (probed once).
+    bool covered_pixel(const Pixel& p)const{for(unsigned k=0;k<4;++k)if(p.value[k]!=clear_pixel.value[k])return true;return false;} // Differs from the clear texel.
     void compare(const std::vector<Pixel>& a,const std::vector<Pixel>& b,const char* label){unsigned mismatch=0,covered=0;float maximum=0;for(std::size_t i=0;i<a.size();++i){covered+=covered_pixel(a[i]);for(unsigned k=0;k<4;++k){++colors;float error=std::fabs(a[i].value[k]-b[i].value[k]);maximum=std::max(maximum,error);if(!std::isfinite(a[i].value[k])||!std::isfinite(b[i].value[k])||error!=0)++mismatch;}}
         std::printf("COLOR %s width=%u height=%u format=%u components=%zu covered=%u mismatches=%u maximum=%.9g\n",label,w,h,unsigned(format),a.size()*4,covered,mismatch,maximum);require(!mismatch&&covered>0,"all original color channels unchanged and nonempty");}
     void replay(const Configuration& c,bool scene_open=false){
@@ -109,9 +124,9 @@ struct Gpu {
         render(c,false);replay(c);auto reference=read(motion_surface.p,D3DFMT_A32B32G32R32F);unsigned reference_mismatches=0;float reference_max=0;for(std::size_t i=0;i<output.size();++i)for(unsigned k=0;k<4;++k){float error=std::fabs(output[i].value[k]-reference[i].value[k]);reference_max=std::max(reference_max,error);reference_mismatches+=!std::isfinite(error)||error>2e-6;}std::printf("REFERENCE config=%u components=%zu mismatches=%u max=%.9g\n",configurations,output.size()*4,reference_mismatches,reference_max);require(!reference_mismatches,"same-draw output matches independent authored replay");
         for(UINT y:{h/4,h/2,3*h/4})for(UINT x:{w/4,w/2,3*w/4}){double nx=2.*x/w-1,ny=1-2.*y/h;double object_x=c.perspective?(nx-c.translation)/(1-.125*nx):nx-c.translation;double current_w=1+(c.perspective?.125*object_x:0);double object_y=ny*current_w;double previous_w=1+(c.perspective?.0625*object_x:0);double expected[4]={.5*object_x/previous_w+.5+.5/w-c.jx/w,-.5*object_y/previous_w+.5+.5/h-c.jy/h,.5/previous_w,1};if(!c.valid){expected[0]=expected[1]=expected[2]=0;expected[3]=-1;}
             require(covered_pixel(original[std::size_t(y)*w+x]),"motion sample is covered original geometry");for(UINT k=0;k<4;++k){float actual=output[std::size_t(y)*w+x].value[k];double error=std::fabs(actual-expected[k]);++numerics;double pixel_error=error*(k==0?w:k==1?h:1);bool okay=std::isfinite(actual)&&(k<2?pixel_error<=.005:error<=2e-6);std::printf("SAMPLE config=%u x=%u y=%u channel=%u actual=%.9g expected=%.9g error=%.9g pixel_error=%.9g %s\n",configurations,x,y,k,actual,expected[k],error,pixel_error,okay?"PASS":"FAIL");if(!okay)throw std::runtime_error("motion numeric");}}
-        for(unsigned reverse=0;reverse<2;++reverse){render(c,reverse);state(c,!reverse);api(d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE));api(d->SetRenderState(D3DRS_ZFUNC,D3DCMP_EQUAL));api(d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));draw();compare(original,read(color.p,format),"bilateral_depth_equal");++depth_cases;}
+        for(unsigned reverse=0;reverse<2;++reverse){render(c,reverse);state(c,!reverse);api(d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE));api(d->SetRenderState(D3DRS_ZFUNC,D3DCMP_EQUAL));api(d->Clear(0,nullptr,D3DCLEAR_TARGET,clear_color,1,0));draw();compare(original,read(color.p,format),"bilateral_depth_equal");++depth_cases;}
         // Changed depth must fail EQUAL instead of satisfying equality vacuously.
-        float row[4]={0,0,0,.8f};api(d->SetVertexShaderConstantF(26,row,1));api(d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));draw();auto negative=read(color.p,format);require(std::none_of(negative.begin(),negative.end(),covered_pixel),"changed depth rejects all tested fragments");
+        float row[4]={0,0,0,.8f};api(d->SetVertexShaderConstantF(matrix+2,row,1));api(d->Clear(0,nullptr,D3DCLEAR_TARGET,clear_color,1,0));draw();auto negative=read(color.p,format);require(std::none_of(negative.begin(),negative.end(),[&](const Pixel& p){return covered_pixel(p);}),"changed depth rejects all tested fragments");
     }
     void wait(IDirect3DQuery9* event){BOOL done=FALSE;auto limit=GetTickCount()+5000;for(;;){HRESULT hr=event->GetData(&done,sizeof done,D3DGETDATA_FLUSH);if(hr==S_OK&&done)return;if(FAILED(hr)||LONG(GetTickCount()-limit)>=0)throw std::runtime_error("event completion");Sleep(0);}}
     void timing(){Com<IDirect3DQuery9> event;api(d->CreateQuery(D3DQUERYTYPE_EVENT,&event.p));Configuration c;c.packed=true;c.perspective=true;c.lights=8;LARGE_INTEGER frequency;QueryPerformanceFrequency(&frequency);
@@ -145,7 +160,7 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int exit=1;
                 std::printf("ROW index=%u vs=%016llx ps=%016llx class=%c status=BEGIN\n",row_index,static_cast<unsigned long long>(row.vertex_fingerprint),static_cast<unsigned long long>(row.pixel_fingerprint),letter);
                 MaterialMotionVariant changed;require(material_motion_variant(rv.data(),rv.size(),rp.data(),rp.size(),changed)==MaterialMotionResult::Applied,"row local shader pair transformed");
                 const unsigned first=configurations;
-                for(auto f:{D3DFMT_A32B32G32R32F,D3DFMT_A8R8G8B8}){if(f==D3DFMT_A8R8G8B8&&!mixed)continue;Gpu gpu(d.p,rv,rp,changed,32,32,f);if(branching)gpu.boolean_sensitivity();
+                for(auto f:{D3DFMT_A32B32G32R32F,D3DFMT_A8R8G8B8}){if(f==D3DFMT_A8R8G8B8&&!mixed)continue;Gpu gpu(d.p,rv,rp,changed,32,32,f,row.matrix_register);if(branching)gpu.boolean_sensitivity();
                     for(unsigned booleans=0;booleans<(branching?4u:1u);++booleans){Configuration c;c.booleans=booleans;gpu.test(c);c.packed=true;c.perspective=true;c.translation=.25f;c.jx=.25f;c.jy=-.375f;gpu.test(c);c.valid=false;gpu.test(c);}}
                 std::printf("ROW index=%u vs=%016llx ps=%016llx class=%c status=PASS configurations=%u\n",row_index,static_cast<unsigned long long>(row.vertex_fingerprint),static_cast<unsigned long long>(row.pixel_fingerprint),letter,configurations-first);++row_transformed;++row_index;}}
         std::printf("RESULT PASS checks=%u numerical=%u color_components=%u depth_cases=%u configurations=%u devices=3 rows=%u row_transformed=%u row_skipped=%u\n",checks,numerics,colors,depth_cases,configurations,row_index,row_transformed,row_skipped);exit=0;

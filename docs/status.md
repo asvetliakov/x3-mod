@@ -38,17 +38,32 @@ Evidence at this checkpoint:
   matches 99.97% of keyable scene draws across 18 adjacent frame pairs with no
   in-frame duplicates; dropping buffer identity leaves 174 ambiguous sub-mesh
   splits. See [motion history key](reverse-engineering/motion-history-key.md).
-- Shader coverage: the transformer is table-driven from
-  `src/renderer/motion_output_profiles_inc.h` and transforms all 16
-  transformable SM3 material pairs (97.6% of scene-segment draws; classes A, B
-  and C, the last with static boolean branches): 161 structural check groups,
-  925,248 single-bit mutations rejected, 26–40 program perturbations per row,
-  and the GPU fixture passes every row and every branch combination with color
-  identical and motion within 0.00086 px. The remaining 2.4% (bloom, SM1/SM2)
-  keeps the sentinel. See
-  [motion output profiles](reverse-engineering/motion-output-profiles.md),
-  [material motion](verification/material-motion.md),
-  [review 13](verification/review-13.md) and [review 14](verification/review-14.md).
+- Shader coverage is archive-wide: all 3,480 effect files were parsed for
+  their 817 VS/PS pairings, and the transformer table now holds 169 of the
+  180 SM3 pairs (56 class A, 101 B, 12 C, including asteroid, moon and planet
+  haze programs with spaced position quads). The 11 unsupported SM3 pairs are
+  bloom quads and two compare-branch damage shaders. All 169 rows pass the
+  structural fixture (1,551,936 mutations) and the GPU fixture with color
+  identical. Of 466 SM2 pairs, 115 could host a ps_2_0 fragment and 267 a
+  ps_2_x one; SM1 has no MRT. Pair lookup is a binary search over sorted
+  index tables; the constant shadow captures every matrix window the table
+  names. See [motion output profiles](reverse-engineering/motion-output-profiles.md),
+  [material motion](verification/material-motion.md) and reviews
+  [13](verification/review-13.md), [14](verification/review-14.md),
+  [15](verification/review-15.md).
+- **First gameplay run ([iteration 6](verification/iteration-06.md))**: across
+  several sectors and a ship kill, 17,390 routed draws with 99.5% matched
+  history, zero apply/restore/fill/Reset failures, lock time 0.34% of wall.
+  All 1,022,880 valid readback pixels are explained by the stored row pairs
+  at 0.149 px maximum error, and an independent origin cross-check agrees in
+  sign on every axis (magnitude ratio 1.0006). The main scene is 92.7% SM3;
+  sub-SM3 draws there are depth-only or blended, so no shader rewrite is
+  needed. The selector rejected 47% of captured frames on unseen background
+  pairs and null-PS depth passes; it is now structural (background = draws
+  before the scene's depth-only Clear, null PS tolerated) and replays 68/68
+  iteration-6 and 24/4 iteration-5 frames correctly. Load/registry epochs did
+  not advance across sector changes, so the temporal design gained a
+  displacement-based cut detector.
 - The motion-output fixture now runs in 16 environments including the
   ownership wrapper, depth copy and admission, which the gameplay run needs.
   That coverage found and fixed a refcount defect that would have leaked the
@@ -84,9 +99,8 @@ commit `66d91a4`, SHA256
 iteration-5 DLL (`ed19a7ab…`) is preserved as
 `artifacts/rollback/d3d9-iteration05.dll`. The route is off unless the launcher
 passes `--motion-output`; see the run command in
-[motion output](verification/motion-output.md). Archive-wide classification of
-all SM3 material pairings is in progress so coverage does not depend on which
-sectors the user can test.
+[motion output](verification/motion-output.md). The installed build predates the
+archive-wide table and the selector correction.
 
 ## Concrete next work
 

@@ -33,16 +33,18 @@ readback; Present.
 
 Two DLLs are exercised:
 
-- **production** – `build/d3d9.dll` unchanged. The default signatures do not
-  recognize the synthetic background, so the selector never enters the scene
-  phase: this proves fill, restoration, Reset with RT1 owned, readback files
-  and device release without routing.
+- **production** – `build/d3d9.dll` unchanged. Since the structural
+  background rule the selector enters the synthetic scene phase here too, but
+  the game observers are absent, so every scene draw that passes gates 3-4
+  routes in sentinel-only mode (gate 5, never matched): this proves fill,
+  restoration, Reset with RT1 owned, readback files, all-sentinel readbacks,
+  bit-identical color and device release without any live motion.
 - **seam** – the production objects linked with `capture.cpp` and
   `motion_output.cpp` compiled under `X3M_MOTION_OUTPUT_FIXTURE`, exporting
-  `x3m_motion_output_fixture_configure` (fixture background signature and
-  per-draw synthetic scope) and `x3m_motion_output_fixture_readback`. The
-  game observers cannot run in a synthetic process, and the selector's
-  signatures are game hashes, so this seam is the only way to reach gates 5–6.
+  `x3m_motion_output_fixture_configure` (per-draw synthetic scope; its
+  background-signature fields are deprecated and ignored by the selector) and
+  `x3m_motion_output_fixture_readback`. The game observers cannot run in a
+  synthetic process, so this seam is the only way to reach gate 6 and matches.
 
 The seam script (DLL frame numbers): f0 first frame (mode 0 sentinel), f1
 matched with the application writing `c252–255` and PS `c216–217` first, f2
@@ -158,7 +160,11 @@ checkpoint.
 
 All 39 restoration comparisons in every run report zero differences. Every
 seam-on run: maximum error 0.0016 px UV, 3.7e-8 previous depth, 19 routed-draw
-decisions matched against the script. The color hashes of all 12 frames form
+decisions matched against the script. Every production-on run (structural
+selector): the same 19 scene draws reach the route, `selector_state=2` at
+Present, one gate-2 background draw per frame, the blend and flat-PS draws
+stop at gates 4 and 3, and every remaining draw routes sentinel-only at gate 5
+with `matched=0`; readbacks are all sentinel. The color hashes of all 12 frames form
 one set across all sixteen runs: identical with the route off and on, and
 identical between the plain, wrapper, depth and admission environments. The
 DLL's per-frame gate histogram and per-draw `motion_route` decisions in capture
@@ -184,10 +190,11 @@ The device gate reports the mixed-format MRT self test passing on the
 Preview backend (`color_errors=0 motion_errors=0`), four MRTs, 256 VS
 constants and `D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS`.
 
-Existing suites after the change: material-motion structure (16 rows, 161
-check groups, 925,248 mutations, 96 aliases), material-motion GPU (Argon
-1,182 checks, 2,952 samples, 82 configurations; 16 of 16 rows, 168
-configurations, 2,376 checks), ownership integration (26 cases, rebuilt `build-ownership/`
+Existing suites after the change (rerun on the 169-row table, review 15):
+material-motion structure (169 rows, 1,691 check groups, 1,551,936
+mutations, 1,014 aliases, lookup oracle over all rows), material-motion GPU
+(Argon 1,182 checks, 2,952 samples, 82 configurations; 169 of 169 rows,
+1,230 configurations, 17,413 checks), ownership integration (26 cases, rebuilt `build-ownership/`
 with the `frame=` field added to `ownership_copy_depth`), fallback (23
 production objects), verification and `check_no_x87.py` (6 light hooks, 125
 reachable functions, 0 x87 opcodes) all pass.

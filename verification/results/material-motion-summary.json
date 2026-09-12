@@ -7,10 +7,10 @@
   "cpu_baseline": "SSE2; stack realignment; four-byte incoming Win32 stack",
   "native_module_mapping": "32-bit process logical C:\\windows\\system32 maps host bottle windows/syswow64 PE32 files",
   "sources_before_build": {
-    "src/renderer/material_motion.h": "29a5a004affa596d1a08be0867c5103624250bbcc1bdd021891af280f98ba62b",
-    "src/renderer/material_motion.cpp": "d4f127c41bd3e1df5cbb8745b5ba991fbf58607865a8008fba0d1ee1a2c60f82",
-    "src/renderer/motion_output_profiles.h": "6b7032c142fadd7246f988b4abd7ebcae66ded9c6cab578ddce19a2870a7e2c6",
-    "src/renderer/motion_output_profiles_inc.h": "bdd2209c577562e3a17c107df171f817d9026d7af24e619a6e2f3af6f222e7c6",
+    "src/renderer/material_motion.h": "9f9eded5a9e678973e8c2ab78e827a16d21c8bd915f9c1a16ec11521f9f5ff46",
+    "src/renderer/material_motion.cpp": "5bce0921ab64e4063c37e9a38ad56dbd9f1185cd2c98c40a37933e7646c98e9d",
+    "src/renderer/motion_output_profiles.h": "3893babcf911cefc34f9c77aa0bb791bb3ac0f455e5d188fdca1c3449f2b59c5",
+    "src/renderer/motion_output_profiles_inc.h": "f83d70bd7f96f40b42758685c0fa422793e422f0526259383ef0521e79a69490",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
@@ -21,9 +21,9 @@
     "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
     "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
     "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
-    "verification/probe/material_motion_fixture.cpp": "db203f3c8daee5d7fc397421089a71aaa85124ace94d71b147aa258563a8a066",
+    "verification/probe/material_motion_fixture.cpp": "2ef2289c85fb6e93c3a4fe4d63d1c21c86f48bcf85a1948b7206260400377038",
     "verification/probe/build_material_motion.sh": "b79eed949cf2f57317976b24b0060257a2a435597a9cd2982a3f673934b3777a",
-    "verification/probe/run_material_motion.py": "371c6eb967f084093fe751a9338e41e6796fd9644e063fe867106ef77e5199a0"
+    "verification/probe/run_material_motion.py": "674779553ee753d9cba0ad7c35880e12ffc82ffa0e45fb683ef7cb6ac9b09300"
   },
   "native_before_build": {
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96",
@@ -36,7 +36,7 @@
     "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
   },
   "programs_directory": "/tmp/x3-shader-sweep/programs",
-  "profiles_json_sha256": "341c00c8b3e8736216abd9b0c51e308ee1f53ac5e22dfcc3f65cf30cf2fd182e",
+  "profiles_json_sha256": "fa8b70e0fb897994bdb939a1810f6574eba59611b4391d92464fe0f86bf60f58",
   "row_inputs": [
     {
       "vs": {
@@ -229,6 +229,1842 @@
         "sha256": "b50da3d3ad2e8e73b716c6c96d65e00b8aa06d156549d931c753962de2a84256",
         "bytes": 1236
       }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_0c223ad11bce02d5.bin",
+        "sha256": "573d688222bcdee8234d60123199d5fc7b65158e8201b3e99a37bd254a697dd3",
+        "bytes": 2068
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_7a0c3388065bb08d.bin",
+        "sha256": "ac32e61edcf09cd6e3d5a2d05524131754e128b2fd2530103bdcb6bb0cfca8e7",
+        "bytes": 1292
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_12b8a13f13fe8cfe.bin",
+        "sha256": "2bbd1f6d8d88dc72663e3b4408d0c3d12fa89127dbaa8cd95c682ee2b6198bac",
+        "bytes": 2072
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_550c2a4d4d3ed70f.bin",
+        "sha256": "4cabe57e615dae67307a2c875fdef49c1211b2235c80b16c6b938e358128c900",
+        "bytes": 1496
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_042c9ae16f41feff.bin",
+        "sha256": "38813e508bcbc00d21cd7e3a54a851933a03ff629d2cc1906a8752023e024a48",
+        "bytes": 4992
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_1ed1bf0fdec00e1a.bin",
+        "sha256": "b144ea7b37fa3da24e8eacf4577beedf8608f1ee833e79e050ceb78c33432ecc",
+        "bytes": 5124
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_22cc5b05a55ef61e.bin",
+        "sha256": "fc02f5734a8b555e34eb08bcfe04c379a4531e0c3b44a726ae9a10d145a8b7f5",
+        "bytes": 1400
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_2b04461d0dae038b.bin",
+        "sha256": "b711af0319a875d9ce8e37fd1be97730205fc84ced93afecdc26fb524c541a69",
+        "bytes": 1344
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_4f052209611387f0.bin",
+        "sha256": "00a41a4373189771936f7ac83e7402fd4de031e82d567f003e5304dc40b8c399",
+        "bytes": 5304
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_5c823b8507fa1442.bin",
+        "sha256": "8ce6dc84ed02a20ce2c44033d45ec2fb6860f979a5f70bbd915f0f3feb888383",
+        "bytes": 1292
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_63379470db8d2a86.bin",
+        "sha256": "09cf71c72e3adb6157f03802f7ecdbef1ddb07fdb46620d494886b9c25e4f6ad",
+        "bytes": 5004
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_68915563dd0aac9a.bin",
+        "sha256": "4464ac12b326c249d99c868bcb4cd29e2d7d227bf8f6a5f9b1d8eb9383e22306",
+        "bytes": 1328
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_68f0dd6791fd7d3d.bin",
+        "sha256": "888d2654a8fa543b73f561bc77596aeca0d7721a790d95eab3caf43ca776937d",
+        "bytes": 5096
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_769c3814fc0efba8.bin",
+        "sha256": "36e8bd790bac0395981beeaec7da54801a0baff7a8dee1480f7840a5b2445c5b",
+        "bytes": 1296
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_789449ffd931d23e.bin",
+        "sha256": "8c91873e3ddea1dedd53ab4986359e3e3ae068f2190c25fa54291b8a0adf7626",
+        "bytes": 5200
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_78963cdc7c710e04.bin",
+        "sha256": "1bd7cb2ad8a48f55fa521caf72f700dbe0416cd4515736290568e9e3a699f678",
+        "bytes": 5020
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_a6e1328c0bb3f401.bin",
+        "sha256": "e060a279d7a8afe1226f252eadc61dcefb380ef561ce0ae7c01592454e545ebe",
+        "bytes": 1420
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_abf3c0fad53456d8.bin",
+        "sha256": "6151df95b22e802cf10cfc3576639e1a193518daa57c429e2f6a33e79c7820b6",
+        "bytes": 1500
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_acc83ed2509d84a1.bin",
+        "sha256": "743d1f2f3437a83a0ce88f265776e5b4438ff9ad2149835711a70ea7b3dad963",
+        "bytes": 1448
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_b0f9313b77cc78ee.bin",
+        "sha256": "3a99cad79bb9dbda01722c359edf6fe735ba4d2b6b14ee956106c3e9baf0a12f",
+        "bytes": 5156
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_cf449bcb069aec4f.bin",
+        "sha256": "df47b99fa5e10086084c807bcb975efe482de077d74909bdae176640bcc70e38",
+        "bytes": 1628
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_d086fde54698070c.bin",
+        "sha256": "853ec215ef1b66b60dcdad133ab5dd79188e228dedac47f76dea9ab57ce33c1c",
+        "bytes": 5108
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_d514bf852d8a9c58.bin",
+        "sha256": "06596e9cf8239e99b6ee9d98ed6a2aaa87fedeab8e1ba50936e7ea1c5e4343d6",
+        "bytes": 5260
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_dff6a3d360603fa2.bin",
+        "sha256": "09fbe59c69a78370eca4eea1ab7302305fe659e70971f60bf809c2975cf25b9f",
+        "bytes": 1456
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_e5ea78b8b0b0fe07.bin",
+        "sha256": "dbd52a8f2f85955006e3058cb3aeae754519845e2aa4466b27d5c80c49ba4d2b",
+        "bytes": 4972
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f17fffd88d134b04.bin",
+        "sha256": "56646034e3ced67ead822a25759e4ed0f76e9adaf0c15ea34f550cd5879144bb",
+        "bytes": 1432
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f1d14a7dbf7c6173.bin",
+        "sha256": "b5d4d3a813c52386f6b7d40fd423e979c1feb9cf3ea2c9ae8f5ffcdb9e41d75b",
+        "bytes": 1584
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_19a246a56e9d9700.bin",
+        "sha256": "0650b3484fb840734d006ea6bcb43891d82aaf855e53f6957d51d2ed89350e9c",
+        "bytes": 2044
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f42202faf57a3c89.bin",
+        "sha256": "6650ca483e51e1ae9e752e1d4d1a7c19f68d3980bbaede429ade5452ae7b0ef3",
+        "bytes": 5076
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_233d17d26ce0c1fc.bin",
+        "sha256": "0101713ccc59fd34de25637bdfe903d8806e8f22fcd13e0810460a518ada2111",
+        "bytes": 1888
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_7a0c3388065bb08d.bin",
+        "sha256": "ac32e61edcf09cd6e3d5a2d05524131754e128b2fd2530103bdcb6bb0cfca8e7",
+        "bytes": 1292
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_29d7c575396ed280.bin",
+        "sha256": "79897ccd08fd8852f80ff1c166c7faaba9609d27b7905bb71e0c3a26b37060bf",
+        "bytes": 2308
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_39eb3c2258a516e1.bin",
+        "sha256": "59c045239f724005744fe7bb9e58fad17356a28cb75bbec8e04e0e4bde926019",
+        "bytes": 1728
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_29d7c575396ed280.bin",
+        "sha256": "79897ccd08fd8852f80ff1c166c7faaba9609d27b7905bb71e0c3a26b37060bf",
+        "bytes": 2308
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_57acf59d19c73791.bin",
+        "sha256": "bfa8fb6c3f473758768dc72a7dc00da3ab89d08418298aa1d5130ab614bce30d",
+        "bytes": 1856
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_2a560f246c90fa64.bin",
+        "sha256": "b0a63b2df4caa9cfe3f6afba2b06006f12bf5342137d7d8a708083eddfb9b452",
+        "bytes": 2208
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_43c9405568d2226f.bin",
+        "sha256": "d2544a28896c0cb60b9741a7cbd788ef11600e5d15016b287942de9a45717df1",
+        "bytes": 5388
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_2a560f246c90fa64.bin",
+        "sha256": "b0a63b2df4caa9cfe3f6afba2b06006f12bf5342137d7d8a708083eddfb9b452",
+        "bytes": 2208
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_5e056627e9ff3a8d.bin",
+        "sha256": "a87d5b7a2f902531821c4127085bc28765f79ce8f1f8e18f88aa4b1668b039d9",
+        "bytes": 1608
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_2a560f246c90fa64.bin",
+        "sha256": "b0a63b2df4caa9cfe3f6afba2b06006f12bf5342137d7d8a708083eddfb9b452",
+        "bytes": 2208
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_7e5e41276b3d7514.bin",
+        "sha256": "d37239e21553e3681b507b0dc3e1a249c3ea6fda762372dda4160d131bba6a20",
+        "bytes": 5284
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_2a560f246c90fa64.bin",
+        "sha256": "b0a63b2df4caa9cfe3f6afba2b06006f12bf5342137d7d8a708083eddfb9b452",
+        "bytes": 2208
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_fce465befff2f623.bin",
+        "sha256": "3790c9f432dd55ad750334b9f81d0beedf982c73f53c2917c1a1810149f4b8bb",
+        "bytes": 1712
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_2e0254dd999841c2.bin",
+        "sha256": "9adf881597a1867f730bb04e2c1c182da09877ed7166f330e6e86b3ac3843eb5",
+        "bytes": 2252
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_675f9077d8fd21c4.bin",
+        "sha256": "fbc4ce907789a1f3e89c3527f124dc179c800bc0d64f29280558c1ce7f3c43ea",
+        "bytes": 1464
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_2e0254dd999841c2.bin",
+        "sha256": "9adf881597a1867f730bb04e2c1c182da09877ed7166f330e6e86b3ac3843eb5",
+        "bytes": 2252
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_c997a37560e266df.bin",
+        "sha256": "bd78ae47fb1a10ce98cb8545104a3142baf3a125a56f1e3b2fff84cd8ffbe90e",
+        "bytes": 1360
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_2e0254dd999841c2.bin",
+        "sha256": "9adf881597a1867f730bb04e2c1c182da09877ed7166f330e6e86b3ac3843eb5",
+        "bytes": 2252
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_ebf41e1ace7af45b.bin",
+        "sha256": "b60daecd8b1092af871089538b721924ec7d588cc17108ee32e2a882ecd19b03",
+        "bytes": 5140
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_2e0254dd999841c2.bin",
+        "sha256": "9adf881597a1867f730bb04e2c1c182da09877ed7166f330e6e86b3ac3843eb5",
+        "bytes": 2252
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f646f03be5a8708d.bin",
+        "sha256": "f31bccbaba809d448681623904e8cda84ae6507c6fad5d10e7f87bed4f916713",
+        "bytes": 5036
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_330ceb9dd874ede2.bin",
+        "sha256": "77280b11612c3c8c30d02e75385b292d5dd0d580c3663ba527224c6daed148c5",
+        "bytes": 2252
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_550c2a4d4d3ed70f.bin",
+        "sha256": "4cabe57e615dae67307a2c875fdef49c1211b2235c80b16c6b938e358128c900",
+        "bytes": 1496
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_33388c8897d428a5.bin",
+        "sha256": "bfa98def42db1b4c096bd76ad8b329c2f5dfe3f0ce74e9e0141df1b80c40592d",
+        "bytes": 2412
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_188c5ab9dbb98393.bin",
+        "sha256": "c60ab74a97d0f956737aee8b9420aacf84af0e7c1dc934723889e8db5e2f856e",
+        "bytes": 5388
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_33388c8897d428a5.bin",
+        "sha256": "bfa98def42db1b4c096bd76ad8b329c2f5dfe3f0ce74e9e0141df1b80c40592d",
+        "bytes": 2412
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_18d372968af4a480.bin",
+        "sha256": "65cc7dcd07af778cc72f39d1bfdec92089d32873528f41fc4933d553b3ae340b",
+        "bytes": 5284
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_1de3d2dde345a7e3.bin",
+        "sha256": "99c488578f504ff40f7fa706ccb03b208cb9bc94220006574d62c9f982a9adee",
+        "bytes": 6840
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_496049cec2066ed3.bin",
+        "sha256": "20fe53ef998ebd1b4d00805c5d6b994b17ad8b5a084c2eb02330123812947ba3",
+        "bytes": 7120
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_6733b119142c8d42.bin",
+        "sha256": "054e5a62f0e2776e23e976a4712b12a17b733b74d8044414aab2848319e8316b",
+        "bytes": 7016
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_75fb9c6b05e28ea2.bin",
+        "sha256": "00db65e838df26d31803d09bba8cfa9acbdc286d5c5b9a5b9b382f760840afb6",
+        "bytes": 6692
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_d22f2ce2c740e6a7.bin",
+        "sha256": "e0ddf6118ccb38dc663a416b4edcb934490456a993484d3025e186965cf3d6bd",
+        "bytes": 6736
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_edaef099780fcafe.bin",
+        "sha256": "ae68ffcaa603442ef0b5ebd11e6667004b3efdc9a52b37c882cc13b4ff485bd1",
+        "bytes": 6796
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37e6956afd8b8d76.bin",
+        "sha256": "51dd4270e79cf88df29b436139b4b95a224b7b627da489f9b578bdea8dd547fb",
+        "bytes": 2252
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_9d27e7ba242f3831.bin",
+        "sha256": "5f543e547530b2b3c8cfee1426446b78defa5c4c37b0b7788e282c38ab1e6a46",
+        "bytes": 5036
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37e6956afd8b8d76.bin",
+        "sha256": "51dd4270e79cf88df29b436139b4b95a224b7b627da489f9b578bdea8dd547fb",
+        "bytes": 2252
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_e1acf8a03850acaf.bin",
+        "sha256": "5923e9e9298bf80ec03c43dbc03371fcbec8bef359f95f7c76bb81f54d3b37af",
+        "bytes": 5140
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_042c9ae16f41feff.bin",
+        "sha256": "38813e508bcbc00d21cd7e3a54a851933a03ff629d2cc1906a8752023e024a48",
+        "bytes": 4992
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_1ed1bf0fdec00e1a.bin",
+        "sha256": "b144ea7b37fa3da24e8eacf4577beedf8608f1ee833e79e050ceb78c33432ecc",
+        "bytes": 5124
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_22cc5b05a55ef61e.bin",
+        "sha256": "fc02f5734a8b555e34eb08bcfe04c379a4531e0c3b44a726ae9a10d145a8b7f5",
+        "bytes": 1400
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_2b04461d0dae038b.bin",
+        "sha256": "b711af0319a875d9ce8e37fd1be97730205fc84ced93afecdc26fb524c541a69",
+        "bytes": 1344
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_4f052209611387f0.bin",
+        "sha256": "00a41a4373189771936f7ac83e7402fd4de031e82d567f003e5304dc40b8c399",
+        "bytes": 5304
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_5c823b8507fa1442.bin",
+        "sha256": "8ce6dc84ed02a20ce2c44033d45ec2fb6860f979a5f70bbd915f0f3feb888383",
+        "bytes": 1292
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_63379470db8d2a86.bin",
+        "sha256": "09cf71c72e3adb6157f03802f7ecdbef1ddb07fdb46620d494886b9c25e4f6ad",
+        "bytes": 5004
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_68915563dd0aac9a.bin",
+        "sha256": "4464ac12b326c249d99c868bcb4cd29e2d7d227bf8f6a5f9b1d8eb9383e22306",
+        "bytes": 1328
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_68f0dd6791fd7d3d.bin",
+        "sha256": "888d2654a8fa543b73f561bc77596aeca0d7721a790d95eab3caf43ca776937d",
+        "bytes": 5096
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_769c3814fc0efba8.bin",
+        "sha256": "36e8bd790bac0395981beeaec7da54801a0baff7a8dee1480f7840a5b2445c5b",
+        "bytes": 1296
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_789449ffd931d23e.bin",
+        "sha256": "8c91873e3ddea1dedd53ab4986359e3e3ae068f2190c25fa54291b8a0adf7626",
+        "bytes": 5200
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_78963cdc7c710e04.bin",
+        "sha256": "1bd7cb2ad8a48f55fa521caf72f700dbe0416cd4515736290568e9e3a699f678",
+        "bytes": 5020
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_a6e1328c0bb3f401.bin",
+        "sha256": "e060a279d7a8afe1226f252eadc61dcefb380ef561ce0ae7c01592454e545ebe",
+        "bytes": 1420
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_abf3c0fad53456d8.bin",
+        "sha256": "6151df95b22e802cf10cfc3576639e1a193518daa57c429e2f6a33e79c7820b6",
+        "bytes": 1500
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_acc83ed2509d84a1.bin",
+        "sha256": "743d1f2f3437a83a0ce88f265776e5b4438ff9ad2149835711a70ea7b3dad963",
+        "bytes": 1448
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_b0f9313b77cc78ee.bin",
+        "sha256": "3a99cad79bb9dbda01722c359edf6fe735ba4d2b6b14ee956106c3e9baf0a12f",
+        "bytes": 5156
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_cf449bcb069aec4f.bin",
+        "sha256": "df47b99fa5e10086084c807bcb975efe482de077d74909bdae176640bcc70e38",
+        "bytes": 1628
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_d086fde54698070c.bin",
+        "sha256": "853ec215ef1b66b60dcdad133ab5dd79188e228dedac47f76dea9ab57ce33c1c",
+        "bytes": 5108
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_d514bf852d8a9c58.bin",
+        "sha256": "06596e9cf8239e99b6ee9d98ed6a2aaa87fedeab8e1ba50936e7ea1c5e4343d6",
+        "bytes": 5260
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_dff6a3d360603fa2.bin",
+        "sha256": "09fbe59c69a78370eca4eea1ab7302305fe659e70971f60bf809c2975cf25b9f",
+        "bytes": 1456
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_e5ea78b8b0b0fe07.bin",
+        "sha256": "dbd52a8f2f85955006e3058cb3aeae754519845e2aa4466b27d5c80c49ba4d2b",
+        "bytes": 4972
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f17fffd88d134b04.bin",
+        "sha256": "56646034e3ced67ead822a25759e4ed0f76e9adaf0c15ea34f550cd5879144bb",
+        "bytes": 1432
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f1d14a7dbf7c6173.bin",
+        "sha256": "b5d4d3a813c52386f6b7d40fd423e979c1feb9cf3ea2c9ae8f5ffcdb9e41d75b",
+        "bytes": 1584
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_44c4a41ca92ae2e3.bin",
+        "sha256": "ce598a483ec842635da5d8f1e492f5883f440981f89b1456fd81e7b2942efb96",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f42202faf57a3c89.bin",
+        "sha256": "6650ca483e51e1ae9e752e1d4d1a7c19f68d3980bbaede429ade5452ae7b0ef3",
+        "bytes": 5076
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_1f26d41bcb7dac1e.bin",
+        "sha256": "6b1d36a1d68a67c0c123dee76810f93cb9e59452ff2bf6afa0ac7ade0d78060b",
+        "bytes": 5328
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_3006f8030a467739.bin",
+        "sha256": "a6138aae0b3035b28e5b394f9812e4dbc60127338101764cd6b2abd064bf63c6",
+        "bytes": 5248
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_3602b05ce11ca6ff.bin",
+        "sha256": "b075ec5f87410f8ae7f1d7e0045528506d725eb5c89283c8579b6619e431982e",
+        "bytes": 5296
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_8e58ac79b59b02b1.bin",
+        "sha256": "93c10b47b4cae8aecf7b6ee242bee50f4c19987d2ef6838327503c56b8f8d5fd",
+        "bytes": 5400
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_99153c144030c396.bin",
+        "sha256": "09cef378940fd33685ae5db4c914d055fc06aaf270f36c04b6714057692efe43",
+        "bytes": 5420
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_bdcdb3ab996ae4e0.bin",
+        "sha256": "878640333bd196c9a213715e046cdf2840412deb43c8d265ff8d1828cc466236",
+        "bytes": 5432
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_c1452981fd0bff64.bin",
+        "sha256": "f9e660057d8f01271ff0ba08465b6e788b2c1bc62b66b9f33892675a5a4290db",
+        "bytes": 5524
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_d6e8bdde0e4c515f.bin",
+        "sha256": "bfc647a9dc27604f79047ca5c3158ce544f342ea7fd7b89223fece7dd81df3e9",
+        "bytes": 5352
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_dd87737d697c6764.bin",
+        "sha256": "9d0797927d1976263b665f227bb55cd168d54ade2711661af2b65381af4cb9c8",
+        "bytes": 6348
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_e70adc744a38ca59.bin",
+        "sha256": "b53cbb5b14b17f2e2f61a52687f753cc47cd48fcad6f8f79084f0de05657d59e",
+        "bytes": 5296
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_fd58e6b7e8cf969c.bin",
+        "sha256": "54924dd1740c8c9f519fd124536aa021e33f2edd6470ca5b74fee94b4d42dec1",
+        "bytes": 6244
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_827d8d2d617bedce.bin",
+        "sha256": "e206e532d3887f3ade972ca638a6480ca71d65d99825162362981da46d9b51b8",
+        "bytes": 5104
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_91b6c09eb47f8555.bin",
+        "sha256": "c32e7ac4e383027babe5e819dbb1ce643234c1721e5a4ab522bbcbc709731f9f",
+        "bytes": 5128
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_e3b7acc16da9932d.bin",
+        "sha256": "db4c2d86eddbb7a60ba69d55c10dc8f58bb1dadd123696ced0d093f5b4630c15",
+        "bytes": 5184
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_ef2bf556f207b8bd.bin",
+        "sha256": "37ab024dcc9f252e7558c359a02ff4cfc45a82c8e4322821b2956773c00e354b",
+        "bytes": 5024
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_57392213f62fef19.bin",
+        "sha256": "5675ce318c575240ecc18ed296fecb6418208adbf6b157119dee438aeb9a7070",
+        "bytes": 2468
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_62c180abe017e239.bin",
+        "sha256": "c6b804e892a61581cb2158368255f26d1de2002326bcdf827a76c600dde0fe61",
+        "bytes": 2104
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_57392213f62fef19.bin",
+        "sha256": "5675ce318c575240ecc18ed296fecb6418208adbf6b157119dee438aeb9a7070",
+        "bytes": 2468
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_a910daef935891ce.bin",
+        "sha256": "c21626382bc32fbc4a0c626fd6c7e8a121e2cb4990e3a0de2960b35e57f34a94",
+        "bytes": 2000
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_5c17a381b149b3b9.bin",
+        "sha256": "c04e1a3d4bf26947f651b54fe59fe26dc74b90a6e46d81a1a8f4742e040c8fb8",
+        "bytes": 2592
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_ed44232013f67072.bin",
+        "sha256": "afcfd2e5d45298a9ed59a8c2d85e14abcf63fb0e8d1a4a31745d23cbb9472a47",
+        "bytes": 1552
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_5c17a381b149b3b9.bin",
+        "sha256": "c04e1a3d4bf26947f651b54fe59fe26dc74b90a6e46d81a1a8f4742e040c8fb8",
+        "bytes": 2592
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f286856c3f400377.bin",
+        "sha256": "bdfff141908bf861e872b4c1c2e392acefc83130c89a1ca584cfed8a38fa7e20",
+        "bytes": 1656
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_02606104fa59fb29.bin",
+        "sha256": "873651c23eaf73e286da394b8b5436f8f2459f18c17fd015f900f6e59c799456",
+        "bytes": 4724
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_1d638938d93421b3.bin",
+        "sha256": "fcf25429f17d14e760a8ff29f5d85d35b7847c2b89b26b02f4179b3050cdeb93",
+        "bytes": 4828
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_3755809bd40afc13.bin",
+        "sha256": "361697166d13575c9c84609cfded80967c07cde985807ba3a63755d3fa61f376",
+        "bytes": 4824
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_55826dc176afe464.bin",
+        "sha256": "2854c19830162027bbd84eee32c9a3c8230e53858dc2d9f03f7d1af292c0afc7",
+        "bytes": 1356
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_593e5dea9b3457d5.bin",
+        "sha256": "4e52664af108eddc19c13a98c8da62f539c79a1d085fbc55676e6130220907b2",
+        "bytes": 1056
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_61418505e5d8f998.bin",
+        "sha256": "420fa086c1fc623e1d70e55cea24bac4391129e50080fbd11c01cfe06d57514e",
+        "bytes": 1044
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_7a0bb00a8070496a.bin",
+        "sha256": "5b1aa3fa94f127c6b36164cb164b114e97d279007ccd882416f2d6b9cd01c8fd",
+        "bytes": 4860
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_7a14d4dcb28f27e5.bin",
+        "sha256": "ad5d2399d2f0dae0a8721eb2d33adee0fa1cc90d752d523aa18f63923886d2a3",
+        "bytes": 4748
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_8ab6188a40ca15ea.bin",
+        "sha256": "0c6703bacf857148b3bf528e8d8814b05a2332ba1889f3274148c2283d73ce3e",
+        "bytes": 4876
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_8d5b2ba0fb4d13bf.bin",
+        "sha256": "4f1a61cf0fb97d6328ede3e18d2b715727938062ae601e180382380a3279c4f0",
+        "bytes": 4732
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_8df6143d0e77d92e.bin",
+        "sha256": "a2a2cc4d1b2f1ea0b6ff7b2382f41742c4b1b7bbe1706806ee2312ec0f88e821",
+        "bytes": 1072
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_b5f1d4145171026b.bin",
+        "sha256": "b52a137ea6415c75dd7d84e6f9fa8e1dde9456c80802865aa0a035b836611cc0",
+        "bytes": 1148
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_bd4d51c08486c6e0.bin",
+        "sha256": "6327ca5d850180c635efec2a75dc11d7a559abe7bd6ec85c82ec1d8913e91d27",
+        "bytes": 1024
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_cc09f17db377fd9e.bin",
+        "sha256": "38edca2c0f17dd2a3ef0b9e01e590fa7760cf76bc34b9445d5448d0159d10c47",
+        "bytes": 4720
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_dab93928f26906f7.bin",
+        "sha256": "b15be08d6adc08a50c9ac756300f091c9fb1a3ec756fb65a556cc523a5166221",
+        "bytes": 1184
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_db644b73b68c0547.bin",
+        "sha256": "09a6754d9a1956bdbd274c0ffab56261c698e430bbd4356ededb56f43c3c51f0",
+        "bytes": 4928
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_de2dd381fa64193d.bin",
+        "sha256": "69cc10884d902d1abde929bc5fd5fe7a98edb5fe9df28cc73736a41a9485ffd2",
+        "bytes": 1152
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_e16a9806ee3544c3.bin",
+        "sha256": "85b9538879c97626c5181f24c07585810e99b13001c6e0c50d5b1b695a5bfee4",
+        "bytes": 1200
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f6a501717c3e5ca8.bin",
+        "sha256": "1a990338c08b5f5699a1d117f0daafcaa2c2edaa6902b45a56b687599481595a",
+        "bytes": 1252
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_719856ce0c213220.bin",
+        "sha256": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_ff32b602a271c327.bin",
+        "sha256": "f883fd536225ec4bace5f3ad808db85f80a85f773e999a661d1ffd900a14d7d9",
+        "bytes": 5032
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_74fdc00d802b4027.bin",
+        "sha256": "5e2529bea7afcab8de4b2db15cb39d545bb3f5de84fd2a76471467d2a87e2068",
+        "bytes": 2020
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_9d49f288800f898d.bin",
+        "sha256": "ecad4b7350117126ef87a5b8339247d86ffd74ff405f7df93b484cd399fedf1b",
+        "bytes": 1032
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_74fdc00d802b4027.bin",
+        "sha256": "5e2529bea7afcab8de4b2db15cb39d545bb3f5de84fd2a76471467d2a87e2068",
+        "bytes": 2020
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f31c9e2701c8eee4.bin",
+        "sha256": "3970b213b81e46b686349925d50be2d7011cbfd36fa97ea6cce9cc0ec741671c",
+        "bytes": 904
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_8198903322dd82fb.bin",
+        "sha256": "4bd87a7de58552675a4d9fa0fe6db720f84fb6ad9608358df552cb74743c26d7",
+        "bytes": 2008
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_6aaaa2cb27e92cc8.bin",
+        "sha256": "f6338d9651a58c29bd0a6511bface9045a1b9e48e5f1f725227a61c796ce3a49",
+        "bytes": 1080
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_866d428119221f3a.bin",
+        "sha256": "41dc4642a5497b4f35973726473ba59e651420eb30ab38f69db768080825a3b4",
+        "bytes": 1828
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_6aaaa2cb27e92cc8.bin",
+        "sha256": "f6338d9651a58c29bd0a6511bface9045a1b9e48e5f1f725227a61c796ce3a49",
+        "bytes": 1080
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_a420a010b0271479.bin",
+        "sha256": "7b934b1981d4517149635024dee7a90e13aa7219691b798d68da458dee4122e3",
+        "bytes": 2420
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_77a5b2d62fb3be48.bin",
+        "sha256": "5e48ae73d2ac9672c78ac062da5a7e09ea1926e411005b675dfb4804d2981797",
+        "bytes": 1408
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_a420a010b0271479.bin",
+        "sha256": "7b934b1981d4517149635024dee7a90e13aa7219691b798d68da458dee4122e3",
+        "bytes": 2420
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f917d48ee826da1f.bin",
+        "sha256": "7a02eda58b8432b207978affd796053cc88bcf21ae652d6d7faf3f8146370cf7",
+        "bytes": 1280
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_a7cddf2c98d61117.bin",
+        "sha256": "21c8c0397aed33e05176208658bebc0b7078f22df82700471ba9b0848a229549",
+        "bytes": 2048
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_675f9077d8fd21c4.bin",
+        "sha256": "fbc4ce907789a1f3e89c3527f124dc179c800bc0d64f29280558c1ce7f3c43ea",
+        "bytes": 1464
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_a7cddf2c98d61117.bin",
+        "sha256": "21c8c0397aed33e05176208658bebc0b7078f22df82700471ba9b0848a229549",
+        "bytes": 2048
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_c997a37560e266df.bin",
+        "sha256": "bd78ae47fb1a10ce98cb8545104a3142baf3a125a56f1e3b2fff84cd8ffbe90e",
+        "bytes": 1360
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_a7cddf2c98d61117.bin",
+        "sha256": "21c8c0397aed33e05176208658bebc0b7078f22df82700471ba9b0848a229549",
+        "bytes": 2048
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_ebf41e1ace7af45b.bin",
+        "sha256": "b60daecd8b1092af871089538b721924ec7d588cc17108ee32e2a882ecd19b03",
+        "bytes": 5140
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_a7cddf2c98d61117.bin",
+        "sha256": "21c8c0397aed33e05176208658bebc0b7078f22df82700471ba9b0848a229549",
+        "bytes": 2048
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f646f03be5a8708d.bin",
+        "sha256": "f31bccbaba809d448681623904e8cda84ae6507c6fad5d10e7f87bed4f916713",
+        "bytes": 5036
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_a804f173f693944a.bin",
+        "sha256": "2021d821872faaba43e2c61df3e22276734a6eca1e017ef5376e2bf0aff3ed48",
+        "bytes": 2400
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_ed44232013f67072.bin",
+        "sha256": "afcfd2e5d45298a9ed59a8c2d85e14abcf63fb0e8d1a4a31745d23cbb9472a47",
+        "bytes": 1552
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_a804f173f693944a.bin",
+        "sha256": "2021d821872faaba43e2c61df3e22276734a6eca1e017ef5376e2bf0aff3ed48",
+        "bytes": 2400
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f286856c3f400377.bin",
+        "sha256": "bdfff141908bf861e872b4c1c2e392acefc83130c89a1ca584cfed8a38fa7e20",
+        "bytes": 1656
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_b4059ab6af8fc529.bin",
+        "sha256": "c606c4640fb14eb4de557775ed10b02e5a16c5a8d2d6e59d02a9b624b4ccb5ad",
+        "bytes": 2412
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_43c9405568d2226f.bin",
+        "sha256": "d2544a28896c0cb60b9741a7cbd788ef11600e5d15016b287942de9a45717df1",
+        "bytes": 5388
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_b4059ab6af8fc529.bin",
+        "sha256": "c606c4640fb14eb4de557775ed10b02e5a16c5a8d2d6e59d02a9b624b4ccb5ad",
+        "bytes": 2412
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_5e056627e9ff3a8d.bin",
+        "sha256": "a87d5b7a2f902531821c4127085bc28765f79ce8f1f8e18f88aa4b1668b039d9",
+        "bytes": 1608
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_b4059ab6af8fc529.bin",
+        "sha256": "c606c4640fb14eb4de557775ed10b02e5a16c5a8d2d6e59d02a9b624b4ccb5ad",
+        "bytes": 2412
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_7e5e41276b3d7514.bin",
+        "sha256": "d37239e21553e3681b507b0dc3e1a249c3ea6fda762372dda4160d131bba6a20",
+        "bytes": 5284
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_b4059ab6af8fc529.bin",
+        "sha256": "c606c4640fb14eb4de557775ed10b02e5a16c5a8d2d6e59d02a9b624b4ccb5ad",
+        "bytes": 2412
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_fce465befff2f623.bin",
+        "sha256": "3790c9f432dd55ad750334b9f81d0beedf982c73f53c2917c1a1810149f4b8bb",
+        "bytes": 1712
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_02606104fa59fb29.bin",
+        "sha256": "873651c23eaf73e286da394b8b5436f8f2459f18c17fd015f900f6e59c799456",
+        "bytes": 4724
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_1d638938d93421b3.bin",
+        "sha256": "fcf25429f17d14e760a8ff29f5d85d35b7847c2b89b26b02f4179b3050cdeb93",
+        "bytes": 4828
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_3755809bd40afc13.bin",
+        "sha256": "361697166d13575c9c84609cfded80967c07cde985807ba3a63755d3fa61f376",
+        "bytes": 4824
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_55826dc176afe464.bin",
+        "sha256": "2854c19830162027bbd84eee32c9a3c8230e53858dc2d9f03f7d1af292c0afc7",
+        "bytes": 1356
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_593e5dea9b3457d5.bin",
+        "sha256": "4e52664af108eddc19c13a98c8da62f539c79a1d085fbc55676e6130220907b2",
+        "bytes": 1056
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_61418505e5d8f998.bin",
+        "sha256": "420fa086c1fc623e1d70e55cea24bac4391129e50080fbd11c01cfe06d57514e",
+        "bytes": 1044
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_7a0bb00a8070496a.bin",
+        "sha256": "5b1aa3fa94f127c6b36164cb164b114e97d279007ccd882416f2d6b9cd01c8fd",
+        "bytes": 4860
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_7a14d4dcb28f27e5.bin",
+        "sha256": "ad5d2399d2f0dae0a8721eb2d33adee0fa1cc90d752d523aa18f63923886d2a3",
+        "bytes": 4748
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_8ab6188a40ca15ea.bin",
+        "sha256": "0c6703bacf857148b3bf528e8d8814b05a2332ba1889f3274148c2283d73ce3e",
+        "bytes": 4876
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_8d5b2ba0fb4d13bf.bin",
+        "sha256": "4f1a61cf0fb97d6328ede3e18d2b715727938062ae601e180382380a3279c4f0",
+        "bytes": 4732
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_8df6143d0e77d92e.bin",
+        "sha256": "a2a2cc4d1b2f1ea0b6ff7b2382f41742c4b1b7bbe1706806ee2312ec0f88e821",
+        "bytes": 1072
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_b5f1d4145171026b.bin",
+        "sha256": "b52a137ea6415c75dd7d84e6f9fa8e1dde9456c80802865aa0a035b836611cc0",
+        "bytes": 1148
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_bd4d51c08486c6e0.bin",
+        "sha256": "6327ca5d850180c635efec2a75dc11d7a559abe7bd6ec85c82ec1d8913e91d27",
+        "bytes": 1024
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_cc09f17db377fd9e.bin",
+        "sha256": "38edca2c0f17dd2a3ef0b9e01e590fa7760cf76bc34b9445d5448d0159d10c47",
+        "bytes": 4720
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_dab93928f26906f7.bin",
+        "sha256": "b15be08d6adc08a50c9ac756300f091c9fb1a3ec756fb65a556cc523a5166221",
+        "bytes": 1184
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_db644b73b68c0547.bin",
+        "sha256": "09a6754d9a1956bdbd274c0ffab56261c698e430bbd4356ededb56f43c3c51f0",
+        "bytes": 4928
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_de2dd381fa64193d.bin",
+        "sha256": "69cc10884d902d1abde929bc5fd5fe7a98edb5fe9df28cc73736a41a9485ffd2",
+        "bytes": 1152
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_e16a9806ee3544c3.bin",
+        "sha256": "85b9538879c97626c5181f24c07585810e99b13001c6e0c50d5b1b695a5bfee4",
+        "bytes": 1200
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f6a501717c3e5ca8.bin",
+        "sha256": "1a990338c08b5f5699a1d117f0daafcaa2c2edaa6902b45a56b687599481595a",
+        "bytes": 1252
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_badefd5143b3024f.bin",
+        "sha256": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+        "bytes": 1924
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_ff32b602a271c327.bin",
+        "sha256": "f883fd536225ec4bace5f3ad808db85f80a85f773e999a661d1ffd900a14d7d9",
+        "bytes": 5032
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_c30104cb0efb6675.bin",
+        "sha256": "05a64b50c80704c0ef80ed818f790b1fabf3bb2ca8dbdee134ade54d6ec2fa8b",
+        "bytes": 2200
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_ebc9b2b3f1564e9a.bin",
+        "sha256": "dadcbb9397698780bf86e29d3872aa35843b5e605bf541f800d386278fdb9f66",
+        "bytes": 1364
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_d706d31100be1be9.bin",
+        "sha256": "89e129c9135d4b3e8b9a489e834e2e6b796441a61f158edfc2726c2a1d1f4986",
+        "bytes": 1208
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_c002d0727537c5de.bin",
+        "sha256": "c6097192045128d712794247b80eda2f998968d503a938658142d8c2648aa161",
+        "bytes": 352
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_e2ad860d5fbb3e59.bin",
+        "sha256": "c0aa7effc40cfcfc4c3b936c3809446f3be1048576b6a5138f6de3155f778d5d",
+        "bytes": 2200
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_9d49f288800f898d.bin",
+        "sha256": "ecad4b7350117126ef87a5b8339247d86ffd74ff405f7df93b484cd399fedf1b",
+        "bytes": 1032
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_e2ad860d5fbb3e59.bin",
+        "sha256": "c0aa7effc40cfcfc4c3b936c3809446f3be1048576b6a5138f6de3155f778d5d",
+        "bytes": 2200
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f31c9e2701c8eee4.bin",
+        "sha256": "3970b213b81e46b686349925d50be2d7011cbfd36fa97ea6cce9cc0ec741671c",
+        "bytes": 904
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_ea3d15b287892410.bin",
+        "sha256": "87b331b3e948290e70e5851a07dd6abb9a72d50d174eb80166fcae64ab7e62c8",
+        "bytes": 2240
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_77a5b2d62fb3be48.bin",
+        "sha256": "5e48ae73d2ac9672c78ac062da5a7e09ea1926e411005b675dfb4804d2981797",
+        "bytes": 1408
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_ea3d15b287892410.bin",
+        "sha256": "87b331b3e948290e70e5851a07dd6abb9a72d50d174eb80166fcae64ab7e62c8",
+        "bytes": 2240
+      },
+      "ps": {
+        "path": "/tmp/x3-shader-sweep/programs/ps_f917d48ee826da1f.bin",
+        "sha256": "7a02eda58b8432b207978affd796053cc88bcf21ae652d6d7faf3f8146370cf7",
+        "bytes": 1280
+      }
     }
   ],
   "local_after_build": {
@@ -236,10 +2072,10 @@
     "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
   },
   "sources_after_build": {
-    "src/renderer/material_motion.h": "29a5a004affa596d1a08be0867c5103624250bbcc1bdd021891af280f98ba62b",
-    "src/renderer/material_motion.cpp": "d4f127c41bd3e1df5cbb8745b5ba991fbf58607865a8008fba0d1ee1a2c60f82",
-    "src/renderer/motion_output_profiles.h": "6b7032c142fadd7246f988b4abd7ebcae66ded9c6cab578ddce19a2870a7e2c6",
-    "src/renderer/motion_output_profiles_inc.h": "bdd2209c577562e3a17c107df171f817d9026d7af24e619a6e2f3af6f222e7c6",
+    "src/renderer/material_motion.h": "9f9eded5a9e678973e8c2ab78e827a16d21c8bd915f9c1a16ec11521f9f5ff46",
+    "src/renderer/material_motion.cpp": "5bce0921ab64e4063c37e9a38ad56dbd9f1185cd2c98c40a37933e7646c98e9d",
+    "src/renderer/motion_output_profiles.h": "3893babcf911cefc34f9c77aa0bb791bb3ac0f455e5d188fdca1c3449f2b59c5",
+    "src/renderer/motion_output_profiles_inc.h": "f83d70bd7f96f40b42758685c0fa422793e422f0526259383ef0521e79a69490",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
@@ -250,9 +2086,9 @@
     "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
     "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
     "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
-    "verification/probe/material_motion_fixture.cpp": "db203f3c8daee5d7fc397421089a71aaa85124ace94d71b147aa258563a8a066",
+    "verification/probe/material_motion_fixture.cpp": "2ef2289c85fb6e93c3a4fe4d63d1c21c86f48bcf85a1948b7206260400377038",
     "verification/probe/build_material_motion.sh": "b79eed949cf2f57317976b24b0060257a2a435597a9cd2982a3f673934b3777a",
-    "verification/probe/run_material_motion.py": "371c6eb967f084093fe751a9338e41e6796fd9644e063fe867106ef77e5199a0"
+    "verification/probe/run_material_motion.py": "674779553ee753d9cba0ad7c35880e12ffc82ffa0e45fb683ef7cb6ac9b09300"
   },
   "native_after_build": {
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96",
@@ -260,7 +2096,7 @@
     "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/syswow64/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863",
     "/opt/homebrew/Cellar/mingw-w64/14.0.0_3/toolchain-i686/bin/i686-w64-mingw32-g++": "c8181d422f8a912b04fc6c87d770a169b7aa6a6fd37edbc59629b876c33dd947"
   },
-  "executable_sha256": "01054ad98390f740cb5b8183dcc9ab116b85970c64eeddf7d711eb603e1544dd",
+  "executable_sha256": "034562bab1f1d67290a8ccaa3de442452d5cd083e1c47e4730a7df03f4ac1a0d",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -289,70 +2125,70 @@
       "height": 768,
       "mode": 0,
       "samples": 6,
-      "mean_ms": 0.5149166666666667,
-      "median_ms": 0.46105,
-      "minimum_ms": 0.4481,
-      "maximum_ms": 0.7769
+      "mean_ms": 0.5865666666666667,
+      "median_ms": 0.56785,
+      "minimum_ms": 0.445,
+      "maximum_ms": 0.8065
     },
     {
       "width": 1280,
       "height": 768,
       "mode": 1,
       "samples": 6,
-      "mean_ms": 0.5445333333333333,
-      "median_ms": 0.4714,
-      "minimum_ms": 0.4479,
-      "maximum_ms": 0.9387
+      "mean_ms": 0.5457166666666666,
+      "median_ms": 0.4942,
+      "minimum_ms": 0.4501,
+      "maximum_ms": 0.6895
     },
     {
       "width": 1280,
       "height": 768,
       "mode": 2,
       "samples": 6,
-      "mean_ms": 0.6488166666666667,
-      "median_ms": 0.6575,
-      "minimum_ms": 0.6148,
-      "maximum_ms": 0.6857
+      "mean_ms": 0.7875833333333333,
+      "median_ms": 0.84205,
+      "minimum_ms": 0.5825,
+      "maximum_ms": 0.9615
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 0,
       "samples": 6,
-      "mean_ms": 1.5149666666666666,
-      "median_ms": 1.47715,
-      "minimum_ms": 1.2878,
-      "maximum_ms": 1.8476
+      "mean_ms": 1.3728,
+      "median_ms": 1.3182,
+      "minimum_ms": 1.2689,
+      "maximum_ms": 1.6188
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 1,
       "samples": 6,
-      "mean_ms": 1.6332666666666666,
-      "median_ms": 1.6273,
-      "minimum_ms": 1.569,
-      "maximum_ms": 1.719
+      "mean_ms": 1.7027833333333333,
+      "median_ms": 1.7182,
+      "minimum_ms": 1.4912,
+      "maximum_ms": 1.8827
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 2,
       "samples": 6,
-      "mean_ms": 2.2049666666666665,
-      "median_ms": 2.15115,
-      "minimum_ms": 2.0649,
-      "maximum_ms": 2.4038
+      "mean_ms": 2.12895,
+      "median_ms": 2.0442,
+      "minimum_ms": 1.9782,
+      "maximum_ms": 2.482
     }
   ],
-  "rows": 16,
-  "row_transformed": 16,
+  "rows": 169,
+  "row_transformed": 169,
   "row_skipped": 0,
-  "row_configurations": 168,
-  "row_checks": 2376,
-  "row_samples": 6048,
-  "row_color_components": 2064384,
-  "row_depth_cases": 336,
+  "row_configurations": 1230,
+  "row_checks": 17413,
+  "row_samples": 44280,
+  "row_color_components": 15114240,
+  "row_depth_cases": 2460,
   "row_results": [
     {
       "index": 0,
@@ -669,6 +2505,2937 @@
       "max_analytic_uv_error_pixels": 0.000860214233,
       "max_analytic_previous_depth_error": 8.65642841e-07,
       "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 16,
+      "vs": "0c223ad11bce02d5",
+      "ps": "7a0c3388065bb08d",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 17,
+      "vs": "12b8a13f13fe8cfe",
+      "ps": "550c2a4d4d3ed70f",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 18,
+      "vs": "19a246a56e9d9700",
+      "ps": "042c9ae16f41feff",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 19,
+      "vs": "19a246a56e9d9700",
+      "ps": "1ed1bf0fdec00e1a",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 20,
+      "vs": "19a246a56e9d9700",
+      "ps": "22cc5b05a55ef61e",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 21,
+      "vs": "19a246a56e9d9700",
+      "ps": "2b04461d0dae038b",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 22,
+      "vs": "19a246a56e9d9700",
+      "ps": "4f052209611387f0",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 23,
+      "vs": "19a246a56e9d9700",
+      "ps": "5c823b8507fa1442",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 24,
+      "vs": "19a246a56e9d9700",
+      "ps": "63379470db8d2a86",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 25,
+      "vs": "19a246a56e9d9700",
+      "ps": "68915563dd0aac9a",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 26,
+      "vs": "19a246a56e9d9700",
+      "ps": "68f0dd6791fd7d3d",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 27,
+      "vs": "19a246a56e9d9700",
+      "ps": "769c3814fc0efba8",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 28,
+      "vs": "19a246a56e9d9700",
+      "ps": "789449ffd931d23e",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 29,
+      "vs": "19a246a56e9d9700",
+      "ps": "78963cdc7c710e04",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 30,
+      "vs": "19a246a56e9d9700",
+      "ps": "a6e1328c0bb3f401",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 31,
+      "vs": "19a246a56e9d9700",
+      "ps": "abf3c0fad53456d8",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 32,
+      "vs": "19a246a56e9d9700",
+      "ps": "acc83ed2509d84a1",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 33,
+      "vs": "19a246a56e9d9700",
+      "ps": "b0f9313b77cc78ee",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 34,
+      "vs": "19a246a56e9d9700",
+      "ps": "cf449bcb069aec4f",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 35,
+      "vs": "19a246a56e9d9700",
+      "ps": "d086fde54698070c",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 36,
+      "vs": "19a246a56e9d9700",
+      "ps": "d514bf852d8a9c58",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 37,
+      "vs": "19a246a56e9d9700",
+      "ps": "dff6a3d360603fa2",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 38,
+      "vs": "19a246a56e9d9700",
+      "ps": "e5ea78b8b0b0fe07",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 39,
+      "vs": "19a246a56e9d9700",
+      "ps": "f17fffd88d134b04",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 40,
+      "vs": "19a246a56e9d9700",
+      "ps": "f1d14a7dbf7c6173",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 41,
+      "vs": "19a246a56e9d9700",
+      "ps": "f42202faf57a3c89",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 42,
+      "vs": "233d17d26ce0c1fc",
+      "ps": "7a0c3388065bb08d",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 43,
+      "vs": "29d7c575396ed280",
+      "ps": "39eb3c2258a516e1",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 44,
+      "vs": "29d7c575396ed280",
+      "ps": "57acf59d19c73791",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 45,
+      "vs": "2a560f246c90fa64",
+      "ps": "43c9405568d2226f",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 46,
+      "vs": "2a560f246c90fa64",
+      "ps": "5e056627e9ff3a8d",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 47,
+      "vs": "2a560f246c90fa64",
+      "ps": "7e5e41276b3d7514",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 48,
+      "vs": "2a560f246c90fa64",
+      "ps": "fce465befff2f623",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 49,
+      "vs": "2e0254dd999841c2",
+      "ps": "675f9077d8fd21c4",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 50,
+      "vs": "2e0254dd999841c2",
+      "ps": "c997a37560e266df",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 51,
+      "vs": "2e0254dd999841c2",
+      "ps": "ebf41e1ace7af45b",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 52,
+      "vs": "2e0254dd999841c2",
+      "ps": "f646f03be5a8708d",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 53,
+      "vs": "330ceb9dd874ede2",
+      "ps": "550c2a4d4d3ed70f",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 54,
+      "vs": "33388c8897d428a5",
+      "ps": "188c5ab9dbb98393",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 55,
+      "vs": "33388c8897d428a5",
+      "ps": "18d372968af4a480",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 56,
+      "vs": "37c34a7478544c14",
+      "ps": "1de3d2dde345a7e3",
+      "transformation_class": "C",
+      "status": "PASS",
+      "configurations": 24,
+      "boolean_combinations": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "boolean_controls": 2,
+      "checks": 339,
+      "samples": 864,
+      "color_components": 294912,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 57,
+      "vs": "37c34a7478544c14",
+      "ps": "496049cec2066ed3",
+      "transformation_class": "C",
+      "status": "PASS",
+      "configurations": 24,
+      "boolean_combinations": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "boolean_controls": 2,
+      "checks": 339,
+      "samples": 864,
+      "color_components": 294912,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 58,
+      "vs": "37c34a7478544c14",
+      "ps": "6733b119142c8d42",
+      "transformation_class": "C",
+      "status": "PASS",
+      "configurations": 24,
+      "boolean_combinations": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "boolean_controls": 2,
+      "checks": 339,
+      "samples": 864,
+      "color_components": 294912,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 59,
+      "vs": "37c34a7478544c14",
+      "ps": "75fb9c6b05e28ea2",
+      "transformation_class": "C",
+      "status": "PASS",
+      "configurations": 24,
+      "boolean_combinations": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "boolean_controls": 2,
+      "checks": 339,
+      "samples": 864,
+      "color_components": 294912,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 60,
+      "vs": "37c34a7478544c14",
+      "ps": "d22f2ce2c740e6a7",
+      "transformation_class": "C",
+      "status": "PASS",
+      "configurations": 24,
+      "boolean_combinations": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "boolean_controls": 2,
+      "checks": 339,
+      "samples": 864,
+      "color_components": 294912,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 61,
+      "vs": "37c34a7478544c14",
+      "ps": "edaef099780fcafe",
+      "transformation_class": "C",
+      "status": "PASS",
+      "configurations": 24,
+      "boolean_combinations": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "boolean_controls": 2,
+      "checks": 339,
+      "samples": 864,
+      "color_components": 294912,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 62,
+      "vs": "37e6956afd8b8d76",
+      "ps": "9d27e7ba242f3831",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 63,
+      "vs": "37e6956afd8b8d76",
+      "ps": "e1acf8a03850acaf",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 64,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "042c9ae16f41feff",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 65,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "1ed1bf0fdec00e1a",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 66,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "22cc5b05a55ef61e",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 67,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "2b04461d0dae038b",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 68,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "4f052209611387f0",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 69,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "5c823b8507fa1442",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 70,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "63379470db8d2a86",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 71,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "68915563dd0aac9a",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 72,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "68f0dd6791fd7d3d",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 73,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "769c3814fc0efba8",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 74,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "789449ffd931d23e",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 75,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "78963cdc7c710e04",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 76,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "a6e1328c0bb3f401",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 77,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "abf3c0fad53456d8",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 78,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "acc83ed2509d84a1",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 79,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "b0f9313b77cc78ee",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 80,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "cf449bcb069aec4f",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 81,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "d086fde54698070c",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 82,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "d514bf852d8a9c58",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 83,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "dff6a3d360603fa2",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 84,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "e5ea78b8b0b0fe07",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 85,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "f17fffd88d134b04",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 86,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "f1d14a7dbf7c6173",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 87,
+      "vs": "44c4a41ca92ae2e3",
+      "ps": "f42202faf57a3c89",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 88,
+      "vs": "4944d81dfe531b37",
+      "ps": "1f26d41bcb7dac1e",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 89,
+      "vs": "4944d81dfe531b37",
+      "ps": "3006f8030a467739",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 90,
+      "vs": "4944d81dfe531b37",
+      "ps": "3602b05ce11ca6ff",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 91,
+      "vs": "4944d81dfe531b37",
+      "ps": "8e58ac79b59b02b1",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 92,
+      "vs": "4944d81dfe531b37",
+      "ps": "99153c144030c396",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 93,
+      "vs": "4944d81dfe531b37",
+      "ps": "bdcdb3ab996ae4e0",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 94,
+      "vs": "4944d81dfe531b37",
+      "ps": "c1452981fd0bff64",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 95,
+      "vs": "4944d81dfe531b37",
+      "ps": "d6e8bdde0e4c515f",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 96,
+      "vs": "494fe349b8bc12ec",
+      "ps": "dd87737d697c6764",
+      "transformation_class": "C",
+      "status": "PASS",
+      "configurations": 24,
+      "boolean_combinations": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "boolean_controls": 2,
+      "checks": 339,
+      "samples": 864,
+      "color_components": 294912,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 97,
+      "vs": "494fe349b8bc12ec",
+      "ps": "e70adc744a38ca59",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 98,
+      "vs": "494fe349b8bc12ec",
+      "ps": "fd58e6b7e8cf969c",
+      "transformation_class": "C",
+      "status": "PASS",
+      "configurations": 24,
+      "boolean_combinations": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "boolean_controls": 2,
+      "checks": 339,
+      "samples": 864,
+      "color_components": 294912,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 99,
+      "vs": "53a0a641107ed76c",
+      "ps": "827d8d2d617bedce",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 100,
+      "vs": "53a0a641107ed76c",
+      "ps": "91b6c09eb47f8555",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 101,
+      "vs": "53a0a641107ed76c",
+      "ps": "e3b7acc16da9932d",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 102,
+      "vs": "53a0a641107ed76c",
+      "ps": "ef2bf556f207b8bd",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 103,
+      "vs": "57392213f62fef19",
+      "ps": "62c180abe017e239",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 104,
+      "vs": "57392213f62fef19",
+      "ps": "a910daef935891ce",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 105,
+      "vs": "5c17a381b149b3b9",
+      "ps": "ed44232013f67072",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 106,
+      "vs": "5c17a381b149b3b9",
+      "ps": "f286856c3f400377",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 107,
+      "vs": "719856ce0c213220",
+      "ps": "02606104fa59fb29",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 108,
+      "vs": "719856ce0c213220",
+      "ps": "1d638938d93421b3",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 109,
+      "vs": "719856ce0c213220",
+      "ps": "3755809bd40afc13",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 110,
+      "vs": "719856ce0c213220",
+      "ps": "55826dc176afe464",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 111,
+      "vs": "719856ce0c213220",
+      "ps": "593e5dea9b3457d5",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 112,
+      "vs": "719856ce0c213220",
+      "ps": "61418505e5d8f998",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 113,
+      "vs": "719856ce0c213220",
+      "ps": "7a0bb00a8070496a",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 114,
+      "vs": "719856ce0c213220",
+      "ps": "7a14d4dcb28f27e5",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 115,
+      "vs": "719856ce0c213220",
+      "ps": "8ab6188a40ca15ea",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 116,
+      "vs": "719856ce0c213220",
+      "ps": "8d5b2ba0fb4d13bf",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 117,
+      "vs": "719856ce0c213220",
+      "ps": "8df6143d0e77d92e",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 118,
+      "vs": "719856ce0c213220",
+      "ps": "b5f1d4145171026b",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 119,
+      "vs": "719856ce0c213220",
+      "ps": "bd4d51c08486c6e0",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 120,
+      "vs": "719856ce0c213220",
+      "ps": "cc09f17db377fd9e",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 121,
+      "vs": "719856ce0c213220",
+      "ps": "dab93928f26906f7",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 122,
+      "vs": "719856ce0c213220",
+      "ps": "db644b73b68c0547",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 123,
+      "vs": "719856ce0c213220",
+      "ps": "de2dd381fa64193d",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 124,
+      "vs": "719856ce0c213220",
+      "ps": "e16a9806ee3544c3",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 125,
+      "vs": "719856ce0c213220",
+      "ps": "f6a501717c3e5ca8",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 126,
+      "vs": "719856ce0c213220",
+      "ps": "ff32b602a271c327",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 127,
+      "vs": "74fdc00d802b4027",
+      "ps": "9d49f288800f898d",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 128,
+      "vs": "74fdc00d802b4027",
+      "ps": "f31c9e2701c8eee4",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 129,
+      "vs": "8198903322dd82fb",
+      "ps": "6aaaa2cb27e92cc8",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 130,
+      "vs": "866d428119221f3a",
+      "ps": "6aaaa2cb27e92cc8",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 131,
+      "vs": "a420a010b0271479",
+      "ps": "77a5b2d62fb3be48",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 132,
+      "vs": "a420a010b0271479",
+      "ps": "f917d48ee826da1f",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 133,
+      "vs": "a7cddf2c98d61117",
+      "ps": "675f9077d8fd21c4",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 134,
+      "vs": "a7cddf2c98d61117",
+      "ps": "c997a37560e266df",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 135,
+      "vs": "a7cddf2c98d61117",
+      "ps": "ebf41e1ace7af45b",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 136,
+      "vs": "a7cddf2c98d61117",
+      "ps": "f646f03be5a8708d",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 137,
+      "vs": "a804f173f693944a",
+      "ps": "ed44232013f67072",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 138,
+      "vs": "a804f173f693944a",
+      "ps": "f286856c3f400377",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 139,
+      "vs": "b4059ab6af8fc529",
+      "ps": "43c9405568d2226f",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 140,
+      "vs": "b4059ab6af8fc529",
+      "ps": "5e056627e9ff3a8d",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 141,
+      "vs": "b4059ab6af8fc529",
+      "ps": "7e5e41276b3d7514",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 142,
+      "vs": "b4059ab6af8fc529",
+      "ps": "fce465befff2f623",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 143,
+      "vs": "badefd5143b3024f",
+      "ps": "02606104fa59fb29",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 144,
+      "vs": "badefd5143b3024f",
+      "ps": "1d638938d93421b3",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 145,
+      "vs": "badefd5143b3024f",
+      "ps": "3755809bd40afc13",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 146,
+      "vs": "badefd5143b3024f",
+      "ps": "55826dc176afe464",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 147,
+      "vs": "badefd5143b3024f",
+      "ps": "593e5dea9b3457d5",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 148,
+      "vs": "badefd5143b3024f",
+      "ps": "61418505e5d8f998",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 149,
+      "vs": "badefd5143b3024f",
+      "ps": "7a0bb00a8070496a",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 150,
+      "vs": "badefd5143b3024f",
+      "ps": "7a14d4dcb28f27e5",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 151,
+      "vs": "badefd5143b3024f",
+      "ps": "8ab6188a40ca15ea",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 152,
+      "vs": "badefd5143b3024f",
+      "ps": "8d5b2ba0fb4d13bf",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 153,
+      "vs": "badefd5143b3024f",
+      "ps": "8df6143d0e77d92e",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 154,
+      "vs": "badefd5143b3024f",
+      "ps": "b5f1d4145171026b",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 155,
+      "vs": "badefd5143b3024f",
+      "ps": "bd4d51c08486c6e0",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 156,
+      "vs": "badefd5143b3024f",
+      "ps": "cc09f17db377fd9e",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 157,
+      "vs": "badefd5143b3024f",
+      "ps": "dab93928f26906f7",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 158,
+      "vs": "badefd5143b3024f",
+      "ps": "db644b73b68c0547",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 159,
+      "vs": "badefd5143b3024f",
+      "ps": "de2dd381fa64193d",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 160,
+      "vs": "badefd5143b3024f",
+      "ps": "e16a9806ee3544c3",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 161,
+      "vs": "badefd5143b3024f",
+      "ps": "f6a501717c3e5ca8",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 162,
+      "vs": "badefd5143b3024f",
+      "ps": "ff32b602a271c327",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 163,
+      "vs": "c30104cb0efb6675",
+      "ps": "ebc9b2b3f1564e9a",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 164,
+      "vs": "d706d31100be1be9",
+      "ps": "c002d0727537c5de",
+      "transformation_class": "A",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 165,
+      "vs": "e2ad860d5fbb3e59",
+      "ps": "9d49f288800f898d",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 166,
+      "vs": "e2ad860d5fbb3e59",
+      "ps": "f31c9e2701c8eee4",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 167,
+      "vs": "ea3d15b287892410",
+      "ps": "77a5b2d62fb3be48",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
+    },
+    {
+      "index": 168,
+      "vs": "ea3d15b287892410",
+      "ps": "f917d48ee826da1f",
+      "transformation_class": "B",
+      "status": "PASS",
+      "configurations": 6,
+      "boolean_combinations": [
+        0
+      ],
+      "boolean_controls": 0,
+      "checks": 85,
+      "samples": 216,
+      "color_components": 73728,
+      "min_covered": 912,
+      "max_analytic_uv_error_pixels": 0.000860214233,
+      "max_analytic_previous_depth_error": 8.65642841e-07,
+      "max_replay_reference_error": 0.0
     }
   ],
   "local_after_run": {
@@ -676,10 +5443,10 @@
     "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
   },
   "sources_after_run": {
-    "src/renderer/material_motion.h": "29a5a004affa596d1a08be0867c5103624250bbcc1bdd021891af280f98ba62b",
-    "src/renderer/material_motion.cpp": "d4f127c41bd3e1df5cbb8745b5ba991fbf58607865a8008fba0d1ee1a2c60f82",
-    "src/renderer/motion_output_profiles.h": "6b7032c142fadd7246f988b4abd7ebcae66ded9c6cab578ddce19a2870a7e2c6",
-    "src/renderer/motion_output_profiles_inc.h": "bdd2209c577562e3a17c107df171f817d9026d7af24e619a6e2f3af6f222e7c6",
+    "src/renderer/material_motion.h": "9f9eded5a9e678973e8c2ab78e827a16d21c8bd915f9c1a16ec11521f9f5ff46",
+    "src/renderer/material_motion.cpp": "5bce0921ab64e4063c37e9a38ad56dbd9f1185cd2c98c40a37933e7646c98e9d",
+    "src/renderer/motion_output_profiles.h": "3893babcf911cefc34f9c77aa0bb791bb3ac0f455e5d188fdca1c3449f2b59c5",
+    "src/renderer/motion_output_profiles_inc.h": "f83d70bd7f96f40b42758685c0fa422793e422f0526259383ef0521e79a69490",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
@@ -690,9 +5457,9 @@
     "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
     "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
     "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
-    "verification/probe/material_motion_fixture.cpp": "db203f3c8daee5d7fc397421089a71aaa85124ace94d71b147aa258563a8a066",
+    "verification/probe/material_motion_fixture.cpp": "2ef2289c85fb6e93c3a4fe4d63d1c21c86f48bcf85a1948b7206260400377038",
     "verification/probe/build_material_motion.sh": "b79eed949cf2f57317976b24b0060257a2a435597a9cd2982a3f673934b3777a",
-    "verification/probe/run_material_motion.py": "371c6eb967f084093fe751a9338e41e6796fd9644e063fe867106ef77e5199a0"
+    "verification/probe/run_material_motion.py": "674779553ee753d9cba0ad7c35880e12ffc82ffa0e45fb683ef7cb6ac9b09300"
   },
   "native_after_run": {
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine": "5df16c55bbc7cd1e5b3a2b645df1026ed6ee27aa0fc8182efeb7fb51ea11be96",
@@ -701,5 +5468,5 @@
     "/opt/homebrew/Cellar/mingw-w64/14.0.0_3/toolchain-i686/bin/i686-w64-mingw32-g++": "c8181d422f8a912b04fc6c87d770a169b7aa6a6fd37edbc59629b876c33dd947"
   },
   "wine_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "report_sha256": "e6e088b42477ed3c13566302dcaef6c026d96ae97991dfe78087523a51449858"
+  "report_sha256": "f7d8a67656541d3657c33efb4f9de3ef559d2433877aedef3c69fab20fa5ab0d"
 }

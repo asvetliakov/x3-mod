@@ -13,20 +13,48 @@
 
 namespace x3m {
 namespace {
-// The shadow tracks one clip-row window and gate 4 applies one light-loop
-// bound for every routed pair, so every profile row must name exactly these;
-// a regenerated table with another matrix register or loop bound fails here
-// rather than routing draws whose rows the shadow never captured.
-constexpr UINT matrix_register = 24, matrix_register_end = 28;
+// The shadow captures every distinct clip-row window the profile table names
+// (its rows read the clip rows from c24 with the point-light loop, or from c0
+// without one) and gate 4 applies each row's own light-loop bound. The windows
+// are derived from the table at compile time; a regenerated table naming more
+// windows than the shadow holds, or a bounded row whose loop could reach its
+// own clip rows, fails here rather than routing draws the shadow never
+// captured.
+struct MatrixWindows { UINT base[motion_matrix_windows_max]; std::size_t count; };
+constexpr MatrixWindows derive_matrix_windows() noexcept {
+    MatrixWindows windows{};
+    for (const auto& row : renderer::motion_output_profiles) {
+        bool seen = false;
+        for (std::size_t i = 0; i < windows.count; ++i) seen = seen || windows.base[i] == row.matrix_register;
+        if (seen) continue;
+        if (windows.count == motion_matrix_windows_max) { windows.count = motion_matrix_windows_max + 1; break; }
+        windows.base[windows.count++] = row.matrix_register;
+    }
+    return windows;
+}
+constexpr MatrixWindows matrix_windows = derive_matrix_windows();
+static_assert(matrix_windows.count >= 1 && matrix_windows.count <= motion_matrix_windows_max,
+              "the shadow holds at most max_matrix_windows distinct clip-row windows");
+// Index of a row's window; every row has one (rows_match_shadow).
+constexpr std::size_t window_of(UINT matrix_register) noexcept {
+    for (std::size_t i = 0; i < matrix_windows.count; ++i)
+        if (matrix_windows.base[i] == matrix_register) return i;
+    return motion_matrix_windows_max;
+}
+// The candidate review bounds the relative light reads to c0-23 by requiring
+// i0.x in [0, 8] (three constants per light); a bounded row's clip rows must
+// lie above that block so the bound keeps the loop off them.
 constexpr int light_loop_max_count = 8;
 constexpr bool rows_match_shadow() noexcept {
-    for (const auto& row : renderer::motion_output_profiles)
-        if (row.matrix_register != matrix_register || !row.light_loop_bound_required ||
-            row.light_loop_max_count != light_loop_max_count)
+    for (const auto& row : renderer::motion_output_profiles) {
+        if (window_of(row.matrix_register) >= motion_matrix_windows_max) return false;
+        if (row.light_loop_bound_required &&
+            (row.light_loop_max_count != light_loop_max_count || row.matrix_register < 3u * light_loop_max_count))
             return false;
+    }
     return true;
 }
-static_assert(rows_match_shadow(), "every profile row must use the shadowed c24-27 window and the i0.x <= 8 bound");
+static_assert(rows_match_shadow(), "every profile row must name a shadowed clip-row window and, when bounded, the i0.x <= 8 bound below its rows");
 // IDirect3DDevice9 vtable slots, verified against the MinGW d3d9.h method order
 // by verification/probe/abi_check.cpp (compile-time offsetof assertions).
 enum Slot : unsigned {
@@ -426,15 +454,17 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         auto& entry = vertex_[shader];
         release(entry.variant);
         entry.hash = hash;
-        if (shadow_.vs == shader) { shadow_.vs_hash = hash; shadow_.vs_variant = nullptr; }
+        entry.row = nullptr;
+        if (shadow_.vs == shader) { shadow_.vs_hash = hash; shadow_.vs_variant = nullptr; shadow_.vs_row = nullptr; }
         if (!enabled_ || !code || bytes % 4) return;
         // One variant per original program: rows sharing this VS agree on its
         // side of the splice (static_assert in motion_output_profiles.h), so
         // the same variant serves every reviewed pair it belongs to. Pair
-        // eligibility is decided per draw in before_draw (gate 3).
-        bool candidate = false;
-        for (const auto& pair : renderer::material_motion_reviewed_pairs) candidate |= pair.vertex_fingerprint == hash;
-        if (!candidate) return;
+        // eligibility is decided per draw in before_draw (gate 3). The row
+        // lookup is a binary search over the table (no scan).
+        entry.row = renderer::material_motion_vertex_row(hash, bytes / 4);
+        if (shadow_.vs == shader) shadow_.vs_row = entry.row;
+        if (!entry.row) return;
         std::vector<std::uint32_t> words;
         const auto result = renderer::material_motion_vertex_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words);
         IDirect3DVertexShader9* variant = nullptr;
@@ -455,9 +485,8 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         entry.hash = hash;
         if (shadow_.ps == shader) { shadow_.ps_hash = hash; shadow_.ps_variant = nullptr; }
         if (!enabled_ || !code || bytes % 4) return;
-        bool candidate = false;
-        for (const auto& pair : renderer::material_motion_reviewed_pairs) candidate |= pair.pixel_fingerprint == hash;
-        if (!candidate) return;
+        entry.row = renderer::material_motion_pixel_row(hash, bytes / 4);
+        if (!entry.row) return;
         std::vector<std::uint32_t> words;
         const auto result = renderer::material_motion_pixel_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words);
         IDirect3DPixelShader9* variant = nullptr;
@@ -474,12 +503,13 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
 
 void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
-    shadow_.vs = shader; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr;
+    shadow_.vs = shader; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_row = nullptr;
     if (!shader) return;
     const auto it = vertex_.find(shader);
     if (it == vertex_.end()) return;
     shadow_.vs_hash = it->second.hash;
     shadow_.vs_variant = static_cast<IDirect3DVertexShader9*>(it->second.variant);
+    shadow_.vs_row = it->second.row;
 }
 void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
@@ -493,13 +523,15 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
 void MotionOutput::set_vertex_constants_f(UINT start, const float* data, UINT count) noexcept {
     if (!enabled_ || shadow_.recording || !data || !count || start > 4096 || count > 4096) return;
     const UINT end = start + count;
-    // Rows c24-27 (every row's matrix register): the exact submitted position rows.
-    if (start < matrix_register_end && end > matrix_register) {
-        const UINT lo = start > matrix_register ? start : matrix_register;
-        const UINT hi = end < matrix_register_end ? end : matrix_register_end;
-        std::memcpy(shadow_.rows + (lo - matrix_register) * 4, data + (lo - start) * 4, (hi - lo) * 16);
+    // Every clip-row window of the table: the exact submitted position rows.
+    for (std::size_t w = 0; w < matrix_windows.count; ++w) {
+        const UINT base = matrix_windows.base[w], base_end = base + 4;
+        if (start >= base_end || end <= base) continue;
+        const UINT lo = start > base ? start : base;
+        const UINT hi = end < base_end ? end : base_end;
+        std::memcpy(shadow_.rows[w] + (lo - base) * 4, data + (lo - start) * 4, (hi - lo) * 16);
         // A partial row update keeps prior knowledge of the other rows.
-        shadow_.rows_known = shadow_.rows_known || (lo == matrix_register && hi == matrix_register_end);
+        shadow_.rows_known[w] = shadow_.rows_known[w] || (lo == base && hi == base_end);
     }
     // Reserved c252-255: remember the application values so a routed draw can put them back.
     if (start < 256 && end > 252) {
@@ -586,7 +618,8 @@ void MotionOutput::resync_shadow() noexcept {
     release(vs);
     if (SUCCEEDED(native<GetPsFn>(GetPixelShader)(device_, &ps))) set_pixel_shader(ps);
     release(ps);
-    shadow_.rows_known = SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, matrix_register, shadow_.rows, 4));
+    for (std::size_t w = 0; w < matrix_windows.count; ++w)
+        shadow_.rows_known[w] = SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, matrix_windows.base[w], shadow_.rows[w], 4));
     shadow_.vs_reserved_written = SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, 252, shadow_.vs_reserved, 4));
     shadow_.integer0_known = SUCCEEDED(native<GetConstantsIFn>(GetVertexShaderConstantI)(device_, 0, shadow_.integer0, 1));
     shadow_.ps_reserved_written = SUCCEEDED(native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, 216, shadow_.ps_reserved, 2));
@@ -807,12 +840,17 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     // Gate 3: exact reviewed pair (one profile-table row) with both variants
     // registered. Variants are per program; the pair check is what keys
     // eligibility, so a VS alias shared with an unreviewed PS never routes.
-    if (!shadow_.vs_variant || !shadow_.ps_variant ||
+    if (!shadow_.vs_variant || !shadow_.ps_variant || !shadow_.vs_row ||
         !renderer::material_motion_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash)) {
         route.gate = MotionGate::Pair; ++counters_.gates[3]; return route;
     }
-    // Gate 4: opaque ordinary draw state, known rows, bounded light loop, no
-    // user-memory geometry, no instancing, known declaration/stream identity.
+    // Gate 4: opaque ordinary draw state, known rows in the VS row's clip-row
+    // window, the row's light-loop bound where it reads constants relatively,
+    // no user-memory geometry, no instancing, known declaration/stream identity.
+    const auto& profile = *shadow_.vs_row;
+    const std::size_t window = window_of(profile.matrix_register);
+    const bool loop_bounded = !profile.light_loop_bound_required ||
+        (shadow_.integer0_known && shadow_.integer0[0] >= 0 && shadow_.integer0[0] <= int(profile.light_loop_max_count));
     DWORD blend = 1, test = 1, srgb = 1, color = 0; UINT frequency = 0;
     const bool draw_state_ok = !call.user_memory && SUCCEEDED(z_hr) && SUCCEEDED(write_hr) && z == 1 && write == 1 &&
         SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_ALPHABLENDENABLE, &blend)) && !blend &&
@@ -821,7 +859,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
         SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_COLORWRITEENABLE, &color)) && color == 15 &&
         SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency)) &&
         !(frequency & D3DSTREAMSOURCE_INDEXEDDATA) && (frequency & 0x3fffffffu) <= 1 &&
-        shadow_.rows_known && shadow_.integer0_known && shadow_.integer0[0] >= 0 && shadow_.integer0[0] <= light_loop_max_count &&
+        shadow_.rows_known[window] && loop_bounded &&
         shadow_.stream0 && shadow_.stream0_stride && shadow_.declaration && call.primitives &&
         (!call.indexed || shadow_.indices);
     if (!draw_state_ok) { route.gate = MotionGate::DrawState; ++counters_.gates[4]; return route; }
@@ -834,7 +872,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     key.base_vertex = call.base_vertex; key.min_vertex = call.min_vertex; key.vertex_count = call.vertex_count;
     key.indexed = call.indexed;
     renderer::SubmittedMatrix rows{}, previous{};
-    std::memcpy(rows.data(), shadow_.rows, sizeof shadow_.rows);
+    std::memcpy(rows.data(), shadow_.rows[window], sizeof shadow_.rows[window]);
     if (capture_) route.rows_hash = hash_bytes(rows.data(), sizeof rows); // Diagnostics only.
     // Gate 5: verified object/camera scope. Failure still routes with mode 0 so
     // covered pixels of this material carry the sentinel, never stale history.

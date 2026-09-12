@@ -264,7 +264,7 @@ def main():
         command=[str(wine),'--bottle','Steam','--no-update','--dll','d3d9=b',str(EXE)]+['Z:'+str(p) for p in RAW]+['Z:'+str(PROGRAMS)]
         result['command']=command;no_game()
         with report_path.open('w') as out,(RESULTS/'material-motion-wine.log').open('w') as err:
-            process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=180)
+            process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=1800)
         result['exit_code']=process.returncode;assert process.returncode==0
         result.update(validate_report(report_path.read_text()))
         result['local_after_run']={str(p):sha(p) for p in RAW};assert result['local_after_run']==result['local_inputs'] and rows_unchanged()

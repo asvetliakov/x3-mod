@@ -183,11 +183,10 @@ struct Scene {
         compile(compiler,"void main(float4 p:POSITION0,float2 t:TEXCOORD0,out float4 o:POSITION0,out float2 u:TEXCOORD0){o=p;u=t;}","vs_3_0",&vc.p);
         const auto vh=hash(vc.p);ok("scene VS",d->CreateVertexShader(static_cast<DWORD*>(vc->GetBufferPointer()),&vs.p));
         compile(compiler,"float4 main():COLOR0{return float4(.1,.2,.3,1);}","ps_3_0",&pc.p);
-        const auto bh=hash(pc.p);ok("background PS",d->CreatePixelShader(static_cast<DWORD*>(pc->GetBufferPointer()),&background.p));pc.reset();
+        ok("background PS",d->CreatePixelShader(static_cast<DWORD*>(pc->GetBufferPointer()),&background.p));pc.reset();
         compile(compiler,"float4 main():COLOR0{return float4(.8,.2,.1,1);}","ps_3_0",&pc.p);
         ok("material PS",d->CreatePixelShader(static_cast<DWORD*>(pc->GetBufferPointer()),&material.p));pc.reset();
-        for(auto& pair:signatures.background)pair={};
-        signatures.background[0]={vh,bh}; // No haze profile: primary background alone is verified.
+        for(auto& pair:signatures.background)pair={}; // Deprecated slots: background is recognized structurally.
         for(unsigned i=0;i<4;++i){
             const std::string ps="sampler2D color:register(s0);float4 main(float2 uv:TEXCOORD0):COLOR0{return tex2D(color,uv)*"+std::to_string(.5f+i*.125f)+";}";
             compile(compiler,ps.c_str(),"ps_3_0",&pc.p);signatures.bloom[i]={vh,hash(pc.p)};
