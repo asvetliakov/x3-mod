@@ -53,6 +53,19 @@ in every case because of its cap, versus +5.66…+8 for the old rule. Actual
 post-TAA meter inputs and presented images are absent, so this is a scoped
 counterfactual, not game acceptance of the new meter or its appearance.
 
+## Bloom preparation checkpoint (2026-09-13)
+
+Targeted disassembly and independent review produced the
+[compositor replacement contract](reverse-engineering/bloom-compositor-skip.md)
+and [late-view state analysis](reverse-engineering/bloom-late-view-state.md).
+A glow-setting test alone cannot authorize skipping the original compositor:
+replacement output, exact device ownership, engine state/cache restoration and
+failure recovery must be established. Pure render states are memoized; the
+older constant-upload note is corrected. The first captured GUI draw only
+narrows the inherited-state problem; actual boundary alpha-test state and
+arbitrary later materials remain unqualified. No bloom implementation or new
+game evidence is claimed, and this documentation does not change the DLL.
+
 ## Run 17: crypto loading accepted on X3 (2026-09-13)
 
 [Run 17](verification/run17-crypto-loading.md) confirms provider/key reuse with

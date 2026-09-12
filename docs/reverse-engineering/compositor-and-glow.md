@@ -352,16 +352,15 @@ rebinds RT0, and it leaves it bound to the back buffer.
    composite into the FP16 surface. The existing "reaching `EndScene` still
    redirected is a bug" rule must be tightened to "reaching `0x004c4750` still
    redirected is a bug".
-4. **Stage 5 gating is now a one-line test.** Skip the original compositor only
-   when `(*(uint8_t *)(*(uintptr_t *)0x00606f34 + 0x100) & 0x80) != 0` **and**
-   `*(uint8_t *)(*(uintptr_t *)0x00608b3c + 0x18) + 0x94) != 0`. When the bit is
-   clear the game draws no glow at all, so an HDR bloom must also be suppressed
-   to honour the user's setting; when it is set, replacing the four passes is
-   safe because the only full-screen output that reaches the back buffer is
-   `FinalCombine`, and its blend is `ONE`/`INVSRCCOLOR` over the scene the hook
-   already owns. Both reads are plain globals in the EXE image — no hook, no
-   pattern match — but they must be re-read per frame, since the menu writes them
-   live.
+4. **Replacement admission requires more than the glow preference.** The
+   earlier one-line skip proposal and abbreviated pointer expressions are
+   superseded by [the compositor replacement contract](bloom-compositor-skip.md).
+   Re-read the live preference/capability through its validated pointer chains,
+   require a successful replacement on the exact owning device, and preserve
+   the engine's continuation state and effect-manager caches. The preference
+   alone does not prove that skipping the original compositor is safe. Ordinary
+   later materials remain only partly qualified; see the
+   [late-view analysis](bloom-late-view-state.md).
 5. **State residue if the original is skipped.** Skipping `0x004c4750` also skips
    `SetDepthStencilSurface(NULL)`/restore, the viewport change in `0x004c6300`,
    the vertex declaration and stream binding, and — on a software-vertex-

@@ -26,8 +26,10 @@ installed with the camera integration at `2e5f1af`; obtain the controlled user r
 Sharpen 0.75 / mip bias −0.5 remain
 candidate defaults until 0.75 is measured in game. HDR bloom on the FP16 target
 is the next visual feature; use the [existing glow/compositor
-map](../reverse-engineering/compositor-and-glow.md) to avoid double bloom or HUD
-contamination. A material pass is the prerequisite for real HDR lighting and
+map](../reverse-engineering/compositor-and-glow.md) and the reviewed
+[replacement contract](../reverse-engineering/bloom-compositor-skip.md) to avoid
+double bloom or HUD contamination. The latter supersedes the earlier one-line
+skip proposal; later-material inherited-state coverage remains open. A material pass is the prerequisite for real HDR lighting and
 emissives. Custom AgX look tuning and temporal upscaling remain candidates.
 
 | Iteration | Deliverable | Acceptance gate |

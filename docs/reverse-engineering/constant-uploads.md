@@ -271,9 +271,14 @@ routed draw replaces both shaders, so `undo()` restoring exactly
 shadow is stale and the next effect pass silently renders with our variant
 shader. The existing reverse-order `undo()` already satisfies this. The same
 reasoning applies to `SetRenderTarget(1, …)` and `D3DRS_COLORWRITEENABLE1`:
-`CPureDeviceStateManager::SetRenderState` (`0x004b4f80`) only filters through
-`FUN_004b5620` and does not memoize, and `Begin` uses `D3DXFX_DONOTSAVESTATE`,
-so D3DX will not restore those for us either.
+`CPureDeviceStateManager::SetRenderState` (`0x004b4f80`) filters through
+`FUN_004b5620`, which **does memoize** render-state values in a tree: the
+comparison at `0x004b5663` returns false for an unchanged value, and the caller
+then skips the device call at `0x004b4f9b`. Direct temporary changes must restore
+the incoming render states too, or the next identical manager setter can leave
+the wrong device state active. `Begin` uses `D3DXFX_DONOTSAVESTATE`, so D3DX
+will not restore those for us either. See the targeted assembly correction in
+[bloom-late-view-state.md](bloom-late-view-state.md#render-state-cache-correction).
 
 ## Reproduce
 
