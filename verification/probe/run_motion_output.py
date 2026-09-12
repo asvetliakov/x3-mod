@@ -2587,6 +2587,8 @@ def main():
             print(f'{name}: exit={completed.returncode} checks={case["checks"]} motion_pixels={case["motion_pixels"]}', flush=True)
         wine_log.close()
         if only:
+            result['sources_after_run'] = sources()
+            assert result['sources_after_run'] == result['sources_before_build'], 'Sources changed during selected run'
             result['status'] = 'PARTIAL'
             save()
             report_path.write_text(''.join(report))

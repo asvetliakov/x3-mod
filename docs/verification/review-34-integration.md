@@ -7,8 +7,8 @@ of the reviewed exposure branch into main after the CryptoAPI cache merge.
 It does not report a final-main runtime pass. Root owns the final build,
 selected runtime checks, frozen artifact audit and installation.
 
-`run_motion_output.py::sources()` now binds these ten additional execution
-inputs before and after the run, through its existing source-stability checks:
+`run_motion_output.py::sources()` now includes these ten additional execution
+inputs in its source-stability checks:
 
 - `tools/analysis/exposure_reference.py`, `agx_reference.py`,
   `analyze_motion_readback.py` and `summarize_capture.py`;
@@ -51,9 +51,16 @@ Host-only checks passed: Python parsing, evaluation of the manifest function
 with all ten added files present, and AST inspection of all nine explicit
 loading settings (including the already explicit mesh-cache switch). No
 Wine command, compiler build or gameplay launch was performed for this
-review. Root reviewed the runner delta: the imported helper set is present, existing
-source-stability assertions remain, and explicit native/off settings precede
-the authored case overrides. No further finding.
+review. Root reviewed the imported helper set and explicit native/off settings,
+then found that selected mode returned before the existing full-suite
+post-run source check. The follow-up records `sources_after_run` and asserts
+equality with `sources_before_build` before publishing `PARTIAL`. A changed
+source reaches the existing failure handler; selected mode never becomes a
+full-suite pass. Host execution of the actual selected AST branch confirmed
+unchanged inputs retain `passed=false`/`PARTIAL`, and changed or missing
+helper entries are rejected with the after-map retained. The pre-fix branch
+accepted the same changed-input counterexample. This repairs selected-run
+source provenance; earlier partial records are not retroactively upgraded.
 Root separately reports production-flag syntax checks passing for merged
 `capture`, `motion_output`, `hdr_pass` and `exposure`, and 60 targeted
 AgX/exposure settings, portability/reference and CryptoAPI host tests passing

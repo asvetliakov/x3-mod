@@ -79,7 +79,9 @@ The merge retains complete branch result artifacts rather than mixing reports
 from different runs. Review-30 reports remain available at their checkpoint.
 The branch's numerical-helper hashes were recorded after its runs, with that
 limitation explicit; final integration expands the before/after source manifest
-and reruns selected combined paths. See [review 34](verification/review-34-integration.md).
+and reruns selected combined paths. Root review also fixed selected-mode's
+early return so it checks source stability before publishing its partial result;
+four host controls passed. See [review 34](verification/review-34-integration.md).
 This checkpoint does not change the installed review-30 DLL.
 
 ## Review 29 record — loading branch, adjacency parity and present readback merged (2026-09-12 night)
