@@ -363,6 +363,66 @@ run, negative controls of the jitter convention intact
 (`run_temporal_pass.py` asserts the exact counts and records the camera
 metrics under `camera` in `temporal-pass-summary.json`).
 
+### Stage 3 of the HDR scene path: luminance weighting (2026-09-12)
+
+`resolve.hlsl` gained the reversible luminance weighting of
+[hdr-scene-path.md](../architecture/hdr-scene-path.md) §3 (`c22.x = k`;
+mechanism and the derivation of `k` in
+[temporal-integration.md](../architecture/temporal-integration.md#stage-3-of-the-hdr-scene-path-taa-on-hdr-2026-09-12)).
+The compiled resolve grew from 3,840 to 4,487 words (4,375 before review
+24's luma floor).
+
+**Migration identity (k = 0), before any case was added.** With the
+weighting compiled in and every input at its default `k = 0`, the suite
+reproduced review 23's record exactly: 416 numerical / 164 state checks,
+386 samples, 2 generations, the camera drifts 0.0686 / 0.1243 / 0.1764 /
+0.0619 / 0.0263 / 0.0334 / 0.0292 / 0.8621 / 1.0506 / 0.1004 px and the
+negative controls (oracle errors 0.423 / 0.454 / 0.287). `temporal_run.py`
+(which uploads c22 = 0 explicitly since the change) passed 78 / 78 samples,
+2 generations. The tracked reports `verification/results/temporal-pass.txt`
+and `temporal-resolve.txt` were **byte-identical** to the committed ones
+(`git diff` empty), which is the byte-for-byte evidence: the identity is
+selected by a compare that multiplies by the constant 1.0, never by
+`1/(1+0)`.
+
+**k > 0 cases** (`hdr_cases`, per generation; the FP16 texture input, weight
+0.9, R32F depth 0.5 everywhere, identity camera, no jitter; the CPU model
+of one grey pixel applies the weighting, the 3×3 mean ± 1.25σ clip inside
+the min/max box, the blend and the inverse):
+
+| Case | k = 0 | k = 1 | k = 4 |
+| --- | ---: | ---: | ---: |
+| Firefly 8.0 against a 0.2 (FP16 0.199951) history: output | 0.979492 (model 0.979956) | 0.313721 (model 0.313816) | 0.246826 (model 0.246934) |
+| flicker energy (output − background) | 0.7795 | 0.1138 | 0.0469 |
+| energy ratio to unweighted, measured / analytic | 1 | 0.1459 / 0.1460 | 0.0601 / 0.0602 |
+| dark neighbour of the firefly | 0.199951 | 0.199951 | 0.199951 |
+| Stationary HDR gradient (2⁻⁸…2^7.6, RGB 1 : ½ : ¼), second frame vs input, worst FP16 ulp | 0 | 1 | 1 |
+| Stable saturated edge (4, .1, .1) \| (.1, .1, 4), worst ulp / min channel ratio (input 40) | — | 1 / 39.98 | 1 / 39.98 |
+| Negative channels (review 24): 5×5 blocks of (−.5, −.5, −.5) and (−.5, 1, 0) among 0.2 greys, second frame vs input, worst ulp / all finite | — | k = 2: 1 / yes | 1 / yes |
+
+Reading: at k = 0 the clip window of the firefly pixel (mean ± 1.25σ =
+[0.2, 4.13], within the [0.2, 8] box) admits the dark history, so the
+unweighted blend keeps 0.1 · 8 + 0.9 · 0.2 = 0.98 — a 0.78 flash of
+energy at the next frame. Weighted, the same pixel enters the statistics
+as 8/9 (k = 1) and leaves the blend at 0.314: the weighting suppresses the
+flash by the analytic factor to 4 significant digits; the model differs
+from the FP16 output by the output rounding (≤ 5e-4). The stationary
+gradient and the saturated edge (its edge columns include neighbourhoods
+spanning both sides) survive the weighting and its inverse within one FP16
+ulp, exactly at k = 0, and the 40 : 1 channel ratio is preserved. Negative,
+NaN and above-FP16 `k` are refused (`E_INVALIDARG`). The negative-channel
+case (review 24, finding 1) exercises the luma floor: run against the
+pre-fix shader, the same scene at k = 2 made `1 + k · luma` zero for the
+−0.5 block and the block resolved to NaN (`finite=0`, worst 34,202 ulp; the
+fixture stops at the first failure, so k = 4 — a weight of −1, then the
+inverse's floor — was not reached); with the floor both blocks return within
+one ulp at both k, every output finite. The blocks are 5×5 because the mean ± 1.25σ clip preserves
+a stationary value only where at least four of its nine taps share it (a
+block corner has exactly four); an isolated pixel is an outlier at any k,
+0 included. Totals after the additions: **448 numerical / 204 state checks,
+386 samples**, negative controls intact (`run_temporal_pass.py` asserts the
+counts).
+
 ## Reproduce
 
 ```sh

@@ -243,7 +243,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     x3::temporal::ResolveConstants constants{};std::copy(in.rejection,in.rejection+4,constants.rejection);
     if(!x3::temporal::prepare(constants,history_,in.clip_to_previous,in.current_jitter[0],in.current_jitter[1],
         in.previous_jitter[0],in.previous_jitter[1],in.weight,in.motion_policy==MotionPolicy::PerPixel,
-        in.reactive_policy==ReactivePolicy::RequiredMask,sentinel,sentinel&&in.sentinel_camera))return fail(E_INVALIDARG);
+        in.reactive_policy==ReactivePolicy::RequiredMask,sentinel,sentinel&&in.sentinel_camera,in.luminance_k))return fail(E_INVALIDARG);
     const bool used=history_.valid&&in.weight>0;
     auto stamp=[&]()->std::uint64_t{if(!timing_)return 0;LARGE_INTEGER t{};QueryPerformanceCounter(&t);return std::uint64_t(t.QuadPart);};
     std::uint64_t mark=stamp();
@@ -261,6 +261,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     // the next depth history are bound nowhere. StretchRect is legal inside or
     // outside a scene. No sRGB flag is set on any sampler or target, so the
     // 8-bit copy is a plain UNORM-to-FP16 conversion of the linear-encoded data.
+    // An FP16 texture input (in.color) takes neither copy nor scratch.
     mark=stamp();
     if(SUCCEEDED(hr)&&in.color_surface&&step(ensure_scratch()))hr=call<StretchFn>(StretchRect)(d,in.color_surface,nullptr,scratch_surface_,nullptr,D3DTEXF_POINT);
     diagnostics_.ticks_copy_color=stamp()-mark;
@@ -276,7 +277,8 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(SUCCEEDED(hr)&&in.depth_snapshot&&step(call<SetRtFn>(SetRenderTarget)(d,0,depth_surfaces_[next]))&&
         step(call<SetPsFn>(SetPixelShader)(d,decoder_))&&step(call<SetTextureFn>(SetTexture)(d,0,in.depth_snapshot)))hr=quad(in.width,in.height);
     if(SUCCEEDED(hr)&&step(call<SetTextureFn>(SetTexture)(d,0,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,color_surfaces_[next]))&&
-        step(call<SetPsFn>(SetPixelShader)(d,resolve_))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],8))&&
+        step(call<SetPsFn>(SetPixelShader)(d,resolve_))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],x3::temporal::kResolveRegisterCount))&&
+        step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,x3::temporal::kLuminanceRegister,constants.luminance,1))&&
         step(call<SetTextureFn>(SetTexture)(d,0,in.color?in.color:scratch_))&&step(call<SetTextureFn>(SetTexture)(d,1,depths_[next]))&&
         step(call<SetTextureFn>(SetTexture)(d,2,history_.valid?colors_[current_]:nullptr))&&
         step(call<SetTextureFn>(SetTexture)(d,3,history_.valid?depths_[current_]:nullptr))&&

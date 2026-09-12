@@ -98,7 +98,8 @@ struct HdrFrameBegin {
 enum class HdrFault : unsigned {
     None = 0, CapsTarget = 1, CapsBlending = 2, SelfTest = 3, Draw = 4, Lost = 5,
     Stretch = 6, Restore = 7, TargetCreate = 8, Bind = 9, Clear = 10, // Clear: the latching Clear reports failure (consumed by MotionOutput)
-    TonemapDraw = 11, TonemapShader = 12, Meter = 13 // stage 2: the tonemap draw fails, its creation fails at attach, the chain fails
+    TonemapDraw = 11, TonemapShader = 12, Meter = 13, // stage 2: the tonemap draw fails, its creation fails at attach, the chain fails
+    Resolve = 14 // stage 3: the temporal resolve on the FP16 scene fails (consumed by MotionOutput::resolve; the pass is not run)
 };
 class HdrPass {
 public:
@@ -156,7 +157,13 @@ public:
     // bound to `final_rt0` (the target for a flush, `main` for an end) with the
     // viewport and scissor preserved. `write`: false only rebinds (nothing drew
     // into the target since the last write-back). `timing`: stamp the rungs.
-    HdrWriteback write_back(IDirect3DSurface9* main, IDirect3DSurface9* final_rt0, bool scene_open, bool write, bool timing) noexcept;
+    // `source` (stage 3): the FP16 texture the copy draw and the meter chain
+    // sample instead of the target -- the temporal resolve's output, so the
+    // presented image and the meter see the resolved scene; null samples the
+    // target. The emergency StretchRect rung always copies the target (the
+    // unresolved scene: an image, never a black frame).
+    HdrWriteback write_back(IDirect3DSurface9* main, IDirect3DSurface9* final_rt0, bool scene_open, bool write, bool timing,
+                            IDirect3DTexture9* source = nullptr) noexcept;
     // Device references held (target surface, the shaders, the meter chain's
     // level surfaces, ring targets and readback surfaces).
     unsigned references() const noexcept;

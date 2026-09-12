@@ -38,6 +38,7 @@ struct Statistics {
     std::array<uint64_t,bypass_reason_count> bypass_reasons{};
     uint64_t rejected_result=0,rejected_last_error=0,rejected_fp=0;
     bool unsupported_fp_available=false;FloatingPointDiagnostic unsupported_fp{};
+    bool first_fp_available=false,first_fp_supported=false;FloatingPointDiagnostic first_fp{}; // First incoming state, accepted or not.
 };
 class Cache final {
 public:
@@ -74,8 +75,8 @@ private:
         X3M_CACHE_COUNTER(copy_ticks) X3M_CACHE_COUNTER(native_ticks) X3M_CACHE_COUNTER(total_ticks)
         X3M_CACHE_COUNTER(rejected_result) X3M_CACHE_COUNTER(rejected_last_error) X3M_CACHE_COUNTER(rejected_fp)
         std::array<std::atomic<uint64_t>,bypass_reason_count> bypass_reasons{};
-        std::atomic<unsigned> unsupported_fp_publication{0};
-        FloatingPointDiagnostic unsupported_fp{};
+        std::atomic<unsigned> unsupported_fp_publication{0},first_fp_publication{0};
+        FloatingPointDiagnostic unsupported_fp{},first_fp{};bool first_fp_supported=false;
 #undef X3M_CACHE_COUNTER
     } counters_;
     Config config_;

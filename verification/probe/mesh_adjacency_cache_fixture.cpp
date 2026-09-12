@@ -109,10 +109,13 @@ int main(int argc,char**argv){
         {Com<ID3DXMesh>m;create32(create,device.p,base,&m.p);mac::Cache c;auto a=invoke(nullptr,m.p,base.epsilon);parity(a,invoke(&c,m.p,base.epsilon),"32bit fill");auto b=invoke(&c,m.p,base.epsilon);require(b.result.origin==mac::Origin::CacheHit,"32bit hit");parity(a,b,"32bit parity");}
         // Exact equality remains decisive even when the hash is deliberately constant.
         {mac::Cache c;c.fixture_force_hash_collision(true);auto a=invoke(&c,mesh.p,base.epsilon);auto changed=base;changed.vertices[3].x+=.25f;Com<ID3DXMesh>m;createMesh(create,device.p,changed,&m.p);auto b=invoke(&c,m.p,base.epsilon);require(b.result.origin==mac::Origin::Native,"hash collision misses different bytes");parity(invoke(nullptr,m.p,base.epsilon),b,"collision parity");require(invoke(&c,mesh.p,base.epsilon).result.origin==mac::Origin::CacheHit,"collision retains original key");require(a.result.hr==S_OK,"collision seed");}
-        // Supported sticky status is keyed and replayed; alternative controls bypass.
-        for(unsigned variant=0;variant<7;++variant){FP state=seed;
-            switch(variant){case 0:state.x87.status|=0x20;break;case 1:state.x87.status|=0x4100;break;case 2:state.x87.control=(state.x87.control&0xffff0000)|0x037f;break;case 3:state.x87.control|=0x0400;break;case 4:state.mxcsr|=0x8000;break;case 5:state.mxcsr|=0x40;break;case 6:state.mxcsr|=0x20;break;}
-            mac::Cache c;auto a=invoke(nullptr,mesh.p,base.epsilon,state);auto b=invoke(&c,mesh.p,base.epsilon,state);auto d=invoke(&c,mesh.p,base.epsilon,state);parity(a,b,"FP fill variant parity");parity(a,d,"FP reuse variant parity");require((d.result.origin==mac::Origin::CacheHit)==(variant<2||variant==6),"FP unsupported controls bypass");
+        // Sticky status, precision, rounding and FTZ/DAZ are keyed and replayed
+        // (variant 7 is the game's 0x027f/0x9fc0); unmasked exceptions bypass.
+        for(unsigned variant=0;variant<10;++variant){FP state=seed;
+            switch(variant){case 0:state.x87.status|=0x20;break;case 1:state.x87.status|=0x4100;break;case 2:state.x87.control=(state.x87.control&0xffff0000)|0x037f;break;case 3:state.x87.control|=0x0400;break;case 4:state.mxcsr|=0x8000;break;case 5:state.mxcsr|=0x40;break;case 6:state.mxcsr|=0x20;break;
+                case 7:state.x87.control=(state.x87.control&0xffff0000)|0x027f;state.mxcsr=0x9fc0;break;case 8:state.x87.control&=~DWORD(0x2);break;case 9:state.mxcsr&=~DWORD(0x100);break;}
+            mac::Cache c;auto a=invoke(nullptr,mesh.p,base.epsilon,state);auto b=invoke(&c,mesh.p,base.epsilon,state);auto d=invoke(&c,mesh.p,base.epsilon,state);parity(a,b,"FP fill variant parity");parity(a,d,"FP reuse variant parity");require((d.result.origin==mac::Origin::CacheHit)==(variant<8),"FP unmasked exceptions bypass, controls are keyed");
+            if(variant<8)require(c.statistics().first_fp_available&&c.statistics().first_fp_supported&&c.statistics().first_fp.mxcsr==state.mxcsr,"first incoming FP state published as supported");
         }
         write_fp(seed);
         for(unsigned mode=1;mode<=3;++mode){mac::Cache c;behavior=mode;auto a=invoke(nullptr,mesh.p,base.epsilon);parity(a,invoke(&c,mesh.p,base.epsilon),"native failure/alternate success/error fill");parity(a,invoke(&c,mesh.p,base.epsilon),"native failure/alternate success/error repeat");require(c.statistics().admissions==0,"only stable S_OK admitted");}behavior=0;

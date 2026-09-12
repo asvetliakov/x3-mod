@@ -11,19 +11,20 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 
 def main():
     root = Path(__file__).resolve().parents[2]
     executable = root/'verification/probe/build/vertex_color_hdr.exe'
     source = root/'verification/probe/vertex_color_hdr.cpp'
-    results = root/'verification/results'
+    results = bottle.results_dir(root)
     command = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-               '--bottle','Steam','--no-update','--workdir',str(executable.parent),
+               '--bottle',bottle.BOTTLE,'--no-update','--workdir',str(executable.parent),
                str(executable),r'C:\X3\d3dx9_37.dll']
     environment = os.environ.copy()
     environment['WINEDLLOVERRIDES'] = 'd3d9=b'
-    metadata = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    metadata = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(), bottle=bottle.describe(),
                     command=command, process_local_override='d3d9=b', timeout_seconds=60,
                     source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
                     executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest())

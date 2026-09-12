@@ -6,7 +6,8 @@ import json
 import os
 import shutil
 import subprocess
-root=Path(__file__).resolve().parents[2];probe=root/'verification/probe/build';results=root/'verification/results'
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
+root=Path(__file__).resolve().parents[2];probe=root/'verification/probe/build';results=bottle.results_dir(root)
 from run_ownership_integration import sources, binaries, sha, require_no_game
 from verify_ownership_integration import verify_geometry, verify_motion_mode, verify_admission
 (results/'ownership-integration-fallback.json').write_text(json.dumps({'result':'RUNNING'})+'\n')
@@ -33,7 +34,7 @@ wine='/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/w
 stdout_path=results/'ownership-integration-fallback.txt'
 with stdout_path.open('w') as stdout,(results/'ownership-integration-fallback-wine.log').open('w') as stderr:
     require_no_game()
-    completed=subprocess.run([wine,'--bottle','Steam','--no-update','--dll','d3d9=n,b','--workdir',str(directory),str(directory/'d3d9_smoke.exe')],env=env,stdout=stdout,stderr=stderr,timeout=90)
+    completed=subprocess.run([wine,'--bottle',bottle.BOTTLE,'--no-update','--dll','d3d9=n,b','--workdir',str(directory),str(directory/'d3d9_smoke.exe')],env=env,stdout=stdout,stderr=stderr,timeout=90)
 trace=max((directory/'x3-modern-captures').glob('session-*.log'),key=lambda p:p.stat().st_mtime)
 shutil.copy(trace,results/'ownership-integration-fallback-capture.log')
 text=trace.read_text();output=stdout_path.read_text()
@@ -52,5 +53,5 @@ assert sum(line.startswith('device_destroy ') for line in text.splitlines())==2
 assert all(sha(directory/name)==digest for name,digest in local_hashes.items()),'Fallback executable/DLL changed during run'
 assert manifest['sources']==sources() and manifest['binaries_at_end']==binaries(),'Inputs changed during fallback verification'
 assert all(sha(root/path)==digest for path,digest in object_hashes.items()),'Proxy objects changed during fallback verification'
-report={'sources_before_and_after':manifest['sources'],'binaries_before_and_after':manifest['binaries_at_end'],'production_object_hashes':object_hashes,'result':'PASS','fault':'wrap_factory E_OUTOFMEMORY without consuming native ref','production_objects':[str(p.relative_to(object_root)) for p in objects],'verification_dll_sha256':sha(directory/'d3d9.dll'),'production_dll_sha256':sha(root/'build-ownership/d3d9.dll'),'trace_sha256':sha(trace),'stub_sha256':sha(root/'verification/probe/ownership_integration_fallback_stub.cpp'),'installed':False,'finite_requested':True,'geometry':geometry,'motion_mode':motion_mode,'admission':admission,'local_binaries_before_and_after':local_hashes}
+report={'bottle':bottle.describe(),'sources_before_and_after':manifest['sources'],'binaries_before_and_after':manifest['binaries_at_end'],'production_object_hashes':object_hashes,'result':'PASS','fault':'wrap_factory E_OUTOFMEMORY without consuming native ref','production_objects':[str(p.relative_to(object_root)) for p in objects],'verification_dll_sha256':sha(directory/'d3d9.dll'),'production_dll_sha256':sha(root/'build-ownership/d3d9.dll'),'trace_sha256':sha(trace),'stub_sha256':sha(root/'verification/probe/ownership_integration_fallback_stub.cpp'),'installed':False,'finite_requested':True,'geometry':geometry,'motion_mode':motion_mode,'admission':admission,'local_binaries_before_and_after':local_hashes}
 (results/'ownership-integration-fallback.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report))

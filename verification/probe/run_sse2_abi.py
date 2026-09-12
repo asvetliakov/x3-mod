@@ -7,10 +7,11 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
 BUILD = ROOT / 'verification/probe/build/sse2-abi'
-RESULTS = ROOT / 'verification/results'
+RESULTS = bottle.results_dir(ROOT)
 BUILD.mkdir(parents=True, exist_ok=True)
 RESULTS.mkdir(exist_ok=True)
 INPUTS = ['verification/probe/sse2_abi.cpp', 'verification/probe/run_sse2_abi.py',
@@ -34,7 +35,7 @@ variants = {'default': [], 'realign': ['-mstackrealign'],
             'explicit_legacy': ['-mstackrealign', '-mincoming-stack-boundary=2'],
             'assumed16_realign': ['-mincoming-stack-boundary=4', '-mstackrealign'],
             'assumed16_negative': ['-mno-stackrealign', '-mincoming-stack-boundary=4']}
-report = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+report = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(), bottle=bottle.describe(),
               compiler=run([base[0], '--version']).splitlines()[0], sources_before=before,
               scope='Original console probe only; no game, installation or bottle setting changes.', variants={})
 log = []
@@ -48,7 +49,7 @@ for name, flags in variants.items():
     selected = {symbol: instructions(dump, symbol) for symbol in
                 ['_std_callback@8', '_this_callback', '_c_callback', '_scalar_return', '_legacy_call']}
     launch = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-              '--bottle', 'Steam', '--no-update', '--workdir', str(BUILD), str(exe)]
+              '--bottle', bottle.BOTTLE, '--no-update', '--workdir', str(BUILD), str(exe)]
     negative = name.startswith('assumed16_')
     if negative:
         launch.append('negative')

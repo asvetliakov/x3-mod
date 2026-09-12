@@ -7,11 +7,12 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
 PROBE = ROOT / 'verification/probe'
 BUILD = PROBE / 'build/process-admission'
-OUT = ROOT / 'verification/results'
+OUT = bottle.results_dir(ROOT)
 WINE = Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine')
 INPUTS = ['src/ownership/application_admission.h', 'src/ownership/application_admission.cpp',
           'src/ownership/application_admission_abi.h', 'src/ownership/application_admission_abi.cpp',
@@ -34,7 +35,7 @@ def no_game():
 
 def main():
     BUILD.mkdir(parents=True, exist_ok=True)
-    report = {'passed': False, 'scope': 'process getter first-use publication and CPU state; no complete proxy/live replay claim', 'runs': []}
+    report = {'passed': False, 'bottle': bottle.describe(), 'scope': 'process getter first-use publication and CPU state; no complete proxy/live replay claim', 'runs': []}
     summary = OUT / 'process-admission-summary.json'
     # A killed build/run must not leave an earlier successful report visible.
     OUT.mkdir(parents=True, exist_ok=True)
@@ -59,7 +60,7 @@ def main():
             if sources() != before:
                 raise RuntimeError('source changed during verification')
             no_game()
-            launch = [str(WINE), '--bottle', 'Steam', '--no-update', '--workdir', str(BUILD), str(exe), mode]
+            launch = [str(WINE), '--bottle', bottle.BOTTLE, '--no-update', '--workdir', str(BUILD), str(exe), mode]
             run = subprocess.run(launch, capture_output=True, text=True, timeout=45)
             log, errors = OUT / f'process-admission-{mode}.txt', OUT / f'process-admission-{mode}-stderr.txt'
             log.write_text(run.stdout)

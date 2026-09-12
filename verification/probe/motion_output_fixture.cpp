@@ -214,11 +214,30 @@ double ramp_value(unsigned row) { return 0.001 * std::pow(2.0, double(row) * (st
 // read-back inputs. Its history evolves exactly like the route's when every
 // frame's inputs, jitter, cut verdict and Reset points are the same, so its
 // output must be bit-identical.
+// IEEE binary32 -> binary16, round to nearest even (the DLL's FP16 readback
+// values are exact halves, so the reference's upload reproduces them exactly).
+unsigned short float_to_half(float f) {
+    unsigned bits; std::memcpy(&bits, &f, 4);
+    const unsigned sign = (bits >> 16) & 0x8000; const int exponent = int((bits >> 23) & 255) - 127; unsigned mantissa = bits & 0x7fffff;
+    if (exponent == 128) return static_cast<unsigned short>(sign | 0x7c00 | (mantissa ? 0x200 | (mantissa >> 13) : 0));
+    if (exponent > 15) return static_cast<unsigned short>(sign | 0x7c00);
+    if (exponent >= -14) {
+        unsigned half = sign | (unsigned(exponent + 15) << 10) | (mantissa >> 13); const unsigned rest = mantissa & 0x1fff;
+        if (rest > 0x1000 || (rest == 0x1000 && (half & 1))) ++half;
+        return static_cast<unsigned short>(half);
+    }
+    if (exponent < -25) return static_cast<unsigned short>(sign);
+    mantissa |= 0x800000; const int shift = -exponent - 1;
+    unsigned half = mantissa >> shift; const unsigned rest = mantissa & ((1u << shift) - 1), mid = 1u << (shift - 1);
+    if (rest > mid || (rest == mid && (half & 1))) ++half;
+    return static_cast<unsigned short>(sign | half);
+}
 struct Reference {
     HMODULE module = nullptr; HWND window = nullptr;
     Com<IDirect3D9> factory; Com<IDirect3DDevice9> d;
     x3m::renderer::TemporalPass pass;
     Com<IDirect3DSurface9> color, output8, sys8, sys16;   // lockable A8R8G8B8 RT inputs/outputs and readback surfaces
+    Com<IDirect3DTexture9> color16;                        // MANAGED A16B16G16R16F: the HDR route's FP16 scene, sampled directly (stage 3)
     Com<IDirect3DTexture9> motion, depth, depth_staging;   // MANAGED RGBA32F (sampled only); DEFAULT R32F (StretchRect source) filled through a SYSTEMMEM copy
     UINT W = 0, H = 0; std::uint64_t epoch = 1;
     void create(HMODULE proxy, HWND owner, UINT w, UINT h) {
@@ -236,6 +255,7 @@ struct Reference {
         api(d->CreateRenderTarget(W, H, D3DFMT_A8R8G8B8, D3DMULTISAMPLE_NONE, 0, TRUE, &output8.p, nullptr), "reference output RT");
         api(d->CreateOffscreenPlainSurface(W, H, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &sys8.p, nullptr), "reference sys8");
         api(d->CreateOffscreenPlainSurface(W, H, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &sys16.p, nullptr), "reference sys16");
+        api(d->CreateTexture(W, H, 1, 0, D3DFMT_A16B16G16R16F, D3DPOOL_MANAGED, &color16.p, nullptr), "reference color16");
         api(d->CreateTexture(W, H, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED, &motion.p, nullptr), "reference motion");
         api(d->CreateTexture(W, H, 1, 0, D3DFMT_R32F, D3DPOOL_DEFAULT, &depth.p, nullptr), "reference depth");
         api(d->CreateTexture(W, H, 1, 0, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &depth_staging.p, nullptr), "reference depth staging");
@@ -254,12 +274,23 @@ struct Reference {
         api(depth_staging->UnlockRect(0), "unlock reference depth");
         api(d->UpdateTexture(depth_staging.p, depth.p), "reference depth upload");
     }
+    // The FP16 scene (4 floats per pixel, row-major) for the HDR route's reference.
+    void upload16(const std::vector<float>& rgba) {
+        D3DLOCKED_RECT lock{}; api(color16->LockRect(0, &lock, nullptr, 0), "lock reference color16");
+        for (UINT y = 0; y < H; ++y) {
+            auto* row = reinterpret_cast<unsigned short*>(static_cast<char*>(lock.pBits) + y * lock.Pitch);
+            for (UINT i = 0; i < W * 4; ++i) row[i] = float_to_half(rgba[std::size_t(y) * W * 4 + i]);
+        }
+        api(color16->UnlockRect(0), "unlock reference color16");
+    }
     // Runs one frame exactly as the route does and returns the copied-back
-    // 8-bit image; `half` receives the FP16 output bytes.
+    // 8-bit image; `half` receives the FP16 output bytes. `hdr`: the FP16
+    // scene (upload16) is the colour input with the weighting constant `k`.
     x3m::renderer::Output run(double jx, double jy, double pjx, double pjy, bool cut, const float* clip_to_previous, bool sentinel_camera,
-                              std::vector<DWORD>& image8, std::vector<unsigned char>& half) {
+                              bool hdr, float k, std::vector<DWORD>& image8, std::vector<unsigned char>& half) {
         x3m::renderer::FrameInputs in{};
-        in.color_surface = color.p; in.current_depth = depth.p; in.motion = motion.p;
+        if (hdr) { in.color = color16.p; in.luminance_k = k; } else in.color_surface = color.p;
+        in.current_depth = depth.p; in.motion = motion.p;
         in.width = W; in.height = H; in.epoch = epoch;
         std::memcpy(in.clip_to_previous, clip_to_previous, 16 * sizeof(float));
         in.sentinel_camera = sentinel_camera;
@@ -285,7 +316,7 @@ struct Reference {
     void reset() { pass.invalidate(); ++epoch; }
     void destroy() {
         pass.shutdown();
-        color.reset(); output8.reset(); sys8.reset(); sys16.reset(); motion.reset(); depth.reset(); depth_staging.reset();
+        color.reset(); color16.reset(); output8.reset(); sys8.reset(); sys16.reset(); motion.reset(); depth.reset(); depth_staging.reset();
         if (d.p) { const ULONG refs = d.p->Release(); d.p = nullptr; require(refs == 0, "reference device final Release reaches zero"); }
         if (factory.p) { const ULONG refs = factory.p->Release(); factory.p = nullptr; require(refs == 0, "reference factory final Release reaches zero"); }
         if (module) { FreeLibrary(module); module = nullptr; }
@@ -309,6 +340,8 @@ struct Fixture {
     bool seam = false, enabled = false, jitter = false, taa = false, bench = false, burst = false, lazy = false, envmap = false;
     bool hook = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
     bool hdrramp = false, hdrexposure = false, hdrtonemapfault = false; // stage-2 scripts
+    bool hdr_agx = false;           // X3M_HDR_TONEMAP=agx: the presented image is AgX (the runner holds the reference)
+    bool history_dropped = false;   // the route skipped or failed a resolve: its history is gone until the next resolve
     unsigned jitter_samples = 8;
     // HDR seam exports (X3M_HDR scripts).
     void (*hdr_fault)(IDirect3DDevice9*, unsigned, unsigned) = nullptr;
@@ -815,6 +848,7 @@ struct Fixture {
             // The route skipped the resolve (strict policy without a transform,
             // or a rejected environment-map frame): the copy carries the raster.
             require(!changed, "a frame the route cannot resolve leaves the 8-bit main target untouched");
+            reference.pass.invalidate(); // the route dropped its history with the skip (invalidate_taa)
             ++taa_skipped_frames;
         } else if (live) {
             // Reference resolve from the DLL's own inputs: RT1/RT2 read back
@@ -823,12 +857,12 @@ struct Fixture {
             api(readback(d.p, motion_data.data(), unsigned(motion_data.size()), &w, &h), "reference motion readback");
             api(readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h), "reference depth readback");
             reference.upload(before_image, motion_data, depth_data);
+            const float k = hdr_reference_input();
             std::vector<DWORD> expected; std::vector<unsigned char> half;
-            const auto out = reference.run(jx, jy, pjx, pjy, expected_cut(), decision.matrix, decision.policy == 2, expected, half);
+            const auto out = reference.run(jx, jy, pjx, pjy, expected_cut(), decision.matrix, decision.policy == 2, hdr, k, expected, half);
             history = out.used_history;
-            unsigned mismatches = 0;
-            for (std::size_t i = 0; i < expected.size(); ++i) if (expected[i] != after_image[i]) { if (++mismatches <= 4) std::printf("TAA_DIFF frame=%llu index=%u actual=%08lx reference=%08lx\n", frame, unsigned(i), after_image[i], expected[i]); }
-            require(!mismatches, "main target after the copy equals the reference resolve of the same inputs, byte for byte");
+            const unsigned mismatches = presented_mismatches(after_image, expected, k);
+            require(!mismatches, "main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion)");
             char name[64]; std::snprintf(name, sizeof name, "reference_taa_%llu.rgba16f", frame);
             FILE* file = std::fopen(name, "wb"); require(file != nullptr, "reference FP16 output written");
             std::fwrite(half.data(), 1, half.size(), file); std::fclose(file);
@@ -838,8 +872,9 @@ struct Fixture {
             // correspondence), so the resolve is current-only everywhere.
             history = false;
         }
-        const bool expect_history = live && resolve_expected && frames_since_reset > 0 && !expected_cut();
-        require(history == expect_history, "history use follows the script (first frame, Reset and cut frames run current-only)");
+        const bool expect_history = live && resolve_expected && frames_since_reset > 0 && !expected_cut() && !history_dropped;
+        require(history == expect_history, "history use follows the script (first frame, Reset, cut and post-skip frames run current-only)");
+        history_dropped = !resolve_expected;
         if (!history) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
         std::printf("TAA frame=%llu history=%u cut=%u changed=%u policy=%u skipped=%u\n", frame, history, expected_cut(), changed, decision.policy, !resolve_expected);
         ++taa_frames; taa_history_frames += history; taa_changed_pixels += changed;
@@ -849,7 +884,7 @@ struct Fixture {
         camera_history = resolve_expected ? camera_current : x3m::renderer::CameraState{};
         resolve_expected = true;
         std::printf("COLOR_BEFORE frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(before_image)));
-        verify_coverage(before_image);
+        if (!hdr_agx) verify_coverage(before_image); // the oracle reads raster colours; an AgX write-back presents tonemapped ones
     }
     // Every presented frame beside the executable, for the runner's per-pixel
     // comparisons between runs (the HDR twins): row-major BGRA8, no header.
@@ -864,7 +899,7 @@ struct Fixture {
         const auto image = color_image();
         std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
         write_presented(image);
-        if (!taa && !skip_coverage) verify_coverage(image);
+        if (!taa && !skip_coverage && !hdr_agx) verify_coverage(image);
         skip_coverage = false;
         previous_presented = image;
         verify_motion();
@@ -1117,12 +1152,12 @@ struct Fixture {
         bool history = false;
         if (resolves) {
             reference.upload(before_image, motion_data, depth_data);
+            const float k = hdr_reference_input();
             std::vector<DWORD> expected; std::vector<unsigned char> half;
-            const auto out = reference.run(jx, jy, pjx, pjy, expected_cut(), decision.matrix, decision.policy == 2, expected, half);
+            const auto out = reference.run(jx, jy, pjx, pjy, expected_cut(), decision.matrix, decision.policy == 2, hdr, k, expected, half);
             history = out.used_history;
-            unsigned mismatches = 0;
-            for (std::size_t i = 0; i < expected.size(); ++i) if (expected[i] != after_image[i]) { if (++mismatches <= 4) std::printf("TAA_DIFF frame=%llu index=%u actual=%08lx reference=%08lx\n", frame, unsigned(i), after_image[i], expected[i]); }
-            require(!mismatches, "main target after the hook/copy equals the reference resolve of the same inputs, byte for byte");
+            const unsigned mismatches = presented_mismatches(after_image, expected, k);
+            require(!mismatches, "main target after the hook/copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion)");
             char name[64]; std::snprintf(name, sizeof name, "reference_taa_%llu.rgba16f", frame);
             FILE* file = std::fopen(name, "wb"); require(file != nullptr, "reference FP16 output written");
             std::fwrite(half.data(), 1, half.size(), file); std::fclose(file);
@@ -1140,7 +1175,7 @@ struct Fixture {
                     at_hook ? "hook" : glow ? "stretchrect" : "none", glow, outside);
         ++taa_frames; taa_history_frames += history; taa_changed_pixels += changed;
         std::printf("COLOR_BEFORE frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(before_image)));
-        verify_coverage(before_image);
+        if (!hdr_agx) verify_coverage(before_image); // the oracle reads raster colours; an AgX write-back presents tonemapped ones
         api(d->EndScene(), "EndScene");
         const auto image = color_image();
         std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
@@ -1185,6 +1220,44 @@ struct Fixture {
             require(hook_shutdown() == 1, "shutdown without a patch is a no-op");
         }
         VirtualFree(hook_code, 0, MEM_RELEASE); hook_code = nullptr; hook_fixture = nullptr;
+    }
+    // ---- FP16 HDR scene path, stage 3 (X3M_HDR=1 with X3M_TAA=1) ----
+    // The reference resolves the same FP16 scene the DLL resolves (the target
+    // read through the seam before the boundary; the flush of the fixture's
+    // main-target read has already written the unresolved scene back) with
+    // the k the DLL derived at this frame's latch (the exposure export's last
+    // field). Returns k; 0 without the HDR switch.
+    float hdr_reference_input() {
+        if (!hdr) return 0.f;
+        // Preconditions, not counted checks: the twins compare check counts.
+        if (!hdr_readback || !hdr_exposure) throw std::runtime_error("the HDR TAA reference needs the readback and exposure exports");
+        unsigned w = 0, h = 0; const auto image = hdr_image(&w, &h);
+        if (w != W || h != H) throw std::runtime_error("the FP16 target does not have the frame size");
+        reference.upload16(image);
+        float e[8]{}; api(hdr_exposure(d.p, e, 8), "hdr exposure readback (k)");
+        return e[7];
+    }
+    // The presented 8-bit image against the reference's copy-back. 8-bit
+    // route: byte for byte. HDR route: the DLL's identity draw and the
+    // reference's StretchRect convert the same resolved FP16 values (the
+    // FP16 outputs themselves are compared byte for byte by the runner), so
+    // one code per channel is the tolerance (the conversions' rounding);
+    // with the AgX write-back only the alpha carry is checked here and the
+    // runner compares the colour against the Python AgX reference.
+    unsigned presented_mismatches(const std::vector<DWORD>& actual, const std::vector<DWORD>& expected, float k) {
+        unsigned mismatches = 0, worst = 0;
+        for (std::size_t i = 0; i < expected.size(); ++i) {
+            if (!hdr) { if (expected[i] != actual[i] && ++mismatches <= 4) std::printf("TAA_DIFF frame=%llu index=%u actual=%08lx reference=%08lx\n", frame, unsigned(i), actual[i], expected[i]); continue; }
+            unsigned difference = 0;
+            for (unsigned c = 0; c < 4; ++c) {
+                const unsigned a = (actual[i] >> (8 * c)) & 255, e = (expected[i] >> (8 * c)) & 255;
+                if (c == 3 || !hdr_agx) difference = std::max(difference, a > e ? a - e : e - a);
+            }
+            worst = std::max(worst, difference);
+            if (difference > 1 && ++mismatches <= 4) std::printf("TAA_DIFF frame=%llu index=%u actual=%08lx reference=%08lx\n", frame, unsigned(i), actual[i], expected[i]);
+        }
+        if (hdr) std::printf("TAA_HDR frame=%llu k=%.5f agx=%u worst_code=%u mismatches=%u\n", frame, double(k), hdr_agx, worst, mismatches);
+        return mismatches;
     }
     // ---- FP16 HDR scene path scripts (X3M_HDR=1, seam) ----
     // The FP16 target as floats through the seam.
@@ -1472,6 +1545,7 @@ struct Fixture {
     // the tonemap program "fails to create": every frame is identity.
     void hdrtonemapfault_frame(unsigned fault) {
         if (fault) hdr_fault(d.p, fault, 1);
+        if (fault == 14) resolve_expected = false; // stage 3: the resolve on the FP16 scene fails; the write-back presents the unresolved scene
         frame_begin();
         exposure_state_line("EXPOSURE_STATE");
         draw(a, .75f, 0, 0, false, true, false);
@@ -1489,7 +1563,19 @@ struct Fixture {
         // f5, f6 tonemap draw fails again (the third failure disables the
         // tonemap for the device); f7, f8 identity from then on.
         const unsigned script[] = {0, 11, 0, 13, 0, 11, 11, 0, 0};
-        for (unsigned fault : script) hdrtonemapfault_frame(fault);
+        // With X3M_TAA=1 (stage 3): f1 and f7 the resolve on the FP16 scene
+        // fails (fault 14: the unresolved scene is written back, the history
+        // drops, f2/f8 resolve current-only); f3 the tonemap draw fails
+        // (identity fallback samples the resolved image); f5 the meter fails.
+        const unsigned taa_script[] = {0, 14, 0, 11, 0, 13, 0, 14, 0};
+        const unsigned* frames = taa ? taa_script : script;
+        for (unsigned i = 0; i < 9; ++i) hdrtonemapfault_frame(frames[i]);
+        if (!taa) return;
+        // A Reset with the resolve on the FP16 scene: the target, the pass's
+        // histories and the exposure state go; f9 resolves current-only on
+        // the re-created target, f10/f11 accumulate again.
+        reset();
+        for (unsigned i = 0; i < 3; ++i) hdrtonemapfault_frame(0);
     }
     void stateblock_case() {
         // A state block Apply rebinding the flat PS must be seen by the route:
@@ -1635,6 +1721,7 @@ int main(int argc, char** argv) {
         if (GetEnvironmentVariableA("X3M_TAA_SENTINEL", setting, sizeof setting) > 0) f.sentinel = !std::strcmp(setting, "1") ? 1 : !std::strcmp(setting, "2") ? 2 : 0;
         f.state_shadow = !(GetEnvironmentVariableA("X3M_STATE_SHADOW", setting, sizeof setting) == 1 && setting[0] == '0');
         f.hdr = f.enabled && GetEnvironmentVariableA("X3M_HDR", setting, sizeof setting) == 1 && setting[0] == '1';
+        f.hdr_agx = f.hdr && GetEnvironmentVariableA("X3M_HDR_TONEMAP", setting, sizeof setting) > 0 && (!std::strcmp(setting, "agx") || !std::strcmp(setting, "1"));
         // A caps/self-test fault must be queued before the device is created (attach).
         if (f.hdr_fault && GetEnvironmentVariableA("X3M_FIXTURE_HDR_FAULT", setting, sizeof setting) > 0) f.hdr_fault(nullptr, unsigned(std::atoi(setting)), 1);
         if (f.camera) { fake_camera_pose(0); f.camera_install(&fake_projection_slot, &fake_view_slot); }

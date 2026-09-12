@@ -7,9 +7,11 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 INPUTS = [
     'src/proxy/object_lifetime.cpp', 'src/proxy/object_lifetime.h',
+    'src/proxy/engine_memory.cpp', 'src/proxy/engine_memory.h',
     'verification/probe/object_lifetime.cpp', 'verification/probe/build_object_lifetime.sh',
     'verification/probe/run_object_lifetime.py',
 ]
@@ -23,11 +25,11 @@ def run(root):
     def sources():
         return {name: digest(root / name) for name in INPUTS}
 
-    results = root / 'verification/results'
+    results = bottle.results_dir(root)
     results.mkdir(parents=True, exist_ok=True)
     summary = results / 'object-lifetime-summary.json'
     data = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                game_launched=False, fresh_build=True, passed=False)
+                game_launched=False, bottle=bottle.describe(), fresh_build=True, passed=False)
     # Invalidate any prior PASS before even reading source inputs. An interrupted
     # or failed invocation must never leave a previous result looking current.
     summary.write_text(json.dumps(data, indent=2) + '\n')
@@ -42,7 +44,7 @@ def run(root):
         data.update(build_exit=build.returncode, sources_after_build=sources())
         if build.returncode == 0 and data['sources_before'] == data['sources_after_build']:
             data['executable_sha256'] = digest(exe)
-            command = [WINE, '--bottle', 'Steam', '--no-update', '--workdir', str(exe.parent), str(exe)]
+            command = [WINE, '--bottle', bottle.BOTTLE, '--no-update', '--workdir', str(exe.parent), str(exe)]
             data['command'] = command
             with report.open('wb') as out, wine_log.open('wb') as err:
                 data['exit_code'] = subprocess.run(command, stdout=out, stderr=err,
@@ -57,7 +59,14 @@ def run(root):
             last = next((line for line in reversed(lines) if line.strip()), '')
             if match:
                 data.update(checks=int(match[2]), failures=int(match[3]), backend_calls=int(match[4]))
-            data['passed'] = bool(data['exit_code'] == 0 and match and match[0] == last and
+            # Read-path evidence: per-mode cost (TIMING) and record identity (IDENTITY).
+            def parse(line):
+                return {k: v for k, v in (kv.split('=', 1) for kv in line.split()[1:])}
+            data['read_path'] = {'timing': [parse(l) for l in lines if l.startswith('TIMING ')],
+                                 'identity': [parse(l) for l in lines if l.startswith('IDENTITY ')]}
+            identical = (len(data['read_path']['identity']) == 1 and data['read_path']['identity'][0].get('equal') == '1'
+                         and len(data['read_path']['timing']) == 2)
+            data['passed'] = bool(data['exit_code'] == 0 and match and match[0] == last and identical and
                                   match[1] == 'PASS' and data['failures'] == 0 and data['checks'] > 0 and
                                   data['sources_before'] == data['sources_after_run'] and
                                   data['executable_sha256'] == data['executable_sha256_after_run'])

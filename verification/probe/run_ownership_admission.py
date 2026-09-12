@@ -10,9 +10,10 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT=Path(__file__).resolve().parents[2]
-OUT=ROOT/'verification/results'
+OUT=bottle.results_dir(ROOT)
 BUILD=ROOT/'verification/probe/build'
 WINE=Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine')
 INPUTS=['src/ownership/d3d9_ownership.cpp','src/ownership/d3d9_ownership.h',
@@ -70,7 +71,7 @@ def entry_audit():
  if 'Unwind_SjLj_Register' not in dump:raise ValueError('unexpected whole-TU exception suppression')
  return {'methods':emitted,'count':297,'object_sha256':sha(obj),'local_disassembly_sha256':sha(local),'generated_eh_references':0,'handwritten_eh_retained':True}
 def main():
- summary=OUT/'ownership-admission-summary.json';report={'passed':False,'scope':'297 generated ownership entry accounting, selected actual COM dispatch/control witnesses, no live replay integration or whole-proxy ABI proof','runs':[]}
+ summary=OUT/'ownership-admission-summary.json';report={'passed':False, 'bottle':bottle.describe(),'scope':'297 generated ownership entry accounting, selected actual COM dispatch/control witnesses, no live replay integration or whole-proxy ABI proof','runs':[]}
  summary.write_text(json.dumps(report,indent=2)+'\n')
  try:
   before=sources();report['source_hashes_before_build']=before;report['wine_sha256_before']=sha(WINE)
@@ -80,7 +81,7 @@ def main():
   report['entry_audit']=entry_audit();exe=BUILD/'ownership_admission_fixture.exe';report['executable_sha256_before']=sha(exe)
   for mode in EXPECTED:
    no_game();env=os.environ.copy();env['X3M_ADMISSION']='0' if mode=='disabled' else '1'
-   command=[str(WINE),'--bottle','Steam','--no-update','--workdir',str(BUILD),str(exe),mode]
+   command=[str(WINE),'--bottle',bottle.BOTTLE,'--no-update','--workdir',str(BUILD),str(exe),mode]
    run=subprocess.run(command,env=env,capture_output=True,text=True,timeout=60)
    raw=OUT/f'ownership-admission-{mode}.txt';err=OUT/f'ownership-admission-{mode}-stderr.txt';raw.write_text(run.stdout);err.write_text(run.stderr)
    item={'mode':mode,'command':command,'environment':{'X3M_ADMISSION':env['X3M_ADMISSION']},'exit_code':run.returncode,'report_sha256':sha(raw),'stderr_sha256':sha(err)}

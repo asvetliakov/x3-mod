@@ -33,6 +33,33 @@ float4 rejection : register(c6); // absolute device-depth tolerance, relative to
 // 2 such a pixel is reprojected through the camera path with depth = far (1),
 // for a route that supplies a valid clip_to_previous for the background.
 float4 options : register(c7); // motion enabled, reactive enabled, mask snapshot mode, depth-sentinel policy
+// c22.x is k of the reversible luminance weighting (c8..c21 are the AgX
+// block of the HDR write-back, left clear). Every colour that enters the
+// temporal statistics -- the current pixel, its 3x3 neighbourhood and every
+// history tap -- is scaled by w = 1 / (1 + k * luma) first, so the min/max
+// box, mean +/- sigma clip and blend run in a bounded domain where a bright
+// sub-pixel feature (a firefly) carries a fraction of its radiance; the blend
+// result is mapped back by 1 / (1 - k * luma'), which is exact for a
+// stationary pixel (history equals current). The stored history stays in
+// engine radiance: nothing is rescaled when k changes between frames. k = 0
+// selects the identity through a compare, not through 1/(1+0): the current
+// and history colours are multiplied by the constant 1.0 exactly, so the
+// 8-bit route's output is bit-identical to the unweighted resolve. Values
+// that reach the weighting are already finite and <= rejection.z (65000) in
+// magnitude, but not necessarily positive (an FP16 scene keeps the negative
+// result of a subtractive blend): the luma is floored at 0 in both
+// directions, so 1 + k * luma >= 1 (a pixel of non-positive luma is the
+// identity, its inverse too) and the weighted domain is finite with every
+// weight in (0, 1]. The inverse of a convex combination of weighted colours
+// (luma' < 1/k strictly) is exact; the per-channel clamp can move the
+// history to a box corner whose luma exceeds every neighbour's, so the
+// inverse denominator is floored at 1/65504 rather than proven positive:
+// the output is then finite but large (a one-pixel flash that the next
+// frame's weighting bounds again), never Inf or NaN.
+float4 luminance : register(c22); // k, unused, unused, unused
+static const float3 lumaWeights = float3(0.2126, 0.7152, 0.0722);
+static const float unweighFloor = 1.0 / 65504.0;
+float lumaFloored(float3 c) { return max(dot(c, lumaWeights), 0); }
 
 // Variance-clip width in standard deviations of the current 3x3 neighborhood.
 // 1.25 keeps a history that is one full neighborhood extreme away from an
@@ -56,6 +83,8 @@ float3 cleanColor(float3 v) { return finiteColor(v) ? v : float3(0, 0, 0); }
 // forms a NaN passes. Every test whose false branch must catch a NaN is
 // written with >= and <= for that reason.
 bool maskSafe(float v) { return v >= 0 && v <= 0; }
+float3 weigh(float3 c) { return c * (luminance.x > 0 ? 1 / (1 + luminance.x * lumaFloored(c)) : 1); }
+float3 unweigh(float3 c) { return c * (luminance.x > 0 ? 1 / max(1 - luminance.x * lumaFloored(c), unweighFloor) : 1); }
 float snapFraction(inout float base, float f) {
     if (f > 1 - snapEpsilon) { base += 1; return 0; }
     return f < snapEpsilon ? 0 : f;
@@ -68,7 +97,7 @@ void historyTap(float2 uv, float weight, inout float3 sum, inout float total, in
         if (options.y > 0.5 && !maskSafe(fetch(previousReactive, uv).r)) reactive = true;
         float3 color = fetch(previousColor, uv).rgb;
         if (finiteColor(color)) {
-            sum += color * weight;
+            sum += weigh(color) * weight;
             total += weight;
         }
     }
@@ -240,6 +269,9 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     }
     if (reactive || total < 0.5) return float4(color, alpha);
     float3 old = accumulated / total;
+    // From here on every colour is in the weighted domain (identity at k = 0);
+    // the early returns above hand the unweighted current colour through.
+    float3 weighted = weigh(color);
 
     // Neighborhood clip: the history is clamped per channel to mean +/- gamma
     // sigma of the finite current 3x3, intersected with the 3x3 min/max box as
@@ -247,12 +279,13 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // its coverage because its neighborhood contains both sides; a stale
     // history that no longer matches the neighborhood is pulled into it.
     // Invalid neighboring values cannot poison the statistics.
-    float3 low = color, high = color, mean = 0, square = 0;
+    float3 low = weighted, high = weighted, mean = 0, square = 0;
     float count = 0;
     [unroll] for (int ny = -1; ny <= 1; ++ny) {
         [unroll] for (int nx = -1; nx <= 1; ++nx) {
             float3 neighbor = fetch(currentColor, uv + float2(nx, ny) * sizeJitter.xy).rgb;
             if (finiteColor(neighbor)) {
+                neighbor = weigh(neighbor);
                 low = min(low, neighbor); high = max(high, neighbor);
                 mean += neighbor; square += neighbor * neighbor; count += 1;
             }
@@ -263,5 +296,5 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     low = max(low, mean - clipGamma * sigma);
     high = min(high, mean + clipGamma * sigma);
     old = clamp(old, low, high);
-    return float4(lerp(color, old, history.z), alpha);
+    return float4(unweigh(lerp(weighted, old, history.z)), alpha);
 }

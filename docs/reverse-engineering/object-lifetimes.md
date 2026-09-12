@@ -311,6 +311,18 @@ Capacity exhaustion, counter exhaustion and lost hook ownership disable
 observation. Failed membership reads retire the affected identities, so a later
 read cannot silently revive their old serials.
 
+Every engine read of the observer (`read_registry`, `lookup`, the ownership
+check, the baseline snapshot) goes through `src/proxy/engine_memory.h`
+(2026-09-12): a span is validated against a cache of `VirtualQuery`'d
+committed readable regions, re-validated on the first touch of each frame, then
+copied directly; `X3M_ENGINE_READS=rpm` restores the `ReadProcessMemory` path.
+A registry page decommitted between frames yields `LookupUnavailable` and
+retires the identities instead of faulting (fixture case: bucket array on a
+`VirtualAlloc`'d page); the invalidation policy and its residual risk are in
+[route-cost-run1.md](../verification/route-cost-run1.md#implemented-2026-09-12-items-13-of-the-ranking).
+The fixture also proves both paths publish identical records (hashed) and
+reports their per-call cost (`read_path` in the summary JSON).
+
 Rollback preserves foreign code and keeps disabled forwarding targets whenever
 ownership recovery is incomplete. Once production patches have been published,
 successful shutdown retains the small forwarding trampolines until process exit

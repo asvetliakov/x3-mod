@@ -132,9 +132,10 @@ import agx_reference as agx_ref  # noqa: E402  (stage 2: the tonemap oracle)
 import exposure_reference as exposure_ref  # noqa: E402  (stage 2: the meter/adaptation oracle)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 PROBE = ROOT / 'verification/probe'
 BUILD = PROBE / 'build'
-RESULTS = ROOT / 'verification/results'
+RESULTS = bottle.results_dir(ROOT)
 EXE = BUILD / 'motion_output_fixture.exe'
 SEAM = BUILD / 'motion-output-seam/d3d9.dll'
 DLL = ROOT / 'build/d3d9.dll'
@@ -228,6 +229,24 @@ CASES += [case('seam-ownership-hdr-exposure', 'hdrexposure', 'ownership', hdr=Tr
 CASES += [case('seam-hdr-tonemap-fault', 'hdrtonemapfault', hdr=True, hdr_env=dict(AGX, X3M_HDR_DT_MS='16')),
           case('seam-hdr-tonemap-shader-absent', 'hdrtonemapfault', hdr=True, hdr_fault='12', hdr_env=dict(AGX, X3M_HDR_DT_MS='16'))]
 CASES += [case(f'bench-{size}-hdr-tonemap-taa-{state}', 'bench', jitter=True, taa=state == 'on', bench=size, hdr=True, hdr_env=dict(AGX, X3M_MOTION_FRAME_LOG='4')) for size in BENCH_SIZES for state in ('off', 'on')]  # frame lines every 4 frames: the adapted state of a timed frame
+# FP16 HDR scene path, stage 3 (TAA on HDR): the resolve consumes the FP16
+# scene target and the write-back presents tonemap(resolve(HDR)). The HDR
+# twins above already run the identity write-back with k = 0 on the FP16
+# path (the migration identity in the live route: the resolved FP16 image
+# equals the reference pass byte for byte, the presented frames within one
+# code of the 8-bit twins). These run the AgX write-back with k = exp2(EV):
+# manual EV 0 (k = 1) and 1 (k = 2), auto exposure (k follows the adapted
+# EV), the X3M_TAA_K=0 override, the engine hook, the ownership wrapper, the
+# production DLL, and the fault script with the resolve failing (fault 14).
+TAA_HDR = dict(AGX, X3M_HDR_EV_MANUAL='0', X3M_HDR_DT_MS='16')
+CASES += [case('seam-taa-hdr-tonemap-on', 'seam', jitter=True, taa=True, hdr=True, hdr_env=TAA_HDR),
+          case('seam-taa-hdr-tonemap-ev1', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(TAA_HDR, X3M_HDR_EV_MANUAL='1')),
+          case('seam-taa-hdr-tonemap-auto', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(AGX, X3M_HDR_DT_MS='16')),
+          case('seam-taa-hdr-tonemap-k0', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(TAA_HDR, X3M_TAA_K='0')),
+          case('seam-ownership-taa-hdr-tonemap-on', 'seam', 'ownership', jitter=True, taa=True, hdr=True, hdr_env=TAA_HDR),
+          case('production-taa-hdr-tonemap-on', 'production', jitter=True, taa=True, hdr=True, hdr_env=TAA_HDR),
+          case('seam-taa-hook-hdr-tonemap-on', 'seam', jitter=True, taa=True, hook='1', hdr=True, hdr_env=TAA_HDR),
+          case('seam-taa-hdr-tonemap-fault', 'hdrtonemapfault', jitter=True, taa=True, hdr=True, hdr_env=dict(AGX, X3M_HDR_DT_MS='16'))]
 HDR_MODES = ('hdrvalues', 'hdrfault', 'hdrramp', 'hdrexposure', 'hdrtonemapfault')
 # hdr_frame expectations: end point per script (HdrEnd names), write-backs
 # per frame (the EndScene flush, the bloom-copy or hook end; the fixture's
@@ -439,7 +458,8 @@ def validate_bench(name, taa, size, text, trace, hdr=False, tonemap=False):
     assert 0 in frames and frames[0]['latched'] == frames[0]['filled'] == '1' and frames[0]['selector_state'] == '9', (name, frames.get(0))
     assert frames[0]['taa'] == str(int(taa)) and frames[0]['taa_resolved'] == str(int(taa)), (name, frames[0])
     if taa:
-        assert frames[0]['taa_attempted'] == '1' and frames[0]['taa_skip'] == '0' and frames[0]['taa_result'] == frames[0]['taa_copy'] == '00000000', (name, frames[0])
+        assert frames[0]['taa_attempted'] == '1' and frames[0]['taa_skip'] == '0' and frames[0]['taa_result'] == '00000000', (name, frames[0])
+        assert frames[0]['taa_hdr'] == str(int(hdr)) and frames[0]['taa_copy'] == ('00000001' if hdr else '00000000'), (name, frames[0])  # stage 3: no copy-back on the HDR path
     assert not any(l.startswith(('motion_output_taa_failed', 'motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed')) for l in trace.splitlines()), name
     result = {'mode': 'bench', 'taa': taa, 'hdr': hdr, 'width': int(width), 'height': int(height), 'frames_timed': int(summary['frames']),
               'boundary_ms': {'min': float(summary['min_ms']), 'median': float(summary['median_ms']), 'max': float(summary['max_ms'])},
@@ -533,6 +553,11 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     expected_checks = 31 + 12 + (60 if live else 0)
     if taa:
         expected_checks += 12 * 2 + (12 - len(history_frames) if live else 12) + 4 + skipped + (1 + 2 * (12 - skipped) + 2 if live else 0) + (12 if camera else 0)
+    # Stage 3 with the AgX write-back: the coverage oracle reads raster
+    # colours and is skipped on tonemapped frames (two checks per frame).
+    agx = any(l.startswith('hdr_tonemap ') and fields(l).get('tonemap') == '1' for l in trace.splitlines())
+    if agx:
+        expected_checks -= 24
     assert int(terminal['checks']) == expected_checks, (name, terminal, expected_checks)
     restorations = 39 + (12 if taa else 0)
     assert int(terminal['restorations']) == restorations and int(terminal['frames']) == 12, (name, terminal)
@@ -555,14 +580,17 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     # sample positions in every frame of every case (route off: the oracle's
     # own control); the reference uses the route's Halton offsets, so a sign
     # or scale error in the jitter would fail here.
-    assert sorted(coverage) == list(range(12)), (name, sorted(coverage))
+    # (Stage 3, AgX write-back: the oracle reads raster colours and the fixture
+    # skips it on tonemapped frames; the presented image is then checked
+    # against the AgX reference of the resolved FP16 image instead.)
+    assert sorted(coverage) == ([] if agx else list(range(12))), (name, sorted(coverage))
     assert all(c['mismatches'] == '0' and int(c['checked']) > 3000 and int(c['background']) > 0 for c in coverage.values()), (name, coverage)
-    assert len({c['background_color'] for c in coverage.values()}) == 1, (name, 'background colour differs between frames')
+    assert len({c['background_color'] for c in coverage.values()}) == (0 if agx else 1), (name, 'background colour differs between frames')
     assert all(c['jitter'] == str(int(jitter)) for c in coverage.values())
     for frame, c in coverage.items():
         _, jx, jy = expected_jitter(frame) if jitter else (0, 0.0, 0.0)
         assert abs(float(c['jx']) - jx) < 1e-6 and abs(float(c['jy']) - jy) < 1e-6, (name, frame, c)
-    assert result['coverage_frames'] == 12 and result['coverage_pixels'] > 40000
+    assert (result['coverage_frames'] == 0) if agx else (result['coverage_frames'] == 12 and result['coverage_pixels'] > 40000)
     taa_lines = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('TAA ')}
     if taa:
         # Fixture verdicts per frame: the bloom copy equals the main target,
@@ -718,7 +746,12 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
             if strict_skip:  # nothing ran: the counters keep their S_FALSE defaults
                 assert (summary['taa_result'], summary['taa_restore'], summary['taa_copy'], summary['scene_open']) == ('00000001', '00000000', '00000001', '0'), (name, frame, summary)
             else:
-                assert summary['taa_result'] == summary['taa_restore'] == summary['taa_copy'] == '00000000' and summary['scene_open'] == '0', (name, frame, summary)
+                assert summary['taa_result'] == summary['taa_restore'] == '00000000' and summary['scene_open'] == '0', (name, frame, summary)
+                # Stage 3: with the redirect active the resolve consumes the FP16
+                # scene (taa_hdr=1) and no copy-back runs (taa_copy S_FALSE): the
+                # write-back samples the resolved image instead.
+                hdr_live = hdr and hdr_fault is None
+                assert summary['taa_hdr'] == str(int(hdr_live)) and summary['taa_copy'] == ('00000001' if hdr_live else '00000000'), (name, frame, summary)
             assert int(summary['taa_references']) >= 1, (name, frame, summary)
         else:
             assert (summary['taa_attempted'], summary['taa_resolved'], summary['taa_skip']) == ('0', '0', '1'), (name, frame, summary)
@@ -803,7 +836,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
                                              directory / 'x3-modern-captures', readback_analysis.default_options(draw_details=False))
         taa_check = analysis['checks']['taa_image']
         assert taa_check['status'] == 'pass' and taa_check['frames'] == list(range(1, 9)), (name, taa_check)
-        if not live:
+        if not live and not agx:  # under AgX the 8-bit pre-resolve colour is tonemapped: not comparable to the resolved FP16 image
             assert all(fraction == 0 for fraction in taa_check['differing_fraction'].values()), (name, taa_check)
         result['taa_image'] = {'differing_fraction': taa_check['differing_fraction'], 'max_difference': taa_check['max_difference']}
     # Per-draw decisions logged in capture frames must agree with the fixture's script.
@@ -895,6 +928,15 @@ PRESENTED_BACKGROUND, PRESENTED_FLAT = bytes.fromhex('403020ff'), bytes.fromhex(
 # exact, and at least 98% of all pixels exact; the numbers are recorded.
 HDR_TWIN_MAX_CODE_DIFFERENCE = 1
 HDR_TWIN_MIN_EXACT_FRACTION = 0.98
+# TAA twins (stage 3): the HDR run resolves the unquantized FP16 scene into an
+# FP16 history while the 8-bit twin re-quantizes its history through the
+# 8-bit copy-back every frame, so accumulated values differ by up to half a
+# code before the final rounding: still at most one code, background, flat
+# and alpha exact, only material pixels, and more of them the more frames
+# carry history (measured: seam script 97.6% exact, 4.2% of the material
+# pixels over 6 history frames of 12; hook script 92.4%, 11.6% over 6 of 7).
+HDR_TWIN_MIN_EXACT_FRACTION_TAA = 0.90
+HDR_TWIN_MAX_MATERIAL_DIFFERING_FRACTION_TAA = 0.15
 # What the double rounding can touch: a channel differs only when its value
 # lies within half an FP16 ulp of an 8-bit code boundary, i.e. at most
 # (2^-12) / (1/255) = 6.2% of the samples per channel for values in [0.5, 1)
@@ -938,15 +980,17 @@ def compare_presented(name, twin, dir_a, dir_b, frames, width=64, height=64):
             'differing_channels_bgra': channels}
 
 
-def accept_hdr_twin(name, comparison):
+def accept_hdr_twin(name, comparison, taa=False):
     """The tolerance above; identical is the ideal, not the requirement."""
     assert comparison['max_code_difference'] <= HDR_TWIN_MAX_CODE_DIFFERENCE, f'{name}: presented frames differ by more than one code from the twin: {comparison}'
-    assert comparison['exact_fraction'] >= HDR_TWIN_MIN_EXACT_FRACTION, f'{name}: fewer than 98% of the presented pixels equal the twin: {comparison}'
+    minimum = HDR_TWIN_MIN_EXACT_FRACTION_TAA if taa else HDR_TWIN_MIN_EXACT_FRACTION
+    assert comparison['exact_fraction'] >= minimum, f'{name}: fewer than {minimum:.0%} of the presented pixels equal the twin: {comparison}'
     assert comparison['classes']['background']['differing'] == 0 and comparison['classes']['flat']['differing'] == 0, f'{name}: a background or flat pixel differs from the twin: {comparison}'
     assert comparison['differing_channels_bgra'][3] == 0, f'{name}: alpha differs from the twin: {comparison}'
     assert comparison['classes']['background']['pixels'] > 0 and comparison['classes']['material']['pixels'] > 0, (name, comparison)
     material = comparison['classes']['material']
-    assert material['differing'] <= HDR_TWIN_MAX_MATERIAL_DIFFERING_FRACTION * material['pixels'], f'{name}: more material pixels differ than FP16 double rounding can explain: {comparison}'
+    bound = HDR_TWIN_MAX_MATERIAL_DIFFERING_FRACTION_TAA if taa else HDR_TWIN_MAX_MATERIAL_DIFFERING_FRACTION
+    assert material['differing'] <= bound * material['pixels'], f'{name}: more material pixels differ than FP16 rounding can explain: {comparison}'
 
 
 def validate_hdrvalues(name, text, trace, directory, hdr_env=None, hdr_fault=None):
@@ -1349,6 +1393,132 @@ def compare_image_to_reference(directory, frame, ev, params, identity):
     return {'max': max(errors), 'mean': sum(errors) / len(errors), 'alpha_max': max(alpha), 'pixels': len(inputs)}
 
 
+def validate_hdr_taa(name, text, trace, directory, hdr_env):
+    """Stage 3 (HDR + TAA, seam script): the presented frame is
+    tonemap(resolve(HDR)). validate_case already required the DLL's resolved
+    FP16 image to equal the reference pass's output byte for byte; here every
+    presented 8-bit frame is compared against the AgX reference of that
+    resolved image at the EV the frame consumed (one code per channel, alpha
+    carried), k on the hdr_frame line equals exp2(EV) (or the X3M_TAA_K
+    override) and the frame line reports the HDR resolve with that k."""
+    params = hdr_env_params(hdr_env)
+    s2 = hdr_stage2_lines(trace)
+    tl = trace.splitlines()
+    frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
+    taa_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_taa_readback ')}
+    override = hdr_env.get('X3M_TAA_K')
+    images, ks, evs = {}, {}, {}
+    for frame in range(1, 9):
+        h, f = s2['frames'][frame], frames[frame]
+        ev = float(h['ev'])
+        expected_k = float(override) if override is not None else (2.0 ** ev if params['agx'] else 0.0)
+        tolerance = 1e-4 * max(1.0, expected_k)
+        assert abs(float(h['k']) - expected_k) <= tolerance, (name, frame, h['k'], expected_k)
+        assert f['taa_hdr'] == '1' and f['taa_resolved'] == '1' and abs(float(f['taa_k']) - expected_k) <= tolerance, (name, frame, f)
+        assert h['tonemapped'] == str(int(params['agx'])) and h['writeback_source'] == 'shader' and h['unwind'] == '0', (name, frame, h)
+        resolved = read_half_image(directory / 'x3-modern-captures' / taa_readbacks[frame]['file'], 64, 64)
+        presented = read_presented(directory, frame, 64, 64)
+        errors, alpha = [], []
+        for i, (r, g, b, a) in enumerate(resolved):
+            pr, pg, pb, pa = bgra8(presented, i)
+            errors.extend(code_errors((pr, pg, pb), reference_codes((r, g, b), ev, params)))
+            alpha.append(abs(pa - round(255.0 * min(max(a, 0.0), 1.0))))
+        images[frame] = {'max': max(errors), 'mean': sum(errors) / len(errors), 'alpha_max': max(alpha)}
+        assert images[frame]['max'] <= 1 and images[frame]['alpha_max'] <= 1, (name, frame, images[frame])
+        ks[frame], evs[frame] = float(h['k']), ev
+    hdr_taa = [fields(l) for l in text.splitlines() if l.startswith('TAA_HDR ')]
+    assert len(hdr_taa) >= 8 and all(int(t['mismatches']) == 0 and t['agx'] == str(int(params['agx'])) for t in hdr_taa), (name, hdr_taa[:3])
+    return {'frames': sorted(images), 'images': images, 'k': ks, 'ev': evs, 'fixture_worst_code': max(int(t['worst_code']) for t in hdr_taa),
+            'history_frames': [f for f in range(1, 9) if frames[f]['taa_history'] == '1'],
+            'max_code_error': max(v['max'] for v in images.values()), 'mean_code_error': max(v['mean'] for v in images.values())}
+
+
+def validate_identity_k(name, trace, hdr_env):
+    """Stage 3 with the identity write-back (no exposure model): the DLL must
+    derive k = 0, the unweighted resolve, on every frame, and the frame line
+    must report that k for every HDR resolve. The fixture's reference pass
+    takes the DLL's k from the exposure export, so the derivation itself is
+    checked only here on these cases (review 24); an X3M_TAA_K override is
+    the value it names."""
+    tl = trace.splitlines()
+    tonemap = [fields(l) for l in tl if l.startswith('hdr_tonemap ')]
+    hdr_frames = [fields(l) for l in tl if l.startswith('hdr_frame ')]
+    resolves = [f for f in (fields(l) for l in tl if l.startswith('motion_output_frame ')) if f.get('taa_hdr') == '1']
+    expected = float((hdr_env or {}).get('X3M_TAA_K', 0.0))
+    assert tonemap and all(t['tonemap'] == '0' for t in tonemap), (name, tonemap[:1])
+    assert hdr_frames and all(float(h['k']) == expected for h in hdr_frames), (name, sorted({h['k'] for h in hdr_frames}))
+    assert resolves and all(float(f['taa_k']) == expected for f in resolves), (name, sorted({f['taa_k'] for f in resolves}))
+    return {'hdr_frames': len(hdr_frames), 'hdr_resolves': len(resolves), 'k': expected}
+
+
+# The tonemap-fault script with the resolve on the FP16 scene (stage 3):
+# f1/f7 the resolve fails (fault 14: the unresolved scene is written back,
+# the history drops), f3 the tonemap draw fails (consumed by the flush the
+# fixture's pre-boundary read triggers: the identity fallback, an unwind, the
+# end write-back tonemaps the resolved image again), f5 the meter fails (the
+# flush's chain; the end's chain succeeds).
+TONEMAP_TAA_FAULT_SCRIPT = {0: dict(fault=0, resolved=1, history=0, unwind=0, recheck='none'),
+                            1: dict(fault=14, resolved=0, history=0, unwind=0, recheck='none'),
+                            2: dict(fault=0, resolved=1, history=0, unwind=0, recheck='none'),
+                            3: dict(fault=11, resolved=1, history=1, unwind=1, recheck='none'),
+                            4: dict(fault=0, resolved=1, history=1, unwind=0, recheck='pass'),
+                            5: dict(fault=13, resolved=1, history=1, unwind=0, recheck='none'),
+                            6: dict(fault=0, resolved=1, history=1, unwind=0, recheck='none'),
+                            7: dict(fault=14, resolved=0, history=0, unwind=0, recheck='none'),
+                            8: dict(fault=0, resolved=1, history=0, unwind=0, recheck='none'),
+                            # a Reset before f9: the FP16 target and the pass's histories are re-created, f9 resolves current-only
+                            9: dict(fault=0, resolved=1, history=0, unwind=0, recheck='none'),
+                            10: dict(fault=0, resolved=1, history=1, unwind=0, recheck='none'),
+                            11: dict(fault=0, resolved=1, history=1, unwind=0, recheck='none')}
+
+
+def validate_hdrtonemapfault_taa(name, text, trace, directory, hdr_env):
+    lines = text.splitlines()
+    terminal = fields(lines[-1])
+    params = hdr_env_params(hdr_env)
+    s2 = hdr_stage2_lines(trace)
+    tl = trace.splitlines()
+    frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
+    failed = [fields(l) for l in tl if l.startswith('motion_output_taa_failed ')]
+    taa_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_taa_readback ')}
+    faults = {int(fields(l)['frame']): int(fields(l)['fault']) for l in lines if l.startswith('HDR_TONEMAP_FAULT ')}
+    assert sorted(s2['frames']) == sorted(TONEMAP_TAA_FAULT_SCRIPT), (name, sorted(s2['frames']))
+    images = {}
+    for frame, expect in TONEMAP_TAA_FAULT_SCRIPT.items():
+        h, f = s2['frames'][frame], frames[frame]
+        assert faults[frame] == expect['fault'], (name, frame, faults)
+        assert (f['taa_attempted'], f['taa_hdr'], f['taa_resolved'], f['taa_history']) == ('1', '1', str(expect['resolved']), str(expect['history'])), (name, frame, f)
+        assert f['taa_result'] == ('80004005' if expect['fault'] == 14 else '00000000'), (name, frame, f)
+        assert (h['redirected'], h['writeback_source'], h['tonemapped'], h['unwind'], h['recheck']) == ('1', 'shader', '1', str(expect['unwind']), expect['recheck']), (name, frame, h)
+        # The presented frame: AgX of the resolved image, or of the unresolved
+        # scene when the resolve failed (capture frames 1..8 carry the readbacks).
+        if expect['resolved']:
+            if frame not in taa_readbacks:
+                continue
+            source = taa_readbacks[frame]['file']
+        else:
+            source = f'hdr_1_{frame}.rgba16f'
+            if not (directory / 'x3-modern-captures' / source).is_file():
+                continue
+        inputs = read_half_image(directory / 'x3-modern-captures' / source, 64, 64)
+        presented = read_presented(directory, frame, 64, 64)
+        errors = []
+        for i, (r, g, b, a) in enumerate(inputs):
+            pr, pg, pb, pa = bgra8(presented, i)
+            errors.extend(code_errors((pr, pg, pb), reference_codes((r, g, b), float(h['ev']), params)))
+        images[frame] = {'max': max(errors), 'mean': sum(errors) / len(errors), 'source': source}
+        assert images[frame]['max'] <= 1, (name, frame, images[frame])
+    assert len(failed) == 2 and all(x['hdr'] == '1' and x['result'] == '80004005' for x in failed) and sorted(int(x['frame']) for x in failed) == [1, 7], (name, failed)
+    resets = [fields(l) for l in tl if l.startswith('motion_output_reset ')]
+    assert len(resets) == 1 and resets[0]['result'] == '00000000' and 'RESET PASS' in text, (name, resets)
+    assert len(s2['targets']) == 2 and all(t['create'] == '00000000' for t in s2['targets']), (name, s2['targets'])  # the target before and after the Reset
+    assert [u['reason'] for u in s2['unwinds']] == ['tonemap'] and sorted(s2['rechecks']) == [4] and s2['rechecks'][4]['passed'] == '1', (name, s2['unwinds'], s2['rechecks'])
+    return {'mode': 'hdrtonemapfault', 'taa': True, 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
+            'frames': len(TONEMAP_TAA_FAULT_SCRIPT), 'images': images, 'failed_resolves': [int(x['frame']) for x in failed],
+            'hdr_frames': {fr: {k: h[k] for k in ('tonemap', 'tonemapped', 'unwind', 'unwind_reason', 'fallback', 'recheck', 'meter', 'stepped', 'ev', 'k')} for fr, h in s2['frames'].items()},
+            'taa_frames': {fr: {k: f[k] for k in ('taa_resolved', 'taa_history', 'taa_result', 'taa_hdr', 'taa_k')} for fr, f in frames.items()}}
+
+
 def validate_hdrtonemapfault(name, text, trace, directory, hdr_env, hdr_fault=None):
     """The tonemap ladder: a failed tonemap draw takes the identity draw (one
     hdr_unwind=tonemap line, recheck at the next latch), a failed meter chain
@@ -1360,6 +1530,8 @@ def validate_hdrtonemapfault(name, text, trace, directory, hdr_env, hdr_fault=No
     mode_line = fields(next(l for l in lines if l.startswith('MODE ')))
     assert (mode_line['seam'], mode_line['enabled'], mode_line['hdr'], mode_line['hdrtonemapfault']) == ('1', '1', '1', '1'), (name, mode_line)
     assert lines[-1].startswith('RESULT PASS'), (name, lines[-1])
+    if mode_line['taa'] == '1':
+        return validate_hdrtonemapfault_taa(name, text, trace, directory, hdr_env)
     terminal = fields(lines[-1])
     params = hdr_env_params(hdr_env)
     s2 = hdr_stage2_lines(trace)
@@ -1572,7 +1744,9 @@ def validate_hook(name, installed, text, trace, directory, hdr=False):
     # The last refused install (a site that is not a CALL) leaves its status when nothing is installed.
     assert (hook_line['installed'], hook_line['status']) == (('1', 'active') if installed else ('0', 'callsite_mismatch')), (name, hook_line)
     history, skipped = HOOK_HISTORY[installed], HOOK_SKIPPED[installed]
-    assert (int(terminal['checks']), int(terminal['restorations']), int(terminal['frames'])) == (HOOK_CHECKS[installed], 4 * HOOK_FRAMES, HOOK_FRAMES), (name, terminal)
+    # Stage 3, AgX write-back: the fixture skips the raster-colour coverage oracle (two checks per frame).
+    agx = any(l.startswith('hdr_tonemap ') and fields(l).get('tonemap') == '1' for l in trace.splitlines())
+    assert (int(terminal['checks']), int(terminal['restorations']), int(terminal['frames'])) == (HOOK_CHECKS[installed] - (2 * HOOK_FRAMES if agx else 0), 4 * HOOK_FRAMES, HOOK_FRAMES), (name, terminal)
     assert (terminal['taa'], terminal['taa_frames'], terminal['taa_history_frames'], terminal['taa_reference_frames'], terminal['taa_skipped_frames']) == \
            ('1', str(HOOK_FRAMES), str(len(history)), str(HOOK_FRAMES - len(skipped)), str(len(skipped))), (name, terminal)
     restores = [fields(l) for l in lines if l.startswith('RESTORE ')]
@@ -1643,7 +1817,7 @@ def main():
     only = set(sys.argv[1:])
     summary_path = RESULTS / ('motion-output-partial.json' if only else 'motion-output-summary.json')
     report_path = RESULTS / ('motion-output-partial.txt' if only else 'motion-output.txt')
-    result = {'passed': False, 'status': 'RUNNING', 'game_launched': False,
+    result = {'passed': False, 'status': 'RUNNING', 'game_launched': False, 'bottle': bottle.describe(),
               'scope': 'Live same-draw route (checkpoint B1 + temporal steps 1 and 3: RT2 current depth, per-draw jitter, cut detector, the temporal resolve at the bloom copy with copy-back) and the FP16 HDR scene path stage 1 (X3M_HDR: redirect, identity write-back, unwind ladder) through the actual proxy DLL with one original synthetic device program, plain and under the ownership wrapper (plus copy-depth and admission); seam DLL adds fixture scope injection, target readback and the reference resolve comparison. Bench runs time the boundary. Not gameplay validation.',
               'variants': VARIANTS,
               'cases': {}}
@@ -1692,7 +1866,7 @@ def main():
             env.update(hdr_env)
             if mode in HDR_MODES:
                 env['X3M_MOTION_FRAME_LOG'] = '1'  # every frame's route and hdr lines
-            command = [str(WINE), '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=n,b', '--workdir', str(directory),
+            command = [str(WINE), '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=n,b', '--workdir', str(directory),
                        str(directory / EXE.name)] + ['Z:' + str(p) for p in RAW] + ['hook' if hook is not None else 'burst' if burst else 'envmap' if envmap else mode] + ([bench] if bench else [])
             if mode in HDR_MODES:
                 # The regular capture window covers the first frames; the frame lines come every frame.
@@ -1752,6 +1926,10 @@ def main():
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} set_rt={case["set_rt_per_frame"]}', flush=True)
                 continue
             case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault)
+            if hdr and taa and hdr_env and hdr_fault is None and mode == 'seam':
+                case['hdr_taa'] = validate_hdr_taa(name, text, trace, directory, hdr_env)
+            elif hdr and taa and hdr_fault is None and (hdr_env or {}).get('X3M_HDR_TONEMAP', 'identity') == 'identity':
+                case['hdr_identity_k'] = validate_identity_k(name, trace, hdr_env)
             case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                         dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
             if enabled == '1':
@@ -1901,7 +2079,7 @@ def main():
             a, b = result['cases'][hdr_name], result['cases'][twin]
             frames = sorted(int(f) for f in a['color_hashes'])
             comparison = compare_presented(hdr_name, twin, ROOT / a['directory'], ROOT / b['directory'], frames)
-            accept_hdr_twin(hdr_name, comparison)
+            accept_hdr_twin(hdr_name, comparison, taa='taa' in hdr_name)
             comparison['color_hashes_identical'] = a['color_hashes'] == b['color_hashes']
             for key in ('checks', 'restorations', 'motion_pixels', 'matched_pixels', 'depth_written_pixels', 'route_decisions', 'taa_history_frames', 'sources', 'scene_end_check'):
                 if key in b:

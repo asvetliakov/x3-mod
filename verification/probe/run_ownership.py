@@ -11,10 +11,11 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
 PROBE = ROOT / 'verification/probe/build'
-RESULTS = ROOT / 'verification/results'
+RESULTS = bottle.results_dir(ROOT)
 WINE = '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
 
 
@@ -36,7 +37,7 @@ def main():
     summary = RESULTS / 'ownership-build-verification.json'
     derived = RESULTS / 'ownership-verification.json'
     derived.write_text(json.dumps(dict(result='RUNNING', reason='Fresh ownership build/run pending')) + '\n')
-    manifest = dict(runtime=WINE, bottle='Steam', game_launched=False, fixtures={},
+    manifest = dict(runtime=WINE, bottle=bottle.describe(), game_launched=False, fixtures={},
                     passed=False, fresh_build=False, phase='building')
 
     def save():
@@ -65,7 +66,7 @@ def main():
                 raise RuntimeError('Copied ownership executable does not match build')
             env = dict(os.environ, X3M_ADMISSION='0', WINEDLLOVERRIDES='d3d9=b')
             env.pop('X3M_TELEMETRY', None)
-            command = [WINE, '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=b',
+            command = [WINE, '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=b',
                        '--workdir', str(directory), str(directory / exe)]
             stdout_path = RESULTS / f'ownership-{mode}.txt'
             stderr_path = RESULTS / f'ownership-{mode}-wine.log'

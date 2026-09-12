@@ -17,9 +17,10 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
-RESULTS = ROOT / 'verification/results'
+RESULTS = bottle.results_dir(ROOT)
 EXE = ROOT / 'verification/probe/build/material_motion_fixture.exe'
 SOURCES = (
     'src/renderer/material_motion.h', 'src/renderer/material_motion.cpp',
@@ -272,13 +273,13 @@ def no_game():
 def main():
     result_path=RESULTS/'material-motion-summary.json'
     report_path=RESULTS/'material-motion.txt'
-    result={'passed':False,'status':'RUNNING','game_launched':False,
+    result={'passed':False,'status':'RUNNING','game_launched':False, 'bottle':bottle.describe(),
             'scope':'Argon pair full inventory plus every profile-table row (lights 0) with the same original synthetic geometry/textures/constants, motion (RT1) and current depth (RT2) outputs; detached zero-origin opaque prototype, no production draw routing',
             'timing_scope':'QPC through EVENT completion, including clear/draw/switches; common setup fenced before QPC; one Begin/EndScene pair per workload; modes0color,1same-draw,2color+authoredGPUreplay; no timed readback or isolatedGPUduration',
             'cpu_baseline':'SSE2; stack realignment; four-byte incoming Win32 stack'}
     result_path.write_text(json.dumps(result,indent=2)+'\n')
     wine=Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine')
-    windows=Path.home()/'Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/syswow64'
+    windows=bottle.bottle_dir() / 'drive_c/windows/syswow64'
     native=[]
     def native_hashes(): return {str(p):sha(p) for p in native}
     try:
@@ -298,7 +299,7 @@ def main():
         result['sources_after_build']=source_hashes();assert result['sources_after_build']==result['sources_before_build']
         result['native_after_build']=native_hashes();assert result['native_after_build']==result['native_before_build']
         result['executable_sha256']=sha(EXE)
-        command=[str(wine),'--bottle','Steam','--no-update','--dll','d3d9=b',str(EXE)]+['Z:'+str(p) for p in RAW]+['Z:'+str(PROGRAMS)]
+        command=[str(wine),'--bottle',bottle.BOTTLE,'--no-update','--dll','d3d9=b',str(EXE)]+['Z:'+str(p) for p in RAW]+['Z:'+str(PROGRAMS)]
         result['command']=command;no_game()
         with report_path.open('w') as out,(RESULTS/'material-motion-wine.log').open('w') as err:
             process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=1800)

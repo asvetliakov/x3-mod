@@ -2003,6 +2003,88 @@ CAMERA label=yaw-cut-resumed frames=40 from=26 drift_px=0.1004 error=0.01353 bas
 SAMPLE camera cut: tracking resumes after the cut (drift px against the static control) actual=0.100373547 expected=0.000000000 tolerance=0.200000000 PASS
 SAMPLE camera yaw: reported rotation per frame (degrees) actual=0.499836653 expected=0.500000000 tolerance=0.001000000 PASS
 SAMPLE camera cut: reported rotation of the jump (degrees) actual=25.500000000 expected=25.500000000 tolerance=0.010000000 PASS
+HDR_CASES
+CHECK negative k refused PASS
+CHECK NaN k refused PASS
+CHECK k above the FP16 range refused PASS
+CHECK hdr flat first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr firefly frame PASS
+CHECK route atomic outputs valid PASS
+CHECK firefly frame accumulates PASS
+HDR_FIREFLY k=0 output=0.979492 expected=0.979956 energy=0.779541 neighbour=0.199951
+CHECK firefly output matches the weighted resolve model PASS
+CHECK the dark stationary neighbour of the firefly keeps its value PASS
+CHECK hdr flat first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr firefly frame PASS
+CHECK route atomic outputs valid PASS
+CHECK firefly frame accumulates PASS
+HDR_FIREFLY k=1 output=0.313721 expected=0.313816 energy=0.113770 neighbour=0.199951
+CHECK firefly output matches the weighted resolve model PASS
+CHECK the dark stationary neighbour of the firefly keeps its value PASS
+CHECK hdr flat first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr firefly frame PASS
+CHECK route atomic outputs valid PASS
+CHECK firefly frame accumulates PASS
+HDR_FIREFLY k=4 output=0.246826 expected=0.246934 energy=0.046875 neighbour=0.199951
+CHECK firefly output matches the weighted resolve model PASS
+CHECK the dark stationary neighbour of the firefly keeps its value PASS
+CHECK unweighted firefly blend is 0.1 * 8 + 0.9 * 0.2 (the clip admits the dark history) PASS
+HDR_FIREFLY_RATIO k=1 measured=0.1459 analytic=0.1460
+CHECK weighting suppresses the firefly's flicker energy by the analytic factor PASS
+HDR_FIREFLY_RATIO k=4 measured=0.0601 analytic=0.0602
+CHECK weighting suppresses the firefly's flicker energy by the analytic factor PASS
+CHECK hdr gradient first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr gradient second frame PASS
+CHECK route atomic outputs valid PASS
+CHECK gradient accumulates PASS
+HDR_GRADIENT k=0 worst_ulp=0
+CHECK stationary HDR gradient survives weighting and inversion within one FP16 ulp (exact at k = 0) PASS
+CHECK hdr gradient first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr gradient second frame PASS
+CHECK route atomic outputs valid PASS
+CHECK gradient accumulates PASS
+HDR_GRADIENT k=1 worst_ulp=1
+CHECK stationary HDR gradient survives weighting and inversion within one FP16 ulp (exact at k = 0) PASS
+CHECK hdr gradient first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr gradient second frame PASS
+CHECK route atomic outputs valid PASS
+CHECK gradient accumulates PASS
+HDR_GRADIENT k=4 worst_ulp=1
+CHECK stationary HDR gradient survives weighting and inversion within one FP16 ulp (exact at k = 0) PASS
+CHECK hdr edge first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr edge second frame PASS
+CHECK route atomic outputs valid PASS
+CHECK edge accumulates PASS
+HDR_EDGE k=1 worst_ulp=1 min_saturation=39.979
+CHECK stable saturated HDR edge keeps its channels within one ulp and its 40:1 saturation PASS
+CHECK hdr edge first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr edge second frame PASS
+CHECK route atomic outputs valid PASS
+CHECK edge accumulates PASS
+HDR_EDGE k=4 worst_ulp=1 min_saturation=39.979
+CHECK stable saturated HDR edge keeps its channels within one ulp and its 40:1 saturation PASS
+CHECK hdr negative first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr negative second frame PASS
+CHECK route atomic outputs valid PASS
+CHECK negative accumulates PASS
+HDR_NEGATIVE k=2 worst_ulp=1 finite=1 centre=-0.500000 mixed=-0.499756
+CHECK negative-luma and mixed-sign pixels survive the weighting and its inverse within one ulp, every output finite PASS
+CHECK hdr negative first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr negative second frame PASS
+CHECK route atomic outputs valid PASS
+CHECK negative accumulates PASS
+HDR_NEGATIVE k=4 worst_ulp=1 finite=1 centre=-0.500000 mixed=-0.499756
+CHECK negative-luma and mixed-sign pixels survive the weighting and its inverse within one ulp, every output finite PASS
 RESET_CONTINUITY
 CHECK before reset frame PASS
 CHECK atomic outputs valid PASS
@@ -4027,4 +4109,86 @@ CAMERA label=yaw-cut-resumed frames=40 from=26 drift_px=0.1004 error=0.01353 bas
 SAMPLE camera cut: tracking resumes after the cut (drift px against the static control) actual=0.100373547 expected=0.000000000 tolerance=0.200000000 PASS
 SAMPLE camera yaw: reported rotation per frame (degrees) actual=0.499836653 expected=0.500000000 tolerance=0.001000000 PASS
 SAMPLE camera cut: reported rotation of the jump (degrees) actual=25.500000000 expected=25.500000000 tolerance=0.010000000 PASS
-RESULT PASS numerical=416 state_restorations=164 generations=2
+HDR_CASES
+CHECK negative k refused PASS
+CHECK NaN k refused PASS
+CHECK k above the FP16 range refused PASS
+CHECK hdr flat first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr firefly frame PASS
+CHECK route atomic outputs valid PASS
+CHECK firefly frame accumulates PASS
+HDR_FIREFLY k=0 output=0.979492 expected=0.979956 energy=0.779541 neighbour=0.199951
+CHECK firefly output matches the weighted resolve model PASS
+CHECK the dark stationary neighbour of the firefly keeps its value PASS
+CHECK hdr flat first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr firefly frame PASS
+CHECK route atomic outputs valid PASS
+CHECK firefly frame accumulates PASS
+HDR_FIREFLY k=1 output=0.313721 expected=0.313816 energy=0.113770 neighbour=0.199951
+CHECK firefly output matches the weighted resolve model PASS
+CHECK the dark stationary neighbour of the firefly keeps its value PASS
+CHECK hdr flat first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr firefly frame PASS
+CHECK route atomic outputs valid PASS
+CHECK firefly frame accumulates PASS
+HDR_FIREFLY k=4 output=0.246826 expected=0.246934 energy=0.046875 neighbour=0.199951
+CHECK firefly output matches the weighted resolve model PASS
+CHECK the dark stationary neighbour of the firefly keeps its value PASS
+CHECK unweighted firefly blend is 0.1 * 8 + 0.9 * 0.2 (the clip admits the dark history) PASS
+HDR_FIREFLY_RATIO k=1 measured=0.1459 analytic=0.1460
+CHECK weighting suppresses the firefly's flicker energy by the analytic factor PASS
+HDR_FIREFLY_RATIO k=4 measured=0.0601 analytic=0.0602
+CHECK weighting suppresses the firefly's flicker energy by the analytic factor PASS
+CHECK hdr gradient first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr gradient second frame PASS
+CHECK route atomic outputs valid PASS
+CHECK gradient accumulates PASS
+HDR_GRADIENT k=0 worst_ulp=0
+CHECK stationary HDR gradient survives weighting and inversion within one FP16 ulp (exact at k = 0) PASS
+CHECK hdr gradient first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr gradient second frame PASS
+CHECK route atomic outputs valid PASS
+CHECK gradient accumulates PASS
+HDR_GRADIENT k=1 worst_ulp=1
+CHECK stationary HDR gradient survives weighting and inversion within one FP16 ulp (exact at k = 0) PASS
+CHECK hdr gradient first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr gradient second frame PASS
+CHECK route atomic outputs valid PASS
+CHECK gradient accumulates PASS
+HDR_GRADIENT k=4 worst_ulp=1
+CHECK stationary HDR gradient survives weighting and inversion within one FP16 ulp (exact at k = 0) PASS
+CHECK hdr edge first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr edge second frame PASS
+CHECK route atomic outputs valid PASS
+CHECK edge accumulates PASS
+HDR_EDGE k=1 worst_ulp=1 min_saturation=39.979
+CHECK stable saturated HDR edge keeps its channels within one ulp and its 40:1 saturation PASS
+CHECK hdr edge first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr edge second frame PASS
+CHECK route atomic outputs valid PASS
+CHECK edge accumulates PASS
+HDR_EDGE k=4 worst_ulp=1 min_saturation=39.979
+CHECK stable saturated HDR edge keeps its channels within one ulp and its 40:1 saturation PASS
+CHECK hdr negative first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr negative second frame PASS
+CHECK route atomic outputs valid PASS
+CHECK negative accumulates PASS
+HDR_NEGATIVE k=2 worst_ulp=1 finite=1 centre=-0.500000 mixed=-0.499756
+CHECK negative-luma and mixed-sign pixels survive the weighting and its inverse within one ulp, every output finite PASS
+CHECK hdr negative first frame PASS
+CHECK route atomic outputs valid PASS
+CHECK hdr negative second frame PASS
+CHECK route atomic outputs valid PASS
+CHECK negative accumulates PASS
+HDR_NEGATIVE k=4 worst_ulp=1 finite=1 centre=-0.500000 mixed=-0.499756
+CHECK negative-luma and mixed-sign pixels survive the weighting and its inverse within one ulp, every output finite PASS
+RESULT PASS numerical=448 state_restorations=204 generations=2

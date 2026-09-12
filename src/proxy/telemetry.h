@@ -74,6 +74,12 @@ struct State {
 };
 void initialize(void (*flush_log)()=nullptr);
 bool enabled();
+// X3M_TELEMETRY_DRAW=1 (with X3M_TELEMETRY=1; default off): the per-draw
+// metrics draw_backend, route_gate, route_draw, route_set_rt, route_jitter and
+// route_lazy_flush. Off, their samples are dropped and the route takes no QPC
+// stamp per draw (under Wine each stamp is a syscall; route-cost-run1.md).
+bool draw_enabled();
+bool enabled(Metric); // enabled(), and draw_enabled() for the per-draw metrics
 uint64_t now();
 uint64_t frequency();
 // Ticks to microseconds with the QPC frequency; 0 while telemetry is disabled.
@@ -88,7 +94,7 @@ void poll_window(State&,uint64_t frame);
 class Scope {
     State* state_; Metric metric_; uint64_t begin_;
 public:
-    Scope(State& state,Metric metric):state_(enabled()?&state:nullptr),metric_(metric),begin_(now()){}
+    Scope(State& state,Metric metric):state_(enabled(metric)?&state:nullptr),metric_(metric),begin_(state_?now():0){}
     ~Scope(){if(state_)record(*state_,metric_,now()-begin_);}
 };
 }

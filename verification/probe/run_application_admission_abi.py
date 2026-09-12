@@ -10,9 +10,10 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / 'verification/results'
+OUT = bottle.results_dir(ROOT)
 BUILD = ROOT / 'verification/probe/build'
 WINE = Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine')
 INPUTS = [
@@ -71,7 +72,7 @@ def no_game():
 
 
 def main():
-    report = {'passed': False, 'scope': 'standalone adapter ordinary-return CPU preservation and diagnostic timing; no D3D, gameplay, native-Windows or enclosing-hook ABI claim'}
+    report = {'passed': False, 'bottle': bottle.describe(), 'scope': 'standalone adapter ordinary-return CPU preservation and diagnostic timing; no D3D, gameplay, native-Windows or enclosing-hook ABI claim'}
     summary = OUT / 'application-admission-abi-summary.json'
     summary.write_text(json.dumps(report, indent=2) + '\n')
     try:
@@ -104,7 +105,7 @@ def main():
         exe = BUILD / 'application_admission_abi_fixture.exe'
         report['executable_sha256_before_run'] = sha(exe)
         no_game()
-        command = [str(WINE), '--bottle', 'Steam', '--no-update', '--workdir', str(BUILD), str(exe)]
+        command = [str(WINE), '--bottle', bottle.BOTTLE, '--no-update', '--workdir', str(BUILD), str(exe)]
         report['command'] = command
         run = subprocess.run(command, capture_output=True, text=True, timeout=60)
         log = OUT / 'application-admission-abi.txt'

@@ -6,30 +6,40 @@
 
 namespace x3m::telemetry {
 namespace {
-bool active=false, reporting=false;
+bool active=false, draw_active=false, reporting=false;
 void (*flush_output)()=nullptr;
 uint64_t clock_frequency=0, startup=0;
 State global;
 constexpr const char* names[]={"lock_wait","create_device","present_normal","present_capture","frame_normal","frame_capture","draw_backend","capture_cpu","snapshot","shader_vs_backend","shader_ps_backend","shader_inspect","shader_getfunction","shader_hash","shader_dump","texture","cube_texture","volume_texture","render_target","depth_stencil","vertex_buffer","index_buffer","reset","log_flush","cursor_properties","cursor_position","cursor_show","stretch_backend","route_gate","route_draw","route_set_rt","route_jitter","route_fill","route_lazy_flush","route_readback","taa_run","taa_state_capture","taa_copy_color","taa_copy_depth","taa_resolve_draw","taa_state_apply","taa_copy_back","hdr_redirect","hdr_writeback","hdr_writeback_draw","hdr_writeback_stretch","hdr_bind","hdr_recheck","hdr_meter","hdr_meter_readback"};
 static_assert(sizeof(names)/sizeof(*names)==static_cast<unsigned>(Metric::Count));
 double us(uint64_t ticks){return clock_frequency?double(ticks)*1000000.0/double(clock_frequency):0;}
+bool per_draw(Metric metric){
+    switch(metric){
+    case Metric::DrawBackend: case Metric::RouteGate: case Metric::RouteDraw: case Metric::RouteSetRenderTarget:
+    case Metric::RouteJitter: case Metric::RouteLazyFlush: return true;
+    default: return false;
+    }
+}
 }
 void initialize(void (*flush_log)()){
     flush_output=flush_log;
     wchar_t value[8]{};
     active=GetEnvironmentVariableW(L"X3M_TELEMETRY",value,8)==1 && value[0]==L'1';
     if(!active)return;
+    draw_active=GetEnvironmentVariableW(L"X3M_TELEMETRY_DRAW",value,8)==1 && value[0]==L'1';
     LARGE_INTEGER f{}; if(!QueryPerformanceFrequency(&f)||f.QuadPart<=0){active=false;return;}
     clock_frequency=uint64_t(f.QuadPart); startup=now();global.last_summary=startup;
-    log("telemetry_start schema=1 qpc_frequency=%llu qpc=%llu anchor=proxy_initialize cpu_only=1",clock_frequency,startup);
+    log("telemetry_start schema=1 qpc_frequency=%llu qpc=%llu anchor=proxy_initialize cpu_only=1 per_draw=%u",clock_frequency,startup,draw_active);
 }
 bool enabled(){return active;}
+bool draw_enabled(){return draw_active;}
+bool enabled(Metric metric){return active && (draw_active || !per_draw(metric));}
 uint64_t now(){if(!active)return 0;LARGE_INTEGER t{};QueryPerformanceCounter(&t);return uint64_t(t.QuadPart);}
 uint64_t frequency(){return clock_frequency;}
 double microseconds(uint64_t ticks){return us(ticks);}
 State& process(){return global;}
 void record(State& state,Metric metric,uint64_t ticks,bool failed,uint64_t bytes){
-    if(!active)return;
+    if(!enabled(metric))return;
     auto& c=state.counters[static_cast<unsigned>(metric)];
     ++c.count;c.failures+=failed;c.total+=ticks;c.minimum=std::min(c.minimum,ticks);c.maximum=std::max(c.maximum,ticks);c.bytes+=bytes;
     const double duration=us(ticks);

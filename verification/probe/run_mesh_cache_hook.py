@@ -12,15 +12,16 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 ROOT=Path(__file__).resolve().parents[2]
-RESULTS=ROOT/'verification/results'
+RESULTS=bottle.results_dir(ROOT)
 BUILD=ROOT/'verification/probe/build/mesh_cache_hook'
-BOTTLE=Path.home()/'Library/Application Support/CrossOver/Bottles/Steam/drive_c'
+BOTTLE=bottle.bottle_dir() / 'drive_c'
 NATIVE={
  'd3dx9_37.dll':BOTTLE/'X3/d3dx9_37.dll',
  'd3d9.dll':BOTTLE/'windows/syswow64/d3d9.dll',
  'wined3d.dll':BOTTLE/'windows/syswow64/wined3d.dll'}
-SOURCES=['src/proxy/capture.h','src/proxy/cpu_state.h','src/proxy/loading_trace.h','src/proxy/loading_trace.cpp','src/proxy/mesh_adjacency_cache.h','src/proxy/mesh_adjacency_cache.cpp','src/ownership/d3d9_ownership.h','src/ownership/d3d9_ownership.cpp', 'src/ownership/application_admission.h', 'src/ownership/application_admission.cpp', 'src/ownership/application_admission_abi.h', 'src/ownership/application_admission_abi.cpp', 'src/ownership/execution_state.cpp', 'src/ownership/execution_state.h', 'src/ownership/finite_buffer_evidence.cpp', 'src/ownership/finite_buffer_evidence.h', 'src/ownership/portable_managed_upload.cpp', 'src/ownership/portable_managed_upload.h','src/ownership/d3d9_classes_inc.h','src/ownership/d3d9_forwarders_inc.h','verification/probe/loading_admission_witness.h','verification/probe/mesh_cache_hook_fixture.cpp','verification/probe/mesh_preparation.cpp','verification/probe/loading_trace_stub.def','verification/probe/build_mesh_cache_hook.sh', 'verification/probe/build_admission_dependencies.sh','verification/probe/run_mesh_cache_hook.py']
+SOURCES=['src/proxy/capture.h','src/proxy/cpu_state.h','src/proxy/loading_trace.h','src/proxy/loading_trace.cpp','src/proxy/mesh_adjacency_cache.h','src/proxy/mesh_adjacency_cache.cpp','src/proxy/mesh_adjacency_fast.h','src/proxy/mesh_adjacency_fast.cpp','src/ownership/d3d9_ownership.h','src/ownership/d3d9_ownership.cpp', 'src/ownership/application_admission.h', 'src/ownership/application_admission.cpp', 'src/ownership/application_admission_abi.h', 'src/ownership/application_admission_abi.cpp', 'src/ownership/execution_state.cpp', 'src/ownership/execution_state.h', 'src/ownership/finite_buffer_evidence.cpp', 'src/ownership/finite_buffer_evidence.h', 'src/ownership/portable_managed_upload.cpp', 'src/ownership/portable_managed_upload.h','src/ownership/d3d9_classes_inc.h','src/ownership/d3d9_forwarders_inc.h','verification/probe/loading_admission_witness.h','verification/probe/mesh_cache_hook_fixture.cpp','verification/probe/mesh_preparation.cpp','verification/probe/loading_trace_stub.def','verification/probe/build_mesh_cache_hook.sh', 'verification/probe/build_admission_dependencies.sh','verification/probe/run_mesh_cache_hook.py']
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 def inputs():return {p:sha(ROOT/p) for p in SOURCES}|{'native/'+n:sha(p) for n,p in NATIVE.items()}
 def binaries():return {p.name:sha(p) for p in [BUILD/'mesh_cache_hook_fixture.exe',BUILD/'d3dx9_37.dll']}
@@ -31,7 +32,7 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--admission',choices=('0','1'));args=parser.parse_args()
     admission=args.admission or '0';suffix=('-admission-on' if admission=='1' else '-admission-off') if args.admission is not None else ''
     summary=RESULTS/('mesh-cache-hook'+suffix+'-summary.json')
-    meta={'passed':False,'admission':int(admission),'phase':'building','fresh_build':False,'game_launched':False,'started_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'cases':{}}
+    meta={'passed':False,'admission':int(admission),'phase':'building','fresh_build':False,'game_launched':False, 'bottle':bottle.describe(),'started_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'cases':{}}
     def save():summary.write_text(json.dumps(meta,indent=2)+'\n')
     save()
     try:
@@ -45,7 +46,7 @@ def main():
         for ownership in ('native','wrapped'):
             for mode,fault in (('off','normal'),('on','normal'),('on','fault')):
                 name=f'{ownership}-{mode}-{fault}';out=RESULTS/f'mesh-cache-hook{suffix}-{name}.txt';err=RESULTS/f'mesh-cache-hook{suffix}-{name}-wine.log'
-                command=['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine','--bottle','Steam','--no-update','--dll','d3dx9_37=n,b;d3d9=b','--workdir',str(BUILD),str(BUILD/'mesh_cache_hook_fixture.exe'),mode,ownership,fault]
+                command=['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine','--bottle',bottle.BOTTLE,'--no-update','--dll','d3dx9_37=n,b;d3d9=b','--workdir',str(BUILD),str(BUILD/'mesh_cache_hook_fixture.exe'),mode,ownership,fault]
                 refuse_game()
                 assert inputs()==meta['sources_before_build'] and binaries()==meta['binaries_before'],'Inputs changed before case'
                 with out.open('wb') as stdout,err.open('wb') as stderr:

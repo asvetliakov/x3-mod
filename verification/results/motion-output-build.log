@@ -1,36 +1,17 @@
--- Configuring done (0.0s)
--- Generating done (0.0s)
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
 -- Build files have been written to: /Users/asvetl/x3-mod/build
-[  6%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
-[  6%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
-[ 12%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/motion_capture.cpp.obj
-[ 12%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj
-[ 15%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/execution_state.cpp.obj
-[ 18%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/application_admission.cpp.obj
-[ 21%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/application_admission_abi.cpp.obj
-[ 25%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/scene_capture.cpp.obj
-[ 28%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/object_trace.cpp.obj
-[ 31%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/scene_hook.cpp.obj
-[ 34%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/camera_state.cpp.obj
-[ 37%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/telemetry.cpp.obj
-[ 40%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loading_trace.cpp.obj
-[ 43%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/sampling_profiler.cpp.obj
-[ 46%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/d3d9_ownership.cpp.obj
-[ 50%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/finite_buffer_evidence.cpp.obj
-[ 53%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/portable_managed_upload.cpp.obj
-[ 56%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/draw_input.cpp.obj
-[ 59%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/object_lifetime.cpp.obj
-[ 62%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/mesh_adjacency_cache.cpp.obj
-[ 65%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/temporal_pass.cpp.obj
-[ 68%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/hdr_pass.cpp.obj
-[ 71%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/exposure.cpp.obj
-[ 75%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/material_radiance.cpp.obj
-[ 78%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/motion_history.cpp.obj
-[ 81%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/rigid_position.cpp.obj
-[ 84%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/material_motion.cpp.obj
-[ 87%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/motion_row_history.cpp.obj
-[ 90%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/motion_output.cpp.obj
-[ 93%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/rigid_motion.cpp.obj
-[ 96%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/rigid_replay_program.cpp.obj
-[100%] Linking CXX shared library d3d9.dll
-[100%] Built target d3d9
+[  5%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
+[  5%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
+[  8%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/motion_capture.cpp.obj
+[ 11%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj
+[ 14%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/execution_state.cpp.obj
+[ 17%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/application_admission.cpp.obj
+[ 20%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/application_admission_abi.cpp.obj
+[ 23%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/scene_capture.cpp.obj
+[ 26%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/object_trace.cpp.obj
+[ 29%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/scene_hook.cpp.obj
+[ 32%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/camera_state.cpp.obj
+[ 35%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/telemetry.cpp.obj
+[ 38%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/engine_memory.cpp.obj
+[ 41%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loading_trace.cpp.obj

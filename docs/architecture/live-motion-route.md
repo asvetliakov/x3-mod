@@ -212,14 +212,24 @@ centred Halton(2,3) sequence of `X3M_MOTION_JITTER_SAMPLES` entries (default
 detector bounds. `X3M_TAA=1` (default off; requires `X3M_MOTION_OUTPUT=1`
 and implies `X3M_MOTION_JITTER=1`) runs the temporal resolve at the bloom
 copy; `X3M_TAA_DEBUG=<n>` (n > 0) writes the resolved FP16 image and the
-pre-resolve color in capture frames. `X3M_MOTION_RT_MODE=lazy` (default
+pre-resolve color in capture frames. With `X3M_HDR=1` the resolve consumes
+the FP16 scene target instead of the 8-bit RT0 and the write-back presents
+its output (stage 3 of the HDR scene path,
+[temporal-integration.md](temporal-integration.md#stage-3-of-the-hdr-scene-path-taa-on-hdr-2026-09-12));
+`X3M_TAA_K=<k>` (0 ≤ k ≤ 65504; default unset) fixes the resolve's
+luminance-weighting constant there, 0 being the unweighted resolve, where
+the default derives it from the write-back's exposure. `X3M_MOTION_RT_MODE=lazy` (default
 `perdraw`) keeps RT1/RT2 and `COLORWRITEENABLE1/2` bound across consecutive
 routed draws and restores them before any application call that could
 observe them (an A/B experiment; equivalence and the restore points are in
 [motion-output.md](../verification/motion-output.md#lazy-rt-binding-equivalence-x3m_motion_rt_mode)
 and [telemetry.md](../verification/telemetry.md#route-and-boundary-cost)).
 `X3M_MOTION_FRAME_LOG=<n>` sets the periodic `motion_output_frame` cadence
-with telemetry on (default 60). `X3M_TAA_SENTINEL=auto|1|2` (default
+with telemetry on (default 60). `X3M_TELEMETRY_DRAW=1` (default off) adds the
+per-draw metrics (`route_gate`, `route_draw`, `route_set_rt`, `route_jitter`,
+`route_lazy_flush`, `draw_backend`) and their frame totals; without it the
+route takes no QPC stamp per draw. `X3M_ENGINE_READS=rpm` forces the object
+observers' `ReadProcessMemory` path (A/B only; default validated direct reads). `X3M_TAA_SENTINEL=auto|1|2` (default
 `auto`) selects the resolve's depth-sentinel policy: `auto` reprojects the
 unrouted (sentinel) pixels through the live engine camera at the far plane
 whenever the camera read of this frame and of the history's frame both
@@ -564,7 +574,14 @@ four render-state queries, one stream-frequency getter, the object observers
 and one history lookup. With the render-state shadow on (default) every one
 of those state queries is answered from the shadow (zero `GetRenderState`
 per draw after the first fill); with it off each is a native getter, the
-previous behaviour. No getter fetches shader bytecode or shader objects on
+previous behaviour. The object observers read engine memory through
+`engine_memory` (validated direct reads: one `VirtualQuery` per distinct
+region per frame, re-validated at `begin_frame`, instead of the ~21
+`ReadProcessMemory` syscalls per routed draw that were 92–98 % of the gate in
+[route-cost-run1.md](../verification/route-cost-run1.md)); the four engine
+matrices are read only on capture frames (`object_trace::current(out,
+capture_)`), and the per-draw QPC stamps need `X3M_TELEMETRY_DRAW=1` on top
+of `X3M_TELEMETRY=1`. No getter fetches shader bytecode or shader objects on
 the routed path, no heap allocation occurs per draw (the history reserves its
 tables once), and no state block is created.
 

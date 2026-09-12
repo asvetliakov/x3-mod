@@ -373,6 +373,153 @@ native compile of `src/renderer/exposure.cpp` against the reference in
 `test_exposure_port.py` and the manifest pins of the three new programs in
 `test_agx_reference.py`).
 
+## Stage 3: TAA on HDR (2026-09-12)
+
+Mechanism, weighting and the derivation of `k` in
+[temporal-integration.md](../architecture/temporal-integration.md#stage-3-of-the-hdr-scene-path-taa-on-hdr-2026-09-12);
+the resolve's own cases (k = 0 identity, firefly, gradient, edge) in
+[temporal-resolve.md](temporal-resolve.md#stage-3-of-the-hdr-scene-path-luminance-weighting-2026-09-12).
+Everything below is `run_motion_output.py` on the synthetic 64×64 scene,
+seam DLL unless stated; nothing is gameplay-verified.
+
+### Case 6: the presented frame is tonemap(resolve(HDR))
+
+The fixture's reference `TemporalPass` (second device, system d3d9) now
+receives the FP16 scene read through the seam before the boundary (the
+same bytes the DLL resolves) and the `k` the DLL derived at the latch
+(exposure export); the DLL's resolved FP16 image (`taa_1_<frame>.rgba16f`)
+must equal the reference's output byte for byte in every frame, and the
+presented 8-bit frame is compared against the AgX reference
+(`agx_reference.tonemap_engine`) of that resolved image at the consumed EV.
+
+| Case | k per frame | max / mean code error vs AgX(resolved) | history frames | fixture 8-bit compare |
+| --- | --- | ---: | --- | --- |
+| `seam-taa-hdr-tonemap-on` (manual EV 0) | 1.0 | 0.500 / 0.269 | 1, 2, 4, 7 | alpha exact |
+| `seam-taa-hdr-tonemap-ev1` (manual EV 1) | 2.0 | 0.500 / 0.240 | 1, 2, 4, 7 | alpha exact |
+| `seam-taa-hdr-tonemap-auto` (auto exposure, dt 16 ms) | 1.084 → 1.626 (adapting) | 0.500 / 0.286 | 1, 2, 4, 7 | alpha exact |
+| `seam-taa-hdr-tonemap-k0` (`X3M_TAA_K=0`) | 0.0 | 0.500 / 0.269 | 1, 2, 4, 7 | alpha exact |
+| `seam-ownership-taa-hdr-tonemap-on` (wrapper) | 1.0 | 0.500 / 0.269 | 1, 2, 4, 7 | alpha exact; zero final references |
+| `seam-taa-hook-hdr-tonemap-on` (engine hook, glow on/off frames) | 1.0 | — (hook validator: FP16 byte-exact, presented per fixture) | 6 of 7 | alpha exact |
+| `production-taa-hdr-tonemap-on` | 1.0 | — (no seam: current-only, hdr/taa lines checked) | — | — |
+
+A maximum error of 0.500 code is the rounding of the reference itself (the
+comparison is against the unrounded 255·AgX value): the tonemap draw of the
+resolved image reproduces the double-precision reference to the last bit
+that an 8-bit code can hold, in every frame, at every `k`. The frame lines
+carry `taa_hdr=1 taa_copy=00000001` (no copy-back) and `taa_k`, the
+`hdr_frame` lines `k=` equal to `exp2(ev)` (`X3M_TAA_K` overriding), the
+history pattern is the seam script's (frames 1, 2, 4, 7: the same as on the
+8-bit path). `k` under auto exposure follows the adapted EV frame by frame
+(1.084, 1.171, 1.261, 1.354, 1.394, 1.491, 1.591, 1.626) while the resolved
+image stays byte-exact against a reference fed the same `k`: the weighting
+tracks exposure with the history left in engine radiance.
+
+### The k = 0 identity in the live route (the stage-1 TAA twins)
+
+The stage-1 twins with TAA (`production-taa-hdr-on`, `seam-taa-hdr-on`,
+`seam-taa-hook-hdr-on`, `seam-taa-envmap-hdr`) now resolve on the FP16
+scene with the identity write-back (`k = 0`). Their resolved FP16 images
+equal the reference pass fed the FP16 scene byte for byte (every frame,
+`taa_reference_frames` 12 / 7), their RT1/RT2 readbacks are identical to
+the twins', and their presented frames stay within **one code** of the
+8-bit twins with background, flat and alpha exact — but fewer pixels are
+exact than in the TAA-off twins: seam script 97.6% (1,163 of 27,421
+material pixels over 12 frames, 6 with history), hook script 92.4% (2,172
+of 18,714 over 7 frames, 6 with history), against ≥ 98% / ≤ 2% for the
+TAA-off twins. Cause, by construction: the 8-bit route re-quantizes its
+history through the 8-bit copy-back every frame, the HDR route accumulates
+unquantized FP16 values, and the two histories drift by up to half a code
+before the final rounding, so a fraction of the material pixels that grows
+with the number of history frames lands one code apart. The runner's TAA
+twin acceptance is therefore ≤ 1 code, background/flat/alpha exact, ≥ 90%
+exact, ≤ 15% of material pixels (`HDR_TWIN_*_TAA`); the stage-1 TAA-off
+bounds are unchanged.
+
+### Failure, unwind and Reset (`seam-taa-hdr-tonemap-fault`, 132 checks, 12 frames, 1 Reset)
+
+Script `0, 14, 0, 11, 0, 13, 0, 14, 0`, Reset, `0, 0, 0` (fault 14 = the
+resolve on the FP16 scene fails, `HdrFault::Resolve`, consumed before the
+pass runs). Frames 1 and 7: `taa_resolved=0 taa_result=80004005`,
+`motion_output_taa_failed … hdr=1`, the write-back presents the unresolved
+scene (the presented frame equals the AgX reference of the FP16 readback
+of the unresolved scene within one code; the fixture's "unchanged" check
+holds because the flush before the boundary wrote the same image) and the
+history drops: frames 2 and 8 resolve current-only, 3–6 accumulate again.
+Frame 3 (fault 11): the tonemap draw failure is consumed by the flush the
+fixture's pre-boundary read triggers, the identity fallback lands there
+(`hdr_unwind=tonemap`, one line), the end write-back of the same frame
+tonemaps the resolved image again (`tonemapped=1`), the recovery self test
+passes at frame 4's latch. Frame 5 (fault 13): the flush's meter chain
+fails, the end's succeeds (`meter=00000000`), no visible effect. After the
+Reset (`motion_output_reset … 00000000`, `RESET PASS`, a second
+`hdr_target` creation) frame 9 resolves current-only on the re-created
+target and 10–11 accumulate; every presented frame with a readback is
+within one code of its reference.
+
+### Cost (bench, 24 frames, 20 timed, EVENT-synchronized QPC, CPU-inclusive; median / min ms)
+
+Three configurations per size: the 8-bit route (stage-1 twins' reference),
+the FP16 path with the identity write-back (`k = 0`), and the FP16 path
+with AgX, auto exposure (chain every frame) — each with the resolve off
+and on.
+
+| Size | 8-bit, TAA off | 8-bit, TAA on | HDR identity, TAA off | HDR identity, TAA on | HDR AgX + meter, TAA off | HDR AgX + meter, TAA on |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1280×768 | 0.356 / 0.263 | 0.699 / 0.679 | 0.380 / 0.358 | 1.268 / 0.781 | 0.831 / 0.706 | 1.377 / 1.244 |
+| 5120×1440 | 0.629 / 0.484 | 2.248 / 2.222 | 0.866 / 0.841 | 1.920 / 1.872 | 1.448 / 1.407 | 2.301 / 2.194 |
+
+The table is the tracked run (`motion-output-summary.json`). Two earlier
+complete runs of the same suite the same day gave, in the same column
+order, medians 0.328 / 0.726 / 0.413 / 0.753 / 0.813 / 1.263 and 0.328 /
+0.760 / 0.419 / 0.745 / 0.803 / 1.227 at 1280×768 and 0.570 / 2.250 /
+0.890 / 1.915 / 1.479 / 2.356 and 0.563 / 2.204 / 0.864 / 1.923 / 1.546 /
+2.325 at 5120×1440: every cell agrees within about 0.1 ms except the
+tracked run's 1280×768 HDR-identity TAA-on median (1.268 against 0.753
+and 0.745; its minimum 0.781 against 0.639 / 0.649 is in line), a
+20-sample outlier of the kind review 23 met. Resolve increments (on − off,
+median, tracked run / the two earlier runs): 8-bit +0.34 / +0.40 / +0.43
+ms at 1280×768 and +1.62 / +1.68 / +1.64 ms at 5120×1440; FP16 identity
+(+0.89 outlier) / +0.34 / +0.33 and +1.05 / +1.03 / +1.06; FP16 AgX +0.55 /
++0.45 / +0.42 and +0.85 / +0.88 / +0.78. At 5120×1440 the HDR resolve — no
+8-bit→FP16 input copy, no FP16→8-bit copy-back, 535 more shader words — is
+**cheaper than the 8-bit resolve** in all three runs: 1.920 / 1.915 / 1.923
+ms against 2.248 / 2.250 / 2.204 ms for the whole boundary with the
+identity write-back (about −0.3 ms), and the AgX + meter boundary with TAA
+(2.301 / 2.356 / 2.325 ms) costs about what the 8-bit TAA boundary did.
+HDR + TAA over HDR-only at 5120×1440: +1.05 ms (identity), +0.85 ms (AgX).
+
+**Stage-2 re-measure** (review 23, observation 9: 2.653 vs 0.936 ms at
+5120×1440 with the resolve off). Tracked run: AgX + meter 1.448 / 1.407 ms
+against identity 0.866 / 0.841 ms — **+0.582 median / +0.566 min** — and
+with the resolve on 2.301 / 2.194 against 1.920 / 1.872, +0.381 / +0.322;
+the two earlier runs gave +0.589 / +0.578 and +0.682 / +0.480 (off), +0.441
+/ +0.422 and +0.402 / +0.339 (on). All three reproduce the stage-2 record
+(+0.500 / +0.475 and +0.227 / +0.302) within 0.1–0.2 ms; the +1.72 ms
+figure did not recur in three runs and stands as an outlier of that
+20-sample run. The chain is the whole increment and it is nearly
+size-independent (+0.45 at 1280×768 with the resolve off), so it is the
+per-draw overhead of six small draws, not bandwidth. Proposal, not
+implemented (it is not trivial: a 64-tap reduce program, its generator
+entry, the self-test expectation and the chain-level bookkeeping change):
+an 8×-per-axis chain — 1280×768 → 160×96 → 20×12 → 3×2 → 1 (four draws
+instead of six, 64 taps each; 5120×1440 → 640×180 → 80×23 → 10×3 → 2×1 →
+1, five instead of seven) — saves a third of the draws for the same reads;
+the exposure reference's `reduce_chain` takes the factor as a parameter.
+
+### Other suites after the stage-3 change (same day)
+
+`run_motion_output.py` PASS (90 runs: 78 cases and 12 benches; the eight
+stage-3 cases above added to stage 2's list), `run_temporal_pass.py` 448 /
+204 / 386 (the k = 0 identity first: 416 / 164 / 386, reports byte-identical;
+444 / 196 before review 24's negative-channel case),
+`temporal_run.py` 78 / 78, `run_ownership_integration.py` PASS (every
+environment exit 0), `run_scene_capture.py` PASS (4,908 checks),
+`check_no_x87.py build/d3d9.dll` PASS (129 reachable functions, no
+violation), `generate_rigid_motion_pixel.py --check` PASS (the resolve at
+4,487 words after review 24, 4,375 before; the six other bytecodes
+unchanged, their provenance carrying the edited generator's hash), `unittest discover -s verification/analysis`
+OK (588 tests).
+
 ## Limits
 
 - 64×64 (and 48×40, 64×65, 1280×768, 5120×1440 bench) synthetic frames on

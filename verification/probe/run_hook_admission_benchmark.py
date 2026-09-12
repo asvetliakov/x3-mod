@@ -14,12 +14,13 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 ROOT = Path(__file__).resolve().parents[2]
-RESULTS = ROOT / 'verification/results'
+RESULTS = bottle.results_dir(ROOT)
 BUILD = ROOT / 'verification/probe/build'
 WINE = '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
 NATIVE = Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/wine/i386-windows')
-DOSDEVICES = Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/dosdevices'
+DOSDEVICES = bottle.bottle_dir() / 'dosdevices'
 
 def drive_mappings():
     return {p.name.lower(): str(p.resolve()) for p in DOSDEVICES.iterdir()
@@ -81,7 +82,7 @@ def main():
     parser.add_argument('--provenance', type=Path, default=RESULTS / 'ownership-integration-build.json')
     args = parser.parse_args()
     summary = RESULTS / 'hook-admission-performance.json'
-    meta = {'passed': False, 'phase': 'building', 'game_launched': False,
+    meta = {'passed': False, 'phase': 'building', 'game_launched': False, 'bottle': bottle.describe(),
             'started_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'cases': {}}
     def save():
         summary.write_text(json.dumps(meta, indent=2) + '\n')
@@ -137,7 +138,7 @@ def main():
                        X3M_TELEMETRY='0', X3M_CAPTURE_START='0', X3M_CAPTURE_FRAMES='0',
                        X3M_DEPTH_COPY='0', X3M_SCENE_DEPTH_CAPTURE='0', X3M_OBJECT_TRACE='0',
                        X3M_FINITE_POSITIONS='0', X3M_MOTION_CAPTURE='0', X3M_MESH_CACHE='0')
-            command = [WINE, '--bottle', 'Steam', '--no-update', '--dll', override,
+            command = [WINE, '--bottle', bottle.BOTTLE, '--no-update', '--dll', override,
                        '--workdir', str(directory), str(run_exe), 'proxy' if variant else 'native']
             report = RESULTS / ('hook-admission-performance-' + label + '.txt')
             wine_log = RESULTS / ('hook-admission-performance-' + label + '-wine.log')

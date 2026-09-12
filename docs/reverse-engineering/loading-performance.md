@@ -210,6 +210,21 @@ in [docs/verification/sampling-profiler.md](../verification/sampling-profiler.md
 No game session has been profiled yet; the next user-run loading session with
 `--telemetry --profile --mesh-cache` provides the first attribution.
 
+## Exact-equality adjacency switch
+
+The 69 s of `GenerateAdjacency` attributed above is D3DX's epsilon point
+welding on positions that are quantized 61 times coarser than the epsilon.
+`X3M_MESH_ADJACENCY=native|verify|fast` (`tools/manage.py launch
+--mesh-adjacency {native,verify,fast}`, requires `--telemetry`) puts an
+exact-equality computation (`src/proxy/mesh_adjacency_fast.cpp`) behind the same
+vtable hook: `verify` runs D3DX, recomputes and logs any difference; `fast`
+answers from the computation and falls through to D3DX on any qualification
+failure. Algorithm, D3DX-equivalence argument, tie-breaking evidence against the
+real `d3dx9_37.dll` and fixture timings are in
+[docs/verification/mesh-adjacency-fast.md](../verification/mesh-adjacency-fast.md).
+The next user run should use `verify` first (`verify_mismatched=0` in the last
+`mesh_adjacency_metric` line), then `fast`.
+
 `tools/analysis/analyze_loading_profile.py <session.log> --output <dir> --ghidra`
 runs that chain in one command: every presentation gap over 2 s and every
 report stall inside it gets the hooked operation table next to the sampled

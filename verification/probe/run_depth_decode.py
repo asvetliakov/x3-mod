@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 
 def main():
@@ -14,7 +15,7 @@ def main():
     executable=root/'verification/probe/build/depth_decode.exe'
     shader=root/'src/temporal/depth_decode.hlsl'
     source=root/'verification/probe/depth_decode.cpp'
-    results=root/'verification/results'
+    results=bottle.results_dir(root)
     paths = [root / name for name in ['verification/probe/depth_decode.cpp', 'verification/probe/build_depth_decode.sh', 'verification/probe/run_depth_decode.py', 'src/temporal/depth_decode.hlsl']]
     def source_hashes():
         return {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
@@ -37,9 +38,9 @@ def main():
         print(json.dumps(failure, indent=2))
         return 1
     command=['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-             '--bottle','Steam','--no-update','--workdir',str(executable.parent),str(executable),
+             '--bottle',bottle.BOTTLE,'--no-update','--workdir',str(executable.parent),str(executable),
              r'C:\X3\d3dx9_37.dll','Z:'+str(shader)]
-    metadata=dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),command=command,
+    metadata=dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(), bottle=bottle.describe(),command=command,
                   source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
                   shader_sha256=hashlib.sha256(shader.read_bytes()).hexdigest(),
                   executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),

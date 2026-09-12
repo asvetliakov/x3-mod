@@ -10,9 +10,10 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
-DLL = Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll'
+DLL = bottle.game_dir() / 'd3dx9_37.dll'
 SYSTEM = DLL.parent.parent / 'windows/syswow64'
 BACKENDS = {
     'native_d3d9.dll': SYSTEM / 'd3d9.dll',
@@ -48,10 +49,10 @@ def hashes():
 
 
 def main():
-    results = ROOT / 'verification/results'
+    results = bottle.results_dir(ROOT)
     summary = results / 'draw-input-summary.json'
     meta = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                passed=False, phase='building', fresh_build=False, game_launched=False)
+                passed=False, phase='building', fresh_build=False, game_launched=False, bottle=bottle.describe())
 
     def save():
         summary.write_text(json.dumps(meta, indent=2) + '\n')
@@ -70,7 +71,7 @@ def main():
             raise RuntimeError('Sources changed during build')
         meta['executable_sha256'] = digest(EXE)
         command = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-                   '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=b',
+                   '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=b',
                    '--workdir', str(EXE.parent), str(EXE), r'C:\X3\d3dx9_37.dll', 'Z:' + str(ARCHIVE)]
         meta.update(fresh_build=True, phase='running', command=command)
         save()

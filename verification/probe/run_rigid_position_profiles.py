@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import struct
 from collections import Counter
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
 INPUTS = ['src/renderer/rigid_position.h', 'src/renderer/rigid_position.cpp',
@@ -63,7 +64,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--raw-directory', type=Path, default=Path('/tmp/x3-shader-sweep/programs'))
     args = parser.parse_args()
-    build, results = ROOT / 'verification/probe/build', ROOT / 'verification/results'
+    build, results = ROOT / 'verification/probe/build', bottle.results_dir(ROOT)
     build.mkdir(exist_ok=True)
     output = results / 'rigid-position-lookup-summary.json'
     # Invalidate retained PASS before any fallible input read or build step.
@@ -102,7 +103,7 @@ def main():
     manifest.write_text('\n'.join(manifest_lines) + '\n')
     manifest_sha = sha(manifest)
     launch = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-              '--bottle', 'Steam', '--no-update', '--workdir', str(build), str(exe), windows(manifest)]
+              '--bottle', bottle.BOTTLE, '--no-update', '--workdir', str(build), str(exe), windows(manifest)]
     run = subprocess.run(launch, capture_output=True, timeout=300)
     log = results / 'rigid-position-lookup-wine.log'
     log.write_bytes(run.stdout + b'\n--- stderr ---\n' + run.stderr)
@@ -116,7 +117,7 @@ def main():
     data = dict(passed=stable, programs=len(profiles), vertex_programs=256, pixel_programs=495,
                 rigid_profiles=234, classified_vertices=256, coverage_profiles=494,
                 single_bit_mutations=mutations, baseline_checks_per_program=9,
-                game_launched=False, d3d_device_created=False, source_hashes=before,
+                game_launched=False, bottle=bottle.describe(), d3d_device_created=False, source_hashes=before,
                 executable_sha256=binary, executable_sha256_after=sha(exe),
                 input_manifest_sha256=manifest_sha, log_sha256=sha(log),
                 build_command=command, command=launch, exit_code=run.returncode,

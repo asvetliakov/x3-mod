@@ -646,3 +646,102 @@ would be reprojected with the scene FOV — the `camera_state` line reports
 both so the next run can tell); the read observes only views that issue a
 per-view Clear; the first frame, every cut and every Reset resolve
 current-only for one frame.
+
+## Stage 3 of the HDR scene path: TAA on HDR (2026-09-12)
+
+Implemented per [hdr-scene-path.md](hdr-scene-path.md) §3 ("TAA on HDR")
+and §4 (pass order), behind the existing switches: with `X3M_HDR=1` and
+`X3M_TAA=1` the resolve consumes the FP16 scene target directly; with
+`X3M_HDR=0` the 8-bit path of step 3 above is untouched, bit for bit
+(`run_temporal_pass.py`, `temporal_run.py` and every 8-bit motion-output
+case reproduce their records; the tracked reports `temporal-pass.txt` and
+`temporal-resolve.txt` are byte-identical to the pre-change commit).
+
+**HDR input path.** `FrameInputs::color` (the `A16B16G16R16F` texture
+input `TemporalPass` always had) receives the container of the HDR pass's
+level-0 target surface (`GetContainer`, one reference for the run). The pass
+samples it as `s0` with no scratch copy and no `CheckDeviceFormatConversion`
+gate: `ensure_scratch` and `ticks_copy_color` are simply not exercised (they
+remain for the 8-bit `color_surface` input). The output is the pass's FP16
+history texture (`Output::color`, borrowed until the next run); nothing is
+copied back. Instead `MotionOutput` publishes it as `hdr_resolved_` and the
+write-back that ends the redirect samples it (`HdrPass::write_back(...,
+source)`: the meter chain and the tonemap draw read the resolved image; the
+emergency `StretchRect` rung still copies the target, i.e. the unresolved
+scene, never a black frame). Ping-pong (no copy) was chosen over a copy-back
+into the target: one full-screen FP16 copy less per frame, and the stage-1/2
+write-back is unchanged apart from the sampled texture.
+
+**Order at the scene end** (both scene ends: the engine hook and the bloom
+`StretchRect` fallback): `resolve_hdr` — the single resolve attempt of the
+frame, on the FP16 target while it is the physical RT0 (the pass's
+`SavedState` saves and restores that binding, so the redirect and the pass
+compose; RT0 not being the target is skip 10 as on the 8-bit path) — then
+`end_redirect`: meter chain over the resolved image, AgX (or identity)
+write-back of it into the game's RT0, rebind, and only then the compositor
+sees RT0. `resolve_allowed` records the attempt, so the 8-bit resolve that
+follows `end_redirect` in the code is a no-op on a frame the HDR resolve
+handled; without the redirect (HDR off, refused, blocked, suspended) the
+frame takes the 8-bit path exactly as before.
+
+**Failure and reset.** A failed HDR run (the pass reports it and drops its
+history) leaves `hdr_resolved_` null: the write-back presents the unresolved
+scene, `motion_output_taa_failed … hdr=1` logs the HRESULTs, the frame line
+carries `taa_hdr=1 taa_result=…`, and the next frame resolves current-only.
+`before_reset`, `release_resources` and every end of the redirect clear the
+borrowed pointer. The fixture seam `HdrFault::Resolve` (14) exercises the
+path (`seam-taa-hdr-tonemap-fault`).
+
+**Luminance weighting in `resolve.hlsl`.** One new constant register,
+`c22.x = k` (`ResolveConstants::luminance`, `kLuminanceRegister`; c8..c21
+stay the AgX block). Every colour that enters the temporal statistics —
+the current pixel, its 3×3 neighbourhood (min/max box, mean ± 1.25σ) and
+each of the 16 Catmull-Rom history taps — is first scaled by
+
+```
+w(c) = 1 / (1 + k · max(luma(c), 0)),   luma = dot(c, (0.2126, 0.7152, 0.0722))
+```
+
+and the blended result is inverted by `c' / (1 − k · max(luma(c'), 0))`
+(denominator floored at 1/65504). The clip and the blend therefore run in a
+bounded domain in which a bright sub-pixel feature carries a fraction of its
+radiance, while the stored history stays in engine radiance (no rescaling
+when `k` changes between frames). The current-only early returns hand the
+unweighted colour through. `k = 0` is selected by a compare, not by
+`1/(1+0)`: the colours are multiplied by the constant 1.0 exactly, which is
+why the 8-bit route is bit-identical (the migration test). Inputs are
+already finite and ≤ `rejection.z` = 65000 in magnitude (FP16 Inf reads as
+Inf and is rejected; 65504 is the FP16 maximum, so the bound rejects
+Inf-adjacent values) but not necessarily positive — an FP16 scene keeps the
+negative result of a subtractive blend — which is why the luma is floored
+at 0 in both directions (review 24): a pixel of non-positive luma is the
+identity and its inverse too, every weight lies in (0, 1], and a pixel with
+`luma ≤ −1/k` can no longer make `1 + k · luma` zero or negative (an Inf or
+sign-flipped weight that poisoned its 3×3 neighbourhood's statistics). The
+inverse of a convex combination of weighted colours is exact (`k · luma' <
+1` strictly); the per-channel clamp can in principle move the history to a
+box corner whose luma exceeds every neighbour's (adjacent saturated
+primaries several stops over the exposure with a history of a third
+chromaticity), which is what the denominator floor is for: the output is
+then finite but large, a one-pixel flash bounded again by the next frame's
+weighting, never Inf or NaN. The sentinel/camera path, the disocclusion
+test and the alpha carry are untouched: weighting only touches colour
+values. Cost: the compiled resolve grew from 3,840 to 4,487 words (28
+weightings of six instructions each; 4,375 before the luma floor).
+
+**Derivation of `k`** (`MotionOutput`, at the latch, `hdr_taa_k_`):
+`k = exp2(EV)`, the exposure multiplier the AgX write-back applies to the
+resolved image in the same frame (EV manual, or adapted at this latch from
+the previous frame's meter; `ExposureState::k()` = `taa_k(exposure)` of
+`exposure_reference.py`). Units: inverse engine radiance, so `k · luma` is
+the display-relative (pre-tonemap) luminance the tonemap sees — the key
+luminance 0.18 gets `w ≈ 0.85` at any exposure, a 16× brighter feature
+`w ≈ 0.26`. Typical range `2^±8` = 1/256 … 256 (the EV clamps); a normally
+exposed scene sits near 1. With the identity write-back (stage 1, no
+exposure model) `k = 0`: the unweighted resolve, which keeps the stage-1 HDR
+twins of the TAA runs within one code of the 8-bit twins. `X3M_TAA_K=<k>`
+(0 ≤ k ≤ 65504) overrides the derivation for A/B and fixtures; the frame
+line reports `taa_k`, `hdr_frame … k=`. Not chosen: a fixed default with
+manual exposure (manual EV is still an exposure the tonemap applies, so the
+derivation holds), and `k = 1` with the identity write-back (it would move
+the HDR twins away from their 8-bit references for no display benefit).

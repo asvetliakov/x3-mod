@@ -380,6 +380,56 @@ install`, and the next user run: TAA on, then proxy with route off
 camera reprojection for non-routed pixels (shadow view-inverse rows c34–36,
 recover projection) so background and effects stop crawling when turning.
 
+## Session handoff (2026-09-12 evening, before orchestrator compaction)
+
+Committed: `4e1aa20` (analyses). Installed in BOTH bottles: commit `1d36c29`
+build, SHA-256 `db63e120…` (HDR stages 1–2, hook off by default). The game now
+lives in the CrossOver bottle **X3** (arm64 Wine + FEX, `FEX_X87REDUCEDPRECISION=1`,
+`WINEMSYNC=1`); the old x86_64/Rosetta bottle **Steam** still exists.
+`tools/manage.py` defaults to X3 (`X3M_BOTTLE`/`--bottle`/`--game-dir`
+override) — that edit is uncommitted in the tree together with the in-flight
+work below.
+
+Today's runs (snapshots under /tmp, never committed): old bottle
+`/tmp/x3-iteration09-run1..4/` (run 1 route+profile, run 2 +hook +cache
++taa-debug, run 3 route off, run 4 +hdr identity); new bottle
+`/tmp/x3-bottleX3-run5/` (route off) and `/tmp/x3-bottleX3-run6/` (route +
+profile + hook; path: other save → menu → new game → dock → usual flight).
+Findings so far: [iteration 9](verification/iteration-09.md),
+[run 2](verification/iteration-09-run2.md), [run 4](verification/iteration-09-run4.md),
+[cost](verification/iteration-09-cost.md), [route cost](verification/route-cost-run1.md),
+[loading profile](reverse-engineering/loading-profile-run1.md). New bottle,
+route off: menu 9.7 s, save 65.5 s (39.5 s unexplained), sector 8–9 s.
+
+In flight (uncommitted, owned by agents; if their reports were lost, inspect
+`git status`/`git diff` and finish per these briefs):
+
+1. **Review 24** of HDR stage 3 (TAA on the FP16 target, `k` luminance
+   weighting, `X3M_TAA_K`): src/renderer/temporal_pass.*, src/temporal/resolve.*,
+   hdr_pass.*, motion_output.*, review-24.md exists. Then commit + install.
+2. **Fast exact-match GenerateAdjacency** (`X3M_MESH_ADJACENCY=native|verify|fast`,
+   `--mesh-adjacency`): src/proxy/mesh_adjacency_fast.*, loading_trace.*,
+   mesh_adjacency_cache.* (also widening the cache's FP-state gate that
+   bypassed 100% of calls), fixtures, docs/verification/mesh-adjacency-fast.md.
+3. **Route-cost fix**: src/proxy/engine_memory.* (direct validated reads
+   instead of ReadProcessMemory), object_trace/object_lifetime, telemetry
+   per-draw stamps behind `X3M_TELEMETRY_DRAW`, fallback `X3M_ENGINE_READS=rpm`.
+4. **Fixture bottle switch**: verification/probe/bottle.py
+   (`X3M_FIXTURE_BOTTLE`, default Steam), all runners switched; validation of
+   key suites under the X3 bottle into verification/results/bottle-x3/ and
+   docs/verification/bottles.md.
+5. **Run-6 analyses** (docs only): loading profile on the new bottle
+   (docs/reverse-engineering/loading-profile-bottle-x3.md) and route/TAA/FEX
+   health + frame time (docs/verification/iteration-10.md).
+
+Then: review the three source items together (review 25) with the full suite
+chain (one Wine runner), commit, build, install into the X3 bottle; next user
+runs on the new bottle: `--mesh-adjacency verify` (parity), then `fast`
+(loading), then `--hdr --hdr-tonemap agx` (first tonemapped look, TAA on HDR),
+plus the sharpen/mip-bias pass: post-resolve contrast-adaptive sharpen (target
+MTF50 0.35 → 0.6 c/px) and MIPMAPLODBIAS instrumentation then −0.5 on routed
+mip-mapped stages; make `--scene-hook` the default resolve point.
+
 ## Next user-managed runs (2026-09-12, installed build 4f46feee…)
 
 All runs use the installed build; logs land in the game's `x3-modern-captures`

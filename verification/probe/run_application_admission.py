@@ -8,9 +8,10 @@ import time
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
-RESULTS = ROOT / 'verification/results'
+RESULTS = bottle.results_dir(ROOT)
 INPUTS = ['src/ownership/application_admission.h', 'src/ownership/application_admission.cpp',
           'verification/probe/application_admission_fixture.cpp',
           'verification/probe/run_application_admission.py']
@@ -35,7 +36,7 @@ def no_game():
 def main():
     RESULTS.mkdir(parents=True, exist_ok=True)
     summary = RESULTS / 'application-admission-summary.json'
-    report = {'passed': False, 'scope': 'portable monitor bookkeeping only; no native callback/entry coverage claim', 'runs': []}
+    report = {'passed': False, 'bottle': bottle.describe(), 'scope': 'portable monitor bookkeeping only; no native callback/entry coverage claim', 'runs': []}
     summary.write_text(json.dumps(report, indent=2) + '\n')
     try:
         before = hashes()
@@ -60,7 +61,7 @@ def main():
             started = time.monotonic()
             if native:
                 no_game()
-                launch = [str(WINE), '--bottle', 'Steam', '--no-update', '--workdir', str(directory), str(exe)]
+                launch = [str(WINE), '--bottle', bottle.BOTTLE, '--no-update', '--workdir', str(directory), str(exe)]
             else:
                 launch = [str(exe)]
             run = subprocess.run(launch, capture_output=True, text=True, timeout=60)

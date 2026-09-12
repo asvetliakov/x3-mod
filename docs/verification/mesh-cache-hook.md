@@ -150,7 +150,9 @@ detail per reason (scope, options, slot/entry, status, pool/usage/format/size or
 tracker state). First details use release/acquire publication and never change.
 Core `mesh_cache_bypass` reasons distinguish FP, identity, configuration, options,
 metadata/declaration, size/output bounds, allocation, buffer access and contention.
-The first unsupported computational FP state is recorded once; failed result,
+The first incoming computational FP state is recorded once (`mesh_cache_fp_incoming`,
+with the game's `0x027f`/`0x9fc0` accepted and keyed since 2026-09-12) and the
+first unsupported one separately; failed result,
 LastError and FP admission checks have separate counters. These bounded records
 contain no per-mesh keys or payloads.
 The existing `MeshAdjacency` loading span now means whole intercepted service

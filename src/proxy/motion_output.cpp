@@ -5,6 +5,7 @@
 #include "telemetry.h"
 #include "object_trace.h"
 #include "object_lifetime.h"
+#include "engine_memory.h"
 #include "camera_state.h"
 #include "../renderer/material_motion.h"
 #include "../renderer/temporal_pass.h"
@@ -299,15 +300,19 @@ void MotionOutput::configure_sentinel(renderer::SentinelMode mode, float cut_deg
 // QPC stamp while telemetry is on (begin_frame latches the switch), else 0:
 // every tick total below then stays zero and no metric is recorded.
 std::uint64_t MotionOutput::stamp() const noexcept { return telemetry_ ? telemetry::now() : 0; }
+// Per-draw stamps (gate, apply/undo, SetRenderTarget, jitter, lazy flush) also
+// need X3M_TELEMETRY_DRAW=1: under Wine every QPC is a syscall and a routed
+// draw took up to 24 of them (docs/verification/route-cost-run1.md, 2.4).
+namespace { inline std::uint64_t draw_stamp() noexcept { return telemetry::draw_enabled() ? telemetry::now() : 0; } }
 void MotionOutput::record(unsigned metric, std::uint64_t ticks, bool failed, std::uint64_t bytes) noexcept {
     if (telemetry_ && stats_) telemetry::record(*stats_, static_cast<telemetry::Metric>(metric), ticks, failed, bytes);
 }
 // One route-issued SetRenderTarget of the per-draw apply/undo path or the
 // lazy flush: counted per frame and timed per call (route_set_rt).
 HRESULT MotionOutput::bind_target(DWORD index, IDirect3DSurface9* surface) noexcept {
-    const std::uint64_t begin = stamp();
+    const std::uint64_t begin = draw_stamp();
     const HRESULT hr = native<SetRenderTargetFn>(SetRenderTarget)(device_, index, surface);
-    const std::uint64_t ticks = stamp() - begin;
+    const std::uint64_t ticks = draw_stamp() - begin;
     ++counters_.set_rt; counters_.set_rt_ticks += ticks;
     record(unsigned(telemetry::Metric::RouteSetRenderTarget), ticks, FAILED(hr));
     return hr;
@@ -365,13 +370,13 @@ void MotionOutput::restore_bindings() noexcept {
 // counters directly and leaves the metric sample and the failure line to
 // record_deferred, which every heavy call runs first.
 template<bool quiet> HRESULT MotionOutput::flush_bindings() noexcept {
-    const std::uint64_t begin = stamp();
+    const std::uint64_t begin = draw_stamp();
     HRESULT first = S_OK;
     auto step = [&](HRESULT hr) { if (SUCCEEDED(first) && FAILED(hr)) first = hr; };
     auto unbind = [&](DWORD index) {
-        const std::uint64_t b = stamp();
+        const std::uint64_t b = draw_stamp();
         const HRESULT hr = native<SetRenderTargetFn>(SetRenderTarget)(device_, index, nullptr);
-        const std::uint64_t ticks = stamp() - b;
+        const std::uint64_t ticks = draw_stamp() - b;
         ++counters_.set_rt; counters_.set_rt_ticks += ticks;
         if constexpr (!quiet) record(unsigned(telemetry::Metric::RouteSetRenderTarget), ticks, FAILED(hr));
         return hr;
@@ -379,7 +384,7 @@ template<bool quiet> HRESULT MotionOutput::flush_bindings() noexcept {
     if (lazy_rt2_) { step(native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, lazy_write2_)); step(unbind(2)); }
     if (lazy_rt1_) { step(native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, lazy_write1_)); step(unbind(1)); }
     lazy_rt1_ = lazy_rt2_ = false;
-    const std::uint64_t ticks = stamp() - begin;
+    const std::uint64_t ticks = draw_stamp() - begin;
     ++counters_.lazy_flushes; counters_.lazy_flush_ticks += ticks;
     if (FAILED(first)) { ++counters_.restore_failures; invalidate_render_states(); }
     if constexpr (quiet) {
@@ -478,11 +483,17 @@ bool MotionOutput::ensure_taa() noexcept {
 // application's main surface as the 8-bit color input, then the copy-back.
 // The main target is written only after run() succeeded; any failure leaves it
 // untouched, invalidates history and is logged once for the frame.
-HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface) noexcept {
+HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9* hdr_scene) noexcept {
     auto& t = counters_.taa;
     IDirect3DTexture9* motion = nullptr; IDirect3DTexture9* depth = nullptr;
     renderer::Output out{};
     HRESULT hr = E_FAIL;
+    hdr_resolved_ = nullptr;
+    t.hdr = hdr_scene != nullptr; t.k = hdr_scene ? hdr_taa_k_ : 0.f;
+    // Debug readback of the pre-resolve colour on the HDR path: the 8-bit
+    // main target holds the previous write-back, so the unresolved scene is
+    // written back first (a flush; the redirect continues) and read.
+    if (hdr_scene && capture_ && taa_debug_) flush_redirect();
     taa_call([&] {
         hr = target_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&motion));
         if (SUCCEEDED(hr)) hr = depth_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&depth));
@@ -493,7 +504,8 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface) noexcept {
                 // GetRenderTargetData needs the exact format of the main target (A8R8G8B8 or X8R8G8B8).
                 readback_surface(main_surface, static_cast<D3DFORMAT>(main_.format), 4, L"color", L"bgra8", "motion_output_color_readback", "bgra8_row_major", target_width_, target_height_);
             renderer::FrameInputs in{};
-            in.color_surface = main_surface; in.current_depth = depth; in.motion = motion;
+            if (hdr_scene) { in.color = hdr_scene; in.luminance_k = hdr_taa_k_; } else in.color_surface = main_surface;
+            in.current_depth = depth; in.motion = motion;
             in.width = main_.width; in.height = main_.height;
             in.epoch = generation_; // Dimension changes are compared by the pass itself.
             // Depth-sentinel policy: sentinel pixels (RT2 -1, RT1 alpha -1) are
@@ -519,10 +531,17 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface) noexcept {
             // five phases; the whole call is timed here and nests them.
             taa_->configure_timing(telemetry_);
             const std::uint64_t run_begin = stamp();
-            hr = taa_->run(in, &out);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+            // Fixture seam (HdrFault::Resolve): the run "fails" without touching
+            // the device; the pass drops its history as a failed run would.
+            const bool injected = hdr_scene && hdr_ && hdr_->take_fault(renderer::HdrFault::Resolve);
+#else
+            constexpr bool injected = false;
+#endif
+            if (injected) { hr = E_FAIL; taa_->invalidate(); } else hr = taa_->run(in, &out);
             const std::uint64_t run_ticks = stamp() - run_begin;
             const auto diagnostics = taa_->diagnostics();
-            t.result = diagnostics.operation; t.restore = diagnostics.restoration;
+            t.result = injected ? hr : diagnostics.operation; t.restore = diagnostics.restoration;
             auto& c = counters_;
             c.taa_run_ticks += run_ticks; c.taa_capture_ticks += diagnostics.ticks_capture;
             c.taa_copy_color_ticks += diagnostics.ticks_copy_color; c.taa_copy_depth_ticks += diagnostics.ticks_copy_depth;
@@ -538,14 +557,21 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface) noexcept {
             if (SUCCEEDED(hr)) {
                 if (capture_ && taa_debug_)
                     readback_surface(out.color_surface, D3DFMT_A16B16G16R16F, 8, L"taa", L"rgba16f", "motion_output_taa_readback", "rgba16f_row_major", target_width_, target_height_);
-                // Point-filtered full-rect copy of the resolved FP16 image back into
-                // the 8-bit main target; StretchRect changes no device state.
-                const std::uint64_t copy_begin = stamp();
-                hr = native<StretchFn>(StretchRect)(device_, out.color_surface, nullptr, main_surface, nullptr, D3DTEXF_POINT);
-                const std::uint64_t copy_ticks = stamp() - copy_begin;
-                counters_.taa_copy_back_ticks += copy_ticks;
-                record(unsigned(telemetry::Metric::TaaCopyBack), copy_ticks, FAILED(hr));
-                t.copy = hr;
+                if (hdr_scene) {
+                    // Stage 3: no copy. The write-back that ends the redirect
+                    // samples the resolved FP16 image (tonemap and meter), and
+                    // the history already holds it.
+                    hdr_resolved_ = out.color; t.copy = S_FALSE;
+                } else {
+                    // Point-filtered full-rect copy of the resolved FP16 image back into
+                    // the 8-bit main target; StretchRect changes no device state.
+                    const std::uint64_t copy_begin = stamp();
+                    hr = native<StretchFn>(StretchRect)(device_, out.color_surface, nullptr, main_surface, nullptr, D3DTEXF_POINT);
+                    const std::uint64_t copy_ticks = stamp() - copy_begin;
+                    counters_.taa_copy_back_ticks += copy_ticks;
+                    record(unsigned(telemetry::Metric::TaaCopyBack), copy_ticks, FAILED(hr));
+                    t.copy = hr;
+                }
                 if (FAILED(hr)) invalidate_taa();
                 else {
                     t.resolved = true; t.used_history = out.used_history;
@@ -559,10 +585,39 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface) noexcept {
     });
     if (FAILED(hr) && logged_failures_ < failure_log_limit) {
         ++logged_failures_;
-        log("motion_output_taa_failed device=%llu frame=%llu skip=%lu result=%08lx restore=%08lx copy=%08lx scene_open=%u",
-            id_, frame_, static_cast<unsigned long>(t.skip), t.result, t.restore, t.copy, scene_open_);
+        log("motion_output_taa_failed device=%llu frame=%llu skip=%lu result=%08lx restore=%08lx copy=%08lx scene_open=%u hdr=%u",
+            id_, frame_, static_cast<unsigned long>(t.skip), t.result, t.restore, t.copy, scene_open_, t.hdr);
     }
     return hr;
+}
+// Stage 3 of the HDR scene path (docs/architecture/hdr-scene-path.md,
+// section 4): while the redirect is active the frame's resolve consumes the
+// FP16 scene target directly -- RT0 is the target, the pass saves and restores
+// that physical binding -- and its output becomes the source of the write-back
+// that follows (end_redirect). A failed run leaves hdr_resolved_ null: the
+// write-back then presents the unresolved scene (never a black frame) and the
+// pass has dropped its history; motion_output_taa_failed names the reason.
+bool MotionOutput::resolve_hdr(SceneEndSource source) noexcept {
+    hdr_resolved_ = nullptr;
+    if (!taa_enabled_ || hdr_state_ != HdrState::Active || !hdr_ || !hdr_->target() || !hdr_main_) return false;
+    if (!resolve_allowed(source)) return false;
+    auto& t = counters_.taa;
+    // The latch bound the target as RT0; anything else (an application bind
+    // the shim did not substitute) is skip 10, exactly as on the 8-bit path.
+    IDirect3DSurface9* rt0 = nullptr;
+    const HRESULT hr = native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &rt0);
+    const bool bound = SUCCEEDED(hr) && rt0 == hdr_->target();
+    release(rt0);
+    if (!bound) { t.skip = unsigned(TaaSkip::Target); t.result = FAILED(hr) ? hr : E_FAIL; t.hdr = true; invalidate_taa(); return true; }
+    // The target's texture (the pass validates format, size and device; one
+    // reference for the duration of the run).
+    IDirect3DTexture9* scene = nullptr;
+    HRESULT container = hdr_->target()->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&scene));
+    if (SUCCEEDED(container) && !scene) container = E_NOINTERFACE;
+    if (FAILED(container)) { t.skip = unsigned(TaaSkip::Container); t.result = container; t.hdr = true; invalidate_taa(); return true; }
+    resolve(hdr_main_, scene);
+    release(scene);
+    return true;
 }
 void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_rect,
                                   IDirect3DSurface9* destination, const RECT* destination_rect) noexcept {
@@ -583,21 +638,23 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
         probe.observe(e);
         bloom = probe.state() == renderer::BoundaryState::AwaitBloomTarget;
     }
-    // HDR redirect: the bloom copy is the scene end (write back, rebind the
-    // main target, then the resolve below reads the 8-bit image); any other
-    // copy reading the main target flushes first, one writing it ends first.
+    // HDR redirect: the bloom copy is the scene end (stage 3: the resolve on
+    // the FP16 target first, then the write-back of its output and the rebind
+    // of the main target, so the application copies the resolved image); any
+    // other copy reading the main target flushes first, one writing it ends
+    // first.
     if (hdr_state_ != HdrState::Off) {
-        if (bloom) end_redirect(HdrEnd::BloomCopy);
+        if (bloom) { resolve_hdr(SceneEndSource::StretchRect); end_redirect(HdrEnd::BloomCopy); }
         else if (hdr_is_main(destination)) end_redirect(HdrEnd::ContentWrite);
         else if (hdr_is_main(source)) flush_redirect();
     }
     if (!bloom) return;
     counters_.bloom_copy_seen = true; // The selector's scene end (cross-checked against the engine hook at Present).
     if (!taa_enabled_) return;
-    // The copy path is the fallback: a frame the engine hook already resolved
-    // (or attempted) is left alone here.
+    // The copy path is the fallback: a frame the engine hook (or the HDR
+    // resolve above) already resolved or attempted is left alone here.
     if (!resolve_allowed(SceneEndSource::StretchRect)) return;
-    resolve(source);
+    resolve(source, nullptr);
 }
 // Records this frame's single resolve attempt and its source, then the
 // preconditions common to both resolve points. False: no resolve (the skip
@@ -654,9 +711,14 @@ void MotionOutput::scene_end_hook() noexcept {
     restore_bindings();
     if (!cut_finished_) finish_cut_detector();
     counters_.hook_scene_end = true;
-    // The FP16 scene ends here: written back into the main target and RT0
-    // rebound to it before the compositor's GetRenderTarget(0) and before the
-    // resolve below reads it (docs/reverse-engineering/compositor-and-glow.md, 7.3).
+    // The FP16 scene ends here. Stage 3 order (section 4 of the HDR design):
+    // the resolve on the FP16 target while it is RT0, then the write-back of
+    // the resolved image (meter, tonemap) and the rebind of the main target
+    // before the compositor's GetRenderTarget(0)
+    // (docs/reverse-engineering/compositor-and-glow.md, 7.3). Without the
+    // redirect the write-back is a no-op and the resolve runs on the 8-bit
+    // RT0 below, as before.
+    resolve_hdr(SceneEndSource::Hook);
     end_redirect(HdrEnd::Hook);
     if (!taa_enabled_) return;
     if (!resolve_allowed(SceneEndSource::Hook)) return;
@@ -668,7 +730,7 @@ void MotionOutput::scene_end_hook() noexcept {
         counters_.taa.skip = unsigned(TaaSkip::Target); counters_.taa.result = FAILED(hr) ? hr : E_FAIL;
         invalidate_taa(); release(rt0); return;
     }
-    resolve(rt0);
+    resolve(rt0, nullptr);
     release(rt0);
 }
 void MotionOutput::after_begin_scene(HRESULT result) noexcept { if (enabled_ && SUCCEEDED(result)) scene_open_ = true; }
@@ -1320,6 +1382,7 @@ bool MotionOutput::scene_bound() const noexcept {
 
 void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     frame_ = frame; capture_ = capture; telemetry_ = telemetry::enabled();
+    engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
     counters_ = {};
     counters_.cut_median_bound_px = cut_median_bound_; counters_.cut_missing_bound = cut_missing_bound_;
     sequence_ = 0; pending_valid_ = false; fill_pending_ = false; jitter_active_ = false; cut_finished_ = false;
@@ -1455,7 +1518,7 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
 #endif
     if (!history_available_) return false;
     object_trace::Snapshot scope{};
-    if (!object_trace::current(&scope)) return false;
+    if (!object_trace::current(&scope, capture_)) return false; // matrices are capture-frame diagnostics
     constexpr std::uint32_t required = object_trace::Node | object_trace::Camera | object_trace::Registry;
     if ((scope.valid & required) != required || !scope.node || !scope.camera) return false;
     object_lifetime::Snapshot lifetime{};
@@ -1514,9 +1577,9 @@ void MotionOutput::apply_jitter(MotionRoute& route) noexcept {
     std::memcpy(rows, shadow_.rows[window], sizeof rows);
     const float jx = 2.f * jitter_[0] / float(main_.width), jy = -2.f * jitter_[1] / float(main_.height);
     for (unsigned k = 0; k < 4; ++k) { rows[k] += jx * rows[12 + k]; rows[4 + k] += jy * rows[12 + k]; }
-    const std::uint64_t begin = stamp();
+    const std::uint64_t begin = draw_stamp();
     const HRESULT hr = native<SetConstantsFFn>(SetVertexShaderConstantF)(device_, row.matrix_register, rows, 4);
-    const std::uint64_t ticks = stamp() - begin;
+    const std::uint64_t ticks = draw_stamp() - begin;
     ++counters_.jitter_writes; counters_.jitter_ticks += ticks;
     record(unsigned(telemetry::Metric::RouteJitter), ticks, FAILED(hr));
     if (SUCCEEDED(hr)) {
@@ -1527,10 +1590,10 @@ void MotionOutput::apply_jitter(MotionRoute& route) noexcept {
 // The application's own rows, bit-exact from the shadow (after the draw).
 void MotionOutput::restore_jitter(MotionRoute& route) noexcept {
     const std::size_t window = window_of(route.jitter_register);
-    const std::uint64_t begin = stamp();
+    const std::uint64_t begin = draw_stamp();
     const HRESULT hr = window < motion_matrix_windows_max
         ? native<SetConstantsFFn>(SetVertexShaderConstantF)(device_, route.jitter_register, shadow_.rows[window], 4) : E_FAIL;
-    const std::uint64_t ticks = stamp() - begin;
+    const std::uint64_t ticks = draw_stamp() - begin;
     ++counters_.jitter_writes; counters_.jitter_ticks += ticks;
     record(unsigned(telemetry::Metric::RouteJitter), ticks, FAILED(hr));
     route.jittered = false;
@@ -1552,11 +1615,11 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     ++counters_.draws;
     if (!enabled_) { route.gate = MotionGate::Feature; ++counters_.gates[1]; return route; }
     if (hdr_state_ == HdrState::Active) hdr_dirty_ = true; // every application draw lands in the FP16 target
-    const std::uint64_t begin = stamp(), fill_before = counters_.fill_ticks, flush_before = counters_.lazy_flush_ticks;
+    const std::uint64_t begin = draw_stamp(), fill_before = counters_.fill_ticks, flush_before = counters_.lazy_flush_ticks;
     evaluate_draw(call, route);
     if (!route.routed) restore_bindings();
-    if (telemetry_) {
-        const std::uint64_t total = stamp() - begin,
+    if (telemetry::draw_enabled()) {
+        const std::uint64_t total = draw_stamp() - begin,
             excluded = route.ticks + (counters_.fill_ticks - fill_before) + (counters_.lazy_flush_ticks - flush_before);
         const std::uint64_t gate = total > excluded ? total - excluded : 0;
         counters_.gate_ticks += gate;
@@ -1669,7 +1732,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     static const float zeros[16]{};
     const float pixel[8] = {1.f / float(target_width_), 1.f / float(target_height_), 0.f, 0.f,
                             matched ? 1.f : 0.f, 0.f, 0.f, 0.f};
-    const std::uint64_t apply_begin = stamp();
+    const std::uint64_t apply_begin = draw_stamp();
     HRESULT hr = native<SetVsFn>(SetVertexShader)(device_, shadow_.vs_variant); route.vs_set = SUCCEEDED(hr);
     if (SUCCEEDED(hr)) { hr = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps_variant); route.ps_set = SUCCEEDED(hr); }
     if (SUCCEEDED(hr)) {
@@ -1686,7 +1749,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
 #endif
     }
     if (SUCCEEDED(hr)) hr = bind_targets(route);
-    route.ticks = stamp() - apply_begin;
+    route.ticks = draw_stamp() - apply_begin;
     if (FAILED(hr)) {
         // Partial application: put back what was set and draw the original.
         restore_bindings();
@@ -1708,9 +1771,9 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     if (route.routed) {
         // route_draw: the apply (before_draw) plus this undo, without the
         // native draw between them and without the jitter writes.
-        const std::uint64_t begin = stamp();
+        const std::uint64_t begin = draw_stamp();
         undo(route);
-        route.ticks += stamp() - begin;
+        route.ticks += draw_stamp() - begin;
         counters_.route_draw_ticks += route.ticks;
         record(unsigned(telemetry::Metric::RouteDraw), route.ticks);
     }
@@ -1842,8 +1905,13 @@ void MotionOutput::begin_redirect() noexcept {
         const renderer::HdrFrameBegin b = hdr_->begin_frame(std::uint64_t(now.QuadPart), frequency, telemetry_);
         h.stepped = b.stepped; h.readback = b.readback; h.readback_ticks = b.ticks_readback;
         if (b.readback != S_FALSE) record(unsigned(telemetry::Metric::HdrMeterReadback), b.ticks_readback, FAILED(b.readback));
-        hdr_taa_k_ = hdr_->meter_active() ? hdr_->exposure().k() : 0.f;
     }
+    // Stage 3: k of the resolve's luminance weighting for this frame = the
+    // exposure multiplier exp2(EV) the AgX write-back applies to the resolved
+    // image (EV manual or adapted at this latch), so the weighted domain is
+    // the display-relative luminance the tonemap sees; 0 (unweighted) with the
+    // identity write-back, which applies no exposure; X3M_TAA_K overrides.
+    hdr_taa_k_ = taa_k_override_ >= 0.f ? taa_k_override_ : hdr_->tonemap_active() ? hdr_->exposure().k() : 0.f;
 }
 // One write-back through the pass (the ladder), with the capture-frame
 // readback of the FP16 image before the first one of the frame, the
@@ -1853,7 +1921,7 @@ renderer::HdrWriteback MotionOutput::hdr_writeback(IDirect3DSurface9* final_rt0,
     if (write && capture_ && !h.writebacks && hdr_->target())
         readback_surface(hdr_->target(), D3DFMT_A16B16G16R16F, 8, L"hdr", L"rgba16f", "hdr_readback", "rgba16f_row_major", hdr_->width(), hdr_->height());
     const std::uint64_t begin = stamp();
-    const renderer::HdrWriteback r = hdr_->write_back(hdr_main_, final_rt0, scene_open_, write, telemetry_);
+    const renderer::HdrWriteback r = hdr_->write_back(hdr_main_, final_rt0, scene_open_, write, telemetry_, hdr_resolved_);
     const std::uint64_t ticks = stamp() - begin;
     if (write) {
         ++h.writebacks; h.source = unsigned(r.source);
@@ -1896,14 +1964,15 @@ void MotionOutput::flush_redirect() noexcept {
 }
 void MotionOutput::end_redirect(HdrEnd reason) noexcept {
     if (hdr_state_ == HdrState::Off) return;
-    if (hdr_state_ == HdrState::Active && hdr_ && hdr_main_) hdr_writeback(hdr_main_, hdr_dirty_);
+    if (hdr_state_ == HdrState::Active && hdr_ && hdr_main_) hdr_writeback(hdr_main_, hdr_dirty_ || hdr_resolved_ != nullptr);
     // Suspended: the application bound another surface itself and the main
     // target already holds the write-back of the switch; nothing to rebind.
     release(hdr_main_);
-    hdr_state_ = HdrState::Off; hdr_dirty_ = false; hdr_latch_pending_ = false; hdr_pending_state_ = 0;
+    hdr_state_ = HdrState::Off; hdr_dirty_ = false; hdr_latch_pending_ = false; hdr_pending_state_ = 0; hdr_resolved_ = nullptr;
     counters_.hdr.end = std::uint32_t(reason);
 }
 void MotionOutput::drop_redirect() noexcept {
+    hdr_resolved_ = nullptr;
     if (hdr_state_ == HdrState::Off) { release(hdr_main_); return; }
     release(hdr_main_);
     hdr_state_ = HdrState::Off; hdr_dirty_ = false; hdr_latch_pending_ = false; hdr_pending_state_ = 0;
@@ -2102,7 +2171,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         // telemetry on (timing=cpu_qpc) and zero otherwise (timing=off).
         const auto& c = counters_;
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
-        log("motion_output_frame device=%llu frame=%llu latched=%u filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx scene_open=%u active_queries=%lu taa_references=%u"
+        log("motion_output_frame device=%llu frame=%llu latched=%u filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f scene_open=%u active_queries=%lu taa_references=%u"
             " camera_valid=%u camera_background_valid=%u camera_reads=%lu camera_policy=%lu camera_reason=%lu camera_cut=%u camera_rotation_deg=%.4f"
             " rt_mode=%s timing=%s set_rt=%lu lazy_flushes=%lu jitter_writes=%lu readbacks=%lu gate_us=%.1f route_draw_us=%.1f set_rt_us=%.1f lazy_flush_us=%.1f jitter_us=%.1f fill_us=%.1f taa_run_us=%.1f taa_capture_us=%.1f taa_copy_color_us=%.1f taa_copy_depth_us=%.1f taa_draw_us=%.1f taa_apply_us=%.1f taa_copy_back_us=%.1f readback_us=%.1f"
             " state_shadow=%u rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u",
@@ -2117,7 +2186,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             static_cast<unsigned long>(counters_.jittered), counters_.cut, counters_.cut_median_px, counters_.cut_missing_fraction,
             static_cast<unsigned long>(counters_.displacement_samples), taa_enabled_, counters_.taa.attempted, counters_.taa.resolved,
             counters_.taa.used_history, static_cast<unsigned long>(counters_.taa.skip), counters_.taa.result, counters_.taa.restore,
-            counters_.taa.copy, scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,
+            counters_.taa.copy, counters_.taa.hdr, counters_.taa.k, scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,
             counters_.camera_scene_valid, counters_.camera_background_valid, static_cast<unsigned long>(counters_.camera_reads),
             static_cast<unsigned long>(counters_.taa.camera_policy), static_cast<unsigned long>(counters_.taa.camera_reason),
             counters_.taa.camera_cut, counters_.taa.camera_rotation_deg,

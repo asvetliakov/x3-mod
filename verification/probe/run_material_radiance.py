@@ -7,12 +7,13 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 
 def main():
     root = Path(__file__).resolve().parents[2]
     executable = root / 'verification/probe/build/material_radiance_fixture.exe'
-    results = root / 'verification/results'
+    results = bottle.results_dir(root)
     files = ('verification/probe/material_radiance_fixture.cpp',
              'verification/probe/build_material_radiance.sh', 'verification/probe/run_material_radiance.py',
              'src/renderer/material_radiance.cpp', 'src/renderer/material_radiance.h',
@@ -20,7 +21,7 @@ def main():
     def hashes():
         return {name: hashlib.sha256((root / name).read_bytes()).hexdigest() for name in files}
     before = hashes()
-    report = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    report = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(), bottle=bottle.describe(),
                   source_sha256=before, process_local_override='d3d9=b', timeout_seconds=60)
     build = subprocess.run(['sh', str(root / 'verification/probe/build_material_radiance.sh')],
                            cwd=root, timeout=60)
@@ -29,7 +30,7 @@ def main():
         report.update(passed=False, reason='Build failed or source changed during compilation')
     else:
         command = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-                   '--bottle', 'Steam', '--no-update', '--workdir', str(executable.parent),
+                   '--bottle', bottle.BOTTLE, '--no-update', '--workdir', str(executable.parent),
                    str(executable), r'C:\X3\d3dx9_37.dll']
         report.update(command=command, executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest())
         env = os.environ.copy()

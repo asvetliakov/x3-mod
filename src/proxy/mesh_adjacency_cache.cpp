@@ -20,10 +20,12 @@ void restore_fp(const FpState& v) noexcept {
     asm volatile("fldenv %0\n\tldmxcsr %1"::"m"(v.x87),"m"(v.mxcsr):"memory");
 }
 bool supported_fp(const FpState& v) noexcept {
-    // Verified D3D9 default: masked exceptions, 24-bit x87 round-to-nearest,
-    // SSE round-to-nearest, no FTZ/DAZ. Never normalize an unsupported caller.
-    return (v.x87.control&0xffff)==0x007f && (v.x87.tag&0xffff)==0xffff &&
-           (v.x87.status&0xb800)==0 && (v.mxcsr&~DWORD(0x3f))==0x1f80;
+    // Masked x87 and SSE exceptions, an empty x87 stack with TOP zero. Precision
+    // control, rounding and FTZ/DAZ are part of the key, not refused: the game
+    // enters with x87 control 0x027f and MXCSR 0x9fc0 (loading run 2). The
+    // adapter never normalizes the caller's state; it replays under the same key.
+    return (v.x87.control&0x3f)==0x3f && (v.x87.tag&0xffff)==0xffff &&
+           (v.x87.status&0xb800)==0 && (v.mxcsr&0x1f80)==0x1f80;
 }
 bool admissible_fp(const FpState& before,const FpState& after) noexcept {
     return supported_fp(after) && before.x87.control==after.x87.control &&
@@ -76,6 +78,7 @@ Statistics Cache::statistics() const noexcept {
     for(unsigned i=0;i<bypass_reason_count;++i)s.bypass_reasons[i]=counters_.bypass_reasons[i].load(std::memory_order_relaxed);
 #undef COPY
     if(counters_.unsupported_fp_publication.load(std::memory_order_acquire)==2){s.unsupported_fp_available=true;s.unsupported_fp=counters_.unsupported_fp;}
+    if(counters_.first_fp_publication.load(std::memory_order_acquire)==2){s.first_fp_available=true;s.first_fp=counters_.first_fp;s.first_fp_supported=counters_.first_fp_supported;}
     return s;
 }
 Outcome Cache::generate(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output,Generate original,
@@ -108,6 +111,10 @@ Outcome Cache::generate(ID3DXMesh* mesh,FLOAT epsilon,DWORD* output,Generate ori
     DWORD epsilon_bits=0;std::memcpy(&epsilon_bits,&epsilon,sizeof epsilon);
     if(!mesh||!output||!original)return bypass(BypassReason::Input);
     if(!runtime.public_contract||!runtime.generation||!runtime.algorithm_token)return bypass(BypassReason::Runtime);
+    {unsigned empty=0;if(counters_.first_fp_publication.compare_exchange_strong(empty,1,std::memory_order_acquire)){
+        counters_.first_fp={incoming_fp.x87.control,incoming_fp.x87.status,incoming_fp.x87.tag,incoming_fp.mxcsr};
+        counters_.first_fp_supported=supported_fp(incoming_fp);counters_.first_fp_publication.store(2,std::memory_order_release);
+    }}
     if(!supported_fp(incoming_fp)){
         unsigned empty=0;if(counters_.unsupported_fp_publication.compare_exchange_strong(empty,1,std::memory_order_acquire)){
             counters_.unsupported_fp={incoming_fp.x87.control,incoming_fp.x87.status,incoming_fp.x87.tag,incoming_fp.mxcsr};

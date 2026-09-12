@@ -12,7 +12,13 @@ enum class MotionPolicy { Unavailable, KnownCameraOnly, PerPixel };
 enum class ReactivePolicy { Unavailable, KnownNonReactive, RequiredMask, DerivedFromDepthSentinel };
 struct FrameInputs {
     // Current color: exactly one of the two.
-    IDirect3DTexture9* color = nullptr; // scene-linear FP16 texture, native, complete local viewport
+    // A16B16G16R16F texture at the frame size, native, complete local
+    // viewport: the HDR route's FP16 scene target (stage 3 of the HDR scene
+    // path) or a fixture's exact FP16 image. Sampled directly as s0: no copy,
+    // no format conversion, no gate. The resolved output is Output::color (an
+    // owned FP16 history texture); the caller decides what consumes it (the
+    // HDR write-back samples it; the 8-bit route copies it back).
+    IDirect3DTexture9* color = nullptr;
     // A8R8G8B8/X8R8G8B8 default-pool render-target surface (need not be a texture
     // level). Copied once by StretchRect into an owned FP16 scratch that becomes
     // s0; no gamma conversion is applied anywhere (values are linear-encoded).
@@ -36,6 +42,12 @@ struct FrameInputs {
     float current_jitter[2]{}, previous_jitter[2]{};
     float weight = .9f;
     float rejection[4]{.0001f, .02f, 65000.f, .000001f}; // max(absolute, relative*depth) depth tolerance, HDR limit, minimum W
+    // k of the resolve's reversible luminance weighting (resolve.h, c22.x):
+    // 0 (the default, the 8-bit route) is the exact identity; the HDR route
+    // uploads the exposure multiplier its write-back applies to the resolved
+    // image, so the weighted domain is the display-relative luminance. Finite,
+    // 0 <= k <= 65504; run refuses anything else.
+    float luminance_k = 0.f;
     MotionPolicy motion_policy = MotionPolicy::Unavailable;
     // Unknown coverage produces current-only output and cannot establish usable
     // history. RequiredMask demands complete conservative visible RGB coverage,

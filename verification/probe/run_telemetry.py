@@ -5,16 +5,17 @@ import datetime
 import os
 import shutil
 import subprocess
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 root=Path(__file__).resolve().parents[2]
 probe=root/'verification/probe/build'
-results=root/'verification/results'
+results=bottle.results_dir(root)
 wine='/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
 for mode in ('baseline','off','on'):
     directory=probe/('telemetry-'+datetime.datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+mode)
     directory.mkdir(parents=True)
     shutil.copy(probe/'telemetry_fixture.exe',directory)
     env=dict(os.environ,X3M_TELEMETRY='1' if mode=='on' else '0',X3M_CAPTURE_START='1',X3M_CAPTURE_FRAMES='1')
-    command=[wine,'--bottle','Steam','--no-update','--workdir',str(directory)]
+    command=[wine,'--bottle',bottle.BOTTLE,'--no-update','--workdir',str(directory)]
     if mode!='baseline':
         shutil.copy(root/'build/d3d9.dll',directory)
         command+=['--dll','d3d9=n,b']

@@ -71,7 +71,12 @@ adaptation), the looks `--hdr-look none|golden|punchy`, the decode
 (fixed EV) and `--hdr-clamp`. Honest scope: the presented image is AgX
 tonemapped from a gamma-space FP16 scene (the decode is a documented
 approximation) and is still LDR to the game's bloom and GUI; verified
-against the Python reference synthetically, not in gameplay. See
+against the Python reference synthetically, not in gameplay. With `--hdr`
+and `--taa` together (stage 3) the temporal resolve runs on the FP16 scene
+before the write-back — no 8-bit round trip, the history in engine radiance,
+a reversible luminance weighting inside the resolve whose constant is the
+write-back's exposure (`--taa-k` fixes it; 0 is the unweighted resolve) —
+and the presented frame is the tonemap of the resolved image. See
 [live motion route](docs/architecture/live-motion-route.md),
 [temporal integration](docs/architecture/temporal-integration.md) and the exact
 gameplay commands in

@@ -72,12 +72,16 @@ the fixture's near-epsilon seam changes status from `0x0000` to `0x0020`, while
 other original meshes also change condition-code bits. Merely retaining epsilon
 bits or preserving the incoming flags on a hit would be incorrect.
 
-The adapter initially requires the observed D3D9 computational environment:
-x87 control `0x007f` (masked exceptions, 24-bit precision, round-to-nearest), an
-empty x87 stack with TOP zero, and MXCSR control `0x1f80` (masked exceptions,
-round-to-nearest, no FTZ/DAZ). It does **not normalize** different caller modes.
-Unsupported precision/rounding/FTZ/DAZ states call the original unchanged. Incoming
-x87 status and MXCSR sticky flags participate in the key. Successful output status
+The adapter requires masked x87 and SSE exceptions and an empty x87 stack with
+TOP zero. Precision control, rounding and FTZ/DAZ are **keyed, not refused**
+(changed 2026-09-12: loading run 2 showed the game entering every call with x87
+control `0x027f`, 53-bit precision, and MXCSR `0x9fc0`, FTZ+DAZ, which the
+earlier `0x007f`/`0x1f80` requirement bypassed 8,718 times). The adapter still
+does **not normalize** the caller's state: incoming x87 control and status and
+the whole MXCSR participate in the key, so a result is only replayed under the
+state it was computed in. Unmasked exceptions call the original unchanged.
+The first incoming state is published once (`mesh_cache_fp_incoming ...
+supported=`), and the first unsupported one separately. Successful output status
 and MXCSR are retained and replayed on a hit; changed controls/tags reject admission.
 
 Incoming LastError and computational FP state are captured before any metadata or

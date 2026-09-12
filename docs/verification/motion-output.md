@@ -704,6 +704,19 @@ profile the menu, save-game and sector loads:
 python3 tools/manage.py launch --direct --telemetry --profile --mesh-cache
 ```
 
+Adjacency run (added 2026-09-12): the exact-equality replacement of D3DX's
+epsilon welding ([mesh-adjacency-fast.md](mesh-adjacency-fast.md)) is switched
+with `--mesh-adjacency` (requires `--telemetry`). Use `verify` first: it keeps
+the native result and compares; the last `mesh_adjacency_metric` line of the
+session log must show `verify_mismatched=0`, and `native_us` versus `fast_us`
+there is the measured speed-up on the game's own meshes. Then repeat with
+`fast`:
+
+```sh
+python3 tools/manage.py launch --direct --telemetry --profile --mesh-adjacency verify
+python3 tools/manage.py launch --direct --telemetry --profile --mesh-adjacency fast
+```
+
 `--profile-interval-us` (default 2000) sets the sampling interval; the
 profiler writes `profile_*` reports into the same session log, on the same
 QPC clock as `loading_metric`.

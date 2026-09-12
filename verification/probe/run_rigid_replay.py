@@ -10,9 +10,10 @@ import tempfile
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 root = Path(__file__).resolve().parents[2]
-results = root / 'verification/results'
+results = bottle.results_dir(root)
 exe = root / 'verification/probe/build/rigid_replay_fixture.exe'
 host = root / 'verification/probe/build/rigid_replay_profiles'
 paths = [root / name for name in (
@@ -32,7 +33,7 @@ def sha(path):
 def hashes():
     return {str(path.relative_to(root)): sha(path) for path in paths}
 
-report = {'passed': False, 'sources_before_build': hashes(), 'game_launched': False,
+report = {'passed': False, 'sources_before_build': hashes(), 'game_launched': False, 'bottle': bottle.describe(),
           'cpu_baseline': 'SSE2; stack realignment; four-byte incoming Win32 stack',
           'scope': 'Original fixed SM3 replay plus independent assembly and native GPU conversion/raster proof; finite payload gate retained'}
 try:
@@ -60,10 +61,10 @@ try:
     report['local_archive_inputs'] = {p.name: expected for p, expected in raw.items()}
     # Respect a concurrently started user game; never share synthetic GPU work.
     assert not game_running(), 'X3AP running; postpone synthetic GPU verification'
-    d3dx = Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll'
+    d3dx = bottle.game_dir() / 'd3dx9_37.dll'
     report['d3dx9_37_sha256'] = sha(d3dx)
     command = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-               '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=b', '--workdir', str(exe.parent),
+               '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=b', '--workdir', str(exe.parent),
                str(exe), r'C:\X3\d3dx9_37.dll']
     report['command'] = command
     with (results / 'rigid-replay.txt').open('w') as out, (results / 'rigid-replay-wine.log').open('w') as err:

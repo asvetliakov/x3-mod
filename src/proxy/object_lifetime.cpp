@@ -1,4 +1,5 @@
 #include "object_lifetime.h"
+#include "engine_memory.h"
 #include <wincrypt.h>
 #include <excpt.h>
 #include <array>
@@ -61,8 +62,7 @@ std::array<Patch,4> patches{};
 bool retain_retired_dispatch=true, dispatch_published=false, retired_dispatch=false;
 
 bool read_memory(std::uintptr_t address,void* out,std::size_t size){
-    SIZE_T copied=0;
-    return address && ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<void*>(address),out,size,&copied) && copied==size;
+    return x3m::engine_memory::read(address,out,size);
 }
 void fail(Reason reason,const char* text){disabled_reason=reason;observation=false;diagnostic=text;}
 bool increment(std::uint64_t& value){

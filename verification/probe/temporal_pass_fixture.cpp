@@ -983,6 +983,100 @@ void reset_continuity(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS& pp,Compiler com
     {Fixture f(d,compiler);auto in=f.inputs();auto a=f.run(pass,in,"after reset first frame");require(!a.used_history,"reset invalidates history");f.sample(a,.75f,.5f,"after reset");
         f.upload(.25f,1);auto b=f.run(pass,in,"after reset accumulation");require(b.used_history,"history rebuilt after reset without initialize");f.sample(b,.5f,.5f,"after reset blend");}
 }
+// Stage 3 of the HDR scene path: the direct FP16 input path (in.color) with
+// the reversible luminance weighting (resolve.hlsl c22.x, FrameInputs::
+// luminance_k). Every existing case above runs with k = 0 and must keep its
+// numbers; these cases state the k > 0 expectations. A CPU model of one grey
+// pixel of the resolve (3x3 statistics, clip at 1.25 sigma within the box,
+// blend, weighting and inversion) gives the firefly expectation analytically.
+namespace hdr {
+float weigh(float v,float k){return v/(1+k*v);}   // grey: luma == v
+float unweigh(float v,float k){return v/(1-k*v);}
+// One grey pixel: `center` with eight `around` neighbours, accepted history `old`, weight w.
+float model(float center,float around,float old,float w,float k){
+    const float c=weigh(center,k),a=weigh(around,k),h=weigh(old,k);
+    const float mean=(c+8*a)/9,square=(c*c+8*a*a)/9,sigma=std::sqrt(std::max(square-mean*mean,0.f));
+    const float low=std::max(std::min(c,a),mean-1.25f*sigma),high=std::min(std::max(c,a),mean+1.25f*sigma);
+    const float clipped=std::min(std::max(h,low),high);
+    return unweigh(c+(clipped-c)*w,k);
+}
+template<class F> void upload16(IDirect3DTexture9* t,F pixel){D3DLOCKED_RECT lock{};check("lock hdr scene",t->LockRect(0,&lock,nullptr,0));
+    for(UINT y=0;y<H;++y)for(UINT x=0;x<W;++x){float v[4];pixel(x,y,v);unsigned short px[4];for(UINT c=0;c<4;++c)px[c]=toHalf(v[c]);std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*8,px,8);}
+    check("unlock hdr scene",t->UnlockRect(0));}
+// Largest half-precision ulp distance between the stored expectation and the output over RGB.
+template<class F> unsigned worst_ulp(const std::vector<unsigned char>& bytes,F pixel,double* minSaturation=nullptr){unsigned worst=0;
+    for(UINT y=0;y<H;++y)for(UINT x=0;x<W;++x){float q[4];pixel(x,y,q);float lo=1e30f,hi=0;
+        for(UINT c=0;c<3;++c){const unsigned short expected=toHalf(q[c]),actual=at<unsigned short>(bytes,(y*W+x)*4+c);worst=std::max(worst,unsigned(std::abs(int(expected)-int(actual))));
+            const float value=halfFloat(actual);lo=std::min(lo,value);hi=std::max(hi,value);}
+        if(minSaturation)*minSaturation=std::min(*minSaturation,double(hi/std::max(lo,1e-30f)));}
+    return worst;}
+}
+void hdr_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const DWORD* resolver){
+    std::puts("HDR_CASES");Fixture f(d,compiler);RouteScene s(f,compiler);s.depth([](UINT,UINT){return .5f;});
+    Com<IDirect3DTexture9> scene;check("hdr scene",d->CreateTexture(W,H,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_MANAGED,&scene.p,nullptr));
+    auto inputs=[&](float k){auto in=f.inputs();in.color=scene.p;in.depth_snapshot=nullptr;in.current_depth=s.depth32.p;in.weight=.9f;in.luminance_k=k;return in;};
+    // k is validated like every other constant.
+    {TemporalPass p;check("initialize hdr validation pass",p.initialize(d,decoder,resolver));Output failed;
+        auto in=inputs(-1.f);require(p.run(in,&failed)==E_INVALIDARG&&!failed.color,"negative k refused");
+        in=inputs(NAN);require(p.run(in,&failed)==E_INVALIDARG,"NaN k refused");
+        in=inputs(70000.f);require(p.run(in,&failed)==E_INVALIDARG,"k above the FP16 range refused");}
+    // (1) A bright firefly (8.0) appearing against a stationary 0.2 background:
+    // the unweighted blend keeps 0.1 * 8 + 0.9 * 0.2 of it; the weighted blend
+    // suppresses the flicker energy by the model's factor. Both values are the
+    // FP16-stored ones (0.2 is not exact in FP16).
+    const float dark=halfFloat(toHalf(.2f)),bright=8.f;
+    const float ks[]={0.f,1.f,4.f};float outs[3]{};
+    for(unsigned i=0;i<3;++i){TemporalPass p;check("initialize hdr firefly pass",p.initialize(d,decoder,resolver));
+        hdr::upload16(scene.p,[&](UINT,UINT,float* q){q[0]=q[1]=q[2]=dark;q[3]=1;});s.run(p,inputs(ks[i]),"hdr flat first frame");
+        hdr::upload16(scene.p,[&](UINT x,UINT y,float* q){const float v=x==8&&y==8?bright:dark;q[0]=q[1]=q[2]=v;q[3]=1;});
+        auto out=s.run(p,inputs(ks[i]),"hdr firefly frame");require(out.used_history,"firefly frame accumulates");
+        auto bytes=readback(d,out.color);outs[i]=halfFloat(at<unsigned short>(bytes,(8*W+8)*4));
+        const float expected=hdr::model(bright,dark,dark,.9f,ks[i]),side=halfFloat(at<unsigned short>(bytes,(8*W+7)*4));
+        std::printf("HDR_FIREFLY k=%g output=%.6f expected=%.6f energy=%.6f neighbour=%.6f\n",double(ks[i]),double(outs[i]),double(expected),double(outs[i]-dark),double(side));
+        ++numeric_checks;require(std::fabs(outs[i]-expected)<=2e-3f*std::max(1.f,expected),"firefly output matches the weighted resolve model");
+        ++numeric_checks;require(std::fabs(side-dark)<=1e-3f,"the dark stationary neighbour of the firefly keeps its value");}
+    ++numeric_checks;require(std::fabs(outs[0]-(.1f*bright+.9f*dark))<2e-3f,"unweighted firefly blend is 0.1 * 8 + 0.9 * 0.2 (the clip admits the dark history)");
+    for(unsigned i=1;i<3;++i){const float ratio=(outs[i]-dark)/(outs[0]-dark),analytic=(hdr::model(bright,dark,dark,.9f,ks[i])-dark)/(hdr::model(bright,dark,dark,.9f,0)-dark);
+        std::printf("HDR_FIREFLY_RATIO k=%g measured=%.4f analytic=%.4f\n",double(ks[i]),double(ratio),double(analytic));
+        ++numeric_checks;require(std::fabs(ratio-analytic)<5e-3f&&ratio<.25f,"weighting suppresses the firefly's flicker energy by the analytic factor");}
+    // (2) A stationary HDR gradient with chroma (2^-8 .. 2^7.6, RGB 1 : 1/2 : 1/4)
+    // resolved twice: the second output equals the stored input within one
+    // FP16 ulp after weighting and inversion (exactly at k = 0).
+    auto gradient=[](UINT x,UINT y,float* q){const float v=std::ldexp(1.f,int(x)-8)*(1+float(y)/32);q[0]=v;q[1]=v*.5f;q[2]=v*.25f;q[3]=1;};
+    for(float k:ks){TemporalPass p;check("initialize hdr gradient pass",p.initialize(d,decoder,resolver));hdr::upload16(scene.p,gradient);
+        s.run(p,inputs(k),"hdr gradient first frame");auto out=s.run(p,inputs(k),"hdr gradient second frame");require(out.used_history,"gradient accumulates");
+        const unsigned worst=hdr::worst_ulp(readback(d,out.color),gradient);std::printf("HDR_GRADIENT k=%g worst_ulp=%u\n",double(k),worst);
+        ++numeric_checks;require(worst<=(k>0?1u:0u),"stationary HDR gradient survives weighting and inversion within one FP16 ulp (exact at k = 0)");}
+    // (3) A stable saturated HDR edge (left (4, .1, .1), right (.1, .1, 4),
+    // brightening downwards): the clip in the weighted domain keeps every pixel
+    // of both sides, edge columns included, within one ulp; the 40 : 1
+    // channel ratio is preserved (no desaturation).
+    auto edge=[](UINT x,UINT y,float* q){const float sc=1+float(y)/16;const bool left=x<8;q[0]=(left?4.f:.1f)*sc;q[1]=.1f*sc;q[2]=(left?.1f:4.f)*sc;q[3]=1;};
+    for(float k:{1.f,4.f}){TemporalPass p;check("initialize hdr edge pass",p.initialize(d,decoder,resolver));hdr::upload16(scene.p,edge);
+        s.run(p,inputs(k),"hdr edge first frame");auto out=s.run(p,inputs(k),"hdr edge second frame");require(out.used_history,"edge accumulates");
+        double minSaturation=1e30;const unsigned worst=hdr::worst_ulp(readback(d,out.color),edge,&minSaturation);
+        std::printf("HDR_EDGE k=%g worst_ulp=%u min_saturation=%.3f\n",double(k),worst,minSaturation);
+        ++numeric_checks;require(worst<=1&&minSaturation>=39.,"stable saturated HDR edge keeps its channels within one ulp and its 40:1 saturation");}
+    // (4) Negative channels (review 24): an FP16 scene may hold negative
+    // values (subtractive blends), which finiteColor admits. A pixel whose
+    // luma is <= -1/k would make 1 + k * luma zero or negative; the weighting
+    // floors the luma at 0 (such a pixel and its inverse are the identity) so
+    // a stationary scene with a 5x5 block of negative grey (-0.5) and a 5x5
+    // block of mixed sign with positive luma (-0.5, 1, 0) among 0.2 greys
+    // resolves to itself within one ulp at k = 2 (1 + k * luma = 0) and
+    // k = 4 (negative), every output finite. (Blocks, not single pixels: a
+    // stationary value survives the mean +/- 1.25 sigma clip only where at
+    // least four of the nine neighbourhood taps share it, which a 5x5 block's
+    // corner just does; an isolated pixel is an outlier at any k, 0 included.)
+    auto negative=[](UINT x,UINT y,float* q){q[0]=q[1]=q[2]=.2f;q[3]=1;if(x>=2&&x<=6&&y>=2&&y<=6)q[0]=q[1]=q[2]=-.5f;if(x>=9&&x<=13&&y>=9&&y<=13){q[0]=-.5f;q[1]=1;q[2]=0;}};
+    for(float k:{2.f,4.f}){TemporalPass p;check("initialize hdr negative pass",p.initialize(d,decoder,resolver));hdr::upload16(scene.p,negative);
+        s.run(p,inputs(k),"hdr negative first frame");auto out=s.run(p,inputs(k),"hdr negative second frame");require(out.used_history,"negative accumulates");
+        const auto bytes=readback(d,out.color);bool finite=true;
+        for(UINT i=0;i<W*H*3;++i){const unsigned short h=at<unsigned short>(bytes,(i/3)*4+i%3);if((h&0x7c00)==0x7c00)finite=false;}
+        const unsigned worst=hdr::worst_ulp(bytes,negative);
+        std::printf("HDR_NEGATIVE k=%g worst_ulp=%u finite=%u centre=%.6f mixed=%.6f\n",double(k),worst,finite,double(halfFloat(at<unsigned short>(bytes,(4*W+4)*4))),double(halfFloat(at<unsigned short>(bytes,(11*W+11)*4))));
+        ++numeric_checks;require(finite&&worst<=1,"negative-luma and mixed-sign pixels survive the weighting and its inverse within one ulp, every output finite");}
+}
 int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=1;WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3TemporalPassFixture";RegisterClassA(&cls);HWND window=CreateWindowA(cls.lpszClassName,"X3 temporal production module",WS_OVERLAPPEDWINDOW,90,90,128,128,nullptr,nullptr,cls.hInstance,nullptr);
     // Optional fifth argument "stationary-only": run just the stationary
     // stability scene (one generation), used to record the negative proof
@@ -990,6 +1084,6 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
     const bool stationaryOnly=argc==5&&std::strcmp(argv[4],"stationary-only")==0;
     try{if((argc!=4&&!stationaryOnly)||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> [stationary-only]");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);compile(compiler,file(argv[3]),"ps_3_0",&rc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
         if(stationaryOnly){stationary_cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("RESULT PASS numerical=%u stationary_only=1\n",numeric_checks);result=0;}
-        else for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);stationary_cases(d.p,compiler,decoder,resolver);edge_cases(d.p,compiler,decoder,resolver);camera_cases(d.p,compiler,decoder,resolver);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
+        else for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);stationary_cases(d.p,compiler,decoder,resolver);edge_cases(d.p,compiler,decoder,resolver);camera_cases(d.p,compiler,decoder,resolver);hdr_cases(d.p,compiler,decoder,resolver);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
         if(!stationaryOnly){std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);result=0;}
     }catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());}if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);return result;}

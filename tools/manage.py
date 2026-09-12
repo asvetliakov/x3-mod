@@ -13,7 +13,8 @@ import shutil
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-GAME = Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3'
+BOTTLE = os.environ.get('X3M_BOTTLE', 'X3')
+GAME = Path.home() / f'Library/Application Support/CrossOver/Bottles/{BOTTLE}/drive_c/X3'
 WINE = Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine')
 
 
@@ -25,7 +26,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['install', 'uninstall', 'launch', 'status'])
     parser.add_argument('--game-dir', type=Path, default=GAME)
-    parser.add_argument('--bottle', default='Steam')
+    parser.add_argument('--bottle', default=BOTTLE, help='CrossOver bottle (default: X3, the arm64/FEX bottle; X3M_BOTTLE overrides; the old x86_64/Rosetta bottle is Steam)')
     parser.add_argument('--dll-source', type=Path, default=ROOT / 'build/d3d9.dll',
                         help='DLL to install (defaults to build/d3d9.dll; other actions do not use it)')
     parser.add_argument('--capture-start', type=int, default=120)
@@ -39,6 +40,7 @@ def main():
     parser.add_argument('--object-trace', action='store_true', help='Capture verified engine submission identity (exact executable only)')
     parser.add_argument('--object-lifetime', action='store_true', help='Observe verified render-registry lifetimes (requires --object-trace --ownership)')
     parser.add_argument('--mesh-cache', action='store_true', help='Enable experimental verified native adjacency reuse (requires --telemetry)')
+    parser.add_argument('--mesh-adjacency', choices=['native', 'verify', 'fast'], default='native', help='ID3DXMesh::GenerateAdjacency service (X3M_MESH_ADJACENCY; requires --telemetry): native forwards; verify runs D3DX, recomputes by exact position equality and logs any difference; fast answers from the exact-equality computation and falls through to D3DX on any qualification failure (docs/verification/mesh-adjacency-fast.md)')
     parser.add_argument('--profile', action='store_true', help='Run the in-process sampling profiler (X3M_PROFILE=1): one sampler thread, periodic profile_* reports in the session log; see docs/verification/sampling-profiler.md')
     parser.add_argument('--profile-interval-us', type=int, default=2000, help='Sampling interval in microseconds for --profile (100..1000000, default 2000)')
     parser.add_argument('--finite-positions', action='store_true', help='Validate positions from verified existing buffer uploads (requires --ownership --telemetry)')
@@ -47,6 +49,7 @@ def main():
     parser.add_argument('--motion-jitter', action='store_true', help='Per-draw sub-pixel jitter of every scene draw with a table VS (requires --motion-output; Halton 2,3 sequence, temporal step 1)')
     parser.add_argument('--taa', action='store_true', help='Run the temporal resolve at the bloom copy and present the resolved image (requires --motion-output; implies --motion-jitter; temporal step 3)')
     parser.add_argument('--taa-debug', action='store_true', help='Write the resolved FP16 image and the pre-resolve color in capture frames (requires --taa)')
+    parser.add_argument('--taa-k', type=float, default=None, help='Fixed k of the resolve luminance weighting on the FP16 scene, 0 = unweighted (X3M_TAA_K; requires --taa and --hdr; default: derived from the write-back exposure)')
     parser.add_argument('--taa-sentinel', choices=['auto', '1', '2'], default='auto', help='Depth-sentinel policy of the resolve (requires --taa): auto reprojects unrouted (background) pixels through the live camera at the far plane whenever the engine camera read yields a transform, 1 keeps them current-only, 2 is strict (skips the resolve on frames without a transform)')
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
@@ -72,6 +75,8 @@ def main():
         parser.error('--object-lifetime requires --object-trace and --ownership.')
     if args.mesh_cache and not args.telemetry:
         parser.error('--mesh-cache requires --telemetry.')
+    if args.mesh_adjacency != 'native' and not args.telemetry:
+        parser.error('--mesh-adjacency verify|fast requires --telemetry.')
     if args.finite_positions and not (args.ownership and args.telemetry):
         parser.error('--finite-positions requires --ownership and --telemetry.')
     if args.motion_capture and not (args.scene_depth_capture and args.finite_positions and args.object_lifetime):
@@ -86,6 +91,10 @@ def main():
         parser.error('--taa requires --object-trace and --object-lifetime: without history every routed draw carries the sentinel, the resolve stays current-only and the jitter only moves the image.')
     if args.taa_debug and not args.taa:
         parser.error('--taa-debug requires --taa.')
+    if args.taa_k is not None and not (args.taa and args.hdr):
+        parser.error('--taa-k requires --taa and --hdr.')
+    if args.taa_k is not None and not 0.0 <= args.taa_k <= 65504.0:
+        parser.error('--taa-k must be within [0, 65504].')
     if not args.taa and (args.taa_sentinel != 'auto' or args.camera_cut_deg != 20.0 or args.camera_log != 300):
         parser.error('--taa-sentinel, --camera-cut-deg and --camera-log require --taa.')
     if not 0 < args.camera_cut_deg <= 180 or not 1 <= args.camera_log <= 1000000:
@@ -157,12 +166,15 @@ def main():
         env['X3M_OBJECT_TRACE'] = '1' if args.object_trace else '0'
         env['X3M_OBJECT_LIFETIME'] = '1' if args.object_lifetime else '0'
         env['X3M_MESH_CACHE'] = '1' if args.mesh_cache else '0'
+        env['X3M_MESH_ADJACENCY'] = args.mesh_adjacency
         env['X3M_FINITE_POSITIONS'] = '1' if args.finite_positions else '0'
         env['X3M_MOTION_CAPTURE'] = '1' if args.motion_capture else '0'
         env['X3M_MOTION_OUTPUT'] = '1' if args.motion_output else '0'
         env['X3M_MOTION_JITTER'] = '1' if args.motion_jitter else '0'
         env['X3M_TAA'] = '1' if args.taa else '0'
         env['X3M_TAA_DEBUG'] = '1' if args.taa_debug else '0'
+        if args.taa_k is not None:
+            env['X3M_TAA_K'] = repr(args.taa_k)
         env['X3M_TAA_SENTINEL'] = args.taa_sentinel
         env['X3M_CAMERA_CUT_DEG'] = repr(args.camera_cut_deg)
         env['X3M_CAMERA_LOG'] = str(args.camera_log)

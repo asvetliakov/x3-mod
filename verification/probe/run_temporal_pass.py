@@ -2,19 +2,20 @@
 """Fresh-build production-module integration; standalone Preview only."""
 from pathlib import Path
 import hashlib,json,os,re,subprocess,tempfile
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 root=Path(__file__).resolve().parents[2]
-results=root/'verification/results'
+results=bottle.results_dir(root)
 exe=root/'verification/probe/build/temporal_pass_fixture.exe'
 paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/temporal_pass.cpp','src/temporal/resolve.h','src/temporal/resolve.hlsl','src/temporal/depth_decode.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 hashes=lambda:{str(p.relative_to(root)):sha(p) for p in paths}
-d3dx=Path.home()/'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll'
-report={'passed':False,'sources_before_build':hashes(),'game_launched':False,'d3dx9_37_sha256':sha(d3dx)}
+d3dx=bottle.game_dir() / 'd3dx9_37.dll'
+report={'passed':False,'sources_before_build':hashes(),'game_launched':False, 'bottle':bottle.describe(),'d3dx9_37_sha256':sha(d3dx)}
 try:
     subprocess.run(['sh',str(root/'verification/probe/build_temporal_pass.sh')],check=True,cwd=root)
     assert hashes()==report['sources_before_build'],'Source changed during build'
     report['executable_sha256']=sha(exe)
-    command=['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine','--bottle','Steam','--no-update','--dll','d3d9=b','--workdir',str(exe.parent),str(exe),r'C:\X3\d3dx9_37.dll','Z:'+str(root/'src/temporal/depth_decode.hlsl'),'Z:'+str(root/'src/temporal/resolve.hlsl')]
+    command=['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine','--bottle',bottle.BOTTLE,'--no-update','--dll','d3d9=b','--workdir',str(exe.parent),str(exe),r'C:\X3\d3dx9_37.dll','Z:'+str(root/'src/temporal/depth_decode.hlsl'),'Z:'+str(root/'src/temporal/resolve.hlsl')]
     report['command']=command
     with (results/'temporal-pass.txt').open('w') as out,(results/'temporal-pass-wine.log').open('w') as err:
         run=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=300)
@@ -29,7 +30,10 @@ try:
     report['state_restorations']=int(match[2]) if match else 0
     report['generations']=int(match[3]) if match else 0
     report['camera']={m.group(1):dict(drift_px=float(m.group(2)),error=float(m.group(3))) for m in re.finditer(r'CAMERA label=(\S+) frames=\d+ from=\d+ drift_px=([0-9.]+) error=([0-9.]+)',text)}
-    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(416,164,2) and report['samples']==386 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    # 448 / 204: the stage-3 HDR cases (k > 0) added 14 numerical and 16 state
+    # checks per generation to review 23's 416 / 164, review 24's negative-luma
+    # case 2 and 4 more; the 386 samples are unchanged.
+    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(448,204,2) and report['samples']==386 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
     assert report['source_unchanged'] and report['binary_unchanged'] and report['compiler_unchanged'],'Provenance changed during run'
     # Negative controls for the jitter convention: the stationary scene must
     # reject the plausible wrong lookups. Each variant mutates the two history

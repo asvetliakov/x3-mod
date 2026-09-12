@@ -4,11 +4,12 @@ from collections import Counter
 import json
 from pathlib import Path
 import sys
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 root=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(root/'tools/analysis'))
 from summarize_capture import fields
 from summarize_telemetry import summarize
-results=root/'verification/results'
+results=bottle.results_dir(root)
 outputs=[(results/f'telemetry-{mode}.txt').read_text() for mode in ('baseline','off','on')]
 assert len(set(outputs))==1,'Telemetry changed the fixture API results or readback pixels'
 assert 'TELEMETRY FIXTURE: 0 failures' in outputs[0]

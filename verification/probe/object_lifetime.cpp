@@ -9,7 +9,9 @@
 #include <csetjmp>
 #include <array>
 #include "../../src/proxy/object_lifetime.h"
+#include "../../src/proxy/engine_memory.h"
 namespace lt=x3m::object_lifetime;
+namespace em=x3m::engine_memory;
 unsigned checks=0,failures=0,calls=0;
 void check(bool value,const char* label){++checks;if(!value){++failures;std::printf("FAIL %s\n",label);}}
 struct Node {std::uint32_t padding[10]{},handle=0;};
@@ -31,6 +33,13 @@ alignas(16) std::uint32_t xmm_seed[4]={0x11223344,0x55667788,0x99aabbcc,0xddeeff
 std::uint32_t mxcsr_seed=0x3fa0;
 std::uint16_t x87_control_seed=0x077f;
 std::uint32_t call_stack_before=0,call_stack_after=0;
+}
+// FNV-1a over every published lifetime field (read-path identity comparison).
+void fold(std::uint64_t& hash,const void* bytes,std::size_t size){const auto* p=static_cast<const unsigned char*>(bytes);for(std::size_t i=0;i<size;++i){hash^=p[i];hash*=1099511628211ull;}}
+void fold_snapshot(std::uint64_t& hash,const lt::Snapshot& s){
+    const std::uint32_t known=s.known,reason=static_cast<std::uint32_t>(s.reason);
+    fold(hash,&known,4);fold(hash,&reason,4);fold(hash,&s.observer_epoch,8);fold(hash,&s.load_epoch,8);fold(hash,&s.registry_epoch,8);
+    fold(hash,&s.node_serial,8);fold(hash,&s.camera_serial,8);fold(hash,&s.mutation_revision,8);
 }
 lt::Snapshot snapshot(){lt::Snapshot result{};lt::current(reinterpret_cast<std::uintptr_t>(&primary),reinterpret_cast<std::uintptr_t>(&node),node.handle,reinterpret_cast<std::uintptr_t>(&camera),camera.handle,&result);return result;}
 void inside(){
@@ -176,6 +185,51 @@ int main(){
     // Losing even one hook makes equality of a reused pointer+handle untrustworthy.
     insert(primary,node);insert(primary,camera);check(lt::fixture_install(sites),"install ownership case");check(snapshot().known,"ownership baseline known");unsigned char ours[6]{};std::memcpy(ours,sites.insert_entry,5);write_bytes(sites.insert_entry,originals[0],5);insert(primary,node);check(!snapshot().known&&!lt::active(),"bypassed birth cannot retain old token");check(lt::shutdown(),"original-restored ownership shutdown");
     check(lt::fixture_install(sites),"install foreign code case");std::memcpy(ours,sites.insert_entry,5);unsigned char foreign[5];std::memcpy(foreign,ours,5);foreign[4]^=1;write_bytes(sites.insert_entry,foreign,5);check(!snapshot().known&&!lt::active(),"foreign hook ownership disables observation");check(!lt::shutdown()&&lt::recovery_required(),"foreign replacement is not overwritten");check(!std::memcmp(sites.insert_entry,foreign,5),"foreign bytes preserved");write_bytes(sites.insert_entry,ours,5);check(lt::shutdown(),"foreign ownership repair permits retry");
+    // Read path (engine_memory): identical lifetime records and per-call cost of
+    // the ReadProcessMemory path against validated direct reads, then a bucket
+    // array on a page decommitted between frames must fail safely in both modes.
+    {
+        LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency);
+        const unsigned iterations=20000;
+        std::uint64_t hashes[2]{};
+        empty(primary);insert(primary,node);insert(primary,camera);
+        check(lt::fixture_install(sites),"install read-path case");
+        for(unsigned m=0;m<2;++m){
+            SetEnvironmentVariableW(L"X3M_ENGINE_READS",m?L"direct":L"rpm");em::configure();
+            check(em::mode()==(m?em::Mode::Direct:em::Mode::ReadProcessMemory),"read mode selected");
+            std::uint64_t hash=1469598103934665603ull;unsigned unknown=0;
+            const auto before=em::stats();
+            LARGE_INTEGER begin{},end{};QueryPerformanceCounter(&begin);
+            for(unsigned i=0;i<iterations;++i){if((i&255)==0)em::next_frame();const auto s=snapshot();if(!s.known)++unknown;fold_snapshot(hash,s);}
+            QueryPerformanceCounter(&end);
+            const auto after=em::stats();
+            hashes[m]=hash;check(!unknown,"read-path snapshots known");
+            std::printf("TIMING mode=%s snapshot_us=%.3f reads_per_call=%.2f queries_per_call=%.4f syscalls_per_call=%.2f\n",m?"direct":"rpm",
+                double(end.QuadPart-begin.QuadPart)*1e6/double(frequency.QuadPart)/iterations,double(after.reads-before.reads)/iterations,
+                double(after.queries-before.queries)/iterations,double(after.syscalls-before.syscalls)/iterations);
+        }
+        check(hashes[0]==hashes[1],"identical lifetime records in both read modes");
+        std::printf("IDENTITY rpm=%016llx direct=%016llx equal=%u\n",static_cast<unsigned long long>(hashes[0]),static_cast<unsigned long long>(hashes[1]),hashes[0]==hashes[1]);
+        check(lt::shutdown(),"read-path shutdown");
+        for(unsigned m=0;m<2;++m){
+            SetEnvironmentVariableW(L"X3M_ENGINE_READS",m?L"direct":L"rpm");em::configure();
+            empty(primary);insert(primary,node);insert(primary,camera);
+            auto* page=static_cast<unsigned char*>(VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(page!=nullptr,"bucket page committed");
+            std::memcpy(page,primary.buckets,primary.capacity*sizeof(Link*));std::free(primary.buckets);primary.buckets=reinterpret_cast<Link**>(page);
+            check(lt::fixture_install(sites),"install with the bucket array on the fixture page");
+            em::next_frame();check(snapshot().known,"bucket array on a committed page is readable");
+            Link* links[64]{};unsigned link_count=0;for(unsigned i=0;i<primary.capacity;++i)for(auto* l=primary.buckets[i];l;l=l->next)links[link_count++]=l;
+            em::next_frame();check(VirtualFree(page,0,MEM_DECOMMIT)!=0,"bucket page decommitted between frames");
+            const auto lost=snapshot();check(!lost.known&&lost.reason==lt::Reason::LookupUnavailable,"decommitted bucket page fails safely and retires the identities");
+            check(VirtualAlloc(page,4096,MEM_COMMIT,PAGE_READWRITE)!=nullptr,"bucket page recommitted");
+            em::next_frame();check(!snapshot().known,"retired identities do not revive after the recommit");
+            check(lt::shutdown(),"decommit case shutdown");
+            for(unsigned i=0;i<link_count;++i){std::free(links[i]);}
+            primary.buckets=nullptr;primary.count=0;
+            check(VirtualFree(page,0,MEM_RELEASE)!=0,"bucket page released");
+        }
+        SetEnvironmentVariableW(L"X3M_ENGINE_READS",nullptr);em::configure();
+    }
     // Production retirement keeps a previously published dispatcher callable,
     // while the fixture-only repeated-install seam above promises no such callers.
     check(lt::fixture_install(sites,16384,0,0,true,true),"retained production-style installation");

@@ -11,15 +11,16 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 
 def main():
     root = Path(__file__).resolve().parents[2]
     executable = root / 'verification/probe/build/temporal_resolve.exe'
     shader = root / 'src/temporal/resolve.hlsl'
-    results = root / 'verification/results'
+    results = bottle.results_dir(root)
     command = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-               '--bottle', 'Steam', '--no-update', '--workdir', str(executable.parent),
+               '--bottle', bottle.BOTTLE, '--no-update', '--workdir', str(executable.parent),
                str(executable), r'C:\X3\d3dx9_37.dll', 'Z:' + str(shader)]
     environment = os.environ.copy()
     environment['WINEDLLOVERRIDES'] = 'd3d9=b'
@@ -44,7 +45,7 @@ def main():
         (results / 'temporal-resolve-summary.json').write_text(json.dumps(failure, indent=2) + '\n')
         print(json.dumps(failure, indent=2))
         return 1
-    metadata = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    metadata = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(), bottle=bottle.describe(),
                     command=command, process_local_override='d3d9=b', timeout_seconds=60,
                     source_sha256=before, freshly_built=True, build_exit_code=build.returncode,
                     executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest())

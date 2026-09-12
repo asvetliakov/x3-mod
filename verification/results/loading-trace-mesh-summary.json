@@ -1,6 +1,6 @@
 {
-  "passed": true,
-  "phase": "complete",
+  "passed": false,
+  "phase": "failed",
   "admission": 0,
   "game_launched": false,
   "cases": {
@@ -18,13 +18,13 @@
       "checks": 85,
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "exit_code": 0,
-      "executable_sha256": "945f645f9920ffe9d9e40bb38da4e07bdb0c2058f7b7ccb17060e2407c9f64e7",
+      "executable_sha256": "2b0f17ddab9cb9183afb3ac837dc69c746aa18901682763bc5a717ce035a6d21",
       "dll_sha256": {
-        "d3dx9_37.dll": "74c8d92c60ae37365102532b44f1dd9a5b7bdef83edaa858ed17e7e1f55edc82",
-        "zlib1.dll": "88dbff7c059c0a0c2509f2c5f06fc26731d1244882556ba34faec8b63c877ef7",
-        "libxml2.dll": "49132fce40f208691b7f8ea9b412ce02f882ff2089272810b49249ada1b569db"
+        "d3dx9_37.dll": "d16c6fd66b90e143cdb8b25a80098fc730d0e1f094b1b043d2c83aeaf9e51dbe",
+        "zlib1.dll": "0fba94037f4593ad1cc2ffab44749f514f37df9501661357530aa6bb38ff79aa",
+        "libxml2.dll": "8ba1b4a95f519c13ab148776fb44c507b5b365fd86a0f1a4e5872df607c008db"
       },
-      "report_sha256": "02f8fa4009ed6262a0a6854179fd71801046861bbabddc9cb48d756e72bbb11c"
+      "report_sha256": "28233387ba03571bbff533914730705b4857265c43a39f216d714bae6c6dbbbe"
     },
     "loading-mesh": {
       "admission_witness": [
@@ -40,20 +40,22 @@
       "checks": 123,
       "wine_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "exit_code": 0,
-      "executable_sha256": "3234e69410e4780eb1f9382191dab90e12a5315be26520f9baf42e016e8cbf42",
+      "executable_sha256": "a373b5459c3122d7a80be1e8c613de9db101a9096f96294e8b5fdefd8f8e6bb5",
       "dll_sha256": {
         "d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
       },
-      "report_sha256": "0a7e35f7f29f291b4cde1c947b9f425d83f5b5e7187eaf8db57efe0bfc60acb2"
+      "report_sha256": "63a92821f572106407e77af16af4ef59d1cb3e4e736402ddb4703eb55759fafb"
     }
   },
   "sources_before_build": {
-    "src/proxy/capture.h": "1dc87985e7039fa7d2d8463aa3e62e55c472cddca5c0f738dea240c7dde3f164",
+    "src/proxy/capture.h": "e573832e0771ad93c76d58dfc8ddc9b33aec5c7db5d4a6ca526797bb5736cf31",
     "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
-    "src/proxy/loading_trace.h": "b4da3176c9852f3c9628c9a0d096400527d858360dcecae2d8a83a24a79032b0",
-    "src/proxy/loading_trace.cpp": "89fc26125e85b458ebe4e5a9dd440799f2a9af14ddd0bcfeb71eb626e69c4e87",
+    "src/proxy/loading_trace.h": "55bd9f79f0fdb302d2c8ebd893ee6757d26912a1cca98598aebd5f443230a22a",
+    "src/proxy/loading_trace.cpp": "9763ff62df49f3f7bd2a2dfbbaa4de0b40c01366f9ba9a4b6086d165c81919c3",
     "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
     "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+    "src/proxy/mesh_adjacency_fast.h": "d0ab7c82482ef60564b12133a0b42ca6c0ac684da783586754bb221fcd74c0fb",
+    "src/proxy/mesh_adjacency_fast.cpp": "a1a8b272463300762851adf2fe63a9bd44b9371ac831033fa0325de2ce1b2c51",
     "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
     "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
@@ -74,42 +76,11 @@
     "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
     "verification/probe/loading_codec_stub.cpp": "688dae30bb88f07cd79cab193dd9480b34e45e34544742df75255f254908a5ab",
     "verification/probe/loading_mesh_fixture.cpp": "e6949c1c5b66af9c5e702fa4434974bb84b59f0894a85598a78ad0894bc26067",
-    "verification/probe/build_loading_trace.sh": "71e368274219e91cf7b55438a2d191b49418d88573c9ef583d5d00462f390733",
+    "verification/probe/mesh_adjacency_fast_fixture.cpp": "091b4ac8afa619cc5cec503e482ad2a631aff0aa424df78eb22c73a50445ca9d",
+    "verification/probe/build_loading_trace.sh": "cc242d175f97fb63b268aa11fe4ddb86b6b9109e2f0f1d73f9ba46952c5e9084",
     "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
-    "verification/probe/run_loading_trace.py": "4dbaf28da967382ef84f2c9ddadb326e5a94fc921e0a680ac39b1f274c6e4b1f"
+    "verification/probe/run_loading_trace.py": "f42b9803ed34524dceb089b5e0b6e5322dccb13d8121308354b274348fe45643"
   },
   "native_before": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "sources_after_run": {
-    "src/proxy/capture.h": "1dc87985e7039fa7d2d8463aa3e62e55c472cddca5c0f738dea240c7dde3f164",
-    "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
-    "src/proxy/loading_trace.h": "b4da3176c9852f3c9628c9a0d096400527d858360dcecae2d8a83a24a79032b0",
-    "src/proxy/loading_trace.cpp": "89fc26125e85b458ebe4e5a9dd440799f2a9af14ddd0bcfeb71eb626e69c4e87",
-    "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
-    "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
-    "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
-    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
-    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
-    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
-    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
-    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
-    "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
-    "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
-    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
-    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
-    "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
-    "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
-    "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
-    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
-    "verification/probe/loading_admission_witness.h": "fa68ba0cefda5aaf2829fc24183d10f40bd21197875f8e37ace60a74abfee6aa",
-    "verification/probe/loading_trace_fixture.cpp": "9f97535c70d1130a9366eea04f4e7881e6af57c6b17399d6efcccc6f200e914d",
-    "verification/probe/loading_trace_stub.cpp": "ac9f065e7263d174b4a120fb1d8a7f294370dc503cb25002fe20697bee7fa905",
-    "verification/probe/loading_trace_stub.def": "e82b0e7c7e7a8cfa15d60bec98f754ce52cca60c210427af44191d3547b5c007",
-    "verification/probe/loading_codec_stub.cpp": "688dae30bb88f07cd79cab193dd9480b34e45e34544742df75255f254908a5ab",
-    "verification/probe/loading_mesh_fixture.cpp": "e6949c1c5b66af9c5e702fa4434974bb84b59f0894a85598a78ad0894bc26067",
-    "verification/probe/build_loading_trace.sh": "71e368274219e91cf7b55438a2d191b49418d88573c9ef583d5d00462f390733",
-    "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
-    "verification/probe/run_loading_trace.py": "4dbaf28da967382ef84f2c9ddadb326e5a94fc921e0a680ac39b1f274c6e4b1f"
-  },
-  "native_after": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "sources_and_binaries_unchanged": true
+  "error": "AssertionError('Admission mode/root witness failed')"
 }

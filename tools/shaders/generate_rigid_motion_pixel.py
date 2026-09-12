@@ -62,7 +62,9 @@ def sha(data):
 
 
 def validate(data):
-    if len(data) % 4 or not 8 <= len(data) <= 16384:
+    # Sanity bound only (ps_3_0 has no bytecode limit): the resolve with the
+    # luminance weighting of HDR stage 3 is about 4,300 words.
+    if len(data) % 4 or not 8 <= len(data) <= 32768:
         raise ValueError('Unexpected compiled program extent')
     words = struct.unpack('<' + 'I' * (len(data) // 4), data)
     if words[0] != 0xffff0300 or words[-1] != 0x0000ffff:

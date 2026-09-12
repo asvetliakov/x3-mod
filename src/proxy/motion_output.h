@@ -130,6 +130,11 @@ struct MotionTaaCounters {
     bool camera_cut = false;     // rotation since the previous resolved frame exceeded X3M_CAMERA_CUT_DEG
     float camera_rotation_deg = 0;
     std::uint32_t source = 0;    // SceneEndSource of the attempt
+    // Stage 3 of the HDR scene path: the resolve ran on the FP16 scene target
+    // (in.color, no copy; its output is what the write-back samples) with k
+    // of the luminance weighting (0 on the 8-bit path).
+    bool hdr = false;
+    float k = 0.f;
 };
 struct MotionFrameCounters {
     std::uint32_t draws = 0, routed = 0, matched = 0, gates[7]{};
@@ -287,6 +292,10 @@ public:
     // Stage 2: the adapted exposure multiplier as the TAA luminance weighting
     // k (exported for stage 3; nothing consumes it yet; 0 without the meter).
     float hdr_taa_k() const noexcept { return hdr_taa_k_; }
+    // X3M_TAA_K: a fixed k for the resolve's luminance weighting on the HDR
+    // path (>= 0; 0 is the unweighted resolve); negative selects the derived
+    // value (the write-back's exposure multiplier, see the latch).
+    void configure_taa_k(float k) noexcept { taa_k_override_ = k; }
     bool hdr_redirected() const noexcept { return hdr_state_ != HdrState::Off; }
     // BEFORE the application's SetRenderTarget: the surface to bind natively.
     // Index 0 while redirected: the application's main surface maps to the FP16
@@ -468,7 +477,16 @@ private:
     void read_camera(bool scene) noexcept;
     void log_camera_state() noexcept;
     bool ensure_taa() noexcept;
-    HRESULT resolve(IDirect3DSurface9* main_surface) noexcept;
+    // `hdr_scene` (stage 3): the FP16 scene target's texture; the resolve
+    // samples it directly with k = hdr_taa_k_ and publishes its output in
+    // hdr_resolved_ for the write-back instead of copying back into
+    // `main_surface` (which then only serves the debug readback).
+    HRESULT resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9* hdr_scene) noexcept;
+    // The stage-3 resolve at a scene end while the redirect is active (RT0 is
+    // the FP16 target): the single attempt of the frame. Returns whether an
+    // attempt was made; a later resolve_allowed of the same frame is then a
+    // no-op, so the 8-bit path never runs after it.
+    bool resolve_hdr(SceneEndSource source) noexcept;
     void invalidate_taa() noexcept;
     ULONG probe_references() noexcept;
     // Runs a TemporalPass call and folds the device references it created or
@@ -571,6 +589,11 @@ private:
     bool hdr_requested_ = false, hdr_enabled_ = false;
     bool hdr_tonemap_disabled_logged_ = false;
     float hdr_taa_k_ = 0.f;
+    float taa_k_override_ = -1.f;             // X3M_TAA_K (negative: derived)
+    // The pass's resolved FP16 output (borrowed: valid until the pass's next
+    // run, invalidate, before_reset or shutdown), published by the stage-3
+    // resolve for the write-back of the same scene end and cleared with it.
+    IDirect3DTexture9* hdr_resolved_ = nullptr;
     HdrState hdr_state_ = HdrState::Off;
     IDirect3DSurface9* hdr_main_ = nullptr;
     renderer::Surface hdr_target_{};

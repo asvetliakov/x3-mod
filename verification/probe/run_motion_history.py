@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
 INPUTS = ["src/renderer/motion_history.h", "src/renderer/motion_history.cpp",
@@ -16,7 +17,7 @@ def sources():
 
 def main():
     build = ROOT / "verification/probe/build"
-    results = ROOT / "verification/results"
+    results = bottle.results_dir(ROOT)
     build.mkdir(exist_ok=True); results.mkdir(exist_ok=True)
     exe = build / "motion_history.exe"
     summary = results / "motion-history-summary.json"
@@ -30,13 +31,13 @@ def main():
     assert sources() == before
     binary = digest(exe)
     launch = ["/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-              "--bottle", "Steam", "--no-update", "--workdir", str(build), str(exe)]
+              "--bottle", bottle.BOTTLE, "--no-update", "--workdir", str(build), str(exe)]
     result = subprocess.run(launch, capture_output=True, timeout=45)
     report = results / "motion-history.txt"; report.write_bytes(result.stdout)
     (results / "motion-history-wine.log").write_bytes(result.stderr)
     match = re.fullmatch(rb"RESULT PASS checks=(\d+)\r?\n", result.stdout)
     data = dict(passed=result.returncode == 0 and bool(match) and int(match[1]) == 3404 and sources() == before and digest(exe) == binary,
-                checks=int(match[1]) if match else 0, game_launched=False, build_command=command,
+                checks=int(match[1]) if match else 0, game_launched=False, bottle=bottle.describe(), build_command=command,
                 command=launch, source_hashes=before, executable_sha256=binary,
                 source_unchanged=sources() == before, executable_unchanged=digest(exe) == binary,
                 report_sha256=digest(report), exit_code=result.returncode)

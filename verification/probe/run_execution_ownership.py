@@ -9,13 +9,14 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
-RESULT = ROOT / 'verification/results/execution-ownership-summary.json'
+RESULT = bottle.results_dir(ROOT) / 'execution-ownership-summary.json'
 LOG = ROOT / 'verification/results/execution-ownership.txt'
 ERR = ROOT / 'verification/results/execution-ownership-wine.log'
 WINE = '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
-NATIVE = Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/syswow64'
+NATIVE = bottle.bottle_dir() / 'drive_c/windows/syswow64'
 NATIVE_FILES = ('d3d9.dll', 'wined3d.dll')
 
 EXPECTED_CASES = ['CASE cpu-state disabled=1 PASS', 'CASE basic pure=0 PASS', 'CASE basic pure=1 PASS'] + [
@@ -45,7 +46,7 @@ def native_provenance():
 
 def main():
     RESULT.parent.mkdir(parents=True, exist_ok=True)
-    report = {'passed': False, 'game_launched': False, 'scope': 'original native wrapper fixture; test-only per-instance HRESULT injections'}
+    report = {'passed': False, 'game_launched': False, 'bottle': bottle.describe(), 'scope': 'original native wrapper fixture; test-only per-instance HRESULT injections'}
     RESULT.write_text(json.dumps(report, indent=2) + '\n')
     try:
         require_no_game()
@@ -58,7 +59,7 @@ def main():
         if before != hashes(): raise RuntimeError('sources changed during build')
         exe = ROOT / 'verification/probe/build/execution_ownership.exe'
         report['executable_sha256'] = sha(exe)
-        command = [WINE, '--bottle', 'Steam', '--no-update', '--workdir', str(exe.parent), str(exe)]
+        command = [WINE, '--bottle', bottle.BOTTLE, '--no-update', '--workdir', str(exe.parent), str(exe)]
         report.update(command=command, process_local_override='d3d9=b', timeout_seconds=90)
         env = dict(os.environ, X3M_ADMISSION='0', WINEDLLOVERRIDES='d3d9=b')
         require_no_game()

@@ -5,7 +5,8 @@ from collections import Counter
 import json
 import hashlib
 import re
-root=Path(__file__).resolve().parents[2];results=root/'verification/results'
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
+root=Path(__file__).resolve().parents[2];results=bottle.results_dir(root)
 def verify():
     (results/'ownership-verification.json').write_text(json.dumps({'result':'RUNNING'})+'\n')
     manifest=json.loads((results/'ownership-build-verification.json').read_text())

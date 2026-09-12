@@ -10,9 +10,10 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT=Path(__file__).resolve().parents[2]
-DLL=Path.home()/'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll'
+DLL=bottle.game_dir() / 'd3dx9_37.dll'
 FILES=['src/proxy/mesh_adjacency_cache.h','src/proxy/mesh_adjacency_cache.cpp',
        'verification/probe/mesh_adjacency_cache_fixture.cpp','verification/probe/mesh_preparation.cpp',
        'verification/probe/build_mesh_adjacency_cache.sh','verification/probe/run_mesh_adjacency_cache.py',
@@ -22,8 +23,8 @@ def hashes(include_executable=True):
     names=FILES if include_executable else FILES[:-1]
     return {p:digest(ROOT/p) for p in names}|{'native_d3dx9_37.dll':digest(DLL)}
 def main():
-    results=ROOT/'verification/results';summary=results/'mesh-adjacency-cache-summary.json'
-    meta=dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),passed=False,phase='building',fresh_build=False,timeout_seconds=90)
+    results=bottle.results_dir(ROOT);summary=results/'mesh-adjacency-cache-summary.json'
+    meta=dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(), bottle=bottle.describe(),passed=False,phase='building',fresh_build=False,timeout_seconds=90)
     def save():summary.write_text(json.dumps(meta,indent=2)+'\n')
     save() # Invalidate any previous PASS before reading inputs or invoking the compiler.
     try:
@@ -34,7 +35,7 @@ def main():
         if meta['source_hashes_before_build']!=meta['source_hashes_after_build']:
             raise RuntimeError('Sources or native DLL changed during build; refusing stale evidence')
         before=hashes();exe=ROOT/FILES[-1]
-        command=['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine','--bottle','Steam','--no-update','--workdir',str(exe.parent),str(exe),r'C:\X3\d3dx9_37.dll']
+        command=['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine','--bottle',bottle.BOTTLE,'--no-update','--workdir',str(exe.parent),str(exe),r'C:\X3\d3dx9_37.dll']
         meta.update(fresh_build=True,phase='running',command=command,hashes_before=before);save()
         env=os.environ.copy();env['WINEDLLOVERRIDES']='d3d9=b'
         report=results/'mesh-adjacency-cache.txt';wine=results/'mesh-adjacency-cache-wine.log'

@@ -9,9 +9,10 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
-RESULTS = ROOT / 'verification/results'
+RESULTS = bottle.results_dir(ROOT)
 EXE = ROOT / 'verification/probe/build/rigid_retirement_fixture.exe'
 SOURCE_NAMES = (
     'src/renderer/rigid_motion.h', 'src/renderer/rigid_motion.cpp',
@@ -51,7 +52,7 @@ def validate_report(text):
 def main():
     summary_path = RESULTS / 'rigid-retirement-summary.json'
     report_path = RESULTS / 'rigid-retirement.txt'
-    report = {'passed': False, 'status': 'RUNNING', 'game_launched': False,
+    report = {'passed': False, 'status': 'RUNNING', 'game_launched': False, 'bottle': bottle.describe(),
               'scope': 'Detached native callback retirement; simulated failure injection; no live capture wiring or callback-free guarantee',
               'cpu_baseline': 'SSE2; stack realignment; four-byte incoming Win32 stack'}
     summary_path.write_text(json.dumps(report, indent=2) + '\n')
@@ -64,7 +65,7 @@ def main():
         report['executable_sha256'] = sha(EXE)
         wine = '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
         report['wine_sha256'] = sha(Path(wine))
-        command = [wine, '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=b', str(EXE)]
+        command = [wine, '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=b', str(EXE)]
         report['command'] = command
         assert not game_running(), 'Game running'
         with report_path.open('w') as out, (RESULTS / 'rigid-retirement-wine.log').open('w') as err:

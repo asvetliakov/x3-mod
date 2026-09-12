@@ -11,9 +11,10 @@ verification/results/sampling-profiler.txt and -summary.json. No game launch.
 from pathlib import Path
 import argparse, hashlib, json, os, re, subprocess, sys, time
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
-RESULTS = ROOT / 'verification/results'
+RESULTS = bottle.results_dir(ROOT)
 BUILD = ROOT / 'verification/probe/build/sampling_profiler'
 WINE = '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
 OBJDUMP = 'i686-w64-mingw32-objdump'
@@ -93,7 +94,7 @@ def run(exe, profile, extra_env):
     label = 'on' if profile == '1' else 'off'
     out_path = RESULTS / f'sampling-profiler-{label}-fixture.txt'
     err_path = RESULTS / f'sampling-profiler-{label}-wine.log'
-    command = [WINE, '--bottle', 'Steam', '--no-update', '--workdir', str(BUILD), str(exe)]
+    command = [WINE, '--bottle', bottle.BOTTLE, '--no-update', '--workdir', str(BUILD), str(exe)]
     begin = time.time()
     with out_path.open('w') as out, err_path.open('w') as err:
         try:
@@ -215,7 +216,7 @@ def main():
     parser.add_argument('--interval-us', default='2000')
     parser.add_argument('--skip-build', action='store_true')
     args = parser.parse_args()
-    report = {'passed': False, 'phase': 'building', 'game_launched': False}
+    report = {'passed': False, 'bottle': bottle.describe(), 'phase': 'building', 'game_launched': False}
     summary = RESULTS / 'sampling-profiler-summary.json'
     try:
         refuse_game()
@@ -243,7 +244,7 @@ def main():
         report['sources_unchanged'] = report['sources'] == {s: sha(ROOT / s) for s in SOURCES}
         report['passed'] = all(checks.values()) and report['sources_unchanged'] and runs['0']['exit_code'] == 0 and runs['1']['exit_code'] == 0
         report['phase'] = 'complete'
-        lines = ['sampling profiler fixture (Wine, CrossOver Preview Steam bottle), no game launch',
+        lines = [f'sampling profiler fixture (Wine, CrossOver Preview {bottle.label()}), no game launch',
                  f"interval_us={args.interval_us} report_s=1 passed={report['passed']}", '']
         for key, value in checks.items():
             lines.append(f'check {key}={int(bool(value))}')

@@ -28,7 +28,14 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
         self.exe.parent.mkdir()
         self.exe.write_bytes(b'original synthetic executable')
 
-    def fake_run(self, output=b'RESULT PASS checks=1 failures=0 backend_calls=1\n', mutate=None):
+    # The read-path evidence (TIMING per mode, one IDENTITY line with equal=1)
+    # is part of a passing report since the engine_memory change.
+    READ_PATH = (b'TIMING mode=rpm snapshot_us=9.000 reads_per_call=0.00 queries_per_call=0.0000 syscalls_per_call=12.00\n'
+                 b'TIMING mode=direct snapshot_us=0.500 reads_per_call=12.00 queries_per_call=0.0200 syscalls_per_call=0.00\n'
+                 b'IDENTITY rpm=0123456789abcdef direct=0123456789abcdef equal=1\n')
+    RESULT = b'RESULT PASS checks=1 failures=0 backend_calls=1\n'
+
+    def fake_run(self, output=READ_PATH + RESULT, mutate=None):
         def invoke(command, **kwargs):
             if command[0] == 'sh':
                 return subprocess.CompletedProcess(command, 0, b'', b'')
@@ -55,8 +62,8 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
             self.assert_failed(RUNNER.run(self.root))
 
     def test_duplicate_or_nonterminal_result_rejected(self):
-        result = b'RESULT PASS checks=1 failures=0 backend_calls=1\n'
-        for output in (result + result, result + b'trailing work\n', b'noise ' + result):
+        result = self.READ_PATH + self.RESULT
+        for output in (result + self.RESULT, result + b'trailing work\n', self.READ_PATH + b'noise ' + self.RESULT):
             with patch.object(RUNNER.subprocess, 'run', side_effect=self.fake_run(output)):
                 self.assert_failed(RUNNER.run(self.root))
 
@@ -67,7 +74,18 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
 
     def test_single_terminal_result_with_stable_inputs_passes(self):
         with patch.object(RUNNER.subprocess, 'run', side_effect=self.fake_run()):
-            self.assertTrue(RUNNER.run(self.root)['passed'])
+            result = RUNNER.run(self.root)
+        self.assertTrue(result['passed'])
+        self.assertEqual(result['read_path']['identity'][0]['equal'], '1')
+        self.assertEqual([t['mode'] for t in result['read_path']['timing']], ['rpm', 'direct'])
+
+    def test_read_path_identity_required(self):
+        unequal = self.READ_PATH.replace(b'equal=1', b'equal=0') + self.RESULT
+        missing = self.RESULT
+        one_mode = self.READ_PATH.split(b'\n', 1)[1] + self.RESULT
+        for output in (unequal, missing, one_mode):
+            with patch.object(RUNNER.subprocess, 'run', side_effect=self.fake_run(output)):
+                self.assert_failed(RUNNER.run(self.root))
 
 
 if __name__ == '__main__':

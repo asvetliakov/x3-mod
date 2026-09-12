@@ -58,5 +58,17 @@ void fixture_cache_cleanup_failure(HRESULT hr); // Outcome seam; no real buffer 
 void fixture_cache_reenter_once();
 bool fixture_cache_contract(ID3DXMesh* mesh); // Preflight only; never dispatches adjacency.
 uint64_t fixture_cache_gate_reason(const char* reason);
+// X3M_MESH_ADJACENCY seams: 0 native, 1 verify, 2 fast (the production switch is read once at initialization).
+void fixture_adjacency_mode(unsigned mode);
+struct AdjacencyStatistics {
+    uint64_t calls=0,computed=0,fallbacks=0,faults=0,fast_ticks=0,native_ticks=0;
+    uint64_t verify_meshes=0,verify_equal=0,verify_mismatched=0,verify_mismatch_entries=0;
+    uint64_t quantized=0,unquantized=0,multi_candidate_meshes=0;
+    std::array<uint64_t,6> fallback_reasons{}; // input, gate, declaration, size, lock, module
+    std::array<uint64_t,7> module_status{};    // mesh_adjacency_fast::Status order
+    bool faulted=false;
+};
+AdjacencyStatistics fixture_adjacency_statistics();
+void fixture_adjacency_report();
 #endif
 }

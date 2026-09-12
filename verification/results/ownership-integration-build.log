@@ -1,4 +1,4 @@
--- Configuring done (0.1s)
+-- Configuring done (0.3s)
 -- Generating done (0.0s)
 -- Build files have been written to: /Users/asvetl/x3-mod/build-ownership
 [  3%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj

@@ -10,6 +10,7 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
 FILES = ['verification/probe/managed_upload_contract.h', 'verification/probe/managed_upload_contract.cpp',
@@ -17,8 +18,8 @@ FILES = ['verification/probe/managed_upload_contract.h', 'verification/probe/man
          'verification/probe/build_managed_upload_contract.sh',
          'verification/probe/run_managed_upload_contract.py']
 EXE = ROOT / 'verification/probe/build/managed_upload_contract_fixture.exe'
-RESULTS = ROOT / 'verification/results'
-NATIVE = Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/syswow64'
+RESULTS = bottle.results_dir(ROOT)
+NATIVE = bottle.bottle_dir() / 'drive_c/windows/syswow64'
 EXPECTED_NATIVE = {
     'd3d9.dll': '58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf',
     'wined3d.dll': 'f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863',
@@ -35,7 +36,7 @@ def hashes():
 
 
 def main():
-    metadata = dict(passed=False, game_launched=False, fresh_build=False,
+    metadata = dict(passed=False, game_launched=False, bottle=bottle.describe(), fresh_build=False,
                     started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
     summary = RESULTS / 'managed-upload-contract-summary.json'
     summary.write_text(json.dumps(metadata, indent=2) + '\n')
@@ -56,7 +57,7 @@ def main():
             raise RuntimeError('Build failed or sources changed during compilation')
         metadata.update(fresh_build=True, executable_sha256=digest(EXE))
         command = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-                   '--bottle', 'Steam', '--no-update', '--workdir', str(EXE.parent), str(EXE)]
+                   '--bottle', bottle.BOTTLE, '--no-update', '--workdir', str(EXE.parent), str(EXE)]
         metadata['command'] = command
         metadata['process_local_override'] = 'd3d9=b'
         report = RESULTS / 'managed-upload-contract.txt'

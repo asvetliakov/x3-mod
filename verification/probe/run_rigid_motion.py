@@ -9,9 +9,10 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 root = Path(__file__).resolve().parents[2]
-results = root / 'verification/results'
+results = bottle.results_dir(root)
 exe = root / 'verification/probe/build/rigid_motion_fixture.exe'
 production_object = root / 'verification/probe/build/rigid_motion_production_contract.o'
 paths = [root / name for name in (
@@ -33,7 +34,7 @@ def sha(path):
 def hashes():
     return {str(path.relative_to(root)): sha(path) for path in paths}
 
-report = {'passed': False, 'game_launched': False,
+report = {'passed': False, 'game_launched': False, 'bottle': bottle.describe(),
           'cpu_baseline': 'SSE2; stack realignment; four-byte incoming Win32 stack',
           'verification_build_define': 'X3M_RIGID_MOTION_VERIFICATION=1; synthetic issuer absent from production builds',
           'scope': 'Original native pure-device GPU fixture using production rigid producer and resolve; no live routing'}
@@ -47,13 +48,13 @@ try:
     symbols = subprocess.run(['i686-w64-mingw32-nm', '-C', str(production_object)], check=True, capture_output=True, text=True).stdout
     assert 'qualify_rigid_replay_source' in symbols and 'original_synthetic_sm3_contract' not in symbols
     report['production_has_synthetic_issuer'] = False
-    d3dx = Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll'
+    d3dx = bottle.game_dir() / 'd3dx9_37.dll'
     report['d3dx9_37_sha256'] = sha(d3dx)
-    embedded = json.loads((results / 'rigid-motion-pixel-program.json').read_text())
+    embedded = json.loads((root / 'verification/results/rigid-motion-pixel-program.json').read_text())  # generated shader record: shared, not per bottle
     assert report['d3dx9_37_sha256'] == embedded['compiler_sha256'], 'Unreviewed native compiler'
     report['embedded_pixel_program_sha256'] = embedded['bytecode_sha256']
     command = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-               '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=b', '--workdir', str(exe.parent),
+               '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=b', '--workdir', str(exe.parent),
                str(exe), r'C:\X3\d3dx9_37.dll']
     command += ['Z:' + str(root / 'src/temporal' / name)
                 for name in ('rigid_motion_ps.hlsl', 'resolve.hlsl')]

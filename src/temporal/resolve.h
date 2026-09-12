@@ -13,8 +13,19 @@ struct ResolveConstants {
     // motion enabled, reactive masks enabled, mask-snapshot mode, depth-sentinel
     // policy (0 off, 1 sentinel pixels current-only, 2 camera path at the far plane).
     float options[4]{};
+    // c22 (kLuminanceRegister; c8..c21 belong to the AgX block, agx.h): x is k
+    // of the reversible luminance weighting w = 1 / (1 + k * luma) the resolve
+    // applies to the current colour, its 3x3 neighbourhood and every history
+    // tap before the statistics, the clip and the blend, inverting afterwards
+    // (docs/architecture/hdr-scene-path.md, section 3). 0 is the exact
+    // identity (the 8-bit route, and the migration test); the HDR route uploads
+    // the exposure multiplier the write-back applies to the resolved image.
+    float luminance[4]{};
 };
-static_assert(sizeof(ResolveConstants) == 8 * 4 * sizeof(float));
+static_assert(sizeof(ResolveConstants) == 9 * 4 * sizeof(float));
+constexpr unsigned kResolveRegisterCount = 8;   // c0..c7, uploaded as one block
+constexpr unsigned kLuminanceRegister = 22;     // ResolveConstants::luminance
+constexpr float kLuminanceMaxK = 65504.f;       // FP16 max; the weighted domain stays finite
 
 // Invalidate on camera cut, device loss/reset, resize, scene/camera regime changes,
 // missing motion, exposure convention changes, and any failed resolve. Calling
@@ -43,14 +54,17 @@ struct HistoryState {
 // sentinel_camera (with depth_sentinel_reactive) reprojects sentinel pixels
 // through the camera matrix at the far plane instead of keeping them
 // current-only; only valid when matrix_rows is a real camera reprojection.
+// luminance_k is the weighting constant (c22.x): finite, 0 <= k <= 65504.
 inline bool prepare(ResolveConstants& out, const HistoryState& state,
                     const float* matrix_rows, float current_x, float current_y,
                     float previous_x, float previous_y, float weight,
                     bool motion_enabled, bool reactive_enabled=false,
-                    bool depth_sentinel_reactive=false, bool sentinel_camera=false) noexcept {
+                    bool depth_sentinel_reactive=false, bool sentinel_camera=false,
+                    float luminance_k=0.f) noexcept {
     if(!matrix_rows || !state.width || !state.height || !std::isfinite(weight)
         || weight<0 || weight>1 || !std::isfinite(current_x) || !std::isfinite(current_y)
-        || !std::isfinite(previous_x) || !std::isfinite(previous_y)) return false;
+        || !std::isfinite(previous_x) || !std::isfinite(previous_y)
+        || !std::isfinite(luminance_k) || luminance_k<0 || luminance_k>kLuminanceMaxK) return false;
     for(unsigned i=0;i<16;++i) {
         if(!std::isfinite(matrix_rows[i]) || std::fabs(matrix_rows[i])>1e15f) return false;
         out.clip_to_previous[i/4][i%4]=matrix_rows[i];
@@ -67,6 +81,7 @@ inline bool prepare(ResolveConstants& out, const HistoryState& state,
     out.options[1]=reactive_enabled?1.f:0.f;
     out.options[2]=0;
     out.options[3]=depth_sentinel_reactive?(sentinel_camera?2.f:1.f):0.f;
+    out.luminance[0]=luminance_k; out.luminance[1]=out.luminance[2]=out.luminance[3]=0.f;
     return true;
 }
 } // namespace x3::temporal

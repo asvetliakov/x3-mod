@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 
 def digest(path):
@@ -20,13 +21,13 @@ def main():
     root=Path(__file__).resolve().parents[2]
     exe=root/'verification/probe/build/mesh_preparation.exe'
     source=root/'verification/probe/mesh_preparation.cpp'
-    dll=Path.home()/'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll'
+    dll=bottle.game_dir() / 'd3dx9_37.dll'
     expected=digest(dll) # Recorded fixture identity, never a version allowlist.
-    results=root/'verification/results'
+    results=bottle.results_dir(root)
     command=['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-             '--bottle','Steam','--no-update','--workdir',str(exe.parent),str(exe),r'C:\X3\d3dx9_37.dll',expected]
+             '--bottle',bottle.BOTTLE,'--no-update','--workdir',str(exe.parent),str(exe),r'C:\X3\d3dx9_37.dll',expected]
     env=os.environ.copy();env['WINEDLLOVERRIDES']='d3d9=b'
-    metadata=dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),command=command,
+    metadata=dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(), bottle=bottle.describe(),command=command,
                   source_sha256=digest(source),executable_sha256=digest(exe),d3dx_sha256=expected,
                   process_local_override='d3d9=b',timeout_seconds=90)
     with (results/'mesh-preparation.txt').open('w') as out,(results/'mesh-preparation-wine.log').open('w') as err:

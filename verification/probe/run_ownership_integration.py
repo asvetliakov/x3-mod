@@ -10,10 +10,11 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 root = Path(__file__).resolve().parents[2]
 probe = root / 'verification/probe/build'
-results = root / 'verification/results'
+results = bottle.results_dir(root)
 wine = '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
 dll = root / 'build-ownership/d3d9.dll'
 fixtures = [('smoke', 'd3d9_smoke.exe', '1'), ('capture', 'capture_state_fixture.exe', '5'),
@@ -70,7 +71,7 @@ def binaries():
 
 def main():
     results.mkdir(exist_ok=True)
-    manifest = {'result': 'RUNNING', 'runtime': wine, 'bottle': 'Steam', 'game_launched': False,
+    manifest = {'result': 'RUNNING', 'runtime': wine, 'bottle': bottle.describe(), 'game_launched': False,
                 'cases': {}}
     manifest_path = results / 'ownership-integration-build.json'
     save = lambda: manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
@@ -120,7 +121,7 @@ def main():
                     env['X3M_OWNERSHIP'] = '1'
                 else:
                     env.pop('X3M_OWNERSHIP', None)
-                command = [wine, '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=n,b',
+                command = [wine, '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=n,b',
                            '--workdir', str(directory), str(directory / exe)]
                 stdout_path = results / (case + '.txt')
                 trace_path = results / (case + '-capture.log')

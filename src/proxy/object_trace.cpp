@@ -1,4 +1,5 @@
 #include "object_trace.h"
+#include "engine_memory.h"
 #include <wincrypt.h>
 #include <excpt.h>
 #include <array>
@@ -38,8 +39,7 @@ bool set_top(void* value){
 }
 
 bool read_memory(uintptr_t address,void* out,size_t size) {
-    SIZE_T copied=0;
-    return address&&ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<void*>(address),out,size,&copied)&&copied==size;
+    return x3m::engine_memory::read(address,out,size);
 }
 Scope* top(){return tls_slot==TLS_OUT_OF_INDEXES?nullptr:static_cast<Scope*>(TlsGetValue(tls_slot));}
 void pop(Scope* scope){if(top()==scope&&!set_top(scope->parent)){observation.store(false);state.store("tls_restore_failed");}}
@@ -172,7 +172,7 @@ bool initialize() {
 bool active(){return observation.load();}
 bool recovery_required(){return installed&&!observation.load();}
 const char* status(){return state.load();}
-bool current(Snapshot* out) {
+bool current(Snapshot* out,bool matrices) {
     if(!out)return false;
     const DWORD error=GetLastError();*out={};
     if(!observation.load()){SetLastError(error);return false;}
@@ -189,8 +189,12 @@ bool current(Snapshot* out) {
     }
     if(read_memory(out->camera+0x28,&out->camera_handle,4))out->valid|=Camera;
     if(read_memory(engine_slot,&out->engine,4)&&read_memory(out->engine+0xc,&out->registry,4)&&out->registry)out->valid|=Registry;
-    auto matrix=[&](uintptr_t slot,uint32_t* result,Valid bit){uintptr_t address=0;if(read_memory(slot,&address,4)&&read_memory(address,result,64))out->valid|=bit;};
-    matrix(world_slot,out->world,World);matrix(basis_slot,out->world_basis,WorldBasis);matrix(view_slot,out->view,View);matrix(projection_slot,out->projection,Projection);
+    // Diagnostics only (the route submits rows from the shader-constant shadow):
+    // eight reads the per-draw path skips.
+    if(matrices){
+        auto matrix=[&](uintptr_t slot,uint32_t* result,Valid bit){uintptr_t address=0;if(read_memory(slot,&address,4)&&read_memory(address,result,64))out->valid|=bit;};
+        matrix(world_slot,out->world,World);matrix(basis_slot,out->world_basis,WorldBasis);matrix(view_slot,out->view,View);matrix(projection_slot,out->projection,Projection);
+    }
     SetLastError(error);return true;
 }
 bool shutdown() {

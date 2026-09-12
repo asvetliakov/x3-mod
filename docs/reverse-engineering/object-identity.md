@@ -142,9 +142,15 @@ returned. Install during the first proxy backend initialization, outside loader
 lock and before any render submission. Shutdown requires the same quiescence.
 No thread suspension or arbitrary concurrent instruction patching is supported.
 
-`current(Snapshot*)` is capture-only: twelve bounded self-process reads (620 bytes
-maximum) obtain node fields, camera handle, registry token and four matrices.
-Individual validity bits prevent unreadable fields becoming evidence. The wrapper
+`current(Snapshot*, matrices)` performs bounded self-process reads through
+`src/proxy/engine_memory.h` (validated direct reads with a per-frame region
+cache; `X3M_ENGINE_READS=rpm` restores `ReadProcessMemory`): four reads (node
+block, `camera+0x28`, engine slot, `engine+0xc`, 344 bytes) on the route's
+per-draw path with `matrices=false`, twelve (620 bytes, plus the four matrices)
+on capture frames and for diagnostics. Individual validity bits prevent
+unreadable fields becoming evidence; a decommitted node page clears the Node
+bit without faulting (fixture case).
+ The wrapper
 itself performs no payload reads, per-draw logging or history lookup. The session
 number identifies this module's installation, **not** an observed game load epoch.
 A null/unknown scope is explicit. Snapshot overhead should be measured separately
@@ -163,14 +169,20 @@ Original synthetic fixture: `verification/probe/object_trace.cpp`, built/run by
 `build_object_trace.sh` / `run_object_trace.py`. Tests cover exact argument/EAX/
 LastError forwarding; nested scope; unreadable pointers; foreign SEH unwind;
 default-off/non-game rejection; failed patch stages and failed rollback recovery;
-shutdown retry; TLS enter/leave failure. The runner fresh-builds and records
+shutdown retry; TLS enter/leave failure; read-path identity (hashed records under
+`rpm` and `direct`), per-call cost of both paths, and a fake node page decommitted
+between frames, recommitted, and read across a reserved-only page edge. The runner fresh-builds and records
 pre/post source and executable hashes plus exact report bytes. This verifies
 mechanism with original code, not executable call coverage in X3.
 
-The fresh run passed **139 checks / 9 backend calls**; see
-[exact results](../../verification/results/object-trace-summary.json). Source cpp
-SHA-256 is `22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba`.
-The standalone executable hash remained identical before and after execution.
+The fresh run passed **«OT_CHECKS» checks / «OT_CALLS» backend calls** (the read-path
+loops account for the calls); see
+[exact results](../../verification/results/object-trace-summary.json), whose
+`read_path` field carries the `TIMING`/`IDENTITY` lines: «OT_RPM_ROUTE» µs per
+route-path call over `ReadProcessMemory` against «OT_DIRECT_ROUTE» µs direct, identical
+record hashes. The standalone executable hash remained identical before and after
+execution. Earlier run (2026-09-11): 139 checks / 9 backend calls, source cpp
+SHA-256 `22b7e2a7e24e5c6b4db2421ef9c3a8fce80dd0940e41b245bf26c58c452cb5ba`.
 
 ## One consolidated validation capture
 

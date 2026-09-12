@@ -121,7 +121,8 @@ struct Fixture {
         check("Target",d->SetRenderTarget(0,target[which].p));check("Depth null",d->SetDepthStencilSurface(nullptr));
         D3DVIEWPORT9 viewport={0,0,W,H,0,1};check("Viewport",d->SetViewport(&viewport));
         check("VS",d->SetVertexShader(vs.p));check("PS",d->SetPixelShader(rasterScale?referencePS.p:ps.p));check("Declaration",d->SetVertexDeclaration(declaration.p));
-        check("Constants",d->SetPixelShaderConstantF(0,&constants.clip_to_previous[0][0],8));
+        check("Constants",d->SetPixelShaderConstantF(0,&constants.clip_to_previous[0][0],x3::temporal::kResolveRegisterCount));
+        check("Constants k",d->SetPixelShaderConstantF(x3::temporal::kLuminanceRegister,constants.luminance,1)); // k = 0: the unweighted resolve
         for(auto pair:{std::pair<D3DRENDERSTATETYPE,DWORD>{D3DRS_ZENABLE,FALSE},{D3DRS_ZWRITEENABLE,FALSE},{D3DRS_ALPHABLENDENABLE,FALSE},
             {D3DRS_ALPHATESTENABLE,FALSE},{D3DRS_SRGBWRITEENABLE,FALSE},{D3DRS_FOGENABLE,FALSE},{D3DRS_CULLMODE,D3DCULL_NONE},{D3DRS_COLORWRITEENABLE,15}})
             check("RenderState",d->SetRenderState(pair.first,pair.second));

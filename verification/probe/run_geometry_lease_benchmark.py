@@ -14,6 +14,7 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 ROOT = Path(__file__).resolve().parents[2]
 FILES = ['src/ownership/d3d9_ownership.h', 'src/ownership/d3d9_ownership.cpp', 'src/ownership/application_admission.h', 'src/ownership/application_admission.cpp', 'src/ownership/application_admission_abi.h', 'src/ownership/application_admission_abi.cpp',
          'src/ownership/d3d9_classes_inc.h', 'src/ownership/d3d9_forwarders_inc.h',
@@ -43,8 +44,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--label', required=True, choices=['baseline', 'qualification', 'optimized', 'portable', 'sidecar-index'])
     args = parser.parse_args()
-    prefix = ROOT / ('verification/results/geometry-lease-performance-' + args.label)
-    meta = dict(passed=False, phase='building', label=args.label, game_launched=False, draws=0,
+    prefix = bottle.results_dir(ROOT) / ('geometry-lease-performance-' + args.label)
+    meta = dict(passed=False, phase='building', label=args.label, game_launched=False, bottle=bottle.describe(), draws=0,
                 started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
     def save():
         Path(str(prefix) + '.json').write_text(json.dumps(meta, indent=2) + '\n')
@@ -67,7 +68,7 @@ def main():
         meta.update(executable_sha256=digest(frozen), executable=str(frozen.relative_to(ROOT)),
                     fresh_build=True, phase='running')
         command = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-                   '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=b', '--workdir', str(frozen.parent), str(frozen)]
+                   '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=b', '--workdir', str(frozen.parent), str(frozen)]
         meta['command'] = command
         save()
         print('BUILD_FROZEN ' + args.label + ' ' + meta['executable_sha256'], flush=True)

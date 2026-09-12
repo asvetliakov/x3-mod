@@ -1,18 +1,18 @@
 {
-  "passed": true,
+  "passed": false,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "5b686cd56dd2a5159fe56d63d5bd54a8da170d0eb11874fa7be8d7197eb0c5a9",
-    "src/renderer/temporal_pass.cpp": "40047c19f605e9b009fc82e9ba0a75bce0895d7227f6b71a24b24ad1b3e01e46",
-    "src/temporal/resolve.h": "c2ef21f3d21d43ce5b396d4cb03cc593715562df9b38a568f46abec734291ea3",
-    "src/temporal/resolve.hlsl": "ca73a7e28acf8fa873ec6e90b0f0c0a1313b5bfb8f4e26bef1698862f9ba6fc9",
+    "src/renderer/temporal_pass.h": "eb7f4c1054007c9012f58dc18b451f7b2f204e5d6c86418b6e417d9efeadf100",
+    "src/renderer/temporal_pass.cpp": "60333a4b00c52e7e2450046ca499777ec46860838a0f11963a43756e4b712e1a",
+    "src/temporal/resolve.h": "68f4b7a9e727c617cf76b75e1a669d90d8254e991f9d833cb12353f6432cec02",
+    "src/temporal/resolve.hlsl": "6dc25ca6186191436c77eb5ecdc5fc033dbc71f39f415abd576c66c27c3d7a16",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
-    "verification/probe/temporal_pass_fixture.cpp": "be1e9778ef55aa016819ca64d0d37a0a140557c9c77841863f94cbccc15a4719",
+    "verification/probe/temporal_pass_fixture.cpp": "19af49a0afff9c5c89f1a453ee3aa9cdc498622d762c120fa1cad22d3b4017e3",
     "verification/probe/build_temporal_pass.sh": "87f5a149ca668fe8ff69806f53f3e84750cb0b3b9de0400c194fba5bbd22ba64",
-    "verification/probe/run_temporal_pass.py": "30766d77a89bfea83cee326055343fee3d705a3edd8f9e25343b152735219588"
+    "verification/probe/run_temporal_pass.py": "a86e890526c00c0b80ec03c762ab99950cec549028622e96203b4249c39595f9"
   },
   "game_launched": false,
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "3ffb3c3f0c77a4f0250b8d243c99461eef3d4dc14015819de624cdca83c0b2b3",
+  "executable_sha256": "cadbf8d30a9807a6e70c0980db7639761027283551be58e588e8e1752ace4974",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -31,9 +31,9 @@
   "source_unchanged": true,
   "binary_unchanged": true,
   "compiler_unchanged": true,
-  "report_sha256": "db0b64cbb69129e214bd7c0dcfbf8d5d8b61ab318cbd22aa3e61c0474d371d57",
+  "report_sha256": "868746d27f79707058092046470461ac167135fb6bd41e0307d2bf6e3b62dc2d",
   "samples": 386,
-  "state_restorations": 164,
+  "state_restorations": 204,
   "generations": 2,
   "camera": {
     "static-builder": {
@@ -75,35 +75,6 @@
     "yaw-cut-resumed": {
       "drift_px": 0.1004,
       "error": 0.01353
-    }
-  },
-  "negative_controls": {
-    "previous-jitter": {
-      "motion_line": "previousUV = motion.xy + history.xy;",
-      "camera_line": "previousUV += 0.5 * sizeJitter.xy + history.xy;",
-      "exit_code": 1,
-      "oracle_error": 0.422852,
-      "drift_px": 0.489981,
-      "report": "temporal-stationary-negative-previous-jitter.txt",
-      "report_sha256": "40123c95b23c424999c5d7dfc678551a6ee1b73039f918a39f4b2bf2ebd94bd7"
-    },
-    "flipped-sign": {
-      "motion_line": "previousUV = motion.xy - sizeJitter.zw;",
-      "camera_line": "previousUV += 0.5 * sizeJitter.xy - sizeJitter.zw;",
-      "exit_code": 1,
-      "oracle_error": 0.454102,
-      "drift_px": 0.911719,
-      "report": "temporal-stationary-negative-flipped-sign.txt",
-      "report_sha256": "bba99acbc30b3bb98ae013f528af3bcd0934425da0be4fbf742c9bc5e7643e09"
-    },
-    "no-jitter": {
-      "motion_line": "previousUV = motion.xy;",
-      "camera_line": "previousUV += 0.5 * sizeJitter.xy;",
-      "exit_code": 1,
-      "oracle_error": 0.286621,
-      "drift_px": 0.55702,
-      "report": "temporal-stationary-negative-no-jitter.txt",
-      "report_sha256": "f8f353a88fe76e5447bb5732335e360e1e1e09a2c6713d0ef7878bdd4d8ac9d4"
     }
   }
 }

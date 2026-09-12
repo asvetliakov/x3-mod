@@ -8,11 +8,12 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
-RESULTS = ROOT / 'verification/results'
+RESULTS = bottle.results_dir(ROOT)
 EXE = ROOT / 'verification/probe/build/motion_capture_fixture.exe'
-BOTTLE = Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c'
+BOTTLE = bottle.bottle_dir() / 'drive_c'
 NATIVE = {'native_d3dx9_37.dll': BOTTLE / 'X3/d3dx9_37.dll',
           'native_d3d9.dll': BOTTLE / 'windows/syswow64/d3d9.dll',
           'native_wined3d.dll': BOTTLE / 'windows/syswow64/wined3d.dll'}
@@ -69,7 +70,7 @@ def validate_report(text):
 
 def main():
     path = RESULTS / 'motion-capture-summary.json'
-    report = dict(passed=False, phase='building', game_launched=False, fresh_build=False,
+    report = dict(passed=False, phase='building', game_launched=False, bottle=bottle.describe(), fresh_build=False,
                   scope='Private diagnostic: FLOAT3 nonindexed; supplied Selection/Clear confirmation/Present results; synthetic source/lifetime; excludes capture.cpp and SceneCapture orchestration; no TAA eligibility')
 
     def save():
@@ -90,7 +91,7 @@ def main():
             raise RuntimeError('Game present or process inventory unavailable; postpone fixture: ' + '\n'.join(active))
         report['no_game_before_run'] = True
         command = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-                   '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=b', '--workdir', str(EXE.parent),
+                   '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=b', '--workdir', str(EXE.parent),
                    str(EXE), r'C:\X3\d3dx9_37.dll']
         report['command'] = command
         save()

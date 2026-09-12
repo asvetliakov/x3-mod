@@ -11,6 +11,7 @@ import subprocess
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from game_guard import game_running  # noqa: E402
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 ROOT = Path(__file__).resolve().parents[2]
 FILES = [
@@ -26,7 +27,7 @@ FILES = [
 ]
 NATIVE_ROOT = Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/wine/i386-windows')
 EXE = ROOT / 'verification/probe/build/managed_upload_performance.exe'
-RESULTS = ROOT / 'verification/results'
+RESULTS = bottle.results_dir(ROOT)
 MODES = ('native_writeonly', 'native_readable', 'wrapped_off', 'wrapped_finite')
 KINDS = ('vertex', 'index16', 'index32')
 SIZES = (65536, 1048576, 8388608)
@@ -69,7 +70,7 @@ def parse_report(text):
 
 def main():
     summary = RESULTS / 'managed-upload-performance-summary.json'
-    meta = dict(passed=False, phase='building', fresh_build=False, game_launched=False,
+    meta = dict(passed=False, phase='building', fresh_build=False, game_launched=False, bottle=bottle.describe(),
                 started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
     def save():
         summary.write_text(json.dumps(meta, indent=2) + '\n')
@@ -89,7 +90,7 @@ def main():
             raise RuntimeError('Sources changed during build')
         meta.update(fresh_build=True, phase='running', executable_sha256=digest(EXE))
         command = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-                   '--bottle', 'Steam', '--no-update', '--dll', 'd3d9=b', '--workdir', str(EXE.parent), str(EXE)]
+                   '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=b', '--workdir', str(EXE.parent), str(EXE)]
         meta['command'] = command
         save()
         report = RESULTS / 'managed-upload-performance.txt'

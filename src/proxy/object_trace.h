@@ -23,7 +23,11 @@ bool executable_verified();
 bool active(); // observation enabled; not synonymous with code ownership
 bool recovery_required(); // owned code/protection still needs quiescent restoration
 const char* status(); // static diagnostic string; initialize once, then read
-bool current(Snapshot* out); // bounded self-process reads, intended only during capture
+// Bounded self-process reads through engine_memory (validated direct reads;
+// X3M_ENGINE_READS=rpm for the syscall path). matrices=false skips the four
+// engine matrices (8 of the 12 reads): the route needs node, camera and
+// registry only; capture frames and diagnostics keep the default.
+bool current(Snapshot* out, bool matrices = true);
 bool shutdown(); // restore only our own displacement, while no submission can run
 #ifdef X3M_OBJECT_TRACE_FIXTURE
 // Compile-only original fixture seam: absent from production. Caller owns code

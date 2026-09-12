@@ -15,7 +15,7 @@
   "header_sha256": "3ca1fc61affdc38b5e67ffe9302c27997df47de377b6a874f497927c35ab4311",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "287cc8c6387de4ac134d720e0922876763744007838d96dd2fbe2cfe6c393830",
-    "tools/shaders/generate_rigid_motion_pixel.py": "bd3b9634723f9943ce17f9eb123a08812dcb436183be8f6a5589a73295fd5644"
+    "tools/shaders/generate_rigid_motion_pixel.py": "d372caca84bba2932b1f7c10ceefe3a69052d16447b0359c5e75c7252a8626ab"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false

@@ -5,7 +5,8 @@ from pathlib import Path
 import json
 import re
 import sys
-root=Path(__file__).resolve().parents[2];results=root/'verification/results'
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
+root=Path(__file__).resolve().parents[2];results=bottle.results_dir(root)
 sys.path.insert(0,str(root/'tools/analysis'));sys.path.insert(0,str(root/'verification/probe'))
 from summarize_capture import fields, summarize
 from run_ownership_integration import MODES, selected_fixtures, sources, binaries

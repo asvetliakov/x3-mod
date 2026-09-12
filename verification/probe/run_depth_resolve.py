@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 
 def main():
@@ -21,7 +22,7 @@ def main():
     root = Path(__file__).resolve().parents[2]
     executable = root / "verification/probe/build/depth_resolve.exe"
     source = root / "verification/probe/depth_resolve.cpp"
-    results = root / "verification/results"
+    results = bottle.results_dir(root)
     results.mkdir(parents=True, exist_ok=True)
     paths = [root / name for name in ['verification/probe/depth_resolve.cpp', 'verification/probe/build_depth_resolve.sh', 'verification/probe/run_depth_resolve.py']]
     def source_hashes():
@@ -46,11 +47,11 @@ def main():
         return 1
     command = [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
-        "--bottle", "Steam", "--no-update", "--workdir", str(executable.parent),
+        "--bottle", bottle.BOTTLE, "--no-update", "--workdir", str(executable.parent),
         str(executable), r"C:\X3\d3dx9_37.dll", args.case,
     ]
     metadata = {
-        "started_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "started_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(), "bottle": bottle.describe(),
         "command": command,
         "timeout_seconds": 60,
         "process_local_override": "d3d9=b",

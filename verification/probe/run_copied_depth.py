@@ -6,15 +6,16 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 
 
 
 def main():
     root = Path(__file__).resolve().parents[2]
     executable = root / 'verification/probe/build/copied_depth_fixture.exe'
-    results = root / 'verification/results'
+    results = bottle.results_dir(root)
     command = ['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-               '--bottle', 'Steam', '--no-update', '--workdir', str(executable.parent),
+               '--bottle', bottle.BOTTLE, '--no-update', '--workdir', str(executable.parent),
                str(executable), r'C:\X3\d3dx9_37.dll', 'Z:' + str(root/'src/temporal/depth_decode.hlsl')]
     env = dict(os.environ, X3M_ADMISSION='0')
     env['WINEDLLOVERRIDES'] = 'd3d9=b'
@@ -27,7 +28,7 @@ def main():
     subprocess.run(['sh', str(root/'verification/probe/build_copied_depth.sh')], cwd=root, check=True, timeout=60)
     if before_build != {f: hashlib.sha256((root/f).read_bytes()).hexdigest() for f in files}:
         raise SystemExit('Source changed during build; rerun after edits finish.')
-    report = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    report = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(), bottle=bottle.describe(),
                   command=command, timeout_seconds=60, process_local_override='d3d9=b',
                   source_sha256={f: hashlib.sha256((root/f).read_bytes()).hexdigest() for f in files},
                   executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest())

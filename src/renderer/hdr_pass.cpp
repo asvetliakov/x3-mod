@@ -853,7 +853,8 @@ HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t freque
 // falls to the point StretchRect (when the conversion is granted); a failed
 // restoration or StretchRect ends with an explicit rebind of final_rt0 so the
 // device never keeps the FP16 surface as RT0 past this call.
-HdrWriteback HdrPass::write_back(IDirect3DSurface9* main, IDirect3DSurface9* final_rt0, bool scene_open, bool write, bool timing) noexcept {
+HdrWriteback HdrPass::write_back(IDirect3DSurface9* main, IDirect3DSurface9* final_rt0, bool scene_open, bool write, bool timing,
+                                 IDirect3DTexture9* source) noexcept {
     HdrWriteback result{};
     if (!main || !final_rt0) { result.unwind = true; result.unwind_reason = "arguments"; return result; }
     // Fixture seam: one injected failure per write, consumed only when a copy
@@ -863,10 +864,17 @@ HdrWriteback HdrPass::write_back(IDirect3DSurface9* main, IDirect3DSurface9* fin
     if (write && target_ && shader_) {
         injected_draw = fault(HdrFault::Draw) ? E_FAIL : fault(HdrFault::Lost) ? D3DERR_DEVICELOST : fault(HdrFault::Stretch) ? E_ABORT : S_OK;
         const bool injected_restore = fault(HdrFault::Restore);
-        IDirect3DTexture9* texture = nullptr;
+        // The sampled image: the caller's resolved FP16 texture (one reference
+        // taken and dropped here, symmetric with the container path) or the
+        // target's container.
+        IDirect3DTexture9* texture = source;
         const std::uint64_t begin = stamp(timing);
-        HRESULT hr = target_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&texture));
-        if (SUCCEEDED(hr) && !texture) hr = E_NOINTERFACE;
+        HRESULT hr = S_OK;
+        if (texture) texture->AddRef();
+        else {
+            hr = target_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&texture));
+            if (SUCCEEDED(hr) && !texture) hr = E_NOINTERFACE;
+        }
         bool own_scene = false;
         if (SUCCEEDED(hr) && !scene_open) { hr = call<SceneFn>(BeginScene)(device_); own_scene = SUCCEEDED(hr); }
         // Stage 2: the AgX program with its constants (and the meter chain
