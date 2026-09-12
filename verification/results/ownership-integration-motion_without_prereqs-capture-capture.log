@@ -1,15 +1,15 @@
 motion_capture_mode requested=0 enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0
-motion_output_mode requested=0 scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=0 taa=0 taa_debug=0 jitter=0 jitter_samples=8 cut_median_px=48.000 cut_missing=0.250 rt_mode=perdraw frame_log=60 sentinel=auto camera_cut_deg=20.00 camera_log=300 state_shadow=1 scene_hook=0 hdr=0 taa_k=-1.00000 mip_bias=0
+motion_output_mode requested=0 scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=0 taa=0 taa_debug=0 jitter=0 jitter_samples=8 cut_median_px=48.000 cut_missing=0.250 rt_mode=perdraw frame_log=60 sentinel=auto camera_cut_deg=20.00 camera_log=300 state_shadow=1 scene_hook=0 hdr=0 taa_k=-1.00000 taa_sharpen=0.000
 x3-modern-renderer version=0.4 schema=2 capture_start=1 capture_frames=5 pointer_bits=32
-telemetry_start schema=1 qpc_frequency=10000000 qpc=9537267055996 anchor=proxy_initialize cpu_only=1 per_draw=0
+telemetry_start schema=1 qpc_frequency=10000000 qpc=9541582626897 anchor=proxy_initialize cpu_only=1 per_draw=0
 application_admission_mode requested=0 enabled=0 live_replay=0 coverage_complete=0
-telemetry_span name=backend_load qpc_begin=9537267061936 qpc_end=9537267062057 thread=1056 success=1 error=203
+telemetry_span name=backend_load qpc_begin=9541582632744 qpc_end=9541582632840 thread=1056 success=1 error=203
 backend path=C:\windows\system32\d3d9.dll
 object_trace active=0 status=disabled recovery_required=0
 camera_state active=0 status=disabled
 scene_hook active=0 status=disabled
 object_lifetime active=0 status=disabled recovery_required=0 baseline_complete=0 baseline_entries=0
-telemetry_span name=direct3d_create9 qpc_begin=9537267065461 qpc_end=9537267953828 thread=1056 success=1
+telemetry_span name=direct3d_create9 qpc_begin=9541582635976 qpc_end=9541583528397 thread=1056 success=1
 adapter description=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll vendor=000010de device=00000191
 telemetry_presentation phase=create_before device=0 thread=1056 focus_window=00260056 device_window=00260056 width=160 height=120 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 create_device adapter=0 flags=00000042 width=160 height=120 format=0 windowed=1 msaa=0 interval=2147483648
@@ -17,14 +17,14 @@ telemetry_presentation phase=create_after device=0 thread=1056 focus_window=0026
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00115de8 device=1 ex=0
-telemetry_first_present device=1 frame=0 qpc=9537268687422 since_start_us=163142.600 capture=0 reset_count=0
+telemetry_first_present device=1 frame=0 qpc=9541584254927 since_start_us=162803.000 capture=0 reset_count=0
 telemetry_window_context device=1 frame=0 render_thread=1056 window_thread=1056 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
-telemetry_window device=1 frame=0 qpc=9537268694188 window=00260056 foreground=00000000 thread_focus=00000000 iconic=0 visible=1 style=14cf0000 exstyle=00000100 window_rect=80,80,260,240 client_rect=0,0,172,126
-telemetry_cursor_poll device=1 frame=0 qpc=9537268694188 flags=1 cursor=00000000 x=-1512 y=0
+telemetry_window device=1 frame=0 qpc=9541584261232 window=00260056 foreground=00000000 thread_focus=00000000 iconic=0 visible=1 style=14cf0000 exstyle=00000100 window_rect=80,80,260,240 client_rect=0,0,172,126
+telemetry_cursor_poll device=1 frame=0 qpc=9541584261232 flags=1 cursor=00000000 x=-1512 y=0
 telemetry_present_window device=1 frame=0 override=00000000 device_window=00260056 result=00000000
 frame_end device=1 frame=0 draws=1 capture=0 present=00000000
 frame_begin device=1 frame=1
-capture_event device=1 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9537268708260
+capture_event device=1 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9541584282068
 clear flags=1 color=ff314159 z=0.75 stencil=123 rect_count=1 rect_ptr=0032f670
 clear_rects recorded=1 omitted=0
 clear_rect index=0 left=1 top=2 right=9 bottom=10
@@ -32,13 +32,13 @@ resource identity=1 ptr=00cf3858 type=3
 resource identity=2 ptr=00cf3898 type=1
 surface role=clear_rt0 ptr=00cf3898 identity=2 width=160 height=120 format=21 usage=1 msaa=0 container=1 container_type=3 container_result=00000000
 clear_viewport result=00000000 x=0 y=0 w=160 h=120 minz=0 maxz=1
-capture_event device=1 frame=1 seq=2 after_draw=0 op=clear result=8876086c qpc=9537268734050
+capture_event device=1 frame=1 seq=2 after_draw=0 op=clear result=8876086c qpc=9541584299134
 clear flags=2 color=ff314159 z=0.75 stencil=123 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=00cf3898 identity=2 width=160 height=120 format=21 usage=1 msaa=0 container=1 container_type=3 container_result=00000000
 clear_viewport result=00000000 x=0 y=0 w=160 h=120 minz=0 maxz=1
 resource identity=3 ptr=0011d540 type=6
 resource identity=4 ptr=0011d570 type=7
-capture_event device=1 frame=1 seq=3 after_draw=0 op=draw_begin result=00000000 qpc=9537268756237
+capture_event device=1 frame=1 seq=3 after_draw=0 op=draw_begin result=00000000 qpc=9541584325087
 draw device=1 frame=1 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -92,120 +92,88 @@ state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
 resource identity=5 ptr=00cf37d8 type=3
-texture stage=0 ptr=00cf37d8 type=3 identity=5 levels=1
+texture stage=0 ptr=00cf37d8 type=3 identity=5
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-sampler stage=0 state=8 value=0 bias=0
-sampler stage=0 state=9 value=0
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-sampler stage=1 state=8 value=0 bias=0
-sampler stage=1 state=9 value=0
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-sampler stage=2 state=8 value=0 bias=0
-sampler stage=2 state=9 value=0
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
 sampler stage=3 state=10 value=1
 sampler stage=3 state=11 value=0
-sampler stage=3 state=8 value=0 bias=0
-sampler stage=3 state=9 value=0
 sampler stage=4 state=6 value=1
 sampler stage=4 state=5 value=1
 sampler stage=4 state=7 value=0
 sampler stage=4 state=10 value=1
 sampler stage=4 state=11 value=0
-sampler stage=4 state=8 value=0 bias=0
-sampler stage=4 state=9 value=0
 sampler stage=5 state=6 value=1
 sampler stage=5 state=5 value=1
 sampler stage=5 state=7 value=0
 sampler stage=5 state=10 value=1
 sampler stage=5 state=11 value=0
-sampler stage=5 state=8 value=0 bias=0
-sampler stage=5 state=9 value=0
 sampler stage=6 state=6 value=1
 sampler stage=6 state=5 value=1
 sampler stage=6 state=7 value=0
 sampler stage=6 state=10 value=1
 sampler stage=6 state=11 value=0
-sampler stage=6 state=8 value=0 bias=0
-sampler stage=6 state=9 value=0
 sampler stage=7 state=6 value=1
 sampler stage=7 state=5 value=1
 sampler stage=7 state=7 value=0
 sampler stage=7 state=10 value=1
 sampler stage=7 state=11 value=0
-sampler stage=7 state=8 value=0 bias=0
-sampler stage=7 state=9 value=0
 sampler stage=8 state=6 value=1
 sampler stage=8 state=5 value=1
 sampler stage=8 state=7 value=0
 sampler stage=8 state=10 value=1
 sampler stage=8 state=11 value=0
-sampler stage=8 state=8 value=0 bias=0
-sampler stage=8 state=9 value=0
 sampler stage=9 state=6 value=1
 sampler stage=9 state=5 value=1
 sampler stage=9 state=7 value=0
 sampler stage=9 state=10 value=1
 sampler stage=9 state=11 value=0
-sampler stage=9 state=8 value=0 bias=0
-sampler stage=9 state=9 value=0
 sampler stage=10 state=6 value=1
 sampler stage=10 state=5 value=1
 sampler stage=10 state=7 value=0
 sampler stage=10 state=10 value=1
 sampler stage=10 state=11 value=0
-sampler stage=10 state=8 value=0 bias=0
-sampler stage=10 state=9 value=0
 sampler stage=11 state=6 value=1
 sampler stage=11 state=5 value=1
 sampler stage=11 state=7 value=0
 sampler stage=11 state=10 value=1
 sampler stage=11 state=11 value=0
-sampler stage=11 state=8 value=0 bias=0
-sampler stage=11 state=9 value=0
 sampler stage=12 state=6 value=1
 sampler stage=12 state=5 value=1
 sampler stage=12 state=7 value=0
 sampler stage=12 state=10 value=1
 sampler stage=12 state=11 value=0
-sampler stage=12 state=8 value=0 bias=0
-sampler stage=12 state=9 value=0
 sampler stage=13 state=6 value=1
 sampler stage=13 state=5 value=1
 sampler stage=13 state=7 value=0
 sampler stage=13 state=10 value=1
 sampler stage=13 state=11 value=0
-sampler stage=13 state=8 value=0 bias=0
-sampler stage=13 state=9 value=0
 sampler stage=14 state=6 value=1
 sampler stage=14 state=5 value=1
 sampler stage=14 state=7 value=0
 sampler stage=14 state=10 value=1
 sampler stage=14 state=11 value=0
-sampler stage=14 state=8 value=0 bias=0
-sampler stage=14 state=9 value=0
 sampler stage=15 state=6 value=1
 sampler stage=15 state=5 value=1
 sampler stage=15 state=7 value=0
 sampler stage=15 state=10 value=1
 sampler stage=15 state=11 value=0
-sampler stage=15 state=8 value=0 bias=0
-sampler stage=15 state=9 value=0
 vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
 vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
 vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
@@ -298,7 +266,7 @@ motion_geometry device=1 frame=1 index=1 source_qualified=0 source_hash=00000000
 draw_result device=1 frame=1 index=1 result=00000000
 frame_end device=1 frame=1 draws=1 capture=1 present=00000000
 frame_begin device=1 frame=2
-capture_event device=1 frame=2 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9537268791760
+capture_event device=1 frame=2 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9541584356983
 draw device=1 frame=2 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -351,120 +319,88 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=00cf37d8 type=3 identity=5 levels=1
+texture stage=0 ptr=00cf37d8 type=3 identity=5
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-sampler stage=0 state=8 value=0 bias=0
-sampler stage=0 state=9 value=0
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-sampler stage=1 state=8 value=0 bias=0
-sampler stage=1 state=9 value=0
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-sampler stage=2 state=8 value=0 bias=0
-sampler stage=2 state=9 value=0
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
 sampler stage=3 state=10 value=1
 sampler stage=3 state=11 value=0
-sampler stage=3 state=8 value=0 bias=0
-sampler stage=3 state=9 value=0
 sampler stage=4 state=6 value=1
 sampler stage=4 state=5 value=1
 sampler stage=4 state=7 value=0
 sampler stage=4 state=10 value=1
 sampler stage=4 state=11 value=0
-sampler stage=4 state=8 value=0 bias=0
-sampler stage=4 state=9 value=0
 sampler stage=5 state=6 value=1
 sampler stage=5 state=5 value=1
 sampler stage=5 state=7 value=0
 sampler stage=5 state=10 value=1
 sampler stage=5 state=11 value=0
-sampler stage=5 state=8 value=0 bias=0
-sampler stage=5 state=9 value=0
 sampler stage=6 state=6 value=1
 sampler stage=6 state=5 value=1
 sampler stage=6 state=7 value=0
 sampler stage=6 state=10 value=1
 sampler stage=6 state=11 value=0
-sampler stage=6 state=8 value=0 bias=0
-sampler stage=6 state=9 value=0
 sampler stage=7 state=6 value=1
 sampler stage=7 state=5 value=1
 sampler stage=7 state=7 value=0
 sampler stage=7 state=10 value=1
 sampler stage=7 state=11 value=0
-sampler stage=7 state=8 value=0 bias=0
-sampler stage=7 state=9 value=0
 sampler stage=8 state=6 value=1
 sampler stage=8 state=5 value=1
 sampler stage=8 state=7 value=0
 sampler stage=8 state=10 value=1
 sampler stage=8 state=11 value=0
-sampler stage=8 state=8 value=0 bias=0
-sampler stage=8 state=9 value=0
 sampler stage=9 state=6 value=1
 sampler stage=9 state=5 value=1
 sampler stage=9 state=7 value=0
 sampler stage=9 state=10 value=1
 sampler stage=9 state=11 value=0
-sampler stage=9 state=8 value=0 bias=0
-sampler stage=9 state=9 value=0
 sampler stage=10 state=6 value=1
 sampler stage=10 state=5 value=1
 sampler stage=10 state=7 value=0
 sampler stage=10 state=10 value=1
 sampler stage=10 state=11 value=0
-sampler stage=10 state=8 value=0 bias=0
-sampler stage=10 state=9 value=0
 sampler stage=11 state=6 value=1
 sampler stage=11 state=5 value=1
 sampler stage=11 state=7 value=0
 sampler stage=11 state=10 value=1
 sampler stage=11 state=11 value=0
-sampler stage=11 state=8 value=0 bias=0
-sampler stage=11 state=9 value=0
 sampler stage=12 state=6 value=1
 sampler stage=12 state=5 value=1
 sampler stage=12 state=7 value=0
 sampler stage=12 state=10 value=1
 sampler stage=12 state=11 value=0
-sampler stage=12 state=8 value=0 bias=0
-sampler stage=12 state=9 value=0
 sampler stage=13 state=6 value=1
 sampler stage=13 state=5 value=1
 sampler stage=13 state=7 value=0
 sampler stage=13 state=10 value=1
 sampler stage=13 state=11 value=0
-sampler stage=13 state=8 value=0 bias=0
-sampler stage=13 state=9 value=0
 sampler stage=14 state=6 value=1
 sampler stage=14 state=5 value=1
 sampler stage=14 state=7 value=0
 sampler stage=14 state=10 value=1
 sampler stage=14 state=11 value=0
-sampler stage=14 state=8 value=0 bias=0
-sampler stage=14 state=9 value=0
 sampler stage=15 state=6 value=1
 sampler stage=15 state=5 value=1
 sampler stage=15 state=7 value=0
 sampler stage=15 state=10 value=1
 sampler stage=15 state=11 value=0
-sampler stage=15 state=8 value=0 bias=0
-sampler stage=15 state=9 value=0
 vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
 vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
 vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
@@ -557,7 +493,7 @@ motion_geometry device=1 frame=2 index=1 source_qualified=0 source_hash=00000000
 draw_result device=1 frame=2 index=1 result=00000000
 frame_end device=1 frame=2 draws=1 capture=1 present=00000000
 frame_begin device=1 frame=3
-capture_event device=1 frame=3 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9537268803486
+capture_event device=1 frame=3 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9541584367608
 draw device=1 frame=3 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -610,120 +546,88 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=00cf37d8 type=3 identity=5 levels=1
+texture stage=0 ptr=00cf37d8 type=3 identity=5
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-sampler stage=0 state=8 value=0 bias=0
-sampler stage=0 state=9 value=0
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-sampler stage=1 state=8 value=0 bias=0
-sampler stage=1 state=9 value=0
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-sampler stage=2 state=8 value=0 bias=0
-sampler stage=2 state=9 value=0
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
 sampler stage=3 state=10 value=1
 sampler stage=3 state=11 value=0
-sampler stage=3 state=8 value=0 bias=0
-sampler stage=3 state=9 value=0
 sampler stage=4 state=6 value=1
 sampler stage=4 state=5 value=1
 sampler stage=4 state=7 value=0
 sampler stage=4 state=10 value=1
 sampler stage=4 state=11 value=0
-sampler stage=4 state=8 value=0 bias=0
-sampler stage=4 state=9 value=0
 sampler stage=5 state=6 value=1
 sampler stage=5 state=5 value=1
 sampler stage=5 state=7 value=0
 sampler stage=5 state=10 value=1
 sampler stage=5 state=11 value=0
-sampler stage=5 state=8 value=0 bias=0
-sampler stage=5 state=9 value=0
 sampler stage=6 state=6 value=1
 sampler stage=6 state=5 value=1
 sampler stage=6 state=7 value=0
 sampler stage=6 state=10 value=1
 sampler stage=6 state=11 value=0
-sampler stage=6 state=8 value=0 bias=0
-sampler stage=6 state=9 value=0
 sampler stage=7 state=6 value=1
 sampler stage=7 state=5 value=1
 sampler stage=7 state=7 value=0
 sampler stage=7 state=10 value=1
 sampler stage=7 state=11 value=0
-sampler stage=7 state=8 value=0 bias=0
-sampler stage=7 state=9 value=0
 sampler stage=8 state=6 value=1
 sampler stage=8 state=5 value=1
 sampler stage=8 state=7 value=0
 sampler stage=8 state=10 value=1
 sampler stage=8 state=11 value=0
-sampler stage=8 state=8 value=0 bias=0
-sampler stage=8 state=9 value=0
 sampler stage=9 state=6 value=1
 sampler stage=9 state=5 value=1
 sampler stage=9 state=7 value=0
 sampler stage=9 state=10 value=1
 sampler stage=9 state=11 value=0
-sampler stage=9 state=8 value=0 bias=0
-sampler stage=9 state=9 value=0
 sampler stage=10 state=6 value=1
 sampler stage=10 state=5 value=1
 sampler stage=10 state=7 value=0
 sampler stage=10 state=10 value=1
 sampler stage=10 state=11 value=0
-sampler stage=10 state=8 value=0 bias=0
-sampler stage=10 state=9 value=0
 sampler stage=11 state=6 value=1
 sampler stage=11 state=5 value=1
 sampler stage=11 state=7 value=0
 sampler stage=11 state=10 value=1
 sampler stage=11 state=11 value=0
-sampler stage=11 state=8 value=0 bias=0
-sampler stage=11 state=9 value=0
 sampler stage=12 state=6 value=1
 sampler stage=12 state=5 value=1
 sampler stage=12 state=7 value=0
 sampler stage=12 state=10 value=1
 sampler stage=12 state=11 value=0
-sampler stage=12 state=8 value=0 bias=0
-sampler stage=12 state=9 value=0
 sampler stage=13 state=6 value=1
 sampler stage=13 state=5 value=1
 sampler stage=13 state=7 value=0
 sampler stage=13 state=10 value=1
 sampler stage=13 state=11 value=0
-sampler stage=13 state=8 value=0 bias=0
-sampler stage=13 state=9 value=0
 sampler stage=14 state=6 value=1
 sampler stage=14 state=5 value=1
 sampler stage=14 state=7 value=0
 sampler stage=14 state=10 value=1
 sampler stage=14 state=11 value=0
-sampler stage=14 state=8 value=0 bias=0
-sampler stage=14 state=9 value=0
 sampler stage=15 state=6 value=1
 sampler stage=15 state=5 value=1
 sampler stage=15 state=7 value=0
 sampler stage=15 state=10 value=1
 sampler stage=15 state=11 value=0
-sampler stage=15 state=8 value=0 bias=0
-sampler stage=15 state=9 value=0
 vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
 vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
 vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
@@ -814,7 +718,7 @@ draw_args base_vertex=0 min_vertex=0 num_vertices=3 start_index=0
 motion_input device=1 frame=3 index=1 blockers=00000bd7 proofs=16 position_path=0 vs=0000000000000000 ps=0000000000000000 declaration=0000000000000000 rows_hash=b9b23f3a46fd0825 color=0 depth=0 width=0 height=0 cull=1 vb=3 vb_revision=0 ib=4 ib_revision=0 position_offset=0 position_type=0 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=1 frame=3 index=1 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=1 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=1 frame=3 index=1 result=00000000
-capture_event device=1 frame=3 seq=2 after_draw=1 op=draw_begin result=00000000 qpc=9537268812500
+capture_event device=1 frame=3 seq=2 after_draw=1 op=draw_begin result=00000000 qpc=9541584375753
 draw device=1 frame=3 index=2 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=3 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -865,120 +769,88 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=00cf37d8 type=3 identity=5 levels=1
+texture stage=0 ptr=00cf37d8 type=3 identity=5
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-sampler stage=0 state=8 value=0 bias=0
-sampler stage=0 state=9 value=0
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-sampler stage=1 state=8 value=0 bias=0
-sampler stage=1 state=9 value=0
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-sampler stage=2 state=8 value=0 bias=0
-sampler stage=2 state=9 value=0
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
 sampler stage=3 state=10 value=1
 sampler stage=3 state=11 value=0
-sampler stage=3 state=8 value=0 bias=0
-sampler stage=3 state=9 value=0
 sampler stage=4 state=6 value=1
 sampler stage=4 state=5 value=1
 sampler stage=4 state=7 value=0
 sampler stage=4 state=10 value=1
 sampler stage=4 state=11 value=0
-sampler stage=4 state=8 value=0 bias=0
-sampler stage=4 state=9 value=0
 sampler stage=5 state=6 value=1
 sampler stage=5 state=5 value=1
 sampler stage=5 state=7 value=0
 sampler stage=5 state=10 value=1
 sampler stage=5 state=11 value=0
-sampler stage=5 state=8 value=0 bias=0
-sampler stage=5 state=9 value=0
 sampler stage=6 state=6 value=1
 sampler stage=6 state=5 value=1
 sampler stage=6 state=7 value=0
 sampler stage=6 state=10 value=1
 sampler stage=6 state=11 value=0
-sampler stage=6 state=8 value=0 bias=0
-sampler stage=6 state=9 value=0
 sampler stage=7 state=6 value=1
 sampler stage=7 state=5 value=1
 sampler stage=7 state=7 value=0
 sampler stage=7 state=10 value=1
 sampler stage=7 state=11 value=0
-sampler stage=7 state=8 value=0 bias=0
-sampler stage=7 state=9 value=0
 sampler stage=8 state=6 value=1
 sampler stage=8 state=5 value=1
 sampler stage=8 state=7 value=0
 sampler stage=8 state=10 value=1
 sampler stage=8 state=11 value=0
-sampler stage=8 state=8 value=0 bias=0
-sampler stage=8 state=9 value=0
 sampler stage=9 state=6 value=1
 sampler stage=9 state=5 value=1
 sampler stage=9 state=7 value=0
 sampler stage=9 state=10 value=1
 sampler stage=9 state=11 value=0
-sampler stage=9 state=8 value=0 bias=0
-sampler stage=9 state=9 value=0
 sampler stage=10 state=6 value=1
 sampler stage=10 state=5 value=1
 sampler stage=10 state=7 value=0
 sampler stage=10 state=10 value=1
 sampler stage=10 state=11 value=0
-sampler stage=10 state=8 value=0 bias=0
-sampler stage=10 state=9 value=0
 sampler stage=11 state=6 value=1
 sampler stage=11 state=5 value=1
 sampler stage=11 state=7 value=0
 sampler stage=11 state=10 value=1
 sampler stage=11 state=11 value=0
-sampler stage=11 state=8 value=0 bias=0
-sampler stage=11 state=9 value=0
 sampler stage=12 state=6 value=1
 sampler stage=12 state=5 value=1
 sampler stage=12 state=7 value=0
 sampler stage=12 state=10 value=1
 sampler stage=12 state=11 value=0
-sampler stage=12 state=8 value=0 bias=0
-sampler stage=12 state=9 value=0
 sampler stage=13 state=6 value=1
 sampler stage=13 state=5 value=1
 sampler stage=13 state=7 value=0
 sampler stage=13 state=10 value=1
 sampler stage=13 state=11 value=0
-sampler stage=13 state=8 value=0 bias=0
-sampler stage=13 state=9 value=0
 sampler stage=14 state=6 value=1
 sampler stage=14 state=5 value=1
 sampler stage=14 state=7 value=0
 sampler stage=14 state=10 value=1
 sampler stage=14 state=11 value=0
-sampler stage=14 state=8 value=0 bias=0
-sampler stage=14 state=9 value=0
 sampler stage=15 state=6 value=1
 sampler stage=15 state=5 value=1
 sampler stage=15 state=7 value=0
 sampler stage=15 state=10 value=1
 sampler stage=15 state=11 value=0
-sampler stage=15 state=8 value=0 bias=0
-sampler stage=15 state=9 value=0
 vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
 vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
 vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
@@ -1072,7 +944,7 @@ draw_result device=1 frame=3 index=2 result=8876086c
 frame_end device=1 frame=3 draws=2 capture=1 present=00000000
 frame_begin device=1 frame=4
 resource identity=6 ptr=0011d6f0 type=6
-capture_event device=1 frame=4 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9537268863547
+capture_event device=1 frame=4 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9541584428137
 draw device=1 frame=4 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=6 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -1125,120 +997,88 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=00cf37d8 type=3 identity=5 levels=1
+texture stage=0 ptr=00cf37d8 type=3 identity=5
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-sampler stage=0 state=8 value=0 bias=0
-sampler stage=0 state=9 value=0
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-sampler stage=1 state=8 value=0 bias=0
-sampler stage=1 state=9 value=0
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-sampler stage=2 state=8 value=0 bias=0
-sampler stage=2 state=9 value=0
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
 sampler stage=3 state=10 value=1
 sampler stage=3 state=11 value=0
-sampler stage=3 state=8 value=0 bias=0
-sampler stage=3 state=9 value=0
 sampler stage=4 state=6 value=1
 sampler stage=4 state=5 value=1
 sampler stage=4 state=7 value=0
 sampler stage=4 state=10 value=1
 sampler stage=4 state=11 value=0
-sampler stage=4 state=8 value=0 bias=0
-sampler stage=4 state=9 value=0
 sampler stage=5 state=6 value=1
 sampler stage=5 state=5 value=1
 sampler stage=5 state=7 value=0
 sampler stage=5 state=10 value=1
 sampler stage=5 state=11 value=0
-sampler stage=5 state=8 value=0 bias=0
-sampler stage=5 state=9 value=0
 sampler stage=6 state=6 value=1
 sampler stage=6 state=5 value=1
 sampler stage=6 state=7 value=0
 sampler stage=6 state=10 value=1
 sampler stage=6 state=11 value=0
-sampler stage=6 state=8 value=0 bias=0
-sampler stage=6 state=9 value=0
 sampler stage=7 state=6 value=1
 sampler stage=7 state=5 value=1
 sampler stage=7 state=7 value=0
 sampler stage=7 state=10 value=1
 sampler stage=7 state=11 value=0
-sampler stage=7 state=8 value=0 bias=0
-sampler stage=7 state=9 value=0
 sampler stage=8 state=6 value=1
 sampler stage=8 state=5 value=1
 sampler stage=8 state=7 value=0
 sampler stage=8 state=10 value=1
 sampler stage=8 state=11 value=0
-sampler stage=8 state=8 value=0 bias=0
-sampler stage=8 state=9 value=0
 sampler stage=9 state=6 value=1
 sampler stage=9 state=5 value=1
 sampler stage=9 state=7 value=0
 sampler stage=9 state=10 value=1
 sampler stage=9 state=11 value=0
-sampler stage=9 state=8 value=0 bias=0
-sampler stage=9 state=9 value=0
 sampler stage=10 state=6 value=1
 sampler stage=10 state=5 value=1
 sampler stage=10 state=7 value=0
 sampler stage=10 state=10 value=1
 sampler stage=10 state=11 value=0
-sampler stage=10 state=8 value=0 bias=0
-sampler stage=10 state=9 value=0
 sampler stage=11 state=6 value=1
 sampler stage=11 state=5 value=1
 sampler stage=11 state=7 value=0
 sampler stage=11 state=10 value=1
 sampler stage=11 state=11 value=0
-sampler stage=11 state=8 value=0 bias=0
-sampler stage=11 state=9 value=0
 sampler stage=12 state=6 value=1
 sampler stage=12 state=5 value=1
 sampler stage=12 state=7 value=0
 sampler stage=12 state=10 value=1
 sampler stage=12 state=11 value=0
-sampler stage=12 state=8 value=0 bias=0
-sampler stage=12 state=9 value=0
 sampler stage=13 state=6 value=1
 sampler stage=13 state=5 value=1
 sampler stage=13 state=7 value=0
 sampler stage=13 state=10 value=1
 sampler stage=13 state=11 value=0
-sampler stage=13 state=8 value=0 bias=0
-sampler stage=13 state=9 value=0
 sampler stage=14 state=6 value=1
 sampler stage=14 state=5 value=1
 sampler stage=14 state=7 value=0
 sampler stage=14 state=10 value=1
 sampler stage=14 state=11 value=0
-sampler stage=14 state=8 value=0 bias=0
-sampler stage=14 state=9 value=0
 sampler stage=15 state=6 value=1
 sampler stage=15 state=5 value=1
 sampler stage=15 state=7 value=0
 sampler stage=15 state=10 value=1
 sampler stage=15 state=11 value=0
-sampler stage=15 state=8 value=0 bias=0
-sampler stage=15 state=9 value=0
 vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
 vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
 vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
@@ -1331,7 +1171,7 @@ motion_geometry device=1 frame=4 index=1 source_qualified=0 source_hash=00000000
 draw_result device=1 frame=4 index=1 result=00000000
 frame_end device=1 frame=4 draws=1 capture=1 present=00000000
 frame_begin device=1 frame=5
-capture_event device=1 frame=5 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9537268876846
+capture_event device=1 frame=5 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9541584439927
 draw device=1 frame=5 index=1 kind=indexed_up topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=user_memory
 surface role=rt0 ptr=00cf3898 identity=2 width=160 height=120 format=21 usage=1 msaa=0 container=1 container_type=3 container_result=00000000
@@ -1363,120 +1203,88 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=00cf37d8 type=3 identity=5 levels=1
+texture stage=0 ptr=00cf37d8 type=3 identity=5
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-sampler stage=0 state=8 value=0 bias=0
-sampler stage=0 state=9 value=0
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-sampler stage=1 state=8 value=0 bias=0
-sampler stage=1 state=9 value=0
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-sampler stage=2 state=8 value=0 bias=0
-sampler stage=2 state=9 value=0
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
 sampler stage=3 state=10 value=1
 sampler stage=3 state=11 value=0
-sampler stage=3 state=8 value=0 bias=0
-sampler stage=3 state=9 value=0
 sampler stage=4 state=6 value=1
 sampler stage=4 state=5 value=1
 sampler stage=4 state=7 value=0
 sampler stage=4 state=10 value=1
 sampler stage=4 state=11 value=0
-sampler stage=4 state=8 value=0 bias=0
-sampler stage=4 state=9 value=0
 sampler stage=5 state=6 value=1
 sampler stage=5 state=5 value=1
 sampler stage=5 state=7 value=0
 sampler stage=5 state=10 value=1
 sampler stage=5 state=11 value=0
-sampler stage=5 state=8 value=0 bias=0
-sampler stage=5 state=9 value=0
 sampler stage=6 state=6 value=1
 sampler stage=6 state=5 value=1
 sampler stage=6 state=7 value=0
 sampler stage=6 state=10 value=1
 sampler stage=6 state=11 value=0
-sampler stage=6 state=8 value=0 bias=0
-sampler stage=6 state=9 value=0
 sampler stage=7 state=6 value=1
 sampler stage=7 state=5 value=1
 sampler stage=7 state=7 value=0
 sampler stage=7 state=10 value=1
 sampler stage=7 state=11 value=0
-sampler stage=7 state=8 value=0 bias=0
-sampler stage=7 state=9 value=0
 sampler stage=8 state=6 value=1
 sampler stage=8 state=5 value=1
 sampler stage=8 state=7 value=0
 sampler stage=8 state=10 value=1
 sampler stage=8 state=11 value=0
-sampler stage=8 state=8 value=0 bias=0
-sampler stage=8 state=9 value=0
 sampler stage=9 state=6 value=1
 sampler stage=9 state=5 value=1
 sampler stage=9 state=7 value=0
 sampler stage=9 state=10 value=1
 sampler stage=9 state=11 value=0
-sampler stage=9 state=8 value=0 bias=0
-sampler stage=9 state=9 value=0
 sampler stage=10 state=6 value=1
 sampler stage=10 state=5 value=1
 sampler stage=10 state=7 value=0
 sampler stage=10 state=10 value=1
 sampler stage=10 state=11 value=0
-sampler stage=10 state=8 value=0 bias=0
-sampler stage=10 state=9 value=0
 sampler stage=11 state=6 value=1
 sampler stage=11 state=5 value=1
 sampler stage=11 state=7 value=0
 sampler stage=11 state=10 value=1
 sampler stage=11 state=11 value=0
-sampler stage=11 state=8 value=0 bias=0
-sampler stage=11 state=9 value=0
 sampler stage=12 state=6 value=1
 sampler stage=12 state=5 value=1
 sampler stage=12 state=7 value=0
 sampler stage=12 state=10 value=1
 sampler stage=12 state=11 value=0
-sampler stage=12 state=8 value=0 bias=0
-sampler stage=12 state=9 value=0
 sampler stage=13 state=6 value=1
 sampler stage=13 state=5 value=1
 sampler stage=13 state=7 value=0
 sampler stage=13 state=10 value=1
 sampler stage=13 state=11 value=0
-sampler stage=13 state=8 value=0 bias=0
-sampler stage=13 state=9 value=0
 sampler stage=14 state=6 value=1
 sampler stage=14 state=5 value=1
 sampler stage=14 state=7 value=0
 sampler stage=14 state=10 value=1
 sampler stage=14 state=11 value=0
-sampler stage=14 state=8 value=0 bias=0
-sampler stage=14 state=9 value=0
 sampler stage=15 state=6 value=1
 sampler stage=15 state=5 value=1
 sampler stage=15 state=7 value=0
 sampler stage=15 state=10 value=1
 sampler stage=15 state=11 value=0
-sampler stage=15 state=8 value=0 bias=0
-sampler stage=15 state=9 value=0
 vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
 vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
 vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
@@ -1571,23 +1379,23 @@ frame_end device=1 frame=5 draws=1 capture=1 present=00000000
 telemetry_presentation phase=reset_before device=1 thread=1056 focus_window=00260056 device_window=00260056 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 reset_begin ptr=00115de8 device=1
 telemetry_presentation phase=reset_after device=1 thread=1056 focus_window=00260056 device_window=00260056 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
-telemetry_summary device=1 frame=6 reason=reset qpc=9537268984843 since_start_us=192884.700 interval_us=38280.900 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=349.200 min_us=349.200 max_us=349.200 bytes=0 buckets=0,0,1,0,0,0
-telemetry_metric device=1 name=present_capture count=5 failures=0 total_us=2001.400 min_us=2.400 max_us=1985.400 bytes=0 buckets=4,0,0,1,0,0
-telemetry_metric device=1 name=frame_capture count=5 failures=0 total_us=20962.800 min_us=1888.200 max_us=9376.800 bytes=0 buckets=0,0,0,5,0,0
-telemetry_metric device=1 name=capture_cpu count=8 failures=0 total_us=8823.000 min_us=30.700 max_us=3196.400 bytes=0 buckets=0,1,5,2,0,0
-telemetry_metric device=1 name=snapshot count=6 failures=0 total_us=5129.600 min_us=620.100 max_us=1805.300 bytes=0 buckets=0,0,5,1,0,0
-telemetry_metric device=1 name=texture count=2 failures=0 total_us=241.400 min_us=1.400 max_us=240.000 bytes=0 buckets=1,0,1,0,0,0
-telemetry_metric device=1 name=vertex_buffer count=2 failures=0 total_us=186.100 min_us=3.800 max_us=182.300 bytes=152 buckets=1,0,1,0,0,0
-telemetry_metric device=1 name=index_buffer count=1 failures=0 total_us=54.900 min_us=54.900 max_us=54.900 bytes=6 buckets=0,1,0,0,0,0
-telemetry_metric device=1 name=reset count=1 failures=0 total_us=8133.100 min_us=8133.100 max_us=8133.100 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=1 name=log_flush count=6 failures=0 total_us=219.500 min_us=0.100 max_us=218.400 bytes=0 buckets=5,0,1,0,0,0
+telemetry_summary device=1 frame=6 reason=reset qpc=9541584552570 since_start_us=192567.300 interval_us=38303.000 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=present_normal count=1 failures=0 total_us=366.700 min_us=366.700 max_us=366.700 bytes=0 buckets=0,0,1,0,0,0
+telemetry_metric device=1 name=present_capture count=5 failures=0 total_us=2386.700 min_us=3.000 max_us=2368.900 bytes=0 buckets=4,0,0,1,0,0
+telemetry_metric device=1 name=frame_capture count=5 failures=0 total_us=20634.100 min_us=1553.900 max_us=9389.700 bytes=0 buckets=0,0,0,5,0,0
+telemetry_metric device=1 name=capture_cpu count=8 failures=0 total_us=8329.800 min_us=28.100 max_us=3598.600 bytes=0 buckets=0,1,5,2,0,0
+telemetry_metric device=1 name=snapshot count=6 failures=0 total_us=4627.100 min_us=490.900 max_us=1906.800 bytes=0 buckets=0,0,5,1,0,0
+telemetry_metric device=1 name=texture count=2 failures=0 total_us=292.000 min_us=1.600 max_us=290.400 bytes=0 buckets=1,0,1,0,0,0
+telemetry_metric device=1 name=vertex_buffer count=2 failures=0 total_us=200.400 min_us=3.300 max_us=197.100 bytes=152 buckets=1,0,1,0,0,0
+telemetry_metric device=1 name=index_buffer count=1 failures=0 total_us=57.000 min_us=57.000 max_us=57.000 bytes=6 buckets=0,1,0,0,0,0
+telemetry_metric device=1 name=reset count=1 failures=0 total_us=8587.300 min_us=8587.300 max_us=8587.300 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=1 name=log_flush count=6 failures=0 total_us=23.400 min_us=0.100 max_us=22.200 bytes=0 buckets=5,1,0,0,0,0
 reset_end device=1 result=00000000
-telemetry_summary device=1 frame=6 reason=device_destroy qpc=9537269018285 since_start_us=196228.900 interval_us=3344.200 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=1 name=log_flush count=1 failures=0 total_us=6.400 min_us=6.400 max_us=6.400 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=6 reason=device_destroy qpc=9537269018650 since_start_us=196265.400 interval_us=196265.400 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=46 failures=0 total_us=13.300 min_us=0.100 max_us=1.500 bytes=0 buckets=46,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=52840.000 min_us=52840.000 max_us=52840.000 bytes=0 buckets=0,0,0,0,1,0
+telemetry_summary device=1 frame=6 reason=device_destroy qpc=9541584585044 since_start_us=195814.700 interval_us=3247.400 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=1 name=log_flush count=1 failures=0 total_us=5.700 min_us=5.700 max_us=5.700 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=6 reason=device_destroy qpc=9541584585348 since_start_us=195845.100 interval_us=195845.100 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=46 failures=0 total_us=13.700 min_us=0.000 max_us=1.200 bytes=0 buckets=46,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=52972.900 min_us=52972.900 max_us=52972.900 bytes=0 buckets=0,0,0,0,1,0
 device_destroy ptr=00115de8 device=1
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
 telemetry_presentation phase=create_before device=0 thread=1056 focus_window=00260056 device_window=00260056 width=160 height=120 format=0 count=0 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
@@ -1596,14 +1404,14 @@ telemetry_presentation phase=create_after device=0 thread=1056 focus_window=0026
 create_device_result hr=00000000
 capture_caps result=00000000 streams=16 vs_float_count=256 ps_version=ffff0300
 device_hooked ptr=00115de8 device=2 ex=0
-telemetry_first_present device=2 frame=0 qpc=9537269061451 since_start_us=200545.500 capture=0 reset_count=0
+telemetry_first_present device=2 frame=0 qpc=9541584625872 since_start_us=199897.500 capture=0 reset_count=0
 telemetry_window_context device=2 frame=0 render_thread=1056 window_thread=1056 gui_ok=1 gui_active=00000000 gui_focus=00000000 gui_capture=00000000 clip_ok=1 clip=-1512,0,5120,1440 monitor_ok=1 monitor=0,0,5120,1440 work=0,31,5120,1440
-telemetry_window device=2 frame=0 qpc=9537269061572 window=00260056 foreground=00000000 thread_focus=00000000 iconic=0 visible=1 style=14cf0000 exstyle=00000100 window_rect=80,80,260,240 client_rect=0,0,172,126
-telemetry_cursor_poll device=2 frame=0 qpc=9537269061572 flags=1 cursor=00000000 x=-1512 y=0
+telemetry_window device=2 frame=0 qpc=9541584625957 window=00260056 foreground=00000000 thread_focus=00000000 iconic=0 visible=1 style=14cf0000 exstyle=00000100 window_rect=80,80,260,240 client_rect=0,0,172,126
+telemetry_cursor_poll device=2 frame=0 qpc=9541584625957 flags=1 cursor=00000000 x=-1512 y=0
 telemetry_present_window device=2 frame=0 override=00000000 device_window=00260056 result=00000000
 frame_end device=2 frame=0 draws=1 capture=0 present=00000000
 frame_begin device=2 frame=1
-capture_event device=2 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9537269063306
+capture_event device=2 frame=1 seq=1 after_draw=0 op=clear result=00000000 qpc=9541584627616
 clear flags=1 color=ff314159 z=0.75 stencil=123 rect_count=1 rect_ptr=0032f670
 clear_rects recorded=1 omitted=0
 clear_rect index=0 left=1 top=2 right=9 bottom=10
@@ -1611,13 +1419,13 @@ resource identity=7 ptr=00cf3898 type=3
 resource identity=8 ptr=00cf38d8 type=1
 surface role=clear_rt0 ptr=00cf38d8 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
 clear_viewport result=00000000 x=0 y=0 w=160 h=120 minz=0 maxz=1
-capture_event device=2 frame=1 seq=2 after_draw=0 op=clear result=8876086c qpc=9537269067459
+capture_event device=2 frame=1 seq=2 after_draw=0 op=clear result=8876086c qpc=9541584631831
 clear flags=2 color=ff314159 z=0.75 stencil=123 rect_count=0 rect_ptr=00000000
 surface role=clear_rt0 ptr=00cf38d8 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
 clear_viewport result=00000000 x=0 y=0 w=160 h=120 minz=0 maxz=1
 resource identity=9 ptr=0011d540 type=6
 resource identity=10 ptr=0011d570 type=7
-capture_event device=2 frame=1 seq=3 after_draw=0 op=draw_begin result=00000000 qpc=9537269072085
+capture_event device=2 frame=1 seq=3 after_draw=0 op=draw_begin result=00000000 qpc=9541584636462
 draw device=2 frame=1 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=9 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -1671,120 +1479,88 @@ state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
 resource identity=11 ptr=00cf3818 type=3
-texture stage=0 ptr=00cf3818 type=3 identity=11 levels=1
+texture stage=0 ptr=00cf3818 type=3 identity=11
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-sampler stage=0 state=8 value=0 bias=0
-sampler stage=0 state=9 value=0
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-sampler stage=1 state=8 value=0 bias=0
-sampler stage=1 state=9 value=0
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-sampler stage=2 state=8 value=0 bias=0
-sampler stage=2 state=9 value=0
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
 sampler stage=3 state=10 value=1
 sampler stage=3 state=11 value=0
-sampler stage=3 state=8 value=0 bias=0
-sampler stage=3 state=9 value=0
 sampler stage=4 state=6 value=1
 sampler stage=4 state=5 value=1
 sampler stage=4 state=7 value=0
 sampler stage=4 state=10 value=1
 sampler stage=4 state=11 value=0
-sampler stage=4 state=8 value=0 bias=0
-sampler stage=4 state=9 value=0
 sampler stage=5 state=6 value=1
 sampler stage=5 state=5 value=1
 sampler stage=5 state=7 value=0
 sampler stage=5 state=10 value=1
 sampler stage=5 state=11 value=0
-sampler stage=5 state=8 value=0 bias=0
-sampler stage=5 state=9 value=0
 sampler stage=6 state=6 value=1
 sampler stage=6 state=5 value=1
 sampler stage=6 state=7 value=0
 sampler stage=6 state=10 value=1
 sampler stage=6 state=11 value=0
-sampler stage=6 state=8 value=0 bias=0
-sampler stage=6 state=9 value=0
 sampler stage=7 state=6 value=1
 sampler stage=7 state=5 value=1
 sampler stage=7 state=7 value=0
 sampler stage=7 state=10 value=1
 sampler stage=7 state=11 value=0
-sampler stage=7 state=8 value=0 bias=0
-sampler stage=7 state=9 value=0
 sampler stage=8 state=6 value=1
 sampler stage=8 state=5 value=1
 sampler stage=8 state=7 value=0
 sampler stage=8 state=10 value=1
 sampler stage=8 state=11 value=0
-sampler stage=8 state=8 value=0 bias=0
-sampler stage=8 state=9 value=0
 sampler stage=9 state=6 value=1
 sampler stage=9 state=5 value=1
 sampler stage=9 state=7 value=0
 sampler stage=9 state=10 value=1
 sampler stage=9 state=11 value=0
-sampler stage=9 state=8 value=0 bias=0
-sampler stage=9 state=9 value=0
 sampler stage=10 state=6 value=1
 sampler stage=10 state=5 value=1
 sampler stage=10 state=7 value=0
 sampler stage=10 state=10 value=1
 sampler stage=10 state=11 value=0
-sampler stage=10 state=8 value=0 bias=0
-sampler stage=10 state=9 value=0
 sampler stage=11 state=6 value=1
 sampler stage=11 state=5 value=1
 sampler stage=11 state=7 value=0
 sampler stage=11 state=10 value=1
 sampler stage=11 state=11 value=0
-sampler stage=11 state=8 value=0 bias=0
-sampler stage=11 state=9 value=0
 sampler stage=12 state=6 value=1
 sampler stage=12 state=5 value=1
 sampler stage=12 state=7 value=0
 sampler stage=12 state=10 value=1
 sampler stage=12 state=11 value=0
-sampler stage=12 state=8 value=0 bias=0
-sampler stage=12 state=9 value=0
 sampler stage=13 state=6 value=1
 sampler stage=13 state=5 value=1
 sampler stage=13 state=7 value=0
 sampler stage=13 state=10 value=1
 sampler stage=13 state=11 value=0
-sampler stage=13 state=8 value=0 bias=0
-sampler stage=13 state=9 value=0
 sampler stage=14 state=6 value=1
 sampler stage=14 state=5 value=1
 sampler stage=14 state=7 value=0
 sampler stage=14 state=10 value=1
 sampler stage=14 state=11 value=0
-sampler stage=14 state=8 value=0 bias=0
-sampler stage=14 state=9 value=0
 sampler stage=15 state=6 value=1
 sampler stage=15 state=5 value=1
 sampler stage=15 state=7 value=0
 sampler stage=15 state=10 value=1
 sampler stage=15 state=11 value=0
-sampler stage=15 state=8 value=0 bias=0
-sampler stage=15 state=9 value=0
 vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
 vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
 vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
@@ -1877,7 +1653,7 @@ motion_geometry device=2 frame=1 index=1 source_qualified=0 source_hash=00000000
 draw_result device=2 frame=1 index=1 result=00000000
 frame_end device=2 frame=1 draws=1 capture=1 present=00000000
 frame_begin device=2 frame=2
-capture_event device=2 frame=2 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9537269083707
+capture_event device=2 frame=2 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9541584646833
 draw device=2 frame=2 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=9 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -1930,120 +1706,88 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=00cf3818 type=3 identity=11 levels=1
+texture stage=0 ptr=00cf3818 type=3 identity=11
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-sampler stage=0 state=8 value=0 bias=0
-sampler stage=0 state=9 value=0
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-sampler stage=1 state=8 value=0 bias=0
-sampler stage=1 state=9 value=0
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-sampler stage=2 state=8 value=0 bias=0
-sampler stage=2 state=9 value=0
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
 sampler stage=3 state=10 value=1
 sampler stage=3 state=11 value=0
-sampler stage=3 state=8 value=0 bias=0
-sampler stage=3 state=9 value=0
 sampler stage=4 state=6 value=1
 sampler stage=4 state=5 value=1
 sampler stage=4 state=7 value=0
 sampler stage=4 state=10 value=1
 sampler stage=4 state=11 value=0
-sampler stage=4 state=8 value=0 bias=0
-sampler stage=4 state=9 value=0
 sampler stage=5 state=6 value=1
 sampler stage=5 state=5 value=1
 sampler stage=5 state=7 value=0
 sampler stage=5 state=10 value=1
 sampler stage=5 state=11 value=0
-sampler stage=5 state=8 value=0 bias=0
-sampler stage=5 state=9 value=0
 sampler stage=6 state=6 value=1
 sampler stage=6 state=5 value=1
 sampler stage=6 state=7 value=0
 sampler stage=6 state=10 value=1
 sampler stage=6 state=11 value=0
-sampler stage=6 state=8 value=0 bias=0
-sampler stage=6 state=9 value=0
 sampler stage=7 state=6 value=1
 sampler stage=7 state=5 value=1
 sampler stage=7 state=7 value=0
 sampler stage=7 state=10 value=1
 sampler stage=7 state=11 value=0
-sampler stage=7 state=8 value=0 bias=0
-sampler stage=7 state=9 value=0
 sampler stage=8 state=6 value=1
 sampler stage=8 state=5 value=1
 sampler stage=8 state=7 value=0
 sampler stage=8 state=10 value=1
 sampler stage=8 state=11 value=0
-sampler stage=8 state=8 value=0 bias=0
-sampler stage=8 state=9 value=0
 sampler stage=9 state=6 value=1
 sampler stage=9 state=5 value=1
 sampler stage=9 state=7 value=0
 sampler stage=9 state=10 value=1
 sampler stage=9 state=11 value=0
-sampler stage=9 state=8 value=0 bias=0
-sampler stage=9 state=9 value=0
 sampler stage=10 state=6 value=1
 sampler stage=10 state=5 value=1
 sampler stage=10 state=7 value=0
 sampler stage=10 state=10 value=1
 sampler stage=10 state=11 value=0
-sampler stage=10 state=8 value=0 bias=0
-sampler stage=10 state=9 value=0
 sampler stage=11 state=6 value=1
 sampler stage=11 state=5 value=1
 sampler stage=11 state=7 value=0
 sampler stage=11 state=10 value=1
 sampler stage=11 state=11 value=0
-sampler stage=11 state=8 value=0 bias=0
-sampler stage=11 state=9 value=0
 sampler stage=12 state=6 value=1
 sampler stage=12 state=5 value=1
 sampler stage=12 state=7 value=0
 sampler stage=12 state=10 value=1
 sampler stage=12 state=11 value=0
-sampler stage=12 state=8 value=0 bias=0
-sampler stage=12 state=9 value=0
 sampler stage=13 state=6 value=1
 sampler stage=13 state=5 value=1
 sampler stage=13 state=7 value=0
 sampler stage=13 state=10 value=1
 sampler stage=13 state=11 value=0
-sampler stage=13 state=8 value=0 bias=0
-sampler stage=13 state=9 value=0
 sampler stage=14 state=6 value=1
 sampler stage=14 state=5 value=1
 sampler stage=14 state=7 value=0
 sampler stage=14 state=10 value=1
 sampler stage=14 state=11 value=0
-sampler stage=14 state=8 value=0 bias=0
-sampler stage=14 state=9 value=0
 sampler stage=15 state=6 value=1
 sampler stage=15 state=5 value=1
 sampler stage=15 state=7 value=0
 sampler stage=15 state=10 value=1
 sampler stage=15 state=11 value=0
-sampler stage=15 state=8 value=0 bias=0
-sampler stage=15 state=9 value=0
 vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
 vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
 vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
@@ -2136,7 +1880,7 @@ motion_geometry device=2 frame=2 index=1 source_qualified=0 source_hash=00000000
 draw_result device=2 frame=2 index=1 result=00000000
 frame_end device=2 frame=2 draws=1 capture=1 present=00000000
 frame_begin device=2 frame=3
-capture_event device=2 frame=3 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9537269096374
+capture_event device=2 frame=3 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9541584656828
 draw device=2 frame=3 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=9 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -2189,120 +1933,88 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=00cf3818 type=3 identity=11 levels=1
+texture stage=0 ptr=00cf3818 type=3 identity=11
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-sampler stage=0 state=8 value=0 bias=0
-sampler stage=0 state=9 value=0
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-sampler stage=1 state=8 value=0 bias=0
-sampler stage=1 state=9 value=0
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-sampler stage=2 state=8 value=0 bias=0
-sampler stage=2 state=9 value=0
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
 sampler stage=3 state=10 value=1
 sampler stage=3 state=11 value=0
-sampler stage=3 state=8 value=0 bias=0
-sampler stage=3 state=9 value=0
 sampler stage=4 state=6 value=1
 sampler stage=4 state=5 value=1
 sampler stage=4 state=7 value=0
 sampler stage=4 state=10 value=1
 sampler stage=4 state=11 value=0
-sampler stage=4 state=8 value=0 bias=0
-sampler stage=4 state=9 value=0
 sampler stage=5 state=6 value=1
 sampler stage=5 state=5 value=1
 sampler stage=5 state=7 value=0
 sampler stage=5 state=10 value=1
 sampler stage=5 state=11 value=0
-sampler stage=5 state=8 value=0 bias=0
-sampler stage=5 state=9 value=0
 sampler stage=6 state=6 value=1
 sampler stage=6 state=5 value=1
 sampler stage=6 state=7 value=0
 sampler stage=6 state=10 value=1
 sampler stage=6 state=11 value=0
-sampler stage=6 state=8 value=0 bias=0
-sampler stage=6 state=9 value=0
 sampler stage=7 state=6 value=1
 sampler stage=7 state=5 value=1
 sampler stage=7 state=7 value=0
 sampler stage=7 state=10 value=1
 sampler stage=7 state=11 value=0
-sampler stage=7 state=8 value=0 bias=0
-sampler stage=7 state=9 value=0
 sampler stage=8 state=6 value=1
 sampler stage=8 state=5 value=1
 sampler stage=8 state=7 value=0
 sampler stage=8 state=10 value=1
 sampler stage=8 state=11 value=0
-sampler stage=8 state=8 value=0 bias=0
-sampler stage=8 state=9 value=0
 sampler stage=9 state=6 value=1
 sampler stage=9 state=5 value=1
 sampler stage=9 state=7 value=0
 sampler stage=9 state=10 value=1
 sampler stage=9 state=11 value=0
-sampler stage=9 state=8 value=0 bias=0
-sampler stage=9 state=9 value=0
 sampler stage=10 state=6 value=1
 sampler stage=10 state=5 value=1
 sampler stage=10 state=7 value=0
 sampler stage=10 state=10 value=1
 sampler stage=10 state=11 value=0
-sampler stage=10 state=8 value=0 bias=0
-sampler stage=10 state=9 value=0
 sampler stage=11 state=6 value=1
 sampler stage=11 state=5 value=1
 sampler stage=11 state=7 value=0
 sampler stage=11 state=10 value=1
 sampler stage=11 state=11 value=0
-sampler stage=11 state=8 value=0 bias=0
-sampler stage=11 state=9 value=0
 sampler stage=12 state=6 value=1
 sampler stage=12 state=5 value=1
 sampler stage=12 state=7 value=0
 sampler stage=12 state=10 value=1
 sampler stage=12 state=11 value=0
-sampler stage=12 state=8 value=0 bias=0
-sampler stage=12 state=9 value=0
 sampler stage=13 state=6 value=1
 sampler stage=13 state=5 value=1
 sampler stage=13 state=7 value=0
 sampler stage=13 state=10 value=1
 sampler stage=13 state=11 value=0
-sampler stage=13 state=8 value=0 bias=0
-sampler stage=13 state=9 value=0
 sampler stage=14 state=6 value=1
 sampler stage=14 state=5 value=1
 sampler stage=14 state=7 value=0
 sampler stage=14 state=10 value=1
 sampler stage=14 state=11 value=0
-sampler stage=14 state=8 value=0 bias=0
-sampler stage=14 state=9 value=0
 sampler stage=15 state=6 value=1
 sampler stage=15 state=5 value=1
 sampler stage=15 state=7 value=0
 sampler stage=15 state=10 value=1
 sampler stage=15 state=11 value=0
-sampler stage=15 state=8 value=0 bias=0
-sampler stage=15 state=9 value=0
 vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
 vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
 vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
@@ -2393,7 +2105,7 @@ draw_args base_vertex=0 min_vertex=0 num_vertices=3 start_index=0
 motion_input device=2 frame=3 index=1 blockers=00000bd7 proofs=16 position_path=0 vs=0000000000000000 ps=0000000000000000 declaration=0000000000000000 rows_hash=b9b23f3a46fd0825 color=0 depth=0 width=0 height=0 cull=1 vb=9 vb_revision=0 ib=10 ib_revision=0 position_offset=0 position_type=0 lifetime_verified=0 vertex_finite_verified=0
 motion_geometry device=2 frame=3 index=1 source_qualified=0 source_hash=0000000000000000 source_words=0 finite_requested=0 finite_state=0 finite_reason=14 finite_status=00000001 finite_generation=0 finite_revision=0 index_required=1 index_requested=0 index_known=0 index_range_verified=0 index_exact=0 index_min=0 index_max=0 index_reason=1 index_status=00000001 index_generation=0 index_revision=0
 draw_result device=2 frame=3 index=1 result=00000000
-capture_event device=2 frame=3 seq=2 after_draw=1 op=draw_begin result=00000000 qpc=9537269105450
+capture_event device=2 frame=3 seq=2 after_draw=1 op=draw_begin result=00000000 qpc=9541584664505
 draw device=2 frame=3 index=2 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=9 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -2444,120 +2156,88 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=00cf3818 type=3 identity=11 levels=1
+texture stage=0 ptr=00cf3818 type=3 identity=11
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-sampler stage=0 state=8 value=0 bias=0
-sampler stage=0 state=9 value=0
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-sampler stage=1 state=8 value=0 bias=0
-sampler stage=1 state=9 value=0
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-sampler stage=2 state=8 value=0 bias=0
-sampler stage=2 state=9 value=0
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
 sampler stage=3 state=10 value=1
 sampler stage=3 state=11 value=0
-sampler stage=3 state=8 value=0 bias=0
-sampler stage=3 state=9 value=0
 sampler stage=4 state=6 value=1
 sampler stage=4 state=5 value=1
 sampler stage=4 state=7 value=0
 sampler stage=4 state=10 value=1
 sampler stage=4 state=11 value=0
-sampler stage=4 state=8 value=0 bias=0
-sampler stage=4 state=9 value=0
 sampler stage=5 state=6 value=1
 sampler stage=5 state=5 value=1
 sampler stage=5 state=7 value=0
 sampler stage=5 state=10 value=1
 sampler stage=5 state=11 value=0
-sampler stage=5 state=8 value=0 bias=0
-sampler stage=5 state=9 value=0
 sampler stage=6 state=6 value=1
 sampler stage=6 state=5 value=1
 sampler stage=6 state=7 value=0
 sampler stage=6 state=10 value=1
 sampler stage=6 state=11 value=0
-sampler stage=6 state=8 value=0 bias=0
-sampler stage=6 state=9 value=0
 sampler stage=7 state=6 value=1
 sampler stage=7 state=5 value=1
 sampler stage=7 state=7 value=0
 sampler stage=7 state=10 value=1
 sampler stage=7 state=11 value=0
-sampler stage=7 state=8 value=0 bias=0
-sampler stage=7 state=9 value=0
 sampler stage=8 state=6 value=1
 sampler stage=8 state=5 value=1
 sampler stage=8 state=7 value=0
 sampler stage=8 state=10 value=1
 sampler stage=8 state=11 value=0
-sampler stage=8 state=8 value=0 bias=0
-sampler stage=8 state=9 value=0
 sampler stage=9 state=6 value=1
 sampler stage=9 state=5 value=1
 sampler stage=9 state=7 value=0
 sampler stage=9 state=10 value=1
 sampler stage=9 state=11 value=0
-sampler stage=9 state=8 value=0 bias=0
-sampler stage=9 state=9 value=0
 sampler stage=10 state=6 value=1
 sampler stage=10 state=5 value=1
 sampler stage=10 state=7 value=0
 sampler stage=10 state=10 value=1
 sampler stage=10 state=11 value=0
-sampler stage=10 state=8 value=0 bias=0
-sampler stage=10 state=9 value=0
 sampler stage=11 state=6 value=1
 sampler stage=11 state=5 value=1
 sampler stage=11 state=7 value=0
 sampler stage=11 state=10 value=1
 sampler stage=11 state=11 value=0
-sampler stage=11 state=8 value=0 bias=0
-sampler stage=11 state=9 value=0
 sampler stage=12 state=6 value=1
 sampler stage=12 state=5 value=1
 sampler stage=12 state=7 value=0
 sampler stage=12 state=10 value=1
 sampler stage=12 state=11 value=0
-sampler stage=12 state=8 value=0 bias=0
-sampler stage=12 state=9 value=0
 sampler stage=13 state=6 value=1
 sampler stage=13 state=5 value=1
 sampler stage=13 state=7 value=0
 sampler stage=13 state=10 value=1
 sampler stage=13 state=11 value=0
-sampler stage=13 state=8 value=0 bias=0
-sampler stage=13 state=9 value=0
 sampler stage=14 state=6 value=1
 sampler stage=14 state=5 value=1
 sampler stage=14 state=7 value=0
 sampler stage=14 state=10 value=1
 sampler stage=14 state=11 value=0
-sampler stage=14 state=8 value=0 bias=0
-sampler stage=14 state=9 value=0
 sampler stage=15 state=6 value=1
 sampler stage=15 state=5 value=1
 sampler stage=15 state=7 value=0
 sampler stage=15 state=10 value=1
 sampler stage=15 state=11 value=0
-sampler stage=15 state=8 value=0 bias=0
-sampler stage=15 state=9 value=0
 vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
 vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
 vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
@@ -2651,7 +2331,7 @@ draw_result device=2 frame=3 index=2 result=8876086c
 frame_end device=2 frame=3 draws=2 capture=1 present=00000000
 frame_begin device=2 frame=4
 resource identity=12 ptr=0011d6f0 type=6
-capture_event device=2 frame=4 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9537269120890
+capture_event device=2 frame=4 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9541584679270
 draw device=2 frame=4 index=1 kind=indexed topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=buffers
 stream slot=0 result=00000000 identity=12 offset=16 stride=20 frequency=1 frequency_result=00000000
@@ -2704,120 +2384,88 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=00cf3818 type=3 identity=11 levels=1
+texture stage=0 ptr=00cf3818 type=3 identity=11
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-sampler stage=0 state=8 value=0 bias=0
-sampler stage=0 state=9 value=0
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-sampler stage=1 state=8 value=0 bias=0
-sampler stage=1 state=9 value=0
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-sampler stage=2 state=8 value=0 bias=0
-sampler stage=2 state=9 value=0
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
 sampler stage=3 state=10 value=1
 sampler stage=3 state=11 value=0
-sampler stage=3 state=8 value=0 bias=0
-sampler stage=3 state=9 value=0
 sampler stage=4 state=6 value=1
 sampler stage=4 state=5 value=1
 sampler stage=4 state=7 value=0
 sampler stage=4 state=10 value=1
 sampler stage=4 state=11 value=0
-sampler stage=4 state=8 value=0 bias=0
-sampler stage=4 state=9 value=0
 sampler stage=5 state=6 value=1
 sampler stage=5 state=5 value=1
 sampler stage=5 state=7 value=0
 sampler stage=5 state=10 value=1
 sampler stage=5 state=11 value=0
-sampler stage=5 state=8 value=0 bias=0
-sampler stage=5 state=9 value=0
 sampler stage=6 state=6 value=1
 sampler stage=6 state=5 value=1
 sampler stage=6 state=7 value=0
 sampler stage=6 state=10 value=1
 sampler stage=6 state=11 value=0
-sampler stage=6 state=8 value=0 bias=0
-sampler stage=6 state=9 value=0
 sampler stage=7 state=6 value=1
 sampler stage=7 state=5 value=1
 sampler stage=7 state=7 value=0
 sampler stage=7 state=10 value=1
 sampler stage=7 state=11 value=0
-sampler stage=7 state=8 value=0 bias=0
-sampler stage=7 state=9 value=0
 sampler stage=8 state=6 value=1
 sampler stage=8 state=5 value=1
 sampler stage=8 state=7 value=0
 sampler stage=8 state=10 value=1
 sampler stage=8 state=11 value=0
-sampler stage=8 state=8 value=0 bias=0
-sampler stage=8 state=9 value=0
 sampler stage=9 state=6 value=1
 sampler stage=9 state=5 value=1
 sampler stage=9 state=7 value=0
 sampler stage=9 state=10 value=1
 sampler stage=9 state=11 value=0
-sampler stage=9 state=8 value=0 bias=0
-sampler stage=9 state=9 value=0
 sampler stage=10 state=6 value=1
 sampler stage=10 state=5 value=1
 sampler stage=10 state=7 value=0
 sampler stage=10 state=10 value=1
 sampler stage=10 state=11 value=0
-sampler stage=10 state=8 value=0 bias=0
-sampler stage=10 state=9 value=0
 sampler stage=11 state=6 value=1
 sampler stage=11 state=5 value=1
 sampler stage=11 state=7 value=0
 sampler stage=11 state=10 value=1
 sampler stage=11 state=11 value=0
-sampler stage=11 state=8 value=0 bias=0
-sampler stage=11 state=9 value=0
 sampler stage=12 state=6 value=1
 sampler stage=12 state=5 value=1
 sampler stage=12 state=7 value=0
 sampler stage=12 state=10 value=1
 sampler stage=12 state=11 value=0
-sampler stage=12 state=8 value=0 bias=0
-sampler stage=12 state=9 value=0
 sampler stage=13 state=6 value=1
 sampler stage=13 state=5 value=1
 sampler stage=13 state=7 value=0
 sampler stage=13 state=10 value=1
 sampler stage=13 state=11 value=0
-sampler stage=13 state=8 value=0 bias=0
-sampler stage=13 state=9 value=0
 sampler stage=14 state=6 value=1
 sampler stage=14 state=5 value=1
 sampler stage=14 state=7 value=0
 sampler stage=14 state=10 value=1
 sampler stage=14 state=11 value=0
-sampler stage=14 state=8 value=0 bias=0
-sampler stage=14 state=9 value=0
 sampler stage=15 state=6 value=1
 sampler stage=15 state=5 value=1
 sampler stage=15 state=7 value=0
 sampler stage=15 state=10 value=1
 sampler stage=15 state=11 value=0
-sampler stage=15 state=8 value=0 bias=0
-sampler stage=15 state=9 value=0
 vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
 vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
 vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
@@ -2910,7 +2558,7 @@ motion_geometry device=2 frame=4 index=1 source_qualified=0 source_hash=00000000
 draw_result device=2 frame=4 index=1 result=00000000
 frame_end device=2 frame=4 draws=1 capture=1 present=00000000
 frame_begin device=2 frame=5
-capture_event device=2 frame=5 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9537269129270
+capture_event device=2 frame=5 seq=1 after_draw=0 op=draw_begin result=00000000 qpc=9541584687020
 draw device=2 frame=5 index=1 kind=indexed_up topology=4 primitives=1 vs=0000000000000000 ps=0000000000000000
 geometry source=user_memory
 surface role=rt0 ptr=00cf38d8 identity=8 width=160 height=120 format=21 usage=1 msaa=0 container=7 container_type=3 container_result=00000000
@@ -2942,120 +2590,88 @@ state id=186 value=1
 state id=187 value=1
 state id=188 value=1
 viewport x=0 y=0 w=160 h=120 minz=0 maxz=1
-texture stage=0 ptr=00cf3818 type=3 identity=11 levels=1
+texture stage=0 ptr=00cf3818 type=3 identity=11
 texture_desc stage=0 w=8 h=8 format=21
 sampler stage=0 state=6 value=1
 sampler stage=0 state=5 value=1
 sampler stage=0 state=7 value=0
 sampler stage=0 state=10 value=1
 sampler stage=0 state=11 value=0
-sampler stage=0 state=8 value=0 bias=0
-sampler stage=0 state=9 value=0
 sampler stage=1 state=6 value=1
 sampler stage=1 state=5 value=1
 sampler stage=1 state=7 value=0
 sampler stage=1 state=10 value=1
 sampler stage=1 state=11 value=0
-sampler stage=1 state=8 value=0 bias=0
-sampler stage=1 state=9 value=0
 sampler stage=2 state=6 value=1
 sampler stage=2 state=5 value=1
 sampler stage=2 state=7 value=0
 sampler stage=2 state=10 value=1
 sampler stage=2 state=11 value=0
-sampler stage=2 state=8 value=0 bias=0
-sampler stage=2 state=9 value=0
 sampler stage=3 state=6 value=1
 sampler stage=3 state=5 value=1
 sampler stage=3 state=7 value=0
 sampler stage=3 state=10 value=1
 sampler stage=3 state=11 value=0
-sampler stage=3 state=8 value=0 bias=0
-sampler stage=3 state=9 value=0
 sampler stage=4 state=6 value=1
 sampler stage=4 state=5 value=1
 sampler stage=4 state=7 value=0
 sampler stage=4 state=10 value=1
 sampler stage=4 state=11 value=0
-sampler stage=4 state=8 value=0 bias=0
-sampler stage=4 state=9 value=0
 sampler stage=5 state=6 value=1
 sampler stage=5 state=5 value=1
 sampler stage=5 state=7 value=0
 sampler stage=5 state=10 value=1
 sampler stage=5 state=11 value=0
-sampler stage=5 state=8 value=0 bias=0
-sampler stage=5 state=9 value=0
 sampler stage=6 state=6 value=1
 sampler stage=6 state=5 value=1
 sampler stage=6 state=7 value=0
 sampler stage=6 state=10 value=1
 sampler stage=6 state=11 value=0
-sampler stage=6 state=8 value=0 bias=0
-sampler stage=6 state=9 value=0
 sampler stage=7 state=6 value=1
 sampler stage=7 state=5 value=1
 sampler stage=7 state=7 value=0
 sampler stage=7 state=10 value=1
 sampler stage=7 state=11 value=0
-sampler stage=7 state=8 value=0 bias=0
-sampler stage=7 state=9 value=0
 sampler stage=8 state=6 value=1
 sampler stage=8 state=5 value=1
 sampler stage=8 state=7 value=0
 sampler stage=8 state=10 value=1
 sampler stage=8 state=11 value=0
-sampler stage=8 state=8 value=0 bias=0
-sampler stage=8 state=9 value=0
 sampler stage=9 state=6 value=1
 sampler stage=9 state=5 value=1
 sampler stage=9 state=7 value=0
 sampler stage=9 state=10 value=1
 sampler stage=9 state=11 value=0
-sampler stage=9 state=8 value=0 bias=0
-sampler stage=9 state=9 value=0
 sampler stage=10 state=6 value=1
 sampler stage=10 state=5 value=1
 sampler stage=10 state=7 value=0
 sampler stage=10 state=10 value=1
 sampler stage=10 state=11 value=0
-sampler stage=10 state=8 value=0 bias=0
-sampler stage=10 state=9 value=0
 sampler stage=11 state=6 value=1
 sampler stage=11 state=5 value=1
 sampler stage=11 state=7 value=0
 sampler stage=11 state=10 value=1
 sampler stage=11 state=11 value=0
-sampler stage=11 state=8 value=0 bias=0
-sampler stage=11 state=9 value=0
 sampler stage=12 state=6 value=1
 sampler stage=12 state=5 value=1
 sampler stage=12 state=7 value=0
 sampler stage=12 state=10 value=1
 sampler stage=12 state=11 value=0
-sampler stage=12 state=8 value=0 bias=0
-sampler stage=12 state=9 value=0
 sampler stage=13 state=6 value=1
 sampler stage=13 state=5 value=1
 sampler stage=13 state=7 value=0
 sampler stage=13 state=10 value=1
 sampler stage=13 state=11 value=0
-sampler stage=13 state=8 value=0 bias=0
-sampler stage=13 state=9 value=0
 sampler stage=14 state=6 value=1
 sampler stage=14 state=5 value=1
 sampler stage=14 state=7 value=0
 sampler stage=14 state=10 value=1
 sampler stage=14 state=11 value=0
-sampler stage=14 state=8 value=0 bias=0
-sampler stage=14 state=9 value=0
 sampler stage=15 state=6 value=1
 sampler stage=15 state=5 value=1
 sampler stage=15 state=7 value=0
 sampler stage=15 state=10 value=1
 sampler stage=15 state=11 value=0
-sampler stage=15 state=8 value=0 bias=0
-sampler stage=15 state=9 value=0
 vertex_element stream=0 offset=0 type=3 method=0 usage=9 index=0
 vertex_element stream=0 offset=16 type=4 method=0 usage=10 index=0
 vertex_element stream=255 offset=0 type=17 method=0 usage=0 index=0
@@ -3150,24 +2766,24 @@ frame_end device=2 frame=5 draws=1 capture=1 present=00000000
 telemetry_presentation phase=reset_before device=2 thread=1056 focus_window=00260056 device_window=00260056 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
 reset_begin ptr=00115de8 device=2
 telemetry_presentation phase=reset_after device=2 thread=1056 focus_window=00260056 device_window=00260056 width=160 height=120 format=22 count=1 msaa=0 quality=0 swap_effect=1 windowed=1 auto_depth=0 depth_format=0 flags=00000000 refresh=0 interval=2147483648
-telemetry_summary device=2 frame=6 reason=reset qpc=9537269194413 since_start_us=213841.700 interval_us=14584.200 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=2 name=present_normal count=1 failures=0 total_us=15.200 min_us=15.200 max_us=15.200 bytes=0 buckets=0,1,0,0,0,0
-telemetry_metric device=2 name=present_capture count=5 failures=0 total_us=24.900 min_us=1.900 max_us=9.000 bytes=0 buckets=5,0,0,0,0,0
-telemetry_metric device=2 name=frame_capture count=5 failures=0 total_us=8071.700 min_us=1203.600 max_us=2210.000 bytes=0 buckets=0,0,0,5,0,0
-telemetry_metric device=2 name=capture_cpu count=8 failures=0 total_us=4192.700 min_us=15.300 max_us=847.700 bytes=0 buckets=0,2,6,0,0,0
-telemetry_metric device=2 name=snapshot count=6 failures=0 total_us=3812.800 min_us=602.600 max_us=684.200 bytes=0 buckets=0,0,6,0,0,0
-telemetry_metric device=2 name=texture count=2 failures=0 total_us=5.200 min_us=0.700 max_us=4.500 bytes=0 buckets=2,0,0,0,0,0
-telemetry_metric device=2 name=vertex_buffer count=2 failures=0 total_us=4.300 min_us=1.500 max_us=2.800 bytes=152 buckets=2,0,0,0,0,0
-telemetry_metric device=2 name=index_buffer count=1 failures=0 total_us=2.100 min_us=2.100 max_us=2.100 bytes=6 buckets=1,0,0,0,0,0
-telemetry_metric device=2 name=reset count=1 failures=0 total_us=4946.100 min_us=4946.100 max_us=4946.100 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=2 name=log_flush count=6 failures=0 total_us=1.500 min_us=0.100 max_us=0.400 bytes=0 buckets=6,0,0,0,0,0
+telemetry_summary device=2 frame=6 reason=reset qpc=9541584752900 since_start_us=212600.300 interval_us=13996.300 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=2 name=present_normal count=1 failures=0 total_us=13.800 min_us=13.800 max_us=13.800 bytes=0 buckets=0,1,0,0,0,0
+telemetry_metric device=2 name=present_capture count=5 failures=0 total_us=24.900 min_us=1.900 max_us=8.200 bytes=0 buckets=5,0,0,0,0,0
+telemetry_metric device=2 name=frame_capture count=5 failures=0 total_us=7412.500 min_us=1059.700 max_us=1827.100 bytes=0 buckets=0,0,0,5,0,0
+telemetry_metric device=2 name=capture_cpu count=8 failures=0 total_us=3473.400 min_us=16.900 max_us=588.100 bytes=0 buckets=0,2,6,0,0,0
+telemetry_metric device=2 name=snapshot count=6 failures=0 total_us=3214.400 min_us=499.400 max_us=549.700 bytes=0 buckets=0,0,6,0,0,0
+telemetry_metric device=2 name=texture count=2 failures=0 total_us=5.000 min_us=0.800 max_us=4.200 bytes=0 buckets=2,0,0,0,0,0
+telemetry_metric device=2 name=vertex_buffer count=2 failures=0 total_us=3.900 min_us=1.500 max_us=2.400 bytes=152 buckets=2,0,0,0,0,0
+telemetry_metric device=2 name=index_buffer count=1 failures=0 total_us=2.200 min_us=2.200 max_us=2.200 bytes=6 buckets=1,0,0,0,0,0
+telemetry_metric device=2 name=reset count=1 failures=0 total_us=5010.300 min_us=5010.300 max_us=5010.300 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=2 name=log_flush count=6 failures=0 total_us=1.100 min_us=0.100 max_us=0.300 bytes=0 buckets=6,0,0,0,0,0
 reset_end device=2 result=00000000
-telemetry_summary device=2 frame=6 reason=device_destroy qpc=9537269216233 since_start_us=216023.700 interval_us=2182.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=2 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
-telemetry_summary device=0 frame=6 reason=device_destroy qpc=9537269216470 since_start_us=216047.400 interval_us=19782.000 position_suppressed=0 cursor_changes_suppressed=0
-telemetry_metric device=0 name=lock_wait count=46 failures=0 total_us=7.100 min_us=0.000 max_us=0.400 bytes=0 buckets=46,0,0,0,0,0
-telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2365.000 min_us=2365.000 max_us=2365.000 bytes=0 buckets=0,0,0,1,0,0
-telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.100 min_us=0.100 max_us=0.100 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=2 frame=6 reason=device_destroy qpc=9541584775186 since_start_us=214828.900 interval_us=2228.600 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=2 name=log_flush count=1 failures=0 total_us=0.500 min_us=0.500 max_us=0.500 bytes=0 buckets=1,0,0,0,0,0
+telemetry_summary device=0 frame=6 reason=device_destroy qpc=9541584775403 since_start_us=214850.600 interval_us=19005.500 position_suppressed=0 cursor_changes_suppressed=0
+telemetry_metric device=0 name=lock_wait count=46 failures=0 total_us=6.400 min_us=0.000 max_us=0.500 bytes=0 buckets=46,0,0,0,0,0
+telemetry_metric device=0 name=create_device count=1 failures=0 total_us=2111.900 min_us=2111.900 max_us=2111.900 bytes=0 buckets=0,0,0,1,0,0
+telemetry_metric device=0 name=log_flush count=1 failures=0 total_us=0.300 min_us=0.300 max_us=0.300 bytes=0 buckets=1,0,0,0,0,0
 device_destroy ptr=00115de8 device=2
 application_admission_final phase=device active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0
 application_admission_final phase=factory active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 first_veto=0 enabled=0

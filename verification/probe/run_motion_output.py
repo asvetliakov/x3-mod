@@ -289,6 +289,26 @@ CASES += [case('production-mipbias-off', 'production', jitter=True, mipbias=True
           case('production-taa-mipbias-on', 'production', jitter=True, taa=True, mip_bias='-0.5'),
           case('seam-jitter-mipbias-zero', 'seam', jitter=True, mip_bias='0'),
           case('seam-taa-lazy-mipbias-on', 'seam', jitter=True, taa=True, lazy=True, mip_bias='-0.5')]
+# Post-resolve sharpen (X3M_TAA_SHARPEN; docs/architecture/temporal-integration.md
+# "Post-resolve sharpen", docs/verification/taa-sharpen.md): twins of the
+# unsharpened runs. Off (0) is byte-identical to its twin (history files and
+# presented frames). On, the resolved FP16 history equals the twin's byte for
+# byte (the sharpen never reaches it) and every presented frame is the Python
+# RCAS reference of the resolved image (8-bit route), of the identity
+# write-back's clamp of it (HDR, identity) or of its AgX tonemap (HDR,
+# tonemap: sharpened AFTER the tonemap), within one code, inside the 3x3
+# min/max of the unsharpened display image, alpha carried. Bench: both
+# routes at both sizes with the strongest setting.
+SHARPEN_TWINS = {'seam-taa-sharpen-off': 'seam-taa-on', 'seam-taa-sharpen-on': 'seam-taa-on', 'seam-taa-sharpen-half': 'seam-taa-on',
+                 'seam-taa-hdr-sharpen-on': 'seam-taa-hdr-on', 'seam-taa-hdr-tonemap-sharpen-on': 'seam-taa-hdr-tonemap-on'}
+CASES += [case('seam-taa-sharpen-off', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_SHARPEN='0')),
+          case('seam-taa-sharpen-on', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_SHARPEN='1')),
+          case('seam-taa-sharpen-half', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_SHARPEN='0.5')),
+          case('seam-taa-hdr-sharpen-on', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(X3M_TAA_SHARPEN='1')),
+          case('seam-taa-hdr-tonemap-sharpen-on', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(TAA_HDR, X3M_TAA_SHARPEN='1'))]
+CASES += [case(f'bench-{size}-taa-sharpen-on', 'bench', jitter=True, taa=True, bench=size, hdr_env=dict(X3M_TAA_SHARPEN='1')) for size in BENCH_SIZES]
+CASES += [case(f'bench-{size}-hdr-tonemap-taa-sharpen-on', 'bench', jitter=True, taa=True, bench=size, hdr=True, hdr_env=dict(AGX, X3M_MOTION_FRAME_LOG='4', X3M_TAA_SHARPEN='1')) for size in BENCH_SIZES]
+SHARPEN_MAX_CODE_ERROR = 1   # GPU rcp/mad against the double-precision reference, plus the 8-bit rounding
 HDR_MODES = ('hdrvalues', 'hdrfault', 'hdrramp', 'hdrexposure', 'hdrtonemapfault')
 # Mip-bias script (motion_output_fixture.cpp run_mipbias): eight frames,
 # capture in frame 5 only (the capture diagnostics restore the bias before
@@ -503,7 +523,7 @@ def validate_ownership(name, variant, enabled, trace):
     return result
 
 
-def validate_bench(name, taa, size, text, trace, hdr=False, tonemap=False):
+def validate_bench(name, taa, size, text, trace, hdr=False, tonemap=False, sharpen=0.0):
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: bench did not pass'
     mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
@@ -519,9 +539,10 @@ def validate_bench(name, taa, size, text, trace, hdr=False, tonemap=False):
     assert frames[0]['taa'] == str(int(taa)) and frames[0]['taa_resolved'] == str(int(taa)), (name, frames[0])
     if taa:
         assert frames[0]['taa_attempted'] == '1' and frames[0]['taa_skip'] == '0' and frames[0]['taa_result'] == '00000000', (name, frames[0])
-        assert frames[0]['taa_hdr'] == str(int(hdr)) and frames[0]['taa_copy'] == ('00000001' if hdr else '00000000'), (name, frames[0])  # stage 3: no copy-back on the HDR path
+        assert frames[0]['taa_hdr'] == str(int(hdr)) and frames[0]['taa_copy'] == ('00000001' if hdr or sharpen else '00000000'), (name, frames[0])  # stage 3: no copy-back on the HDR path; the sharpen draws in its place
+        assert frames[0]['taa_sharpen'] == str(int(sharpen > 0)), (name, frames[0])
     assert not any(l.startswith(('motion_output_taa_failed', 'motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed')) for l in trace.splitlines()), name
-    result = {'mode': 'bench', 'taa': taa, 'hdr': hdr, 'width': int(width), 'height': int(height), 'frames_timed': int(summary['frames']),
+    result = {'mode': 'bench', 'taa': taa, 'hdr': hdr, 'sharpen': sharpen, 'width': int(width), 'height': int(height), 'frames_timed': int(summary['frames']),
               'boundary_ms': {'min': float(summary['min_ms']), 'median': float(summary['median_ms']), 'max': float(summary['max_ms'])},
               'samples_ms': samples, 'timing': summary['timing']}
     hdr_frames = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('hdr_frame ')}
@@ -530,7 +551,8 @@ def validate_bench(name, taa, size, text, trace, hdr=False, tonemap=False):
         assert 0 in hdr_frames and (hdr_frames[0]['redirected'], hdr_frames[0]['end'], hdr_frames[0]['unwind'], hdr_frames[0]['writeback_source']) == ('1', 'bloom_copy', '0', 'shader'), (name, hdr_frames.get(0))
         assert hdr_frames[0]['target'] == f'{width}x{height}' and int(hdr_frames[0]['target_bytes']) == int(width) * int(height) * 8, (name, hdr_frames[0])
         result['hdr_frame0'] = {k: hdr_frames[0][k] for k in ('end', 'writebacks', 'flushes', 'writeback_source', 'target', 'target_bytes', 'redirect_us', 'writeback_us', 'writeback_draw_us',
-                                                                'tonemap', 'exposure', 'meter', 'readback', 'meter_us', 'readback_us', 'chain_bytes')}
+                                                                'tonemap', 'exposure', 'meter', 'readback', 'meter_us', 'readback_us', 'chain_bytes', 'sharpen', 'sharpened')}
+        assert hdr_frames[0]['sharpened'] == str(int(sharpen > 0)) and hdr_frames[0]['sharpen'] == ('ok' if sharpen > 0 else 'off'), (name, hdr_frames[0])
         result['target_bytes'] = int(hdr_frames[0]['target_bytes'])
         result['tonemap'] = tonemap
         assert hdr_frames[0]['tonemap'] == ('agx' if tonemap else 'identity'), (name, hdr_frames[0])
@@ -584,7 +606,7 @@ def mip_bias_text(mip_bias):
     return '%g' % float(mip_bias or 0)
 
 
-def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None):
+def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None, sharpen=0.0):
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
     assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
@@ -599,7 +621,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
                          'jitter_samples': str(JITTER_SAMPLES), 'taa': str(int(taa)), 'bench': '0', 'width': '64', 'height': '64',
                          'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode, 'camera': str(int(camera)), 'sentinel': sentinel_mode,
                          'envmap': '0', 'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': str(int(hdr)), 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
-                         'mipbias': '0', 'mip_bias': mip_bias_text(mip_bias if enabled else None)}, (name, mode_line)
+                         'mipbias': '0', 'mip_bias': mip_bias_text(mip_bias if enabled else None), 'sharpen': f'{sharpen:g}'}, (name, mode_line)
     # The camera script: the 31-degree jump at frame 7 is a cut unless the
     # switch is off; strict mode without a camera skips every frame.
     strict_skip = sentinel == '2' and not camera
@@ -624,6 +646,10 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     agx = any(l.startswith('hdr_tonemap ') and fields(l).get('tonemap') == '1' for l in trace.splitlines())
     if agx:
         expected_checks -= 24
+    # Post-resolve sharpen: the bit-identical check of the frames without
+    # history is waived (the display image is sharpened on every frame).
+    if taa and sharpen:
+        expected_checks -= 12 - len(history_frames) if live else 12
     assert int(terminal['checks']) == expected_checks, (name, terminal, expected_checks)
     restorations = 39 + (12 if taa else 0)
     assert int(terminal['restorations']) == restorations and int(terminal['frames']) == 12, (name, terminal)
@@ -665,7 +691,8 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         history = {f for f, t in taa_lines.items() if t['history'] == '1'}
         cuts = {f for f, t in taa_lines.items() if t['cut'] == '1'}
         assert history == (history_frames if live else set()) and cuts == ((SEAM_TAA_CUTS | camera_cuts) if live else set()), (name, history, cuts)
-        assert all(t['changed'] == '0' for f, t in taa_lines.items() if f not in history), (name, 'no-history frame changed the color')
+        if not sharpen:  # the sharpen changes the presented image on every frame (the fixture waives the check; the runner compares against the reference)
+            assert all(t['changed'] == '0' for f, t in taa_lines.items() if f not in history), (name, 'no-history frame changed the color')
         assert (terminal['taa'], terminal['taa_frames'], terminal['taa_history_frames'], terminal['taa_reference_frames'], terminal['taa_skipped_frames']) == \
                ('1', '12', str(len(history)), str(12 - skipped) if live else '0', str(skipped)), (name, terminal)
         # The fixture's decision per frame: policy 2 exactly on the frames with a previous view
@@ -748,8 +775,10 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     if taa:
         # One lazy initialization holding one device reference (the resolve
         # shader); after Reset only that reference remains until the next run.
-        assert [t['initialize'] for t in taa_lines_log] == ['00000000'] and taa_lines_log[0]['references'] == '1', (name, taa_lines_log)
-        assert 'generation=2 taa_references=1' in trace, name
+        # The pass holds one device reference per created program: the resolve, plus the sharpen program with the switch on.
+        taa_references = '2' if sharpen else '1'
+        assert [t['initialize'] for t in taa_lines_log] == ['00000000'] and taa_lines_log[0]['references'] == taa_references, (name, taa_lines_log)
+        assert f'generation=2 taa_references={taa_references}' in trace, name
     else:
         assert not taa_lines_log and not taa_readbacks and not color_readbacks
     assert sum(l.startswith('motion_output_release ') for l in tl) == 1, 'owned objects released before the final device Release'
@@ -817,7 +846,9 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
                 # scene (taa_hdr=1) and no copy-back runs (taa_copy S_FALSE): the
                 # write-back samples the resolved image instead.
                 hdr_live = hdr and hdr_fault is None
-                assert summary['taa_hdr'] == str(int(hdr_live)) and summary['taa_copy'] == ('00000001' if hdr_live else '00000000'), (name, frame, summary)
+                assert summary['taa_hdr'] == str(int(hdr_live)) and summary['taa_copy'] == ('00000001' if hdr_live or sharpen else '00000000'), (name, frame, summary)
+                # Post-resolve sharpen: the display image of every resolved frame is the sharpened one (the pass's draw or the write-back's program).
+                assert summary['taa_sharpen'] == str(int(sharpen > 0)), (name, frame, summary)
             assert int(summary['taa_references']) >= 1, (name, frame, summary)
         else:
             assert (summary['taa_attempted'], summary['taa_resolved'], summary['taa_skip']) == ('0', '0', '1'), (name, frame, summary)
@@ -1499,6 +1530,122 @@ def validate_hdr_taa(name, text, trace, directory, hdr_env):
             'max_code_error': max(v['max'] for v in images.values()), 'mean_code_error': max(v['mean'] for v in images.values())}
 
 
+def rcas_reference(display, width, height, gain):
+    """RCAS of a display-referred float RGB image (rows of (r, g, b) in [0, 1],
+    clamp addressed) as src/temporal/rcas.hlsl computes it, in double: the
+    saturated five-tap cross, the luma noise detector, the guarded peak-range
+    limiter, the single lobe scaled by `gain` (exp2(-stops)) and the clamp to
+    the taps' own min/max."""
+    def tap(x, y):
+        return display[min(max(y, 0), height - 1) * width + min(max(x, 0), width - 1)]
+    out = []
+    for y in range(height):
+        for x in range(width):
+            taps = [tuple(min(max(c, 0.0), 1.0) for c in t) for t in (tap(x, y - 1), tap(x - 1, y), tap(x, y), tap(x + 1, y), tap(x, y + 1))]
+            b, d, e, f, h = taps
+            lumas = [0.5 * t[0] + t[1] + 0.5 * t[2] for t in taps]
+            nz = min(max(abs(0.25 * (lumas[0] + lumas[1] + lumas[3] + lumas[4]) - lumas[2]) / max(max(lumas) - min(lumas), 1.0 / 256.0), 0.0), 1.0)
+            nz = 1.0 - 0.5 * nz
+            lobe_rgb = []
+            for c in range(3):
+                mn4, mx4 = min(b[c], d[c], f[c], h[c]), max(b[c], d[c], f[c], h[c])
+                hit_min = mn4 / max(4.0 * mx4, 1.0 / 4096.0)
+                hit_max = (1.0 - mx4) / min(4.0 * mn4 - 4.0, -1.0 / 4096.0)
+                lobe_rgb.append(max(-hit_min, hit_max))
+            lobe = max(-0.1875, min(max(lobe_rgb), 0.0)) * gain * nz
+            pix = []
+            for c in range(3):
+                v = ((b[c] + d[c] + f[c] + h[c]) * lobe + e[c]) / (4.0 * lobe + 1.0)
+                pix.append(min(max(v, min(b[c], d[c], f[c], h[c], e[c])), max(b[c], d[c], f[c], h[c], e[c])))
+            out.append(tuple(pix))
+    return out
+
+
+def sharpen_gain(sharpen):
+    """X3M_TAA_SHARPEN -> the RCAS gain (sharpen.h: stops = 2 * (1 - s), gain = exp2(-stops))."""
+    return 2.0 ** (-2.0 * (1.0 - sharpen))
+
+
+def neighbourhood_bounds(codes, width, height):
+    """Per pixel and channel the min/max 8-bit code of the clamp-addressed 3x3 neighbourhood."""
+    bounds = []
+    for y in range(height):
+        for x in range(width):
+            lo, hi = [255] * 3, [0] * 3
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    t = codes[min(max(y + dy, 0), height - 1) * width + min(max(x + dx, 0), width - 1)]
+                    for c in range(3):
+                        lo[c] = min(lo[c], t[c]); hi[c] = max(hi[c], t[c])
+            bounds.append((tuple(lo), tuple(hi)))
+    return bounds
+
+
+def validate_sharpen(name, text, trace, directory, hdr_env, hdr, sharpen, width=64, height=64):
+    """Post-resolve sharpen, frames 1-8 of the seam script: the presented
+    8-bit frame equals the Python RCAS reference of the display-referred
+    resolved image within one code per channel (8-bit route: the resolved
+    FP16 values themselves; HDR identity: their clamp; HDR AgX: the tonemap
+    at the EV the frame consumed, i.e. sharpened after the tonemap), lies
+    inside the 3x3 min/max of the unsharpened display codes, carries alpha,
+    and differs from the unsharpened image somewhere. With the tonemap the
+    other order, AgX(RCAS(resolved)), is evaluated too and must be told
+    apart by the presented frame (pixels differing by more than one code)."""
+    params = hdr_env_params(hdr_env)
+    tl = trace.splitlines()
+    frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
+    taa_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_taa_readback ')}
+    s2 = hdr_stage2_lines(trace) if hdr else None
+    gain = sharpen_gain(sharpen)
+    images, worst_alt = {}, 0
+    for frame in range(1, 9):
+        f = frames[frame]
+        assert f['taa_resolved'] == '1' and f['taa_sharpen'] == '1' and f['taa_hdr'] == str(int(hdr)), (name, frame, f)
+        ev = 0.0
+        if hdr:
+            h = s2['frames'][frame]
+            ev = float(h['ev'])
+            assert h['sharpened'] == '1' and h['sharpen'] == 'ok' and h['sharpen_fallback'] == '0' and h['writeback_source'] == 'shader' and h['unwind'] == '0', (name, frame, h)
+            assert h['tonemapped'] == str(int(params['agx'])), (name, frame, h)
+        resolved = read_half_image(directory / 'x3-modern-captures' / taa_readbacks[frame]['file'], width, height)
+        display = [tuple(c / 255.0 for c in reference_codes((r, g, b), ev, params)) for r, g, b, a in resolved]
+        expected = rcas_reference(display, width, height, gain)
+        unsharpened = [tuple(int(round(255.0 * c)) for c in px) for px in display]
+        bounds = neighbourhood_bounds(unsharpened, width, height)
+        presented = read_presented(directory, frame, width, height)
+        errors, alpha, outside, changed = [], [], 0, 0
+        for i, px in enumerate(expected):
+            pr, pg, pb, pa = bgra8(presented, i)
+            errors.append(max(abs(p - 255.0 * e) for p, e in zip((pr, pg, pb), px)))
+            alpha.append(abs(pa - round(255.0 * min(max(resolved[i][3], 0.0), 1.0))))
+            lo, hi = bounds[i]
+            if any(p < l or p > h for p, l, h in zip((pr, pg, pb), lo, hi)):
+                outside += 1
+            if (pr, pg, pb) != unsharpened[i]:
+                changed += 1
+        entry = {'max_code_error': max(errors), 'mean_code_error': sum(errors) / len(errors), 'alpha_max': max(alpha), 'outside_3x3': outside, 'changed': changed}
+        if params['agx']:
+            # The other order: sharpen the engine-space image, then tonemap it.
+            alternative = rcas_reference([tuple(min(max(c, 0.0), 1.0) for c in (r, g, b)) for r, g, b, a in resolved], width, height, gain)
+            distinct = 0
+            for i, px in enumerate(alternative):
+                pr, pg, pb, _ = bgra8(presented, i)
+                if max(abs(p - r) for p, r in zip((pr, pg, pb), reference_codes(px, ev, params))) > 1.0:
+                    distinct += 1
+            entry['pixels_distinct_from_sharpen_before_tonemap'] = distinct
+            worst_alt = max(worst_alt, distinct)
+        images[frame] = entry
+        assert entry['max_code_error'] <= SHARPEN_MAX_CODE_ERROR + 0.5 and entry['alpha_max'] <= 1 and entry['outside_3x3'] == 0 and entry['changed'] > 0, (name, frame, entry)
+    if params['agx']:
+        assert worst_alt > 0, (name, 'the presented frames cannot be told from sharpen-before-tonemap')
+    lines = [fields(l) for l in text.splitlines() if l.startswith('TAA_SHARPEN ')]
+    assert len(lines) >= 8 and all(int(t['mismatches']) == 0 and float(t['sharpen']) == sharpen for t in lines), (name, lines[:3])
+    return {'sharpen': sharpen, 'gain': gain, 'frames': sorted(images), 'images': images,
+            'max_code_error': max(v['max_code_error'] for v in images.values()), 'mean_code_error': max(v['mean_code_error'] for v in images.values()),
+            'changed_fraction': sum(v['changed'] for v in images.values()) / (8.0 * width * height),
+            'history_frames': [f for f in range(1, 9) if frames[f]['taa_history'] == '1']}
+
+
 def validate_identity_k(name, trace, hdr_env):
     """Stage 3 with the identity write-back (no exposure model): the DLL must
     derive k = 0, the unweighted resolve, on every frame, and the frame line
@@ -1703,8 +1850,8 @@ def validate_envmap(name, text, trace, directory, hdr=False):
             'color_hashes': {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}, 'hdr': hdr_summary}
 
 
-def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None):
-    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias)
+def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None, sharpen=0.0):
+    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen)
     result['variant'] = variant
     result['ownership'] = validate_ownership(name, variant, enabled, trace)
     if mip_bias is not None:
@@ -1754,7 +1901,7 @@ def validate_mipbias(name, mode, lazy, mip_bias, text, trace, directory):
     assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '1', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
                          'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0',
                          'hook': '0', 'state_shadow': '1', 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
-                         'mipbias': '1', 'mip_bias': mip_bias_text(mip_bias)}, (name, mode_line)
+                         'mipbias': '1', 'mip_bias': mip_bias_text(mip_bias), 'sharpen': '0'}, (name, mode_line)
     assert int(terminal['frames']) == MIPBIAS_FRAMES and text.count('RESET PASS') == 1, (name, terminal)
     restores = [fields(l) for l in lines if l.startswith('RESTORE ')]
     assert len(restores) == MIPBIAS_FRAMES and all(r['differences'] == '0' and r['label'] == 'fill' for r in restores), (name, restores)
@@ -1852,7 +1999,7 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True):
     assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '0', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
                          'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '1', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0',
                          'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
-                         'mipbias': '0', 'mip_bias': '0'}, (name, mode_line)
+                         'mipbias': '0', 'mip_bias': '0', 'sharpen': '0'}, (name, mode_line)
     # Per frame: the fill and the burst restoration comparisons, the coverage
     # oracle (both DLLs), the COLORWRITEENABLE1 read-back between routed draws
     # and, seam, the motion/depth oracle.
@@ -2083,8 +2230,9 @@ def main():
             traces = list((directory / 'x3-modern-captures').glob('session-*.log'))
             assert completed.returncode == 0 and len(traces) == 1, f'{name}: exit {completed.returncode}, traces {len(traces)}'
             trace = traces[0].read_text()
+            sharpen = float(hdr_env.get('X3M_TAA_SHARPEN', '0'))
             if bench:
-                case = validate_bench(name, taa, bench, text, trace, hdr, tonemap=bool(hdr_env))
+                case = validate_bench(name, taa, bench, text, trace, hdr, tonemap=hdr_env.get('X3M_HDR_TONEMAP') == 'agx', sharpen=sharpen)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]))
                 result['bench'][name] = case
                 save()
@@ -2136,8 +2284,10 @@ def main():
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} set_rt={case["set_rt_per_frame"]}', flush=True)
                 continue
-            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias)
-            if hdr and taa and hdr_env and hdr_fault is None and mode == 'seam':
+            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen)
+            if sharpen > 0:
+                case['sharpen'] = validate_sharpen(name, text, trace, directory, hdr_env, hdr, sharpen)
+            elif hdr and taa and hdr_env and hdr_fault is None and mode == 'seam':
                 case['hdr_taa'] = validate_hdr_taa(name, text, trace, directory, hdr_env)
             elif hdr and taa and hdr_fault is None and (hdr_env or {}).get('X3M_HDR_TONEMAP', 'identity') == 'identity':
                 case['hdr_identity_k'] = validate_identity_k(name, trace, hdr_env)
@@ -2160,6 +2310,34 @@ def main():
             off, on = result['bench'][f'bench-{size}-taa-off']['boundary_ms'], result['bench'][f'bench-{size}-taa-on']['boundary_ms']
             result['bench'][f'resolve-{size}'] = {'median_ms': on['median'] - off['median'], 'min_ms': on['min'] - off['min'],
                                                   'boundary_off_median_ms': off['median'], 'boundary_on_median_ms': on['median']}
+            # Sharpen cost: the sharpened boundary minus the unsharpened one, per route (8-bit: the RCAS draw replaces the copy-back; HDR: five AgX evaluations per pixel replace one).
+            for label, base_name, sharp_name in (('sharpen', f'bench-{size}-taa-on', f'bench-{size}-taa-sharpen-on'),
+                                                 ('sharpen-hdr-tonemap', f'bench-{size}-hdr-tonemap-taa-on', f'bench-{size}-hdr-tonemap-taa-sharpen-on')):
+                base, sharp = result['bench'][base_name]['boundary_ms'], result['bench'][sharp_name]['boundary_ms']
+                result['bench'][f'{label}-{size}'] = {'median_ms': sharp['median'] - base['median'], 'min_ms': sharp['min'] - base['min'],
+                                                      'boundary_unsharpened_median_ms': base['median'], 'boundary_sharpened_median_ms': sharp['median']}
+        # Post-resolve sharpen twins: the resolved FP16 history files (frames
+        # 1-8, X3M_TAA_DEBUG) equal the unsharpened twin's byte for byte in
+        # every sharpen run; off is byte-identical in the presented frames and
+        # colour hashes too, on differs in the presented frames.
+        def history_files(case_name):
+            directory = ROOT / result['cases'][case_name]['directory'] / 'x3-modern-captures'
+            files = {p.name: sha(p) for p in sorted(directory.glob('taa_*.rgba16f'))}
+            assert len(files) == 8, (case_name, sorted(files))
+            return files
+        result['sharpen'] = {}
+        for sharpen_name, twin in SHARPEN_TWINS.items():
+            a, b = result['cases'][sharpen_name], result['cases'][twin]
+            assert history_files(sharpen_name) == history_files(twin), f'{sharpen_name}: resolved FP16 history differs from {twin}: the sharpen reached the history'
+            presented = compare_presented(sharpen_name, twin, ROOT / a['directory'], ROOT / b['directory'], range(12))
+            entry = {'twin': twin, 'history_identical': True, 'presented': presented}
+            if sharpen_name.endswith('-off'):
+                assert presented['identical'] and a['color_hashes'] == b['color_hashes'], f'{sharpen_name}: sharpen 0 is not byte-identical to {twin}: {presented}'
+                assert (a['checks'], a['restorations']) == (b['checks'], b['restorations']), (sharpen_name, twin)
+            else:
+                assert not presented['identical'] and presented['differing_channels_bgra'][3] == 0, f'{sharpen_name}: presented frames equal {twin} (nothing sharpened) or alpha differs: {presented}'
+                entry['reference'] = {k: a['sharpen'][k] for k in ('sharpen', 'gain', 'max_code_error', 'mean_code_error', 'changed_fraction')}
+            result['sharpen'][sharpen_name] = entry
         # Color is bit-identical with the route off and on in every environment,
         # and the wrapper/depth/admission environments change nothing either.
         # With jitter on the raster moves: the colour must differ from the

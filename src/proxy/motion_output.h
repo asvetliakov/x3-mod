@@ -117,6 +117,9 @@ struct MotionHdrCounters {
     bool tonemap = false, fallback = false, stepped = false;
     HRESULT tonemap_draw = S_FALSE, meter = S_FALSE, readback = S_FALSE;
     std::uint64_t meter_ticks = 0, readback_ticks = 0;
+    // Post-resolve sharpen: the last write-back's RCAS verdict and whether a
+    // sharpened draw fell back to the unsharpened program this frame.
+    bool sharpened = false, sharpen_fallback = false;
 };
 struct MotionTaaCounters {
     bool attempted = false;      // The main-target bloom copy was recognized this frame.
@@ -135,6 +138,11 @@ struct MotionTaaCounters {
     // of the luminance weighting (0 on the 8-bit path).
     bool hdr = false;
     float k = 0.f;
+    // Post-resolve sharpen (X3M_TAA_SHARPEN): the display image of this frame
+    // is RCAS of the resolved image (8-bit path: the pass drew it into the
+    // main target instead of the copy-back; HDR path: the write-back's
+    // sharpened program).
+    bool sharpened = false;
 };
 struct MotionFrameCounters {
     std::uint32_t draws = 0, routed = 0, matched = 0, gates[7]{};
@@ -329,6 +337,13 @@ public:
     void set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried) noexcept;
     bool texture_levels_wanted(DWORD stage, IDirect3DBaseTexture9* texture) const noexcept;
     void set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type, DWORD value) noexcept;
+    // X3M_TAA_SHARPEN in [0, 1]: post-resolve RCAS of the display image
+    // (docs/architecture/temporal-integration.md "Post-resolve sharpen"); 0
+    // (default) leaves both routes bit-identical to the unsharpened ones. On
+    // the 8-bit route the pass draws it in place of the copy-back; on the HDR
+    // route the write-back's sharpened program draws it (configure_hdr's
+    // HdrConfig::sharpen carries the same value to the pass).
+    void configure_taa_sharpen(float sharpness) noexcept { taa_sharpen_ = sharpness; }
     bool hdr_redirected() const noexcept { return hdr_state_ != HdrState::Off; }
     // BEFORE the application's SetRenderTarget: the surface to bind natively.
     // Index 0 while redirected: the application's main surface maps to the FP16
@@ -658,6 +673,7 @@ private:
     bool hdr_tonemap_disabled_logged_ = false;
     float hdr_taa_k_ = 0.f;
     float taa_k_override_ = -1.f;             // X3M_TAA_K (negative: derived)
+    float taa_sharpen_ = 0.f;                 // X3M_TAA_SHARPEN (0: off)
     // The pass's resolved FP16 output (borrowed: valid until the pass's next
     // run, invalidate, before_reset or shutdown), published by the stage-3
     // resolve for the write-back of the same scene end and cleared with it.

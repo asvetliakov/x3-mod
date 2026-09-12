@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compile our original ps_3_0 fragments with a local native D3DX compiler.
 
-Seven authored programs are embedded: the motion fragment
+Nine authored programs are embedded: the motion fragment
 (src/temporal/rigid_motion_ps.hlsl -> src/renderer/rigid_motion_pixel_program_inc.h),
 the current-depth fragment
 (src/temporal/current_depth_ps.hlsl -> src/renderer/current_depth_pixel_program_inc.h),
@@ -11,8 +11,13 @@ the HDR scene path's stage-1 identity write-back (src/temporal/hdr_writeback_ps.
 -> src/renderer/hdr_writeback_program_inc.h) and its stage-2 AgX tonemap
 (src/temporal/agx.hlsl -> src/renderer/hdr_tonemap_program_inc.h) and exposure
 meter chain (src/temporal/hdr_meter_level0_ps.hlsl and hdr_meter_reduce_ps.hlsl
--> src/renderer/hdr_meter_level0_program_inc.h, hdr_meter_reduce_program_inc.h).
-`--shader` selects one (default: all). --check recompiles and compares the
+-> src/renderer/hdr_meter_level0_program_inc.h, hdr_meter_reduce_program_inc.h),
+and the post-resolve sharpen: the RCAS program of the 8-bit route and the HDR
+identity write-back (src/temporal/taa_sharpen_ps.hlsl -> src/renderer/
+taa_sharpen_program_inc.h) and the AgX-then-RCAS write-back
+(src/temporal/agx_sharpen_ps.hlsl -> src/renderer/hdr_tonemap_sharpen_program_inc.h);
+both include src/temporal/rcas.hlsl, which this tool expands textually (the
+provenance lists every include's hash). `--shader` selects one (default: all). --check recompiles and compares the
 checked-in artifacts without changing them. The compiler DLL is an external
 local prerequisite, never redistributed. Only our authored shaders' compiled
 programs and deterministic provenance are retained. No D3D device is created;
@@ -23,6 +28,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import struct
 import subprocess
 import tempfile
@@ -54,7 +60,39 @@ SHADERS = {
     'hdr_meter_reduce': dict(source=ROOT / 'src/temporal/hdr_meter_reduce_ps.hlsl',
                              header=ROOT / 'src/renderer/hdr_meter_reduce_program_inc.h',
                              provenance=ROOT / 'verification/results/hdr-meter-reduce-program.json'),
+    # Post-resolve sharpen (RCAS): the 8-bit route / identity write-back program
+    # and the AgX-then-sharpen write-back; both include rcas.hlsl textually.
+    'taa_sharpen': dict(source=ROOT / 'src/temporal/taa_sharpen_ps.hlsl',
+                        header=ROOT / 'src/renderer/taa_sharpen_program_inc.h',
+                        provenance=ROOT / 'verification/results/taa-sharpen-program.json'),
+    'hdr_tonemap_sharpen': dict(source=ROOT / 'src/temporal/agx_sharpen_ps.hlsl',
+                                header=ROOT / 'src/renderer/hdr_tonemap_sharpen_program_inc.h',
+                                provenance=ROOT / 'verification/results/hdr-tonemap-sharpen-program.json'),
 }
+INCLUDE = re.compile(r'^#include "([^"]+)"\s*$')
+
+
+def expand_includes(path, seen=None):
+    """The source with every `#include "name"` line replaced by that file
+    (relative to the including file, recursively; a cycle is an error).
+    D3DXCompileShader is given no include handler, so the expansion is ours
+    and the fixtures that compile the same sources do the same. Returns the
+    text and the included files in order of first use."""
+    seen = seen or []
+    if path in seen:
+        raise ValueError('include cycle at %s' % path)
+    included = []
+    lines = []
+    for line in path.read_text().splitlines():
+        match = INCLUDE.match(line)
+        if not match:
+            lines.append(line)
+            continue
+        target = (path.parent / match.group(1)).resolve()
+        text, nested = expand_includes(target, seen + [path])
+        included += [f for f in [target] + nested if f not in included]
+        lines.append(text)
+    return '\n'.join(lines) + '\n', included
 
 
 def sha(data):
@@ -84,17 +122,24 @@ def validate(data):
 def compile_one(name, args):
     shader = SHADERS[name]
     source, header, provenance = shader['source'], shader['header'], shader['provenance']
-    inputs = (source, COMPILER_SOURCE, Path(__file__).resolve(), args.d3dx.resolve())
+    expanded, included = expand_includes(source)
+    inputs = (source, COMPILER_SOURCE, Path(__file__).resolve(), args.d3dx.resolve()) + tuple(included)
     before = {path: sha(path.read_bytes()) for path in inputs}
     with tempfile.TemporaryDirectory(prefix='x3-original-motion-') as directory:
         work = Path(directory)
         exe, binary = work / 'compile.exe', work / 'program.bin'
+        # The compiler reads one file: the include-expanded source when the
+        # shader includes anything, the source itself otherwise (bit for bit).
+        compiled = source
+        if included:
+            compiled = work / source.name
+            compiled.write_text(expanded)
         subprocess.run(['i686-w64-mingw32-g++', '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
                         '-msse2', '-mfpmath=sse', '-mstackrealign', '-mincoming-stack-boundary=2',
                         '-static', str(COMPILER_SOURCE), '-o', str(exe)], check=True)
         subprocess.run(['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
                         '--bottle', 'Steam', '--no-update', '--dll', 'd3dx9_37=n',
-                        str(exe), 'Z:' + str(inputs[-1]), 'Z:' + str(source), 'Z:' + str(binary)],
+                        str(exe), 'Z:' + str(inputs[3]), 'Z:' + str(compiled), 'Z:' + str(binary)],
                        check=True, timeout=60, env=dict(os.environ, WINEDLLOVERRIDES='d3dx9_37=n'))
         data = binary.read_bytes()
     if before != {path: sha(path.read_bytes()) for path in inputs}:
@@ -107,7 +152,8 @@ def compile_one(name, args):
     record = dict(schema=1, source=str(source.relative_to(ROOT)), source_sha256=before[source],
                   compiler='native d3dx9_37.dll D3DXCompileShader', compiler_sha256=before[inputs[-1]],
                   entry='main', target='ps_3_0', flags=32768, flags_name='D3DXSHADER_OPTIMIZATION_LEVEL3',
-                  defines=None, includes=None, word_count=len(words), bytecode_sha256=sha(data),
+                  defines=None, includes={str(path.relative_to(ROOT)): before[path] for path in included} or None,
+                  word_count=len(words), bytecode_sha256=sha(data),
                   header_sha256=sha(text.encode()),
                   tool_sources={str(path.relative_to(ROOT)): before[path] for path in inputs[1:3]},
                   copyright_scope='Original authored project shader; no game shader bytes',

@@ -79,13 +79,27 @@ SHA-256 `38562f3a7e2bbb03c6ffd1e746540b062dbf1ec9d184163407d771d5cbfbc1f8`,
 through `tools/manage.py install` (default bottle X3; the Steam bottle keeps
 the stage-2 build `db63e120…`).
 
-- **In worktrees, reviewed next (review 26)**: post-resolve RCAS-style sharpen
-  (`X3M_TAA_SHARPEN`, `--taa-sharpen`; 8-bit path replaces the copy-back draw
-  at no cost, HDR path after AgX +0.8 ms at 5120×1440; MTF50 0.262 → 0.298 c/px
-  at full strength, history never sharpened) and the mip bias
-  (`X3M_TAA_MIP_BIAS`, `--taa-mip-bias`; bias only on mip-mapped filtered
-  stages of routed draws, restored before every unrouted draw; capture now
-  logs MIPMAPLODBIAS/MAXMIPLEVEL).
+- **Merged from the worktrees, reviewed in review 26 (2026-09-12)**:
+  - Post-resolve RCAS-style sharpen
+    ([design](architecture/temporal-integration.md#post-resolve-sharpen-2026-09-12),
+    [record](verification/taa-sharpen.md)): `X3M_TAA_SHARPEN=<0..1>`
+    (`--taa-sharpen`, requires `--taa`) applies RCAS (our HLSL reimplementation
+    of AMD's published FSR 1.0 RCAS, guarded and clamped to the 3×3 min/max)
+    to the display image only — never to the history — on both routes: the
+    8-bit route's copy-back becomes the sharpen draw inside the pass (cost
+    neutral at 5120×1440: 2.252 → 2.238 ms), the HDR write-back tonemaps five
+    taps then sharpens (+0.80 ms at 5120×1440). Off is bit-identical (twin
+    runs byte-equal; the seven existing shader programs kept their hashes).
+    Fixture measurement at 1.0: gradient-energy ratio 1.147, 10–90% rise
+    1.82 → 1.49 px, MTF50 0.262 → 0.298 c/px; GPU output within 0.5 code of
+    the Python reference on both routes, order verified as after-tonemap.
+    Synthetic only; not gameplay-verified.
+  - Mip LOD bias (TAA blur fix, sampler half): `--taa-mip-bias -0.5`
+    (`X3M_TAA_MIP_BIAS`, default off, next to `--taa-k`): the route biases
+    the mip-mapped stages of routed material draws while the jitter is on and
+    restores before every other draw, at the scene end and before Reset;
+    capture now logs `MIPMAPLODBIAS`/`MAXMIPLEVEL`. Fixture evidence in
+    [taa-mip-bias.md](verification/taa-mip-bias.md); not yet seen in game.
 
 ## Checkpoint: TAA tremble fixed, resolve quality pass, loading attribution (2026-09-12, superseded by the section above)
 
@@ -523,12 +537,6 @@ Completed since the evening handoff:
   674/675 (one import error from the in-flight `bottle` module). Bench: HDR
   TAA 1.935 ms vs 8-bit 2.317 ms at 5120×1440. Verdict: go, `--taa-k` unset
   by default; not yet seen in game.
-- **Mip LOD bias (TAA blur fix, sampler half)** — `--taa-mip-bias -0.5`
-  (`X3M_TAA_MIP_BIAS`, default off, next to `--taa-k`): the route biases the
-  mip-mapped stages of routed material draws while the jitter is on and
-  restores before every other draw, at the scene end and before Reset;
-  capture now logs `MIPMAPLODBIAS`/`MAXMIPLEVEL`. Fixture evidence in
-  [taa-mip-bias.md](verification/taa-mip-bias.md); not yet seen in game.
 - **New-bottle loading profile** —
   [loading-profile-bottle-x3.md](reverse-engineering/loading-profile-bottle-x3.md).
   FEX removed the adjacency bottleneck (GenerateAdjacency 69.15 s → 3.13 s per

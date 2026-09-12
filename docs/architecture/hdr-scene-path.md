@@ -920,7 +920,15 @@ Delivered behind the existing switches — `X3M_HDR=1` with `X3M_TAA=1`
 (`tools/manage.py launch --hdr --taa`, both requiring `--motion-output`) —
 with one new diagnostic switch, `X3M_TAA_K` (`--taa-k`). With `X3M_HDR=0`
 the 8-bit route of temporal step 3 is untouched bit for bit; with
-`X3M_TAA=0` stages 1 and 2 are unchanged. The mechanism, the weighting and
+`X3M_TAA=0` stages 1 and 2 are unchanged.
+
+* `X3M_TAA_SHARPEN=<0..1>` (`--taa-sharpen`, requires `--taa`; added after
+  stage 3): the write-back that samples the resolved image runs the RCAS
+  variant of its program — identity+RCAS, or AgX on each of the five taps
+  followed by RCAS, i.e. sharpened after the tonemap — and never touches the
+  published history; 0 or unset keeps the stage-3 programs bit for bit
+  ([post-resolve sharpen](temporal-integration.md#post-resolve-sharpen-2026-09-12),
+  [taa-sharpen.md](../verification/taa-sharpen.md)). The mechanism, the weighting and
 the derivation of `k` are recorded in
 [temporal-integration.md](temporal-integration.md#stage-3-of-the-hdr-scene-path-taa-on-hdr-2026-09-12);
 the numbers in [hdr-scene-path verification](../verification/hdr-scene-path.md)

@@ -53,6 +53,7 @@ def main():
     parser.add_argument('--taa-debug', action='store_true', help='Write the resolved FP16 image and the pre-resolve color in capture frames (requires --taa)')
     parser.add_argument('--taa-k', type=float, default=None, help='Fixed k of the resolve luminance weighting on the FP16 scene, 0 = unweighted (X3M_TAA_K; requires --taa and --hdr; default: derived from the write-back exposure)')
     parser.add_argument('--taa-mip-bias', type=float, default=None, help='D3DSAMP_MIPMAPLODBIAS applied to the mip-mapped sampler stages of routed material draws while the TAA jitter is on, restored before every other draw (X3M_TAA_MIP_BIAS; requires --taa; 0 = off; intended value -0.5 for the 4-sample jitter; default: off)')
+    parser.add_argument('--taa-sharpen', type=float, default=None, help='Post-resolve sharpen of the presented image, 0..1 (X3M_TAA_SHARPEN; requires --taa): robust contrast-adaptive sharpening of the resolved image only, never of the history; 1 is the strongest setting, 0.5 one stop softer; unset or 0 leaves the output bit-identical to the unsharpened route (docs/architecture/temporal-integration.md, "Post-resolve sharpen")')
     parser.add_argument('--taa-sentinel', choices=['auto', '1', '2'], default='auto', help='Depth-sentinel policy of the resolve (requires --taa): auto reprojects unrouted (background) pixels through the live camera at the far plane whenever the engine camera read yields a transform, 1 keeps them current-only, 2 is strict (skips the resolve on frames without a transform)')
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
@@ -102,6 +103,10 @@ def main():
         parser.error('--taa-mip-bias requires --taa.')
     if args.taa_mip_bias is not None and not -8.0 <= args.taa_mip_bias <= 8.0:
         parser.error('--taa-mip-bias must be within [-8, 8].')
+    if args.taa_sharpen is not None and not args.taa:
+        parser.error('--taa-sharpen requires --taa.')
+    if args.taa_sharpen is not None and not 0.0 <= args.taa_sharpen <= 1.0:
+        parser.error('--taa-sharpen must be within [0, 1].')
     if not args.taa and (args.taa_sentinel != 'auto' or args.camera_cut_deg != 20.0 or args.camera_log != 300):
         parser.error('--taa-sentinel, --camera-cut-deg and --camera-log require --taa.')
     if not 0 < args.camera_cut_deg <= 180 or not 1 <= args.camera_log <= 1000000:
@@ -188,6 +193,8 @@ def main():
             env['X3M_TAA_K'] = repr(args.taa_k)
         if args.taa_mip_bias is not None:
             env['X3M_TAA_MIP_BIAS'] = repr(args.taa_mip_bias)
+        if args.taa_sharpen is not None:
+            env['X3M_TAA_SHARPEN'] = repr(args.taa_sharpen)
         env['X3M_TAA_SENTINEL'] = args.taa_sentinel
         env['X3M_CAMERA_CUT_DEG'] = repr(args.camera_cut_deg)
         env['X3M_CAMERA_LOG'] = str(args.camera_log)

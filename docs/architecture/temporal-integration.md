@@ -843,3 +843,79 @@ per frame for the telemetry.
 resolved image sharper without new shimmer; `MAXMIPLEVEL` is now captured
 so a stage with a clamped top level (where the bias buys nothing) can be
 recognized; native Windows is cross-compiled only.
+## Post-resolve sharpen (2026-09-12)
+
+Run 2 of iteration 9 ([iteration-09-run2.md](../verification/iteration-09-run2.md)
+§4) put 87–93% of the stationary softness on the jitter supersampling itself
+(gradient-energy ratio 0.51–0.63, MTF50 0.69 → 0.35 c/px on burst 629) and
+found no knob inside the resolve. The remedy is therefore outside it: a
+robust contrast-adaptive sharpen of the **display image only**, behind
+`X3M_TAA_SHARPEN=<0..1>` (`tools/manage.py launch --taa-sharpen`, requires
+`--taa`). 0 or unset is the pass off and every route is bit-identical to
+before (the sharpen program is not even created); 1 is the strongest
+setting.
+
+**Algorithm** (`src/temporal/rcas.hlsl`, our HLSL reimplementation of the
+RCAS AMD published with FidelityFX Super Resolution 1.0, MIT): the five-tap
+cross around the pixel, a luma noise detector that halves the lobe on pure
+noise, a per-channel peak-range limiter derived from the ring's min/max
+(the least-permissive channel rules, so a ring touching 0 or 1 gets no
+sharpening in that channel), one negative lobe of at most −0.1875 applied to
+the ring and normalised. Sharpness is the published stops parameter:
+`stops = 2 · (1 − s)`, gain `exp2(−stops)` (`s = 1` → gain 1, `0.5` → 0.5,
+`0.25` → 0.354; `src/temporal/sharpen.h`, register `c23`, uploaded once per
+draw). Two additions of ours: every division is guarded (a black or white
+ring gives a zero lobe instead of `0 · ∞`) and the result is clamped to the
+five taps' own min/max, so the output can never ring past its
+neighbourhood — the fixtures check the 3×3 bound, which contains the cross.
+Every tap is saturated first, so a non-finite input becomes the backend's
+`saturate()` of it (0 for NaN and −∞, 1 for +∞ on the verified backend) and
+can neither propagate nor widen the limiter.
+
+**Placement, and why the history never sees it.** The sharpen is a display
+transform: feeding a sharpened image back as history would sharpen it again
+every frame (an unstable accumulation of the residual) and would also break
+the resolve's neighbourhood clip statistics. Both routes therefore sharpen
+*after* the history set is complete and only on the way to the game's 8-bit
+target:
+
+* *8-bit route* (`TemporalPass::run`, `FrameInputs::sharpen`): the resolve
+  writes its FP16 colour history as before; then, inside the same state
+  bracket and scene, RT0 becomes the caller's `color_surface` (the game's
+  RT0, whose contents the resolve already copied into the scratch), the fresh
+  history is bound as `s0` and `taa_sharpen_ps.hlsl` draws RCAS of it with
+  the centre alpha carried. `Output::display_written` tells `MotionOutput`
+  to skip the `StretchRect` copy-back (`taa_copy` stays `S_FALSE`,
+  `taa_sharpen=1` on the frame line). No second capture/apply, no extra
+  copy: the draw replaces the copy. The pass refuses `sharpen > 0` without
+  the program, on the FP16 input path (there is no 8-bit destination in the
+  pass on that path) and outside `[0, 1]`.
+* *HDR route* (`HdrPass::write_back`): the resolve publishes its FP16 history
+  by ping-pong as in stage 3; the write-back that samples it selects the
+  RCAS variant of its program when the source is a resolved TAA image
+  (`hdr_frame … sharpened=1`): `taa_sharpen_ps.hlsl` for the identity
+  write-back, `agx_sharpen_ps.hlsl` for the tonemap. The latter tonemaps
+  each of the five taps through the unchanged `agxTonemap()` of `agx.hlsl`
+  and combines the five display-encoded colours, i.e. the sharpen acts
+  **after AgX, before the 8-bit write**; the fixture tells this order from
+  `AgX(RCAS(resolved))` per pixel. An unresolved scene (failed or absent
+  resolve) is written back unsharpened; a failed sharpened draw with a
+  clean restoration is redrawn unsharpened and counted, three failures
+  disable the sharpen for the device (`sharpen_fallback`), and the
+  programs gate themselves at attach (`caps.sharpen_reason`).
+
+**Spaces.** The game's 8-bit route is display-referred already (gamma
+encoded by the game, copied linearly into the FP16 history), so the taps are
+the game's own code values in `[0, 1]`; the HDR identity write-back sharpens
+the same values; the tonemapped write-back sharpens AgX's display-encoded
+output. No decode or encode happens around the sharpen on any route.
+
+**Cost.** `taa_sharpen` is 418 words (five point taps and ~50 ALU
+instructions); `hdr_tonemap_sharpen` is 1,691 words (five AgX evaluations
+plus RCAS; the AgX program is 414). Numbers per route and size are in
+[taa-sharpen.md](../verification/taa-sharpen.md). Not chosen: sharpening in
+scene-linear space before the tonemap (one AgX evaluation instead of five,
+but it sharpens radiance the sigmoid then compresses unevenly), a separate
+full-screen pass on the 8-bit route (an extra target and copy where the
+copy-back could simply become a draw), and a 3×3 kernel (the cross with the
+min/max clamp already cannot overshoot; the wider support would only cost).
