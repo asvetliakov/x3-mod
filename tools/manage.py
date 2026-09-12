@@ -57,7 +57,7 @@ def main():
     parser.add_argument('--taa-sentinel', choices=['auto', '1', '2'], default='auto', help='Depth-sentinel policy of the resolve (requires --taa): auto reprojects unrouted (background) pixels through the live camera at the far plane whenever the engine camera read yields a transform, 1 keeps them current-only, 2 is strict (skips the resolve on frames without a transform)')
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
-    parser.add_argument('--scene-hook', action='store_true', help='Patch the frame routine\'s compositing callsite (0x004721b1, exact executable only) so the route learns the scene end from the engine and, with --taa, resolves there before the glow pass instead of at the bloom copy (X3M_SCENE_HOOK=1; requires --motion-output; default off until a gameplay run confirms it)')
+    parser.add_argument('--scene-hook', nargs='?', const='on', default=None, choices=['on', 'off'], help='Engine scene-end hook (X3M_SCENE_HOOK): patch the frame routine\'s compositing callsite (0x004721b1, exact executable and bytes only, otherwise it fails closed to the bloom-copy/selector boundary) so the route learns the scene end from the engine and, with --taa, resolves there before the glow pass. Default on with --motion-output since review 26 (iteration 10: 214/214 agreement); "--scene-hook" alone means on; "--scene-hook off" keeps the copy/selector boundary')
     parser.add_argument('--hdr', action='store_true', help='FP16 HDR scene path (X3M_HDR=1; requires --motion-output): the scene renders into an owned A16B16G16R16F target bound as RT0 at the latching Clear and is written back into the game\'s 8-bit main target at the scene end (--scene-hook, else the bloom copy, else EndScene/Present); fails closed on the capability gate and self test. Without --hdr-tonemap the write-back is the stage-1 identity copy and presented frames equal the non-HDR frames to within one 8-bit code (docs/architecture/hdr-scene-path.md, "Stage 1 implementation")')
     parser.add_argument('--hdr-tonemap', action='store_true', help='Stage 2 (X3M_HDR_TONEMAP=agx; requires --hdr): the write-back is the AgX tonemap of the FP16 scene (decode, clamp, exposure, look; alpha carried), auto exposure metered by the log-luminance reduction chain over the FP16 target and adapted on the host (tau 0.4 s up / 1.2 s down); the presented image is still LDR to the game\'s bloom and GUI, and the decode of a gamma-space scene is a documented approximation ("Stage 2 implementation"); default off: identity write-back')
     parser.add_argument('--hdr-look', choices=['none', 'golden', 'punchy'], default='none', help='AgX look (X3M_HDR_LOOK; requires --hdr-tonemap; default none)')
@@ -113,7 +113,7 @@ def main():
         parser.error('--camera-cut-deg must be in (0, 180] and --camera-log in [1, 1000000].')
     if args.motion_rt_mode != 'perdraw' and not args.motion_output:
         parser.error('--motion-rt-mode requires --motion-output.')
-    if args.scene_hook and not args.motion_output:
+    if args.scene_hook == 'on' and not args.motion_output:
         parser.error('--scene-hook requires --motion-output.')
     if args.hdr and not args.motion_output:
         parser.error('--hdr requires --motion-output.')
@@ -199,7 +199,7 @@ def main():
         env['X3M_CAMERA_CUT_DEG'] = repr(args.camera_cut_deg)
         env['X3M_CAMERA_LOG'] = str(args.camera_log)
         env['X3M_MOTION_RT_MODE'] = args.motion_rt_mode
-        env['X3M_SCENE_HOOK'] = '1' if args.scene_hook else '0'
+        env['X3M_SCENE_HOOK'] = '0' if args.scene_hook == 'off' or not args.motion_output else '1'
         env['X3M_HDR'] = '1' if args.hdr else '0'
         env['X3M_HDR_TONEMAP'] = 'agx' if args.hdr_tonemap else 'identity'
         env['X3M_HDR_LOOK'] = args.hdr_look

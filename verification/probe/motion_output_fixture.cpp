@@ -44,7 +44,8 @@
 // restored bytes, one signal per call before the compositor, ESI/EDI/EBX/EBP
 // across the trampoline, and that the resolve at the hook equals the reference
 // resolve (and the copy path's output) in glow-on frames and still runs in
-// glow-off frames; with X3M_SCENE_HOOK=0 the same script runs unpatched.
+// glow-off frames; with X3M_SCENE_HOOK=0 the same script runs unpatched, and
+// with the switch unset (the default: on with the route) it patches as with 1.
 // X3M_STATE_SHADOW=0 runs any script with the route's render-state shadow off.
 // X3M_HDR=1 (stage 1 of the FP16 HDR scene path) runs any script with the
 // route's FP16 redirect on: the presented frames must equal the run without it
@@ -1333,7 +1334,8 @@ struct Fixture {
     void run_hook() {
         require(enabled && seam && taa && hook_install && hook_shutdown && hook_signals && hook_status, "hook needs the seam, TAA and the scene-hook exports");
         hook_create();
-        char setting[8]{}; const bool want = GetEnvironmentVariableA("X3M_SCENE_HOOK", setting, sizeof setting) == 1 && setting[0] == '1';
+        // The DLL's rule (scene_hook::wanted): "0" off, "1" on, unset on with the route (this script runs with X3M_MOTION_OUTPUT=1).
+        char setting[8]{}; const bool want = !(GetEnvironmentVariableA("X3M_SCENE_HOOK", setting, sizeof setting) == 1 && setting[0] == '0');
         auto compositor = reinterpret_cast<void*>(&fixture_compositor);
         require(hook_install(hook_site_other, compositor) == 0 && !std::strcmp(hook_status(), "target_mismatch"), "install refused on a CALL to another target");
         require(hook_install(hook_site_plain, compositor) == 0 && !std::strcmp(hook_status(), "callsite_mismatch"), "install refused on a site that is not a CALL");

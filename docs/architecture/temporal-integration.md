@@ -17,10 +17,13 @@ draws overlays. The selector recognizes that copy as `AwaitCopy`
 content survives until the frame's final depth-only Clear.
 
 The resolve runs at that copy point, before the application's `StretchRect`
-— or, since 2026-09-12 with `X3M_SCENE_HOOK=1`, at the engine's scene-end
-callsite just before the compositor is called, which precedes the same copy
-and exists whether or not glow is enabled (see "Resolve placement with the
-engine hook" under step 3):
+— or, since 2026-09-12 with the engine scene-end hook (`X3M_SCENE_HOOK`,
+on by default with the route since review 26; `0` turns it off), at the
+engine's scene-end callsite just before the compositor is called, which
+precedes the same copy and exists whether or not glow is enabled (see
+"Resolve placement with the engine hook" under step 3). The copy point stays
+the fallback whenever the patch is absent or refused (a differing executable
+or differing bytes at the site fail closed):
 
 ```text
 main RT (8-bit)  --StretchRect-->  FP16 scratch (current color)
@@ -322,8 +325,10 @@ full-rect `StretchRect` through the native slot; the application's copy then
 proceeds on the resolved image. Failure leaves the main target untouched and
 invalidates the history.
 
-**Resolve placement with the engine hook (2026-09-12).** With
-`X3M_SCENE_HOOK=1` the primary resolve point is the engine scene-end signal
+**Resolve placement with the engine hook (2026-09-12; the default since
+review 26).** With the hook active (`X3M_SCENE_HOOK` unset or `1` while
+`X3M_MOTION_OUTPUT=1`; `0` disables it) the primary resolve point is the
+engine scene-end signal
 (`src/proxy/scene_hook.cpp`: the patched `CALL 0x004c4750` at `0x004721b1`,
 [camera-state-and-frame-routine.md](../reverse-engineering/camera-state-and-frame-routine.md#implemented-hook-scene-end--compositing-begin-2026-09-12)),
 delivered to `MotionOutput::scene_end_hook` before the compositor runs and
@@ -902,7 +907,13 @@ target:
   resolve) is written back unsharpened; a failed sharpened draw with a
   clean restoration is redrawn unsharpened and counted, three failures
   disable the sharpen for the device (`sharpen_fallback`), and the
-  programs gate themselves at attach (`caps.sharpen_reason`).
+  programs gate themselves at attach (`caps.sharpen_reason`). On the 8-bit
+  route (review 26) a failed sharpened draw that did not lose the device
+  keeps the resolve and its published history and falls back to the
+  `StretchRect` copy-back of that frame (`Output::sharpen_result`,
+  `motion_output_sharpen_failed`); three such failures stop requesting the
+  sharpen for the device. Before review 26 the failure failed the whole
+  run, dropping the resolve and the history for a display-only draw.
 
 **Spaces.** The game's 8-bit route is display-referred already (gamma
 encoded by the game, copied linearly into the FP16 history), so the taps are

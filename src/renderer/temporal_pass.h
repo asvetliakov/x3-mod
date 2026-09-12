@@ -90,6 +90,11 @@ struct Output {
     // FrameInputs::sharpen > 0: the pass drew the sharpened display image into
     // FrameInputs::color_surface itself; the caller must not copy back.
     bool display_written = false;
+    // The sharpened draw's result: S_FALSE when not requested, S_OK when it
+    // drew (display_written), otherwise the failure that kept the resolve
+    // (the history set is published regardless) and left the display to the
+    // caller's copy-back; a lost device fails the run instead.
+    HRESULT sharpen_result = S_FALSE;
 };
 struct Diagnostics {
     HRESULT operation = S_OK, restoration = S_OK;

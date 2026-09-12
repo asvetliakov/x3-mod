@@ -2,7 +2,10 @@
 #include <windows.h>
 #include <cstdint>
 
-// Engine scene-end boundary (X3M_SCENE_HOOK=1): a five-byte CALL-rel32 patch of
+// Engine scene-end boundary (X3M_SCENE_HOOK; default on with the route since
+// review 26: unset means on when X3M_MOTION_OUTPUT=1, "1" on, "0" off; the
+// fallback chain stays: bloom-copy StretchRect, then the structural selector,
+// whenever the patch is absent or refused): a five-byte CALL-rel32 patch of
 // the frame routine's compositing callsite 0x004721b1 (`CALL 0x004c4750`,
 // docs/reverse-engineering/camera-state-and-frame-routine.md section 7/8) in
 // the verified X3AP.exe. The trampoline signals the listener ("scene end,
@@ -19,8 +22,9 @@
 // outside DllMain.
 namespace x3m::scene_hook {
 using Listener = void (*)();
-bool initialize(Listener listener); // X3M_SCENE_HOOK=1, SHA-256 + site bytes; idempotent while installed
-bool requested();                    // X3M_SCENE_HOOK=1 was seen by initialize
+bool wanted();                      // the switch as parsed: "1", or unset with X3M_MOTION_OUTPUT=1 ("0" or unset without the route: off)
+bool initialize(Listener listener); // wanted(), SHA-256 + site bytes; idempotent while installed; fails closed otherwise
+bool requested();                    // wanted() was seen by initialize
 bool installed();                    // our bytes own the site (active or awaiting rollback)
 bool active();                       // installed and signalling
 const char* status();

@@ -64,6 +64,12 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
 - **Analyses**: [iteration-10.md](verification/iteration-10.md) (FEX health
   clean, TAA no regression, frame time 24.1 → 8.4 ms route off, 34.2 → 16.9 ms
   route on; hook agrees 214/214, `rs_resyncs` 24 on a latch-only screen);
+  [iteration-11.md](verification/iteration-11.md) (review-25 run 9: attributed
+  route cost 34.4 → 11.9 µs/draw, 12.10 vs 16.91 ms at matched draw counts,
+  hook Agree 162/162 with 0 disagreements and `rs_resyncs` 0, history match
+  99.83 %, gz buffer 14.46 M calls → 175 real reads; per-draw stamps off, so
+  the route's own cost is no longer measurable and the readback row-pair,
+  temporal and depth-agreement checks were unavailable);
   [script-xml-load-stall.md](reverse-engineering/script-xml-load-stall.md)
   (the second save-load stall is a mixed asset phase: per-resource re-opens of
   the catalogue `.dat`, a redundant 22.5 MB memset, 1 KiB inflate chunks with a
@@ -208,8 +214,8 @@ Evidence at this checkpoint (details in the linked documents):
   route's per-draw state queries from an eight-state shadow (native
   `GetRenderState` calls per fixture frame 295 → 144, 423 → 126 in bursts),
   resynchronised on state-block Apply, EndStateBlock and Reset; it also closes
-  the lazy-mode write-mask hole. `X3M_SCENE_HOOK=1` (default off,
-  `--scene-hook`) patches the frame routine's compositing callsite
+  the lazy-mode write-mask hole. `X3M_SCENE_HOOK` (default on with the route
+  since review 26; `--scene-hook off` disables it) patches the frame routine's compositing callsite
   (`0x004721b1`, bytes verified, restored at the last device release) so the
   route learns the scene end from the engine and the TAA resolve runs there
   before the glow pass; the bloom `StretchRect` becomes the fallback. Fixture:
@@ -588,7 +594,8 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
    `gz_buffer requested=1 enabled=1 imports=1` plus `gz_buffer_file` lines.
 3. **Run 3 — fast loading + engine reads**: `python3 tools/manage.py launch
    --direct --ownership --object-trace --object-lifetime --motion-output --taa
-   --telemetry --mesh-adjacency fast --gz-buffer --scene-hook`. Compare load
+   --telemetry --mesh-adjacency fast --gz-buffer` (the scene hook is on by
+   default with `--motion-output` since review 26). Compare load
    times with run 1 and the route cost with iteration 10 (`gate_us` needs
    `X3M_TELEMETRY_DRAW=1`, off by default; add it only if the per-draw
    attribution is wanted, it costs QPC per draw).
@@ -614,9 +621,9 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
    functions with `X3ProfileSymbols.java`, then choose between the negative
    lookup cache, adjacency replacement, catalogue handle retention and engine
    patches per [loading orchestration](reverse-engineering/loading-orchestration.md).
-4. Confirm the scene-end hook in gameplay (`--scene-hook` run: the
-   `scene_end_check` and `draws_after_hook` distributions), then make it the
-   default resolve point.
+4. Done in iteration 10 and review 26: the scene-end hook is confirmed in
+   gameplay (214/214 agree, `draws_after_hook` max 0) and is the default
+   resolve point (`--scene-hook off` restores the copy/selector boundary).
 5. HDR stage 3 (TAA on HDR with luminance weighting), stage 4 (radiance
    clamp removal), stage 5 (HDR bloom) per the
    [design](architecture/hdr-scene-path.md); re-measure the 5120×1440 stage-2

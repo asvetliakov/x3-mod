@@ -84,11 +84,20 @@ bool patch(void* site, void* target) {
     state = "active"; return true;
 }
 }
+// X3M_SCENE_HOOK: "1" on, "0" off, unset (or any other value) follows the
+// route: on with X3M_MOTION_OUTPUT=1, off without it (the hook has no consumer
+// then). Parsed on the startup path only.
+bool wanted() {
+    wchar_t setting[4]{};
+    const DWORD length = GetEnvironmentVariableW(L"X3M_SCENE_HOOK", setting, 4);
+    if (length == 1 && setting[0] == L'1') return true;
+    if (length == 1 && setting[0] == L'0') return false;
+    return GetEnvironmentVariableW(L"X3M_MOTION_OUTPUT", setting, 4) == 1 && setting[0] == L'1';
+}
 bool initialize(Listener fn) {
     const DWORD error = GetLastError();
     if (installed_) { SetLastError(error); return active(); }
-    wchar_t setting[4]{};
-    if (GetEnvironmentVariableW(L"X3M_SCENE_HOOK", setting, 4) != 1 || setting[0] != L'1') { state = "disabled"; SetLastError(error); return false; }
+    if (!wanted()) { state = "disabled"; SetLastError(error); return false; }
     requested_ = true;
     if (!object_trace::executable_verified()) { state = "executable_mismatch"; SetLastError(error); return false; }
     unsigned char call[5]{};

@@ -658,7 +658,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // Post-resolve sharpen on the 8-bit route: the pass draws RCAS of
             // its history into the main target in place of the copy-back
             // below (the HDR route sharpens in the write-back instead).
-            in.sharpen = hdr_scene ? 0.f : taa_sharpen_;
+            in.sharpen = hdr_scene || taa_sharpen_failures_ >= sharpen_failure_limit ? 0.f : taa_sharpen_;
             in.current_depth = depth; in.motion = motion;
             in.width = main_.width; in.height = main_.height;
             in.epoch = generation_; // Dimension changes are compared by the pass itself.
@@ -721,6 +721,17 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                     // target itself: no copy-back (taa_copy stays S_FALSE).
                     t.copy = S_FALSE; t.sharpened = true;
                 } else {
+                    if (in.sharpen > 0.f) {
+                        // The sharpened draw failed without losing the device: the
+                        // resolve stands, the copy-back presents it unsharpened;
+                        // repeated failures disable the sharpen for the device.
+                        ++taa_sharpen_failures_;
+                        if (logged_failures_ < failure_log_limit) {
+                            ++logged_failures_;
+                            log("motion_output_sharpen_failed device=%llu frame=%llu result=%08lx failures=%u disabled=%u",
+                                id_, frame_, out.sharpen_result, taa_sharpen_failures_, taa_sharpen_failures_ >= sharpen_failure_limit);
+                        }
+                    }
                     // Point-filtered full-rect copy of the resolved FP16 image back into
                     // the 8-bit main target; StretchRect changes no device state.
                     const std::uint64_t copy_begin = stamp();
@@ -1438,8 +1449,8 @@ void MotionOutput::set_viewport(const D3DVIEWPORT9* viewport) noexcept {
     shadow_.viewport = {true, viewport->X, viewport->Y, viewport->Width, viewport->Height, viewport->MinZ, viewport->MaxZ};
 }
 void MotionOutput::begin_stateblock() noexcept { if (enabled_) shadow_.recording = true; }
-void MotionOutput::end_stateblock() noexcept { if (enabled_) { shadow_.recording = false; resync_shadow(); } }
-void MotionOutput::stateblock_applied() noexcept { if (enabled_ && !shadow_.recording) resync_shadow(); }
+void MotionOutput::end_stateblock() noexcept { if (enabled_) { shadow_.recording = false; ++counters_.sb_resyncs; resync_shadow(); } }
+void MotionOutput::stateblock_applied() noexcept { if (enabled_ && !shadow_.recording) { ++counters_.sb_resyncs; resync_shadow(); } }
 
 void MotionOutput::describe_binding(DWORD index, IDirect3DSurface9* surface) noexcept {
     if (index == 0) {
@@ -2309,11 +2320,14 @@ void MotionOutput::before_present() noexcept {
         else if (hook) check = unsigned(SceneEndCheck::HookOnly);
         else if (copy) check = unsigned(SceneEndCheck::StretchOnly);
         c.scene_end_check = check;
-        if (check == unsigned(SceneEndCheck::Disagree) && logged_failures_ < failure_log_limit) {
-            ++logged_failures_;
-            log("motion_output_scene_hook_disagreement device=%llu frame=%llu installed=%u signals=%lu outside_scene=%lu selector_state=%lu draws_after_hook=%lu bloom_copy_seen=%u hook_scene_end=%u",
+        // Own log budget (iteration 10: a latch-only transition screen, nothing
+        // routed and nothing resolved by either boundary, produced 16 consecutive
+        // disagreements that would otherwise consume the failure log's limit).
+        if (check == unsigned(SceneEndCheck::Disagree) && hook_disagreements_logged_ < failure_log_limit) {
+            ++hook_disagreements_logged_;
+            log("motion_output_scene_hook_disagreement device=%llu frame=%llu installed=%u signals=%lu outside_scene=%lu selector_state=%lu draws_after_hook=%lu bloom_copy_seen=%u hook_scene_end=%u routed=%lu",
                 id_, frame_, scene_hook_installed_, static_cast<unsigned long>(c.hook_signals), static_cast<unsigned long>(c.hook_outside_scene),
-                static_cast<unsigned long>(c.hook_state), static_cast<unsigned long>(c.draws_after_hook), copy, hook);
+                static_cast<unsigned long>(c.hook_state), static_cast<unsigned long>(c.draws_after_hook), copy, hook, static_cast<unsigned long>(c.routed));
         }
     }
     // A frame that did not resolve (menu, rejected before the copy,
@@ -2341,7 +2355,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         log("motion_output_frame device=%llu frame=%llu latched=%u filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u scene_open=%u active_queries=%lu taa_references=%u"
             " camera_valid=%u camera_background_valid=%u camera_reads=%lu camera_policy=%lu camera_reason=%lu camera_cut=%u camera_rotation_deg=%.4f"
             " rt_mode=%s timing=%s set_rt=%lu lazy_flushes=%lu jitter_writes=%lu readbacks=%lu gate_us=%.1f route_draw_us=%.1f set_rt_us=%.1f lazy_flush_us=%.1f jitter_us=%.1f fill_us=%.1f taa_run_us=%.1f taa_capture_us=%.1f taa_copy_color_us=%.1f taa_copy_depth_us=%.1f taa_draw_us=%.1f taa_apply_us=%.1f taa_copy_back_us=%.1f readback_us=%.1f"
-            " state_shadow=%u rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u"
+            " state_shadow=%u rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu sb_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u"
             " mip_bias=%g mip_bias_sets=%lu mip_bias_restores=%lu mip_bias_draws=%lu mip_bias_stages=%04lx mip_bias_reads=%lu mip_bias_game_writes=%lu mip_bias_game_writes_total=%lu mip_bias_failures=%lu mip_bias_biased_now=%04lx",
             id_, frame_, counters_.latched, counters_.filled, counters_.fill_result, counters_.fill_restore,
             static_cast<unsigned long>(counters_.draws), static_cast<unsigned long>(counters_.routed), static_cast<unsigned long>(counters_.matched),
@@ -2364,7 +2378,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             us(c.jitter_ticks), us(c.fill_ticks), us(c.taa_run_ticks), us(c.taa_capture_ticks), us(c.taa_copy_color_ticks),
             us(c.taa_copy_depth_ticks), us(c.taa_draw_ticks), us(c.taa_apply_ticks), us(c.taa_copy_back_ticks), us(c.readback_ticks),
             state_shadow_, static_cast<unsigned long>(c.rs_queries), static_cast<unsigned long>(c.rs_hits), static_cast<unsigned long>(c.rs_gets),
-            static_cast<unsigned long>(c.rs_resyncs), scene_hook_installed_, scene_end_source_name(c.taa.source), static_cast<unsigned long>(c.scene_end_check),
+            static_cast<unsigned long>(c.rs_resyncs), static_cast<unsigned long>(c.sb_resyncs), scene_hook_installed_, scene_end_source_name(c.taa.source), static_cast<unsigned long>(c.scene_end_check),
             static_cast<unsigned long>(c.hook_signals), static_cast<unsigned long>(c.hook_outside_scene), static_cast<unsigned long>(c.hook_state),
             static_cast<unsigned long>(c.draws_after_hook), c.bloom_copy_seen,
             double(mip_bias_), static_cast<unsigned long>(c.mip_bias_sets), static_cast<unsigned long>(c.mip_bias_restores),

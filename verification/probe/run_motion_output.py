@@ -112,7 +112,13 @@ glow-off frames (byte for byte the reference resolve), fall back to the copy
 path when the only signal arrives outside the Scene phase (a logged
 disagreement) and restore the original bytes at shutdown; the same script
 unpatched (X3M_SCENE_HOOK=0) resolves at the copy only, so its glow-off frames
-skip and the colour of the frames both runs resolve is identical.
+skip and the colour of the frames both runs resolve is identical. Since review
+26 the switch defaults to on with the route: the "hook-default" run leaves
+X3M_SCENE_HOOK unset and must behave as the patched run (the production
+install path still fails closed on the fixture executable, executable_mismatch).
+Every other case sets X3M_SCENE_HOOK=0 explicitly: the fixture executable
+cannot take the production patch, so the selector/copy boundary those cases
+verify is what the game gets whenever the patch is refused.
 FP16 HDR scene path, stage 1 (X3M_HDR=1; docs/architecture/hdr-scene-path.md):
 the route binds an owned A16B16G16R16F target as RT0 at the latching Clear and
 writes it back into the game's 8-bit main target with the identity tonemap at
@@ -214,7 +220,8 @@ CASES += [case('production-shadow-off', 'production', shadow=False), case('seam-
           case('seam-taa-shadow-off', 'seam', jitter=True, taa=True, shadow=False), case('seam-lazy-shadow-off', 'seam', lazy=True, shadow=False),
           case('seam-burst-perdraw-shadow-off', 'seam', burst=True, shadow=False), case('seam-burst-lazy-shadow-off', 'seam', lazy=True, burst=True, shadow=False)]
 # Engine scene-end hook script (seam, TAA): the callsite patched and unpatched.
-CASES += [case('seam-taa-hook-on', 'seam', jitter=True, taa=True, hook='1'), case('seam-taa-hook-unpatched', 'seam', jitter=True, taa=True, hook='0')]
+CASES += [case('seam-taa-hook-on', 'seam', jitter=True, taa=True, hook='1'), case('seam-taa-hook-unpatched', 'seam', jitter=True, taa=True, hook='0'),
+          case('seam-taa-hook-default', 'seam', jitter=True, taa=True, hook='default')]  # X3M_SCENE_HOOK unset: on with the route
 # FP16 HDR scene path, stage 1 (X3M_HDR=1): twins of existing runs, the value
 # and fault scripts, the forced-absent capability runs and the bench.
 HDR_TWINS = {'production-hdr-on': 'production-on', 'seam-hdr-on': 'seam-on', 'production-ownership-hdr-on': 'production-ownership-on',
@@ -2201,12 +2208,14 @@ def main():
                        X3M_TELEMETRY_DRAW='1',  # per-draw metrics (gate_us, route_draw_us, ...) are gated behind this switch since a8d4309; the validators require them
                        X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto',
                        X3M_MOTION_RT_MODE='lazy' if lazy else 'perdraw', X3M_MOTION_FRAME_LOG='1' if burst else '60',
-                       X3M_STATE_SHADOW='1' if shadow else '0', X3M_SCENE_HOOK=hook or '0',
+                       X3M_STATE_SHADOW='1' if shadow else '0', X3M_SCENE_HOOK=hook or '0',  # 'default' leaves the switch unset below
                        X3M_HDR='1' if hdr else '0', X3M_FIXTURE_HDR_FAULT=hdr_fault or '',
                        X3M_OWNERSHIP='0', X3M_DEPTH_COPY='0', X3M_SCENE_DEPTH_CAPTURE='0', X3M_OBJECT_TRACE='0', X3M_OBJECT_LIFETIME='0',
                        X3M_MESH_CACHE='0', X3M_ADMISSION='0', X3M_FINITE_POSITIONS='0', X3M_MOTION_CAPTURE='0')
             env.update(VARIANTS[variant])
             env.update(hdr_env)
+            if hook == 'default':
+                del env['X3M_SCENE_HOOK']  # the DLL's default: on with X3M_MOTION_OUTPUT=1
             if mip_bias is not None:
                 env['X3M_TAA_MIP_BIAS'] = mip_bias
             if mipbias:
@@ -2258,7 +2267,7 @@ def main():
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} rejected={case["rejected_frames"]}', flush=True)
                 continue
             if hook is not None:
-                case = validate_hook(name, hook == '1', text, trace, directory, hdr)
+                case = validate_hook(name, hook != '0', text, trace, directory, hdr)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')

@@ -23,9 +23,9 @@ loading_hook name=gzgetc installed=0
 loading_hook name=gztell installed=0
 loading_hook name=gzclose installed=0
 loading_hook name=gzwrite installed=0
-loading_trace coverage_begin=9554560521485 frequency=10000000 hooks=19 module=main inclusive=1 paths=0 qualification=named_pe32_imports
+loading_trace coverage_begin=9584874081346 frequency=10000000 hooks=19 module=main inclusive=1 paths=0 qualification=named_pe32_imports
 mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=8 objects_retained=0
-loading_benchmark synthetic=1 calls=20000 raw_us_per_call=0.003515 hooked_us_per_call=0.383610
+loading_benchmark synthetic=1 calls=20000 raw_us_per_call=0.003515 hooked_us_per_call=0.382725
 loading_hook name=CreateFileA restored=1 owned=1
 loading_hook name=ReadFile restored=0 owned=0
 loading_hook name=SetFilePointer restored=1 owned=1

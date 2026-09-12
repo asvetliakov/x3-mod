@@ -61,9 +61,12 @@ The live motion route is opt-in and diagnostic: `--motion-output` (env
 variants into a private RGBA32F RT1 and writes it back in capture frames. Object
 history needs `--object-trace --object-lifetime`; without them the route runs in
 sentinel-only mode. `--taa` (env `X3M_TAA=1`, requires `--motion-output` with
-both history options, implies `--motion-jitter`) runs the temporal resolve at the game's pre-bloom
-copy and presents the resolved image; `--taa-debug` writes the resolved FP16
-image in capture frames. This is the first TAA that reaches the screen; it is
+both history options, implies `--motion-jitter`) runs the temporal resolve at
+the engine's scene end and presents the resolved image; `--taa-debug` writes the resolved FP16
+image in capture frames. The scene end comes from the engine scene-end hook
+(env `X3M_SCENE_HOOK`, on by default with `--motion-output`: a byte-verified
+patch of the compositing callsite that fails closed to the game's pre-bloom
+copy on any other executable; `--scene-hook off` keeps the copy boundary). This is the first TAA that reaches the screen; it is
 verified synthetically, not yet in gameplay. `--hdr` (env `X3M_HDR=1`,
 requires `--motion-output`) is the FP16 HDR scene path: the scene renders
 into an owned FP16 target and is written back into the game's 8-bit target.

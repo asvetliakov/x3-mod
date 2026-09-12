@@ -299,13 +299,21 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     // same state bracket and scene: no second capture/apply, no copy-back.
     // The history texture leaves RT0 before it is sampled. c23 is the only
     // constant register the sharpen touches; the block restores it.
-    bool display_written=false;
+    // Review 26: the sharpened draw is the display's, not the history's. A
+    // lost device ends the run as anywhere else; any other failure of this
+    // draw leaves the resolve in force (the history set is complete and is
+    // published below) and hands the display to the caller's copy-back
+    // (Output::sharpen_result names the failure; the caller counts them).
+    bool display_written=false; HRESULT sharpen_result=S_FALSE;
     if(SUCCEEDED(hr)&&in.sharpen>0){
         x3::temporal::SharpenConstants sharpen{};
-        if(!x3::temporal::prepare_sharpen(sharpen,in.sharpen,in.width,in.height))hr=E_INVALIDARG;
-        else if(step(call<SetRtFn>(SetRenderTarget)(d,0,in.color_surface))&&step(call<SetPsFn>(SetPixelShader)(d,sharpen_))&&
-           step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,x3::temporal::kSharpenRegister,sharpen.values,1))&&
-           step(call<SetTextureFn>(SetTexture)(d,0,colors_[next]))){hr=quad(in.width,in.height);display_written=SUCCEEDED(hr);}
+        auto sub=[&](HRESULT value){sharpen_result=value;return SUCCEEDED(value);};
+        if(!x3::temporal::prepare_sharpen(sharpen,in.sharpen,in.width,in.height))sharpen_result=E_INVALIDARG;
+        else if(sub(call<SetRtFn>(SetRenderTarget)(d,0,in.color_surface))&&sub(call<SetPsFn>(SetPixelShader)(d,sharpen_))&&
+           sub(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,x3::temporal::kSharpenRegister,sharpen.values,1))&&
+           sub(call<SetTextureFn>(SetTexture)(d,0,colors_[next])))sub(quad(in.width,in.height));
+        display_written=SUCCEEDED(sharpen_result);
+        if(lost(sharpen_result))hr=sharpen_result;
     }
     if(own_scene&&!lost(hr)){const HRESULT end=call<SceneFn>(EndScene)(d);if(SUCCEEDED(hr)||lost(end))hr=end;}
     diagnostics_.ticks_draw+=stamp()-mark;
@@ -321,6 +329,6 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     current_=next;reactive_policy_=in.reactive_policy;
     if(reactive_policy_!=ReactivePolicy::Unavailable)history_.completed();
     diagnostics_.history_valid=history_.valid;++diagnostics_.completed_frames;++generation_;
-    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_],color_surfaces_[current_],display_written};return S_OK;
+    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_],color_surfaces_[current_],display_written,sharpen_result};return S_OK;
 }
 } // namespace x3m::renderer

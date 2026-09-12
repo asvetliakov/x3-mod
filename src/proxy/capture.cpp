@@ -67,7 +67,8 @@ bool motion_rt_lazy = false;
 unsigned motion_frame_log = 60;
 // X3M_STATE_SHADOW=0 turns the route's render-state shadow off (default on:
 // SetRenderState is hooked and the per-draw state queries never reach
-// GetRenderState after the first read); X3M_SCENE_HOOK is parsed by scene_hook.
+// GetRenderState after the first read); X3M_SCENE_HOOK is parsed by scene_hook
+// (default on with the route, X3M_SCENE_HOOK=0 off).
 bool motion_state_shadow = true;
 // X3M_TAA_K=<k> (stage 3 of the HDR scene path; requires X3M_HDR=1 and
 // X3M_TAA=1) fixes k of the resolve's luminance weighting (0: unweighted);
@@ -1355,7 +1356,7 @@ void initialize_log(HMODULE module) {
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
     motion_state_shadow=!(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)==1 && setting[0]==L'0');
-    const bool scene_hook_requested=GetEnvironmentVariableW(L"X3M_SCENE_HOOK",setting,32)==1 && setting[0]==L'1';
+    const bool scene_hook_requested=scene_hook::wanted(); // default on with the route (X3M_SCENE_HOOK=0 turns it off)
     if(GetEnvironmentVariableW(L"X3M_MOTION_FRAME_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=100000)motion_frame_log=unsigned(n);}
     if(GetEnvironmentVariableW(L"X3M_TAA_SENTINEL",setting,32)>0){
         if(!wcscmp(setting,L"1"))taa_sentinel_mode=x3m::renderer::SentinelMode::CurrentOnly;

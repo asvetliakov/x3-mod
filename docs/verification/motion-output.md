@@ -352,7 +352,8 @@ verdicts: `verification/results/motion-output-summary.json` (`cases`,
 
 ### Engine scene-end hook (`X3M_SCENE_HOOK`)
 
-The `hook` script (seam, TAA, two runs) verifies the callsite patch of
+The `hook` script (seam, TAA, three runs: `X3M_SCENE_HOOK=1`, `=0` and unset,
+the last being the default since review 26, on with the route) verifies the callsite patch of
 `src/proxy/scene_hook.cpp` on the fixture's own code
 ([camera-state-and-frame-routine.md](../reverse-engineering/camera-state-and-frame-routine.md#implemented-hook-scene-end--compositing-begin-2026-09-12)):
 the fixture VirtualAllocs a frame-routine stub that saves the callee-saved
@@ -405,9 +406,12 @@ comparisons with zero differences, the motion/depth oracle on all 7 frames,
   indistinguishable from the resolve at the bloom copy.
 
 The trace also shows the `scene_hook active=0 status=executable_mismatch`
-line of the production install path with the switch on. The game's own
-callsite is not exercised here; the gameplay run with `--scene-hook` is
-user-managed.
+line of the production install path with the switch on or unset (the
+default fails closed on the fixture executable exactly as on any other
+executable; `seam-taa-hook-default` is byte for byte the `hook-on` run
+otherwise). Every other case sets `X3M_SCENE_HOOK=0` explicitly. The game's
+own callsite is not exercised here; iteration 10 confirmed it in gameplay
+(214/214 agreement) and review 26 made it the default.
 
 ### FP16 HDR scene path, stage 1 (`X3M_HDR`)
 

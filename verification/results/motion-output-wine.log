@@ -47,6 +47,7 @@ msync: up and running.
 ==== seam-burst-lazy-shadow-off
 ==== seam-taa-hook-on
 ==== seam-taa-hook-unpatched
+==== seam-taa-hook-default
 ==== production-hdr-on
 ==== seam-hdr-on
 ==== production-ownership-hdr-on
@@ -90,6 +91,16 @@ msync: up and running.
 ==== production-taa-hdr-tonemap-on
 ==== seam-taa-hook-hdr-tonemap-on
 ==== seam-taa-hdr-tonemap-fault
+==== production-mipbias-off
+==== production-mipbias-zero
+==== production-mipbias-on
+==== production-mipbias-on1
+==== seam-mipbias-on
+==== seam-mipbias-lazy-on
+==== seam-taa-mipbias-on
+==== production-taa-mipbias-on
+==== seam-jitter-mipbias-zero
+==== seam-taa-lazy-mipbias-on
 ==== seam-taa-sharpen-off
 ==== seam-taa-sharpen-on
 ==== seam-taa-sharpen-half

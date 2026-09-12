@@ -195,12 +195,12 @@ TAA run is user-managed.
 | `src/renderer/motion_output_profiles.h` + `motion_output_profiles_inc.h` | Row struct, class enum and the generated 169-row archive-wide table (classes A, B and C, each row with its current-depth registers) with compile-time consistency checks; see [material-motion-prototype.md](material-motion-prototype.md) |
 | `src/temporal/current_depth_ps.hlsl` + `src/renderer/current_depth_pixel_program{,_inc}.h` | Authored depth fragment (`oC2 = z/w`), compiled by `tools/shaders/generate_rigid_motion_pixel.py` like the motion fragment |
 | `src/proxy/capture.cpp` | Hook installation, state block and query wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT`, `X3M_MOTION_JITTER[_SAMPLES]`, `X3M_MOTION_CUT_*`, `X3M_TAA`, `X3M_TAA_DEBUG`, `X3M_MOTION_RT_MODE`, `X3M_MOTION_FRAME_LOG`, `X3M_STATE_SHADOW` and `X3M_TAA_MIP_BIAS` parsing; the lazy mode's restore points and `GetRenderTarget`/`GetRenderTargetData`/`GetRenderState` hooks; the light `SetRenderState` hook feeding the render-state shadow; `scene_end_signal`, the engine hook's listener |
-| `src/proxy/scene_hook.{h,cpp}` | Engine scene-end boundary (`X3M_SCENE_HOOK=1`): the five-byte callsite patch of `CALL 0x004c4750` at `0x004721b1` behind the exact-executable gate, its trampoline and restore; fixture seam for the runner's own callsite (section "Engine boundaries and state shadow") |
+| `src/proxy/scene_hook.{h,cpp}` | Engine scene-end boundary (`X3M_SCENE_HOOK`, default on with the route, `0` off): the five-byte callsite patch of `CALL 0x004c4750` at `0x004721b1` behind the exact-executable gate, its trampoline and restore; fixture seam for the runner's own callsite (section "Engine boundaries and state shadow") |
 | `src/renderer/temporal_pass.{h,cpp}` + `temporal_resolve_program{,_inc}.h` | The resolve the route runs (native-slot calls, cached state block) and its embedded `ps_3_0` bytecode |
 | `src/renderer/hdr_pass.{h,cpp}` + `hdr_writeback_program{,_inc}.h`, `hdr_tonemap_program{,_inc}.h`, `hdr_meter_program.h` + `hdr_meter_{level0,reduce}_program_inc.h`, `exposure.{h,cpp}`, `src/temporal/agx.{h,hlsl}` | FP16 HDR scene path (`X3M_HDR=1`): the owned `A16B16G16R16F` RT0, the capability gate and four-format self test, the write-back ladder (stage 1: identity; stage 2 with `X3M_HDR_TONEMAP=agx`: the AgX tonemap, the exposure meter chain and the host adaptation of `exposure.h`); the route decides when to redirect, flush and end ([hdr-scene-path.md](hdr-scene-path.md), "Stage 1 implementation" and "Stage 2 implementation") |
 | `src/proxy/scene_capture.{h,cpp}` | `describe_surface` shared with the route |
 | `src/proxy/camera_state.{h,cpp}` + `src/renderer/camera_reprojection.h` | Live engine camera read at the selector's Clear events behind the exact-executable gate (no patch), the far-plane `clip_to_previous` builder and the sentinel policy decision (`X3M_TAA_SENTINEL`, `X3M_CAMERA_CUT_DEG`, `X3M_CAMERA_LOG`); see [temporal-integration.md](temporal-integration.md#camera-reprojection-for-sentinel-pixels-2026-09-12) |
-| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug`, `--taa-k`, `--taa-mip-bias <float>` (`X3M_TAA_MIP_BIAS`: the mip LOD bias of the routed material stages while the jitter is on, intended −0.5, default off), `--taa-sentinel auto|1|2`, `--camera-cut-deg`, `--camera-log`, `--state-shadow on|off`, `--scene-hook`, `--hdr` |
+| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug`, `--taa-k`, `--taa-mip-bias <float>` (`X3M_TAA_MIP_BIAS`: the mip LOD bias of the routed material stages while the jitter is on, intended −0.5, default off), `--taa-sentinel auto|1|2`, `--camera-cut-deg`, `--camera-log`, `--state-shadow on|off`, `--scene-hook [on|off]` (default on with `--motion-output`), `--hdr` |
 
 `X3M_MOTION_OUTPUT=1` enables the route. Without `X3M_OBJECT_TRACE=1` and
 `X3M_OBJECT_LIFETIME=1` gate 5 never passes and every eligible draw writes the
@@ -270,11 +270,12 @@ such failures disable the tonemap for the device. `hdr_tonemap` (attach),
 `readback_us`, `k` report it, with the metrics `hdr_meter` and
 `hdr_meter_readback` ([hdr-scene-path.md](hdr-scene-path.md), "Stage 2
 implementation").
-`X3M_SCENE_HOOK=1` (default off, `--scene-hook`; requires
-`X3M_MOTION_OUTPUT=1`) patches the frame routine's compositing callsite so
-the route learns the scene end from the engine and, with `X3M_TAA=1`,
-resolves there instead of at the bloom copy (section "Engine boundaries and
-state shadow" below). With `X3M_TELEMETRY=1` the route reports
+`X3M_SCENE_HOOK` (default on with `X3M_MOTION_OUTPUT=1` since review 26;
+`0` or `--scene-hook off` turns it off, `1`/`--scene-hook` forces the
+request) patches the frame routine's compositing callsite so the route
+learns the scene end from the engine and, with `X3M_TAA=1`, resolves there
+instead of at the bloom copy (section "Engine boundaries and state shadow"
+below); a refused patch leaves the bloom-copy/selector boundary in charge. With `X3M_TELEMETRY=1` the route reports
 its CPU cost per call and per frame (gate, apply/undo, `SetRenderTarget`
 count, jitter writes, fill, the resolve's phases, copy-back, readbacks,
 render-state shadow hits/misses, engine-hook signals and the cross-check verdict).
@@ -419,8 +420,9 @@ restores before the native read; both are installed in lazy mode with the
 shadow off too. Counters per frame: `rs_queries`, `rs_hits`, `rs_gets`
 (native reads: misses plus the fill's save), `rs_resyncs`.
 
-**Engine scene-end boundary (`X3M_SCENE_HOOK=1`, default off).** At backend
-load, behind the object-trace identity gate (exact X3AP.exe only),
+**Engine scene-end boundary (`X3M_SCENE_HOOK`; default on with the route
+since review 26, `0` off).** At backend load, behind the object-trace
+identity gate (exact X3AP.exe only),
 `scene_hook::initialize` reads the five bytes at `0x004721b1`, requires
 exactly `E8 9A 25 05 00` (`CALL 0x004c4750`; rel32 = `0x004c4750 −
 0x004721b6`) and, only then, rewrites the rel32 to its trampoline with the
@@ -458,8 +460,23 @@ the bloom copy with no scene draw between; 2 HookOnly: glow off; 3
 StretchOnly: no patch; 4 Disagree: a signal outside Scene, more than one
 signal, scene draws between the hook and the copy, or a copy without a signal
 while patched), with a `motion_output_scene_hook_disagreement` line for the
-last case. `tools/manage.py launch --scene-hook` sets it; it stays off by
-default until a gameplay run confirms the boundary.
+last case, on its own log budget (16 lines, separate from the failure
+log: iteration 10's latch-only transition screen produced 16 consecutive
+ones). Iteration 10 confirmed the boundary in gameplay on the X3 bottle
+(214/214 resolves agree with the selector; the 24 disagreements are the
+latch-only transition screen, nothing routed and nothing to resolve by
+either boundary; iteration 9 run 2: 89/89), so since review 26 the hook is
+the default resolve point: `tools/manage.py launch --motion-output` requests
+it, `--scene-hook off` keeps the copy/selector boundary. The chain below
+the hook is unchanged: the bloom-copy `StretchRect` resolves when the hook
+is absent (`disabled`, `executable_mismatch`, `callsite_mismatch`, a failed
+patch) and the selector alone decides the scene end when neither fires.
+A state-block `Apply` or `EndStateBlock` resynchronizes the shadow
+(`sb_resyncs` on the frame line attributes those resyncs, review 26): the
+shadow's only other invalidations are `Reset` and a failed restoration of
+the route's own state (`restore_failures`), and both were zero on the
+transition screen, so its one `rs_resyncs` per frame is an application
+state block, which the field now confirms directly.
 
 **Pass field.** `RigidDrawKey::pass` (`MotionPass` in
 `src/renderer/motion_history.h`: 1 main scene, 2 depth-only, 3 shadow, 4

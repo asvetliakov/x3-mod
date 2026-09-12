@@ -187,8 +187,11 @@ struct MotionFrameCounters {
     // shadow answered (hits), every native GetRenderState the route issued
     // (gets: shadow misses plus the fill's state save; with the shadow off
     // every query is a get) and shadow resynchronizations this frame (state
-    // block Apply/EndStateBlock, Reset, a failed restoration).
-    std::uint32_t rs_queries = 0, rs_hits = 0, rs_gets = 0, rs_resyncs = 0;
+    // block Apply/EndStateBlock, Reset, a failed restoration); sb_resyncs is
+    // the state-block share of them (an Apply can change any shadowed state,
+    // so the full re-read is required: iteration 10's one resync per frame on
+    // the latch-only transition screen is attributed through this field).
+    std::uint32_t rs_queries = 0, rs_hits = 0, rs_gets = 0, rs_resyncs = 0, sb_resyncs = 0;
     // Engine scene-end hook (X3M_SCENE_HOOK): signals this frame, signals that
     // arrived outside the selector's Scene phase (with the selector state of
     // the last one), draws evaluated after a Scene-phase signal (compositing
@@ -625,6 +628,7 @@ private:
     renderer::MotionRowHistory history_{0};
     MotionFrameCounters counters_{};
     unsigned logged_failures_ = 0;
+    unsigned hook_disagreements_logged_ = 0; // own budget: a latch-only screen must not starve the failure log
     // Telemetry sink (capture.cpp's per-device State) and frame-line cadence.
     telemetry::State* stats_ = nullptr;
     unsigned frame_log_interval_ = 60;
@@ -674,6 +678,10 @@ private:
     float hdr_taa_k_ = 0.f;
     float taa_k_override_ = -1.f;             // X3M_TAA_K (negative: derived)
     float taa_sharpen_ = 0.f;                 // X3M_TAA_SHARPEN (0: off)
+    // 8-bit route: failed sharpened draws (the pass kept the resolve, the
+    // copy-back presented it); at the limit the sharpen is no longer requested.
+    unsigned taa_sharpen_failures_ = 0;
+    static constexpr unsigned sharpen_failure_limit = 3;
     // The pass's resolved FP16 output (borrowed: valid until the pass's next
     // run, invalidate, before_reset or shutdown), published by the stage-3
     // resolve for the write-back of the same scene end and cleared with it.
