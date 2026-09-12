@@ -10,18 +10,20 @@
 // Reset/release, one-time capability self-test, per-frame sentinel fill,
 // per-draw gate evaluation with variant substitution and exact restoration,
 // per-draw sub-pixel jitter (X3M_MOTION_JITTER=1), previous-row history, the
-// data-only cut detector and capture-frame diagnostics.
+// cut detector, the temporal resolve at the bloom copy (X3M_TAA=1, owning one
+// TemporalPass per device) and capture-frame diagnostics.
 // See docs/architecture/live-motion-route.md (Implementation section) and
-// docs/architecture/temporal-integration.md (step 1).
+// docs/architecture/temporal-integration.md (steps 1 and 3).
 #include <d3d9.h>
 #include <cstddef>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <vector>
 #include "../renderer/scene_boundary.h"
 #include "../renderer/motion_history.h"
 #include "../renderer/motion_row_history.h"
-namespace x3m::renderer { struct MotionOutputProfile; }
+namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
 namespace x3m {
 // Distinct clip-row constant windows the profile table names (c24-27 for the
 // point-light programs, c0-3 for the light-free variants). The route's shadow
@@ -55,6 +57,18 @@ struct MotionRoute {
     std::uint64_t rows_hash = 0;
     std::uint64_t load_epoch = 0, registry_epoch = 0;
 };
+// Why the temporal resolve did not run at this frame's bloom copy (X3M_TAA=1).
+// None: it ran (see taa_result/taa_copy). NotReached: the selector never
+// presented the AwaitCopy event (menu, rejected or unrecognized frame).
+enum class TaaSkip : unsigned { None = 0, Disabled = 1, NotReached = 2, NoJitter = 3, NotFilled = 4,
+                                Recording = 5, Queries = 6, Initialize = 7, Container = 8 };
+struct MotionTaaCounters {
+    bool attempted = false;      // The main-target bloom copy was recognized this frame.
+    bool resolved = false;       // run() and the copy-back both succeeded: the main target holds the resolved image.
+    bool used_history = false;   // The resolve blended the previous frame (false on the first frame, cuts, Reset).
+    std::uint32_t skip = 0;      // TaaSkip
+    HRESULT result = S_FALSE, restore = S_OK, copy = S_FALSE;
+};
 struct MotionFrameCounters {
     std::uint32_t draws = 0, routed = 0, matched = 0, gates[7]{};
     std::uint32_t depth_routed = 0, jittered = 0;
@@ -68,12 +82,14 @@ struct MotionFrameCounters {
     bool jitter_active = false;
     std::uint32_t jitter_index = 0;
     float jitter[2]{}, jitter_previous[2]{};
-    // Cut detector (data only, no consumer): median screen displacement of the
-    // matched draws' projected origins against their previous rows, and the
-    // fraction of keyed routed draws whose key the previous frame lacked.
+    // Cut detector: median screen displacement of the matched draws' projected
+    // origins against their previous rows, and the fraction of keyed routed
+    // draws whose key the previous frame lacked; the resolve rejects history
+    // for a frame whose verdict is set.
     bool cut = false;
     std::uint32_t displacement_samples = 0, keyed = 0, missing = 0;
     float cut_median_px = 0, cut_missing_fraction = 0, cut_median_bound_px = 0, cut_missing_bound = 0;
+    MotionTaaCounters taa;
 };
 // Halton(2,3) sample i (1-based) centred on zero, in raster pixels.
 float motion_jitter_sample(unsigned index, unsigned axis) noexcept;
@@ -116,6 +132,11 @@ public:
     // is stated at 1280 px width and scaled by width/1280 at run time.
     void configure_jitter(bool enabled, unsigned samples) noexcept;
     void configure_cut_bounds(float median_px_at_1280, float missing_fraction) noexcept;
+    // Temporal resolve at the bloom copy (X3M_TAA=1; requires the route, RT2
+    // and jitter). `debug` writes the resolved FP16 image and the pre-resolve
+    // 8-bit color in capture frames (X3M_TAA_DEBUG). Effective at attach.
+    void configure_taa(bool requested, bool debug) noexcept;
+    bool taa_enabled() const noexcept { return taa_enabled_; }
     // Device references held by owned objects (variants, sentinel shader,
     // motion target surface), one per object in every reference model the
     // route runs under (native D3D9 and the ownership wrapper; see
@@ -162,8 +183,22 @@ public:
     void after_clear(HRESULT result) noexcept;
     void after_set_render_target(DWORD index, IDirect3DSurface9* surface, HRESULT result) noexcept;
     void after_set_depth(IDirect3DSurface9* surface, HRESULT result) noexcept;
+    // BEFORE the application's StretchRect: when the selector is in AwaitCopy
+    // and this is the main-target bloom copy it waits for, the temporal
+    // resolve runs and its output is copied into the main target first, so the
+    // application copies (and later presents) the resolved image. Every device
+    // call goes through the native slots; the main target is written only
+    // after a completely successful run. Nothing happens otherwise.
+    void before_stretch(IDirect3DSurface9* source, const RECT* source_rect,
+                        IDirect3DSurface9* destination, const RECT* destination_rect) noexcept;
     void after_stretch(IDirect3DSurface9* source, const RECT* source_rect,
                        IDirect3DSurface9* destination, const RECT* destination_rect, HRESULT result) noexcept;
+    // Scene and query tracking for the resolve's caller contract: the pass
+    // borrows an open scene and refuses to draw while an application query is
+    // between Issue(BEGIN) and Issue(END). Called after the application call.
+    void after_begin_scene(HRESULT result) noexcept;
+    void after_end_scene(HRESULT result) noexcept;
+    void query_active(bool active) noexcept;
     void after_color_fill(IDirect3DSurface9* destination, const RECT* rect, HRESULT result) noexcept;
     void unsupported(HRESULT result) noexcept;
 
@@ -222,6 +257,14 @@ private:
                              const wchar_t* prefix, const wchar_t* extension, const char* tag, const char* format_name) noexcept;
     void apply_jitter(MotionRoute& route) noexcept;
     void finish_cut_detector() noexcept;
+    bool ensure_taa() noexcept;
+    HRESULT resolve(IDirect3DSurface9* main_surface) noexcept;
+    void invalidate_taa() noexcept;
+    ULONG probe_references() noexcept;
+    // Runs a TemporalPass call and folds the device references it created or
+    // released into taa_references_ by probing the count before and after,
+    // which is exact in both reference models (native and wrapper).
+    template<typename Fn> void taa_call(Fn&& fn) noexcept;
     HRESULT save_state(SavedState& saved) noexcept;
     HRESULT restore_state(const SavedState& saved) noexcept;
     bool ensure_target(UINT width, UINT height) noexcept;
@@ -262,6 +305,14 @@ private:
     std::vector<float> displacements_;
     float cut_median_bound_ = 48.f, cut_missing_bound_ = .25f;
     bool cut_finished_ = false; // Verdict computed for this frame (end of scene phase or before Present).
+    // Temporal resolve: requested switch, capability verdict at attach, lazy
+    // initialization state, device references the pass holds (probed), the
+    // application's scene state and active BEGIN/END queries.
+    std::unique_ptr<renderer::TemporalPass> taa_;
+    bool taa_requested_ = false, taa_enabled_ = false, taa_debug_ = false, taa_failed_ = false, taa_busy_ = false;
+    unsigned taa_references_ = 0;
+    bool scene_open_ = false;
+    unsigned active_queries_ = 0;
     renderer::SceneBoundarySelector selector_;
     renderer::Surface main_, main_depth_;
     renderer::Event pending_{};

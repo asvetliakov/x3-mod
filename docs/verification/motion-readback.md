@@ -36,6 +36,12 @@ per-draw metadata is kept, so gameplay logs of any size are acceptable. A
   `motion_output_depth_readback`, `--depth-pattern` is the fallback name).
   Captures made before temporal step 1 have none; the depth checks then
   report `unavailable`. See [depth](#5-depth-image-and-previous-depth-cross-check-depth_image_integrity-depth).
+- With `X3M_TAA_DEBUG` (temporal step 3): `taa_<device>_<frame>.rgba16f`, the
+  resolved FP16 image the route copied back into the main target (row-major
+  RGBA binary16, 8 bytes per pixel, logged as `motion_output_taa_readback`),
+  and `color_<device>_<frame>.bgra8`, the 8-bit main target read before the
+  resolve (row-major A8R8G8B8, logged as `motion_output_color_readback`).
+  See [resolved image](#6-resolved-image-sanity-signal-taa_image).
 
 ## Conventions assumed
 
@@ -159,7 +165,22 @@ there (falling back to `--depth-pattern`). Two checks use it:
 
 The cut detector's data (`motion_output_cut` and the summary's `cut`,
 `cut_median_px`, `cut_missing`, `cut_samples`, jitter fields) is reported per
-frame under `cut` without a verdict of its own.
+frame under `cut` without a verdict of its own; since step 3 the resolve
+rejects history for a frame whose verdict is set.
+
+### 6. Resolved image sanity signal (`taa_image`)
+
+When a frame logs `motion_output_taa_readback`, the analyzer decodes the FP16
+image, requires every RGB value to be finite (a nonfinite value fails the
+check and the readback integrity) and compares each pixel against the
+pre-resolve 8-bit color: the fraction of pixels whose RGB moved by more than
+`--taa-threshold` (default 2/255) in any channel is reported per frame with
+the maximum and mean difference. This is a sanity signal, not a quality
+judgement: it says the resolve produced finite values and how much of the
+image the history changed (zero for a current-only frame, the first frame,
+a cut or a sentinel-only run; the first gameplay run will show what fraction
+of a moving frame the history touches). A logged resolved image without its
+color image is malformed.
 
 ## Results on the synthetic fixture
 

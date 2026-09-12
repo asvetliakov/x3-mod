@@ -39,7 +39,13 @@ Checks (details in docs/verification/motion-readback.md):
    raster jitter, which the route logs as ``jitter_previous_x/y``) against
    frame N's depth image, sampled nearest (default) or bilinear over the
    non-sentinel taps, with the error distribution reported. Sentinel taps are
-   excluded from the comparison and counted.
+   excluded from the comparison and counted;
+6. the resolved image written with ``X3M_TAA_DEBUG`` (``taa_<device>_<frame>.rgba16f``,
+   the FP16 output of the temporal resolve) against the pre-resolve 8-bit main
+   target (``color_<device>_<frame>.bgra8``): finiteness of every value and the
+   fraction of pixels whose RGB differs from the current color by more than a
+   threshold. A sanity signal only: it says the resolve produced finite values
+   and how much of the image history changed, not whether the blend is right.
 
 The log is never loaded whole; only bounded per-draw metadata is kept.
 """
@@ -139,6 +145,8 @@ class Frame:
         self.summary = None      # motion_output_frame fields
         self.readback = None     # motion_output_readback fields
         self.depth_readback = None  # motion_output_depth_readback fields (RT2, step 1)
+        self.taa_readback = None    # motion_output_taa_readback fields (resolved FP16, step 3, X3M_TAA_DEBUG)
+        self.color_readback = None  # motion_output_color_readback fields (pre-resolve 8-bit main target)
         self.cut = None          # motion_output_cut fields (data-only cut detector)
         self.reset_at = None     # route draws seen before a motion_output_reset logged in this frame
         self.notes = []
@@ -255,6 +263,14 @@ def parse_log(lines):
             record = frame_for(fields)
             if record is not None:
                 record.depth_readback = fields
+        elif tag == 'motion_output_taa_readback':
+            record = frame_for(fields)
+            if record is not None:
+                record.taa_readback = fields
+        elif tag == 'motion_output_color_readback':
+            record = frame_for(fields)
+            if record is not None:
+                record.color_readback = fields
         elif tag == 'motion_output_cut':
             record = frame_for(fields)
             if record is not None:
@@ -444,6 +460,70 @@ def depth_image_stats(data):
         'written_fraction': (written / total) if total else None,
         'written_range': [low, high] if written else None,
         'clean': nonfinite == 0 and out_of_range == 0,
+    }
+
+
+def half_to_float(bits):
+    """IEEE binary16 -> float (subnormals, infinities and NaN included)."""
+    sign = -1.0 if bits & 0x8000 else 1.0
+    exponent = (bits >> 10) & 31
+    mantissa = bits & 1023
+    if exponent == 31:
+        return sign * (math.nan if mantissa else math.inf)
+    if exponent == 0:
+        return sign * mantissa * 2.0 ** -24
+    return sign * (1024 + mantissa) * 2.0 ** (exponent - 25)
+
+
+HALF_TABLE = [half_to_float(bits) for bits in range(65536)]
+
+
+def load_rgba16f(path, width, height):
+    """Row-major RGBA FP16 image (the resolved output) as RGB float triples."""
+    size = path.stat().st_size
+    if size != width * height * 8:
+        raise MalformedInput(f'{path.name}: size {size} != {width}x{height}x8')
+    data = array.array('H')
+    with path.open('rb') as stream:
+        data.fromfile(stream, width * height * 4)
+    if sys.byteorder != 'little':
+        data.byteswap()
+    table = HALF_TABLE
+    return [(table[data[i]], table[data[i + 1]], table[data[i + 2]]) for i in range(0, len(data), 4)]
+
+
+def load_bgra8(path, width, height):
+    """Row-major A8R8G8B8 image (the pre-resolve main target) as RGB triples in [0,1]."""
+    size = path.stat().st_size
+    if size != width * height * 4:
+        raise MalformedInput(f'{path.name}: size {size} != {width}x{height}x4')
+    data = path.read_bytes()
+    return [(data[i + 2] / 255.0, data[i + 1] / 255.0, data[i] / 255.0) for i in range(0, len(data), 4)]
+
+
+def taa_image_stats(resolved, current, threshold):
+    """Finiteness of the resolved RGB and how many pixels moved away from the
+    current color by more than `threshold` in any channel (history contribution)."""
+    isfinite = math.isfinite
+    nonfinite = differing = 0
+    largest = 0.0
+    total_difference = 0.0
+    for (r, g, b), (cr, cg, cb) in zip(resolved, current):
+        if not (isfinite(r) and isfinite(g) and isfinite(b)):
+            nonfinite += 1
+            continue
+        difference = max(abs(r - cr), abs(g - cg), abs(b - cb))
+        total_difference += difference
+        if difference > largest:
+            largest = difference
+        if difference > threshold:
+            differing += 1
+    total = len(resolved)
+    return {
+        'pixels': total, 'nonfinite': nonfinite, 'differing': differing,
+        'differing_fraction': (differing / total) if total else None,
+        'max_difference': largest, 'mean_difference': (total_difference / (total - nonfinite)) if total > nonfinite else None,
+        'threshold': threshold, 'clean': nonfinite == 0,
     }
 
 
@@ -916,6 +996,7 @@ def analyze(log_path, readback_dir, options, depth_pattern=None):
     consistency_frames = []
     depth_frames = []
     depth_images = []
+    taa_frames = []
     for frame in sorted(captured, key=lambda f: (f.device, f.frame)):
         report = OrderedDict()
         report['device'] = frame.device
@@ -1035,11 +1116,35 @@ def analyze(log_path, readback_dir, options, depth_pattern=None):
                 hard_errors.append(f'{depth_name}: file missing')
             else:
                 report['depth_image'] = {'file': depth_name, 'status': 'absent'}
+        # Resolved image (X3M_TAA_DEBUG): finite, and its distance from the
+        # pre-resolve color as a sanity signal of the history contribution.
+        if frame.taa_readback is not None:
+            taa_name = frame.taa_readback.get('file', '')
+            color_name = (frame.color_readback or {}).get('file', '')
+            taa_path, color_path = readback_dir / taa_name, readback_dir / color_name
+            try:
+                if not hresult_ok(frame.taa_readback.get('result')) or (frame.color_readback is not None and not hresult_ok(frame.color_readback.get('result'))):
+                    raise MalformedInput(f'{taa_name}: resolved/color readback result '
+                                         f'{frame.taa_readback.get("result")}/{(frame.color_readback or {}).get("result")}')
+                if not taa_path.is_file():
+                    raise MalformedInput(f'{taa_name}: file missing')
+                if frame.color_readback is None or not color_path.is_file():
+                    raise MalformedInput(f'{taa_name}: pre-resolve color image {color_name or "(unlogged)"} missing')
+                stats = taa_image_stats(load_rgba16f(taa_path, width, height), load_bgra8(color_path, width, height),
+                                        options['taa_threshold'])
+                report['taa'] = {'file': taa_name, 'color_file': color_name, 'status': 'loaded',
+                                 'sha256': sha256_stream(taa_path), 'color_sha256': sha256_stream(color_path), **stats}
+                if not stats['clean']:
+                    hard_errors.append(f"{taa_name}: {stats['nonfinite']} nonfinite resolved pixels")
+                taa_frames.append(report)
+            except MalformedInput as error:
+                report['taa'] = {'file': taa_name, 'status': 'malformed', 'reason': str(error)}
+                hard_errors.append(str(error))
         previous_state[frame.device] = (frame, readback, depth)
         frame_reports.append(report)
 
     checks = build_checks(frame_reports, hard_errors, static_frames, consistency_frames, temporal_pairs, depth_frames, options,
-                          depth_images)
+                          depth_images, taa_frames)
     failed = [name for name, check in checks.items() if check['status'] == 'fail']
     return OrderedDict([
         ('tool', 'tools/analysis/analyze_motion_readback.py'),
@@ -1059,7 +1164,7 @@ def analyze(log_path, readback_dir, options, depth_pattern=None):
 
 
 def build_checks(frame_reports, hard_errors, static_frames, consistency_frames, temporal_pairs, depth_frames, options,
-                 depth_images=()):
+                 depth_images=(), taa_frames=()):
     checks = OrderedDict()
     readbacks = [r for r in frame_reports if 'readback' in r]
     clean = [r for r in readbacks if r['readback'].get('status') == 'ok' and r['readback'].get('abi_clean')]
@@ -1148,12 +1253,25 @@ def build_checks(frame_reports, hard_errors, static_frames, consistency_frames, 
     else:
         checks['depth'] = {'status': 'unavailable',
                            'reason': 'no consecutive captured frame pair with a readable depth image of frame N; see docs/verification/motion-readback.md'}
+    if taa_frames:
+        unclean = [r['frame'] for r in taa_frames if not r['taa']['clean']]
+        checks['taa_image'] = {
+            'status': 'pass' if not unclean else 'fail',
+            'frames': [r['frame'] for r in taa_frames], 'unclean_frames': unclean,
+            'threshold': options['taa_threshold'],
+            'differing_fraction': {r['frame']: r['taa']['differing_fraction'] for r in taa_frames},
+            'max_difference': {r['frame']: r['taa']['max_difference'] for r in taa_frames},
+            'note': 'sanity signal: the resolved FP16 image is finite; the fraction of pixels whose RGB moved away from the pre-resolve color by more than the threshold is reported, not judged',
+        }
+    else:
+        checks['taa_image'] = {'status': 'unavailable', 'reason': 'no motion_output_taa_readback line (X3M_TAA_DEBUG off or TAA not resolved)'}
     return checks
 
 
 def cut_report(frame):
-    """The route's data-only cut verdict for the frame (motion_output_cut line and the
-    per-frame summary): reported, never judged, until a consumer exists."""
+    """The route's cut verdict for the frame (motion_output_cut line and the
+    per-frame summary): reported, not judged; the resolve rejects history for a
+    frame whose verdict is set."""
     summary = frame.summary or {}
     cut = frame.cut or {}
     if not cut and 'cut' not in summary:
@@ -1232,9 +1350,14 @@ def render_report(summary):
             lines.append(f"  depth image: {di['file']} written={di['written']} ({di['written_fraction']:.4f}) sentinel={di['sentinel']} ({di['sentinel_fraction']:.4f}) nonfinite={di['nonfinite']} out_of_range={di['out_of_range']} range={di['written_range']} valid_motion_without_depth={di.get('valid_motion_without_depth')}")
         elif di:
             lines.append(f"  depth image: {di.get('status')} {di.get('reason', '')}")
+        taa = report.get('taa')
+        if taa and taa.get('status') == 'loaded':
+            lines.append(f"  resolved image: {taa['file']} vs {taa['color_file']} nonfinite={taa['nonfinite']} differing={taa['differing']} ({taa['differing_fraction']:.4f} over {taa['threshold']}) max_difference={taa['max_difference']:.6f} mean_difference={taa['mean_difference']}")
+        elif taa:
+            lines.append(f"  resolved image: {taa.get('status')} {taa.get('reason', '')}")
         cut = report.get('cut', {})
         if cut.get('status') == 'reported':
-            lines.append(f"  cut detector (data only): cut={cut['cut']} median_px={cut['median_px']} missing_fraction={cut['missing_fraction']} samples={cut['samples']} bounds=({cut['bound_px']} px, {cut['bound_missing']}) jitter={cut['jitter_px']} previous={cut['jitter_previous_px']}")
+            lines.append(f"  cut detector: cut={cut['cut']} median_px={cut['median_px']} missing_fraction={cut['missing_fraction']} samples={cut['samples']} bounds=({cut['bound_px']} px, {cut['bound_missing']}) jitter={cut['jitter_px']} previous={cut['jitter_previous_px']}")
         lines.append('')
     return '\n'.join(lines) + '\n'
 
@@ -1253,6 +1376,7 @@ def default_options(**overrides):
         'depth_tolerance': 1e-4,
         'depth_within_min': 0.99,
         'depth_sampling': 'nearest',
+        'taa_threshold': 2.0 / 255.0,
         'jitter_uv': (0.0, 0.0),
         'draw_details': True,
     }
@@ -1285,6 +1409,8 @@ def main(argv=None):
     parser.add_argument('--depth-within-min', type=float, default=0.99)
     parser.add_argument('--depth-sampling', choices=('nearest', 'bilinear'), default='nearest',
                         help='how frame N depth is sampled at the previous UV (bilinear drops sentinel taps)')
+    parser.add_argument('--taa-threshold', type=float, default=2.0 / 255.0,
+                        help='resolved-vs-current RGB difference above which a pixel counts as changed by history (X3M_TAA_DEBUG images)')
     parser.add_argument('--jitter-uv', type=float, nargs=2, default=(0.0, 0.0), metavar=('U', 'V'),
                         help='prior jitter UV subtracted by the producer (zero at checkpoint B1)')
     parser.add_argument('--no-draw-details', action='store_true', help='omit per-draw keys and rows from the JSON')
@@ -1301,6 +1427,7 @@ def main(argv=None):
         depth_tolerance=args.depth_tolerance,
         depth_within_min=args.depth_within_min,
         depth_sampling=args.depth_sampling,
+        taa_threshold=args.taa_threshold,
         jitter_uv=tuple(args.jitter_uv),
         draw_details=not args.no_draw_details,
     )

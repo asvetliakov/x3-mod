@@ -73,22 +73,42 @@ public:
     // Device is BORROWED, never AddRef'd. Bytecode consumed synchronously by D3D.
     // Caller serializes rendering/reset and invokes before_reset/shutdown before
     // native Reset or final device teardown. No wrapper refs, global maps or cycles.
-    HRESULT initialize(IDirect3DDevice9* native_device, const DWORD* decoder, const DWORD* resolve) noexcept;
+    // `native_vtable`, when given, is the device's ORIGINAL method table: every
+    // device call of the pass then goes through those slots instead of the
+    // object's current vtable, so a caller that hooked the device (the proxy)
+    // never observes the pass's own calls. Without it the object's vtable is
+    // read at every call. `decoder` may be null; the D24X8 snapshot input is
+    // then refused (the route supplies R32F depth and needs no decoder).
+    HRESULT initialize(IDirect3DDevice9* native_device, const DWORD* decoder, const DWORD* resolve,
+                       void* const* native_vtable = nullptr) noexcept;
     HRESULT run(const FrameInputs&, Output*) noexcept;
     void invalidate() noexcept;
     // Reset protocol, mirroring MotionOutput: before_reset releases every
-    // default-pool object (histories, masks, scratch) and keeps the compiled
-    // shaders and device; run is refused until after_reset reports a successful
-    // Reset, after which resources are re-created lazily on the next run.
+    // default-pool object (histories, masks, scratch, the cached state block)
+    // and keeps the compiled shaders and device; run is refused until
+    // after_reset reports a successful Reset, after which resources are
+    // re-created lazily on the next run.
     void before_reset() noexcept;
     void after_reset(HRESULT result) noexcept;
     void shutdown() noexcept; // full teardown, including shaders
     Diagnostics diagnostics() const noexcept { return diagnostics_; }
 private:
+    struct SavedState;
+    template<class Fn> Fn call(unsigned slot) const noexcept {
+        return reinterpret_cast<Fn>((vtable_ ? vtable_ : *reinterpret_cast<void* const* const*>(device_))[slot]);
+    }
     HRESULT allocate(UINT width, UINT height, bool reactive) noexcept;
     HRESULT ensure_scratch() noexcept;
+    HRESULT ensure_block() noexcept;
+    HRESULT normalize(UINT w, UINT h) noexcept;
+    HRESULT quad(UINT w, UINT h) noexcept;
     void release_history() noexcept;
     IDirect3DDevice9* device_ = nullptr;
+    void* const* vtable_ = nullptr;
+    // One D3DSBT_ALL block per device generation: captured before and applied
+    // after every run instead of being created per frame. Default-pool-like:
+    // released before Reset and re-created lazily afterwards.
+    IDirect3DStateBlock9* block_ = nullptr;
     IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr;
     IDirect3DTexture9* colors_[2]{};
     IDirect3DTexture9* depths_[2]{};

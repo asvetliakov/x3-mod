@@ -173,14 +173,17 @@ refused at gate 3 now means a program outside the archives (a mod, a loose
 override or a dynamically generated shader), not an unvisited sector; it
 shows up in the per-frame gate histogram.
 
-## Implementation (checkpoint B1, 2026-09-12; temporal step 1 added the same day)
+## Implementation (checkpoint B1, 2026-09-12; temporal steps 1 and 3 added the same day)
 
 Delivered as a diagnostic route: the motion target (RT1) and, since temporal
-step 1, the current-depth target (RT2), the per-draw jitter and the data-only
-cut detector are produced and read back; no temporal consumer reads them.
-Verified only through the synthetic fixtures in
-[motion-output verification](../verification/motion-output.md); gameplay
-captures are the next step.
+step 1, the current-depth target (RT2), the per-draw jitter and the cut
+detector are produced and read back; since temporal step 3 the route also
+owns one `TemporalPass` per device and, with `X3M_TAA=1`, runs the resolve at
+the game's pre-bloom copy and writes the resolved image back into the main
+target (section "Temporal resolve at the bloom copy" below). Verified through
+the synthetic fixtures in
+[motion-output verification](../verification/motion-output.md); the gameplay
+TAA run is user-managed.
 
 ### Files and switches
 
@@ -191,9 +194,10 @@ captures are the next step.
 | `src/renderer/material_motion.{h,cpp}` | Table-driven transformer, `material_motion_vertex_variant` / `material_motion_pixel_variant` (each stage is created separately by the game); the pair function remains for the detached fixtures; `material_motion_reviewed_pairs` is the profile table |
 | `src/renderer/motion_output_profiles.h` + `motion_output_profiles_inc.h` | Row struct, class enum and the generated 169-row archive-wide table (classes A, B and C, each row with its current-depth registers) with compile-time consistency checks; see [material-motion-prototype.md](material-motion-prototype.md) |
 | `src/temporal/current_depth_ps.hlsl` + `src/renderer/current_depth_pixel_program{,_inc}.h` | Authored depth fragment (`oC2 = z/w`), compiled by `tools/shaders/generate_rigid_motion_pixel.py` like the motion fragment |
-| `src/proxy/capture.cpp` | Hook installation, state block wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT`, `X3M_MOTION_JITTER[_SAMPLES]` and `X3M_MOTION_CUT_*` parsing |
+| `src/proxy/capture.cpp` | Hook installation, state block and query wrapping, refcount-aware release, per-hook calls into the route; `X3M_MOTION_OUTPUT`, `X3M_MOTION_JITTER[_SAMPLES]`, `X3M_MOTION_CUT_*`, `X3M_TAA` and `X3M_TAA_DEBUG` parsing |
+| `src/renderer/temporal_pass.{h,cpp}` + `temporal_resolve_program{,_inc}.h` | The resolve the route runs (native-slot calls, cached state block) and its embedded `ps_3_0` bytecode |
 | `src/proxy/scene_capture.{h,cpp}` | `describe_surface` shared with the route |
-| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only) |
+| `tools/manage.py` | `--motion-output` (history needs `--object-trace --object-lifetime`; otherwise sentinel-only), `--taa` (implies `--motion-jitter`), `--taa-debug` |
 
 `X3M_MOTION_OUTPUT=1` enables the route. Without `X3M_OBJECT_TRACE=1` and
 `X3M_OBJECT_LIFETIME=1` gate 5 never passes and every eligible draw writes the
@@ -202,7 +206,10 @@ sentinel (mode 0); the selector, fill, substitution and restoration still run.
 centred Halton(2,3) sequence of `X3M_MOTION_JITTER_SAMPLES` entries (default
 8, clamped to 2..64); `X3M_MOTION_CUT_MEDIAN_PX` (default 48, stated at
 1280 px width) and `X3M_MOTION_CUT_MISSING` (default 0.25) are the cut
-detector bounds.
+detector bounds. `X3M_TAA=1` (default off; requires `X3M_MOTION_OUTPUT=1`
+and implies `X3M_MOTION_JITTER=1`) runs the temporal resolve at the bloom
+copy; `X3M_TAA_DEBUG=<n>` (n > 0) writes the resolved FP16 image and the
+pre-resolve color in capture frames.
 
 ### Current depth target (temporal step 1)
 
@@ -250,19 +257,83 @@ rasterized color by construction; the fixture proves the sign and scale with
 a coverage oracle at the jittered sample positions
 ([motion-output verification](../verification/motion-output.md)).
 
-### Cut detector (temporal step 1, data only)
+### Temporal resolve at the bloom copy (temporal step 3)
+
+The game unbinds its depth surface (the selector's Scene to AwaitCopy
+transition) and then copies the main target into the bloom source with a
+full-rect `StretchRect`. The route's `before_stretch` runs in that hook
+BEFORE the application's copy: when the selector is in AwaitCopy and a probe
+copy of it advances to AwaitBloomTarget on the pending event (the source is
+the latched main target, the destination a same-sized color texture), the
+frame is a recognized scene frame. Preconditions, each a logged skip reason
+and an invalidation of the history: the jitter is active (the resolve without
+jitter only blurs), the sentinel fill succeeded and both RT1 and RT2 are owned,
+no state block is recording, no application query is between `Issue(BEGIN)`
+and `Issue(END)`, and the pass initialized (lazily, once per device: the
+embedded resolve shader, one device reference). The route then obtains the
+RT1/RT2 textures from its level-0 surfaces (`GetContainer`, released after the
+run), builds `FrameInputs` (color_surface = the application's main surface,
+current_depth = RT2, motion = RT1, main dimensions, epoch = the route's
+resource generation, an identity clip-to-previous matrix because RT1 alpha is
+always 1 or -1 so the camera path is never taken, current and previous jitter
+in pixels, `cut` = the frame's verdict, `PerPixel` +
+`DerivedFromDepthSentinel`, the tracked scene state, `caller_queries_idle`
+from the query tracking) and calls `run`. On success the resolved FP16 surface
+is copied back into the main target with a point-filtered full-rect
+`StretchRect` through the native slot; the application's copy then proceeds
+and everything after it (bloom, overlays, Present) sees the resolved image.
+Any failure leaves the main target untouched (the pass writes only its own
+targets and the copy-back happens only after a complete success),
+invalidates the history and logs `motion_output_taa_failed` once for the
+frame (at most 16 per device). History is also invalidated by the cut
+verdict (inside the pass), before Reset, by a dimension change (the pass
+compares), by a failed Present and by any frame that did not resolve
+(menu frames, frames the selector rejected before the copy, skipped frames).
+A rejection after the copy (a different bloom or overlay sequence) keeps the
+history: the resolved scene is complete and the next correspondence is scene
+to scene.
+
+The pass calls the device only through the route's native slots (it is
+handed the original vtable at initialization), so neither the shadow nor the
+selector observes its calls; its `normalize` also resets stage 0's
+fixed-function coordinate index and texture transform flags, which the
+backend applies to the pre-transformed resolve quad. The attach gate
+additionally asks `CheckDeviceFormatConversion` for the 8-bit-to-FP16 copies
+(`taa_reason=format_conversion`). Its default-pool objects (two FP16 histories,
+two R32F depth histories, the FP16 scratch, the cached `D3DSBT_ALL` state
+block) are released after RT1/RT2 in `before_reset` and re-created lazily
+after `after_reset(S_OK)`; the resolve shader survives Reset and is released
+with the route's objects at the final device Release. The device references
+those objects hold are counted by probing the device count before and after
+every pass call (`taa_call`), which is exact in the native model and through
+the ownership wrapper (where a texture and its level surface are two
+children); while such a call runs, `device_references()` reports zero so the
+child releases re-entering the device Release hook cannot match its
+final-release probe with a stale count. Per frame the pass costs its two
+`StretchRect` copies, one resolve draw, one `Capture`/`Apply` of the state
+block and the route's copy-back; nothing is added per draw. In capture frames
+with `X3M_TAA_DEBUG` the route also writes `color_<device>_<frame>.bgra8`
+(the 8-bit main target before the resolve) and `taa_<device>_<frame>.rgba16f`
+(the resolved FP16 output) beside the motion and depth readbacks. The frame
+line carries `taa`, `taa_attempted`, `taa_resolved`, `taa_history`,
+`taa_skip` (`TaaSkip`), `taa_result`, `taa_restore`, `taa_copy`,
+`scene_open`, `active_queries` and `taa_references`.
+
+### Cut detector (temporal step 1)
 
 For every matched draw the route records the screen displacement of the
 projected object origin (`(c24.w/c27.w, c25.w/c27.w)` of the current versus
 the previous unjittered rows, scaled to pixels) into a vector reserved once
 at attach (4,096 samples, never grown per draw). When the selector leaves the
-scene phase, or before Present for a frame that never leaves it, the frame's
+scene phase (the depth unbind, before the copy where the resolve runs), or
+before Present for a frame that never leaves it, the frame's
 median displacement (`nth_element`) and the fraction of keyed routed draws
 whose key the previous frame lacked (gate 6 among gates 0 and 6) are
 computed; `cut` is set when the median exceeds the bound scaled by
 width/1280 or the fraction exceeds its bound. The values are in the frame
 counters, on the `motion_output_frame` line and, in capture frames, on the
-`motion_output_cut` line. No consumer exists yet.
+`motion_output_cut` line. The resolve rejects history for a frame whose
+verdict is set (step 3).
 
 ### Pair keying
 
@@ -318,12 +389,16 @@ against the SDK layout in `verification/probe/abi_check.cpp`.
 | 92 / 107 | SetVertexShader / SetPixelShader | bound program identity and registered variant |
 | 94 / 96 / 109 | SetVertexShaderConstantF / I, SetPixelShaderConstantF | rows c24–27, i0, application writes to c252–255 and PS c216–217 |
 | 100 / 104 | SetStreamSource / SetIndices | stream-0 and index allocation identities |
-| 30 / 31 / 34 / 35 / 39 / 115 / 116 | UpdateSurface, UpdateTexture, StretchRect, ColorFill, SetDepthStencilSurface, patches | complete selector event stream (previously only with scene-depth capture) |
+| 30 / 31 / 34 / 35 / 39 / 115 / 116 | UpdateSurface, UpdateTexture, StretchRect, ColorFill, SetDepthStencilSurface, patches | complete selector event stream (previously only with scene-depth capture); StretchRect also runs the resolve before the application's bloom copy (step 3) |
+| 41 / 42 | BeginScene / EndScene | scene state for the resolve's caller contract (step 3) |
+| 118 | CreateQuery | query objects get a private vtable (slots 2 Release, 6 Issue) so the route counts queries between BEGIN and END; the resolve never draws while one is open (step 3) |
 
-Native slots the route calls itself (never the hooked table): 6, 8, 9, 23, 28,
-32, 36, 37, 38, 39, 40, 41, 42, 47, 48, 57, 58, 75, 76, 83, 87, 88, 89, 90, 91,
-92, 93, 94, 95, 97, 100, 101, 103, 105, 106, 107, 108, 109, 110; the release
-hook's reference-count probe uses native 1 and 2 (AddRef/Release).
+Native slots the route calls itself (never the hooked table): 1, 2, 6, 8, 9,
+23, 28, 32, 34, 36, 37, 38, 39, 40, 41, 42, 47, 48, 57, 58, 75, 76, 83, 87, 88,
+89, 90, 91, 92, 93, 94, 95, 97, 100, 101, 103, 105, 106, 107, 108, 109, 110; the
+release hook's reference-count probe and the route's pass accounting use
+native 1 and 2 (AddRef/Release). The pass adds 7, 59, 65, 69, 102 and 104
+through the same table.
 
 The hot setter hooks (shaders, the three constant setters, viewport) use
 `LightCallBoundary` (MXCSR and last error only) with a plain lock: their own
@@ -381,18 +456,22 @@ COLORWRITEENABLE1/2) before and after each fill and each draw.
 - Restoration failure (including the jitter row write-back,
   `what=jitter_rows`): counted, logged at most 16 times per device, the
   frame's history is still committed only if the fill succeeded.
-- Reset: target released before the native call, history/selector invalidated,
-  shadow resynchronized after success; variants survive.
+- Reset: target released before the native call, then the pass's default-pool
+  objects; history/selector invalidated, shadow resynchronized after success;
+  variants and the resolve shader survive.
+- Resolve failure (`motion_output_taa_failed`): the main target is untouched,
+  the history is invalid, the application's copy proceeds with the raw frame.
 - Final device Release: owned variants and target each hold a device reference,
   so the release hook probes the count and drops them first when only the
   caller's reference remains, preserving the application's zero return.
 
 ### Not covered
 
-Any temporal consumer (the cut verdict and the jitter values are data only),
-gameplay captures with RT2 or jitter, the SM1/SM2/bloom programs outside the
-table (their draws are neither routed nor jittered), instanced or user-memory
-draws,
+Gameplay captures with RT2, jitter or the resolve (the user-managed TAA run
+is described in [motion-output verification](../verification/motion-output.md)),
+temporal image quality, the SM1/SM2/bloom programs outside the table (their
+draws are neither routed nor jittered; their pixels resolve current-only
+through the RT2 sentinel), instanced or user-memory draws,
 MSAA targets, Direct3D9Ex, native Windows
 execution (cross-compiled only), and the measured cost of the setter hooks in
 the game (each still takes the capture mutex and the admission entry; the

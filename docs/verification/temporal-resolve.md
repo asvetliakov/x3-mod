@@ -96,6 +96,24 @@ Evidence: [report](../../verification/results/temporal-pass.txt) and
 conversion-rule detection is printed as `COPY rule=...`; the D24 comparison
 as `DEPTH decoded_vs_r32f_max_error=...`.
 
+Step 3 changed the pass without changing these counts: every device call goes
+through numbered vtable slots (the route hands it the original table; this
+fixture passes none, so its vtable-swapping fault injection still reaches the
+pass), one `D3DSBT_ALL` state block is created per device generation and
+captured/applied per run instead of created per run, the decoder bytecode is
+optional, and the resolve's output alpha is the current color's alpha (this
+fixture's inputs carry alpha one, so its samples are unchanged). The suite was
+rerun after these changes with the same 154/158 result; the route-side
+evidence is in [motion output](motion-output.md#temporal-resolve-step-3).
+Review 16 added stage 0's `D3DTSS_TEXCOORDINDEX = 0` and
+`D3DTSS_TEXTURETRANSFORMFLAGS = D3DTTFF_DISABLE` to `normalize`: the fixture's
+hostile state now sets a texture transform (scale 0.5, offset 0.25) with
+`D3DTTFF_COUNT2` and coordinate index 1 on stage 0 before every run, and
+without the reset the Preview backend applied them to the pre-transformed
+resolve quad (`matrix routing` sampled 0.25 instead of 0.625); the counts
+are unchanged at 154/158 and the state comparison (texture stage states of
+stages 0-7 and `D3DTS_TEXTURE0`) proves the hostile values come back.
+
 ## Reproduce
 
 ```sh

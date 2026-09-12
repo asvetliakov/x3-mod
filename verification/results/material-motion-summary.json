@@ -2102,7 +2102,7 @@
     "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/syswow64/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863",
     "/opt/homebrew/Cellar/mingw-w64/14.0.0_3/toolchain-i686/bin/i686-w64-mingw32-g++": "c8181d422f8a912b04fc6c87d770a169b7aa6a6fd37edbc59629b876c33dd947"
   },
-  "executable_sha256": "001395eb54944a50c1f63dc2aa0fd02325c189f87b867021438fcea9125df1cb",
+  "executable_sha256": "ed7931e10a63eadb5221f739dde88aa7cd8c90f766ff14c6fd48ad578d190ac2",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -2131,60 +2131,60 @@
       "height": 768,
       "mode": 0,
       "samples": 6,
-      "mean_ms": 0.504,
-      "median_ms": 0.4728,
-      "minimum_ms": 0.4533,
-      "maximum_ms": 0.6806
+      "mean_ms": 0.7198333333333333,
+      "median_ms": 0.69015,
+      "minimum_ms": 0.6673,
+      "maximum_ms": 0.8198
     },
     {
       "width": 1280,
       "height": 768,
       "mode": 1,
       "samples": 6,
-      "mean_ms": 0.5042833333333333,
-      "median_ms": 0.46040000000000003,
-      "minimum_ms": 0.4384,
-      "maximum_ms": 0.7352
+      "mean_ms": 0.7485833333333334,
+      "median_ms": 0.7528,
+      "minimum_ms": 0.6832,
+      "maximum_ms": 0.8077
     },
     {
       "width": 1280,
       "height": 768,
       "mode": 2,
       "samples": 6,
-      "mean_ms": 0.7327166666666667,
-      "median_ms": 0.62395,
-      "minimum_ms": 0.5887,
-      "maximum_ms": 1.0651
+      "mean_ms": 0.8326833333333333,
+      "median_ms": 0.83055,
+      "minimum_ms": 0.8166,
+      "maximum_ms": 0.8548
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 0,
       "samples": 6,
-      "mean_ms": 1.3227333333333333,
-      "median_ms": 1.29645,
-      "minimum_ms": 1.2677,
-      "maximum_ms": 1.4031
+      "mean_ms": 1.2779166666666666,
+      "median_ms": 1.2771,
+      "minimum_ms": 1.2523,
+      "maximum_ms": 1.3162
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 1,
       "samples": 6,
-      "mean_ms": 1.55365,
-      "median_ms": 1.52315,
-      "minimum_ms": 1.5082,
-      "maximum_ms": 1.6392
+      "mean_ms": 1.51655,
+      "median_ms": 1.51555,
+      "minimum_ms": 1.397,
+      "maximum_ms": 1.638
     },
     {
       "width": 5120,
       "height": 1440,
       "mode": 2,
       "samples": 6,
-      "mean_ms": 2.020583333333333,
-      "median_ms": 2.0176499999999997,
-      "minimum_ms": 2.0018,
-      "maximum_ms": 2.0363
+      "mean_ms": 1.9183833333333333,
+      "median_ms": 1.9995500000000002,
+      "minimum_ms": 1.6592,
+      "maximum_ms": 2.0497
     }
   ],
   "current_depth_samples": 738,
@@ -5987,5 +5987,5 @@
     "/opt/homebrew/Cellar/mingw-w64/14.0.0_3/toolchain-i686/bin/i686-w64-mingw32-g++": "c8181d422f8a912b04fc6c87d770a169b7aa6a6fd37edbc59629b876c33dd947"
   },
   "wine_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "report_sha256": "75759351674720b93b4586753dc4873bdb0c9ee198011d6e9f1e42039eeb48d7"
+  "report_sha256": "18fe912f2a245a91f9550a4abe057d0f8ead16fc58fb832445df2f1619b8d1e8"
 }

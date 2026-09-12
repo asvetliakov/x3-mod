@@ -33,6 +33,17 @@ Recording runtime hashes in test reports remains useful provenance.
 - macOS HDR/window presentation research is platform-specific by nature. A
   native-Windows presentation path must supply the corresponding HDR and window
   behavior through documented Windows graphics interfaces.
+- The temporal resolve at the bloom copy (`X3M_TAA=1`) converts the 8-bit
+  main target to FP16 and back with `StretchRect`. Native D3D9 grants that
+  conversion only where the driver reports it, so the route's attach gate asks
+  `CheckDeviceFormatConversion` for A8R8G8B8/X8R8G8B8 to and from
+  A16B16G16R16F (`taa_reason=format_conversion` otherwise); on Wine the query
+  accepts everything and the fixtures prove the conversion, so native
+  behavior remains unverified. The pass's cached `D3DSBT_ALL` state block also
+  holds references to the application objects bound at the copy until the
+  next frame's capture (released before Reset); on native D3D those keep the
+  device count above the final-release probe until the block is dropped, on
+  Wine the application-level references are independent of it.
 - Current CrossOver fixtures do not establish native-Windows rendering, reset,
   multithreading, presentation or performance. Native-Windows verification remains
   outstanding; no successful Windows run is claimed.

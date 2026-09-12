@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Compile our original ps_3_0 fragments with a local native D3DX compiler.
 
-Two authored fragments are embedded: the motion program
-(src/temporal/rigid_motion_ps.hlsl -> src/renderer/rigid_motion_pixel_program_inc.h)
-and the current-depth program
-(src/temporal/current_depth_ps.hlsl -> src/renderer/current_depth_pixel_program_inc.h).
-`--shader` selects one (default: both). --check recompiles and compares the
+Three authored programs are embedded: the motion fragment
+(src/temporal/rigid_motion_ps.hlsl -> src/renderer/rigid_motion_pixel_program_inc.h),
+the current-depth fragment
+(src/temporal/current_depth_ps.hlsl -> src/renderer/current_depth_pixel_program_inc.h)
+and the temporal resolve the live route runs (temporal step 3;
+src/temporal/resolve.hlsl -> src/renderer/temporal_resolve_program_inc.h).
+`--shader` selects one (default: all). --check recompiles and compares the
 checked-in artifacts without changing them. The compiler DLL is an external
 local prerequisite, never redistributed. Only our authored shaders' compiled
 programs and deterministic provenance are retained. No D3D device is created;
@@ -29,6 +31,9 @@ SHADERS = {
     'current_depth': dict(source=ROOT / 'src/temporal/current_depth_ps.hlsl',
                           header=ROOT / 'src/renderer/current_depth_pixel_program_inc.h',
                           provenance=ROOT / 'verification/results/current-depth-pixel-program.json'),
+    'temporal_resolve': dict(source=ROOT / 'src/temporal/resolve.hlsl',
+                             header=ROOT / 'src/renderer/temporal_resolve_program_inc.h',
+                             provenance=ROOT / 'verification/results/temporal-resolve-program.json'),
 }
 
 

@@ -8,11 +8,24 @@
 // draw; the fixture then expects the rasterized coverage at the jittered
 // sample positions (Halton 2,3 in raster pixels, +X right, +Y down) and the
 // motion readback from the UNJITTERED previous rows with zero prior jitter.
+// With X3M_TAA=1 (temporal step 3) every frame ends like the game's: the depth
+// surface is unbound and the main target is copied into a bloom source with
+// StretchRect; the route resolves at that copy. The fixture reads the main
+// target before and after the copy, proves the copy received the resolved
+// image, that every touched state is restored, that a frame without usable
+// history (first frame, cut, after Reset) leaves the 8-bit color bit-identical,
+// and (seam) that the resolved image equals a reference TemporalPass run on a
+// plain second device from the same read-back inputs, byte for byte, with the
+// reference FP16 output written beside the DLL's X3M_TAA_DEBUG files.
+// "bench WxH" times the boundary StretchRect (EVENT-synchronized, QPC) with
+// the resolve on or off at a game-like size; CPU-inclusive timing.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <d3d9.h>
 #define X3M_MOTION_OUTPUT_FIXTURE
 #include "../../src/proxy/motion_output.h"
+#include "../../src/renderer/temporal_pass.h"
+#include "../../src/renderer/temporal_resolve_program.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -27,6 +40,7 @@ using Words = std::vector<std::uint32_t>;
 namespace {
 unsigned checks = 0, restorations = 0, motion_checked = 0, motion_matched = 0, frames_verified = 0;
 unsigned depth_checked = 0, depth_written = 0, coverage_checked = 0, coverage_ambiguous = 0, coverage_frames = 0;
+unsigned taa_frames = 0, taa_history_frames = 0, taa_reference_frames = 0, taa_changed_pixels = 0;
 double max_uv_pixels = 0, max_depth_error = 0, max_current_depth_error = 0;
 // Halton(2,3) sample `index` (1-based) centred on zero; the route's sequence.
 double halton(unsigned index, unsigned base) { double f = 1, r = 0; while (index) { f /= base; r += f * (index % base); index /= base; } return r; }
@@ -75,8 +89,12 @@ const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 constexpr D3DRENDERSTATETYPE watched_states[] = {
     D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ALPHATESTENABLE, D3DRS_ALPHABLENDENABLE, D3DRS_CULLMODE, D3DRS_FILLMODE,
     D3DRS_COLORWRITEENABLE, D3DRS_SCISSORTESTENABLE, D3DRS_STENCILENABLE, D3DRS_FOGENABLE, D3DRS_SRGBWRITEENABLE,
-    D3DRS_CLIPPLANEENABLE, D3DRS_COLORWRITEENABLE1, D3DRS_ZFUNC, D3DRS_LIGHTING, D3DRS_COLORWRITEENABLE2};
+    D3DRS_CLIPPLANEENABLE, D3DRS_COLORWRITEENABLE1, D3DRS_ZFUNC, D3DRS_LIGHTING, D3DRS_COLORWRITEENABLE2,
+    D3DRS_MULTISAMPLEMASK, D3DRS_VERTEXBLEND, D3DRS_WRAP0, D3DRS_CLIPPING};
 constexpr unsigned watched_count = sizeof(watched_states) / sizeof(watched_states[0]);
+// Sampler states the resolve normalizes on s0-s6; compared on stages 0-7.
+constexpr D3DSAMPLERSTATETYPE watched_samplers[] = {D3DSAMP_MINFILTER, D3DSAMP_MAGFILTER, D3DSAMP_MIPFILTER, D3DSAMP_ADDRESSU, D3DSAMP_ADDRESSV, D3DSAMP_SRGBTEXTURE, D3DSAMP_MAXMIPLEVEL};
+constexpr unsigned sampler_stages = 8, sampler_count = sizeof(watched_samplers) / sizeof(watched_samplers[0]);
 
 // Every state the route or its fill may touch. Getters add references that
 // are dropped immediately: only pointer identity is compared.
@@ -87,6 +105,11 @@ struct Snapshot {
     IDirect3DVertexBuffer9* stream = nullptr; UINT offset = 0, stride = 0;
     DWORD states[watched_count]{};
     float rows[16]{}, reserved[16]{}, pixel[8]{}; int integer0[4]{};
+    // Touched by the resolve (restored through its state block): textures and
+    // sampler states of stages 0-7, PS c0-7, stream-0 frequency, indices.
+    IDirect3DBaseTexture9* textures[sampler_stages]{};
+    DWORD samplers[sampler_stages][sampler_count]{};
+    float ps_low[32]{}; UINT frequency0 = 0; IDirect3DIndexBuffer9* indices = nullptr;
 };
 struct Object {
     const char* name; IDirect3DVertexBuffer9* vb = nullptr;
@@ -99,18 +122,102 @@ bool covers_a(double ox, double oy) { return ox >= -1 && oy <= 1 && ox - oy <= 2
 bool covers_b(double ox, double oy) { return ox >= -.9 && oy <= .9 && ox - oy <= -1.2; }
 // `flat`: drawn with the flat pixel program (never routed, flat colour);
 // `jittered`: the route jitters this draw's rows (scene draw with a table VS).
-struct DrawRecord { Object* object; float t, p, zo; bool routed, matched; float pt, pp, pzo; bool flat = false; bool jittered = false; };
+struct DrawRecord { Object* object; float t, p, zo; bool routed, matched; float pt, pp, pzo; bool flat = false; bool jittered = false; bool keyed = false; };
 enum class Alter { None, Blend, FlatPixel };
 
+// The reference resolve: the production TemporalPass (same embedded bytecode
+// as the DLL) on a plain device of the system d3d9, fed with the DLL's own
+// read-back inputs. Its history evolves exactly like the route's when every
+// frame's inputs, jitter, cut verdict and Reset points are the same, so its
+// output must be bit-identical.
+struct Reference {
+    HMODULE module = nullptr; HWND window = nullptr;
+    Com<IDirect3D9> factory; Com<IDirect3DDevice9> d;
+    x3m::renderer::TemporalPass pass;
+    Com<IDirect3DSurface9> color, output8, sys8, sys16;   // lockable A8R8G8B8 RT inputs/outputs and readback surfaces
+    Com<IDirect3DTexture9> motion, depth, depth_staging;   // MANAGED RGBA32F (sampled only); DEFAULT R32F (StretchRect source) filled through a SYSTEMMEM copy
+    UINT W = 0, H = 0; std::uint64_t epoch = 1;
+    void create(HMODULE proxy, HWND owner, UINT w, UINT h) {
+        W = w; H = h; window = owner;
+        char path[MAX_PATH]{}; GetSystemDirectoryA(path, MAX_PATH);
+        std::string full = std::string(path) + "\\d3d9.dll";
+        module = LoadLibraryExA(full.c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
+        require(module && module != proxy, "reference device uses the system d3d9, not the proxy");
+        auto create = symbol<IDirect3D9* (WINAPI*)(UINT)>(module, "Direct3DCreate9", true);
+        factory.p = create(D3D_SDK_VERSION); if (!factory.p) throw std::runtime_error("reference factory");
+        D3DPRESENT_PARAMETERS pp{}; pp.Windowed = TRUE; pp.SwapEffect = D3DSWAPEFFECT_DISCARD; pp.hDeviceWindow = owner;
+        pp.BackBufferWidth = 16; pp.BackBufferHeight = 16; pp.BackBufferFormat = D3DFMT_A8R8G8B8; pp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+        api(factory->CreateDevice(0, D3DDEVTYPE_HAL, owner, D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp, &d.p), "reference CreateDevice");
+        api(d->CreateRenderTarget(W, H, D3DFMT_A8R8G8B8, D3DMULTISAMPLE_NONE, 0, TRUE, &color.p, nullptr), "reference color RT");
+        api(d->CreateRenderTarget(W, H, D3DFMT_A8R8G8B8, D3DMULTISAMPLE_NONE, 0, TRUE, &output8.p, nullptr), "reference output RT");
+        api(d->CreateOffscreenPlainSurface(W, H, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &sys8.p, nullptr), "reference sys8");
+        api(d->CreateOffscreenPlainSurface(W, H, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &sys16.p, nullptr), "reference sys16");
+        api(d->CreateTexture(W, H, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED, &motion.p, nullptr), "reference motion");
+        api(d->CreateTexture(W, H, 1, 0, D3DFMT_R32F, D3DPOOL_DEFAULT, &depth.p, nullptr), "reference depth");
+        api(d->CreateTexture(W, H, 1, 0, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &depth_staging.p, nullptr), "reference depth staging");
+        api(pass.initialize(d.p, nullptr, reinterpret_cast<const DWORD*>(x3m::renderer::temporal_resolve_program())), "reference initialize");
+    }
+    void upload(const std::vector<DWORD>& image, const std::vector<float>& motion_data, const std::vector<float>& depth_data) {
+        D3DLOCKED_RECT lock{};
+        api(color->LockRect(&lock, nullptr, 0), "lock reference color");
+        for (UINT y = 0; y < H; ++y) std::memcpy(static_cast<char*>(lock.pBits) + y * lock.Pitch, &image[std::size_t(y) * W], W * 4);
+        api(color->UnlockRect(), "unlock reference color");
+        api(motion->LockRect(0, &lock, nullptr, 0), "lock reference motion");
+        for (UINT y = 0; y < H; ++y) std::memcpy(static_cast<char*>(lock.pBits) + y * lock.Pitch, &motion_data[std::size_t(y) * W * 4], W * 16);
+        api(motion->UnlockRect(0), "unlock reference motion");
+        api(depth_staging->LockRect(0, &lock, nullptr, 0), "lock reference depth");
+        for (UINT y = 0; y < H; ++y) std::memcpy(static_cast<char*>(lock.pBits) + y * lock.Pitch, &depth_data[std::size_t(y) * W], W * 4);
+        api(depth_staging->UnlockRect(0), "unlock reference depth");
+        api(d->UpdateTexture(depth_staging.p, depth.p), "reference depth upload");
+    }
+    // Runs one frame exactly as the route does and returns the copied-back
+    // 8-bit image; `half` receives the FP16 output bytes.
+    x3m::renderer::Output run(double jx, double jy, double pjx, double pjy, bool cut, std::vector<DWORD>& image8, std::vector<unsigned char>& half) {
+        x3m::renderer::FrameInputs in{};
+        in.color_surface = color.p; in.current_depth = depth.p; in.motion = motion.p;
+        in.width = W; in.height = H; in.epoch = epoch;
+        std::memcpy(in.clip_to_previous, identity, sizeof identity);
+        in.current_jitter[0] = float(jx); in.current_jitter[1] = float(jy); in.previous_jitter[0] = float(pjx); in.previous_jitter[1] = float(pjy);
+        in.motion_policy = x3m::renderer::MotionPolicy::PerPixel; in.reactive_policy = x3m::renderer::ReactivePolicy::DerivedFromDepthSentinel;
+        in.history_allowed = true; in.cut = cut; in.caller_scene_open = false; in.caller_queries_idle = true;
+        x3m::renderer::Output out{};
+        api(pass.run(in, &out), "reference run");
+        api(d->StretchRect(out.color_surface, nullptr, output8.p, nullptr, D3DTEXF_POINT), "reference copy-back");
+        api(d->GetRenderTargetData(output8.p, sys8.p), "reference readback 8");
+        D3DLOCKED_RECT lock{};
+        api(sys8->LockRect(&lock, nullptr, D3DLOCK_READONLY), "lock reference 8");
+        image8.resize(std::size_t(W) * H);
+        for (UINT y = 0; y < H; ++y) std::memcpy(&image8[std::size_t(y) * W], static_cast<const char*>(lock.pBits) + y * lock.Pitch, W * 4);
+        sys8->UnlockRect();
+        api(d->GetRenderTargetData(out.color_surface, sys16.p), "reference readback 16");
+        api(sys16->LockRect(&lock, nullptr, D3DLOCK_READONLY), "lock reference 16");
+        half.resize(std::size_t(W) * H * 8);
+        for (UINT y = 0; y < H; ++y) std::memcpy(&half[std::size_t(y) * W * 8], static_cast<const char*>(lock.pBits) + y * lock.Pitch, W * 8);
+        sys16->UnlockRect();
+        return out;
+    }
+    void reset() { pass.invalidate(); ++epoch; }
+    void destroy() {
+        pass.shutdown();
+        color.reset(); output8.reset(); sys8.reset(); sys16.reset(); motion.reset(); depth.reset(); depth_staging.reset();
+        if (d.p) { const ULONG refs = d.p->Release(); d.p = nullptr; require(refs == 0, "reference device final Release reaches zero"); }
+        if (factory.p) { const ULONG refs = factory.p->Release(); factory.p = nullptr; require(refs == 0, "reference factory final Release reaches zero"); }
+        if (module) { FreeLibrary(module); module = nullptr; }
+    }
+};
+
 struct Fixture {
-    static constexpr UINT W = 64, H = 64;
+    static inline UINT W = 64, H = 64;
     HMODULE runtime = nullptr;
     void (*configure)(const x3m::MotionOutputFixtureConfig*) = nullptr;
     HRESULT (*readback)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*readback_depth)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*last_pixel_abi)(IDirect3DDevice9*, float*, unsigned) = nullptr;
-    bool seam = false, enabled = false, jitter = false;
+    bool seam = false, enabled = false, jitter = false, taa = false, bench = false;
     unsigned jitter_samples = 8;
+    Reference reference; bool reference_ready = false;
+    std::uint64_t frames_since_reset = 0;
+    std::vector<double> bench_ms;
     // This frame's and the previous frame's route jitter in raster pixels.
     double jx = 0, jy = 0, pjx = 0, pjy = 0;
     HWND window = nullptr; D3DPRESENT_PARAMETERS pp{};
@@ -119,6 +226,7 @@ struct Fixture {
     Com<IDirect3DVertexDeclaration9> declaration; Com<IDirect3DVertexBuffer9> vb_a, vb_b;
     Com<IDirect3DTexture9> textures[3]; Com<IDirect3DCubeTexture9> cube;
     Com<IDirect3DSurface9> back, depth;
+    Com<IDirect3DTexture9> bloom; Com<IDirect3DSurface9> bloom_surface; // The application's bloom source (A8R8G8B8 RT texture)
     Words vs_words, ps_words;
     std::uint64_t vs_hash = 0, ps_hash = 0, flat_hash = 0;
     unsigned long long frame = 0; unsigned draw_index = 0;
@@ -133,6 +241,10 @@ struct Fixture {
     void acquire_swapchain_surfaces() {
         api(d->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &back.p), "GetBackBuffer");
         api(d->GetDepthStencilSurface(&depth.p), "GetDepthStencilSurface");
+        if (taa) {
+            api(d->CreateTexture(W, H, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &bloom.p, nullptr), "CreateTexture bloom");
+            api(bloom->GetSurfaceLevel(0, &bloom_surface.p), "bloom level");
+        }
     }
     void create(bool production_expected_seam) {
         (void)production_expected_seam;
@@ -237,6 +349,13 @@ struct Fixture {
     }
     Snapshot snapshot() {
         Snapshot s{};
+        for (UINT i = 0; i < sampler_stages; ++i) {
+            if (SUCCEEDED(d->GetTexture(i, &s.textures[i])) && s.textures[i]) s.textures[i]->Release();
+            for (unsigned k = 0; k < sampler_count; ++k) api(d->GetSamplerState(i, watched_samplers[k], &s.samplers[i][k]), "GetSamplerState");
+        }
+        api(d->GetPixelShaderConstantF(0, s.ps_low, 8), "GetPixelShaderConstantF low");
+        api(d->GetStreamSourceFreq(0, &s.frequency0), "GetStreamSourceFreq");
+        if (SUCCEEDED(d->GetIndices(&s.indices)) && s.indices) s.indices->Release();
         api(d->GetRenderTarget(0, &s.rt[0]), "GetRenderTarget0"); s.rt[0]->Release();
         if (SUCCEEDED(d->GetRenderTarget(1, &s.rt[1])) && s.rt[1]) s.rt[1]->Release();
         if (SUCCEEDED(d->GetRenderTarget(2, &s.rt[2])) && s.rt[2]) s.rt[2]->Release();
@@ -270,6 +389,12 @@ struct Fixture {
             differs(std::memcmp(x.pixel, y.pixel, sizeof x.pixel) != 0, "ps_c216_217");
         }
         differs(std::memcmp(x.integer0, y.integer0, sizeof x.integer0) != 0, "i0");
+        for (unsigned i = 0; i < sampler_stages; ++i) {
+            char what[32]; std::snprintf(what, sizeof what, "texture_%u", i); differs(x.textures[i] != y.textures[i], what);
+            std::snprintf(what, sizeof what, "samplers_%u", i); differs(std::memcmp(x.samplers[i], y.samplers[i], sizeof x.samplers[i]) != 0, what);
+        }
+        differs(std::memcmp(x.ps_low, y.ps_low, sizeof x.ps_low) != 0, "ps_c0_7");
+        differs(x.frequency0 != y.frequency0, "frequency0"); differs(x.indices != y.indices, "indices");
         ++restorations;
         std::printf("RESTORE frame=%llu label=%s differences=%u\n", frame, label, differences);
         if (differences) throw std::runtime_error(label);
@@ -310,7 +435,7 @@ struct Fixture {
         compare(before, snapshot(), "draw");
         if (alter == Alter::Blend) api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE), "blend off");
         const bool live = enabled && seam;
-        records.push_back({&o, t, p, zo, live && routed, live && matched, o.rt, o.rp, o.rzo, alter == Alter::FlatPixel, enabled && jitter});
+        records.push_back({&o, t, p, zo, live && routed, live && matched, o.rt, o.rp, o.rzo, alter == Alter::FlatPixel, enabled && jitter, live && routed && known});
         std::printf("EXPECT frame=%llu index=%u object=%s routed=%u matched=%u jittered=%u\n", frame, draw_index, o.name, live && routed, live && matched, enabled && jitter);
         if (live && routed && known) { o.recorded = true; o.rt = t; o.rp = p; o.rzo = zo; }
     }
@@ -320,9 +445,9 @@ struct Fixture {
         api(d->SetVertexShaderConstantF(252, v, 4), "write c252"); api(d->SetPixelShaderConstantF(216, q, 2), "write c216");
         reserved_written = true;
     }
-    std::vector<DWORD> color_image() {
+    std::vector<DWORD> color_image(IDirect3DSurface9* source = nullptr) {
         Com<IDirect3DSurface9> sys; api(d->CreateOffscreenPlainSurface(W, H, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &sys.p, nullptr), "CreateOffscreenPlainSurface");
-        api(d->GetRenderTargetData(back.p, sys.p), "GetRenderTargetData color");
+        api(d->GetRenderTargetData(source ? source : back.p, sys.p), "GetRenderTargetData color");
         D3DLOCKED_RECT lock{}; api(sys->LockRect(&lock, nullptr, D3DLOCK_READONLY), "LockRect color");
         std::vector<DWORD> image(std::size_t(W) * H);
         for (UINT y = 0; y < H; ++y) std::memcpy(&image[std::size_t(y) * W], static_cast<const unsigned char*>(lock.pBits) + y * lock.Pitch, W * 4);
@@ -470,22 +595,114 @@ struct Fixture {
         require(!depth_mismatches, "depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere)");
         ++frames_verified;
     }
+    // The DLL's cut rule on this frame's script: the fraction of keyed routed
+    // draws (scope known: gates 0 and 6) that found no previous entry, against
+    // the 0.25 bound; the origin displacements of the script (1.6 px at 64 px)
+    // never reach the median bound.
+    bool expected_cut() const {
+        unsigned keyed = 0, matched = 0;
+        for (const auto& r : records) { keyed += r.keyed; matched += r.keyed && r.matched; }
+        return keyed && float(keyed - matched) / float(keyed) > .25f;
+    }
+    // The game's pre-bloom boundary inside the scene: depth unbound, then the
+    // main target copied into the bloom source. The route resolves inside the
+    // StretchRect hook; the fixture reads the main target on both sides.
+    void boundary() {
+        api(d->SetDepthStencilSurface(nullptr), "SetDepthStencilSurface null");
+        const auto before_image = color_image();
+        const Snapshot before = snapshot();
+        api(d->StretchRect(back.p, nullptr, bloom_surface.p, nullptr, D3DTEXF_NONE), "StretchRect bloom copy");
+        compare(before, snapshot(), "boundary");
+        const auto after_image = color_image(), bloom_image = color_image(bloom_surface.p);
+        require(bloom_image == after_image, "the application's bloom copy receives the main target as resolved");
+        unsigned changed = 0;
+        for (std::size_t i = 0; i < after_image.size(); ++i) if (after_image[i] != before_image[i]) { if (++changed <= 4) std::printf("CHANGED frame=%llu x=%u y=%u before=%08lx after=%08lx\n", frame, unsigned(i % W), unsigned(i / W), before_image[i], after_image[i]); }
+        const bool live = enabled && seam;
+        bool history = false;
+        if (live) {
+            // Reference resolve from the DLL's own inputs: RT1/RT2 read back
+            // through the seam, the 8-bit main target read back before the copy.
+            std::vector<float> motion_data(std::size_t(W) * H * 4), depth_data(std::size_t(W) * H); unsigned w = 0, h = 0;
+            api(readback(d.p, motion_data.data(), unsigned(motion_data.size()), &w, &h), "reference motion readback");
+            api(readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h), "reference depth readback");
+            reference.upload(before_image, motion_data, depth_data);
+            std::vector<DWORD> expected; std::vector<unsigned char> half;
+            const auto out = reference.run(jx, jy, pjx, pjy, expected_cut(), expected, half);
+            history = out.used_history;
+            unsigned mismatches = 0;
+            for (std::size_t i = 0; i < expected.size(); ++i) if (expected[i] != after_image[i]) { if (++mismatches <= 4) std::printf("TAA_DIFF frame=%llu index=%u actual=%08lx reference=%08lx\n", frame, unsigned(i), after_image[i], expected[i]); }
+            require(!mismatches, "main target after the copy equals the reference resolve of the same inputs, byte for byte");
+            char name[64]; std::snprintf(name, sizeof name, "reference_taa_%llu.rgba16f", frame);
+            FILE* file = std::fopen(name, "wb"); require(file != nullptr, "reference FP16 output written");
+            std::fwrite(half.data(), 1, half.size(), file); std::fclose(file);
+            ++taa_reference_frames;
+        } else {
+            // Production DLL: every routed pixel is sentinel (no history
+            // correspondence), so the resolve is current-only everywhere.
+            history = false;
+        }
+        const bool expect_history = live && frames_since_reset > 0 && !expected_cut();
+        require(history == expect_history, "history use follows the script (first frame, Reset and cut frames run current-only)");
+        if (!history) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
+        std::printf("TAA frame=%llu history=%u cut=%u changed=%u\n", frame, history, expected_cut(), changed);
+        ++taa_frames; taa_history_frames += history; taa_changed_pixels += changed;
+        std::printf("COLOR_BEFORE frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(before_image)));
+        verify_coverage(before_image);
+    }
     void frame_end() {
+        if (taa) boundary();
         api(d->EndScene(), "EndScene");
         const auto image = color_image();
         std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
-        verify_coverage(image);
+        if (!taa) verify_coverage(image);
         verify_motion();
+        // The game rebinds its depth surface after the bloom passes; without
+        // the bloom sequence the selector rejects the rest of this frame,
+        // which must not disturb the resolved history.
+        if (taa) api(d->SetDepthStencilSurface(depth.p), "SetDepthStencilSurface rebind");
         api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
-        ++frame;
+        ++frame; ++frames_since_reset;
     }
     void reset() {
-        back.reset(); depth.reset();
+        back.reset(); depth.reset(); bloom_surface.reset(); bloom.reset();
         for (UINT i = 0; i < 4; ++i) api(d->SetTexture(i, nullptr), "SetTexture null");
         api(d->Reset(&pp), "Reset");
         std::puts("RESET PASS");
         acquire_swapchain_surfaces();
         a.recorded = b.recorded = false;
+        frames_since_reset = 0;
+        if (reference_ready) reference.reset();
+    }
+    // EVENT-synchronized wall-clock time of the boundary StretchRect (the
+    // route's resolve and copies run inside its hook) at a game-like size.
+    void wait(IDirect3DQuery9* event) {
+        BOOL done = FALSE; const DWORD limit = GetTickCount() + 10000;
+        for (;;) { const HRESULT hr = event->GetData(&done, sizeof done, D3DGETDATA_FLUSH); if (hr == S_OK && done) return; if (FAILED(hr) || LONG(GetTickCount() - limit) >= 0) throw std::runtime_error("event completion"); Sleep(0); }
+    }
+    void run_bench(unsigned frames) {
+        Com<IDirect3DQuery9> event; api(d->CreateQuery(D3DQUERYTYPE_EVENT, &event.p), "CreateQuery EVENT");
+        LARGE_INTEGER frequency; QueryPerformanceFrequency(&frequency);
+        for (unsigned i = 0; i < frames; ++i) {
+            frame_begin();
+            const bool alternate = i % 2;
+            draw(a, alternate ? .8f : .75f, alternate ? .125f : 0, 0, true, true, i > 0); draw(b, alternate ? -.05f : 0, 0, alternate ? .1f : 0, true, true, i > 0);
+            api(d->SetDepthStencilSurface(nullptr), "SetDepthStencilSurface null");
+            api(event->Issue(D3DISSUE_END), "Issue"); wait(event.p);
+            LARGE_INTEGER begin, end; QueryPerformanceCounter(&begin);
+            api(d->StretchRect(back.p, nullptr, bloom_surface.p, nullptr, D3DTEXF_NONE), "StretchRect bloom copy");
+            api(event->Issue(D3DISSUE_END), "Issue"); wait(event.p);
+            QueryPerformanceCounter(&end);
+            const double ms = 1000. * double(end.QuadPart - begin.QuadPart) / double(frequency.QuadPart);
+            std::printf("BENCH frame=%llu width=%u height=%u boundary_ms=%.4f\n", frame, W, H, ms);
+            if (i >= 4) bench_ms.push_back(ms);
+            api(d->EndScene(), "EndScene");
+            api(d->SetDepthStencilSurface(depth.p), "SetDepthStencilSurface rebind");
+            api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
+            ++frame; ++frames_since_reset;
+        }
+        std::sort(bench_ms.begin(), bench_ms.end());
+        std::printf("BENCH_SUMMARY width=%u height=%u frames=%u min_ms=%.4f median_ms=%.4f max_ms=%.4f timing=cpu_inclusive_event_synchronized\n",
+                    W, H, unsigned(bench_ms.size()), bench_ms.front(), bench_ms[bench_ms.size() / 2], bench_ms.back());
     }
     void stateblock_case() {
         // A state block Apply rebinding the flat PS must be seen by the route:
@@ -533,6 +750,13 @@ struct Fixture {
         recreate_shaders();
         frame_begin(); draw(a, .8f, .125f, 0, true, true, true); draw(b, 0, 0, 0, true, true, true); frame_end();
         require(!live || frames_verified == 12, "every live frame verified against the oracle");
+        if (taa) {
+            require(taa_frames == 12, "every frame ran the boundary");
+            // Seam: history on frames 1, 2, 4, 7, 10, 11 (frames 3, 5, 6, 8 are
+            // cuts; 0 and 9 have no history); production: never (sentinel only).
+            require(taa_history_frames == (live ? 6u : 0u), "history frames follow the script");
+            require(!live || taa_reference_frames == 12, "every seam frame compared against the reference resolve");
+        }
     }
 };
 } // namespace
@@ -545,21 +769,30 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if (argc != 4 || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam");
+        if ((argc != 4 && argc != 5) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench [WxH]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
+        f.bench = mode == "bench";
+        if (f.bench) {
+            unsigned w = 0, h = 0;
+            if (argc != 5 || std::sscanf(argv[4], "%ux%u", &w, &h) != 2 || !w || !h || w > 8192 || h > 8192) throw std::runtime_error("bench needs WxH");
+            Fixture::W = w; Fixture::H = h;
+        }
         f.configure = symbol<void (*)(const x3m::MotionOutputFixtureConfig*)>(runtime, "x3m_motion_output_fixture_configure", false);
         f.readback = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_motion_output_fixture_readback", false);
         f.readback_depth = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_motion_output_fixture_readback_depth", false);
         f.last_pixel_abi = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned)>(runtime, "x3m_motion_output_fixture_last_pixel_abi", false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi;
-        require(f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
-        f.jitter = f.enabled && GetEnvironmentVariableA("X3M_MOTION_JITTER", setting, sizeof setting) == 1 && setting[0] == '1';
+        f.taa = f.enabled && GetEnvironmentVariableA("X3M_TAA", setting, sizeof setting) == 1 && setting[0] == '1';
+        // The DLL implies the jitter with the resolve on.
+        f.jitter = f.enabled && (f.taa || (GetEnvironmentVariableA("X3M_MOTION_JITTER", setting, sizeof setting) == 1 && setting[0] == '1'));
+        if (f.bench) f.taa = true; // The bench always runs the game-like boundary; the resolve follows X3M_TAA.
         if (GetEnvironmentVariableA("X3M_MOTION_JITTER_SAMPLES", setting, sizeof setting) > 0) { const unsigned n = unsigned(std::atoi(setting)); if (n >= 2 && n <= 64) f.jitter_samples = n; }
         char path[MAX_PATH]{}; GetModuleFileNameA(runtime, path, MAX_PATH);
-        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u dll=%s\n", f.seam, f.enabled, f.jitter, f.jitter_samples, path);
+        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path);
         f.vs_words = load(argv[1]); f.ps_words = load(argv[2]);
         f.vs_hash = fnv(f.vs_words.data(), f.vs_words.size() * 4); f.ps_hash = fnv(f.ps_words.data(), f.ps_words.size() * 4);
         f.flat_hash = fnv(flat_program, sizeof flat_program);
@@ -574,9 +807,11 @@ int main(int argc, char** argv) {
         f.scope(nullptr);
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
-        f.run();
+        if (f.taa && f.enabled && f.seam && !f.bench) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
+        if (f.bench) f.run_bench(24); else f.run();
+        if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }
         // Teardown: every fixture object released, then the device must reach zero.
-        f.back.reset(); f.depth.reset();
+        f.back.reset(); f.depth.reset(); f.bloom_surface.reset(); f.bloom.reset();
         for (UINT i = 0; i < 4; ++i) api(f.d->SetTexture(i, nullptr), "SetTexture null");
         api(f.d->SetVertexShader(nullptr), "unbind"); api(f.d->SetPixelShader(nullptr), "unbind"); api(f.d->SetStreamSource(0, nullptr, 0, 0), "unbind"); api(f.d->SetVertexDeclaration(nullptr), "unbind");
         f.vs.reset(); f.ps.reset(); f.flat.reset(); f.declaration.reset(); f.vb_a.reset(); f.vb_b.reset(); f.cube.reset();
@@ -585,8 +820,8 @@ int main(int argc, char** argv) {
         require(device_refs == 0, "device final Release reaches zero with the route's objects released");
         const ULONG api_refs = f.factory.p->Release(); f.factory.p = nullptr;
         require(api_refs == 0, "factory final Release reaches zero");
-        std::printf("RESULT PASS checks=%u restorations=%u frames=%llu motion_pixels=%u matched_pixels=%u max_uv_pixels=%.9g max_depth_error=%.9g depth_pixels=%u depth_written=%u max_current_depth_error=%.9g coverage_frames=%u coverage_pixels=%u coverage_ambiguous=%u jitter=%u\n",
-                    checks, restorations, f.frame, motion_checked, motion_matched, max_uv_pixels, max_depth_error, depth_checked, depth_written, max_current_depth_error, coverage_frames, coverage_checked, coverage_ambiguous, f.jitter);
+        std::printf("RESULT PASS checks=%u restorations=%u frames=%llu motion_pixels=%u matched_pixels=%u max_uv_pixels=%.9g max_depth_error=%.9g depth_pixels=%u depth_written=%u max_current_depth_error=%.9g coverage_frames=%u coverage_pixels=%u coverage_ambiguous=%u jitter=%u taa=%u taa_frames=%u taa_history_frames=%u taa_reference_frames=%u taa_changed_pixels=%u\n",
+                    checks, restorations, f.frame, motion_checked, motion_matched, max_uv_pixels, max_depth_error, depth_checked, depth_written, max_current_depth_error, coverage_frames, coverage_checked, coverage_ambiguous, f.jitter, f.taa, taa_frames, taa_history_frames, taa_reference_frames, taa_changed_pixels);
         exit_code = 0;
     } catch (const std::exception& e) { std::printf("RESULT FAIL %s\n", e.what()); }
     if (runtime) FreeLibrary(runtime);

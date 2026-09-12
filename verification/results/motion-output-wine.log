@@ -16,3 +16,11 @@
 ==== seam-admission-on
 ==== production-jitter-on
 ==== seam-jitter-on
+==== production-taa-on
+==== seam-taa-on
+==== production-ownership-taa-on
+==== seam-ownership-taa-on
+==== bench-1280x768-taa-off
+==== bench-1280x768-taa-on
+==== bench-5120x1440-taa-off
+==== bench-5120x1440-taa-on

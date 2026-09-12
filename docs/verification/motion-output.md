@@ -1,4 +1,4 @@
-# Live motion route (checkpoint B1 + temporal step 1) verification
+# Live motion route (checkpoint B1 + temporal steps 1 and 3) verification
 
 Synthetic verification of the live same-draw route through the actual proxy
 DLL under CrossOver Preview's Steam bottle with the process-local `d3d9=n,b`
@@ -7,7 +7,7 @@ and never enters the repository or the reports.
 
 ```sh
 python3 verification/probe/run_motion_row_history.py     # host unit fixture, release + ASan/UBSan
-python3 verification/probe/run_motion_output.py          # fresh build + eighteen DLL runs (four environments + jitter)
+python3 verification/probe/run_motion_output.py          # fresh build + 26 DLL runs (four environments, jitter, TAA, bench)
 python3 verification/probe/check_no_x87.py               # light setter hooks reach no x87 code
 ```
 
@@ -91,7 +91,8 @@ uploaded `c216 = (1/W, 1/H, 0, 0)`: zero prior jitter, as the
 
 Each DLL runs with the route off and on in four environments (`VARIANTS` in
 `run_motion_output.py`), plus one plain run per DLL with the route and the
-jitter on: **plain** (the original four runs), **ownership**
+jitter on, plus the TAA and bench runs described in
+[Temporal resolve (step 3)](#temporal-resolve-step-3): **plain** (the original four runs), **ownership**
 (`X3M_OWNERSHIP=1`, the wrapper the gameplay run needs for object lifetime),
 **depth** (`X3M_OWNERSHIP=1 X3M_DEPTH_COPY=1 X3M_SCENE_DEPTH_CAPTURE=1`, the
 copy-depth storage and the scene-depth adapter active in the eight requested
@@ -114,6 +115,86 @@ ownership integration) plus `admission_metric` per captured frame with zero
 veto bits. Balanced adoption/retirement is proven by the fixture's zero final
 Release: the wrapper's logical device count reaches zero only when every child
 wrapper, the route's included, has been released.
+
+## Temporal resolve (step 3)
+
+With `X3M_TAA=1` the fixture ends every frame like the game: inside the scene
+it unbinds the depth surface (the selector's Scene to AwaitCopy transition),
+reads the main target back, snapshots the device state, copies the main
+target into a bloom source texture with a full-rect `StretchRect` (the route
+resolves inside that hook, before the application's copy), compares the state
+snapshot (which for these runs also covers textures and sampler states of
+stages 0-7, PS `c0-7`, the stream-0 frequency and the indices the resolve
+touches), reads the main target and the bloom source back, and rebinds the
+depth surface after `EndScene` (the game does this after its bloom passes;
+without a bloom sequence the selector rejects the rest of the frame, which
+must not disturb the history). Per frame it requires:
+
+- (c) the bloom source equals the main target after the copy: the
+  application's copy received the resolved image;
+- history use follows the script: none in frame 0, after Reset (frame 9) and
+  in the seam's cut frames (3, 5, 6, 8: keyed draws missing above the 0.25
+  bound), history in the other seam frames (1, 2, 4, 7, 10, 11); production
+  routes sentinel-only, so it never uses history;
+- (b) a frame without history leaves the 8-bit main target bit-identical
+  (the FP16 round trip and the current-only resolve change nothing, alpha
+  included);
+- (a) seam: the main target after the copy equals, byte for byte, a
+  **reference** `TemporalPass` (the production class with the same embedded
+  resolve bytecode) run on a plain second device of the system d3d9 from the
+  same inputs read back through the seam (RT1, RT2, the 8-bit main target
+  before the copy, the frame's jitter, the DLL's cut rule and the Reset
+  points), followed by the same point-filtered copy-back; the reference FP16
+  output is written as `reference_taa_<frame>.rgba16f` and must equal the
+  DLL's `X3M_TAA_DEBUG` file `taa_<device>_<frame>.rgba16f` byte for byte in
+  capture frames 1-8;
+- (e) zero differences in the boundary state comparison (51 restoration
+  comparisons per run instead of 39);
+- (d) Reset in the middle of the script keeps working (frame 9 resolves
+  current-only, frame 10 accumulates again).
+
+The runner adds: the presented color hashes of the production TAA runs (plain
+and through the wrapper) equal the jitter-only run in all 12 frames (f: a
+current-only resolve is invisible), the seam TAA runs equal it in every
+frame without history and differ in history frames (the moving edges blend
+the previous frame), the pre-boundary image is the jittered raster in every
+TAA run, the two seam runs agree, every frame line reports
+`taa_attempted=1 taa_resolved=1 taa_skip=0` with the expected `taa_history`
+and zero result codes, one lazy `motion_output_taa initialize=00000000
+references=1`, `taa_references=1` after Reset (only the resolve shader
+survives it), no `motion_output_taa_failed`, and the analyzer's
+[`taa_image`](motion-readback.md#6-resolved-image-sanity-signal-taa_image)
+check passes on the TAA capture logs with a zero differing fraction for the
+production runs. The final device and factory Release still return zero
+through the wrapper with the pass's objects counted.
+
+Four bench runs (`bench WxH` mode, production DLL, route and jitter on,
+resolve off and on) time the boundary `StretchRect` at 1280x768 and
+5120x1440: 24 frames of two scene draws each, an EVENT query drained before
+and after the call, QPC around it, the first four frames discarded. The
+difference between on and off is the resolve, its two copies, the state
+block capture/apply and the copy-back, CPU-inclusive on the Preview backend
+(not a GPU timestamp).
+
+Results (2026-09-12, fresh `build/`): the four TAA runs pass with the check
+and restoration counts of the table above; the seam runs compare all 12
+frames against the reference resolve byte for byte and frames 1-8 at FP16
+against the reference file; history follows the script (seam frames 1, 2, 4,
+7, 10, 11; the production pass reports valid history from frame 1 on while
+every pixel resolves current-only); 374 pixels per seam run are changed by
+history (frames 1, 4, 7, 10, 11: 93, 104, 25, 28, 124), none in production;
+the production presented image equals the jitter-only run in all 12 frames
+and the pre-boundary image equals it in every TAA run; the analyzer's
+`taa_image` check passes on all four capture logs (differing fraction 0 in
+production with a maximum RGB difference of one FP16 ulp, 0.0044 / 0.0229 /
+0.0046 in seam frames 1 / 4 / 7); `taa_references` is 7 natively and 12
+through the wrapper while the pass is allocated and 1 after Reset; the final
+device and factory Release reach zero in every run. Bench: boundary median
+0.330 ms (resolve off) versus 1.004 ms (on) at 1280×768 and 0.711 versus
+2.754 ms at 5120×1440 (review-16 rerun), i.e. about **0.67 ms** and **2.04 ms** for the
+resolve, its copies and the copy-back, CPU-inclusive. Details, hashes and
+the per-frame bench samples: `verification/results/motion-output-summary.json`
+(`cases` and `bench`), capture logs `motion-output-*-taa-on-capture.log`.
 
 ## Ownership wrapper interaction
 
@@ -187,6 +268,8 @@ checkpoint.
 | admission | production off / on | 30 / 30 | 39 / 39 | – | – | – | 48,242 |
 | admission | seam off / on | 30 / 90 | 39 / 39 | – / 44,284 | – / 10,261 | – / 27,170 | 48,242 |
 | plain, jitter | production on / seam on | 30 / 90 | 39 / 39 | – / 44,279 | – / 10,348 | – / 27,293 | 48,957 |
+| plain, TAA | production on / seam on | 69 / 150 | 51 / 51 | – / 44,279 | – / 10,348 | – / 27,293 | 48,957 |
+| ownership, TAA | production on / seam on | 69 / 150 | 51 / 51 | – / 44,279 | – / 10,348 | – / 27,293 | 48,957 |
 
 All 39 restoration comparisons in every run report zero differences,
 including the application's `c24–27` after every jittered draw. Every
@@ -269,6 +352,34 @@ enabled runs: `motion-output-<case>-capture.log`; host unit summary:
 
 ## Gameplay diagnostic run
 
+Two user-managed runs are defined: the diagnostic run below (route, no
+resolve) and the TAA run, which is the same command plus `--taa` (and
+`--taa-debug` for the offline comparison):
+
+```sh
+python3 tools/manage.py install
+python3 tools/manage.py launch --direct --ownership --object-trace --object-lifetime --motion-output --taa --taa-debug --telemetry --capture-start 999999 --capture-frames 4
+```
+
+`--taa` implies `--motion-jitter` and requires `--object-trace
+--object-lifetime` (without history the resolve is current-only and only the
+jitter would reach the screen). Do the same still / turning / flying
+sequence as below, once with this command and once with the diagnostic
+command, and compare: visually, whether edges of ships and station parts
+are stable while still and free of ghosting while turning (the current-only
+fallback for background, particles and unknown programs shows as ordinary
+aliasing there); in the log, `motion_output_device ... taa=1 taa_reason=ok`,
+`motion_output_taa initialize=00000000`, per captured frame
+`taa_attempted=1 taa_resolved=1 taa_history=1 taa_skip=0` (a `taa_skip` of
+2 means the selector never reached the copy in that frame, 6 an open
+application query, 3 no jitter), no `motion_output_taa_failed`; offline,
+`python3 tools/analysis/analyze_motion_readback.py <session.log> --label
+taa` on the TAA capture: the `taa_image` check must pass (finite) and its
+differing fraction shows how much of each frame the history touched, and
+the motion/depth checks of the diagnostic run must still pass with the
+resolve on. Expect a hitch per F8 press: each captured frame now reads back
+RT1, RT2, the pre-resolve color and the resolved FP16 image.
+
 The first gameplay checkpoint is a user-managed capture with the route, the
 ownership wrapper and both object observers active (object lifetime requires
 the wrapper; without the observers the route runs sentinel-only). Install the
@@ -325,9 +436,12 @@ readback and the stored rows) is the next step once such a capture exists.
 
 ## Limits
 
-Synthetic device program only: no gameplay, no TAA, no temporal consumer, one
-reviewed pair. Jitter is proven by coverage on a 64×64 target and the cut
-detector's verdict is data only. Object scope is injected; the game observers are not exercised,
+Synthetic device program only: no gameplay, no temporal image quality, one
+reviewed pair. Jitter is proven by coverage on a 64×64 target; the resolve is
+proven by byte-exact agreement with the same `TemporalPass` on a plain
+device from the same inputs (not an independent implementation) and by the
+8-bit round trip on current-only frames; the bench numbers are
+CPU-inclusive. Object scope is injected; the game observers are not exercised,
 so the wrapper environments prove the route's fill, routing, Reset and release
 through the wrapper, not object history through it. Native Windows is
 cross-compiled but not executed. Setter-hook cost in the game is unmeasured.

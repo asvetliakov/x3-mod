@@ -76,7 +76,7 @@ def draw_block(frame, index, gate, key, rows, rows_hash, viewport=(0, 0, W, H), 
 
 
 def frame_lines(frame, draws, captured=True, readback=True, committed=1, counters=None, reset_after=None,
-                depth_readback=False, extra='', cut=None):
+                depth_readback=False, extra='', cut=None, taa_readback=False):
     """draws: list of (gate, key_name, rows, rows_hash); index 1 is a non-scene background draw.
     depth_readback adds the RT2 readback line, extra is appended to the frame summary
     (jitter and cut fields of temporal step 1), cut adds a motion_output_cut line."""
@@ -94,6 +94,11 @@ def frame_lines(frame, draws, captured=True, readback=True, committed=1, counter
                      f'height={H} format=r32f_row_major result=00000000 bytes={W * H * 4}')
     if cut:
         lines.append(f'motion_output_cut device=1 frame={frame} ' + ' '.join(f'{k}={v}' for k, v in cut.items()))
+    if taa_readback:
+        lines.append(f'motion_output_color_readback device=1 frame={frame} file=color_1_{frame}.bgra8 width={W} '
+                     f'height={H} format=bgra8_row_major result=00000000 bytes={W * H * 4}')
+        lines.append(f'motion_output_taa_readback device=1 frame={frame} file=taa_1_{frame}.rgba16f width={W} '
+                     f'height={H} format=rgba16f_row_major result=00000000 bytes={W * H * 8}')
     gates = {g: sum(1 for d in draws if d[0] == g) for g in range(7)}
     routed = sum(1 for d in draws if d[0] in (0, 5, 6))
     summary = dict(draws=len(draws) + 1, routed=routed, matched=gates[0], gate1=0, gate2=1, gate3=gates[3],
@@ -153,6 +158,18 @@ def paint_perspective(image, footprint, tx_cur, tx_prev, wx, depth=0.3):
         image.set(px, py, u, v, depth)
 
 
+def half_bits(value):
+    """binary32 -> binary16 bits, round to nearest even (normal range only)."""
+    bits = struct.unpack('<I', struct.pack('<f', value))[0]
+    sign = (bits >> 16) & 0x8000
+    exponent = ((bits >> 23) & 255) - 127 + 15
+    mantissa = bits & 0x7fffff
+    if value == 0:
+        return sign
+    rounded = mantissa + 0xfff + ((mantissa >> 13) & 1)
+    return sign | ((exponent << 10) + (rounded >> 13))
+
+
 def rect(x0, x1, y0, y1):
     return [(px, py) for py in range(y0, y1) for px in range(x0, x1)]
 
@@ -192,7 +209,8 @@ def build_scenario(directory, **variant):
     log += frame_lines(2, [(gate_a2, 'A', A2, 'a2'), (0, 'B', B2, 'b2'), (0, 'C', C2, 'c2')],
                        readback=not variant.get('no_readback_frame2', False),
                        depth_readback=variant.get('depth_readback_lines', False),
-                       extra=variant.get('frame2_extra', ''), cut=variant.get('frame2_cut'))
+                       extra=variant.get('frame2_extra', ''), cut=variant.get('frame2_cut'),
+                       taa_readback=variant.get('taa_image', False))
     image2 = Image()
     paint_affine(image2, FOOT_A2, A2, A0)
     # B's object points sit at z=0.65: depth 0.75 under B0 (tz=0.1) in frame 1, 0.65 under B2 now.
@@ -225,6 +243,23 @@ def build_scenario(directory, **variant):
                     image[py * W + px] = 0.25
                 with (directory / f'depth_1_{number}.r32f').open('wb') as stream:
                     stream.write(struct.pack('<%df' % (W * H), *image))
+    if variant.get('taa_image'):
+        # Frame 2's pre-resolve color (gray 128 everywhere) and the resolved FP16
+        # image: unchanged outside A's footprint, moved by 8/255 inside it (history
+        # blended in), and one NaN pixel when requested.
+        color = bytearray()
+        for _ in range(W * H):
+            color += bytes((128, 128, 128, 255))
+        (directory / 'color_1_2.bgra8').write_bytes(bytes(color))
+        resolved = array.array('H')
+        for py in range(H):
+            for px in range(W):
+                value = 128 / 255 + (8 / 255 if (px, py) in FOOT_A2 else 0)
+                bits = half_bits(value)
+                if variant['taa_image'] == 'nan' and (px, py) == (0, 0):
+                    bits = 0x7e00
+                resolved.extend((bits, bits, bits, half_bits(1.0)))
+        (directory / 'taa_1_2.rgba16f').write_bytes(resolved.tobytes())
     if variant.get('drop_readback_lines'):
         log = [line for line in log if not line.startswith('motion_output_readback')]
     (directory / 'session.log').write_text('\n'.join(log) + '\n', encoding='utf-8')
@@ -439,7 +474,36 @@ class MotionReadbackTests(unittest.TestCase):
         self.assertEqual((cut['cut'], cut['median_px'], cut['samples'], cut['bound_px']), (0, 1.25, 3, 0.6))
         self.assertEqual(frame(summary, 1)['cut']['status'], 'unavailable')
         self.assertIn('depth image:', amr.render_report(summary))
-        self.assertIn('cut detector (data only): cut=0', amr.render_report(summary))
+        self.assertIn('cut detector: cut=0', amr.render_report(summary))
+
+    def test_resolved_image_sanity_signal(self):
+        build_scenario(self.dir, taa_image=True)
+        summary = run(self.dir)
+        taa = frame(summary, 2)['taa']
+        self.assertEqual((taa['status'], taa['file'], taa['color_file']), ('loaded', 'taa_1_2.rgba16f', 'color_1_2.bgra8'))
+        self.assertEqual((taa['nonfinite'], taa['differing'], taa['pixels']), (0, len(FOOT_A2), W * H))
+        self.assertAlmostEqual(taa['differing_fraction'], len(FOOT_A2) / (W * H))
+        self.assertAlmostEqual(taa['max_difference'], 8 / 255, places=3)
+        self.assertTrue(taa['clean'])
+        check = summary['checks']['taa_image']
+        self.assertEqual((check['status'], check['frames'], check['unclean_frames']), ('pass', [2], []))
+        self.assertIn('resolved image: taa_1_2.rgba16f', amr.render_report(summary))
+        # A larger threshold hides the history contribution; the check still passes.
+        self.assertEqual(frame(run(self.dir, taa_threshold=0.5), 2)['taa']['differing'], 0)
+        self.assertEqual(run(self.dir)['checks']['readback_integrity']['status'], 'pass')
+        # Frames without the debug readback report the check as unavailable.
+        self.assertEqual(frame(summary, 1).get('taa'), None)
+        # A nonfinite resolved value fails the image and the integrity check.
+        build_scenario(self.dir, taa_image='nan')
+        summary = run(self.dir)
+        self.assertEqual(frame(summary, 2)['taa']['nonfinite'], 1)
+        self.assertEqual(summary['checks']['taa_image']['status'], 'fail')
+        self.assertEqual(summary['checks']['readback_integrity']['status'], 'fail')
+        # A logged resolved image whose color image is missing is malformed.
+        (self.dir / 'color_1_2.bgra8').unlink()
+        summary = run(self.dir)
+        self.assertEqual(frame(summary, 2)['taa']['status'], 'malformed')
+        self.assertEqual(summary['checks']['taa_image']['status'], 'unavailable')
 
     def test_depth_image_integrity_rejects_nonfinite_and_out_of_range(self):
         build_scenario(self.dir, depth_image='sentinel', depth_bad_values=True)

@@ -35,6 +35,7 @@ bool finite_positions_requested = false;
 bool motion_capture_requested = false;
 bool motion_output_requested = false;
 bool motion_jitter_requested = false;
+bool taa_requested = false, taa_debug_requested = false;
 unsigned motion_jitter_samples = 8;
 float motion_cut_median_px = 48.f, motion_cut_missing = .25f;
 // Component fixtures serialize every write and replay. The live capture mutex
@@ -117,6 +118,17 @@ struct StateBlockHooks : Hooks {
     StateBlockHooks(void* object,IDirect3DDevice9* owner):Hooks(object,6),device(owner){}
 };
 std::map<IDirect3DStateBlock9*, std::unique_ptr<StateBlockHooks>> stateblocks;
+// Queries change their result with every draw between Issue(BEGIN) and
+// Issue(END); the resolve must not inject draws while one is open. With the
+// route enabled every query object gets a private vtable (slots 2 Release,
+// 6 Issue) so the route knows how many are open. EVENT queries have no BEGIN
+// and never count.
+struct QueryHooks : Hooks {
+    IDirect3DDevice9* device;
+    bool active=false;
+    QueryHooks(void* object,IDirect3DDevice9* owner):Hooks(object,8),device(owner){}
+};
+std::map<IDirect3DQuery9*, std::unique_ptr<QueryHooks>> queries;
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 void fixture_apply(Device& ctx);
@@ -622,7 +634,11 @@ HRESULT WINAPI set_depth(IDirect3DDevice9* d,IDirect3DSurface9* depth) {
 HRESULT WINAPI stretch_rect(IDirect3DDevice9* d,IDirect3DSurface9* source,const RECT* source_rect,IDirect3DSurface9* dest,const RECT* dest_rect,D3DTEXTUREFILTERTYPE filter){
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    HookGuard lock;auto& ctx=*devices.at(d);CallTimer timer(ctx);timer.begin();
+    HookGuard lock;auto& ctx=*devices.at(d);CallTimer timer(ctx);
+    // The temporal resolve runs here, before the application's bloom copy of
+    // the main target, so the copy and everything after it see the resolved image.
+    ctx.motion_output.before_stretch(source,source_rect,dest,dest_rect);
+    timer.begin();
     cpu.before_original();
     const HRESULT result=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9*,const RECT*,IDirect3DSurface9*,const RECT*,D3DTEXTUREFILTERTYPE)>(34)(d,source,source_rect,dest,dest_rect,filter);cpu.after_original();timer.end();
     ctx.scene_depth.after_stretch(d,source,source_rect,dest,dest_rect,result);
@@ -636,6 +652,70 @@ HRESULT WINAPI stretch_rect(IDirect3DDevice9* d,IDirect3DSurface9* source,const 
         }
     }
     return result;
+}
+HRESULT WINAPI begin_scene(IDirect3DDevice9* d){
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;auto& ctx=*devices.at(d);
+    cpu.before_original();
+    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(41)(d);cpu.after_original();
+    ctx.motion_output.after_begin_scene(hr);
+    return hr;
+}
+HRESULT WINAPI end_scene(IDirect3DDevice9* d){
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;auto& ctx=*devices.at(d);
+    cpu.before_original();
+    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(42)(d);cpu.after_original();
+    ctx.motion_output.after_end_scene(hr);
+    return hr;
+}
+ULONG WINAPI query_release(IDirect3DQuery9* query){
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;
+    auto& hooks=*queries.at(query);
+    auto fn=hooks.get<ULONG(WINAPI*)(IDirect3DQuery9*)>(2);
+    cpu.before_original();
+    const ULONG refs=fn(query);cpu.after_original();
+    if(!refs){
+        // An open query released without END no longer changes with draws.
+        const auto device=devices.find(hooks.device);
+        if(hooks.active&&device!=devices.end())device->second->motion_output.query_active(false);
+        queries.erase(query);
+    }
+    return refs;
+}
+HRESULT WINAPI query_issue(IDirect3DQuery9* query,DWORD flags){
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;
+    auto& hooks=*queries.at(query);
+    cpu.before_original();
+    const HRESULT hr=hooks.get<HRESULT(WINAPI*)(IDirect3DQuery9*,DWORD)>(6)(query,flags);cpu.after_original();
+    const auto device=devices.find(hooks.device);
+    if(SUCCEEDED(hr)&&device!=devices.end()){
+        const bool begin=(flags&D3DISSUE_BEGIN)!=0, end=(flags&D3DISSUE_END)!=0;
+        if(begin&&!end&&!hooks.active){hooks.active=true;device->second->motion_output.query_active(true);}
+        else if(end&&hooks.active){hooks.active=false;device->second->motion_output.query_active(false);}
+    }
+    return hr;
+}
+HRESULT WINAPI create_query(IDirect3DDevice9* d,D3DQUERYTYPE type,IDirect3DQuery9** out){
+    CpuCallBoundary cpu;
+    ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    HookGuard lock;auto& ctx=*devices.at(d);
+    cpu.before_original();
+    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DQUERYTYPE,IDirect3DQuery9**)>(118)(d,type,out);cpu.after_original();
+    if(ctx.capture)log("create_query type=%u result=%08lx ptr=%p",unsigned(type),hr,out?*out:nullptr);
+    if(SUCCEEDED(hr)&&out&&*out&&!queries.count(*out)){
+        auto hooks=std::make_unique<QueryHooks>(*out,d);
+        hooks->set(2,query_release);hooks->set(6,query_issue);
+        auto entry=queries.emplace(*out,std::move(hooks));
+        entry.first->second->install(*out);
+    }
+    return hr;
 }
 // Optional scene capture must not mistake omitted GPU writes for a contiguous
 // known render sequence. Forward these calls unchanged and reject the candidate.
@@ -941,6 +1021,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
 #endif
     hooked.motion_output.configure_jitter(motion_jitter_requested,motion_jitter_samples);
     hooked.motion_output.configure_cut_bounds(motion_cut_median_px,motion_cut_missing);
+    hooked.motion_output.configure_taa(taa_requested,taa_debug_requested);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested);
     if(hooked.motion_output.enabled()){
         // The route needs the complete selector event stream plus setter
@@ -954,6 +1035,8 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         hooked.set(109,set_ps_constant_f);hooked.set(100,set_stream_source);hooked.set(104,set_indices);
         hooked.set(87,set_declaration);hooked.set(89,set_fvf);hooked.set(47,set_viewport);
         hooked.set(59,create_stateblock);hooked.set(60,begin_stateblock);hooked.set(61,end_stateblock);
+        // Scene and query tracking for the resolve's caller contract.
+        hooked.set(41,begin_scene);hooked.set(42,end_scene);hooked.set(118,create_query);
     }
     ownership_depth_info(d,devices.at(d)->id,devices.at(d)->frame,"create_after");
 }
@@ -1020,8 +1103,14 @@ void initialize_log(HMODULE module) {
     if(GetEnvironmentVariableW(L"X3M_MOTION_JITTER_SAMPLES",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=2&&n<=64)motion_jitter_samples=unsigned(n);}
     if(GetEnvironmentVariableW(L"X3M_MOTION_CUT_MEDIAN_PX",setting,32)>0)motion_cut_median_px=wcstof(setting,nullptr);
     if(GetEnvironmentVariableW(L"X3M_MOTION_CUT_MISSING",setting,32)>0)motion_cut_missing=wcstof(setting,nullptr);
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=0 jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f",
-        motion_output_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing);
+    // The temporal resolve at the bloom copy (temporal step 3): requires the
+    // route and implies the jitter; X3M_TAA_DEBUG=<n> (n > 0) writes the
+    // resolved FP16 image and the pre-resolve color in capture frames.
+    taa_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_TAA",setting,32)==1 && setting[0]==L'1';
+    if(taa_requested)motion_jitter_requested=true;
+    taa_debug_requested=taa_requested && GetEnvironmentVariableW(L"X3M_TAA_DEBUG",setting,32)>0 && wcstoul(setting,nullptr,10)>0;
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f",
+        motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing);
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     if(telemetry::enabled())loading_trace::initialize();

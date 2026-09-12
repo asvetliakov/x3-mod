@@ -42,7 +42,9 @@ def main():
     parser.add_argument('--finite-positions', action='store_true', help='Validate positions from verified existing buffer uploads (requires --ownership --telemetry)')
     parser.add_argument('--motion-capture', action='store_true', help='Produce private rigid-motion diagnostics during capture (requires scene depth, finite positions and object lifetime)')
     parser.add_argument('--motion-output', action='store_true', help='Route the reviewed material pair through motion-output variants into a private RT1 (history needs --object-trace --object-lifetime; otherwise sentinel-only)')
-    parser.add_argument('--motion-jitter', action='store_true', help='Per-draw sub-pixel jitter of every scene draw with a table VS (requires --motion-output; Halton 2,3 sequence, temporal step 1; no consumer yet)')
+    parser.add_argument('--motion-jitter', action='store_true', help='Per-draw sub-pixel jitter of every scene draw with a table VS (requires --motion-output; Halton 2,3 sequence, temporal step 1)')
+    parser.add_argument('--taa', action='store_true', help='Run the temporal resolve at the bloom copy and present the resolved image (requires --motion-output; implies --motion-jitter; temporal step 3)')
+    parser.add_argument('--taa-debug', action='store_true', help='Write the resolved FP16 image and the pre-resolve color in capture frames (requires --taa)')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
     if args.dry_run and args.action != 'launch':
@@ -63,6 +65,14 @@ def main():
         parser.error('--motion-output history needs both --object-trace and --object-lifetime, or neither for sentinel-only mode.')
     if args.motion_jitter and not args.motion_output:
         parser.error('--motion-jitter requires --motion-output.')
+    if args.taa and not args.motion_output:
+        parser.error('--taa requires --motion-output.')
+    if args.taa and not (args.object_trace and args.object_lifetime):
+        parser.error('--taa requires --object-trace and --object-lifetime: without history every routed draw carries the sentinel, the resolve stays current-only and the jitter only moves the image.')
+    if args.taa_debug and not args.taa:
+        parser.error('--taa-debug requires --taa.')
+    if args.taa:
+        args.motion_jitter = True
     if args.motion_capture and args.capture_frames < 2:
         parser.error('--motion-capture requires --capture-frames between 2 and 8 for adjacent-frame correspondence.')
     game = args.game_dir.resolve()
@@ -116,6 +126,8 @@ def main():
         env['X3M_MOTION_CAPTURE'] = '1' if args.motion_capture else '0'
         env['X3M_MOTION_OUTPUT'] = '1' if args.motion_output else '0'
         env['X3M_MOTION_JITTER'] = '1' if args.motion_jitter else '0'
+        env['X3M_TAA'] = '1' if args.taa else '0'
+        env['X3M_TAA_DEBUG'] = '1' if args.taa_debug else '0'
         # --dll applies to this child only, preserving the user's other overrides.
         command = [str(WINE), '--bottle', args.bottle, '--no-update',
                    '--dll', 'd3d9=b' if args.vanilla else 'd3d9=n,b',

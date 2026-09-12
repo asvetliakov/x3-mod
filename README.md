@@ -55,8 +55,14 @@ The live motion route is opt-in and diagnostic: `--motion-output` (env
 `X3M_MOTION_OUTPUT=1`) draws the reviewed material pair through transformed
 variants into a private RGBA32F RT1 and writes it back in capture frames. Object
 history needs `--object-trace --object-lifetime`; without them the route runs in
-sentinel-only mode. See [live motion route](docs/architecture/live-motion-route.md)
-and the exact gameplay diagnostic command in
+sentinel-only mode. `--taa` (env `X3M_TAA=1`, requires `--motion-output` with
+both history options, implies `--motion-jitter`) runs the temporal resolve at the game's pre-bloom
+copy and presents the resolved image; `--taa-debug` writes the resolved FP16
+image in capture frames. This is the first TAA that reaches the screen; it is
+verified synthetically, not yet in gameplay. See
+[live motion route](docs/architecture/live-motion-route.md),
+[temporal integration](docs/architecture/temporal-integration.md) and the exact
+gameplay commands in
 [motion-output verification](docs/verification/motion-output.md#gameplay-diagnostic-run).
 `launch --dry-run` validates the options and prints the resolved command and
 `X3M_*` environment without starting the game.

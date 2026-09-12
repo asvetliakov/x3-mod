@@ -70,8 +70,21 @@ SLOT(IDirect3DDevice9Vtbl, SetPixelShaderConstantF, 109);
 SLOT(IDirect3DDevice9Vtbl, GetPixelShaderConstantF, 110);
 SLOT(IDirect3DDevice9Vtbl, DrawRectPatch, 115);
 SLOT(IDirect3DDevice9Vtbl, DrawTriPatch, 116);
+// Temporal step 3 (src/renderer/temporal_pass.cpp native slots, the route's
+// scene/query tracking hooks and the query-object wrapper in capture.cpp).
+SLOT(IDirect3DDevice9Vtbl, AddRef, 1);
+SLOT(IDirect3DDevice9Vtbl, GetDeviceCaps, 7);
+SLOT(IDirect3DDevice9Vtbl, SetTexture, 65);
+SLOT(IDirect3DDevice9Vtbl, SetTextureStageState, 67);
+SLOT(IDirect3DDevice9Vtbl, SetSamplerState, 69);
+SLOT(IDirect3DDevice9Vtbl, SetStreamSourceFreq, 102);
+SLOT(IDirect3DDevice9Vtbl, CreateQuery, 118);
 SLOT(IDirect3DStateBlock9Vtbl, Release, 2);
+SLOT(IDirect3DStateBlock9Vtbl, Capture, 4);
 SLOT(IDirect3DStateBlock9Vtbl, Apply, 5);
+SLOT(IDirect3DQuery9Vtbl, Release, 2);
+SLOT(IDirect3DQuery9Vtbl, Issue, 6);
+static_assert(sizeof(IDirect3DQuery9Vtbl) == 8*sizeof(void*));
 static_assert(sizeof(IDirect3DStateBlock9Vtbl) == 6*sizeof(void*));
 static_assert(sizeof(IDirect3D9Vtbl) == 17*sizeof(void*));
 static_assert(sizeof(IDirect3D9ExVtbl) == 22*sizeof(void*));

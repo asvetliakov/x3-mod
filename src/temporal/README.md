@@ -23,8 +23,12 @@ Every sampler uses POINT min/mag, no mip filter, CLAMP U/V and sRGB sampling off
 The resolve performs its own four-tap history reconstruction so each color tap is
 tested against its own depth. Hardware bilinear filtering on any input would
 violate this contract. Output is a distinct FP16 target, never simultaneously
-bound as an input; alpha is one. Disable depth, blending, alpha test, fog and
-sRGB output. The shader does not manage or restore application GPU state.
+bound as an input; alpha is the current color's alpha (the game's main-target
+alpha survives the copy-back; history alpha is never blended; a NaN alpha
+becomes one). Disable depth, blending, alpha test, fog and
+sRGB output; with pre-transformed vertices and no vertex shader, stage 0's
+`D3DTSS_TEXCOORDINDEX` must be 0 and `D3DTSS_TEXTURETRANSFORMFLAGS` disabled,
+or the fixed-function pipeline remaps the quad's coordinates. The shader does not manage or restore application GPU state.
 
 All textures describe the same full, local viewport with the same dimensions.
 Source and previous viewport depth ranges must be MinZ=0, MaxZ=1; otherwise the
@@ -247,7 +251,12 @@ the resolve's s1 expects. See
 
 This section describes how `TemporalPass` (`src/renderer/temporal_pass.{h,cpp}`)
 maps the live route's outputs onto the sampler contract above. The shader ABI
-is unchanged except for one new flag, `c7.w`.
+is unchanged except for one new flag, `c7.w`, and (step 3) the output alpha,
+which is the current color's alpha so the route's copy-back preserves the
+game's main-target alpha byte. Step 3 wires this pass into the route at the
+bloom copy with the embedded bytecode of this shader
+(`src/renderer/temporal_resolve_program_inc.h`); see
+`docs/architecture/temporal-integration.md`.
 
 **Current color from the 8-bit main target.** `FrameInputs::color_surface`
 accepts the game's A8R8G8B8/X8R8G8B8 default-pool render-target surface (it

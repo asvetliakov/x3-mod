@@ -79,8 +79,17 @@ Evidence at this checkpoint:
   R32F depth directly without the decoder, derives the reactive mask from the
   depth sentinel, honors the cut flag, exposes the resolved surface for
   copy-back and survives Reset; 154 numerical checks and 158 state
-  comparisons pass. Step 3 (wiring the resolve at the pre-bloom copy point) is
-  next; no visible TAA yet.
+  comparisons pass. Step 3: behind `X3M_TAA=1` the route runs the resolve in the
+  StretchRect hook before the game's own bloom copy and copies the result back
+  into the main target; the fixture proves the presented image equals a
+  standalone reference resolve byte for byte, history frames accumulate
+  exactly as scripted, and failures leave the main target untouched. Measured
+  boundary cost (CPU-inclusive, Preview): 0.67 ms at 1280×768 and 2.04 ms at
+  5120×1440. [Review 16](verification/review-16.md) fixed a fixed-function
+  texture-stage leak into the resolve and added format-conversion gating;
+  verdict GO for a gameplay run. Known limitation: draws without a profile
+  row (background, particles, effects) resolve current-only and will show
+  sub-pixel crawl.
 - The motion-output fixture now runs in 18 environments including the
   ownership wrapper, depth copy and admission, which the gameplay run needs.
   That coverage found and fixed a refcount defect that would have leaked the
@@ -121,9 +130,9 @@ archive-wide table and the selector correction.
 
 ## Concrete next work
 
-1. Wire the adapted resolve into the route at the pre-bloom copy point behind
-   an off-by-default switch with copy-back (temporal integration step 3),
-   review, install, and run the first visual TAA comparison.
+1. First visual TAA gameplay run with `--taa --taa-debug` and a route-off
+   comparison of the same scene; analyze readbacks with per-frame jitter,
+   resolved-image sanity and frame time; tune history weight and cut bounds.
 2. User-managed diagnostic run with the installed route (command in
    [motion output](verification/motion-output.md), "Gameplay diagnostic run"):
    capture runs of at least three consecutive frames including one stationary

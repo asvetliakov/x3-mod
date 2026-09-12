@@ -44,19 +44,23 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // Canonicalize coverage into owned R32F history; never infer it from alpha.
     if (options.z > 0.5)
         return float4(maskSafe(tex2D(currentReactive, uv).r) ? 0 : 1, 0, 0, 1);
-    float3 raw = tex2D(currentColor, uv).rgb;
+    float4 current = tex2D(currentColor, uv);
+    float3 raw = current.rgb;
     float3 color = cleanColor(raw);
+    // The output alpha is the current alpha (the 8-bit main target keeps
+    // whatever the game wrote there); history alpha is never blended.
+    float alpha = current.a == current.a ? current.a : 1;
     float depth = tex2D(currentDepth, uv).r;
     // Depth-sentinel reactive mode (options.w): a negative current depth marks a
     // pixel no routed opaque draw wrote (background, particles, unknown
     // programs); it is current-only. Sentinel history taps are rejected one by
     // one inside historyTap by validDepth, so a silhouette footprint keeps its
     // surviving opaque taps. No mask texture or snapshot draw is involved.
-    if (options.w > 0.5 && depth < 0) return float4(color, 1);
+    if (options.w > 0.5 && depth < 0) return float4(color, alpha);
     if (history.w < 0.5 || history.z <= 0 || !finiteColor(raw) || !validDepth(depth))
-        return float4(color, 1);
+        return float4(color, alpha);
     if (options.y > 0.5 && !maskSafe(tex2D(currentReactive, uv).r))
-        return float4(color, 1);
+        return float4(color, alpha);
 
     // Texture centers use (pixel + .5)/size, but the raw D3D9 viewport maps
     // unadjusted projection NDC zero to raster pixel size/2. Remove the texture
@@ -81,7 +85,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
         } else if (motion.w != 0) valid = false;
     }
     if (!valid || !validDepth(expectedDepth) || any(previousUV < 0) || any(previousUV > 1))
-        return float4(color, 1);
+        return float4(color, alpha);
 
     float2 position = previousUV / sizeJitter.xy - 0.5;
     float2 base = floor(position);
@@ -94,7 +98,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     historyTap(tap + float2(sizeJitter.x,0), f.x*(1-f.y), expectedDepth, accumulated, total, reactive);
     historyTap(tap + float2(0,sizeJitter.y), (1-f.x)*f.y, expectedDepth, accumulated, total, reactive);
     historyTap(tap + sizeJitter.xy, f.x*f.y, expectedDepth, accumulated, total, reactive);
-    if (reactive || total < 0.001) return float4(color, 1);
+    if (reactive || total < 0.001) return float4(color, alpha);
 
     float3 low = color, high = color;
     // Invalid neighboring values cannot poison the clipping box.
@@ -105,5 +109,5 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
         }
     }
     float3 old = clamp(accumulated / total, low, high);
-    return float4(lerp(color, old, history.z), 1);
+    return float4(lerp(color, old, history.z), alpha);
 }
